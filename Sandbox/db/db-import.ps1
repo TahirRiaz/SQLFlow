@@ -122,16 +122,137 @@ if ($interactiveMode) {
     }
 }
 
+
+# Function to verify connection string parameters
+function Verify-ConnectionParameters {
+    param(
+        [hashtable]$ConnectionParams
+    )
+    
+    Write-Host "Verifying connection string parameters..." -ForegroundColor Yellow
+    
+    # Check required parameters
+    $requiredParams = @('Server', 'User ID', 'Password')
+    $missingParams = @()
+    
+    foreach ($param in $requiredParams) {
+        if (-not $ConnectionParams.ContainsKey($param) -or [string]::IsNullOrWhiteSpace($ConnectionParams[$param])) {
+            $missingParams += $param
+        }
+    }
+    
+    if ($missingParams.Count -gt 0) {
+        Write-Host "Error: Missing required parameters in connection string: $($missingParams -join ', ')" -ForegroundColor Red
+        return $false
+    }
+    
+    # Verify server format
+    $server = $ConnectionParams['Server']
+    if (-not ($server -match '[\w\-\.]+(\,\d+)?')) {
+        Write-Host "Warning: Server parameter format looks unusual: '$server'" -ForegroundColor Yellow
+        Write-Host "Expected format: 'servername' or 'servername,port'" -ForegroundColor Yellow
+    }
+    
+    # Verify encryption parameters
+    $encryptKey = $null
+    if ($ConnectionParams.ContainsKey('Encrypt')) {
+        $encryptKey = 'Encrypt'
+    } elseif ($ConnectionParams.ContainsKey('Encryption')) {
+        $encryptKey = 'Encryption'
+    }
+    
+    if ($encryptKey -ne $null) {
+        $encryptValue = $ConnectionParams[$encryptKey]
+        if ($encryptValue -notin @('True', 'False', 'yes', 'no', '1', '0')) {
+            Write-Host "Warning: $encryptKey value '$encryptValue' is not a standard boolean value" -ForegroundColor Yellow
+        }
+    } else {
+        Write-Host "Note: No encryption setting found in connection string. SQL Server may use encryption by default." -ForegroundColor Yellow
+    }
+    
+    # Verify TrustServerCertificate setting
+    if ($ConnectionParams.ContainsKey('TrustServerCertificate')) {
+        $trustValue = $ConnectionParams['TrustServerCertificate']
+        if ($trustValue -notin @('True', 'False', 'yes', 'no', '1', '0')) {
+            Write-Host "Warning: TrustServerCertificate value '$trustValue' is not a standard boolean value" -ForegroundColor Yellow
+        }
+    }
+    
+    # Display parsed connection parameters for verification
+    Write-Host "`nParsed Connection Parameters:" -ForegroundColor Cyan
+    Write-Host "  Server: $($ConnectionParams['Server'])" -ForegroundColor White
+    Write-Host "  User ID: $($ConnectionParams['User ID'])" -ForegroundColor White
+    
+    # Show encryption settings if present
+    if ($encryptKey -ne $null) {
+        Write-Host "  $($encryptKey): $($ConnectionParams[$encryptKey])" -ForegroundColor White
+    }
+    if ($ConnectionParams.ContainsKey('TrustServerCertificate')) {
+        Write-Host "  TrustServerCertificate: $($ConnectionParams['TrustServerCertificate'])" -ForegroundColor White
+    }
+    
+    # Prompt user to confirm
+    $confirmChoice = Read-Host "`nDo these connection parameters look correct? (y/n)"
+    if ($confirmChoice.ToLower() -ne "y") {
+        Write-Host "Operation cancelled by user due to connection parameter concerns." -ForegroundColor Yellow
+        return $false
+    }
+    
+    # Try to test the connection
+    try {
+        Write-Host "`nTesting database connection..." -ForegroundColor Yellow
+        $testQuery = "SELECT @@VERSION AS ServerVersion"
+        $serverInfo = Invoke-Sqlcmd -ServerInstance $ConnectionParams['Server'] -Username $ConnectionParams['User ID'] -Password $ConnectionParams['Password'] -Query $testQuery -ErrorAction Stop -ConnectionTimeout 10
+        Write-Host "Connection successful!" -ForegroundColor Green
+        Write-Host "SQL Server Version: $($serverInfo.ServerVersion)" -ForegroundColor Cyan
+    } catch {
+        Write-Host "Warning: Could not connect to the database server: $_" -ForegroundColor Yellow
+        Write-Host "Please verify your connection parameters." -ForegroundColor Yellow
+        
+        $proceedChoice = Read-Host "Proceed anyway? (y/n)"
+        if ($proceedChoice.ToLower() -ne "y") {
+            return $false
+        }
+    }
+    
+    return $true
+}
+
+
 # Get connection string from environment variable
 $connectionString = $env:SQLFlow
 
-# Parse connection string to get server, user, and password
-if ($connectionString -match "Server=(.*?);.*?User ID=(.*?);Password=(.*?);") {
-    $serverName = $matches[1]
-    $userId = $matches[2]
-    $password = $matches[3]
-} else {
-    Write-Host "Error: Unable to parse SQLFlow environment variable." -ForegroundColor Red
+# Parse connection string more robustly
+$connectionParams = @{}
+$connectionString.Split(';') | ForEach-Object {
+    if ($_ -match '(.+?)=(.+)') {
+        $key = $matches[1].Trim()
+        $value = $matches[2].Trim()
+        $connectionParams[$key] = $value
+    }
+}
+
+# Extract needed parameters
+$serverName = $connectionParams['Server']
+$userId = $connectionParams['User ID']
+$password = $connectionParams['Password']
+$trustServerCertificate = $connectionParams['TrustServerCertificate']
+$encrypt = $connectionParams['Encrypt']
+
+# Verify connection parameters
+$connectionValid = Verify-ConnectionParameters -ConnectionParams $connectionParams
+if (-not $connectionValid) {
+    $exitChoice = Read-Host "Do you want to exit the script? (y/n)"
+    if ($exitChoice.ToLower() -eq "y") {
+        Write-Host "Exiting script due to connection parameter concerns." -ForegroundColor Yellow
+        exit 1
+    }
+    Write-Host "Continuing with the provided connection parameters." -ForegroundColor Yellow
+}
+
+# Validate the required parameters
+if (-not $serverName -or -not $userId -or -not $password) {
+    Write-Host "Error: Missing required parameters in connection string." -ForegroundColor Red
     exit 1
 }
 
@@ -327,8 +448,7 @@ WITH $moveFiles,
         Write-Host "Database $TargetDatabaseName restored successfully." -ForegroundColor Green
         return $true
     } catch {
-       "Error restoring database ${TargetDatabaseName} from ${BackupFile}: $($_.Exception.Message)"
-
+        Write-Host "Error restoring database ${TargetDatabaseName} from ${BackupFile}: $($_.Exception.Message)" -ForegroundColor Red
         return $false
     }
 }
@@ -365,8 +485,18 @@ DROP DATABASE [$TargetDatabaseName];
             }
         }
         
-        # Import BACPAC using SqlPackage
-        & $SqlPackagePath /Action:Import /SourceFile:$BacpacFile /TargetServerName:$serverName /TargetDatabaseName:$TargetDatabaseName /TargetUser:$userId /TargetPassword:$password
+        # Build properties string based on connection string parameters
+        $properties = ""
+        if ($trustServerCertificate -eq "True") { $properties += "TrustServerCertificate=True;" }
+        if ($encrypt -eq "False") { $properties += "Encrypt=False;" }
+        $properties = $properties.TrimEnd(';')
+        
+        # Import BACPAC using SqlPackage with proper SSL settings
+        if ($properties) {
+            & $SqlPackagePath /Action:Import /SourceFile:$BacpacFile /TargetServerName:$serverName /TargetDatabaseName:$TargetDatabaseName /TargetUser:$userId /TargetPassword:$password /Properties:$properties
+        } else {
+            & $SqlPackagePath /Action:Import /SourceFile:$BacpacFile /TargetServerName:$serverName /TargetDatabaseName:$TargetDatabaseName /TargetUser:$userId /TargetPassword:$password
+        }
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Database $TargetDatabaseName imported successfully from $BacpacFile." -ForegroundColor Green
@@ -379,6 +509,33 @@ DROP DATABASE [$TargetDatabaseName];
         Write-Host "Error importing database $TargetDatabaseName from ${BacpacFile}: $_" -ForegroundColor Red
         return $false
     }
+}
+
+# Function to extract base name from filename (remove date part)
+function Get-BaseDatabaseName {
+    param (
+        [string]$FileName
+    )
+    
+    # Remove extension
+    $nameWithoutExtension = [System.IO.Path]::GetFileNameWithoutExtension($FileName)
+    
+    # Check for common date patterns and remove them
+    # Pattern 1: name_YYYYMMDD or name-YYYYMMDD
+    if ($nameWithoutExtension -match '^(.+?)[-_](20\d{6})$') {
+        return $matches[1]
+    }
+    # Pattern 2: name_YYYY-MM-DD or name-YYYY-MM-DD
+    elseif ($nameWithoutExtension -match '^(.+?)[-_](20\d{2}-\d{2}-\d{2})$') {
+        return $matches[1]
+    }
+    # Pattern 3: name_YYYYMMDD_HHMMSS or name-YYYYMMDD-HHMMSS
+    elseif ($nameWithoutExtension -match '^(.+?)[-_](20\d{6})[-_](\d{6})$') {
+        return $matches[1]
+    }
+    
+    # Return original name if no date pattern is found
+    return $nameWithoutExtension
 }
 
 # Ensure we have a backup directory
@@ -425,10 +582,10 @@ if ($ImportType -eq "bacpac") {
         # Determine target database name
         if ($UseFilenameAsDBName) {
             # Extract database name from filename (remove date portion and extension)
-            $targetDbName = [System.IO.Path]::GetFileNameWithoutExtension($database)
+            $targetDbName = Get-BaseDatabaseName -FileName $database
         } else {
-            # Prompt for database name
-            $defaultName = [System.IO.Path]::GetFileNameWithoutExtension($database)
+            # Prompt for database name, suggesting the base name as default
+            $defaultName = Get-BaseDatabaseName -FileName $database
             $targetDbName = Read-Host "Enter target database name for $database [default: $defaultName]"
             if ([string]::IsNullOrWhiteSpace($targetDbName)) {
                 $targetDbName = $defaultName
@@ -461,10 +618,10 @@ if ($ImportType -eq "bacpac") {
         # Determine target database name
         if ($UseFilenameAsDBName) {
             # Extract database name from filename (remove date portion and extension)
-            $targetDbName = [System.IO.Path]::GetFileNameWithoutExtension($database)
+            $targetDbName = Get-BaseDatabaseName -FileName $database
         } else {
-            # Prompt for database name
-            $defaultName = [System.IO.Path]::GetFileNameWithoutExtension($database)
+            # Prompt for database name, suggesting the base name as default
+            $defaultName = Get-BaseDatabaseName -FileName $database
             $targetDbName = Read-Host "Enter target database name for $database [default: $defaultName]"
             if ([string]::IsNullOrWhiteSpace($targetDbName)) {
                 $targetDbName = $defaultName

@@ -77,7 +77,7 @@ This [guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md)
 
 ## 👥 Support and Community
 
-We value community collaboration and support. Whether you have questions, issues, or success stories, feel free to reach out. Together, let's redefine data warehousing.
+Whether you have questions, issues, or success stories, feel free to reach out. Together, let's redefine data warehousing.
 
 - **Email:** [tahir@sqlflow.io](mailto:tahir@sqlflow.io)  
 - **LinkedIn:** [Contact](https://www.linkedin.com/in/businessiq/)

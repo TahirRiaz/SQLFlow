@@ -13,13 +13,21 @@ This guide will walk you through setting up SQLFlow using Docker containers.
 
 ### 1.1 Download Database Backups
 
-1. Go to the GitHub release page for SQLFlow
-2. Download the database backup package (~350 MB)
-3. Extract the files to your local folder
+1. Download the database backup package (~350 MB) in your preferred format:
+   - [SandboxDb BACPAC format](https://github.com/TahirRiaz/SQLFlow/releases/download/SQLFlow_Sandbox_V1/SandboxDb_BACPAC_Files_20250305.zip)
+   - [SandboxDb BAK format](https://github.com/TahirRiaz/SQLFlow/releases/download/SQLFlow_Sandbox_V1/SandboxDb_BAK_Files_20250305.zip)
+
+2. Extract the files to a folder of your choice on your local system.
+
+3. Create an environment variable named "SQLFlow" containing the connection string to your target server. This variable will be used for the automated database restoration process. This is an optional step if you want to restore the databases manually
+Example:
+```
+Server=localhost;Initial Catalog=master;User ID=;Password=;Persist Security Info=False;TrustServerCertificate=True;Encrypt=False;Command Timeout=660;
+```
 
 ### 1.2 Restore Database Backups
+Restore the databases using the provided PowerShell script located in the [SQLFlow\Sandbox\db](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/db-import.ps1) repository. Alternatively, you may perform a manual restoration if preferred.
 
-Restore databases using the provided PowerShell script from [SQLFlow\Sandbox\db](https://github.com/TahirRiaz/SQLFlow/tree/master/Sandbox/db):
 
 ```powershell
 # Set environment variable before running
