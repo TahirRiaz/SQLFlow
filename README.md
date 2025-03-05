@@ -9,7 +9,15 @@ SQLFlow is an open-source, metadata-driven data platform designed to simplify th
 - **Improved governance:** Achieve transparency and control through automated data lineage and impact analysis.
 - **Optimized scalability:** Utilize containerized environments to scale vertically as needed.
 
-![SQLFlow Azure Implementation Example](https://github.com/TahirRiaz/SQLFlow/assets/73830648/0707ac39-c743-4f34-bb28-bce1b9a497d3)
+## Trusted by Industry Leaders
+
+SQLFlow is utilized by organizations across various sectors to transform their data operations:
+
+- **Kolumbus AS** - A leading Norwegian company specializing in public transportation services, encompassing buses, boats, and trams, relies on SQLFlow for their data warehousing needs.
+
+- **Nortura SA** - Norway's premier food supplier with annual revenue of 23.545 billion NOK has partially implemented SQLFlow in their data infrastructure during your tenure there.
+
+![SQLFlow Architecture](https://raw.githubusercontent.com/TahirRiaz/SQLFlowV1/master/SQLFlowUi/wwwroot/images/sqlflow-arch.svg)
 
 ## Core Features
 
@@ -53,7 +61,7 @@ Easily onboard and maximize SQLFlow with detailed documentation covering everyth
 
 ## Getting Started
 
-Start revolutionizing your data warehousing experience today. A step-by-step installation guide is available in the `Install` directory.
+Start revolutionizing your data warehousing experience today. A step-by-step installation guide is available in the `Sandbox` directory.
 
 ## Support and Community
 
