@@ -9,6 +9,24 @@ This guide will walk you through setting up SQLFlow using Docker containers.
 - Sufficient disk space for Docker images and volumes
 - Basic knowledge of Docker and SQL database management
 
+## Step 0: Prepare the Databases
+
+**Critical Prerequisite**: Before starting SQLFlow setup, ensure your SQL Server or Azure SQL Database has SSL properly configured. This requires:
+
+- SSL must be enabled on SQL Server
+- The certificate must be added to trusted root authorities
+- Connection encryption must be properly configured
+
+Detailed instructions and an automation script are available at:
+[SQL Server SSL Configuration Wizard](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/mssql-ssl-wizard.md)
+
+```powershell
+# Example: Run the SSL configuration wizard
+.\mssql-ssl-wizard.ps1
+```
+
+> **Note:** Skipping this step may result in connection failures when running SQLFlow.
+
 ## Step 1: Prepare the Databases
 
 ### 1.1 Download Database Backups
