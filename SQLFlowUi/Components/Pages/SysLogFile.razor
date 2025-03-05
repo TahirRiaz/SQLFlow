@@ -1,0 +1,84 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/sys-log-file"
+@page "/sys-log-file/{searchTerm?}"
+
+
+ @attribute [Authorize]  
+ <PageTitle>SysLogFile</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[SysLogFile]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenRow>
+        <RadzenTextBox Placeholder="Search ..." Value="@searchTerm" style="display: block; width: 50%" @oninput="@Search" />
+        <RadzenButton  Text="Search Filename" Click="@Button1Click"></RadzenButton>
+    </RadzenRow>
+    
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"  AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@sysLogFile"    TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" RowDoubleClick="@EditRow" >
+            <Columns>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="LogFileID" Title="ID" Width="110px">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="BatchID" Title="BatchID" Width="120px" Visible="false">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="FlowID" Title="FlowID" Width="120px">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="FileDate_DW" Title="FileDateDW" Width="120px" Visible="false">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="FileName_DW" Title="FileNameDW" Width="450px">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="FileRowDate_DW" Title="FileRowDateDW">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="FileSize_DW" Title="FileSize" Width="140px">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="FileColumnCount" Title="ColCount" Visible="false">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="ExpectedColumnCount" Title="ExpColCount" Visible="false">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Property="DataSet_DW" Title="DataSet_DW" Visible="false">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="sysLogFile">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, sysLogFile)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

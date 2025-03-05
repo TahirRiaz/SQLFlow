@@ -1,0 +1,12 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/database-activity"
+
+@attribute [Authorize] 
+<PageTitle>Database Activity</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenStack>
+            <DatabaseActivity URL="http:\\asdasf.com?" />
+        </RadzenStack>
+    </RadzenColumn>
+

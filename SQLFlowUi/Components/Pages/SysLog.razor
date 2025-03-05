@@ -1,0 +1,155 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/sys-log"
+@page "/sys-log/{FlowID:int}"
+
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+
+ @attribute [Authorize]  
+ <PageTitle>SysLog</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[SysLog]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"  AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@sysLog"    TItem="SQLFlowUi.Models.sqlflowProd.SysLog" RowDoubleClick="@EditRow" >
+            <Columns>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FlowID" Title="FlowID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FlowType" Title="FlowType">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ProcessShort" Title="Process Short">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="StartTime" Title="Start Time">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="EndTime" Title="End Time">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="DurationFlow" Title="Duration Flow">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="DurationPre" Title="Duration Pre">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="DurationPost" Title="Duration Post">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="Fetched" Title="Fetched">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="Inserted" Title="Inserted">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="Updated" Title="Updated">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="Deleted" Title="Deleted">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="Success" Title="Success">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FlowRate" Title="Flow Rate">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="NoOfThreads" Title="No Of Threads">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="SysAlias" Title="SysAlias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="Batch" Title="Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="Process" Title="Process">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FileName" Title="File Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FileSize" Title="File Size">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FileDate" Title="File Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FileDateHist" Title="File Date Hist">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ExecMode" Title="Exec Mode">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="SelectCmd" Title="Select Cmd">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="InsertCmd" Title="Insert Cmd">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="UpdateCmd" Title="Update Cmd">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="DeleteCmd" Title="Delete Cmd">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="RuntimeCmd" Title="Runtime Cmd">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="CreateCmd" Title="Create Cmd">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="SurrogateKeyCmd" Title="Surrogate Key Cmd">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ErrorInsert" Title="Error Insert">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ErrorUpdate" Title="Error Update">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ErrorDelete" Title="Error Delete">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ErrorRuntime" Title="Error Runtime">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="FromObjectDef" Title="From Object Def">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ToObjectDef" Title="To Object Def">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="PreProcessOnTrgDef" Title="Pre Process On Trg Def">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="PostProcessOnTrgDef" Title="Post Process On Trg Def">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="DataTypeWarning" Title="Data Type Warning">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="ColumnWarning" Title="Column Warning">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="AssertRowCount" Title="Assert Row Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="NextExportDate" Title="Next Export Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="NextExportValue" Title="Next Export Value">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="WhereIncExp" Title="Where Inc Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="WhereDateExp" Title="Where Date Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="WhereXML" Title="Where X M L">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Property="TrgIndexes" Title="Trg Indexes">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="sysLog">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, sysLog)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>

@@ -1,0 +1,106 @@
+@page "/edit-sys-flow-note"
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+
+
+ <PageTitle>Edit SysFlowNote</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysFlowNote</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" Data="@sysFlowNote" Visible="@(sysFlowNote != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowNote].[FlowID]").Result Variant="Variant.Outlined" Style="width: 100%">
+                  <ChildContent>
+                      <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@sysFlowNote.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                          <Columns>
+                              <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                              <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                              <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                          </Columns>
+                      </RadzenDropDownDataGrid>
+                  </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowNote].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowNote].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+                  <Helper>
+                      <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                  </Helper>
+              </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowNote].[FlowNoteType]").Result Variant="Variant.Outlined" Style="width: 100%">
+                  <ChildContent>
+                    <RadzenDropDown  Data="@sysFlowNoteType" TValue="string" Multiple="false" Style="width: 100%" TextProperty="FlowNoteType" @bind-Value="@sysFlowNote.FlowNoteType" ValueProperty="FlowNoteType" Name="FlowNoteType" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowNote].[FlowNoteType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowNote].[FlowNoteType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+                  <Helper>
+                    <RadzenRequiredValidator Component="FlowNoteType" Text="FlowNoteType is required" />
+                  </Helper>
+            </RadzenFormField>
+
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowNote].[Title]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysFlowNote.Title" Name="Title" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowNote].[Title]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowNote].[Title]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowNote].[Description]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 25vh" @bind-Value="@sysFlowNote.Description" Name="Description" class="w-100" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowNote].[Description]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowNote].[Description]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></div></End>
+            </RadzenFormField>
+            <Dictation OnDoneCallBack="@OnDone" OnImproveCallBack="@OnImprove" />
+              
+              <RadzenColumn >
+                <RadzenCheckBox @bind-Value="@sysFlowNote.Resolved" Name="Resolved" />
+                <RadzenLabel Text=@DocService.GetLabel("[flw].[SysFlowNote].[Resolved]").Result Component="Resolved" />
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowNote].[Resolved]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowNote].[Resolved]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+              </RadzenColumn>
+              <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowNote].[Created]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysFlowNote.Created" Name="Created" />
+                </ChildContent> <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowNote].[Created]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowNote].[Created]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowNote].[CreatedBy]").Result Variant="Variant.Outlined" >
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysFlowNote.CreatedBy" Name="CreatedBy" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowNote].[CreatedBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowNote].[CreatedBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code
+{
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+    
+    public async Task OnDone(string finalStr)
+    {
+        string cuValue = (sysFlowNote.Description?.Length > 0 ? (sysFlowNote.Description + Environment.NewLine + Environment.NewLine) : "");
+
+        sysFlowNote.Description = cuValue + finalStr;
+        StateHasChanged();
+    }
+
+    public async Task OnImprove(string language)
+    {
+        string cuValue = sysFlowNote.Description;
+        ///sysError.Solution = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+
+        OpenAiService ai = new OpenAiService();
+        string improvedText = await ai.CallChatCompletionAsync(language, cuValue);
+        string title = await ai.CreateTitleAsync(language, cuValue);
+
+        sysFlowNote.Description = improvedText;
+        sysFlowNote.Title = title.Replace("\"", "");
+        StateHasChanged();
+    }
+
+}

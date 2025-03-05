@@ -1,0 +1,227 @@
+@namespace SQLFlowUi.Components
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+    [Parameter] public int FlowID { get; set; }
+    
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService dwSqlflowProdService { get; set; }
+
+    [Parameter] 
+    public SQLFlowCore.ExecParams.OpenAIPayLoad openAIPayLoad { get; set; }
+
+    protected IQueryable<SQLFlowUi.Models.sqlflowProd.SysOpenAIModel> sysOpenAIModel;
+
+    protected override async Task OnInitializedAsync()
+    {
+        UpdateSliderRange(openAIPayLoad.model);
+        sysOpenAIModel = await dwSqlflowProdService.GetSysOpenAIModels();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+           
+        }
+    }
+
+    private int minTokens = 256;
+    private int maxTokens = 8191;
+
+    void OnChange(object value)
+    {
+        var str = value is IEnumerable<object> ? string.Join(", ", (IEnumerable<object>)value) : value;
+
+        UpdateSliderRange(str.ToString());
+        StateHasChanged();
+        //console.Log($"Value changed to {str}");
+    }
+
+    private void UpdateSliderRange(string val)
+    {
+        switch (val)
+        {
+            case "gpt-4-0125-preview":
+                minTokens = 256;
+                maxTokens = 4095;
+                openAIPayLoad.max_tokens = maxTokens;
+                break;
+            case "gpt-4-turbo-preview":
+                minTokens = 256;
+                maxTokens = 4095;
+                openAIPayLoad.max_tokens = maxTokens;
+            break;
+            case "gpt-4":
+                minTokens = 256;
+                maxTokens = 8191;
+                openAIPayLoad.max_tokens = maxTokens;
+            break;
+            case "gpt-3.5-turbo-16k":
+                minTokens = 256;
+                maxTokens = 16384;
+                openAIPayLoad.max_tokens = maxTokens;
+            break;
+            default:
+                minTokens = 256;
+                maxTokens = 8191;
+                openAIPayLoad.max_tokens = maxTokens;
+                break;
+        }
+
+        
+    }
+}
+
+<RadzenFormField Text="Model" Variant="Variant.Outlined">
+    <ChildContent>
+        <RadzenDropDownDataGrid AllowClear="true" TValue="string" Change=@OnChange ValueProperty="Model" TextProperty="Model" Name="Model" Data="@sysOpenAIModel" AllowSorting="true" @bind-Value="@openAIPayLoad.model" AllowPaging="true" AllowFiltering="true">
+            <Columns>
+                <RadzenDropDownDataGridColumn Property="Model" Title="Model" />
+                <RadzenDropDownDataGridColumn Property="MaxTokens" Title="MaxTokens" />
+                <RadzenDropDownDataGridColumn Property="MinTokens" Title="MinTokens" />
+            </Columns>
+        </RadzenDropDownDataGrid>
+
+
+    </ChildContent>
+    <Helper>
+        <RadzenRequiredValidator Component="Model" Text="Model is required" />
+    </Helper>
+</RadzenFormField>
+
+<RadzenFormField Text="@AnalyzeMaxTokens(openAIPayLoad.max_tokens)" Variant="Variant.Outlined">
+    <ChildContent>
+        <br /><br />
+        <RadzenSlider @bind-Value="@openAIPayLoad.max_tokens" TValue="int?" Step="1" Min="@minTokens" Max="@maxTokens" Name="max_tokens" Style="width:400px" />
+    </ChildContent>
+</RadzenFormField>
+
+
+<RadzenFormField Text="@AnalyzeTemperature(openAIPayLoad.temperature)" Variant="Variant.Outlined">
+    <ChildContent>
+        <br /><br />
+        <RadzenSlider @bind-Value="@openAIPayLoad.temperature" TValue="double?" Step="0.1" Min="0" Max="1" Name="temperature" />
+    </ChildContent>
+</RadzenFormField>
+
+<RadzenFormField Text="@AnalyzeTopP(openAIPayLoad.top_p)" Variant="Variant.Outlined">
+    <ChildContent>
+        <br /><br />
+        <RadzenSlider @bind-Value="@openAIPayLoad.top_p" TValue="double?" Step="0.1" Min="0" Max="1" Name="top_p" />
+    </ChildContent>
+</RadzenFormField>
+
+<RadzenFormField Text="@AnalyzeFrequencyPenalty(openAIPayLoad.frequency_penalty)" Variant="Variant.Outlined">
+    <ChildContent>
+        <br /><br />
+        <RadzenSlider @bind-Value="@openAIPayLoad.frequency_penalty" TValue="double?" Step="0.1" Min="0" Max="2" Name="frequency_penalty" />
+    </ChildContent>
+</RadzenFormField>
+
+<RadzenFormField Text="@AnalyzePresencePenalty(openAIPayLoad.presence_penalty)" Variant="Variant.Outlined">
+    <ChildContent>
+        <br /><br />
+        <RadzenSlider @bind-Value="@openAIPayLoad.presence_penalty" TValue="double?" Step="0.1" Min="0" Max="2" Name="presence_penalty" />
+    </ChildContent>
+</RadzenFormField>
+
+<RadzenFormField Text="prompt" Variant="Variant.Outlined">
+    <ChildContent>
+        <RadzenTextArea style="display: block; width: 100%;height: 25vh" @bind-Value="@openAIPayLoad.prompt" Name="prompt" class="w-100" />
+    </ChildContent>
+</RadzenFormField>
+
+@code {
+
+    private string AnalyzeMaxTokens(int? maxTokens)
+    {
+        return $"MaxTokens: ({maxTokens})";
+    }
+
+    private string AnalyzeTemperature(double? temperature)
+    {
+        if (!temperature.HasValue)
+        {
+            return "Invalid Temperature";
+        }
+        string result = temperature switch
+        {
+            >= 0.0 and <= 0.3 => $"Temperature: Precise ({temperature})",
+            >= 0.4 and <= 0.7 => $"Temperature: Neutral ({temperature})",
+            >= 0.8 and <= 1.0 => $"Temperature: Creative ({temperature})",
+            _ => "Invalid Temperature"
+        };
+        return result;
+    }
+
+    private string AnalyzeTopP(double? topP)
+    {
+        if (!topP.HasValue)
+        {
+            return "Invalid Top P";
+        }
+        string result = topP switch
+        {
+            >= 0.0 and <= 0.3 => $"TopP: Highly Focused ({topP})",
+            >= 0.4 and <= 0.7 => $"TopP: Moderately Diverse ({topP})",
+            >= 0.8 and <= 1.0 => $"TopP: Highly Diverse ({topP})",
+            _ => "Invalid Top P"
+        };
+        return result;
+    }
+
+    private string AnalyzeFrequencyPenalty(double? frequencyPenalty)
+    {
+        if (!frequencyPenalty.HasValue)
+        {
+            return "Invalid Frequency Penalty";
+        }
+        string result = frequencyPenalty switch
+        {
+            >= 0.0 and <= 0.66 => $"Frequency Penalty: Low ({frequencyPenalty})",
+            > 0.66 and <= 1.32 => $"Frequency Penalty: Moderate ({frequencyPenalty})",
+            > 1.32 and <= 2.0 => $"Frequency Penalty: Penalty ({frequencyPenalty})",
+            _ => "Invalid Frequency Penalty"
+        };
+        return result;
+    }
+    
+    private string AnalyzePresencePenalty(double? presencePenalty)
+    {
+        if (!presencePenalty.HasValue)
+        {
+            return "Invalid Presence Penalty";
+        }
+        string result = presencePenalty switch
+        {
+            >= 0.0 and <= 0.66 => $"Presence Penalty: Low ({presencePenalty})",
+            > 0.66 and <= 1.32 => $"Presence Penalty: Moderate ({presencePenalty})",
+            > 1.32 and <= 2.0 => $"Presence Penalty: High ({presencePenalty})",
+            _ => "Invalid Presence Penalty"
+        };
+        return result;
+    }
+}
+
+
+
+
+
+
+
+

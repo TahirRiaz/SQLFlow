@@ -1,0 +1,6 @@
+@SQLFlowApi_HostAddress = http://localhost:5249
+
+GET {{SQLFlowApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

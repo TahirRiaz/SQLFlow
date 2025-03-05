@@ -1,0 +1,58 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-alias"
+
+
+ <PageTitle>Edit SysAlias</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysAlias</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysAlias" Data="@sysAlias" Visible="@(sysAlias != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAlias].[System]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAlias.System" Name="System" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAlias].[System]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAlias].[System]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAlias].[SysAlias]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAlias.SysAlias1" Name="SysAlias1" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAlias].[SysAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAlias].[SysAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAlias].[Description]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAlias.Description" Name="Description" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAlias].[Description]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAlias].[Description]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAlias].[Owner]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAlias.Owner" Name="Owner" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAlias].[Owner]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAlias].[Owner]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAlias].[DomainExpert]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAlias.DomainExpert" Name="DomainExpert" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAlias].[DomainExpert]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAlias].[DomainExpert]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

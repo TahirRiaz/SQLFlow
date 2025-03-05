@@ -1,0 +1,284 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-log"
+
+
+ <PageTitle>Edit SysLog</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysLog</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysLog" Data="@sysLog" Visible="@(sysLog != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                  <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@sysLog.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                          <Columns>
+                              <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                              <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                              <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                          </Columns>
+                      </RadzenDropDownDataGrid>
+
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FlowType]").Result Variant="Variant.Outlined" Style="width: 49%">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.FlowType" Name="FlowType" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FlowType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FlowType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ProcessShort]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ProcessShort" Name="ProcessShort" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ProcessShort]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ProcessShort]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[StartTime]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker  style="display: block; width: 100%" @bind-Value="@sysLog.StartTime" Name="StartTime" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[StartTime]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[StartTime]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[EndTime]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker  style="display: block; width: 100%" @bind-Value="@sysLog.EndTime" Name="EndTime" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[EndTime]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[EndTime]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[DurationFlow]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.DurationFlow" Name="DurationFlow" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[DurationFlow]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[DurationFlow]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[DurationPre]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.DurationPre" Name="DurationPre" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[DurationPre]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[DurationPre]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[DurationPost]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.DurationPost" Name="DurationPost" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[DurationPost]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[DurationPost]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[Fetched]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.Fetched" Name="Fetched" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[Fetched]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[Fetched]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[Inserted]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.Inserted" Name="Inserted" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[Inserted]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[Inserted]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[Updated]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.Updated" Name="Updated" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[Updated]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[Updated]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[Deleted]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.Deleted" Name="Deleted" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[Deleted]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[Deleted]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[SysLog].[Success]").Result Component="Success" Style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysLog.Success" Name="Success" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[Success]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[Success]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FlowRate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.FlowRate" Name="FlowRate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FlowRate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FlowRate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[NoOfThreads]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.NoOfThreads" Name="NoOfThreads" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[SysAlias]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.SysAlias" Name="SysAlias" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[SysAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[SysAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[Batch]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.Batch" Name="Batch" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[Batch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[Batch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[Process]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.Process" Name="Process" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[Process]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[Process]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FileName]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.FileName" Name="FileName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FileName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FileName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FileSize]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.FileSize" Name="FileSize" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FileSize]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FileSize]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FileDate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.FileDate" Name="FileDate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FileDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FileDateHist]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.FileDateHist" Name="FileDateHist" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FileDateHist]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FileDateHist]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ExecMode]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ExecMode" Name="ExecMode" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ExecMode]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ExecMode]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[SelectCmd]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.SelectCmd" Name="SelectCmd" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[SelectCmd]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[SelectCmd]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[InsertCmd]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.InsertCmd" Name="InsertCmd" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[InsertCmd]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[InsertCmd]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[UpdateCmd]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.UpdateCmd" Name="UpdateCmd" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[UpdateCmd]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[UpdateCmd]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[DeleteCmd]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.DeleteCmd" Name="DeleteCmd" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[DeleteCmd]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[DeleteCmd]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[RuntimeCmd]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.RuntimeCmd" Name="RuntimeCmd" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[RuntimeCmd]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[RuntimeCmd]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[CreateCmd ]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.CreateCmd" Name="CreateCmd" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[CreateCmd ]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[CreateCmd ]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[SurrogateKeyCmd]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.SurrogateKeyCmd" Name="SurrogateKeyCmd" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[SurrogateKeyCmd]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[SurrogateKeyCmd]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ErrorInsert]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ErrorInsert" Name="ErrorInsert" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ErrorInsert]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ErrorInsert]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ErrorUpdate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ErrorUpdate" Name="ErrorUpdate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ErrorUpdate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ErrorUpdate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ErrorDelete]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ErrorDelete" Name="ErrorDelete" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ErrorDelete]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ErrorDelete]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ErrorRuntime]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ErrorRuntime" Name="ErrorRuntime" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ErrorRuntime]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ErrorRuntime]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[FromObjectDef]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.FromObjectDef" Name="FromObjectDef" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[FromObjectDef]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[FromObjectDef]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ToObjectDef]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ToObjectDef" Name="ToObjectDef" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ToObjectDef]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ToObjectDef]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[PreProcessOnTrgDef]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.PreProcessOnTrgDef" Name="PreProcessOnTrgDef" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[PreProcessOnTrgDef]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[PreProcessOnTrgDef]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[PostProcessOnTrgDef]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.PostProcessOnTrgDef" Name="PostProcessOnTrgDef" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[PostProcessOnTrgDef]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[PostProcessOnTrgDef]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[DataTypeWarning]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.DataTypeWarning" Name="DataTypeWarning" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[DataTypeWarning]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[DataTypeWarning]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[ColumnWarning]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.ColumnWarning" Name="ColumnWarning" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[ColumnWarning]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[ColumnWarning]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[AssertRowCount]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.AssertRowCount" Name="AssertRowCount" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[AssertRowCount]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[AssertRowCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[NextExportDate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker  style="display: block; width: 100%" @bind-Value="@sysLog.NextExportDate" Name="NextExportDate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[NextExportDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[NextExportDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[NextExportValue]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLog.NextExportValue" Name="NextExportValue" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[NextExportValue]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[NextExportValue]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[WhereIncExp]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.WhereIncExp" Name="WhereIncExp" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[WhereIncExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[WhereIncExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[WhereDateExp]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.WhereDateExp" Name="WhereDateExp" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[WhereDateExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[WhereDateExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[WhereXML]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.WhereXML" Name="WhereXML" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[WhereXML]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[WhereXML]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLog].[TrgIndexes]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLog.TrgIndexes" Name="TrgIndexes" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLog].[TrgIndexes]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLog].[TrgIndexes]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+    @code {
+
+        public async Task OpenSysDoc(string ObjectName)
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "ObjectName", ObjectName }
+            };
+
+            await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+                parameters,
+                new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+        }
+    }

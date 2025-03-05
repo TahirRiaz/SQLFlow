@@ -1,0 +1,68 @@
+@page "/edit-sys-error"
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+
+
+<PageTitle>Edit SysError</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysError</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysError" Data="@sysError" Visible="@(sysError != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysError].[ErrorMessage]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 20vh" @bind-Value="@sysError.ErrorMessage" Name="ErrorMessage" class="w-100" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysError].[ErrorMessage]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysError].[ErrorMessage]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysError].[Solution]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 20vh" @bind-Value="@sysError.Solution" Name="Solution" class="w-100" />
+               </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;">
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysError].[Solution]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysError].[Solution]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark"/>
+                    </div>
+                </End>
+            </RadzenFormField>
+            <Dictation OnDoneCallBack="@OnDone" OnImproveCallBack="@OnImprove" />
+
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+
+@code {
+    
+    public async Task OnDone(string finalStr)
+    {
+        string cuValue = sysError.Solution;
+        sysError.Solution = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+        StateHasChanged();
+    }
+
+    public async Task OnImprove(string language)
+    {
+        string cuValue = sysError.Solution;
+        ///sysError.Solution = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+        
+        OpenAiService  ai = new OpenAiService();
+        string finalStr = await ai.CallChatCompletionAsync(language, cuValue);
+        sysError.Solution = (cuValue.Length > 0) ? cuValue + Environment.NewLine + Environment.NewLine : "" + finalStr; ;
+        
+        StateHasChanged();
+    }
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

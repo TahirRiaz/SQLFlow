@@ -1,0 +1,90 @@
+@page "/calculate-lineage"
+@page "/calculate-lineage/{all}/{alias}"
+@using SQLFlowUi.Controllers
+@using Microsoft.Data.SqlClient
+@using SQLFlowCore.Common
+@using System.Data
+@inject DocumentationService DocService
+@attribute [Authorize] 
+
+<PageTitle>Calculate Lineage</PageTitle>
+@code {
+    private RadzenDropDownDataGrid<string> aliasComponent;
+    private RadzenRadioButtonList<int> allComponent;
+    bool IsDisabled = false;
+
+    async Task OpenSideDialog()
+    {
+        string alias = (aliasComponent.SelectedItem != null) ? ((SQLFlowUi.Models.sqlflowProd.SysDataSource)aliasComponent.SelectedItem).Alias : "";
+        var parameters = new Dictionary<string, object>
+        {
+            { "URL", $"{afBaseURL}ExecLineageMap?all={allComponent.Value}&alias={alias}&threads=1&execmode=af&dbg=1" },
+        }; 
+        await DialogService.OpenSideAsync<ExecAF>("Calculate Lineage", parameters, options: new SideDialogOptions { Height = "85%", CloseDialogOnOverlayClick = false, Position = DialogPosition.Bottom, ShowMask = true });
+    }
+    
+    
+    async Task CleanUpOrphans()
+    {
+        IsDisabled = true;
+        StateHasChanged();
+        
+        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");//@Configuration.GetConnectionString("sqlflowProdConnection");
+        ConStringParser conStringParser = new ConStringParser(connectionString)
+        {
+            ConBuilderMsSql =
+            {
+                ApplicationName = "SQLFlow App"
+            }
+        };
+        string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+
+        using SqlConnection connection = new SqlConnection(sqlFlowConStr);
+        await connection.OpenAsync();
+        
+        await using (SqlCommand command = new SqlCommand("[flw].[SyncSysLog]", connection) { CommandType = CommandType.StoredProcedure })
+        {
+            command.ExecuteNonQuery();
+        };
+
+        await connection.CloseAsync();
+       
+        IsDisabled = false;
+        StateHasChanged();
+        DocService.ShowRegularNotification("Process Completed","Orphan Data Pipelines have been removed");
+    }
+
+}
+
+<RadzenRow>
+    <RadzenColumn Size="12">
+        <RadzenText Text="Calculate Lineage" TextStyle="TextStyle.H3" TagName="TagName.H1" />
+    </RadzenColumn>
+    <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" AlignItems="AlignItems.Center" Class="rz-p-4 rz-mb-6 rz-border-radius-1" Style="border: var(--rz-grid-cell-border); width: 100%" Wrap="FlexWrap.Wrap" >
+        <RadzenFormField Text="Filter By Server" AllowClear="true" Variant="Variant.Outlined" Style="width: 49%">
+            <ChildContent>
+                <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" @ref="aliasComponent" TextProperty="Alias" Name="Alias" Data="@sysDataSources" AllowSorting="true" @bind-Value="@aliasDefault" AllowPaging="true" AllowFiltering="true">
+                    <Columns>
+                        <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                        <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                        <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                    </Columns>
+                </RadzenDropDownDataGrid>
+            </ChildContent>    
+        </RadzenFormField>
+         
+        <RadzenFormField Variant="Variant.Outlined" Style="width: 49%">
+            <RadzenRadioButtonList TValue="int" Name="AllObjects" Value="@allObjDefault" @ref="allComponent" TextProperty="Direction" Style="width: 49%; padding: 8px">
+                <Items>
+                    <RadzenRadioButtonListItem Text="All Objects" Value="1"></RadzenRadioButtonListItem>
+                    <RadzenRadioButtonListItem Text="New Objects" Value="0"></RadzenRadioButtonListItem>
+                </Items>
+            </RadzenRadioButtonList>
+        </RadzenFormField>
+        <RadzenButton Text="Calculate" ButtonStyle="ButtonStyle.Secondary" Click="@OpenSideDialog" />
+        <RadzenButton Text="Syncronize SysLog table" Disabled="@IsDisabled" ButtonStyle="ButtonStyle.Secondary" Click="@CleanUpOrphans" />
+        
+    </RadzenStack>
+   
+    
+</RadzenRow>

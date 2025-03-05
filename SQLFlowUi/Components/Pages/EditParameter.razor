@@ -1,0 +1,141 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-parameter"
+
+@code
+{
+    private bool FullScreen { get; set; } = false;
+
+    private void ToggleFullScreen()
+    {
+        FullScreen = !FullScreen;
+    }
+
+    private string pastedText;
+    private async Task PasteText1()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            parameter.SelectExp = pastedText;
+            StateHasChanged();
+        }
+    }
+    
+}
+ <PageTitle>Edit Parameter</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save Parameter</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.Parameter" Data="@parameter" Visible="@(parameter != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[Parameter].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@parameter.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                            <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                            <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Parameter].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Parameter].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[Parameter].[ParamAltServer]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Data="@sysDataSources" AllowSorting="true" @bind-Value="@parameter.ParamAltServer" Name="ParamAltServer" AllowPaging="true" AllowFiltering="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Parameter].[ParamAltServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Parameter].[ParamAltServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[Parameter].[ParamName]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@parameter.ParamName" Name="ParamName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Parameter].[ParamName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Parameter].[ParamName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[Parameter].[SelectExp]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                <ChildContent>
+                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                            <div class="editor-buttons-row">
+                                <div class="editor-buttons-container">
+                                    <RadzenButton Click=@(args => @PasteText1())
+                                                  Icon="input"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Primary"
+                                                  Variant="Variant.Flat"
+                                                  Style="margin-right: 5px;" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Parameter].[SelectExp]"))
+                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[Parameter].[SelectExp]"))"
+                                                  Icon="help_outline"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Dark"
+                                                  Variant="Variant.Flat"
+                                                  Style="margin-right: 5px;" />
+                                    <RadzenButton Click="@ToggleFullScreen"
+                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                  Variant="Variant.Flat" />
+                                </div>
+                            </div>
+                            <div class="editor-container">
+                                <CodeMirror6Wrapper @bind-Doc="@parameter.SelectExp"
+                                                    Language=CodeMirrorLanguage.MsSql
+                                                    LineNumbers="false"
+                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                    FullScreen="@FullScreen"
+                                                    LineWrapping="true"
+                                                    ScrollPastEnd="false"
+                                                    AllowHorizontalResize="true"
+                                                    AllowVerticalResize="true"
+                                                    Editable="true"
+                                                    ReadOnly="false"
+                                                    MaxHeight="20em">
+                                </CodeMirror6Wrapper>
+                            </div>
+                        </div>
+                    </RadzenRow>
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn Style="width: 50%">
+                    <RadzenCheckBox @bind-Value="@parameter.PreFetch" Name="PreFetch" />
+                    <RadzenLabel Text="Pre Fetch" Component="PreFetch" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Parameter].[PreFetch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Parameter].[PreFetch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[Parameter].[Defaultvalue]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@parameter.Defaultvalue" Name="Defaultvalue" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Parameter].[Defaultvalue]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Parameter].[Defaultvalue]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+          
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

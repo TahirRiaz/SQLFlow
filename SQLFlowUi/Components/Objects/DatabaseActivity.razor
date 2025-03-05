@@ -1,0 +1,159 @@
+﻿@namespace SQLFlowUi.Components
+@using System.Data
+@using System.Web
+@using SQLFlowUi.Controllers
+@using SQLFlowCore.Common
+@using SQLFlowCore.Pipeline
+@inject IConfiguration Configuration
+@inject NotificationService NotificationService
+
+
+@code {
+    [Parameter] public string URL { get; set; }
+     
+    ExtractedParameters ep = new ExtractedParameters();
+    List<TabPage> ActivityTabpages { get; set; } = new List<TabPage>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        ep = ExtractParameters(URL);
+        FetchActivity();
+        StateHasChanged();
+    }
+
+      public ExtractedParameters ExtractParameters(string url)
+    {
+        Uri uri = new Uri(url);
+        string query = uri.Query;
+        var paramValues = HttpUtility.ParseQueryString(query);
+
+        int? flowId = TryParseInt(paramValues["flowId"]);
+        int? node = TryParseInt(paramValues["node"]);
+        string batch = paramValues["batch"];
+
+        return new ExtractedParameters
+            {
+                FlowId = flowId,
+                Node = node,
+                Batch = batch
+            };
+    }
+
+    private int? TryParseInt(string value)
+        {
+            if (int.TryParse(value, out int result))
+            {
+                return result;
+            }
+            return null;
+        }
+   
+    public class ExtractedParameters
+    {
+        public int? FlowId { get; set; }
+        public int? Node { get; set; }
+        public string Batch { get; set; }
+    }
+   
+    private void FetchActivity()
+    {
+        ActivityTabpages.Clear();
+        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");//@Configuration.GetConnectionString("sqlflowProdConnection");
+        ConStringParser conStringParser = new ConStringParser(connectionString)
+        {
+            ConBuilderMsSql =
+            {
+                ApplicationName = "SQLFlow App"
+            }
+        };
+        string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+
+        ExtractedParameters p = ExtractParameters(URL);
+        DataSet resultSet = ExecDBActivity.Exec(sqlFlowConStr, p.FlowId, p.Node, p.Batch);
+        ActivityTabpages = CreateMultipleTabs(resultSet);
+       
+    }
+
+    private class TabPage
+    {
+        public string Name { get; }
+        public string FlowID { get; set; }
+        public string HtmlContent { get; }
+
+        public TabPage(string name, string htmlContent)
+        {
+            Name = name;
+            HtmlContent = htmlContent;
+        }
+    }
+
+
+    private List<TabPage> CreateMultipleTabs(DataSet ResultSets)
+    {
+        int i = 0;
+        
+
+        foreach (DataTable tb in ResultSets.Tables)
+        {
+            string dsName = GetDataSetName(tb);
+            
+            
+            if (tb.Columns.Contains("DataSetName"))
+            {
+                tb.Columns.Remove("DataSetName");
+            }
+
+            string tblStr = "";
+            tblStr = HtmlObjects.ConvertToHtmlTableCompactRows(tb);
+
+            // bool compact = tb.Rows.Count == 1;
+            // if (compact)
+            // {
+            //     tblStr = HtmlObjects.ConvertToHtmlTableCompact(tb);
+            // }
+            // else if(tb.Rows.Count > 0)
+            // {
+            //     tblStr = HtmlObjects.ConvertToHtmlTable(tb);
+            // }
+
+            if (tblStr.Length > 0)
+            {
+                ActivityTabpages.Add(new TabPage(dsName, tblStr));
+            }
+
+            i++;
+        }
+
+        return ActivityTabpages;
+        
+    }
+
+
+    public static string GetDataSetName(DataTable table)
+    {
+        if (table != null && table.Rows.Count > 0 && table.Columns.Contains("DataSetName"))
+        {
+            return table.Rows[0]["DataSetName"].ToString();
+        }
+
+        return null;  // or return an empty string, "", based on your preference
+    }
+}
+
+<RadzenStack>
+    <RadzenRow Style="width:100%" JustifyContent="JustifyContent.End">
+        <RadzenButton Click=@(args => FetchActivity()) Text="Get Current Database Activity" ButtonStyle="ButtonStyle.Primary" />
+    </RadzenRow>
+    <RadzenRow Style="margin-bottom: 20px;  width:100%">
+        <RadzenTabs Style="width:100%">
+            <Tabs>
+                @foreach (var tabPage in ActivityTabpages)
+                {
+                    <RadzenTabsItem Text="@tabPage.Name">
+                        @((MarkupString)tabPage.HtmlContent)
+                    </RadzenTabsItem>
+                }
+            </Tabs>
+        </RadzenTabs>
+    </RadzenRow>
+</RadzenStack>

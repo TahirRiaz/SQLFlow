@@ -1,0 +1,202 @@
+@using SQLFlowUi.Controllers
+@using SQLFlowUi.Data
+@inject DocumentationService DocService
+@page "/ingestion"
+@page "/ingestion/{FlowID:int}"
+
+ @attribute [Authorize]  
+ 
+ @code {
+
+     public async Task OpenInitialize()
+     {
+         var parameters = new Dictionary<string, object>
+         {
+             { "FlowType", "ing" },
+             { "OnActionCompleted", new EventCallback<InitCompletedEventArgs>(this, OpenNewFlowId) }
+         };
+
+         await DialogService.OpenAsync<InitPipeline>($"Initialize Ingestion Pipeline",
+             parameters,
+             new DialogOptions() { Width = "700px", Height = "300px", Resizable = true, Draggable = true });
+     }
+
+     private void OpenNewFlowId(InitCompletedEventArgs args)
+     {
+        ingestion = sqlflowProdService.GetIngestion().Result;
+        DialogService.Close();
+        DialogService.OpenAsync<EditIngestion>("Edit Ingestion", new Dictionary<string, object> { { "FlowID", args.FlowId } }, GlobalSettings.EditOptions);
+     }
+
+     private async Task OpenInNewTab(string url)
+     {
+         await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+     }
+
+     protected async Task Redirect(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.Ingestion data)
+     {
+         string fileSearchURL = $"/search/{data.FlowID}";
+         await OpenInNewTab(fileSearchURL);
+     }
+ }
+
+ <PageTitle>Ingestion</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[Ingestion]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @OpenInitialize()) Variant="Variant.Flat" Icon="note_add" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Ingestion]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Ingestion]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"  AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@ingestion"    TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" RowDoubleClick="@EditRow" >
+            <Columns>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Filterable="false" Sortable="false" Width="90px" TextAlign="TextAlign.Center">
+                    <Template Context="Ingestion">
+                        <RadzenButton ButtonStyle="ButtonStyle.Info" Image="/icons/search.png" Size="ButtonSize.Medium"
+                                      Shade="Shade.Lighter" Variant="Variant.Flat"
+                                      Click=@(args => Redirect(args, Ingestion)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="FlowID" Title="FlowID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="SysAlias" Title="SysAlias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="srcServer" Title="srcServer">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="srcDBSchTbl" Title="srcDBSchTbl">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="trgServer" Title="trgServer">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="trgDBSchTbl" Title="trgDBSchTbl">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="Batch" Title="Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="BatchOrderBy" Title="Batch Order By">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="DeactivateFromBatch" Title="Deactivate From Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="StreamData" Title="Stream Data">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="NoOfThreads" Title="No Of Threads">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="KeyColumns" Title="Key Columns">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="IncrementalColumns" Title="Incremental Columns">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="IncrementalClauseExp" Title="Incremental Clause Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="DateColumn" Title="Date Column">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="DataSetColumn" Title="Data Set Column">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="NoOfOverlapDays" Title="No Of Overlap Days">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="FetchMinValuesFromSrc" Title="Fetch Min Values From Src">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="SkipUpdateExsisting" Title="Skip Update Exsisting">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="SkipInsertNew" Title="Skip Insert New">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="FullLoad" Title="Full Load">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="TruncateTrg" Title="Truncate Trg">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="srcFilter" Title="src Filter">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="srcFilterIsAppend" Title="src Filter Is Append">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="IdentityColumn" Title="Identity Column">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="HashKeyColumns" Title="Hash Key Columns">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="HashKeyType" Title="Hash Key Type">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="IgnoreColumns" Title="Ignore Columns">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="SysColumns" Title="Sys Columns">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="ColumnStoreIndexOnTrg" Title="Column Store Index On Trg">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="SyncSchema" Title="Sync Schema">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="OnErrorResume" Title="On Error Resume">
+                </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="OnSyncCleanColumnName" Title="On Sync Clean Column Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="OnSyncConvertUnicodeDataType" Title="On Sync Convert Unicode Data Type">
+                </RadzenDataGridColumn>
+                
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="CleanColumnNameSQLRegExp" Title="Clean Column Name S Q L Reg Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="trgVersioning" Title="trg Versioning">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="InsertUnknownDimRow" Title="Insert Unknown Dim Row">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="TokenVersioning" Title="Token Versioning">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="TokenRetentionDays" Title="Token Retention Days">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="PreProcessOnTrg" Title="Pre Process On Trg">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="PostProcessOnTrg" Title="Post Process On Trg">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="PreInvokeAlias" Title="Pre Invoke Alias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="PostInvokeAlias" Title="Post Invoke Alias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="FlowType" Title="FlowType">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="Description" Title="Description">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="FromObjectMK" Title="FromObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="ToObjectMK" Title="ToObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="CreatedBy" Title="Created By">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Property="CreatedDate" Title="Created Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Ingestion" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="ingestion">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, ingestion)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

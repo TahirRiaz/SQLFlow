@@ -1,0 +1,68 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-sys-flow-dep"
+
+
+ <PageTitle>Add SysFlowDep</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysFlowDep</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysFlowDep" Data="@sysFlowDep" Visible="@(sysFlowDep != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowDep].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysFlowDep.FlowID" Name="FlowID" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowDep].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowDep].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowDep].[FlowType]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysFlowDep.FlowType" Name="FlowType" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowDep].[FlowType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowDep].[FlowType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowType" Text="FlowType is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowDep].[Step]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysFlowDep.Step" Name="Step" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowDep].[Step]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowDep].[Step]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowDep].[DepFlowID]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysFlowDep.DepFlowID" Name="DepFlowID" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowDep].[DepFlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowDep].[DepFlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowDep].[DepFlowIDStep]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysFlowDep.DepFlowIDStep" Name="DepFlowIDStep" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowDep].[DepFlowIDStep]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowDep].[DepFlowIDStep]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysFlowDep].[ExecDep]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysFlowDep.ExecDep" Name="ExecDep" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysFlowDep].[ExecDep]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysFlowDep].[ExecDep]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

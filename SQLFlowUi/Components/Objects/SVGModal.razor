@@ -1,0 +1,8 @@
+﻿@namespace SQLFlowUi.Components
+@code {
+    [Parameter] public string svgContent { get; set; }
+}
+
+<div>
+    @((MarkupString)svgContent)
+</div>

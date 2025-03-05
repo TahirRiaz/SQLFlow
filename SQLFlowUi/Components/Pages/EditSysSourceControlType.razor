@@ -1,0 +1,232 @@
+@using SQLFlowUi.Controllers
+@using SQLFlowCore.Services.AzureResources;
+    using SQLFlowCore.Services.Services.AzureResources
+@inject DocumentationService DocService
+@page "/edit-sys-source-control-type"
+
+
+ <PageTitle>Edit SysSourceControlType</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysSourceControlType</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysSourceControlType" Data="@sysSourceControlType" Visible="@(sysSourceControlType != null)" Submit="@FormSubmit">
+          <RadzenStack>
+              <RadzenSteps>
+                  <Steps>
+                      <RadzenStepsItem Text="Source Control Type" >
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[SourceControlType]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                          <ChildContent>
+                              <RadzenDropDown style="display: block; width: 100%"
+                                              @bind-Value="@sysSourceControlType.SourceControlType"
+                                              Name="SourceControlType"
+                                              Data="@(new List<string> { "GitHub", "BitBucket" })"
+                                              TValue="string"
+                              />
+                          </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[SourceControlType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[SourceControlType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                      </RadzenFormField>
+                      <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[ServicePrincipalAlias]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                          <ChildContent>
+                              <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="ServicePrincipalAlias" TextProperty="ServicePrincipalAlias" Name="ServicePrincipalAlias" Data="@sysServicePrincipal" AllowSorting="true" @bind-Value="@sysSourceControlType.ServicePrincipalAlias" AllowPaging="true" AllowFiltering="true">
+                                  <Columns>
+                                      <RadzenDropDownDataGridColumn Property="ServicePrincipalAlias" Title="SourceType" />
+                                      <RadzenDropDownDataGridColumn Property="KeyVaultName" Title="KeyVaultName" />
+                                  </Columns>
+                              </RadzenDropDownDataGrid>
+                          </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[ServicePrincipalAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[ServicePrincipalAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                      </RadzenFormField>
+
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[SCAlias]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                          <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.SCAlias" Name="SCAlias" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[SCAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[SCAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[Username]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                        <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.Username" Name="Username" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[Username]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[Username]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                      </RadzenStepsItem>
+                      <RadzenStepsItem Text="BitBucket">
+                          
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[ConsumerKey]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.ConsumerKey" Name="ConsumerKey" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[ConsumerKey]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[ConsumerKey]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[ConsumerSecret]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.ConsumerSecret" Name="ConsumerSecret" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[ConsumerSecret]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[ConsumerSecret]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+                          
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[ConsumerSecretName]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.ConsumerSecretName" Name="ConsumerSecretName" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[ConsumerSecretName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[ConsumerSecretName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+                    
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[WorkSpaceName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.WorkSpaceName" Name="WorkSpaceName" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[WorkSpaceName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[WorkSpaceName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[ProjectName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.ProjectName" Name="ProjectName" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[ProjectName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[ProjectName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[ProjectKey]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.ProjectKey" Name="ProjectKey" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[ProjectKey]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[ProjectKey]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+                          <RadzenRow style="margin-bottom: 1rem">
+                              <RadzenColumn >
+                                  <RadzenLabel Text=@DocService.GetLabel("[flw].[SysSourceControlType].[CreateWrkProjRepo]").Result Component="CreateWrkProjRepo" Style="width: 100%" />
+                                  <RadzenCheckBox @bind-Value="@sysSourceControlType.CreateWrkProjRepo" Name="CreateWrkProjRepo" />
+                                  <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[CreateWrkProjRepo]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[CreateWrkProjRepo]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                              </RadzenColumn>
+                          </RadzenRow>
+                          <RadzenButton Text="Create Keyvault Secret" Click="@OnCreateKeyVaultConsumerSecret" />
+                          <RadzenButton Text="Get Keyvault Secret" Click="@OnFetchKeyVaultConsumerSecret" />
+                          
+
+                      </RadzenStepsItem>
+		
+                      <RadzenStepsItem Text="GitHub"> 
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[AccessToken]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.AccessToken" Name="AccessToken" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[AccessToken]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[AccessToken]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+                          <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControlType].[AccessTokenSecretName]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                              <ChildContent>
+                                  <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControlType.AccessTokenSecretName" Name="AccessTokenSecretName" />
+                              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControlType].[AccessTokenSecretName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControlType].[AccessTokenSecretName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                          </RadzenFormField>
+
+              
+                          
+                          
+                          <RadzenButton Text="Create Keyvault Secret" Click="@OnCreateKeyVaultAccessToken" />
+                          <RadzenButton Text="Get Keyvault Secret" Click="@OnFetchKeyVaultAccessToken" />
+
+                      </RadzenStepsItem>
+                  </Steps>
+              </RadzenSteps>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+
+@code {
+
+    private async Task OnCreateKeyVaultAccessToken()
+    {
+        try
+        {
+            SQLFlowUi.Models.sqlflowProd.SysServicePrincipal servicePrincipal = await sqlflowProdService.GetSysServicePrincipalByAlias(sysSourceControlType.ServicePrincipalAlias);
+
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(servicePrincipal.TenantId, servicePrincipal.ApplicationId, servicePrincipal.ClientSecret, servicePrincipal.KeyVaultName);
+
+            string secretName = $"sqlflow-ss-{sysSourceControlType.SCAlias}";
+            secretName = AzureKeyVaultManager.MakeValidSecretName(secretName);
+            // Use the current values from sysDataSource
+            var keyVaultSecretName = await keyVaultManager.CreateSecretAsync(secretName, sysSourceControlType.AccessToken);
+
+            // Update the KeyVaultSecretName in sysDataSource
+            sysSourceControlType.AccessTokenSecretName = keyVaultSecretName.Name;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+            // Show a success notification
+            NotificationService.Notify(NotificationSeverity.Success, "Keyvault Secret", "Azure Keyvault Secret has been created. You can remove the ConsumerSecret value");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+    private async Task OnFetchKeyVaultAccessToken()
+    {
+        try
+        {
+            SQLFlowUi.Models.sqlflowProd.SysServicePrincipal servicePrincipal = await sqlflowProdService.GetSysServicePrincipalByAlias(sysSourceControlType.ServicePrincipalAlias);
+
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(servicePrincipal.TenantId, servicePrincipal.ApplicationId, servicePrincipal.ClientSecret, servicePrincipal.KeyVaultName);
+
+            // Use the current values from sysDataSource
+            var keyVaultSecret = keyVaultManager.GetSecret(sysSourceControlType.AccessTokenSecretName);
+
+            // Update the KeyVaultSecretName in sysDataSource
+            sysSourceControlType.AccessToken = keyVaultSecret;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+    private async Task OnCreateKeyVaultConsumerSecret()
+    {
+        try
+        {
+            SQLFlowUi.Models.sqlflowProd.SysServicePrincipal servicePrincipal = await sqlflowProdService.GetSysServicePrincipalByAlias(sysSourceControlType.ServicePrincipalAlias);
+
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(servicePrincipal.TenantId, servicePrincipal.ApplicationId, servicePrincipal.ClientSecret, servicePrincipal.KeyVaultName);
+
+            string secretName = $"sqlflow-ss-{sysSourceControlType.SCAlias}";
+            secretName = AzureKeyVaultManager.MakeValidSecretName(secretName);
+            // Use the current values from sysDataSource
+            var keyVaultSecretName = await keyVaultManager.CreateSecretAsync(secretName, sysSourceControlType.ConsumerSecret);
+
+            // Update the KeyVaultSecretName in sysDataSource
+            sysSourceControlType.ConsumerSecretName = keyVaultSecretName.Name;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+            // Show a success notification
+            NotificationService.Notify(NotificationSeverity.Success, "Keyvault Secret", "Azure Keyvault Secret has been created. You can remove the ConsumerSecret value");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+    private async Task OnFetchKeyVaultConsumerSecret()
+    {
+        try
+        {
+            SQLFlowUi.Models.sqlflowProd.SysServicePrincipal servicePrincipal = await sqlflowProdService.GetSysServicePrincipalByAlias(sysSourceControlType.ServicePrincipalAlias);
+
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(servicePrincipal.TenantId, servicePrincipal.ApplicationId, servicePrincipal.ClientSecret, servicePrincipal.KeyVaultName);
+
+            // Use the current values from sysDataSource
+            var keyVaultSecret = keyVaultManager.GetSecret(sysSourceControlType.ConsumerSecretName);
+
+            // Update the KeyVaultSecretName in sysDataSource
+            sysSourceControlType.ConsumerSecret = keyVaultSecret;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+    
+
+   
+
+}

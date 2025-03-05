@@ -1,0 +1,104 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-sys-doc"
+
+
+ <PageTitle>Add SysDoc</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysDoc</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysDoc" Data="@sysDoc" Visible="@(sysDoc != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text="ScriptDate" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysDoc.ScriptDate" Name="Solution" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="ObjectName" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDoc.ObjectName" Name="ObjectName" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Label" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDoc.Label" Name="Label" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="ObjectType" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDoc.ObjectType" Name="ObjectType" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Description" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.Description" Name="Description" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Summary" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.Summary" Name="Summary" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+
+            <RadzenFormField Text="Question" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.Question" Name="Description" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+
+            <RadzenFormField Text="AdditionalInfo" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.AdditionalInfo" Name="AdditionalInfo" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+
+            <RadzenFormField Text="PromptDescription" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.PromptDescription" Name="PromptDescription" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+
+            <RadzenFormField Text="PromptSummary" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.PromptSummary" Name="PromptSummary" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+
+            <RadzenFormField Text="PromptQuestion" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.PromptQuestion" Name="PromptQuestion" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+
+            <RadzenFormField Text="ObjectDef" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.ObjectDef" Name="ObjectDef" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="RelationJson" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.RelationJson" Name="RelationJson" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="DependsOnByJson" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.DependsOnByJson" Name="DependsOnByJson" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="DescriptionOld" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.DescriptionOld" Name="DescriptionOld" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="PayLoadJson" Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 15vh" @bind-Value="@sysDoc.PayLoadJson" Name="PayLoadJson" class="w-100" />
+                </ChildContent>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+

@@ -1,0 +1,624 @@
+﻿@inject DocumentationService DocService
+@using Microsoft.Data.SqlClient
+@using Newtonsoft.Json
+@using SQLFlowUi.Controllers
+@using SQLFlowCore.Common
+@using System.Linq
+@page "/batch-execution-chart"
+@inject IConfiguration Configuration
+@inject IJSRuntime JsRuntime
+
+@attribute [Authorize]
+
+<PageTitle>Batch Execution Analytics Dashboard</PageTitle>
+
+<!-- Required JavaScript libraries for visavail.js -->
+<link href="https://fonts.googleapis.com/css?family=Muli" rel="stylesheet" type="text/css">
+<link href="/css/visavail2.min.css" rel="stylesheet" type="text/css">
+<link href="/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+<script src="/js/moment-with-locales.min.js" type="text/javascript"></script>
+<script src="/js/d3.min.js" charset="utf-8"></script>
+<script src="/js/visavail.js"></script>
+
+<RadzenStack Gap="20px" Class="rz-p-4">
+    <RadzenCard Style="background-color: #3e4b62;">
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.Start" Gap="10px" Class="rz-p-2">
+            <RadzenText TextStyle="TextStyle.DisplayH5" class="rz-color-white">Batch Execution Analytics Dashboard</RadzenText>
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.Subtitle1" Class="rz-mb-3">Timeline View</RadzenText>
+        <div class="visavail" id="visavail_container">
+            <p id="visavail_graph">
+                <!-- Visavail.js chart will be placed here -->
+            </p>
+        </div>
+    </RadzenCard>
+
+    <RadzenRow Gap="20px">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.Subtitle1" Class="rz-mb-3">Average Processing Time Trend</RadzenText>
+                <RadzenChart Style="height: 300px;">
+                    <RadzenLineSeries Data="@batchTrends" CategoryProperty="Date" Title="Average Processing Time" ValueProperty="AverageProcessingMinutes" Smooth="true">
+                        <RadzenSeriesDataLabels Visible="true" />
+                    </RadzenLineSeries>
+                    <RadzenCategoryAxis Padding="20" />
+                    <RadzenValueAxis FormatString="{0:F1}">
+                        <RadzenGridLines Visible="true" />
+                        <RadzenAxisTitle Text="Minutes" />
+                    </RadzenValueAxis>
+                    <RadzenLegend Position="LegendPosition.Bottom" />
+                </RadzenChart>
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.Subtitle1" Class="rz-mb-3">Batch Comparison (Total Processing Time)</RadzenText>
+                <RadzenChart Style="height: 300px;">
+                    <RadzenBarSeries Data="@batchComparison" CategoryProperty="BatchName" ValueProperty="TotalProcessingMinutes">
+                        <RadzenSeriesDataLabels Visible="true" />
+                    </RadzenBarSeries>
+                    <RadzenValueAxis Min="0" FormatString="{0:F1}">
+                        <RadzenGridLines Visible="true" />
+                        <RadzenAxisTitle Text="Total Minutes" />
+                    </RadzenValueAxis>
+                    <RadzenLegend Position="LegendPosition.Bottom" />
+                </RadzenChart>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow Gap="20px">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.Subtitle1" Class="rz-mb-3">Month-over-Month Change</RadzenText>
+                <RadzenChart Style="height: 300px">
+                    <RadzenColumnSeries Data="@monthOverMonthChanges" CategoryProperty="Month" Title="Change %" ValueProperty="PercentageChange">
+                        <RadzenSeriesDataLabels Visible="true" />
+                    </RadzenColumnSeries>
+                    <RadzenValueAxis Min="@monthlyChangeMin" Max="@monthlyChangeMax" FormatString="{0:F1}%">
+                        <RadzenGridLines Visible="true" />
+                        <RadzenAxisTitle Text="% Change" />
+                    </RadzenValueAxis>
+                    <RadzenLegend Position="LegendPosition.Bottom" />
+                </RadzenChart>
+            </RadzenCard>
+        </RadzenColumn>
+
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.Subtitle1" Class="rz-mb-3">Processing Time Distribution</RadzenText>
+                <RadzenChart Style="height: 300px;">
+                    <RadzenPieSeries Data="@processingTimeDistribution" CategoryProperty="Range" Title="Time Distribution" ValueProperty="Count">
+                        <RadzenSeriesDataLabels Visible="true" />
+                    </RadzenPieSeries>
+                    <RadzenLegend Position="LegendPosition.Right" />
+                </RadzenChart>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.Subtitle1" Class="rz-mb-3">Recent Batch Executions</RadzenText>
+        <RadzenDataGrid Data="@recentBatchExecutions" TItem="BatchExecutionData" AllowPaging="true" PageSize="10" AllowSorting="true" EmptyText="No batch execution data available">
+            <Columns>
+                <RadzenDataGridColumn TItem="BatchExecutionData" Property="Batch" Title="Batch Name" />
+                <RadzenDataGridColumn TItem="BatchExecutionData" Property="StartTime" Title="Start Time" FormatString="{0:yyyy-MM-dd HH:mm:ss}" />
+                <RadzenDataGridColumn TItem="BatchExecutionData" Property="EndTime" Title="End Time" FormatString="{0:yyyy-MM-dd HH:mm:ss}" />
+                <RadzenDataGridColumn TItem="BatchExecutionData" Property="ProcessingMinutes" Title="Processing Time (min)" FormatString="{0:F1}" />
+                <RadzenDataGridColumn TItem="BatchExecutionData" Property="Status" Title="Status">
+                    <Template Context="data">
+                        <RadzenBadge BadgeStyle="@(data.Status == "Completed" ? BadgeStyle.Success : BadgeStyle.Info)" Text="@data.Status" />
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="BatchExecutionData" Title="Details" TextAlign="TextAlign.Center" Width="100px">
+                    <Template Context="data">
+                        <RadzenButton Icon="info" Size="ButtonSize.Small" Click="@(() => NavigateToBatchDetails(data.Batch))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+</RadzenStack>
+
+@code {
+    private List<BatchData> rawBatchData = new List<BatchData>();
+    private List<BatchExecutionData> recentBatchExecutions = new List<BatchExecutionData>();
+    private List<BatchTrendData> batchTrends = new List<BatchTrendData>();
+    private List<BatchComparisonData> batchComparison = new List<BatchComparisonData>();
+    private List<MonthOverMonthChangeData> monthOverMonthChanges = new List<MonthOverMonthChangeData>();
+    private List<ProcessingTimeDistributionData> processingTimeDistribution = new List<ProcessingTimeDistributionData>();
+    private double monthlyChangeMin = -50;
+    private double monthlyChangeMax = 50;
+
+    protected override async Task OnInitializedAsync()
+    {
+        rawBatchData = await GetBatchData();
+        ProcessData();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Make sure libraries are loaded before generating the chart
+            await JsRuntime.InvokeVoidAsync("eval", @"
+                function waitForVisavail() {
+                    if (typeof visavail !== 'undefined') {
+                        return Promise.resolve();
+                    } else {
+                        return new Promise(resolve => {
+                            setTimeout(() => {
+                                waitForVisavail().then(resolve);
+                            }, 100);
+                        });
+                    }
+                }
+            ");
+
+            // Wait for visavail to be available
+            await JsRuntime.InvokeVoidAsync("eval", "waitForVisavail()");
+
+            // Now generate the chart
+            string jsCode = GenerateJavaScriptCode(rawBatchData);
+            await JsRuntime.InvokeVoidAsync("eval", jsCode);
+        }
+    }
+
+    private void ProcessData()
+    {
+        if (rawBatchData == null || !rawBatchData.Any())
+        {
+            // Initialize with dummy data to prevent empty charts
+            InitializeDefaultData();
+            return;
+        }
+
+        // Calculate processing time for each batch execution with rounded values
+        recentBatchExecutions = rawBatchData
+            .Select(b => new BatchExecutionData
+                {
+                    Batch = b.Batch,
+                    StartTime = b.StartTime,
+                    EndTime = b.EndTime,
+                    ProcessingMinutes = Math.Round((b.EndTime - b.StartTime).TotalMinutes, 1), // Round to 1 decimal place
+                    Status = "Completed"
+                })
+            .OrderByDescending(b => b.EndTime)
+            .Take(20)
+            .ToList();
+
+        // Calculate average processing time trend by month with rounded values
+        batchTrends = rawBatchData
+            .GroupBy(b => new DateTime(b.StartTime.Year, b.StartTime.Month, 1))
+            .Select(g => new BatchTrendData
+                {
+                    Date = g.Key,
+                    AverageProcessingMinutes = Math.Round(g.Average(b => (b.EndTime - b.StartTime).TotalMinutes), 1), // Round to 1 decimal place
+                    BatchCount = g.Count()
+                })
+            .OrderBy(b => b.Date)
+            .ToList();
+
+        // If no monthly data exists, add a default data point to show the chart
+        if (!batchTrends.Any())
+        {
+            batchTrends.Add(new BatchTrendData
+                {
+                    Date = DateTime.Now,
+                    AverageProcessingMinutes = 0,
+                    BatchCount = 0
+                });
+        }
+
+        // Compare total processing time by batch with rounded values
+        batchComparison = rawBatchData
+            .GroupBy(b => b.Batch)
+            .Select(g => new BatchComparisonData
+                {
+                    BatchName = g.Key,
+                    TotalProcessingMinutes = Math.Round(g.Sum(b => (b.EndTime - b.StartTime).TotalMinutes), 1), // Round to 1 decimal place
+                    ExecutionCount = g.Count()
+                })
+            .OrderByDescending(b => b.TotalProcessingMinutes)
+            .Take(10)
+            .ToList();
+
+        // If no comparison data exists, add default data
+        if (!batchComparison.Any())
+        {
+            batchComparison.Add(new BatchComparisonData
+                {
+                    BatchName = "No Data",
+                    TotalProcessingMinutes = 0,
+                    ExecutionCount = 0
+                });
+        }
+
+        // Calculate month-over-month changes with better handling of edge cases
+        var orderedMonths = batchTrends.OrderBy(b => b.Date).ToList();
+        monthOverMonthChanges = new List<MonthOverMonthChangeData>();
+
+        for (int i = 1; i < orderedMonths.Count; i++)
+        {
+            var previousMonth = orderedMonths[i - 1];
+            var currentMonth = orderedMonths[i];
+
+            // Avoid division by zero and handle very small previous values
+            double percentageChange = 0;
+            if (previousMonth.AverageProcessingMinutes > 0.1) // Only calculate if previous value is meaningful
+            {
+                percentageChange = ((currentMonth.AverageProcessingMinutes - previousMonth.AverageProcessingMinutes) /
+                                    previousMonth.AverageProcessingMinutes) * 100;
+            }
+            else if (currentMonth.AverageProcessingMinutes > 0) // If previous was near zero but current isn't
+            {
+                percentageChange = 100; // Show as 100% increase
+            }
+
+            monthOverMonthChanges.Add(new MonthOverMonthChangeData
+                {
+                    Month = currentMonth.Date.ToString("MMM yyyy"),
+                    PercentageChange = Math.Round(percentageChange, 1) // Round to 1 decimal place
+                });
+        }
+
+        // If no month-over-month data, add a placeholder
+        if (!monthOverMonthChanges.Any())
+        {
+            monthOverMonthChanges.Add(new MonthOverMonthChangeData
+                {
+                    Month = DateTime.Now.ToString("MMM yyyy"),
+                    PercentageChange = 0
+                });
+        }
+
+        // Set min and max for chart based on actual data with sensible defaults
+        if (monthOverMonthChanges.Any())
+        {
+            var maxChange = monthOverMonthChanges.Max(m => m.PercentageChange);
+            var minChange = monthOverMonthChanges.Min(m => m.PercentageChange);
+
+            // Set reasonable bounds even with limited data
+            monthlyChangeMax = Math.Max(maxChange * 1.2, 10);
+            monthlyChangeMin = Math.Min(minChange * 1.2, -10);
+
+            // Ensure there's always some visible range
+            if (monthlyChangeMax == monthlyChangeMin)
+            {
+                monthlyChangeMax += 10;
+                monthlyChangeMin -= 10;
+            }
+        }
+
+        // Create processing time distribution with improved handling
+        var processingTimes = recentBatchExecutions.Select(b => b.ProcessingMinutes).ToList();
+
+        // Define time ranges with inline class
+        var timeRanges = new List<ProcessingTimeRange>
+        {
+            new ProcessingTimeRange { Range = "< 5 min", Min = 0, Max = 5 },
+            new ProcessingTimeRange { Range = "5-15 min", Min = 5, Max = 15 },
+            new ProcessingTimeRange { Range = "15-30 min", Min = 15, Max = 30 },
+            new ProcessingTimeRange { Range = "30-60 min", Min = 30, Max = 60 },
+            new ProcessingTimeRange { Range = "> 60 min", Min = 60, Max = double.MaxValue }
+        };
+
+        processingTimeDistribution = timeRanges
+            .Select(r => new ProcessingTimeDistributionData
+                {
+                    Range = r.Range,
+                    Count = processingTimes.Count(time => time >= r.Min && time < r.Max)
+                })
+            .ToList(); // Keep all ranges to maintain consistency, even if count is 0
+
+        // If all counts are 0, add a default data point to show the chart
+        if (processingTimeDistribution.All(d => d.Count == 0))
+        {
+            processingTimeDistribution.Clear();
+            processingTimeDistribution.Add(new ProcessingTimeDistributionData
+                {
+                    Range = "No Data",
+                    Count = 1
+                });
+        }
+    }
+
+    // Initialize default data when no real data is available
+    private void InitializeDefaultData()
+    {
+        // Default data for recent batch executions
+        recentBatchExecutions = new List<BatchExecutionData>();
+
+        // Default data for batch trends
+        batchTrends = new List<BatchTrendData>
+        {
+            new BatchTrendData
+            {
+                Date = DateTime.Now.AddMonths(-2),
+                AverageProcessingMinutes = 0,
+                BatchCount = 0
+            },
+            new BatchTrendData
+            {
+                Date = DateTime.Now.AddMonths(-1),
+                AverageProcessingMinutes = 0,
+                BatchCount = 0
+            },
+            new BatchTrendData
+            {
+                Date = DateTime.Now,
+                AverageProcessingMinutes = 0,
+                BatchCount = 0
+            }
+        };
+
+        // Default data for batch comparison
+        batchComparison = new List<BatchComparisonData>
+        {
+            new BatchComparisonData
+            {
+                BatchName = "No Data Available",
+                TotalProcessingMinutes = 0,
+                ExecutionCount = 0
+            }
+        };
+
+        // Default data for month-over-month changes
+        monthOverMonthChanges = new List<MonthOverMonthChangeData>
+        {
+            new MonthOverMonthChangeData
+            {
+                Month = DateTime.Now.AddMonths(-1).ToString("MMM yyyy"),
+                PercentageChange = 0
+            },
+            new MonthOverMonthChangeData
+            {
+                Month = DateTime.Now.ToString("MMM yyyy"),
+                PercentageChange = 0
+            }
+        };
+
+        // Default processing time distribution
+        processingTimeDistribution = new List<ProcessingTimeDistributionData>
+        {
+            new ProcessingTimeDistributionData
+            {
+                Range = "No Data Available",
+                Count = 1
+            }
+        };
+
+        // Set default chart bounds
+        monthlyChangeMin = -10;
+        monthlyChangeMax = 10;
+    }
+
+    // Format date for chart axis - this is now handled through FormatString on the axis
+    private string FormatAsDate(object value)
+    {
+        if (value is DateTime date)
+        {
+            return date.ToString("MMM yyyy");
+        }
+        return string.Empty;
+    }
+
+    // No longer used since Formatter property is not supported
+    private string FormatDecimal(object value)
+    {
+        if (value is double doubleValue)
+        {
+            return doubleValue.ToString("F1"); // Format with 1 decimal place
+        }
+        return string.Empty;
+    }
+
+    private void NavigateToBatchDetails(string batchId)
+    {
+        // Navigation logic to batch details page
+        // You can implement this based on your application's routing
+    }
+
+    public static string ConvertToDatasetJson(List<BatchData> batchDataList)
+    {
+        if (batchDataList == null || !batchDataList.Any())
+        {
+            // Return empty dataset if no data
+            return "[]";
+        }
+
+        var groupedData = batchDataList.GroupBy(b => b.Batch)
+            .Select(group => new DatasetItem
+                {
+                    measure = group.Key,
+                    measure_html = $"<a href='/report-batch/{group.Key}' target='_blank' class='ytitle.link'>{group.Key}</a>",
+                    measure_url = $"/report-batch/{group.Key}",
+                    data = group.Select(b => new List<object> { b.StartTime.ToString("yyyy-MM-dd HH:mm:ss"), 1, b.EndTime.ToString("yyyy-MM-dd HH:mm:ss") }).ToList()
+                }).ToList();
+
+        return JsonConvert.SerializeObject(groupedData, Formatting.Indented);
+    }
+
+    public string GenerateJavaScriptCode(List<BatchData> data)
+    {
+        string seriesData = ConvertToDatasetJson(data);
+        return $@"
+        var dataset = {seriesData};
+        var options = {{
+                id_div_container: ""visavail_container"",
+                id_div_graph: ""visavail_graph"",
+
+                icon: {{
+                    class_has_data: 'fas fa-fw fa-check',
+                }},
+                zoom:{{
+                    enabled:true,
+                }},
+                responsive:{{
+                    enabled:true,
+                }},
+                tooltip: {{
+                    date_plus_time: true
+                }},
+                date_in_utc: true,
+                graph:{{
+                type: ""bar"",
+                width:20,
+                height:20
+                }},
+                sub_chart: {{
+                enabled:true,
+                height: 90,
+                graph: {{enabled:""""}}
+                }},
+                line_spacing:4,
+                title:{{
+                    text:"""",
+                    enabled: false
+                }},
+                legend: {{
+                    enabled: false
+                }}
+            }};
+
+        // Only generate chart if there's data
+        if (dataset && dataset.length > 0) {{
+            var chart = visavail.generate(options, dataset);
+        }} else {{
+            // Display a 'no data' message in the container
+            document.getElementById('visavail_graph').innerHTML = '<div class=""text-center p-4"">No timeline data available</div>';
+        }}
+    ";
+    }
+
+    private async Task<List<BatchData>> GetBatchData()
+    {
+        var result = new List<BatchData>();
+        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");
+
+        // Check if connection string is available
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            // Handle missing connection string
+            return result;
+        }
+
+        ConStringParser conStringParser = new ConStringParser(connectionString)
+            {
+                ConBuilderMsSql =
+                {
+                    ApplicationName = "SQLFlow App"
+                }
+            };
+        string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+
+        using SqlConnection connection = new SqlConnection(sqlFlowConStr);
+
+        string query = "SELECT * FROM flw.ReportBatchStartEnd";
+        SqlCommand command = new SqlCommand(query, connection);
+
+        try
+        {
+            await connection.OpenAsync();
+            SqlDataReader reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                // Validate data
+                if (reader["Batch"] != DBNull.Value &&
+                    reader["StartTime"] != DBNull.Value &&
+                    reader["EndTime"] != DBNull.Value)
+                {
+                    BatchData data = new BatchData
+                        {
+                            Batch = reader["Batch"].ToString(),
+                            StartTime = Convert.ToDateTime(reader["StartTime"]),
+                            EndTime = Convert.ToDateTime(reader["EndTime"])
+                        };
+
+                    // Only add valid entries (end time after start time)
+                    if (data.EndTime > data.StartTime)
+                    {
+                        result.Add(data);
+                    }
+                }
+            }
+            await connection.CloseAsync();
+        }
+        catch (SqlException e)
+        {
+            // Handle exception here
+            Console.WriteLine(e.Message);
+        }
+        catch (Exception ex)
+        {
+            // Handle other exceptions
+            Console.WriteLine(ex.Message);
+        }
+
+        return result;
+    }
+
+    // Data model classes
+    public class BatchData
+    {
+        public string Batch { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+    }
+
+    public class BatchExecutionData
+    {
+        public string Batch { get; set; }
+        public DateTime StartTime { get; set; }
+        public DateTime EndTime { get; set; }
+        public double ProcessingMinutes { get; set; }
+        public string Status { get; set; }
+    }
+
+    public class BatchTrendData
+    {
+        public DateTime Date { get; set; }
+        public double AverageProcessingMinutes { get; set; }
+        public int BatchCount { get; set; }
+    }
+
+    public class BatchComparisonData
+    {
+        public string BatchName { get; set; }
+        public double TotalProcessingMinutes { get; set; }
+        public int ExecutionCount { get; set; }
+    }
+
+    public class MonthOverMonthChangeData
+    {
+        public string Month { get; set; }
+        public double PercentageChange { get; set; }
+    }
+
+    public class ProcessingTimeRange
+    {
+        public string Range { get; set; }
+        public double Min { get; set; }
+        public double Max { get; set; }
+    }
+
+    public class ProcessingTimeDistributionData
+    {
+        public string Range { get; set; }
+        public int Count { get; set; }
+    }
+
+    public class DatasetItem
+    {
+        public string measure { get; set; }
+        public string measure_html { get; set; }
+        public string measure_url { get; set; }
+        public List<List<object>> data { get; set; }
+    }
+}

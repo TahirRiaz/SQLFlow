@@ -1,0 +1,133 @@
+@namespace SQLFlowUi.Components
+@using System.Data
+@using SQLFlowUi.Controllers
+@using Microsoft.Data.SqlClient
+@using Newtonsoft.Json
+@using SQLFlowCore.Common
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+    private bool Expanded = false;
+
+    [Parameter]
+    public int FlowID { get; set; }
+    
+    [Parameter] public EventCallback<string> OnActionCompleted { get; set; }
+
+
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService dwSqlflowProdService { get; set; }
+
+    protected System.Linq.IQueryable<SQLFlowUi.Models.sqlflowProd.FlowDS> flowDS;
+
+    protected string search = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        //flowDS = await dwSqlflowProdService.GetFlowDs();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+
+        }
+    }
+
+    public IEnumerable<ValidationModelData> ParseModelJson(string jsonString)
+    {
+        return JsonConvert.DeserializeObject<IEnumerable<ValidationModelData>>(jsonString);
+    }
+
+    protected async System.Threading.Tasks.Task Button0Click()
+    {
+
+        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");//@Configuration.GetConnectionString("sqlflowProdConnection");
+        ConStringParser conStringParser = new ConStringParser(connectionString)
+        {
+            ConBuilderMsSql =
+            {
+                ApplicationName = "SQLFlow App"
+            }
+        };
+        string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+
+        using SqlConnection connection = new SqlConnection(sqlFlowConStr);
+        await connection.OpenAsync();
+
+        int newFlowID = 0;
+        string EditUrl = "";
+        await using (SqlCommand command = new SqlCommand("[flw].[CloneFlow]", connection) { CommandType = CommandType.StoredProcedure })
+        {
+            // If your stored procedure expects a parameter:
+            var objName = new SqlParameter("@FlowID", SqlDbType.Int);
+            objName.Value = FlowID;
+            command.Parameters.Add(objName); 
+
+            var lineage = new SqlParameter("@Extended", SqlDbType.Bit);
+            lineage.Value = Expanded;
+            command.Parameters.Add(lineage);
+
+            // Create and fill the DataSet
+            DataTable results = new DataTable();
+
+            // Create a SqlDataAdapter
+            using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+            {
+                adapter.Fill(results);
+            }
+
+            if (results != null)
+            {
+                if (results.Rows.Count > 0)
+                {
+                    newFlowID = Convert.ToInt32(results.Rows[0]["FlowID"]);
+                    EditUrl = results.Rows[0]["EditUrl"].ToString();
+                    NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Clone Successful", Detail = $"Clone Successful, the new FlowId is {newFlowID}. Navigating to the new flow" });
+                }
+            }
+        };
+
+        await connection.CloseAsync();
+
+        if (OnActionCompleted.HasDelegate && newFlowID > 0)
+        {
+            string NavigateTo = EditUrl;
+            // Notify the parent component that the action is completed
+            await OnActionCompleted.InvokeAsync(NavigateTo);
+        }
+        
+    }
+
+
+
+
+}
+
+<RadzenRow Style="margin-bottom: 25px; margin-top: 25px">
+    <RadzenColumn Style="width: 100%;">
+        <RadzenCheckBox @bind-Value="@Expanded" Name="CloseTraceLog" />
+        <RadzenLabel Text="Include Transformations and Parameters" Component="CloseTraceLog" />
+    </RadzenColumn>
+    <RadzenRow Gap="16" Style="width: 100%;">
+        <RadzenButton Text="Clone Selected Flow" Click="@Button0Click"></RadzenButton>
+    </RadzenRow>
+</RadzenRow>
+
+
+

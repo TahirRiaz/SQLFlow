@@ -1,0 +1,219 @@
+@namespace SQLFlowUi.Components
+@using System.Data
+@using SQLFlowUi.Controllers
+@using Microsoft.Data.SqlClient
+@using Newtonsoft.Json
+@using SQLFlowCore.Common
+@using SQLFlowUi.Data
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+
+    [Parameter]
+    public int FlowID { get; set; } = 0;
+    
+    [Parameter]
+    public string FlowType { get; set; }
+
+    [Parameter] 
+    public EventCallback<InitCompletedEventArgs> OnActionCompleted { get; set; }
+
+
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService dwSqlflowProdService { get; set; }
+
+    protected System.Linq.IQueryable<SQLFlowUi.Models.sqlflowProd.FlowDS> flowDS;
+
+    protected string FlowsubType = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (FlowType == "ing" || FlowType == "exp" || FlowType == "skey" || FlowType == "mkey")
+        {
+            flowDS = await dwSqlflowProdService.GetFlowDs();
+        }
+
+        if (FlowType == "inv")
+        {
+            FlowsubType = "aut";
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+
+        }
+    }
+
+    public IEnumerable<ValidationModelData> ParseModelJson(string jsonString)
+    {
+        return JsonConvert.DeserializeObject<IEnumerable<ValidationModelData>>(jsonString);
+    }
+
+    protected async System.Threading.Tasks.Task Button0Click()
+    {
+
+        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");//@Configuration.GetConnectionString("sqlflowProdConnection");
+        ConStringParser conStringParser = new ConStringParser(connectionString)
+        {
+            ConBuilderMsSql =
+            {
+                ApplicationName = "SQLFlow App"
+            }
+        };
+        string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+
+        using SqlConnection connection = new SqlConnection(sqlFlowConStr);
+        await connection.OpenAsync();
+
+        int newFlowID = 0;
+        int primaryKey = 0;
+        string EditUrl = "";
+        int SurrogateKeyID = 0; 
+        int MatchKeyID = 0;
+        await using (SqlCommand command = new SqlCommand("[flw].[InitPipeline]", connection) { CommandType = CommandType.StoredProcedure })
+        {
+            // If your stored procedure expects a parameter:
+            if(FlowID > 0)
+            {
+                var flowidParam = new SqlParameter("@BaseFlowId", SqlDbType.Int);
+                flowidParam.Value = FlowID;
+                command.Parameters.Add(flowidParam);
+            }
+            
+            if (FlowsubType.Length > 0)
+            {
+                var subtype = new SqlParameter("@FlowType", SqlDbType.VarChar);
+                subtype.Value = FlowsubType;
+                command.Parameters.Add(subtype);
+            }else if (FlowType.Length > 0)
+            {
+                var flowType = new SqlParameter("@FlowType", SqlDbType.VarChar);
+                flowType.Value = FlowType;
+                command.Parameters.Add(flowType);
+            }
+
+            // Create and fill the DataSet
+            DataTable results = new DataTable();
+
+            // Create a SqlDataAdapter
+            using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+            {
+                adapter.Fill(results);
+            }
+
+            if (results != null)
+            {
+                if (results.Rows.Count > 0)
+                {
+                    newFlowID = Convert.ToInt32(results.Rows[0]["FlowID"]);
+                    SurrogateKeyID = Convert.ToInt32(results.Rows[0]["SurrogateKeyID"]);
+                    MatchKeyID = Convert.ToInt32(results.Rows[0]["MatchKeyID"]);
+                    string editUrl = results.Rows[0]["EditUrl"].ToString();
+
+                    // Determine the primary key based on precedence
+                    
+                    string keyType = "";
+                    if (MatchKeyID > 0)
+                    {
+                        primaryKey = MatchKeyID;
+                        keyType = "MatchKeyID";
+                    }
+                    else if (SurrogateKeyID > 0)
+                    {
+                        primaryKey = SurrogateKeyID;
+                        keyType = "SurrogateKeyID";
+                    }
+                    else if (newFlowID > 0)
+                    {
+                        primaryKey = newFlowID;
+                        keyType = "FlowID";
+                    }
+
+                    string detail = "Initialization Successful.";
+                    if (primaryKey > 0)
+                    {
+                        detail += $" {keyType}: {primaryKey}";
+                    }
+
+                    NotificationService.Notify(new NotificationMessage 
+                    { 
+                        Severity = NotificationSeverity.Info, 
+                        Summary = "Initialization Successful", 
+                        Detail = detail 
+                    });
+
+                }
+                
+            }
+        };
+
+        await connection.CloseAsync();
+
+        if (OnActionCompleted.HasDelegate && primaryKey > 0)
+        {
+            string NavigateTo = EditUrl;
+            InitCompletedEventArgs args = new InitCompletedEventArgs();
+            args.FlowId = newFlowID;
+            args.NavigateToUrl = NavigateTo;
+            args.SurrogateKeyID = SurrogateKeyID;
+            args.MatchKeyID = MatchKeyID;
+            // Notify the parent component that the action is completed
+            await OnActionCompleted.InvokeAsync(args);
+        }
+        
+    }
+
+
+    private List<string> InvokeSubtypes = new List<string> { "aut", "adf", "ps" };
+
+}
+
+<RadzenRow Style="margin-bottom: 25px; margin-top: 25px">
+    <RadzenLabel Text="Initilize a new pipline with default values fetched from CFG" Component="OnErrorResume" />
+    @if (FlowType == "ing" || FlowType == "exp" || FlowType == "skey" || FlowType == "mkey")
+    {
+        <RadzenFormField Text="Initialize with selected flow as base" Variant="Variant.Outlined" Style="width: 100%">
+            <ChildContent>
+                <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                    <Columns>
+                        <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px"/>
+                        <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px"/>
+                        <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort"/>
+                    </Columns>
+                </RadzenDropDownDataGrid>
+            </ChildContent>
+        </RadzenFormField>
+    }
+    @if (FlowType == "inv")
+    {
+        <RadzenFormField Text="Select Invoke Type" Variant="Variant.Outlined" Style="width: 100%">
+            <ChildContent>
+                <RadzenDropDown @bind-Value=@FlowsubType Data=@InvokeSubtypes Style="width: 100%" Name="DropDownBindValue"/>
+            </ChildContent>
+        </RadzenFormField> 
+    }
+
+    <RadzenRow Gap="16" Style="width: 100%;">
+        <RadzenButton Text="Initialize" Click="@Button0Click"></RadzenButton>
+    </RadzenRow>
+</RadzenRow>
+
+
+

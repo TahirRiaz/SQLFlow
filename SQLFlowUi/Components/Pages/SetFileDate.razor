@@ -1,0 +1,115 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/set-file-date"
+@page "/set-file-date/{FlowID:int}"
+@page "/set-file-date/{FlowID:int}/{FileDate}"
+@using System.Data
+
+
+
+@code {
+
+    public string searchTerm { get; set; } = "635";
+    private DataSet results = new DataSet();
+
+    private string batchlist = "";
+    private DateTime fromDate = DateTime.Now;
+    private int flowId;
+    
+    private void OnChange(object value, string name)
+    {
+        if (name == "Batch")
+        {
+            if (value is IEnumerable<string> selectedItems)
+            {
+                batchlist = string.Join(", ", selectedItems);
+            }
+        }
+        else if (name == "FromDate")
+        {
+            if (value is DateTime selectedDate)
+            {
+                fromDate = (DateTime)value; // Your logic for handling the selected date goes here.
+            }
+        }
+        else if (name == "FlowID")
+        {
+            if (value is SQLFlowUi.Models.sqlflowProd.FlowDS selectedDataModel)
+            {
+                flowId = 0;
+            }
+        }
+    }
+
+}
+
+
+ @attribute [Authorize]  
+ <PageTitle>Reprocess Datalake files</PageTitle>
+<RadzenRow Gap="0" RowGap="0">
+    <RadzenColumn Size="12">
+        <RadzenCard Style="padding: 20px,20px 20px 20px;">
+            <RadzenRow>
+                <RadzenText Text="Reprocess Datalake Files" TextStyle="TextStyle.H3" TagName="TagName.H1" />
+            </RadzenRow>
+            <RadzenFieldset Style="margin-bottom: 20px">
+                <RadzenRow Style="margin-bottom: 20px; margin-top: 20px">
+                    <RadzenFormField Text="FromDate" Variant="Variant.Outlined" >
+                        <ChildContent>
+                            <RadzenDatePicker Name="FromDate" TValue="DateTime" @bind-Value="@fromDate" DateFormat="yyyy-MM-dd" Change="@((args) => OnChange(args, "FromDate"))"></RadzenDatePicker>
+                        </ChildContent>
+                        <Helper>
+                            <RadzenRequiredValidator Component="FromDate" Text="FromDate is required" />
+                        </Helper>
+                    </RadzenFormField>
+                </RadzenRow>
+                <RadzenRow Style="margin-bottom: 16px">
+                    <RadzenFormField Text="FlowID" Variant="Variant.Outlined" >
+                        <ChildContent>
+                            <RadzenDropDownDataGrid AllowClear="true" Change="@((args) => OnChange(args, "FlowID"))" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@flowId" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                                <Columns>
+                                    <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                                    <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                                    <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                                </Columns>
+                            </RadzenDropDownDataGrid>
+                        </ChildContent>    
+                    </RadzenFormField>
+                    <RadzenFormField Text="Batch" Variant="Variant.Outlined">
+                        <ChildContent>
+                            <RadzenDropDown Name="Batch" Multiple=true Chips=true  style="display: block; width: 100%" TValue="string" ValueProperty="Key" TextProperty="Key" Data="@uniqueBatches"
+                                            Change="@((args) => OnChange(args, "Batch"))" />
+                        </ChildContent>
+                    </RadzenFormField>
+                </RadzenRow>
+                <RadzenRow Style="margin-bottom: 16px">
+                    <RadzenButton Text="Set Filedate" Click="@Button0Click"></RadzenButton>
+                    <RadzenButton Text="Restore Filedate" Click="@Button1Click"></RadzenButton>
+                    <RadzenButton Text="Deactivate FetchMinValuesFromSrc For All Flows" Click="@Button2Click"></RadzenButton>
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SetFileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SetFileDate]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                </RadzenRow>
+            </RadzenFieldset>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+
+
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+
+

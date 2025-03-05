@@ -1,0 +1,240 @@
+﻿@namespace SQLFlowUi.Components
+@using SQLFlowUi.Controllers
+@using System.Net.Http.Headers
+@inject IJSRuntime mJS
+@inject DocumentationService DocService
+
+<RadzenRow>
+    <RadzenColumn>
+        <audio controls src=@mUrl></audio>
+    </RadzenColumn>
+</RadzenRow>
+<RadzenRow>
+    <RadzenColumn>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Left" Gap="0.5rem">
+            <RadzenButton Image="recicons/record.png"
+                          Click=@butRecordAudioStart_Click
+                          Disabled="@mDisableRecordAudioStart"
+                          Size="ButtonSize.Large"
+                          ButtonStyle="ButtonStyle.Dark"
+                          Variant="Variant.Flat" />
+            <RadzenButton Image="recicons/pause.png"
+                          Click="@butRecordAudioPause_Click"
+                          Disabled="@mDisableRecordAudioPause"
+                          ButtonStyle="ButtonStyle.Dark"
+                          Size="ButtonSize.Large"
+                          Variant="Variant.Flat" />
+            <RadzenButton Image="recicons/resume.png"
+                          Click="@butRecordAudioResume_Click"
+                          ButtonStyle="ButtonStyle.Dark"
+                          Disabled="@mDisableRecordAudioResume"
+                          Size="ButtonSize.Large"
+                          Variant="Variant.Flat" />
+            <RadzenButton Image="recicons/stop.png"
+                          Click="@butRecordAudioStop_Click"
+                          ButtonStyle="ButtonStyle.Dark"
+                          Disabled="@mDisableRecordAudioStop"
+                          Size="ButtonSize.Large"
+                          Variant="Variant.Flat" />
+            <RadzenRadioButtonList @bind-Value=@recLang TValue="int">
+                <Items>
+                    <RadzenRadioButtonListItem Text="En" Value="1" />
+                    <RadzenRadioButtonListItem Text="No" Value="2" />
+                </Items>
+            </RadzenRadioButtonList>
+        </RadzenStack>
+    </RadzenColumn>
+</RadzenRow>
+<RadzenRow>
+    <RadzenColumn>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Left" Gap="0.5rem">
+            <RadzenButton Text="Translate"
+                          Click=@(() => translateAsync(true))
+                          Disabled="@mDisableDownloadBlob"
+                          Size="ButtonSize.Large"
+                          ButtonStyle="ButtonStyle.Primary"
+                          Variant="Variant.Flat" />
+            <RadzenButton Text="Transcribe"
+                          Click="@(() => translateAsync(false))"
+                          Disabled="@mDisableDownloadBlob"
+                          Size="ButtonSize.Large"
+                          Variant="Variant.Flat" />
+            <RadzenButton Text="Improve"
+                          Click="@(() => improveText())"
+                          Size="ButtonSize.Large"
+                          Variant="Variant.Flat" />
+        </RadzenStack>
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    [Parameter]
+    public EventCallback<string> OnDoneCallBack { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnImproveCallBack { get; set; }
+
+    private int recLang = 1;
+    private DotNetObjectReference<Dictation> dotNetRef;
+    private string mUrl;
+    public const string FormatDateTimeStamp = "yyyy_MM_dd__HH_mm_ss_ffff";
+
+    private bool mDisableRecordAudioStart;
+    private bool mDisableRecordAudioPause = true;
+    private bool mDisableRecordAudioResume = true;
+    private bool mDisableRecordAudioStop = true;
+    private bool mDisableDownloadBlob = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        dotNetRef = DotNetObjectReference.Create(this);
+        await base.OnInitializedAsync();
+    }
+
+    public void Dispose()
+    {
+        dotNetRef?.Dispose();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await mJS.InvokeVoidAsync("BlazorAudioRecorder.Initialize", DotNetObjectReference.Create(this));
+        }
+    }
+
+    private void butRecordAudioStart_Click()
+    {
+        mUrl = "";
+        mDisableRecordAudioStart = true;
+        mDisableRecordAudioPause = false;
+        mDisableRecordAudioResume = true;
+        mDisableRecordAudioStop = false;
+        mDisableDownloadBlob = true;
+        mJS.InvokeVoidAsync("BlazorAudioRecorder.StartRecord");
+    }
+
+    private void butRecordAudioPause_Click()
+    {
+        mDisableRecordAudioStart = true;
+        mDisableRecordAudioPause = true;
+        mDisableRecordAudioResume = false;
+        mDisableRecordAudioStop = false;
+        mDisableDownloadBlob = true;
+        mJS.InvokeVoidAsync("BlazorAudioRecorder.PauseRecord");
+    }
+
+    private void butRecordAudioResume_Click()
+    {
+        mDisableRecordAudioStart = true;
+        mDisableRecordAudioPause = false;
+        mDisableRecordAudioResume = true;
+        mDisableRecordAudioStop = false;
+        mDisableDownloadBlob = true;
+        mJS.InvokeVoidAsync("BlazorAudioRecorder.ResumeRecord");
+    }
+
+    private void butRecordAudioStop_Click()
+    {
+        mDisableRecordAudioStart = false;
+        mDisableRecordAudioPause = true;
+        mDisableRecordAudioResume = true;
+        mDisableRecordAudioStop = true;
+        mDisableDownloadBlob = false;
+        mJS.InvokeVoidAsync("BlazorAudioRecorder.StopRecord");
+    }
+
+    private void butDownloadBlob_Click()
+    {
+        mJS.InvokeVoidAsync("BlazorAudioRecorder.DownloadBlob", mUrl, $"MyRecording_{DateTimeStamp()}.mp3");
+    }
+
+    [JSInvokable]
+    public async Task<string> ReceiveBlob(string language, bool translate, byte[] byteArray)
+    {
+        DocService.ShowNotification("Processing audio");
+        string rValue = "";
+
+        var serviceProvider = new ServiceCollection()
+            .AddHttpClient()
+            .BuildServiceProvider();
+
+        var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
+        var client = httpClientFactory.CreateClient();
+
+        var apiToken = "AddYourOpenAiTokenHere";
+        var apiUrl = translate
+            ? "https://api.openai.com/v1/audio/translations"
+            : "https://api.openai.com/v1/audio/transcriptions";
+
+        using var stream = new MemoryStream(byteArray);
+        var content = new MultipartFormDataContent();
+        var fileContent = new StreamContent(stream);
+        fileContent.Headers.ContentType = new MediaTypeHeaderValue("audio/mpeg");
+
+        content.Add(fileContent, "file", "audio.mp3");
+        content.Add(new StringContent("whisper-1"), "model");
+        content.Add(new StringContent("text"), "response_format");
+        content.Add(new StringContent("0"), "temperature");
+
+        if (!translate)
+        {
+            content.Add(new StringContent(language), "language");
+        }
+
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiToken);
+
+        try
+        {
+            var response = await client.PostAsync(apiUrl, content);
+            response.EnsureSuccessStatusCode();
+            rValue = await response.Content.ReadAsStringAsync();
+        }
+        catch (HttpRequestException)
+        {
+            throw;
+        }
+
+        await OnDoneCallBack.InvokeAsync(rValue);
+        DocService.HideNotification();
+        return rValue;
+    }
+
+    public async Task improveText()
+    {
+        string language = GetLanguage();
+        DocService.ShowNotification("Improving text");
+        await OnImproveCallBack.InvokeAsync(language);
+        DocService.HideNotification();
+    }
+
+    private async Task<string> translateAsync(bool translate)
+    {
+        string language = GetLanguage();
+        await mJS.InvokeVoidAsync("BlazorAudioRecorder.GetBlobLink", language, translate, dotNetRef);
+        return "true";
+    }
+
+    private string GetLanguage()
+    {
+        return recLang switch
+        {
+            1 => "en",
+            2 => "no",
+            _ => "no"
+        };
+    }
+
+    [JSInvokable]
+    public async Task OnAudioUrl(string vUrl)
+    {
+        mUrl = vUrl;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string DateTimeStamp()
+    {
+        return DateTime.Now.ToString(FormatDateTimeStamp);
+    }
+}

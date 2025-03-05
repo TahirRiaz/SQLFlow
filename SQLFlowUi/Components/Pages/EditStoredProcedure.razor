@@ -1,0 +1,150 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-stored-procedure"
+
+
+ <PageTitle>Edit StoredProcedure</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save StoredProcedure</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Data="@storedProcedure" Visible="@(storedProcedure != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenSteps>
+                <Steps>
+                    <RadzenStepsItem Text="Target">
+                        
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[Batch]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@storedProcedure.Batch" Name="Batch" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[Batch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[Batch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[SysAlias]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@storedProcedure.SysAlias" Name="SysAlias" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[SysAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[SysAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="SysAlias" Text="SysAlias is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[trgServer]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Data="@sysDataSources" AllowSorting="true" Name="trgServer" @bind-Value="@storedProcedure.trgServer" AllowPaging="true" AllowFiltering="true">
+                                        <Columns>
+                                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                                        </Columns>
+                                    </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[trgServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[trgServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="trgServer" Text="trgServer is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[trgDBSchSP]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@storedProcedure.trgDBSchSP" Name="trgDBSchSP" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[trgDBSchSP]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[trgDBSchSP]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="trgDBSchSP" Text="trgDBSchSP is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+                    </RadzenStepsItem>
+                    <RadzenStepsItem Text="Advance">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Style="width: 49%">
+                                <RadzenCheckBox @bind-Value="@storedProcedure.DeactivateFromBatch" Name="DeactivateFromBatch" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[StoredProcedure].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                            <RadzenColumn Style="width: 49%">
+                                <RadzenCheckBox @bind-Value="@storedProcedure.OnErrorResume" Name="OnErrorResume" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[StoredProcedure].[OnErrorResume]").Result Component="OnErrorResume" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[PostInvokeAlias]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDropDown Name="PostInvokeAlias" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@storedProcedure.PostInvokeAlias" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[PostInvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[PostInvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[Description]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                <ChildContent>
+                                    <RadzenTextArea style="display: block; width: 100%;height: 20vh" @bind-Value="@storedProcedure.Description" Name="Description" class="w-100" />
+                                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[Description]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[Description]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                    </RadzenStepsItem>
+                    <RadzenStepsItem Text="System">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@storedProcedure.FlowID" Name="FlowID" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[FlowType]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@storedProcedure.FlowType" Name="FlowType" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[FlowType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[FlowType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[FromObjectMK]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@storedProcedure.FromObjectMK" Name="FromObjectMK" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[FromObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[FromObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[ToObjectMK]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@storedProcedure.ToObjectMK" Name="ToObjectMK" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[ToObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[ToObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[CreatedBy]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@storedProcedure.CreatedBy" Name="CreatedBy" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[CreatedBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[CreatedBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[StoredProcedure].[CreatedDate]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@storedProcedure.CreatedDate" Name="CreatedDate" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure].[CreatedDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure].[CreatedDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                    </RadzenStepsItem>
+                </Steps>
+            </RadzenSteps>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

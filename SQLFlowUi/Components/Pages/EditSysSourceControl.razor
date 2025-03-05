@@ -1,0 +1,106 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-source-control"
+
+
+ <PageTitle>Edit SysSourceControl</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysSourceControl</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysSourceControl" Data="@sysSourceControl" Visible="@(sysSourceControl != null)" Submit="@FormSubmit">
+            <RadzenStack>
+                <RadzenSteps>
+                    <Steps>
+                        <RadzenStepsItem Text="Definition">
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControl].[Batch]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                            <ChildContent>
+                                <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControl.Batch" Name="Batch" />
+                            </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControl].[Batch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControl].[Batch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                        </RadzenFormField>
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControl].[SCAlias]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                            <ChildContent>
+                                <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="SCAlias" Name="SCAlias" ReadOnly="true" TextProperty="SCAlias" Data="@sourceControlTypes" @bind-Value="@sysSourceControl.SCAlias" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                                    <Columns>
+                                        <RadzenDropDownDataGridColumn Property="SCAlias" Title="SCAlias" Width="80px" />
+                                        <RadzenDropDownDataGridColumn Property="SourceControlType" Title="Type" Width="150px" />
+                                        <RadzenDropDownDataGridColumn Property="Username" Title="Username" />
+                                    </Columns>
+                                </RadzenDropDownDataGrid>
+                            </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControl].[SCAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControl].[SCAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            <Helper>
+                                <RadzenRequiredValidator Component="SCAlias" Text="SCAlias is required" />
+                            </Helper>
+                        </RadzenFormField>
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControl].[Server]").Result Variant="Variant.Outlined" width="49%" Style="width: 49%;">
+                            <ChildContent>
+                                <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Data="@sysDataSources" AllowSorting="true" @bind-Value="@sysSourceControl.Server" Name="Server" AllowPaging="true" AllowFiltering="true">
+                                    <Columns>
+                                        <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                                        <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                                        <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                                    </Columns>
+                                </RadzenDropDownDataGrid>
+                            </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControl].[Server]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControl].[Server]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            <Helper>
+                                <RadzenRequiredValidator Component="Server" Text="Server is required" />
+                            </Helper>
+                        </RadzenFormField>
+                        </RadzenStepsItem>
+                        <RadzenStepsItem Text="Source and Target">
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControl].[DBName]").Result Variant="Variant.Outlined" width="49%" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControl.DBName" Name="DBName"/>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControl].[DBName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControl].[DBName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark"/></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="DBName" Text="DBName is required"/>
+                                </Helper>
+                            </RadzenFormField>
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControl].[RepoName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControl.RepoName" Name="RepoName"/>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControl].[RepoName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControl].[RepoName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark"/></End>
+                            </RadzenFormField>
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControl].[ScriptToPath]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysSourceControl.ScriptToPath" Name="ScriptToPath"/>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControl].[ScriptToPath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControl].[ScriptToPath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark"/></End>
+                            </RadzenFormField>
+                        </RadzenStepsItem>
+		
+                        <RadzenStepsItem Text="Include Data">
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysSourceControl].[ScriptDataForTables]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenTextArea style="display: block; width: 100%;height: 25vh" @bind-Value="@sysSourceControl.ScriptDataForTables" Name="ScriptDataForTables" class="w-100"/>
+                                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysSourceControl].[ScriptDataForTables]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysSourceControl].[ScriptDataForTables]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark"/></div></End>
+                            </RadzenFormField>
+                        </RadzenStepsItem>
+		
+                       
+                    </Steps>
+                </RadzenSteps>
+
+                
+               
+                
+            </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

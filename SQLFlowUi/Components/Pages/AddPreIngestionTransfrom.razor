@@ -1,0 +1,144 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-pre-ingestion-transfrom"
+@code
+{
+    private string pastedText;
+    private async Task PasteText1()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            preIngestionTransfrom.SelectExp = pastedText;
+            StateHasChanged();
+        }
+    }
+}
+
+
+ <PageTitle>Add PreIngestionTransfrom</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save PreIngestionTransfrom</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionTransfrom" Data="@preIngestionTransfrom" Visible="@(preIngestionTransfrom != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[FlowID]").Result Variant="Variant.Outlined" Style="width: 100%">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@preIngestionTransfrom.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                            <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                            <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[FlowType]").Result Variant="Variant.Outlined" Style="width: 100%">
+                <ChildContent>
+                    <RadzenDropDown Data="@sysFlowType" Multiple="false" Style="width: 100%" TextProperty="FlowType" @bind-Value="@preIngestionTransfrom.FlowType" ValueProperty="FlowType" Name="FlowType" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[FlowType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[FlowType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowType" Text="FlowType is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn>
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[Virtual]").Result Component="Virtual" />
+                    <RadzenCheckBox @bind-Value="@preIngestionTransfrom.Virtual" Name="Virtual" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[Virtual]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[Virtual]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[ColName]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionTransfrom.ColName" Name="ColName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[ColName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[ColName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="ColName" Text="ColName is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[SelectExp]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                <ChildContent>
+                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                            <div class="editor-buttons-row">
+                                <div class="editor-buttons-container">
+                                    <RadzenButton Click=@(args => @PasteText1()) Icon="input" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Style="margin-right: 5px;" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[SelectExp]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionTransfrom].[SelectExp]"))" Icon="help_outline" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Dark" Variant="Variant.Flat" Style="margin-right: 5px;" />
+                                    <RadzenButton Click="@ToggleFullScreen" Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Flat" />
+                                </div>
+                            </div>
+                            <div class="editor-container">
+                                <CodeMirror6Wrapper @bind-Doc="@preIngestionTransfrom.SelectExp"
+                                                    Language=CodeMirrorLanguage.MsSql
+                                                    LineNumbers=false
+                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                    FullScreen="@FullScreen"
+                                                    LineWrapping=true
+                                                    ScrollPastEnd=false
+                                                    AllowHorizontalResize="true"
+                                                    AllowVerticalResize="true"
+                                                    Editable="true"
+                                                    ReadOnly="false"
+                                                    MaxHeight="20em">
+                                </CodeMirror6Wrapper>
+                            </div>
+                        </div>
+                    </RadzenRow>
+                </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[ColAlias]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionTransfrom.ColAlias" Name="ColAlias" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[ColAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[ColAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[DataType]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionTransfrom.DataType" Name="DataType" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[DataType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[DataType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[SortOrder]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionTransfrom.SortOrder" Name="SortOrder" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[SortOrder]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[SortOrder]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn >
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionTransfrom].[ExcludeColFromView]").Result Component="ExcludeColFromView"  />
+                    <RadzenCheckBox @bind-Value="@preIngestionTransfrom.ExcludeColFromView" Name="ExcludeColFromView" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionTransfrom].[ExcludeColFromView]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionTransfrom].[ExcludeColFromView]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+@code
+{
+    private bool FullScreen { get; set; } = false;
+
+    private void ToggleFullScreen()
+    {
+        FullScreen = !FullScreen;
+    }
+}

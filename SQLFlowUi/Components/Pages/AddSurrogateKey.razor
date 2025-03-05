@@ -1,0 +1,99 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-surrogate-key"
+
+
+ <PageTitle>Add SurrogateKey</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SurrogateKey</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SurrogateKey" Data="@surrogateKey" Visible="@(surrogateKey != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[FlowID]").Result Variant="Variant.Outlined" Style="width: 100%">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@surrogateKey.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                            <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                            <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[SurrogateServer]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Data="@sysDataSources" AllowSorting="true" @bind-Value="@surrogateKey.SurrogateServer" Name="SurrogateServer" AllowPaging="true" AllowFiltering="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[SurrogateServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[SurrogateServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[SurrogateDbSchTbl]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@surrogateKey.SurrogateDbSchTbl" Name="SurrogateDbSchTbl" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[SurrogateDbSchTbl]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[SurrogateDbSchTbl]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[SurrogateColumn]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@surrogateKey.SurrogateColumn" Name="SurrogateColumn" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[SurrogateColumn]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[SurrogateColumn]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[KeyColumns]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@surrogateKey.KeyColumns" Name="KeyColumns" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[KeyColumns]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[KeyColumns]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+            </RadzenRow>
+
+
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[sKeyColumns]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@surrogateKey.sKeyColumns" Name="sKeyColumns" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[sKeyColumns]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[sKeyColumns]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[PreProcess]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@surrogateKey.PreProcess" Name="PreProcess" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[PreProcess]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[PreProcess]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[PostProcess]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@surrogateKey.PostProcess" Name="PostProcess" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[PostProcess]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[PostProcess]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+            </RadzenRow>
+
+
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SurrogateKey].[ToObjectMK]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@surrogateKey.ToObjectMK" Name="ToObjectMK" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SurrogateKey].[ToObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SurrogateKey].[ToObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

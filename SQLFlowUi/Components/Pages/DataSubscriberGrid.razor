@@ -1,0 +1,120 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/data-subscriber"
+
+@attribute [Authorize] 
+<PageTitle>DataSubscriber</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[DataSubscriber]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriber]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriber]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px" ExpandMode=DataGridExpandMode.Single  AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+                            Data="@dataSubscriberX" TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" RowDoubleClick="@EditRow" RowExpand="@GetChildData">
+            <Columns>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Filterable="false" Sortable="false" Width="90px" TextAlign="TextAlign.Center">
+                        <Template Context="DataSubscriber">
+                            <RadzenButton ButtonStyle="ButtonStyle.Info" Image="/icons/search.png" Size="ButtonSize.Medium"
+                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                          Click=@(args => Redirect(args, DataSubscriber)) @onclick:stopPropagation="true" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Property="FlowID" Title="FlowID">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Property="FlowType" Title="FlowType">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Property="SubscriberType" Title="SubscriberType">
+                    </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Property="SubscriberName" Title="SubscriberName">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Property="CreatedDate" Title="CreatedDate">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="dataSubscriber">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, dataSubscriber)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+            <Template Context="dataSubscriber">
+
+                    <RadzenStack Class="rz-my-8">
+                        <RadzenRow Gap="0" AlignItems="AlignItems.Center">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenText Visible="@(dataSubscriber != null)" Text="FullyQualifiedQuery" TextStyle="TextStyle.H4" TagName="TagName.H2" style="margin: 0" />
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriberQuery]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriberQuery]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                                    <RadzenButton Visible="@(dataSubscriber != null)" Icon="add_circle_outline" Text="Add" Click=@(args => DataSubscriberQueryAddButtonClick(args,dataSubscriber)) />
+                                </RadzenStack>
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenDataGrid ColumnWidth="200px" Visible="@(dataSubscriber != null)" @ref=DataSubscriberQueryDataGrid AllowFiltering="true" FilterMode="Radzen.FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+                          Data="@dataSubscriber?.DataSubscriberQuery" TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery"  RowDoubleClick="@(args => DataSubscriberQueryRowSelect(args, dataSubscriber))">
+                          <Columns>
+                            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery" Property="QueryID" Title="QueryID">
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery" Property="DataSubscriber.SubscriberName" Title="SubscriberName">
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery" Property="srcServer" Title="srcServer">
+                            </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery" Property="QueryName" Title="QueryName">
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                                <Template Context="dataSubscriberQueryChild">
+                                    <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium" Shade="Shade.Lighter" Variant="Variant.Flat"
+                                        Click=@(args => DataSubscriberQueryDeleteButtonClick(args, dataSubscriberQueryChild)) @onclick:stopPropagation="true" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                          </Columns>
+                        </RadzenDataGrid>
+                    </RadzenStack>
+            </Template>
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>
+
+@code
+{
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+
+    private async Task OpenInNewTab(string url)
+    {
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    protected async Task Redirect(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.DataSubscriber data)
+    {
+        string fileSearchURL = $"/search/{data.FlowID}";
+        await OpenInNewTab(fileSearchURL);
+    }
+}

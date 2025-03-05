@@ -1,0 +1,156 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-service-principal"
+@using SQLFlowCore.Services.AzureResources;
+    using SQLFlowCore.Services.Services.AzureResources
+
+
+ <PageTitle>Edit SysServicePrincipal</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysServicePrincipal</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysServicePrincipal" Data="@sysServicePrincipal" Visible="@(sysServicePrincipal != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[ServicePrincipalAlias]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.ServicePrincipalAlias" Name="ServicePrincipalAlias" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[ServicePrincipalAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[ServicePrincipalAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="ServicePrincipalAlias" Text="ServicePrincipalAlias is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[TenantId]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.TenantId" Name="TenantId" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[TenantId]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[TenantId]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[SubscriptionId]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.SubscriptionId" Name="SubscriptionId" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[SubscriptionId]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[SubscriptionId]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+            </RadzenRow>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[ApplicationId]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.ApplicationId" Name="ApplicationId" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[ApplicationId]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[ApplicationId]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[ClientSecret]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.ClientSecret" Name="ClientSecret" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[ClientSecret]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[ClientSecret]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFieldset Text="Resource Group Details">
+                <RadzenRow Style="margin-bottom: 16px">
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[ResourceGroup]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                        <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.ResourceGroup" Name="ResourceGroup" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[ResourceGroup]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[ResourceGroup]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[DataFactoryName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                        <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.DataFactoryName" Name="DataFactoryName" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[DataFactoryName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[DataFactoryName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                </RadzenRow>
+                <RadzenRow Style="margin-bottom: 16px">
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[AutomationAccountName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                        <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.AutomationAccountName" Name="AutomationAccountName" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[AutomationAccountName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[AutomationAccountName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[StorageAccountName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                        <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.StorageAccountName" Name="StorageAccountName" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[StorageAccountName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[StorageAccountName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                </RadzenRow>
+                <RadzenRow Style="margin-bottom: 16px">
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[BlobContainer]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                        <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.BlobContainer" Name="BlobContainer" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[BlobContainer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[BlobContainer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                    <RadzenFormField Text=@DocService.GetLabel("[flw].[SysServicePrincipal].[KeyVaultName]").Result Variant="Variant.Outlined">
+                        <ChildContent>
+                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysServicePrincipal.KeyVaultName" Name="KeyVaultName" />
+                        </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysServicePrincipal].[KeyVaultName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysServicePrincipal].[KeyVaultName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    </RadzenFormField>
+                </RadzenRow>
+            </RadzenFieldset>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+              <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+              <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+
+    private async Task OnCreateKeyVaultSecretName()
+    {
+        try
+        {
+            
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(sysServicePrincipal.TenantId, sysServicePrincipal.ApplicationId, sysServicePrincipal.ClientSecret, sysServicePrincipal.KeyVaultName);
+
+            string secretName = $"sqlflow-cs-{sysServicePrincipal.ServicePrincipalAlias}";
+
+            secretName = AzureKeyVaultManager.MakeValidSecretName(secretName);
+
+            // Use the current values from sysDataSource
+            var keyVaultSecretName = await keyVaultManager.CreateSecretAsync(secretName, sysServicePrincipal.ClientSecret);
+
+            
+
+            // Update the KeyVaultSecretName in sysDataSource
+            //sysServicePrincipal.KVSecretName = keyVaultSecretName.Name;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+            // Show a success notification
+            NotificationService.Notify(NotificationSeverity.Success, "Key Vault Secret", "Azure Key vault Secret has been created. You can remove the ClientSecret value");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+
+    private async Task OnFetchKeyVaultSecretName()
+    {
+        try
+        {
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(sysServicePrincipal.TenantId, sysServicePrincipal.ApplicationId, sysServicePrincipal.ClientSecret, sysServicePrincipal.KeyVaultName);
+
+            // Use the current values from sysDataSource
+            //var keyVaultSecret = keyVaultManager.GetSecret(sysServicePrincipal.KVSecretName);
+
+            // Update the KeyVaultSecretName in sysDataSource
+            //sysServicePrincipal.ClientSecret = keyVaultSecret;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+}

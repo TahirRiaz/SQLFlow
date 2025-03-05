@@ -1,0 +1,88 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-log-export"
+
+
+ <PageTitle>Edit SysLogExport</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysLogExport</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysLogExport" Data="@sysLogExport" Visible="@(sysLogExport != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[BatchID]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogExport.BatchID" Name="BatchID" />
+              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[BatchID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[BatchID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLogExport.FlowID" Name="FlowID" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[SqlCMD]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 20vh" @bind-Value="@sysLogExport.SqlCMD" Name="SqlCMD" class="w-100" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[SqlCMD]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[SqlCMD]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[WhereClause]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 20vh" @bind-Value="@sysLogExport.WhereClause" Name="WhereClause" class="w-100" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[WhereClause]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[WhereClause]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[FilePath_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogExport.FilePath_DW" Name="FilePath_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[FilePath_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[FilePath_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[FileName_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogExport.FileName_DW" Name="FileName_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[FileName_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[FileName_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[FileSize_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLogExport.FileSize_DW" Name="FileSize_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[FileSize_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[FileSize_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[FileRows_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLogExport.FileRows_DW" Name="FileRows_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[FileRows_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[FileRows_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[NextExportDate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysLogExport.NextExportDate" Name="NextExportDate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[NextExportDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[NextExportDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[NextExportValue]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLogExport.NextExportValue" Name="NextExportValue" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[NextExportValue]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[NextExportValue]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogExport].[ExportDate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysLogExport.ExportDate" Name="ExportDate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogExport].[ExportDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogExport].[ExportDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

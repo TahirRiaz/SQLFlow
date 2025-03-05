@@ -1,0 +1,214 @@
+﻿@namespace SQLFlowUi.Components
+@using System.Data
+@using SQLFlowUi.Controllers
+@using SQLFlowUi.Components.Objects
+
+@inject IJSRuntime JSRuntime;
+
+@code {
+    [Parameter] public DataSet ResultSets { get; set; }
+    [Parameter] public EventCallback<string> OnActionCompleted { get; set; }
+   
+    private List<TabPage> TabPages { get; set; } = new List<TabPage>();
+    public int FlowId = 0;
+    public string ProcessShort = "";
+    protected override void OnInitialized()
+    {
+        if (ResultSets.Tables.Count == 1)
+        {
+            CreateSingleTab();
+        }
+        else
+        {
+            CreateMultipleTabs();
+        }
+    }
+
+    private void CreateSingleTab()
+    {
+        string dsName = GetDataSetName(ResultSets.Tables[0]);
+        if (ResultSets.Tables[0].Columns.Contains("DataSetName"))
+        {
+            ResultSets.Tables[0].Columns.Remove("DataSetName");
+        }
+       
+
+        bool compact = ResultSets.Tables[0].Rows.Count == 1;
+
+        string tblStr = HtmlObjects.ConvertToHtmlTable(ResultSets.Tables[0]);
+
+        TabPages.Add(new TabPage(dsName, tblStr));
+    }
+
+    private void CreateMultipleTabs()
+    {
+        int i = 0;
+         
+        foreach (DataTable tb in ResultSets.Tables)
+        {
+            string dsName = GetDataSetName(tb);
+            if (FlowId == 0)
+            {
+                FlowId = GetFlowId(tb);
+            }
+
+            if (ProcessShort.Length == 0)
+            {
+                ProcessShort = GetFlowProcess(tb);
+            }
+
+            
+            if (tb.Columns.Contains("DataSetName"))
+            {
+                tb.Columns.Remove("DataSetName");
+            }
+
+            bool compact = tb.Rows.Count == 1;
+
+            string tblStr = "";
+            if (compact)
+            {
+                tblStr = HtmlObjects.ConvertToHtmlTableCompact(tb);
+            }
+            else if(tb.Rows.Count > 0)
+            {
+                tblStr = HtmlObjects.ConvertToHtmlTable(tb);
+            }
+
+            if (tblStr.Length > 0)
+            {
+                TabPages.Add(new TabPage(dsName, tblStr));
+            }
+
+            i++;
+        }
+
+        if (ProcessShort.Length > 0)
+        {
+            OnActionCompleted.InvokeAsync(ProcessShort);
+        }
+        
+        //_result = SQLFlowCore.Services.ExecLineage.Exec(conStr, _FlowID, _AllDep, _AllBatches, _Dir);
+    }
+
+    public static string GetDataSetName(DataTable table)
+    {
+        if (table != null && table.Rows.Count > 0 && table.Columns.Contains("DataSetName"))
+        {
+            return table.Rows[0]["DataSetName"].ToString();
+        }
+
+        return null;  // or return an empty string, "", based on your preference
+    }
+
+    public static int  GetFlowId(DataTable table)
+    {
+        if (table != null && table.Rows.Count > 0 && table.Columns.Contains("FlowID"))
+        {
+            return int.Parse(table.Rows[0]["FlowID"].ToString());
+        }
+
+        return 0;  // or return an empty string, "", based on your preference
+    }
+
+
+    public static string GetFlowProcess(DataTable table)
+    {
+        if (table != null && table.Rows.Count > 0 && table.Columns.Contains("ProcessShort"))
+        {
+            return table.Rows[0]["ProcessShort"].ToString();
+        }
+
+        return "";  // or return an empty string, "", based on your preference
+    }
+
+    private class TabPage
+    {
+        public string Name { get; }
+        public string FlowID { get; set; }
+        public string HtmlContent { get; }
+
+        public TabPage(string name, string htmlContent)
+        {
+            Name = name;
+            HtmlContent = htmlContent;
+        }
+    }
+
+
+    public List<DynamicModel> ConvertDataTableToListOfDynamicModel(DataTable table)
+    {
+        var list = new List<DynamicModel>();
+
+        foreach (DataRow row in table.Rows)
+        {
+            var model = new DynamicModel();
+            foreach (DataColumn column in table.Columns)
+            {
+                model.Values[column.ColumnName] = row[column];
+            }
+            list.Add(model);
+        }
+
+        return list;
+    }
+
+
+    public class DynamicModel
+    {
+        public IDictionary<string, object> Values { get; set; } = new Dictionary<string, object>();
+    }
+
+    async Task test()
+    {
+        string render = "if (chartLine) {  chart.destroy();chart.render(); chartLine.destroy(); chartLine.render();  }";
+        await JSRuntime.InvokeVoidAsync("eval", render);
+    }
+}
+
+@if (TabPages.Count > 0)
+{
+    @((MarkupString) HtmlObjects.GetTblJavascript())
+    
+    @if (!string.IsNullOrEmpty(HtmlObjects.GetTblJavascript()))
+    {
+        
+    }
+    <RadzenTabs RenderMode="TabRenderMode.Server"  >
+        <Tabs>
+            @foreach (var tabPage in TabPages)
+            {
+                <RadzenTabsItem Text="@tabPage.Name">
+                    @((MarkupString)tabPage.HtmlContent)
+                </RadzenTabsItem>
+            }
+            @if (TabPages.Count > 1)
+            {
+                <RadzenTabsItem Text="Notes">
+                    <SysFlowNotes FlowID="@FlowId"></SysFlowNotes>
+                </RadzenTabsItem>
+
+               
+                <RadzenTabsItem Text="Lineage">
+                    <Graph FlowID="@FlowId"></Graph>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Assertion">
+                    <Assertion FlowID="@FlowId"></Assertion>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Health">
+                    <HealthCheck FlowID="@FlowId"></HealthCheck>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Performance" >
+                    <Performance FlowID="@FlowId"></Performance>
+                </RadzenTabsItem>
+            }
+        </Tabs>
+    </RadzenTabs>
+}
+else
+{
+    <p>No result sets available.</p>
+}

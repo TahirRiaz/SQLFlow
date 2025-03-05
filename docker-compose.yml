@@ -1,0 +1,186 @@
+services:
+  sqlflowui:
+    build:
+      context: .
+      dockerfile: SQLFlowUi/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    image: sqlflow-ui:latest
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    container_name: sqlflow-ui
+    restart: unless-stopped
+    ports:
+    - "8110:8110"  # HTTP  
+    - "8111:8111"  # HTTPS
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "sqlflow.ui:host-gateway"
+    volumes:
+      - sqlflow-keys:/app/data/keys
+      - sqlflow-data:/app/data
+    depends_on:
+      - sqlflowapi
+    environment:
+      # SQLFlow Connection string
+      - SQLFlowConStr=${SQLFlowConStr}
+      - SQLFlowOpenAiApiKey=${SQLFlowOpenAiApiKey}
+      # SSL 
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=ChangeThisInProduction!
+      # Core configuration
+      - ASPNETCORE_ENVIRONMENT=Development  # Use Development for dev environments | Production
+      - ASPNETCORE_URLS=http://+:8110;https://+:8111
+      - ASPNETCORE_HTTPS_PORT=8111
+      - LOG_LEVEL=Information
+      - ASPNETCORE_DATA_PROTECTION_KEYSDIR=/app/data/keys
+      # HTTPS/Certificate configuration
+      - USE_HTTPS=true
+      - CERT_SOURCE=generate
+      - CERT_PASSWORD=ChangeThisInProduction!
+      
+      # API Configuration
+      - API_BASE_URL=https://sqlflow.api:8443
+      
+      # SignalR configuration
+      - SIGNALR_ENABLED=true
+      - SIGNALR_TRANSPORT_TYPE=WebSockets,ServerSentEvents,LongPolling
+      - SIGNALR_MAX_MESSAGE_SIZE=20971520
+      # Additional SignalR settings
+      - SignalR__ClientTimeoutInterval=60
+      - SignalR__KeepAliveInterval=15
+      - SignalR__EnableDetailedErrors=true
+      - SignalR__StreamBufferCapacity=10
+      - SignalR__MaximumReceiveMessageSize=32768
+      
+      # Network configuration
+      - CONNECTION_TIMEOUT=30
+      - CONNECTION_RETRIES=3
+      
+      # Cloud configuration
+      - CLOUD_PROVIDER=auto-detect
+    networks:
+      - sqlflow-network
+    # SignalR optimized healthcheck
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "curl -k -f https://localhost:8444/health && curl -k -f https://localhost:8444/health/signalr || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+  sqlflowapi:
+    build:
+      context: .
+      dockerfile: /SQLFlowApi/Dockerfile
+      args:
+        BUILD_CONFIGURATION: Release
+    image: sqlflow-api:latest
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+    container_name: sqlflow-api
+    restart: unless-stopped
+    ports:
+      - "9110:9110"  # HTTP
+      - "9111:9111"  # HTTPS
+    volumes:
+      - sqlflow-keys:/app/data/keys
+      - sqlflow-data:/app/data
+      - sqlflow-sample-data:/c/SQLFlow
+      # For using custom certificates (when CERT_SOURCE=volume)
+      # - ./certs:/https
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "sqlflow.api:host-gateway" 
+    dns_opt:
+      - timeout:60
+      - attempts:3
+    environment:
+      # SQLFlow Connection string
+      - SQLFlowConStr=${SQLFlowConStr}
+      - SQLFlowOpenAiApiKey=${SQLFlowOpenAiApiKey}
+      # SSL 
+      - ASPNETCORE_Kestrel__Certificates__Default__Path=/https/aspnetapp.pfx
+      - ASPNETCORE_Kestrel__Certificates__Default__Password=ChangeThisInProduction!
+      # Core configuration
+      - ASPNETCORE_DATA_PROTECTION_KEYSDIR=/app/data/keys
+      - ASPNETCORE_ENVIRONMENT=Development  # Use Development for dev environments | Production
+      - ASPNETCORE_URLS=http://+:9110;https://+:9111 
+      - LOG_LEVEL=Information
+      # HTTPS/Certificate configuration
+      - USE_HTTPS=true
+      - CERT_SOURCE=generate  # Options: generate, volume, env
+      - CERT_PASSWORD=ChangeThisInProduction!
+      
+      # Network configuration
+      - CONNECTION_TIMEOUT=30
+      - CONNECTION_RETRIES=3
+      - HTTP_PROXY=
+      - HTTPS_PROXY=
+      - NO_PROXY=localhost,127.0.0.1
+      
+      # Cloud configuration - auto-detect by default
+      - CLOUD_PROVIDER=auto-detect  # Options: auto-detect, aws, azure, gcp, generic
+      
+      # Health check configuration
+      - HEALTH_ENDPOINT=/health
+      - HEALTH_TIMEOUT=5
+      - CHECK_HTTP_HEALTH=true
+      - CHECK_DISK_SPACE=true
+      - CHECK_MEMORY=true
+      - MIN_DISK_SPACE_MB=100
+      - MAX_MEMORY_PERCENT=90
+      
+      # App-specific settings (customize as needed)
+      - YourAppSetting1=Value1
+      - YourAppSetting2=Value2
+      
+    # Optional: connect to specific network
+    networks:
+      - sqlflow-network
+      
+    # Override the health check parameters if needed
+    healthcheck:
+      test: ["CMD", "/app/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Example of adding a database service
+  # sqlflow-db:
+  #   image: postgres:14-alpine
+  #   container_name: sqlflow-db
+  #   restart: unless-stopped
+  #   environment:
+  #     - POSTGRES_PASSWORD=SecurePassword123
+  #     - POSTGRES_USER=sqlflow
+  #     - POSTGRES_DB=sqlflowdb
+  #   volumes:
+  #     - sqlflow-pgdata:/var/lib/postgresql/data
+  #   networks:
+  #     - sqlflow-network
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U sqlflow"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+volumes:
+  sqlflow-keys:
+    driver: local
+  sqlflow-data:
+    driver: local
+  sqlflow-sample-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: C:/SQLFlow
+      o: bind
+
+networks:
+  sqlflow-network:
+    driver: bridge

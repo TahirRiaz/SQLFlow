@@ -1,0 +1,136 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-stats"
+
+
+ <PageTitle>Edit SysStats</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysStats</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysStats" Data="@sysStats" Visible="@(sysStats != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[FlowType]").Result Variant="Variant.Outlined" Style="width: 49%">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysStats.FlowType" Name="FlowType" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[FlowType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[FlowType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[StatsDate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysStats.StatsDate" Name="StatsDate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[StatsDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[StatsDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.FlowID" Name="FlowID" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[StartTime]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysStats.StartTime" Name="StartTime" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[StartTime]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[StartTime]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[EndTime]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysStats.EndTime" Name="EndTime" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[EndTime]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[EndTime]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[DurationFlow]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.DurationFlow" Name="DurationFlow" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[DurationFlow]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[DurationFlow]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[DurationPre]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.DurationPre" Name="DurationPre" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[DurationPre]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[DurationPre]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[DurationPost]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.DurationPost" Name="DurationPost" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[DurationPost]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[DurationPost]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[Fetched]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.Fetched" Name="Fetched" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[Fetched]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[Fetched]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[Inserted]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.Inserted" Name="Inserted" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[Inserted]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[Inserted]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[Updated]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.Updated" Name="Updated" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[Updated]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[Updated]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[Deleted]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.Deleted" Name="Deleted" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[Deleted]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[Deleted]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[SysStats].[Success]").Result Component="Success" Style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysStats.Success" Name="Success" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[Success]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[Success]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[FlowRate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.FlowRate" Name="FlowRate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[FlowRate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[FlowRate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[NoOfThreads]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.NoOfThreads" Name="NoOfThreads" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[ExecMode]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysStats.ExecMode" Name="ExecMode" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[ExecMode]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[ExecMode]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[FileName]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysStats.FileName" Name="FileName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[FileName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[FileName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[FileSize]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysStats.FileSize" Name="FileSize" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[FileSize]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[FileSize]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysStats].[FileDate]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysStats.FileDate" Name="FileDate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysStats].[FileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysStats].[FileDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+          
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

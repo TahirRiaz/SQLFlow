@@ -1,0 +1,53 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-data-subscriber"
+
+
+ <PageTitle>Edit DataSubscriber</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save DataSubscriber</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriber" Data="@dataSubscriber" Visible="@(dataSubscriber != null)" Submit="@FormSubmit">
+            <RadzenStack>
+            
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[DataSubscriber].[SubscriberType]").Result Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenDropDown Data="@dataSubscriberType" TValue="string" Multiple="false" Style="width: 100%" TextProperty="SubscriberType" @bind-Value="@dataSubscriber.SubscriberType" ValueProperty="SubscriberType" Name="SubscriberType" />
+                    </ChildContent>
+                    <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriber].[SubscriberType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriber].[SubscriberType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+                    <Helper>
+                        <RadzenRequiredValidator Component="SubscriberType" Text="SubscriberType is required" />
+                    </Helper>
+                </RadzenFormField>
+            
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[DataSubscriber].[SubscriberName]").Result Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@dataSubscriber.SubscriberName" Name="SubscriberName"/>
+                    </ChildContent>
+                    <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriber].[SubscriberName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriber].[SubscriberName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info"/></End>
+                    <Helper>
+                        <RadzenRequiredValidator Component="SubscriberName" Text="SubscriberName is required"/>
+                    </Helper>
+                </RadzenFormField>
+            </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

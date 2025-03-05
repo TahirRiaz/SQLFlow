@@ -1,0 +1,110 @@
+@using SQLFlowUi.Controllers
+@using SQLFlowUi.Data
+@inject DocumentationService DocService
+@page "/stored-procedure"
+@page "/stored-procedure/{FlowID:int}"
+@code {
+
+    public async Task OpenInitialize()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "FlowType", "sp" },
+            { "OnActionCompleted", new EventCallback<InitCompletedEventArgs>(this, OpenNewFlowId) }
+        };
+
+        await DialogService.OpenAsync<InitPipeline>($"Initialize StoredProcedure Pipeline",
+            parameters,
+            new DialogOptions() { Width = "700px", Height = "240px", Resizable = true, Draggable = true });
+    }
+
+    private void OpenNewFlowId(InitCompletedEventArgs args)
+    {
+        storedProcedure = sqlflowProdService.GetStoredProcedure().Result;
+        DialogService.Close();
+        DialogService.OpenAsync<EditStoredProcedure>("Edit StoredProcedure", new Dictionary<string, object> { { "FlowID", args.FlowId } }, GlobalSettings.EditOptions);
+    }
+
+    private async Task OpenInNewTab(string url)
+    {
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    protected async Task Redirect(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.StoredProcedure data)
+    {
+        string fileSearchURL = $"/search/{data.FlowID}";
+        await OpenInNewTab(fileSearchURL);
+    }
+}
+
+ @attribute [Authorize]  
+ <PageTitle>StoredProcedure</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[StoredProcedure]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @OpenInitialize()) Variant="Variant.Flat" Icon="note_add" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[StoredProcedure]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[StoredProcedure]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"  AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@storedProcedure"    TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" RowDoubleClick="@EditRow" >
+            <Columns>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Filterable="false" Sortable="false" Width="90px" TextAlign="TextAlign.Center">
+                        <Template Context="StoredProcedure">
+                            <RadzenButton ButtonStyle="ButtonStyle.Info" Image="/icons/search.png" Size="ButtonSize.Medium"
+                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                          Click=@(args => Redirect(args, StoredProcedure)) @onclick:stopPropagation="true" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="FlowID" Title="FlowID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="SysAlias" Title="SysAlias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="Batch" Title="Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="trgServer" Title="trgServer">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="trgDBSchSP" Title="trg D B Sch S P">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="OnErrorResume" Title="On Error Resume">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="PostInvokeAlias" Title="Post Invoke Alias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="Description" Title="Description">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="FlowType" Title="FlowType">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="DeactivateFromBatch" Title="Deactivate From Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="FromObjectMK" Title="FromObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Property="ToObjectMK" Title="ToObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.StoredProcedure" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="storedProcedure">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, storedProcedure)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>

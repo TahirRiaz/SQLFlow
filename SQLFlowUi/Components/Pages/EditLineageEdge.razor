@@ -1,0 +1,96 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-lineage-edge"
+
+
+ <PageTitle>Edit LineageEdge</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save LineageEdge</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.LineageEdge" Data="@lineageEdge" Visible="@(lineageEdge != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[DataSet]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@lineageEdge.DataSet" Name="DataSet" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[DataSet]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[DataSet]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="DataSet" Text="DataSet is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@lineageEdge.FlowID" Name="FlowID" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[FlowType]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageEdge.FlowType" Name="FlowType" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[FlowType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[FlowType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[FromObjectMK]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@lineageEdge.FromObjectMK" Name="FromObjectMK" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[FromObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[FromObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[ToObjectMK]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@lineageEdge.ToObjectMK" Name="ToObjectMK" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[ToObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[ToObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[FromObject]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageEdge.FromObject" Name="FromObject" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[FromObject]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[FromObject]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[ToObject]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageEdge.ToObject" Name="ToObject" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[ToObject]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[ToObject]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[Dependency]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageEdge.Dependency" Name="Dependency" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[Dependency]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[Dependency]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[LineageEdge].[IsAfterDependency]").Result Component="IsAfterDependency" Style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@lineageEdge.IsAfterDependency" Name="IsAfterDependency" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[IsAfterDependency]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[IsAfterDependency]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageEdge].[CreateDate]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@lineageEdge.CreateDate" Name="CreateDate" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageEdge].[CreateDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageEdge].[CreateDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

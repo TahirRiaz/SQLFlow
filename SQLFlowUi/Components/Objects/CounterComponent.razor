@@ -1,0 +1,18 @@
+﻿@namespace SQLFlowUi.Components
+
+<h3>CounterComponent</h3>
+
+@code {
+    private int currentCount = 0;
+
+    private void IncrementCount()
+    {
+        currentCount++;
+    }
+}
+
+<div>
+    <h3>Counter Component</h3>
+    <p>Current count: @currentCount</p>
+    <button @onclick="IncrementCount">Click me</button>
+</div>

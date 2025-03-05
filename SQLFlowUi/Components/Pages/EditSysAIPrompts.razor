@@ -1,0 +1,55 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-a-i-prompt"
+
+
+ <PageTitle>Edit SysAIPrompt</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysAIPrompt</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysAIPrompt" Data="@sysAIPrompt" Visible="@(sysAIPrompt != null)" Submit="@FormSubmit">
+          <RadzenStack>
+              <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAIPrompt].[ApiKeyAlias]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                      <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="ApiKeyAlias" Name="ApiKeyAlias" TextProperty="ApiKeyAlias" Data="@sysAPIKey" @bind-Value="@sysAIPrompt.ApiKeyAlias" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                          <Columns>
+                              <RadzenDropDownDataGridColumn Property="ServiceType" Title="ServiceType" Width="120px" />
+                              <RadzenDropDownDataGridColumn Property="ApiKeyAlias" Title="ApiKeyAlias" Width="150px" />
+                              <RadzenDropDownDataGridColumn Property="ServicePrincipalAlias" Title="ServicePrincipalAlias" />
+                          </Columns>
+                      </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAIPrompt].[ApiKeyAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAIPrompt].[ApiKeyAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                  <Helper>
+                      <RadzenRequiredValidator Component="ApiKeyAlias" Text="ApiKeyAlias is required" />
+                  </Helper>
+              </RadzenFormField>
+              <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAIPrompt].[PromptName]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                      <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAIPrompt.PromptName" Name="PromptName"  />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAIPrompt].[PromptName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAIPrompt].[PromptName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                  <Helper>
+                      <RadzenRequiredValidator Component="PromptName" Text="PromptName is required" />
+                  </Helper>
+              </RadzenFormField>
+            <OpenAIPayLoad openAIPayLoad="@openAIPayLoad"></OpenAIPayLoad>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

@@ -1,0 +1,46 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-assertion"
+
+
+ <PageTitle>Add Assertion</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save Assertion</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.Assertion" Data="@assertion" Visible="@(assertion != null)" Submit="@FormSubmit">
+            <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[Assertion].[AssertionName]").Result Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@assertion.AssertionName" Name="AssertionName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Assertion].[AssertionName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Assertion].[AssertionName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                    <Helper>
+                        <RadzenRequiredValidator Component="AssertionName" Text="AssertionName is required" />
+                    </Helper>
+                </RadzenFormField>
+                <RadzenText>Availebal dynamic AssertionExp macros @@TableName, @@FilterCriteria</RadzenText>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[Assertion].[AssertionExp]").Result Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenTextArea style="display: block; width: 100%; height: 50vh;" @bind-Value="@assertion.AssertionExp" Name="AssertionExp" />
+                    </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Assertion].[AssertionExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Assertion].[AssertionExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+                </RadzenFormField>
+            </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

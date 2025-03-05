@@ -1,0 +1,64 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-lineage-object-relation"
+
+
+ <PageTitle>Edit LineageObjectRelation</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save LineageObjectRelation</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.LineageObjectRelation" Data="@lineageObjectRelation" Visible="@(lineageObjectRelation != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageObjectRelation].[LeftObject]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageObjectRelation.LeftObject" Name="LeftObject" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageObjectRelation].[LeftObject]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageObjectRelation].[LeftObject]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageObjectRelation].[LeftObjectCol]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageObjectRelation.LeftObjectCol" Name="LeftObjectCol" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageObjectRelation].[LeftObjectCol]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageObjectRelation].[LeftObjectCol]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageObjectRelation].[RightObject]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageObjectRelation.RightObject" Name="RightObject" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageObjectRelation].[RightObject]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageObjectRelation].[RightObject]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[LineageObjectRelation].[RightObjectCol]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@lineageObjectRelation.RightObjectCol" Name="RightObjectCol" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageObjectRelation].[RightObjectCol]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageObjectRelation].[RightObjectCol]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[LineageObjectRelation].[ManualEntry]").Result Component="ManualEntry" Style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@lineageObjectRelation.ManualEntry" Name="ManualEntry" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[LineageObjectRelation].[ManualEntry]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[LineageObjectRelation].[ManualEntry]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

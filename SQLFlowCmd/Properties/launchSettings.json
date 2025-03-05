@@ -1,0 +1,28 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    },
+    "FlowID": {
+      "commandName": "Project",
+      "commandLineArgs": "--exec flow --flowid 1194 --dbg 1"
+    },
+    "Batch": {
+      "commandName": "Project",
+      "commandLineArgs": "--exec batch --batch ferde --dbg 1"
+    },
+    "Node": {
+      "commandName": "Project",
+      "commandLineArgs": "--exec node --node 1097 --dbg 1"
+    },
+    "Lineage ": {
+      "commandName": "Project",
+      "commandLineArgs": "--exec lineage --all 1 --noofthreads 4"
+    },
+    "SourceControl": {
+      "commandName": "Project",
+      "commandLineArgs": "--exec sc --scalias BBProd --noofthreads 6"
+    }
+  }
+}

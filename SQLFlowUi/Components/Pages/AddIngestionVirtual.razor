@@ -1,0 +1,101 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-ingestion-virtual"
+
+@code
+{
+    private string pastedText;
+    private async Task PasteText1()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            ingestionVirtual.SelectExp = pastedText;
+            StateHasChanged();
+        }
+    }
+}
+
+ <PageTitle>Add IngestionVirtual</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save IngestionVirtual</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.IngestionVirtual" Data="@ingestionVirtual" Visible="@(ingestionVirtual != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[IngestionVirtual].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@ingestionVirtual.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                            <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                            <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[IngestionVirtual].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[IngestionVirtual].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[IngestionVirtual].[ColumnName]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@ingestionVirtual.ColumnName" Name="ColumnName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[IngestionVirtual].[ColumnName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[IngestionVirtual].[ColumnName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[IngestionVirtual].[DataType]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@ingestionVirtual.DataType" Name="DataType" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[IngestionVirtual].[DataType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[IngestionVirtual].[DataType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[IngestionVirtual].[DataTypeExp]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@ingestionVirtual.DataTypeExp" Name="DataTypeExp" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[IngestionVirtual].[DataTypeExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[IngestionVirtual].[DataTypeExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[IngestionVirtual].[SelectExp]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                        <CodeMirror6Wrapper @bind-Doc="@ingestionVirtual.SelectExp"
+                                            Language=CodeMirrorLanguage.MsSql
+                                            LineNumbers=false
+                                            Theme=ThemeMirrorTheme.GithubDark
+                                            FullScreen=@FullScreen
+                                            LineWrapping=true
+                                            ScrollPastEnd=false
+                                            AllowHorizontalResize="true"
+                                            AllowVerticalResize="true"
+                                            Editable="true"
+                                            ReadOnly="false"
+                                            MaxHeight="20em"> </CodeMirror6Wrapper>
+                    </RadzenRow>
+                </ChildContent><End><RadzenButton Click=@(args => @PasteText1()) Icon="input" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[IngestionVirtual].[SelectExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[IngestionVirtual].[SelectExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+          
+@code
+{
+    private bool FullScreen { get; set; } = false;
+
+    private void ToggleFullScreen()
+    {
+        FullScreen = !FullScreen;
+    }
+}

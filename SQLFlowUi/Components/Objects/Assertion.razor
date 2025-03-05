@@ -1,0 +1,212 @@
+@namespace SQLFlowUi.Components
+@using SQLFlowUi.Controllers
+@using Newtonsoft.Json
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+    [Parameter] public int FlowID { get; set; }
+    
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService dwSqlflowProdService { get; set; }
+
+    protected IEnumerable<SQLFlowUi.Models.sqlflowProd.ReportAssertion> reportAssertion;
+
+    protected string search = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        reportAssertion = await dwSqlflowProdService.GetReportAssertion(new Query { Filter = $@"i => i.FlowID  = (@0)", FilterParameters = new object[] { FlowID } });
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+       
+        
+        
+        if (firstRender)
+        {
+            // reportAssertion = await dwSqlflowProdService.GetReportAssertion(new Query { Filter = $@"i => i.FlowID  = (@0)", FilterParameters = new object[] { FlowID } });        
+            // StateHasChanged();        
+            //var chartOptions = HealthCheckJson.CreateChartOptions(reportFlowHealthCheck1);
+            //var json = JsonConvert.SerializeObject(chartOptions);
+            //string jsCode = GenerateJavaScriptCode(json);
+            //await JSRuntime.InvokeVoidAsync("eval", jsCode);
+        }
+
+    }
+
+    public string ProcessAssertion(SQLFlowUi.Models.sqlflowProd.ReportAssertion assertion)
+    {
+        if (assertion == null)
+        {
+            throw new ArgumentNullException(nameof(assertion), "Assertion cannot be null.");
+        }
+
+        // Assuming 'Status' is a property of ReportAssertion. Replace with actual property.
+        switch (assertion.Result)
+        {
+            case "1":
+                return "done";
+            case "0":
+                return "dangerous";
+            default:
+                return "info";
+        }
+    }
+
+    public ButtonStyle ProcessAssertionColor(SQLFlowUi.Models.sqlflowProd.ReportAssertion assertion)
+    {
+        if (assertion == null)
+        {
+            throw new ArgumentNullException(nameof(assertion), "Assertion cannot be null.");
+        }
+
+        // Assuming 'Status' is a property of ReportAssertion. Replace with actual property.
+        switch (assertion.Result)
+        {
+            case "1":
+                return ButtonStyle.Success;
+            case "0":
+                return ButtonStyle.Danger;
+            default:
+                return ButtonStyle.Info;
+        }
+    }
+
+
+
+    public IEnumerable<IGrouping<int, SQLFlowUi.Models.sqlflowProd.FlowHealthCheck>> GetHealthChecksGroupedByHealthCheckID(IEnumerable<SQLFlowUi.Models.sqlflowProd.FlowHealthCheck> baseData)
+    {
+        // Grouping the data by HealthCheckID
+        var groupedByHealthCheckID = baseData
+            .GroupBy(flowHealthCheck => flowHealthCheck.HealthCheckID);
+
+        return groupedByHealthCheckID;
+    }
+
+    public IEnumerable<ValidationModelData> ParseModelJson(string jsonString)
+    {
+        return JsonConvert.DeserializeObject<IEnumerable<ValidationModelData>>(jsonString);
+    }
+}
+
+@if (reportAssertion.Count() > 0)
+{
+    <RadzenDataGrid AllowFiltering="false" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[] { 5, 10, 20, 30 })
+                    Data="@reportAssertion" TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion">
+
+        <Columns>
+            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                <Template Context="reportAssertion">
+
+                    <RadzenButton ButtonStyle="@ProcessAssertionColor(reportAssertion)" Icon="@ProcessAssertion(reportAssertion)" Size="ButtonSize.Medium"
+                                  Shade="Shade.Lighter" Variant="Variant.Flat"
+                                  @onclick:stopPropagation="true" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Property="AssertionName" Title="Date">
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Property="AssertionDate" Title="AssertionDate">
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Property="Result" Title="Result">
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Property="AssertedValue" Title="AssertedValue">
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                <Template Context="reportAssertion">
+
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="find_in_page" Size="ButtonSize.Medium"
+                                  Shade="Shade.Lighter" Variant="Variant.Flat"
+                                  Click=@(args => OpenAssertion(reportAssertion)) />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                <Template Context="reportAssertion">
+                    <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="build" Size="ButtonSize.Medium"
+                                  Shade="Shade.Lighter" Variant="Variant.Flat"
+                                  Click=@(args => EditAssertion(reportAssertion)) />
+
+                </Template>
+            </RadzenDataGridColumn>
+
+        </Columns>
+    </RadzenDataGrid>
+    
+
+}
+else
+{
+    <div>No assertion defined on this flow</div>
+}
+
+
+@code {
+
+    private async Task test()
+    {
+
+        //var a = dwSqlflowProdService.sqlflowProdContext();
+
+        reportAssertion = await dwSqlflowProdService.GetReportAssertion(new Query { Filter = $@"i => i.FlowID  = (@0)", FilterParameters = new object[] { FlowID } });
+        var items = reportAssertion.ToList();
+        StateHasChanged();
+    }
+
+    private void OnClick(string text)
+    {
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Clicked", Detail = text });
+    }
+    
+    async Task EditAssertion(SQLFlowUi.Models.sqlflowProd.ReportAssertion reportAssertion)
+    {
+
+        string url = $"/assertion/{reportAssertion.AssertionID}";
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    async Task OpenAssertion(SQLFlowUi.Models.sqlflowProd.ReportAssertion reportAssertion)
+    {
+        await DialogService.OpenAsync(@$"{reportAssertion.TraceLog}", ds =>
+            @BuildHtmlMarkup(reportAssertion), new DialogOptions() { CloseDialogOnOverlayClick = true });
+    }
+
+
+    public static RenderFragment BuildHtmlMarkup(SQLFlowUi.Models.sqlflowProd.ReportAssertion reportAssertion) => builder =>
+    {
+        if (reportAssertion == null)
+            throw new ArgumentNullException(nameof(reportAssertion));
+
+        builder.OpenElement(0, "div");
+
+        builder.OpenElement(3, "p");
+        builder.AddContent(4, reportAssertion.AssertionSqlCmd);
+        builder.CloseElement();
+
+
+        builder.CloseElement();
+    };
+}
+
+
+
+
+
+
+
+

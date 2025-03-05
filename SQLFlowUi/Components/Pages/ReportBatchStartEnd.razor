@@ -1,0 +1,290 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/report-batch"
+@page "/report-batch/{urlsearch}"
+@using System.Linq.Dynamic.Core
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+ @attribute [Authorize]  
+ <PageTitle>ReportBatchStartEnd</PageTitle>
+
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[ReportBatchStartEnd]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0"/>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[ReportBatchStartEnd]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[ReportBatchStartEnd]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx"/>
+                    <RadzenSplitButtonItem Text="CSV" Value="csv"/>
+                </RadzenSplitButton>
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenRow>
+        <RadzenCheckBox TriState="false" TValue="bool?" @bind-Value="@isFilterActive" Name="ShowFailed" Change="@OnFilterToggle" />
+        <RadzenLabel Text="Show Only Failed" Component="CheckForErrorBox3" Style="margin-left: 8px; vertical-align: middle;" />
+
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @bind-Value="@search" @oninput="@Search" Name="SearchBox" />
+    <RadzenRow>
+        <RadzenColumn SizeMD=12>
+            <RadzenDataGrid @ref="grid0" style="padding: 2px; margin: 0;" AllowAlternatingRows="true" AllowFiltering="true" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSize="1000" PageSizeOptions=@(new int[] { 1000, 2000, 3000, 5000 })
+                            FilterMode="FilterMode.Advanced" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" GroupRowCollapse="@OnGroupRowCollapse"
+                            GroupRowExpand="@OnGroupRowExpand" AllGroupsExpanded="false" AllowColumnResize="true" Render="@OnRender" TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" GroupRowRender="OnGroupRowRender" Data="@reportBatchStartEnd" TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" AllowGrouping="true" HideGroupedColumn="true">
+                <GroupHeaderTemplate>
+
+                    @(context.Data.Items.Cast<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd>().Sum(i => i.Success ? 1 : 0) < context.Data.Count ? "\u274c" : "\u2705")
+                    @context.GroupDescriptor.GetTitle(): @(context.Data.Key ?? "") | execdate: @(context.Data.Items.Cast<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd>().Max(i => i.EndTime)) | duration: @(ConvertSecondsToTimeString(context.Data)) || (@context.Data.Count)
+                </GroupHeaderTemplate>
+                <Columns>
+                    <RadzenDataGridColumn  TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" Property="Batch" Title="Batch">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn  TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" Property="Step" Title="Step">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" Property="Success" Title="Success" Width="48px">
+                        <Template Context="data">
+                            @(data.Success == true ? "\u2705" : "\u274c")
+                        </Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" Property="ProcessShort" Title="Process">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" Property="EndTime" Title="EndTime" Width="170px">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" Property="Duration" Title="Duration" Width="130px">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd" Filterable="false" Sortable="false" Width="90px" TextAlign="TextAlign.Center">
+                        <Template Context="reportBatchStartEnd">
+                            <RadzenButton ButtonStyle="ButtonStyle.Info" Image="/icons/search.png" Size="ButtonSize.Medium"
+                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                          Click=@(args => Redirect(args, reportBatchStartEnd)) @onclick:stopPropagation="true" />
+                        </Template>
+                    </RadzenDataGridColumn>
+
+                </Columns>
+            </RadzenDataGrid>
+
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenStack>
+@code {
+
+    private bool? isFilterActive = false; // Boolean to track if the filter is active
+    private bool? isPendingActive = false; // Boolean to track if the filter is active
+
+    Dictionary<object, bool> expandedGroups = new Dictionary<object, bool>();
+
+    void OnPendingToggle(bool? value)
+    {
+        isPendingActive = value;
+        var column = grid0.ColumnsCollection.Where(c => c.Property == "EndTime").FirstOrDefault();
+
+        if (column != null)
+        {
+            if(value == true)
+            {
+                DateTime currentDate = DateTime.Today;
+
+                string formattedDate = currentDate.ToString("yyyy-MM-dd"); // Format the date as a string
+
+                column.SetFilterOperator(FilterOperator.LessThan);
+                //column.SetFilterValue();
+                column.FilterValue = "2024-01-01";
+            }
+            else
+            {
+                column.ClearFilters();
+            }
+            grid0.Reload();
+            StateHasChanged(); // Refresh UI
+        }
+
+    }
+
+    void OnFilterToggle(bool? value)
+    {
+        isFilterActive = value;
+        var column = grid0.ColumnsCollection.Where(c => c.Property == "Success").FirstOrDefault();
+
+        if (column != null)
+        {
+            if(value == true)
+            {
+                column.SetFilterOperator(FilterOperator.Equals);
+                column.SetFilterValue(false);
+            }
+            else
+            {
+                column.ClearFilters();
+
+            }
+            grid0.Reload();
+            StateHasChanged(); // Refresh UI
+        }
+
+    }
+
+
+    private async Task OpenInNewTab(string url)
+    {
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    protected async Task Redirect(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd data)
+    {
+        string fileSearchURL = $"/search/{data.FlowID}";
+        await OpenInNewTab(fileSearchURL);
+    }
+
+    void OnRender(DataGridRenderEventArgs<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> args)
+    {
+        if (args.FirstRender)
+        {
+            args.Grid.Groups.Add(new GroupDescriptor() { Property = "Batch", SortOrder = SortOrder.Ascending });
+            args.Grid.Groups.Add(new GroupDescriptor() { Property = "Step", SortOrder = SortOrder.Ascending });
+            // Optionally, add more group descriptors here
+            StateHasChanged();
+        }
+    }
+
+
+    public static string ConvertSecondsToTimeString(Radzen.GroupResult groupResult )
+    {
+        // Ensure there are items to process
+        if (groupResult.Count == 0)
+        {
+            return "na";
+        }
+
+
+        // First, cast the groupResult.Items to the correct type
+        var items = groupResult.Items.Cast<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd>(); // Replace YourItemType with the actual type
+
+
+        // Find the minimum start time and maximum end time within the collection
+        var minStartTime = items.Where(i => i.StartTime.HasValue).Min(i => i.StartTime) ?? DateTime.MinValue;
+        var maxEndTime = items.Where(i => i.EndTime.HasValue).Max(i => i.EndTime) ?? DateTime.MinValue;
+
+        // Handle cases where start or end times are not available
+        if (minStartTime == DateTime.MinValue || maxEndTime == DateTime.MinValue)
+        {
+            return "na";
+        }
+
+        // Calculate duration
+        TimeSpan difference = maxEndTime - minStartTime;
+        // Notice change to TotalMilliseconds for more accurate calculation
+        int totalSeconds = (int)difference.TotalSeconds; // Corrected from Milliseconds to TotalSeconds
+
+        // Calculate the hours, minutes, and seconds
+        int hours = totalSeconds / 3600;
+        int minutes = (totalSeconds % 3600) / 60;
+        int seconds = totalSeconds % 60;
+
+        string result = "";
+
+        if (hours > 0)
+        {
+            result += $"{hours} hour ";
+        }
+
+        if (minutes > 0)
+        {
+            result += $"{minutes} min ";
+        }
+
+        result += $"{seconds} sec";
+
+        return result.Trim();
+    }
+
+    public static string ConvertSecondsToTimeString(DateTime? startTime,DateTime? endTime)
+    {
+        // Build the string conditionally
+        string result = "";
+        
+        DateTime start = startTime ?? DateTime.MinValue;
+        DateTime end = endTime ?? DateTime.MinValue;
+
+        if (startTime == null || endTime == null)
+        {
+            result = "na";
+        }
+        else
+        {
+            TimeSpan difference = end - start ;
+            int totalSeconds = difference.Milliseconds;
+            // Calculate the hours, minutes and seconds
+            int? hours = totalSeconds / 3600;
+            int? minutes = (totalSeconds % 3600) / 60;
+            int? seconds = totalSeconds % 60;
+
+            if (hours > 0)
+            {
+                result += $"{hours} hour ";
+            }
+
+            if (minutes > 0)
+            {
+                result += $"{minutes} min ";
+            }
+
+            result += $"{seconds} sec";
+        }
+
+        
+
+        return result.Trim();
+    }
+
+
+    protected void OnGroupRowRender(GroupRowRenderEventArgs args)
+    {
+        if (args.Group.Level == 1)
+        {
+            if (!expandedGroups.ContainsKey(args.Group.Data.Key))
+            {
+                args.Expanded = false;
+            }
+        }
+
+        
+    }
+
+    void OnGroupRowExpand(Group group)
+    {
+        if (!expandedGroups.ContainsKey(group.Data.Key))
+        {
+            expandedGroups.Add(group.Data.Key, true);
+            //console.Log($"Group with key: {group.Data.Key} expanded");
+        }
+    }
+
+    void OnGroupRowCollapse(Group group)
+    {
+        if (expandedGroups.ContainsKey(group.Data.Key))
+        {
+            expandedGroups.Remove(group.Data.Key);
+            //console.Log($"Group with key: {group.Data.Key} collapsed");
+        }
+    }
+    
+
+    
+}

@@ -1,0 +1,12 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/"
+
+@attribute [Authorize] 
+<PageTitle>SQLFlowUi</PageTitle>
+<RadzenRow Gap="0" RowGap="0">
+    <RadzenColumn Size="12">
+        <RadzenImage Path="images\sqlflow-arch.svg" Style="width: 1100px"></RadzenImage>
+    </RadzenColumn>
+</RadzenRow>
+

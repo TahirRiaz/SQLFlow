@@ -1,0 +1,429 @@
+﻿@namespace SQLFlowUi.Components
+@using System.Net.Http.Headers
+@using System.Text
+@using System.Web
+@using Microsoft.EntityFrameworkCore
+@using Newtonsoft.Json
+@using Newtonsoft.Json.Linq
+@using SQLFlowUi.Data
+@using SQLFlowUi.Service
+@inject IConfiguration Configuration
+@inject NotificationService NotificationService
+@inject HttpClient Http
+@inject sqlflowProdContext Context
+@inject SecurityService securityService
+@inject ConfigService configService
+@inject IJSRuntime JSRuntime
+
+@code {
+    [Parameter] public string URL { get; set; }
+
+    [Parameter] public string PayLoad { get; set; } = "";
+
+    [Parameter] public string cancelTokenId { get; set; } = "";
+
+    [Parameter] public bool ShowNotification { get; set; } = true;
+
+    [Parameter] public EventCallback<string> OnActionCompleted { get; set; }
+
+    private DateTime lastUpdateTime = DateTime.MinValue;
+    private StringBuilder fileContentBuilder = new StringBuilder();
+    private bool showProgressBar = false;
+    private string token = "";
+    private CancellationTokenSource _cancellationTokenSource;
+    private int selectedTabIndex = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cancellationTokenSource = new CancellationTokenSource(); // Initialize the CancellationTokenSource
+        showProgressBar = true;
+
+        try
+        {
+            token = await securityService.GetJwtTokenAsync();
+            if (string.IsNullOrEmpty(PayLoad))
+            {
+                await GetUrl();
+            }
+            else
+            {
+                await PostUrl(PayLoad);
+            }
+        }
+        finally
+        {
+            // Ensure we dispose of the CancellationTokenSource when done
+            _cancellationTokenSource.Dispose();
+        }
+    }
+
+    private async Task GetUrl()
+    {
+        Http.DefaultRequestHeaders.Remove("Authorization");
+        Http.DefaultRequestHeaders.Add("Authorization", token);
+
+        cancelTokenId = Guid.NewGuid().ToString();
+        string encodedGuid = System.Net.WebUtility.UrlEncode(cancelTokenId);
+        URL = URL + "&cancelTokenId=" + encodedGuid;
+
+        using var response = await Http.GetAsync(URL, HttpCompletionOption.ResponseHeadersRead, _cancellationTokenSource.Token);
+        if (response.IsSuccessStatusCode)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync();
+            var buffer = new byte[1024]; // 1KB buffer
+            int bytesRead;
+
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, _cancellationTokenSource.Token)) > 0)
+            {
+                var segment = new ArraySegment<byte>(buffer, 0, bytesRead);
+                fileContentBuilder.Append(Encoding.UTF8.GetString(segment.Array, segment.Offset, segment.Count));
+                StateHasChanged(); // Notify Blazor to re-render the component
+            }
+
+            showProgressBar = false;
+            StateHasChanged();
+            if (ShowNotification)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Execution Completed", "The execution process has completed. Check the log for details.");
+            }
+
+
+            var uri = new Uri(URL);
+            var query = HttpUtility.ParseQueryString(uri.Query);
+            var flowId = query["FlowId"];
+
+            // Logic to execute different methods based on the URL
+            if (URL.Contains("ExecAssertion"))
+            {
+                if (!string.IsNullOrEmpty(flowId))
+                {
+                    await ResetFlowAssertions(int.Parse(flowId));
+                }
+            }
+
+            if (URL.Contains("ExecHealthCheck"))
+            {
+                if (!string.IsNullOrEmpty(flowId))
+                {
+                    await ResetFlowAnomalies(int.Parse(flowId));
+                }
+            }
+
+            // Check if the EventCallback has a delegate attached (i.e., if the parent component has provided a callback method)
+            if (OnActionCompleted.HasDelegate)
+            {
+                // Notify the parent component that the action is completed
+                await OnActionCompleted.InvokeAsync(fileContentBuilder.ToString());
+            }
+
+
+        }
+        else
+        {
+            fileContentBuilder.AppendLine("Error fetching file content.");
+        }
+    }
+
+
+    private async Task PostUrl(string PayLoad)
+    {
+        Http.DefaultRequestHeaders.Remove("Authorization");
+        Http.DefaultRequestHeaders.Add("Authorization", token);
+        Http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("text/plain"));
+
+        // Create HttpRequestMessage
+        var requestMessage = new HttpRequestMessage(HttpMethod.Post, URL)
+            {
+                Content = new StringContent(PayLoad, Encoding.UTF8, "application/json")
+            };
+
+        // Use SendAsync with HttpCompletionOption.ResponseHeadersRead
+        using var response = await Http.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, _cancellationTokenSource.Token);
+
+
+        //var content = new StringContent(PayLoad, Encoding.UTF8, "application/json");
+        //using var response = await Http.PostAsync(URL, content, _cancellationTokenSource.Token);
+
+        if (response.IsSuccessStatusCode)
+        {
+            using var stream = await response.Content.ReadAsStreamAsync(_cancellationTokenSource.Token);
+            var buffer = new byte[56]; // 1KB buffer
+            int bytesRead;
+
+            while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, _cancellationTokenSource.Token)) > 0)
+            {
+                var segment = new ArraySegment<byte>(buffer, 0, bytesRead);
+                var textChunk = Encoding.UTF8.GetString(segment.Array, segment.Offset, segment.Count);
+
+                // Log each chunk to the console
+                //Console.WriteLine($"Received chunk: {textChunk}");
+                fileContentBuilder.Append(textChunk);
+                // Update the UI at most once every 500 milliseconds
+                // if ((DateTime.Now - lastUpdateTime).TotalMilliseconds > 1000)
+                // {
+                //     StateHasChanged(); // Notify Blazor to re-render the component
+                //     lastUpdateTime = DateTime.Now; // Update last update time
+                // }
+            }
+
+            showProgressBar = false;
+            StateHasChanged();
+            if (ShowNotification)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Execution Completed", "The execution process has completed. Check the log for details.");
+            }
+
+
+            var flowId = ExtractFlowId(PayLoad);
+
+            // Logic to execute different methods based on the URL
+            if (URL.Contains("ExecAssertion"))
+            {
+                if (!string.IsNullOrEmpty(flowId))
+                {
+                    await ResetFlowAssertions(int.Parse(flowId));
+                }
+            }
+
+            if (URL.Contains("ExecHealthCheck"))
+            {
+                if (!string.IsNullOrEmpty(flowId))
+                {
+                    await ResetFlowAnomalies(int.Parse(flowId));
+                }
+            }
+
+            // Check if the EventCallback has a delegate attached (i.e., if the parent component has provided a callback method)
+            if (OnActionCompleted.HasDelegate)
+            {
+                // Notify the parent component that the action is completed
+                await OnActionCompleted.InvokeAsync(fileContentBuilder.ToString());
+            }
+
+        }
+        else
+        {
+            fileContentBuilder.AppendLine("Error fetching file content.");
+        }
+    }
+
+    protected async Task CancelTask()
+    {
+        var payload = new
+        {
+            cancelTokenId = cancelTokenId
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(payload);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        try
+        {
+            string _jwtAuthUrl;
+            HttpClient _httpClient = new HttpClient();
+            _httpClient.DefaultRequestHeaders.Add("Authorization", token);
+            var response = await _httpClient.PostAsync(configService.configSettings.CancelProcess, content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var fullResponse = await response.Content.ReadAsStringAsync();
+                fileContentBuilder.Append(fullResponse);
+                StateHasChanged(); // Notify Blazor to re-render the component
+                                   // Show a success notification
+                NotificationService.Notify(NotificationSeverity.Warning, "Execution Canceled", "The execution process has been Canceled. Check the log for details.");
+                if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+                {
+                    _cancellationTokenSource.Cancel(); // Trigger the cancellation
+                }
+            }
+            else
+            {
+                // Log or handle error
+                var error = await response.Content.ReadAsStringAsync();
+                fileContentBuilder.Append($"Failed to cancel: {error}");
+                StateHasChanged(); // Notify Blazor to re-render the component
+                NotificationService.Notify(NotificationSeverity.Error, "Failed to Cancel Execution", "Failed to Cancel Execution. Check log for details.");
+            }
+
+            showProgressBar = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            // Log or handle exception
+            throw new ApplicationException("Error while requesting JWT token", ex);
+        }
+    }
+
+    private async Task OnTabChange(int index)
+    {
+        selectedTabIndex = index;
+        if (index == 2) // Index 2 corresponds to the Cancel tab
+        {
+            await CancelTask();
+            // After cancellation, return to the TraceLog tab
+            selectedTabIndex = 0;
+            StateHasChanged();
+        }
+    }
+
+    public static string? ExtractFlowId(string jsonString)
+    {
+        try
+        {
+            var jObject = JObject.Parse(jsonString);
+            // Check if "flowId" exists in the JSON
+            if (jObject.TryGetValue("flowId", out JToken value))
+            {
+                return value.ToObject<string>();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Console.WriteLine($"An error occurred: {ex.Message}");
+        }
+        return null; // Return null if "flowId" is not found or any error occurs
+    }
+
+    public async Task ResetFlowAssertions(int FlowID)
+    {
+        foreach (var entry in Context.ChangeTracker.Entries<SQLFlowUi.Models.sqlflowProd.ReportAssertion>())
+        {
+            if (entry.Entity.FlowID == FlowID)
+            {
+                entry.State = EntityState.Detached;
+            }
+        }
+    }
+
+    public async Task ResetFlowAnomalies(int FlowID)
+    {
+        foreach (var entry in Context.ChangeTracker.Entries<SQLFlowUi.Models.sqlflowProd.FlowHealthCheck>())
+        {
+            if (entry.Entity.FlowID == FlowID)
+            {
+                entry.State = EntityState.Detached;
+            }
+        }
+    }
+
+    private int? TryParseInt(string value)
+    {
+        if (int.TryParse(value, out int result))
+        {
+            return result;
+        }
+        return null;
+    }
+
+}
+
+@if (showProgressBar)
+{
+    <RadzenProgressBar ProgressBarStyle="ProgressBarStyle.Primary"
+                       Value="100"
+                       ShowValue="false"
+                       Mode="ProgressBarMode.Indeterminate" />
+}
+
+<RadzenTabs SelectedIndex="@selectedTabIndex" Change="@OnTabChange" class="compact-tabs">
+    <Tabs>
+        <RadzenTabsItem Text="TraceLog">
+            <pre class="trace-log">
+                @fileContentBuilder.ToString()
+            </pre>
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="Cancel">
+            <div class="cancel-message">
+                <p>Cancelling process...</p>
+            </div>
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="Database Activity">
+            <DatabaseActivity URL="@URL" />
+        </RadzenTabsItem>
+    </Tabs>
+</RadzenTabs>
+
+<style>
+    /* Reduce tab header height */
+    ::deep .rz-tabview-nav {
+        height: 32px;
+        min-height: 32px;
+        padding: 0;
+    }
+
+        /* Make tabs more compact */
+        ::deep .rz-tabview-nav li a {
+            padding: 0 12px;
+            line-height: 32px;
+            font-size: 13px;
+        }
+
+    /* Adjust tab panels padding */
+    ::deep .rz-tabview-panels {
+        padding: 0;
+    }
+
+    /* Action bar styling */
+    .action-bar {
+        display: flex;
+        justify-content: flex-end;
+        padding: 4px 8px;
+        background-color: #1a1a1a;
+        border-bottom: 1px solid #333;
+    }
+
+    /* Log content area */
+    .trace-log {
+        margin: 0;
+        padding: 4px 8px;
+        background-color: #1a1a1a;
+        color: #e0e0e0;
+        font-family: monospace;
+        font-size: 12px;
+        line-height: 1.4;
+        overflow: auto;
+        height: calc(100vh - 120px);
+        white-space: pre;
+    }
+
+    /* Progress bar adjustments */
+    ::deep .rz-progressbar {
+        height: 3px;
+        margin-bottom: 0;
+        border-radius: 0;
+    }
+
+    /* Button container */
+    .button-container {
+        position: sticky;
+        top: 0;
+        right: 0;
+        display: flex;
+        justify-content: flex-end;
+        padding: 8px 12px;
+        background-color: #1e1e1e;
+        z-index: 10;
+        border-bottom: 1px solid #333;
+    }
+
+    /* Cancel button styling */
+    .cancel-btn {
+        color: white !important;
+    }
+
+    ::deep .cancel-btn .rz-button-text {
+        color: white !important;
+    }
+
+    /* Cancel tab special styles */
+    ::deep .rz-tabview-nav li:nth-child(3) a {
+        color: #ff6b6b;
+    }
+
+    .cancel-message {
+        padding: 20px;
+        text-align: center;
+        color: #e0e0e0;
+    }
+</style>

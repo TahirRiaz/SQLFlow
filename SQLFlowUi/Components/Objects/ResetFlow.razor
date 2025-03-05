@@ -1,0 +1,176 @@
+﻿@namespace SQLFlowUi.Components
+@using System.Data
+@using SQLFlowUi.Controllers
+@using Microsoft.Data.SqlClient
+@using Newtonsoft.Json
+@using SQLFlowCore.Common
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+    private bool ResetTransformations = false;
+    private bool DeleteTransformations = false;
+    private DateTime? ResetDate = null;
+
+    [Parameter]
+    public int FlowID { get; set; }
+
+    [Parameter]
+    public EventCallback<string> OnActionCompleted { get; set; }
+
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService dwSqlflowProdService { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Initialization if needed
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // First render logic if needed
+        }
+    }
+
+    private int CalculateOverlapDays()
+    {
+        if (ResetDate.HasValue)
+        {
+            // Calculate days between today and selected date
+            TimeSpan difference = DateTime.Today - ResetDate.Value;
+            return Math.Max(0, (int)difference.TotalDays);
+        }
+
+        return 0;
+    }
+
+    protected async System.Threading.Tasks.Task Button0Click()
+    {
+        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");
+        ConStringParser conStringParser = new ConStringParser(connectionString)
+            {
+                ConBuilderMsSql =
+            {
+                ApplicationName = "SQLFlow App"
+            }
+            };
+        string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+
+        using SqlConnection connection = new SqlConnection(sqlFlowConStr);
+        await connection.OpenAsync();
+
+        bool success = false;
+
+        try
+        {
+            await using (SqlCommand command = new SqlCommand("[flw].[Reset]", connection) { CommandType = CommandType.StoredProcedure })
+            {
+                // Calculate the overlap days right when needed
+                int noOfOverlapDays = CalculateOverlapDays();
+
+                // Add parameters
+                var flowIdParam = new SqlParameter("@FlowID", SqlDbType.Int);
+                flowIdParam.Value = FlowID;
+                command.Parameters.Add(flowIdParam);
+
+                var overlapDaysParam = new SqlParameter("@NoOfOverlapDays", SqlDbType.Int);
+                overlapDaysParam.Value = noOfOverlapDays;
+                command.Parameters.Add(overlapDaysParam);
+
+                var resetTransParam = new SqlParameter("@ResetTransformations", SqlDbType.Int);
+                resetTransParam.Value = ResetTransformations ? 1 : 0;
+                command.Parameters.Add(resetTransParam);
+
+                var deleteTransParam = new SqlParameter("@DeleteTransformations", SqlDbType.Int);
+                deleteTransParam.Value = DeleteTransformations ? 1 : 0;
+                command.Parameters.Add(deleteTransParam);
+
+                // Execute the non-query stored procedure
+                int rowsAffected = await command.ExecuteNonQueryAsync();
+
+                // Consider the operation successful if we get here without exceptions
+                success = true;
+            }
+
+            if (success)
+            {
+                NotificationService.Notify(new NotificationMessage
+                    {
+                        Severity = NotificationSeverity.Info,
+                        Summary = "Reset Successful",
+                        Detail = $"Flow {FlowID} has been reset successfully."
+                    });
+
+                // Close the dialog after successful execution
+                DialogService.Close(true);
+            }
+
+        }
+        catch (Exception ex)
+        {
+            success = false;
+            NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = "Reset Failed",
+                    Detail = $"An error occurred: {ex.Message}"
+                });
+        }
+        finally
+        {
+            await connection.CloseAsync();
+        }
+
+        if (OnActionCompleted.HasDelegate && success)
+        {
+            // Just notify the parent that the action completed successfully
+            // No navigation URL is returned from the procedure
+            await OnActionCompleted.InvokeAsync(string.Empty);
+        }
+    }
+}
+
+<RadzenCard Style="padding: 20px;">
+    <RadzenRow Style="margin-bottom: 50px;">
+        <RadzenColumn Size="12">
+            <RadzenText TextStyle="TextStyle.Subtitle2">Reset Date (Optional)</RadzenText>
+            <RadzenDatePicker @bind-Value="@ResetDate" DateFormat="MM/dd/yyyy" AllowClear="true" Style="width: 200px;" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow Style="margin-bottom: 15px;">
+        <RadzenColumn Size="12">
+            <RadzenCheckBox @bind-Value="@ResetTransformations" Name="ResetTransformations" />
+            <RadzenLabel Text="Reset Transformations" Component="ResetTransformations" Style="margin-left: 8px;" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow Style="margin-bottom: 15px;">
+        <RadzenColumn Size="12">
+            <RadzenCheckBox @bind-Value="@DeleteTransformations" Name="DeleteTransformations" />
+            <RadzenLabel Text="Delete Transformations" Component="DeleteTransformations" Style="margin-left: 8px;" />
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow>
+        <RadzenColumn Size="12">
+            <RadzenButton Text="Reset Flow" Click="@Button0Click" ButtonStyle="ButtonStyle.Primary" />
+            <RadzenButton Text="Cancel" Click="@(() => DialogService.Close(false))" ButtonStyle="ButtonStyle.Light" Style="margin-left: 10px;" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenCard>

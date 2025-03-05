@@ -1,0 +1,17 @@
+﻿@namespace SQLFlowUi.Components
+@inject IJSRuntime mJS
+
+
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+    <RadzenProgressBarCircular  ShowValue="true" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large">
+        <Template>@Message</Template>
+    </RadzenProgressBarCircular>
+</RadzenStack>
+
+
+@code {
+    [Parameter] 
+    public string Message { get; set; } = "Processing";
+
+
+}

@@ -1,0 +1,441 @@
+@using SQLFlowUi.Controllers
+@using System.Text
+@using Newtonsoft.Json
+@using SQLFlowCore.Services.UniqueKeyDetector
+@using SQLFlowUi.Service
+
+@attribute [Authorize]  
+
+@inject DocumentationService docService
+@inject ConfigService configService
+@inject SecurityService securityService
+@page "/detect-unique-key"
+@page "/detect-unique-key/{FlowID:int}"
+
+
+@code {
+    private bool CloseTraceLog = true;
+    private int flowId;
+    private CancellationTokenSource _cancellationTokenSource;
+    private int count;
+
+    private async void OnChange(object value, string name)
+    {
+        if (name == "FlowID")
+        {
+           await GetTrgColumns(value.ToString());
+        }
+    }
+
+    protected async Task GetTrgColumns(string flowid)
+    {
+        try
+        {
+            string Url = configService.configSettings.TrgTblSchema + "?FlowId=" + flowid;
+            
+            string token = "";
+            token = await securityService.GetJwtTokenAsync();
+            HttpClient HttpGetSchema = new HttpClient();
+            HttpGetSchema.DefaultRequestHeaders.Add("Authorization", token);
+
+            var response = await HttpGetSchema.GetAsync(Url, HttpCompletionOption.ResponseHeadersRead);
+            if (response.IsSuccessStatusCode)
+            {
+                var fullResponse = await response.Content.ReadAsStringAsync();
+                objectColumn = ConvertJsonToObjectColumns(fullResponse);
+
+                if (objectColumn.Count() == 0)
+                {
+                    //objectColumn = new List<ObjectColumns>();
+                    //SelectedValues = new List<string>();
+                    //StateHasChanged();
+                    NotificationService.Notify(NotificationSeverity.Error, "No columns found", "Unable to fetch schema of target object");
+                }
+                else
+                {
+                    // Create a list of selected ObjectColumns
+                    IEnumerable<ObjectColumns> selectedColumns = objectColumn.Where(x => x.Selected);
+
+                    // Convert to IEnumerable<string> containing only the ColumnNames of selected columns
+                    SelectedValues = selectedColumns.Select(x => x.ColumnName);
+
+                    // Notify Blazor to re-render the component
+                    StateHasChanged();
+
+                    // Show a success notification
+                }
+                
+            }
+            else
+            {
+                //objectColumn = new List<ObjectColumns>();
+                //SelectedValues = new List<string>();
+                //StateHasChanged();
+                //NotificationService.Notify(NotificationSeverity.Error, "Failed", "Unable to fetch schema of target object");
+            }
+        }
+        catch (Exception ex)
+        {
+            //objectColumn = new List<ObjectColumns>();
+            //SelectedValues = new List<string>();
+            //StateHasChanged();
+            NotificationService.Notify(NotificationSeverity.Error, "Failed", ex.Message);
+        }
+    }
+    
+    private static List<ObjectColumns> ConvertJsonToObjectColumns(string jsonString)
+    {
+        try
+        {
+            // Deserialize the JSON string to a List of ObjectColumns
+            var objectColumnsList = JsonConvert.DeserializeObject<List<ObjectColumns>>(jsonString);
+            return objectColumnsList;
+        }
+        catch (JsonException ex) // Catches JSON-related errors
+        {
+            // Handle or log the exception as needed
+            Console.WriteLine($"An error occurred during JSON deserialization: {ex.Message}");
+            return null; // or throw;
+        }
+        catch (Exception ex) // Catches other errors
+        {
+            // Handle or log the exception as needed
+            Console.WriteLine($"An unexpected error occurred: {ex.Message}");
+            return null; // or throw;
+        }
+    }
+
+    private string GetNumberOfRowsToSample(string label)
+    {
+        return $"{label}({singleSysDetectUniqueKey.NumberOfRowsToSample})";
+    }
+
+    private string GetTotalUniqueKeysSought(string label)
+    {
+        return $"{label}({singleSysDetectUniqueKey.TotalUniqueKeysSought})";
+    }
+
+    private string GetMaxKeyCombinationSize(string label)
+    {
+        return $"{label}({singleSysDetectUniqueKey.MaxKeyCombinationSize})";
+    }
+    
+    private string GetRedundantColSimilarityThreshold(string label)
+    {
+        return $"{label}({singleSysDetectUniqueKey.RedundantColSimilarityThreshold})";
+    }
+    private string GetSelectRatioFromTopUniquenessScore(string label)
+    {
+        return $"{label}({singleSysDetectUniqueKey.SelectRatioFromTopUniquenessScore})";
+    }
+    private string GetMaxDegreeOfParallelism(string label)
+    {
+        return $"{label}({singleSysDetectUniqueKey.MaxDegreeOfParallelism})";
+    }
+    
+    private void DetectDone(string cleanRepsone)
+    {
+        
+        cleanRepsone = ExtractDataBetweenPipes(cleanRepsone);
+        if (!string.IsNullOrEmpty(cleanRepsone))
+        {
+            keyDetectorResults = JsonConvert.DeserializeObject<List<KeyDetectorResult>>(cleanRepsone);
+            keyDetectorResults = keyDetectorResults.OrderBy(x => x.ColumnCountInKey)
+                                                   .ThenByDescending(x => x.NumericColumnCountInKey).ToList();
+        }
+        else
+        {
+            keyDetectorResults = new List<KeyDetectorResult>();
+        }
+       
+        count = keyDetectorResults.Count();
+        if(count == 0)
+        {
+            NotificationService.Notify(NotificationSeverity.Warning, "No Unique Key Detected", "No unique key detected for the selected columns. Try with different configurations");
+        }
+        
+        if (CloseTraceLog)
+        {
+            DialogService.CloseSide(null);
+        }
+        
+        StateHasChanged();
+    }
+
+    private static string ExtractDataBetweenPipes(string input)
+    {
+        // Define the start and end markers.
+        string startMarker = "|||||";
+        string endMarker = "|-|-|-|-|";
+
+        // Find the index of the start and end markers.
+        int startIndex = input.IndexOf(startMarker);
+        int endIndex = input.IndexOf(endMarker);
+
+        // Check if both markers are found.
+        if (startIndex != -1 && endIndex != -1)
+        {
+            // Calculate the start position and length to extract.
+            int startPos = startIndex + startMarker.Length;
+            int length = endIndex - startPos;
+
+            // Extract and return the substring between the markers.
+            if (length > 0)
+            {
+                return input.Substring(startPos, length).Trim();
+            }
+        }
+
+        // Return null if the text between the markers cannot be found.
+        return null;
+    }
+
+    protected async System.Threading.Tasks.Task Button0Click(Microsoft.AspNetCore.Components.Web.MouseEventArgs args)
+    {
+        string cancelTokenId = Guid.NewGuid().ToString();
+        _cancellationTokenSource = new CancellationTokenSource(); // Initialize the CancellationTokenSource
+
+        var payload = new
+        {
+            flowId = flowId,
+            colList = $"{string.Join(",", SelectedValues)}",
+            numberOfRowsToSample = singleSysDetectUniqueKey.NumberOfRowsToSample,
+            totalUniqueKeysSought= singleSysDetectUniqueKey.TotalUniqueKeysSought,
+            maxKeyCombinationSize= singleSysDetectUniqueKey.MaxKeyCombinationSize,
+            redundantColSimilarityThreshold = singleSysDetectUniqueKey.RedundantColSimilarityThreshold,
+            selectRatioFromTopUniquenessScore = 1 - singleSysDetectUniqueKey.SelectRatioFromTopUniquenessScore,
+            analysisMode = singleSysDetectUniqueKey.AnalysisMode,
+            executeProofQuery = singleSysDetectUniqueKey.ExecuteProofQuery,
+            earlyExitOnFound = singleSysDetectUniqueKey.EarlyExitOnFound,
+            dbg = 0,
+            cancelTokenId = cancelTokenId
+        };
+
+        var jsonPayload = JsonConvert.SerializeObject(payload);
+        var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+        try
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "URL", $"{configService.configSettings.DetectUniqueKey}" },
+                { "PayLoad", $"{jsonPayload}" },
+                { "cancelTokenId", $"{cancelTokenId}"},
+                { "ShowNotification", false},
+                { "OnActionCompleted", new EventCallback<string>(this, DetectDone) }
+            };
+
+            // var parameters = new Dictionary<string, object>
+            // {
+            //     { "URL", $"{url}" },
+            //     { "cancelTokenId", $"{cancelTokenId}"},
+            //     { "ShowNotifciation", false},
+            //     { "OnActionCompleted", new EventCallback<string>(this, DetectDone) }
+            // };
+
+
+            await DialogService.OpenSideAsync<ExecAF>("Detecting Unique Keys", parameters, options: new SideDialogOptions { Height = "85%", CloseDialogOnOverlayClick = false, Position = DialogPosition.Bottom, ShowMask = true });
+        }
+        catch (Exception ex)
+        {
+            // Log or handle exception
+            throw new ApplicationException("Error while requesting JWT token", ex);
+        }
+    }
+
+    public IEnumerable<object> GetAnalysisModes()
+    {
+        return Enum.GetValues(typeof(AnalysisMode))
+            .Cast<AnalysisMode>()
+            .Select(am => new 
+            {
+                Value = (int)am, // Or just 'am' if you want to use the enum type directly
+                Text = am.ToString() // Or any custom string mapping
+            });
+    }
+    
+}
+
+<PageTitle>Detect Unique Keys</PageTitle>
+<RadzenRow Gap="0" RowGap="0">
+    <RadzenColumn Size="12">
+        <RadzenCard Style="padding: 25px,25px 25px 25px;">
+            <RadzenRow>
+                <RadzenText Text="Algorithm to detect unique keys" TextStyle="TextStyle.H3" TagName="TagName.H1" />
+            </RadzenRow>
+            <RadzenFieldset Style="margin-bottom: 25px">
+                <RadzenRow Style="margin-bottom: 25px; margin-top: 25px">
+                    <RadzenColumn Style="width: 49%; margin-right: 20px;">
+                        <RadzenFormField Text="Select flow" Variant="Variant.Outlined" Style="width: 100%;margin-bottom: 20px;">
+                            <ChildContent>
+                                <RadzenDropDownDataGrid AllowClear="true" Change="@((args) => OnChange(args, "FlowID"))" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@flowId" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                                    <Columns>
+                                        <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px"/>
+                                        <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px"/>
+                                        <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort"/>
+                                    </Columns>
+                                </RadzenDropDownDataGrid>
+                            </ChildContent>
+                        </RadzenFormField>
+                        
+                        <RadzenFormField Text="" Variant="Variant.Outlined" Style="width: 100%; margin-bottom: 20px;">
+                            <ChildContent>
+                                <RadzenDropDown Data="@GetAnalysisModes()"
+                                                TextProperty="Text"
+                                                ValueProperty="Text"
+                                                Placeholder="Select Analysis Mode"
+                                                @bind-Value="@singleSysDetectUniqueKey.AnalysisMode" />
+                            </ChildContent>
+                        </RadzenFormField>
+
+                        <RadzenFormField Text="@GetNumberOfRowsToSample("Number Of Rows To Sample")" Variant="Variant.Outlined" Style="width: 100%; margin-bottom: 20px;">
+                            <ChildContent>
+                                <RadzenSlider @bind-Value="@singleSysDetectUniqueKey.NumberOfRowsToSample" TValue="int" Step="10000" Min="10000" Max="500000" Name="NumberOfRowsToSample" Style="width:100%;margin-bottom: 25px; margin-top: 25px" />
+                            </ChildContent>
+                        </RadzenFormField>
+                        <RadzenColumn Style="width: 100%;margin-bottom: 20px;">
+                            <RadzenFormField Text="@GetTotalUniqueKeysSought("Total Unique Keys Sought")" Variant="Variant.Outlined" Style="width: 49%; ">
+                                <ChildContent>
+                                    <RadzenNumeric ShowUpDown="true" TValue="int" Step="1" Min="1" Max="20" @bind-Value="@singleSysDetectUniqueKey.TotalUniqueKeysSought" Style="width:100%;"></RadzenNumeric>
+                                </ChildContent>
+                            </RadzenFormField>
+                            <RadzenFormField Text="@GetMaxKeyCombinationSize("Max Key Combination Size")" Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenNumeric TValue="int" Step="1" Min="1" Max="5" @bind-Value="@singleSysDetectUniqueKey.MaxKeyCombinationSize" Style="width:100%;"></RadzenNumeric>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenColumn Style="width: 100%;margin-bottom: 20px;">
+                            <RadzenFormField Text="@GetRedundantColSimilarityThreshold("Redundant Column Similarity Threshold")" Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenNumeric TValue="decimal" Step="0.05" Min="0.05m" Max="1m" @bind-Value="@singleSysDetectUniqueKey.RedundantColSimilarityThreshold" Style="width:100%;"></RadzenNumeric>
+                                </ChildContent>
+                            </RadzenFormField>
+                            <RadzenFormField Text="@GetSelectRatioFromTopUniquenessScore("Select Ratio From Top Uniqueness Score")" Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenNumeric TValue="decimal" Step="0.05" Min="0.0m" Max="1m" @bind-Value="@singleSysDetectUniqueKey.SelectRatioFromTopUniquenessScore" Style="width:100%;" Name="UniquenessThresholdForLikelyUnique"></RadzenNumeric>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenColumn>
+
+                        <RadzenFormField Text="@GetMaxDegreeOfParallelism("Max Degree Of Parallelism")" Variant="Variant.Outlined" Style="width: 100%;margin-bottom: 20px;">
+                            <ChildContent>
+                                <RadzenSlider @bind-Value="@singleSysDetectUniqueKey.MaxDegreeOfParallelism" TValue="int" Step="1" Min="1" Max="8" Name="MaxDegreeOfParallelism" Style="width:100%;margin-bottom: 25px; margin-top: 25px" />
+                            </ChildContent>
+                        </RadzenFormField>
+                        <RadzenRow Gap="16">
+                            <RadzenColumn Style="width: 100%;margin-bottom: 20px;">
+                                <RadzenCheckBox @bind-Value="@singleSysDetectUniqueKey.ExecuteProofQuery" Name="TruncateTrg" />
+                                <RadzenLabel Text="Execute Proof Queries" Component="TruncateTrg" />
+                            </RadzenColumn>
+                            
+                            <RadzenColumn Style="width: 100%;margin-bottom: 20px;">
+                                <RadzenCheckBox @bind-Value="@singleSysDetectUniqueKey.EarlyExitOnFound" Name="EarlyExitOnFound" />
+                                <RadzenLabel Text="Early Exit On Found" Component="EarlyExitOnFound" />
+                            </RadzenColumn>
+
+                            <RadzenColumn Style="width: 100%;margin-bottom: 20px;">
+                                <RadzenCheckBox @bind-Value="@CloseTraceLog" Name="CloseTraceLog" />
+                                <RadzenLabel Text="Auto Close Tracelog" Component="TruncateTrg" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Gap="16">
+                            <RadzenButton Text="Detect Unique Keys" Click="@Button0Click"></RadzenButton>
+                        </RadzenRow> 
+                        
+                    </RadzenColumn>
+                    <RadzenColumn Style="width: 49%;">
+                        <RadzenFormField Text="Selected Columns" Variant="Variant.Outlined" Style="width: 100%;">
+                            <ChildContent>
+                                <RadzenListBox @bind-Value=@SelectedValues AllowFiltering="true" Data=@objectColumn TextProperty="ColumnName" ValueProperty="ColumnName"
+                                               Multiple=true AllowClear=true Placeholder="Columns" Style="width: 100%; height: 460px"/>
+                            </ChildContent>
+                        </RadzenFormField>
+                    </RadzenColumn>
+                </RadzenRow>
+               
+            </RadzenFieldset>
+            
+            <RadzenDataList Data="@keyDetectorResults" TItem="KeyDetectorResult" AllowPaging="true" PageSize="10"
+                            Style="width: 100%;"
+                            Count=@count PagerHorizontalAlign="HorizontalAlign.Center" ShowPagingSummary="true">
+                <Template Context="result">
+                    <RadzenCard Style="width: 100%; margin-bottom: 1rem; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <RadzenRow Gap="16" Style="margin: 0; padding: 1rem;">
+                            <RadzenColumn Size="12" Style="background-color: rgba(0,123,255,0.1); border-radius: 0.25rem; padding: 10px;">
+                                <RadzenText TextStyle="TextStyle.H5" TagName="TagName.H5" class="rz-color-secondary">Detected Key: @result.DetectedKey</RadzenText>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12">
+                                <RadzenRow Gap="16">
+                                    <RadzenColumn Size="12" SizeMD="6">
+                                        <div class="d-flex align-items-center">
+                                            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-0">Column count in key: </RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body1">@result.ColumnCountInKey</RadzenText>
+                                        </div>
+                                    </RadzenColumn>
+
+                                    <RadzenColumn Size="12" SizeMD="6">
+                                        <div class="d-flex align-items-center">
+                                            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-0">Numeric column count in key: </RadzenText>
+                                            <RadzenText TextStyle="TextStyle.Body1">@result.NumericColumnCountInKey</RadzenText>
+                                        </div>
+                                    </RadzenColumn>
+
+                                    <RadzenColumn Size="12" SizeMD="6">
+                                        <div class="d-flex align-items-center">
+                                            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-0 mr-2">Proof executed: </RadzenText>
+                                            @if (result.ProofQueryExecuted)
+                                            {
+                                                <RadzenIcon Icon="check" IconStyle="IconStyle.Success" Style="margin-right: 5px;"/>
+                                            }
+                                            else
+                                            {
+                                                <RadzenIcon Icon="close" IconStyle="IconStyle.Info" Style="margin-right: 5px;"/>
+                                            }
+                                            <RadzenText TextStyle="TextStyle.Body1">@result.ProofQueryExecuted.ToString()</RadzenText>
+                                        </div>
+                                    </RadzenColumn>
+                                    <RadzenColumn Size="12" SizeMD="6">
+                                        <div class="d-flex align-items-center">
+                                            <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" Class="rz-mb-0">Duplicate row count: </RadzenText>
+                                            @if (result.DuplicateRowCount == "-1")
+                                            {
+                                                <RadzenIcon Icon="close" IconStyle="IconStyle.Info" Style="margin-right: 5px;"/>
+                                            }
+                                            else
+                                            {
+                                                @if (result.DuplicateRowCount == "0")
+                                                {
+                                                    <RadzenIcon Icon="check" IconStyle="IconStyle.Success" Style="margin-right: 5px;"/>
+                                                }
+                                                else
+                                                {
+                                                    <RadzenIcon Icon="close" IconStyle="IconStyle.Danger" Style="margin-right: 5px;"/>
+                                                }
+
+                                            }
+                                            <RadzenText TextStyle="TextStyle.Body1">@result.DuplicateRowCount</RadzenText>
+                                        </div>
+                                    </RadzenColumn>
+                                </RadzenRow>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12">
+                                <RadzenText TextStyle="TextStyle.H6" TagName="TagName.H5" class="rz-mb-0">Proof Query:</RadzenText>
+                                <RadzenText TextStyle="TextStyle.Body2">@result.ProofQuery</RadzenText>
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenCard>
+                </Template>
+            </RadzenDataList>
+
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+
+
+
+
+
+

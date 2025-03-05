@@ -1,0 +1,65 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-geo-coding"
+
+
+ <PageTitle>Add GeoCoding</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save GeoCoding</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.GeoCoding" Data="@geoCoding" Visible="@(geoCoding != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text="FlowID" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@geoCoding.FlowID" Name="FlowID" ReadOnly="true" />
+                  </ChildContent>    
+                  <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text="Google A P I Key" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@geoCoding.GoogleAPIKey" Name="GoogleAPIKey" />
+                  </ChildContent>    
+                  <Helper>
+                    <RadzenRequiredValidator Component="GoogleAPIKey" Text="GoogleAPIKey is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text="Key Column" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@geoCoding.KeyColumn" Name="KeyColumn" />
+                  </ChildContent>    
+                  <Helper>
+                    <RadzenRequiredValidator Component="KeyColumn" Text="KeyColumn is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text="Lon Column" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@geoCoding.LonColumn" Name="LonColumn" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Lat Column" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@geoCoding.LatColumn" Name="LatColumn" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Address Column" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@geoCoding.AddressColumn" Name="AddressColumn" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="trg D B Sch Tbl" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@geoCoding.trgDBSchTbl" Name="trgDBSchTbl" />
+                  </ChildContent>    
+                  <Helper>
+                    <RadzenRequiredValidator Component="trgDBSchTbl" Text="trgDBSchTbl is required" />
+                  </Helper>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+

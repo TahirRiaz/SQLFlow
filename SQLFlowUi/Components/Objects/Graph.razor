@@ -1,0 +1,1522 @@
+﻿@using SQLFlowCore.Pipeline
+@inject IJSRuntime JS
+
+@code {
+    [Parameter] public int FlowID { get; set; }
+    
+    string conStr = "";
+    string _result = "";
+    
+    private int DirValue { get; set; } = 1;
+    private int allDepValue { get; set; } = 1;
+    private int allBatchesValue { get; set; } = 1;
+
+    string _dir = "A";
+    bool _allDep = false;
+    bool _allBatches = false;
+    private bool shouldRescale = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        conStr = Environment.GetEnvironmentVariable("SQLFlowConStr");
+        await FetchResult();
+
+    }
+
+    private async Task FetchResult()
+    {
+        try
+        {
+            _result = ExecLineageLookup.ExecJson(conStr, FlowID.ToString(), _allDep, _allBatches, _dir);
+            StateHasChanged(); // This will request a re-render of the component.
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in FetchResult: {ex.Message}");
+        }
+    }
+    // This method can be called when your component is initialized or when data changes
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("initializeGraph", _result);
+        }
+        else if (shouldRescale)
+        {
+            // Re-initialize the graph when parameters change and shouldRescale is true
+            await JS.InvokeVoidAsync("initializeGraph", _result);
+            shouldRescale = false; // Reset the flag after handling
+        }
+    }
+
+
+    private async Task UpdateDirValue(int value)
+    {
+        DirValue = value;
+        _dir = value == 1 ? "A" : "B";
+        shouldRescale = true;
+        await FetchResult();
+        StateHasChanged(); // Trigger a re-render
+    }
+
+    private async Task UpdateAllDepValue(int value)
+    {
+        allDepValue = value;
+        _allDep = value == 2;  // True for Yes (2), False for No (1)
+        shouldRescale = true;  // Set flag to trigger re-rendering
+        await FetchResult();
+        StateHasChanged();     // Trigger a re-render
+    }
+
+    private async Task UpdateAllBatchesValue(int value)
+    {
+        allBatchesValue = value;
+        _allBatches = value == 2; // True for Yes (2), False for No (1)
+        shouldRescale = true;     // Set flag to trigger re-rendering
+        await FetchResult();
+        StateHasChanged();        // Trigger a re-render
+    }
+
+    
+
+
+
+}
+
+<style>
+    /* Base styles */
+    :root {
+        --bg-primary: #1a1a1a;
+        --bg-secondary: #2a2a2a;
+        --bg-tertiary: #333;
+        --bg-quaternary: #3a3a3a;
+        --border-color: rgba(255, 255, 255, 0.08);
+        --border-color-bright: rgba(255, 255, 255, 0.1);
+        --text-primary: #fff;
+        --text-secondary: #ccc;
+        --text-muted: #999;
+        --text-dim: #aaa;
+        --accent-color: #265AD8;
+        --accent-highlight: #00ffff;
+        --shadow-standard: 0 3px 10px rgba(0, 0, 0, 0.25);
+        --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.3);
+        --transition-standard: all 0.2s ease;
+        --border-radius-sm: 4px;
+        --border-radius-md: 6px;
+        --border-radius-lg: 8px;
+        --border-radius-xl: 12px;
+    }
+
+    html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow: hidden;
+        background-color: var(--bg-primary);
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        color: var(--text-primary);
+    }
+
+    body {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    /* Graph container */
+    .graph-container {
+        flex: 1;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    #orgChart {
+        width: 100%;
+        height: 100%;
+    }
+
+    /* Floating search and controls */
+    .floating-search {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: nowrap;
+        width: 100%;
+        gap: 8px;
+        padding: 8px 12px;
+        background-color: rgba(42, 42, 42, 0.6); /* Reduced opacity */
+        backdrop-filter: blur(4px);
+        border-radius: 0; /* Remove rounded corners */
+        border-bottom: 1px solid var(--border-color);
+        box-shadow: none; /* Remove shadow for less prominence */
+        transition: var(--transition-standard);
+        z-index: 100;
+    }
+
+        .floating-search:has(input:focus),
+        .floating-search:has(input[value]:not([value=""])) {
+            background-color: rgba(42, 42, 42, 0.8); /* Slightly more visible when in use */
+        }
+
+        .floating-search:hover {
+            background-color: rgba(42, 42, 42, 0.75);
+        }
+
+    /* Toggle group styling */
+    .toggle-group {
+        display: flex;
+        flex-direction: column;
+        min-width: 100px; /* Reduced from 120px */
+    }
+
+    .toggle-label {
+        font-size: 10px; /* Reduced from 11px */
+        opacity: 0.8; /* Make labels less prominent */
+    }
+
+    .toggle-options {
+        display: flex;
+        background-color: var(--bg-primary);
+        border-radius: var(--border-radius-sm);
+        overflow: hidden;
+        border: 1px solid var(--bg-tertiary);
+        height: 28px;
+    }
+
+    .toggle-option {
+        position: relative;
+        flex: 1;
+    }
+
+        .toggle-option span {
+            padding: 0 8px;
+            font-size: 12px;
+            text-align: center;
+            color: var(--text-secondary);
+            width: 100%;
+            transition: var(--transition-standard);
+            line-height: 28px;
+            display: block;
+            user-select: none;
+        }
+
+        .toggle-option input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+
+            .toggle-option input:checked + span {
+                background-color: var(--accent-color);
+                color: white;
+            }
+
+        .toggle-option:hover input:not(:checked) + span {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+    /* Search input and buttons */
+    .search-container {
+        display: flex;
+        align-items: center;
+        height: 28px;
+        flex: 1; /* Take all available space */
+        margin-left: 10px;
+    }
+
+    #nodeSearch {
+        background-color: var(--bg-tertiary);
+        border: 1px solid #444;
+        color: var(--text-primary);
+        padding: 0 10px;
+        border-radius: var(--border-radius-sm);
+        margin-right: 5px;
+        width: 100%; /* Take full width of container */
+        font-size: 13px;
+        height: 24px; /* Reduced height */
+        box-sizing: border-box;
+        transition: var(--transition-standard);
+    }
+
+        #nodeSearch:focus {
+            outline: none;
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 2px rgba(38, 90, 216, 0.2);
+        }
+
+    .search-button {
+        background-color: var(--bg-tertiary);
+        border: 1px solid #444;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: var(--border-radius-sm);
+        margin-left: 4px;
+        cursor: pointer;
+        transition: var(--transition-standard);
+    }
+
+        .search-button:hover {
+            background-color: var(--bg-quaternary);
+            color: var(--text-primary);
+        }
+
+    #searchCount {
+        color: var(--text-muted);
+        margin-left: 8px;
+        font-size: 12px;
+        min-width: 60px;
+    }
+
+    /* Node and graph styles */
+    .node-rect {
+        fill: var(--bg-secondary);
+        stroke: none;
+        stroke-width: 2px;
+        rx: 8;
+        ry: 8;
+        transition: var(--transition-standard);
+    }
+
+        .node-rect.dimmed {
+            opacity: 0.15;
+        }
+
+        .node-rect.highlighted {
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.3));
+        }
+
+    .node-text {
+        fill: var(--text-primary);
+        pointer-events: none;
+        font-size: 12px;
+        transition: var(--transition-standard);
+    }
+
+    .description-text {
+        fill: var(--text-secondary);
+        font-size: 11px;
+    }
+
+    .name-text {
+        fill: var(--accent-highlight);
+        font-weight: 500;
+    }
+
+    .node-group.dimmed .node-text {
+        opacity: 0.15;
+    }
+
+    .link {
+        fill: none;
+        stroke-width: 2px;
+        transition: var(--transition-standard);
+    }
+
+        .link.dimmed {
+            opacity: 0.15;
+        }
+
+        .link.highlighted {
+            stroke-width: 3px;
+        }
+
+    .node-group {
+        cursor: pointer;
+    }
+
+    /* Context menu */
+    .context-menu {
+        position: absolute;
+        background: var(--bg-secondary);
+        border: 1px solid #4a4a4a;
+        border-radius: var(--border-radius-sm);
+        padding: 4px 0;
+        min-width: 150px;
+        box-shadow: var(--shadow-elevated);
+        color: var(--text-primary);
+        z-index: 9999;
+    }
+
+    .context-menu-item {
+        padding: 8px 16px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: var(--transition-standard);
+    }
+
+        .context-menu-item:hover {
+            background: var(--bg-quaternary);
+        }
+
+    /* Dialog styles */
+    .dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0, 0, 0, 0.75);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1001;
+        backdrop-filter: blur(3px);
+    }
+
+    .dialog-content {
+        background: linear-gradient(145deg, var(--bg-secondary), var(--bg-tertiary));
+        padding: 24px;
+        border-radius: var(--border-radius-xl);
+        width: 90%;
+        max-width: 800px;
+        height: 80vh;
+        position: relative;
+        color: var(--text-primary);
+        resize: both;
+        overflow: hidden;
+        min-width: 300px;
+        min-height: 400px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border-color-bright);
+    }
+
+    .dialog-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        padding-right: 40px;
+        border-bottom: 1px solid var(--border-color-bright);
+        color: var(--accent-highlight);
+    }
+
+    .dialog-code {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 16px;
+        border-radius: var(--border-radius-md);
+        font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        white-space: pre-wrap;
+        margin-top: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        position: absolute;
+        top: 60px;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        overflow: auto;
+    }
+
+    .dialog-close {
+        position: absolute;
+        right: 16px;
+        top: 16px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: none;
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: var(--transition-standard);
+        z-index: 1000;
+    }
+
+        .dialog-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: scale(1.1);
+        }
+
+    /* Responsive adjustments */
+    @@media (max-width: 1200px) {
+        .floating-search {
+            flex-wrap: wrap;
+            padding: 6px 8px;
+        }
+
+        .toggle-group {
+            min-width: auto;
+            margin-right: 8px;
+        }
+
+        .search-container {
+            flex-basis: 100%;
+            order: -1; /* Move search to the top */
+            margin: 0 0 8px 0;
+        }
+    }
+</style>
+
+<div class="graph-container">
+    <div class="floating-search">
+        <!-- Direction Toggle -->
+        <div class="toggle-group">
+            <span class="toggle-label">Direction</span>
+            <div class="toggle-options">
+                <label class="toggle-option">
+                    <input type="radio" name="direction" value="after" checked id="directionAfter" @onchange="() => UpdateDirValue(1)">
+                    <span>After</span>
+                </label>
+                <label class="toggle-option">
+                    <input type="radio" name="direction" value="before" id="directionBefore" @onchange="() => UpdateDirValue(2)">
+                    <span>Before</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Dependencies Toggle -->
+        <div class="toggle-group">
+            <span class="toggle-label">Include Related Dependencies</span>
+            <div class="toggle-options">
+                <label class="toggle-option">
+                    <input type="radio" name="dependencies" value="no" checked id="dependenciesNo" @onchange="() => UpdateAllDepValue(1)">
+                    <span>No</span>
+                </label>
+                <label class="toggle-option">
+                    <input type="radio" name="dependencies" value="yes" id="dependenciesYes" @onchange="() => UpdateAllDepValue(2)">
+                    <span>Yes</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Source Batch Toggle -->
+        <div class="toggle-group">
+            <span class="toggle-label">Limit To Source Batch</span>
+            <div class="toggle-options">
+                <label class="toggle-option">
+                    <input type="radio" name="sourceBatch" value="yes" checked id="sourceBatchYes" @onchange="() => UpdateAllBatchesValue(1)">
+                    <span>Yes</span>
+                </label>
+                <label class="toggle-option">
+                    <input type="radio" name="sourceBatch" value="no" id="sourceBatchNo" @onchange="() => UpdateAllBatchesValue(2)">
+                    <span>No</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- Search Bar Elements -->
+        <div class="search-container">
+            <input type="text" id="nodeSearch" placeholder="Search nodes...">
+            <button id="searchPrev" class="search-button" aria-label="Previous result">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 15l-6-6-6 6" />
+                </svg>
+            </button>
+            <button id="searchNext" class="search-button" aria-label="Next result">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6 9l6 6 6-6" />
+                </svg>
+            </button>
+            <span id="searchCount"></span>
+        </div>
+    </div>
+    <svg id="orgChart"></svg>
+</div>
+
+<script>
+
+        // Updated function
+        window.initializeGraph = function(data) {
+        console.log('Initialize graph called with data type:', typeof data);
+
+        // Parse the data if it's a string
+        let parsedData;
+        if (typeof data === 'string') {
+            try {
+                parsedData = JSON.parse(data);
+                console.log('Successfully parsed JSON string');
+            } catch (e) {
+                console.error('Failed to parse data as JSON:', e);
+                return false;
+            }
+        } else {
+            parsedData = data;
+        }
+
+        // If no data is provided, use the global graphData if available
+        const graphData = parsedData || window.graphData;
+        if (!graphData) {
+            console.error('No graph data provided');
+            return false;
+        }
+
+        // Save the current data for future reference
+        window.graphData = graphData;
+
+        // Validate graph data has nodes
+        if (!graphData.nodes || !Array.isArray(graphData.nodes) || graphData.nodes.length === 0) {
+            console.error('Invalid graph data: missing or empty nodes array', graphData);
+            return false;
+        }
+
+        // Clear the SVG content to prevent duplication
+        const svg = d3.select("#orgChart");
+        svg.selectAll("*").remove();
+
+        // Ensure SVG dimensions are set correctly
+        updateGraphDimensions();
+
+        // Render the graph with the data
+        renderGraph(graphData, document.querySelector('.graph-container'));
+
+        // Return true to indicate success
+        return true;
+    };
+
+    // Separate function to update dimensions that can be called on window resize
+    function updateGraphDimensions() {
+        const container = document.querySelector('.graph-container');
+        if (!container) {
+            console.warn('Graph container not found');
+            return false;
+        }
+
+        // Get the computed style to check dimensions
+        const containerStyle = window.getComputedStyle(container);
+        console.log('Container dimensions:', {
+            width: containerStyle.width,
+            height: containerStyle.height,
+            clientWidth: container.clientWidth,
+            clientHeight: container.clientHeight
+        });
+
+        // Set SVG dimensions
+        const svg = document.getElementById('orgChart');
+        if (svg) {
+            svg.setAttribute('width', container.clientWidth);
+            svg.setAttribute('height', container.clientHeight);
+            console.log('SVG dimensions set to:', container.clientWidth, 'x', container.clientHeight);
+            return true;
+        }
+
+        return false;
+    }
+
+    // Add window resize handler
+    window.addEventListener('resize', function() {
+        const dimensionsUpdated = updateGraphDimensions();
+        if (dimensionsUpdated && window.graphData) {
+            renderGraph(window.graphData, document.querySelector('.graph-container'));
+        }
+    });
+
+    if (typeof renderGraph === 'function' && typeof window.graphData !== 'undefined') {
+        // Use setTimeout to ensure DOM is ready in Blazor context
+        setTimeout(function() {
+            initializeGraph(window.graphData);
+        }, 100);
+    }
+
+    function initializeGraph() {
+        const container = document.querySelector('.graph-container');
+
+        // Get the computed style of the container to check its dimensions
+        const containerStyle = window.getComputedStyle(container);
+        console.log('Container computed dimensions:', {
+            width: containerStyle.width,
+            height: containerStyle.height
+        });
+
+        // Ensure proper sizing of the SVG element
+        const svg = document.getElementById('orgChart');
+        svg.setAttribute('width', container.clientWidth);
+        svg.setAttribute('height', container.clientHeight);
+
+        console.log('SVG dimensions set to:', {
+            width: container.clientWidth,
+            height: container.clientHeight
+        });
+
+        // Call your existing renderGraph function
+        if (typeof renderGraph === 'function' && typeof graphData !== 'undefined') {
+            renderGraph(graphData, container);
+        }
+    }
+
+    function renderGraph(data, container) {
+      // Debug logging
+      console.log('renderGraph called with:', {
+        data,
+        container,
+        containerDimensions: container ? {
+          width: container.clientWidth || $(container).width(),
+          height: container.clientHeight || $(container).height()
+        } : null,
+        d3Available: !!window.d3
+      });
+
+      // Validate dependencies
+      if (!window.d3) {
+        console.error('D3 library not loaded');
+        return;
+      }
+
+      // Validate graph data || !data?.edges?.length
+      if (!data?.nodes?.length) {
+        console.error('Invalid graph data:', data);
+        return;
+      }
+
+      // Initialize edges array if not present
+      data.edges = data.edges || [];
+
+      // Get existing SVG element
+      const svg = d3.select("#orgChart");
+      if (svg.empty()) {
+        console.error('Could not find SVG element with id "orgChart"');
+        return;
+      }
+
+      // Clear existing content
+      svg.selectAll("*").remove();
+
+      // Update SVG dimensions based on container
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      svg.attr("width", w)
+        .attr("height", h);
+
+      // Create main group for transformations
+      const g = svg.append("g")
+        .attr("transform", "translate(60,60)");
+
+      // Create a temporary group for text measurements
+      const measureGroup = svg.append("g")
+        .style("visibility", "hidden");
+
+      // Calculate node dimensions
+      function getNodeDimensions(d) {
+        measureGroup.selectAll("*").remove();
+        const nameText = measureGroup.append("text")
+          .attr("class", "node-text")
+          .text(d.name);
+        const descriptionText = measureGroup.append("text")
+          .attr("class", "node-text")
+          .text(d.description);
+
+        const nameBox = nameText.node().getBBox();
+        const descriptionBox = descriptionText.node().getBBox();
+
+        const width = Math.max(nameBox.width, descriptionBox.width) + 40; // Adding padding
+        const height = 46; // Fixed height as it's consistent
+
+        return { width, height };
+      }
+
+      // Group nodes by level and calculate positions
+      function calculateNodePositions() {
+        const levelGroups = {};
+        const minSpacing = 30; // Minimum space between nodes
+
+        if (data.nodes.length === 1) {
+          const node = data.nodes[0];
+          node.dimensions = getNodeDimensions(node);
+          node.x = 0; // Center of the view
+          node.y = 0;
+          return;
+        }
+
+        // First, group nodes by level and calculate their dimensions
+        data.nodes.forEach(node => {
+          // If no edges exist, treat all nodes as level 0
+          const nodeLevel = data.edges.length === 0 ? 0 : (node.level || 0);
+          if (!levelGroups[nodeLevel]) {
+            levelGroups[nodeLevel] = [];
+          }
+          node.dimensions = getNodeDimensions(node);
+          levelGroups[nodeLevel].push(node);
+        });
+
+        // Calculate positions for each level
+        const levelHeight = 120; // Vertical spacing between levels
+
+        Object.entries(levelGroups).forEach(([level, nodes]) => {
+          // Calculate total width needed for this level
+          const totalWidth = nodes.reduce((sum, node, i) => {
+            return sum + node.dimensions.width + (i < nodes.length - 1 ? minSpacing : 0);
+          }, 0);
+
+          let currentX = -totalWidth / 2; // Center the level
+
+          // Position each node
+          nodes.forEach((node, i) => {
+            node.x = currentX + (node.dimensions.width / 2);
+            node.y = level * levelHeight;
+            currentX += node.dimensions.width + minSpacing;
+          });
+        });
+      }
+
+      calculateNodePositions();
+      measureGroup.remove();
+
+      const edgesGroup = g.append("g").attr("class", "edges");
+      const edges = edgesGroup.selectAll(".link")
+        .data(data.edges)
+        .join("path")
+        .attr("class", "link")
+        .style("stroke", d => {
+          const sourceNode = data.nodes.find(n => n.id === d?.source);
+          return sourceNode?.color || "#808080";
+        });
+
+      const nodesGroup = g.append("g").attr("class", "nodes");
+      const nodes = nodesGroup.selectAll(".node-group")
+        .data(data.nodes)
+        .join("g")
+        .attr("class", "node-group")
+        .attr("transform", d => `translate(${d.x},${d.y})`)
+        .on("click", (evt, d) => {
+          evt.stopPropagation();
+          highlightNode(d);
+        })
+        .on("contextmenu", showContextMenu);
+
+      // Create node elements with dynamic widths
+      nodes.each(function (d) {
+        const nodeGroup = d3.select(this);
+
+        nodeGroup.append("rect")
+          .attr("class", "node-rect")
+          .attr("width", d.dimensions.width)
+          .attr("height", d.dimensions.height)
+          .attr("x", -d.dimensions.width / 2)
+          .attr("y", -20)
+          .style("stroke", d => d.color);
+
+        nodeGroup.append("text")
+          .attr("class", "node-text description-text")
+          .attr("text-anchor", "middle")
+          .attr("y", -3)
+          .attr("font-size", 11)
+          .text(d.description);
+
+        nodeGroup.append("text")
+          .attr("class", "node-text name-text")
+          .attr("y", 12)
+          .attr("text-anchor", "middle")
+          .attr("fill", "#00ffff")
+          .text(d.name);
+      });
+
+      const lineGen = d3.line().curve(d3.curveBasis);
+      edges.attr("d", d => {
+        const source = data.nodes.find(n => n.id === d.source);
+        const target = data.nodes.find(n => n.id === d.target);
+
+        const midY = (source.y + target.y) / 2;
+        const sourceOffset = source.level === 0 ? 20 : 0;
+
+        return lineGen([
+          [source.x, source.y],
+          [source.x, source.y + sourceOffset],
+          [source.x, midY],
+          [target.x, midY],
+          [target.x, target.y - 20],
+          [target.x, target.y]
+        ]);
+      });
+
+      // Highlight node and its descendants
+      function highlightNode(node) {
+        // Reset all to dimmed state first
+        const nodeGroups = d3.selectAll(".node-group")
+          .classed("dimmed", true);
+
+        // Dim node rectangles while preserving their original colors
+        nodeGroups.selectAll(".node-rect")
+          .classed("dimmed", true)
+          .classed("highlighted", false)
+          .style("stroke", d => d.color); // Keep original color but dimmed
+
+        // Dim text
+        nodeGroups.selectAll(".node-text")
+          .style("opacity", 0.2);
+
+        // Dim links while preserving their original colors
+        d3.selectAll(".link")
+          .classed("dimmed", true)
+          .classed("highlighted", false)
+          .style("stroke", d => {
+            const sourceNode = data.nodes.find(n => n.id === d.source);
+            return sourceNode ? sourceNode.color : "#808080";
+          });
+
+        // Find all descendants of the clicked node
+        const descendants = findDescendants(node.id);
+        descendants.add(node.id); // Include the clicked node
+
+        // Highlight relevant nodes
+        const highlightedNodes = d3.selectAll(".node-group")
+          .filter(d => descendants.has(d.id))
+          .classed("dimmed", false);
+
+        // Highlight node rectangles
+        highlightedNodes.select(".node-rect")
+          .classed("dimmed", false)
+          .classed("highlighted", true)
+          .style("stroke", d => d.color); // Use original color for highlight
+
+        // Restore text opacity for highlighted nodes
+        highlightedNodes.selectAll(".node-text")
+          .style("opacity", 1);
+
+        // Highlight relevant edges
+        d3.selectAll(".link")
+          .filter(d => descendants.has(d.target) && descendants.has(d.source))
+          .classed("dimmed", false)
+          .classed("highlighted", true)
+          .style("stroke", d => {
+            const sourceNode = data.nodes.find(n => n.id === d.source);
+            return sourceNode ? sourceNode.color : "#808080";
+          });
+
+        // Ensure proper layering
+        d3.select('.edges').lower();
+        d3.select('.nodes').raise();
+      }
+
+      function clearHighlights() {
+        // Remove dimming from node groups
+        const nodeGroups = d3.selectAll(".node-group")
+          .classed("dimmed", false);
+
+        // Reset node rectangles while preserving original colors
+        nodeGroups.selectAll(".node-rect")
+          .classed("dimmed", false)
+          .classed("highlighted", false)
+          .style("stroke", d => d.color); // Use the node's own color property
+
+        // Reset text opacity
+        nodeGroups.selectAll(".node-text")
+          .style("opacity", 1);
+
+        // Reset links while preserving original colors
+        d3.selectAll(".link")
+          .classed("dimmed", false)
+          .classed("highlighted", false)
+          .style("stroke", d => {
+            // Find the source node for this edge to get its color
+            const sourceNode = data.nodes.find(n => n.id === d.source);
+            return sourceNode ? sourceNode.color : "#808080"; // Fallback to gray if source not found
+          });
+      }
+
+      let menuDiv = null;
+        function showContextMenu(evt, d) {
+      evt.preventDefault();
+      clearMenu();
+
+      // Create menu div with higher z-index
+      menuDiv = document.createElement("div");
+      menuDiv.className = "context-menu";
+      menuDiv.style.zIndex = "9999"; // Ensure menu appears above maximized panel
+
+     
+
+      // "Redirect to URL" menu item
+      const redirectItem = document.createElement("div");
+      redirectItem.className = "context-menu-item";
+      redirectItem.textContent = "Go to Flow";
+      redirectItem.onclick = () => {
+        if (d.url) {
+          window.open(d.url, '_blank');
+        }
+        clearMenu(false);
+      };
+      menuDiv.appendChild(redirectItem);
+
+      // "Show Tooltip" menu item
+      const tooltipItem = document.createElement("div");
+      tooltipItem.className = "context-menu-item";
+      tooltipItem.textContent = "Show Details";
+      tooltipItem.onclick = () => {
+        showTooltipDialog(d);
+        clearMenu(false);
+      };
+      menuDiv.appendChild(tooltipItem);
+
+       // "Select All Parents" for highlight
+      const selectParentsItem = document.createElement("div");
+      selectParentsItem.className = "context-menu-item";
+      selectParentsItem.textContent = "Select All Parents";
+      selectParentsItem.onclick = () => {
+        highlightNodeWithAncestors(d);
+        clearMenu(false);
+      };
+      menuDiv.appendChild(selectParentsItem);
+
+      // Position the menu at click position
+      menuDiv.style.left = evt.pageX + "px";
+      menuDiv.style.top = evt.pageY + "px";
+      document.body.appendChild(menuDiv);
+
+      highlightNode(d);
+    }
+
+      // Function to show the tooltip in a dialog
+        function showTooltipDialog(node) {
+          // Remove any existing dialogs first
+          const existingDialog = document.querySelector('.dialog-overlay');
+          if (existingDialog) {
+            existingDialog.remove();
+          }
+
+          const dialog = document.createElement('div');
+          dialog.className = 'dialog-overlay';
+
+          const content = document.createElement('div');
+          content.className = 'dialog-content';
+
+          // Set title
+          const title = document.createElement('div');
+          title.className = 'dialog-title';
+          title.textContent = `${node.name} (${node.type})`;
+
+          const closeBtn = document.createElement('button');
+          closeBtn.className = 'dialog-close';
+          closeBtn.innerHTML = '×';
+
+          const tooltipContent = document.createElement('div');
+          tooltipContent.className = 'dialog-code';
+  
+          // Format the tooltip content with line breaks
+          tooltipContent.innerHTML = node.tooltip ? node.tooltip.replace(/\r\n|\n/g, '<br>') : 'No details available';
+
+          content.appendChild(title);
+          content.appendChild(closeBtn);
+          content.appendChild(tooltipContent);
+          dialog.appendChild(content);
+          document.body.appendChild(dialog);
+
+          // Add resize functionality
+          let isResizing = false;
+          let initialWidth, initialHeight, initialX, initialY;
+
+          const startResize = (e) => {
+            const rect = content.getBoundingClientRect();
+            const isInResizeArea =
+              e.clientX > rect.right - 15 &&
+              e.clientY > rect.bottom - 15;
+
+            if (!isInResizeArea) return;
+
+            isResizing = true;
+            initialWidth = content.offsetWidth;
+            initialHeight = content.offsetHeight;
+            initialX = e.clientX;
+            initialY = e.clientY;
+
+            content.classList.add('resizing');
+            e.preventDefault();
+          };
+
+          const stopResize = () => {
+            isResizing = false;
+            content.classList.remove('resizing');
+          };
+
+          const resize = (e) => {
+            if (!isResizing) return;
+
+            const width = initialWidth + (e.clientX - initialX);
+            const height = initialHeight + (e.clientY - initialY);
+
+            content.style.width = `${Math.max(300, width)}px`;
+            content.style.height = `${Math.max(200, height)}px`;
+          };
+
+          // Cleanup function for event listeners
+          const cleanup = () => {
+            document.removeEventListener('mousemove', resize);
+            document.removeEventListener('mouseup', stopResize);
+          };
+
+          // Add event listeners for resizing
+          content.addEventListener('mousedown', startResize);
+          document.addEventListener('mousemove', resize);
+          document.addEventListener('mouseup', stopResize);
+
+          // Handle dialog close button
+          closeBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            cleanup();
+            dialog.remove();
+          });
+
+          // Handle clicking outside the dialog
+          dialog.addEventListener('click', (e) => {
+            if (e.target === dialog) {
+              cleanup();
+              dialog.remove();
+            }
+          });
+
+          // Add escape key handler
+          const handleEscape = (e) => {
+            if (e.key === 'Escape') {
+              cleanup();
+              dialog.remove();
+              document.removeEventListener('keydown', handleEscape);
+            }
+          };
+          document.addEventListener('keydown', handleEscape);
+        }
+
+      // Find all ancestor nodes (parents and their parents)
+      function findAncestors(nodeId, ancestors = new Set()) {
+        const parentEdges = data.edges.filter(l => l.target === nodeId);
+        parentEdges.forEach(link => {
+          if (!ancestors.has(link.source)) {
+            ancestors.add(link.source);
+            findAncestors(link.source, ancestors);
+          }
+        });
+        return ancestors;
+      }
+
+      // Find all descendant nodes (children and their children)
+      function findDescendants(nodeId, descendants = new Set()) {
+        const childEdges = data.edges.filter(l => l.source === nodeId);
+        childEdges.forEach(link => {
+          if (!descendants.has(link.target)) {
+            descendants.add(link.target);
+            findDescendants(link.target, descendants);
+          }
+        });
+        return descendants;
+      }
+
+      // Highlight node and its ancestors
+      function highlightNodeWithAncestors(node) {
+        // Reset all to dimmed state
+        const nodeGroups = d3.selectAll(".node-group")
+          .classed("dimmed", true);
+
+        nodeGroups.selectAll(".node-rect")
+          .classed("dimmed", true)
+          .classed("highlighted", false)
+          .style("stroke", d => d.color);
+
+        nodeGroups.selectAll(".node-text")
+          .style("opacity", 0.2);
+
+        d3.selectAll(".link")
+          .classed("dimmed", true)
+          .classed("highlighted", false)
+          .style("stroke", d => {
+            const sourceNode = data.nodes.find(n => n.id === d.source);
+            return sourceNode ? sourceNode.color : "#808080";
+          });
+
+        const ancestors = findAncestors(node.id);
+        ancestors.add(node.id); // Include the selected node
+
+        const highlightedNodes = d3.selectAll(".node-group")
+          .filter(d => ancestors.has(d.id))
+          .classed("dimmed", false);
+
+        highlightedNodes.select(".node-rect")
+          .classed("dimmed", false)
+          .classed("highlighted", true)
+          .style("stroke", d => d.color);
+
+        highlightedNodes.selectAll(".node-text")
+          .style("opacity", 1);
+
+        // Highlight edges between ancestors
+        d3.selectAll(".link")
+          .filter(d => ancestors.has(d.source) && ancestors.has(d.target))
+          .classed("dimmed", false)
+          .classed("highlighted", true);
+
+        d3.select('.edges').lower();
+        d3.select('.nodes').raise();
+      }
+
+      function showDialog(node, codeScope = 'current', moduleDocs = {}) {
+        // Remove any existing dialogs first
+        const existingDialog = document.querySelector('.dialog-overlay2');
+        if (existingDialog) {
+          existingDialog.remove();
+        }
+
+        const dialog = document.createElement('div');
+        dialog.className = 'dialog-overlay2';
+
+        const content = document.createElement('div');
+        content.className = 'dialog-content2';
+
+        // Set title based on code scope
+        const title = document.createElement('div');
+        title.className = 'dialog-title2';
+        let titleText;
+        switch (codeScope) {
+          case 'parents':
+            titleText = `Parent Code Blocks for ${node.name} (${node.type})`;
+            break;
+          case 'children':
+            titleText = `Child Code Blocks for ${node.name} (${node.type})`;
+            break;
+          default:
+            titleText = `Block Code for ${node.name} (${node.type})`;
+        }
+        title.textContent = titleText;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'dialog-close2';
+        closeBtn.innerHTML = '×';
+
+        const code = document.createElement('div');
+        code.className = 'dialog-code2';
+
+        content.appendChild(title);
+        content.appendChild(closeBtn);
+        content.appendChild(code);
+        dialog.appendChild(content);
+        document.body.appendChild(dialog);
+
+            // Replace with this:
+        let codeDisplay = null;
+
+        // Create a pre element for displaying code
+        setTimeout(() => {
+          const combinedCode = getCombinedCode(node, codeScope);
+
+          codeDisplay = document.createElement('pre');
+          codeDisplay.textContent = combinedCode;
+          codeDisplay.style.cssText = `
+            margin: 0;
+            padding: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #f8f8f2;
+            font-family: monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            height: 100%;
+            width: 100%;
+            overflow: auto;
+          `;
+
+          code.appendChild(codeDisplay);
+        }, 0);
+
+        // Add resize functionality
+        let isResizing = false;
+        let initialWidth, initialHeight, initialX, initialY;
+
+        const startResize = (e) => {
+          const rect = content.getBoundingClientRect();
+          const isInResizeArea =
+            e.clientX > rect.right - 15 &&
+            e.clientY > rect.bottom - 15;
+
+          if (!isInResizeArea) return;
+
+          isResizing = true;
+          initialWidth = content.offsetWidth;
+          initialHeight = content.offsetHeight;
+          initialX = e.clientX;
+          initialY = e.clientY;
+
+          content.classList.add('resizing');
+          e.preventDefault();
+        };
+
+        const stopResize = () => {
+          isResizing = false;
+          content.classList.remove('resizing');
+        };
+
+        const resize = (e) => {
+          if (!isResizing) return;
+
+          const width = initialWidth + (e.clientX - initialX);
+          const height = initialHeight + (e.clientY - initialY);
+
+          content.style.width = `${Math.max(300, width)}px`;
+          content.style.height = `${Math.max(200, height)}px`;
+
+
+        };
+
+        // Cleanup function for event listeners and editor
+        const cleanup = () => {
+          document.removeEventListener('mousemove', resize);
+          document.removeEventListener('mouseup', stopResize);
+
+        };
+
+        // Add event listeners for resizing
+        content.addEventListener('mousedown', startResize);
+        document.addEventListener('mousemove', resize);
+        document.addEventListener('mouseup', stopResize);
+
+        // Handle dialog close button
+        closeBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          cleanup();
+          dialog.remove();
+        });
+
+        // Handle clicking outside the dialog
+        dialog.addEventListener('click', (e) => {
+          if (e.target === dialog) {
+            cleanup();
+            dialog.remove();
+          }
+        });
+
+        // Add escape key handler
+        const handleEscape = (e) => {
+          if (e.key === 'Escape') {
+            cleanup();
+            dialog.remove();
+            document.removeEventListener('keydown', handleEscape);
+          }
+        };
+        document.addEventListener('keydown', handleEscape);
+      }
+
+      // Helper function to combine code based on scope
+      function getCombinedCode(node, scope) {
+        let nodeSet = new Set();
+        console.log('Getting combined code for node:', node);
+        switch (scope) {
+          case 'parents':
+            nodeSet = findAncestors(node.id);
+            nodeSet.add(node.id); // also include the clicked node
+            break;
+          case 'children':
+            nodeSet = findDescendants(node.id);
+            nodeSet.add(node.id);
+            break;
+          default:
+            nodeSet.add(node.id);
+        }
+
+        const relevantNodes = data.nodes.filter(n => nodeSet.has(n.id));
+        return relevantNodes
+          .map(n => n.tooltip || '# No code block available')
+          .join('\n---------------------\n');
+      }
+
+      function clearMenu(shouldClearHighlight = true) {
+        if (menuDiv) {
+          menuDiv.remove();
+          menuDiv = null;
+        }
+        if (shouldClearHighlight) {
+          clearHighlights();
+        }
+      }
+
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".context-menu") && !e.target.closest(".node-group")) {
+          clearMenu();
+        }
+      });
+
+      const zoom = d3.zoom()
+        .scaleExtent([0.2, 3])
+        .on("zoom", (evt) => {
+          g.attr("transform", evt.transform);
+        });
+      svg.call(zoom);
+
+      const anodes = d3.selectAll('.node-group');
+      const bounds = {
+        left: Infinity,
+        right: -Infinity,
+        top: Infinity,
+        bottom: -Infinity
+      };
+
+      anodes.each(function () {
+        const bbox = this.getBBox();
+        const transform = d3.select(this).attr('transform');
+        const translation = transform ? transform.match(/translate\(([-\d.]+),([-\d.]+)\)/) : null;
+        const x = translation ? parseFloat(translation[1]) : 0;
+        const y = translation ? parseFloat(translation[2]) : 0;
+
+        bounds.left = Math.min(bounds.left, x - bbox.width / 2);
+        bounds.right = Math.max(bounds.right, x + bbox.width / 2);
+        bounds.top = Math.min(bounds.top, y - bbox.height / 2);
+        bounds.bottom = Math.max(bounds.bottom, y + bbox.height / 2);
+      });
+
+      if (data.nodes.length === 1 || data.edges.length === 0) {
+        const padding = 100;
+        bounds.left = -padding;
+        bounds.right = padding;
+        bounds.top = -padding;
+        bounds.bottom = padding;
+      }
+
+          // Calculate the scale to fit the content
+    const graphWidth = bounds.right - bounds.left;
+    const graphHeight = bounds.bottom - bounds.top;
+    const scale = Math.min(
+      (w - 120) / graphWidth,  // 120px for padding
+      1.5  // Limit maximum scale to avoid excessive zoom
+    ) * 0.9;  // 90% of the maximum possible scale for some padding
+
+    // For top alignment, calculate center point of x-axis but use top edge for y-axis
+    const cx = (bounds.left + bounds.right) / 2;
+
+    // Create the initial transform with top alignment
+    const topPadding = 100;  // Adjust this value as needed
+    const initialTransform = d3.zoomIdentity
+      .translate(w / 2 - cx * scale, topPadding)  // Top aligned with padding
+      .scale(scale);
+
+    svg.call(zoom.transform, initialTransform);
+
+      // Add search functionality
+      let currentSearchResults = [];
+      let currentSearchIndex = -1;
+
+      function searchNodes(searchTerm) {
+        // Reset previous highlights
+        clearHighlights();
+
+        if (!searchTerm) {
+          currentSearchResults = [];
+          currentSearchIndex = -1;
+          $('#searchCount').text('');
+          return;
+        }
+
+        // Find matching nodes
+        currentSearchResults = data.nodes.filter(node =>
+          node.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+
+        if (currentSearchResults.length > 0) {
+          currentSearchIndex = 0;
+          highlightSearchResults();
+        } else {
+          $('#searchCount').text('No matches');
+        }
+      }
+
+      function highlightSearchResults() {
+        // First, reset all nodes to dimmed state and remove highlights
+        const allNodeGroups = d3.selectAll('.node-group')
+            .classed('dimmed', true); // Ensure all nodes are marked as dimmed
+
+        allNodeGroups.selectAll('.node-rect')
+            .classed('dimmed', true)
+            .classed('highlighted', false)
+            .style('stroke-width', '2px')
+            .style('stroke', d => d.color)  // Restore original colors
+            .style('filter', null);         // Remove glow effect
+
+        allNodeGroups.selectAll('.node-text')
+            .style('opacity', 0.2);         // Dim text for all nodes
+
+        // Dim all links
+        d3.selectAll('.link')
+            .classed('dimmed', true)
+            .classed('highlighted', false);
+
+        // Get the current node
+        const currentNode = currentSearchResults[currentSearchIndex];
+        if (!currentNode) return;
+
+        // Select and highlight only the current node
+        const nodeElement = d3.selectAll('.node-group')
+            .filter(d => d.id === currentNode.id);
+
+        nodeElement
+            .classed('dimmed', false);      // Remove dimming from current node
+
+        nodeElement.select('.node-rect')
+            .classed('dimmed', false)
+            .classed('highlighted', true)
+            .style('stroke-width', '4px')
+            .style('stroke', currentNode.color)
+            .style('filter', 'drop-shadow(0 0 12px rgba(255, 255, 255, 0.3))');
+
+        nodeElement.selectAll('.node-text')
+            .style('opacity', 1);           // Full opacity for current node's text
+
+        // Update counter
+        $('#searchCount').text(`${currentSearchIndex + 1} of ${currentSearchResults.length}`);
+
+        // Zoom to current node
+        const targetScale = 2.0;
+        const x = -currentNode.x * targetScale + svg.node().clientWidth / 2;
+        const y = -currentNode.y * targetScale + svg.node().clientHeight / 2;
+
+        svg.transition()
+            .duration(750)
+            .call(
+                zoom.transform,
+                d3.zoomIdentity
+                    .translate(x, y)
+                    .scale(targetScale)
+            );
+        }
+
+      // Add event listeners
+      $('#nodeSearch').on('input', function () {
+        searchNodes(this.value);
+      });
+
+      $('#searchNext').on('click', function () {
+        if (currentSearchResults.length === 0) return;
+        currentSearchIndex = (currentSearchIndex + 1) % currentSearchResults.length;
+        highlightSearchResults();
+      });
+
+      $('#searchPrev').on('click', function () {
+        if (currentSearchResults.length === 0) return;
+        currentSearchIndex = currentSearchIndex <= 0 ?
+          currentSearchResults.length - 1 :
+          currentSearchIndex - 1;
+        highlightSearchResults();
+      });
+
+      // Add keyboard shortcuts
+      $(document).on('keydown', function (e) {
+        if (document.activeElement === $('#nodeSearch')[0]) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (e.shiftKey) {
+              $('#searchPrev').click();
+            } else {
+              $('#searchNext').click();
+            }
+          }
+        }
+      });
+    }
+
+
+</script>

@@ -1,0 +1,229 @@
+@namespace SQLFlowUi.Components
+@using SQLFlowUi.Controllers
+@using System.Text
+@using Newtonsoft.Json
+@using SQLFlowUi.Models.sqlflowProd
+@using Radzen
+@using Radzen.Blazor
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+    [Parameter] public int FlowID { get; set; }
+
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService sqlflowProdService { get; set; }
+
+    protected IEnumerable<SQLFlowUi.Models.sqlflowProd.SysStats> sysStats;
+    protected List<PerformanceData> performanceData = new List<PerformanceData>();
+    protected double averageDuration = 0;
+    protected string selectedTimeRange = "Last 6 Months";
+    protected List<string> timeRanges = new List<string> { "Last Week", "Last Month", "Last 3 Months", "Last 6 Months", "Last Year" };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    protected async Task LoadData()
+    {
+        DateTime startDate = GetStartDateFromRange();
+
+        sysStats = await sqlflowProdService.GetSysStats(new Query
+            {
+                Filter = $@"i => i.Success = true && i.FlowID = (@0) && i.StartTime >= @1",
+                FilterParameters = new object[] { FlowID, startDate }
+            });
+
+        ProcessData();
+    }
+
+    protected DateTime GetStartDateFromRange()
+    {
+        return selectedTimeRange switch
+        {
+            "Last Week" => DateTime.UtcNow.AddDays(-7),
+            "Last Month" => DateTime.UtcNow.AddDays(-30),
+            "Last 3 Months" => DateTime.UtcNow.AddDays(-90),
+            "Last 6 Months" => DateTime.UtcNow.AddMonths(-6),
+            "Last Year" => DateTime.UtcNow.AddYears(-1),
+            _ => DateTime.UtcNow.AddMonths(-6)
+        };
+    }
+
+    protected void ProcessData()
+    {
+        if (sysStats == null || !sysStats.Any())
+            return;
+
+        performanceData.Clear();
+
+        // Group by day to prevent overcrowding in the chart
+        var groupedData = sysStats
+            .GroupBy(s => s.StartTime.GetValueOrDefault().Date)
+            .OrderBy(g => g.Key);
+
+        foreach (var group in groupedData)
+        {
+            performanceData.Add(new PerformanceData
+                {
+                    Date = group.Key,
+                    DurationFlow = group.Average(s => s.DurationFlow.GetValueOrDefault()),
+                    DurationPre = group.Average(s => s.DurationPre.GetValueOrDefault()),
+                    DurationPost = group.Average(s => s.DurationPost.GetValueOrDefault()),
+                    TotalDuration = group.Average(s =>
+                        s.DurationFlow.GetValueOrDefault() +
+                        s.DurationPre.GetValueOrDefault() +
+                        s.DurationPost.GetValueOrDefault()),
+                    AffectedRows = group.Average(s =>
+                        s.Fetched.GetValueOrDefault() +
+                        s.Inserted.GetValueOrDefault() +
+                        s.Deleted.GetValueOrDefault())
+                });
+        }
+
+        averageDuration = performanceData.Any() ? performanceData.Average(p => p.TotalDuration) : 0;
+    }
+
+    protected async Task OnTimeRangeChanged(object value)
+    {
+        await LoadData();
+    }
+
+    public class PerformanceData
+    {
+        public DateTime Date { get; set; }
+        public double DurationFlow { get; set; }
+        public double DurationPre { get; set; }
+        public double DurationPost { get; set; }
+        public double TotalDuration { get; set; }
+        public double AffectedRows { get; set; }
+    }
+}
+
+@if (sysStats != null && sysStats.Any())
+{
+    <RadzenCard class="mb-4">
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenText TextStyle="TextStyle.H5">Flow Performance Dashboard</RadzenText>
+                <RadzenText TextStyle="TextStyle.Subtitle2">
+                    Average duration: <b>@averageDuration.ToString("N0")</b> ms
+                </RadzenText>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6" class="rz-text-align-end">
+                <RadzenRow JustifyContent="JustifyContent.End" AlignItems="AlignItems.Center">
+                    <RadzenDropDown @bind-Value="@selectedTimeRange"
+                                    Data="@timeRanges"
+                                    Change="@OnTimeRangeChanged"
+                                    Style="width: 150px; margin-right: 10px;" />
+                    <RadzenButton Text="Refresh" Icon="refresh" Click="@LoadData" />
+                </RadzenRow>
+            </RadzenColumn>
+        </RadzenRow>
+    </RadzenCard>
+
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.H6">Load Time Trend</RadzenText>
+        <RadzenChart>
+            <RadzenLineSeries Data="@performanceData"
+                              CategoryProperty="Date"
+                              Title="Total Duration"
+                              ValueProperty="TotalDuration"
+                              Smooth="true"
+                              StrokeWidth="3">
+                <RadzenSeriesTrendLine />
+                <RadzenMarkers MarkerType="MarkerType.Circle" />
+            </RadzenLineSeries>
+            <RadzenLineSeries Data="@performanceData"
+                              CategoryProperty="Date"
+                              Title="Flow Duration"
+                              ValueProperty="DurationFlow"
+                              Smooth="true"
+                              StrokeWidth="2">
+                <RadzenMarkers MarkerType="MarkerType.Square" />
+            </RadzenLineSeries>
+            <RadzenLineSeries Data="@performanceData"
+                              CategoryProperty="Date"
+                              Title="Pre Duration"
+                              ValueProperty="DurationPre"
+                              Smooth="true"
+                              StrokeWidth="2">
+            </RadzenLineSeries>
+            <RadzenLineSeries Data="@performanceData"
+                              CategoryProperty="Date"
+                              Title="Post Duration"
+                              ValueProperty="DurationPost"
+                              Smooth="true"
+                              StrokeWidth="2">
+            </RadzenLineSeries>
+            <RadzenCategoryAxis FormatString="{0:MMM dd}" />
+            <RadzenValueAxis>
+                <RadzenGridLines Visible="true" />
+                <RadzenAxisTitle Text="Duration (ms)" />
+            </RadzenValueAxis>
+            <RadzenLegend Position="LegendPosition.Bottom" />
+        </RadzenChart>
+    </RadzenCard>
+
+    <RadzenCard class="mt-4">
+        <RadzenText TextStyle="TextStyle.H6">Records Processed</RadzenText>
+        <RadzenChart>
+            <RadzenAreaSeries Data="@performanceData"
+                              CategoryProperty="Date"
+                              Title="Affected Rows"
+                              ValueProperty="AffectedRows"
+                              Smooth="true"
+                              Fill="rgba(166, 123, 96, 0.3)"
+                              StrokeWidth="2">
+                <RadzenSeriesTrendLine />
+            </RadzenAreaSeries>
+            <RadzenCategoryAxis FormatString="{0:MMM dd}" />
+            <RadzenValueAxis Min="0">
+                <RadzenGridLines Visible="true" />
+                <RadzenAxisTitle Text="Records" />
+            </RadzenValueAxis>
+        </RadzenChart>
+    </RadzenCard>
+
+    <RadzenCard class="mt-4">
+        <RadzenText TextStyle="TextStyle.H6">Performance Data</RadzenText>
+        <RadzenDataGrid Data="@sysStats" TItem="SysStats" AllowPaging="true" PageSize="10" AllowSorting="true">
+            <Columns>
+                <RadzenDataGridColumn TItem="SysStats" Property="StartTime" Title="Date" FormatString="{0:g}" Width="180px" />
+                <RadzenDataGridColumn TItem="SysStats" Property="DurationFlow" Title="Flow Duration" Width="120px" />
+                <RadzenDataGridColumn TItem="SysStats" Property="DurationPre" Title="Pre Duration" Width="120px" />
+                <RadzenDataGridColumn TItem="SysStats" Property="DurationPost" Title="Post Duration" Width="120px" />
+                <RadzenDataGridColumn TItem="SysStats" Title="Total Duration" Width="120px">
+                    <Template Context="data">
+                        @((data.DurationFlow.GetValueOrDefault() + data.DurationPre.GetValueOrDefault() + data.DurationPost.GetValueOrDefault()).ToString("N0"))
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SysStats" Title="Affected Rows" Width="120px">
+                    <Template Context="data">
+                        @((data.Fetched.GetValueOrDefault() + data.Inserted.GetValueOrDefault() + data.Deleted.GetValueOrDefault()).ToString("N0"))
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenCard>
+}
+else
+{
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.H6">No performance data found for this flow</RadzenText>
+    </RadzenCard>
+}

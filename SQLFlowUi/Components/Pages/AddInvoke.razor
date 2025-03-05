@@ -1,0 +1,261 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-invoke"
+
+@code
+{
+    private bool LineWrapping = false;
+    private bool FullScreen { get; set; } = false;
+
+    private void ToggleFullScreen()
+    {
+        FullScreen = !FullScreen;
+    }
+    private string pastedText;
+    private async Task PasteText1()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            invoke.Code = pastedText;
+            StateHasChanged();
+        }
+    }
+}
+
+ <PageTitle>Add Invoke</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save Invoke</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.Invoke" Data="@invoke" Visible="@(invoke != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenSteps>
+                <Steps>
+                    <RadzenStepsItem Text="Definition">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Style="width: 49%;">
+                                <RadzenCheckBox @bind-Value="@invoke.DeactivateFromBatch" Name="DeactivateFromBatch" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[Invoke].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+
+                            <RadzenColumn Style="width: 49%;">
+                                <RadzenCheckBox @bind-Value="@invoke.OnErrorResume" Name="OnErrorResume" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[Invoke].[OnErrorResume]").Result Component="OnErrorResume" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[Batch]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.Batch" Name="Batch" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[Batch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[Batch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="Batch" Text="Batch is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[SysAlias]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.SysAlias" Name="SysAlias" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[SysAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[SysAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[InvokeAlias]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.InvokeAlias" Name="InvokeAlias" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[InvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[InvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="InvokeAlias" Text="InvokeAlias is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[InvokeType]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenDropDown style="display: block; width: 100%"
+                                                    @bind-Value="@invoke.InvokeType"
+                                                    Name="InvokeType"
+                                                    Data="@(new List<string> { "cs","aut", "adf", "ps"})"
+                                                    TValue="string" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[InvokeType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[InvokeType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="InvokeType" Text="InvokeType is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+                    </RadzenStepsItem>
+                    <RadzenStepsItem Text="Azure">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[trgServicePrincipalAlias]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" Style="width: 500px;" TValue="string" ValueProperty="ServicePrincipalAlias" TextProperty="ServicePrincipalAlias" Name="ServicePrincipalAlias" Data="@sysServicePrincipal" AllowSorting="true" @bind-Value="@invoke.trgServicePrincipalAlias" AllowPaging="true" AllowFiltering="true">
+                                        <Columns>
+                                            <RadzenDropDownDataGridColumn Property="ServicePrincipalAlias" Title="ServicePrincipal" />
+                                            <RadzenDropDownDataGridColumn Property="DataFactoryName" Title="DataFactory" />
+                                            <RadzenDropDownDataGridColumn Property="AutomationAccountName" Title="AutomationName" />
+                                        </Columns>
+                                    </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[trgServicePrincipalAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[trgServicePrincipalAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[srcServicePrincipalAlias]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" Style="width: 500px;" TValue="string" ValueProperty="ServicePrincipalAlias" TextProperty="ServicePrincipalAlias" Name="ServicePrincipalAlias" Data="@sysServicePrincipal" AllowSorting="true" @bind-Value="@invoke.srcServicePrincipalAlias" AllowPaging="true" AllowFiltering="true">
+                                        <Columns>
+                                            <RadzenDropDownDataGridColumn Property="ServicePrincipalAlias" Title="ServicePrincipal" />
+                                            <RadzenDropDownDataGridColumn Property="DataFactoryName" Title="DataFactory" />
+                                            <RadzenDropDownDataGridColumn Property="AutomationAccountName" Title="AutomationName" />
+                                        </Columns>
+                                    </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[srcServicePrincipalAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[srcServicePrincipalAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[PipelineName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.PipelineName" Name="PipelineName" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[PipelineName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[PipelineName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[RunbookName]").Result Variant="Variant.Outlined" Style="width: 49%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.RunbookName" Name="RunbookName" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[RunbookName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[RunbookName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[ParameterJSON]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenTextArea style="display: block; width: 100%;height: 10vh" @bind-Value="@invoke.ParameterJSON" Name="ParameterJSON" />
+                                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[ParameterJSON]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[ParameterJSON]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                    </RadzenStepsItem>
+
+                    <RadzenStepsItem Text="Code">
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[Code]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                                            <div class="editor-buttons-row">
+                                                <div class="editor-buttons-container">
+                                                    <RadzenButton Click=@(args => @PasteText1())
+                                                                  Icon="input"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Primary"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[Code]"))
+                                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[Invoke].[Code]"))"
+                                                                  Icon="help_outline"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Dark"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click="@ToggleFullScreen"
+                                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                                  Variant="Variant.Flat" />
+                                                </div>
+                                            </div>
+                                            <div class="editor-container">
+                                                <CodeMirror6Wrapper @bind-Doc="@invoke.Code"
+                                                                    Language=CodeMirrorLanguage.Csharp
+                                                                    LineNumbers=false
+                                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                                    FullScreen="@FullScreen"
+                                                                    LineWrapping="@LineWrapping"
+                                                                    ScrollPastEnd="false"
+                                                                    AllowHorizontalResize="true"
+                                                                    AllowVerticalResize="true"
+                                                                    Editable="true"
+                                                                    ReadOnly="false"
+                                                                    MaxHeight="40em">
+                                                </CodeMirror6Wrapper>
+                                            </div>
+                                        </div>
+                                    </RadzenRow>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[InvokePath]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.InvokePath" Name="InvokePath" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[InvokePath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[InvokePath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[InvokeFile]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.InvokeFile" Name="InvokeFile" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[InvokeFile]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[InvokeFile]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[Arguments]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.Arguments" Name="Arguments" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[Arguments]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[Arguments]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+
+                    </RadzenStepsItem>
+
+                    <RadzenStepsItem Text="System">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[FlowID]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@invoke.FlowID" Name="FlowID" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[ToObjectMK]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@invoke.ToObjectMK" Name="ToObjectMK" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[ToObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[ToObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[CreatedBy]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@invoke.CreatedBy" Name="CreatedBy" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[CreatedBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[CreatedBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[Invoke].[CreatedDate]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@invoke.CreatedDate" Name="CreatedDate" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Invoke].[CreatedDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Invoke].[CreatedDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                    </RadzenStepsItem>
+                </Steps>
+            </RadzenSteps>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

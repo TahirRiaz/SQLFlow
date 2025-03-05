@@ -1,0 +1,240 @@
+@namespace SQLFlowUi.Components
+@using SQLFlowUi.Controllers
+@using System.Text
+@using Microsoft.EntityFrameworkCore
+@using SQLFlowUi.Data
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject sqlflowProdContext Context
+@inject DocumentationService DocService
+
+
+@code {
+    [Parameter] public int FlowID { get; set; }
+    
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected DialogService DialogService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService dwSqlflowProdService { get; set; }
+
+    [Inject]
+    public SecurityService securityService { get; set; }
+
+    protected SQLFlowUi.Models.sqlflowProd.SysDoc sysDoc;
+
+    protected IEnumerable<SQLFlowUi.Models.sqlflowProd.SysDoc> allSysDoc;
+
+
+
+    [Parameter] public string ObjectName { get; set; } = "";
+
+    public int SysDocID { get; set; }
+
+    string markdownDescHtml = "";
+    string markdownDesc = "";
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        allSysDoc = await dwSqlflowProdService.GetSysDoc();
+        
+        await SetInitParams(ObjectName);
+        await base.OnInitializedAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            //string render = "if (easyMDE != null) { alert(easyMDE); easyMDE.togglePreview();}";
+            //string render = "alert(easyMDE);";
+            //await JSRuntime.InvokeVoidAsync("eval", render);
+        }
+    }
+
+    protected async Task SetInitParams(string ObjectName)
+    {
+        sysDoc = await dwSqlflowProdService.GetSysDocByObjectname(ObjectName);
+
+        if (sysDoc != null)
+        {
+            SysDocID = sysDoc.SysDocID;
+
+            markdownDesc = sysDoc.Description;
+            markdownDescHtml = Markdig.Markdown.ToHtml(sysDoc.Description ?? string.Empty).Replace("<h2>", "<br><h2>").Replace("<h3>", "<br><h3>");
+
+        }
+    }
+
+    Task OnMarkdownValueChangedDesc(string value)
+    {
+        markdownDescHtml = Markdig.Markdown.ToHtml(value ?? string.Empty).Replace("<h2>", "<br><h2>").Replace("<h3>", "<br><h3>");
+        sysDoc.Description = value;
+        markdownDesc = value;
+        return Task.CompletedTask;
+    }
+
+    public async Task ResetData(int SysDocID)
+    {
+        foreach (var entry in Context.ChangeTracker.Entries<SQLFlowUi.Models.sqlflowProd.SysDoc>())
+        {
+            if (entry.Entity.SysDocID == SysDocID)
+            {
+                entry.State = EntityState.Detached;
+            }
+        }
+    }
+
+    protected async Task SaveChanges(MouseEventArgs args)
+    {
+        try
+        {
+            await dwSqlflowProdService.UpdateSysDoc(SysDocID, sysDoc);
+            DialogService.Close(sysDoc);
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
+    }
+
+    protected async Task CallWebAPIAsync()
+    {
+        using (HttpClient client = new HttpClient())
+        {
+            string token = await securityService.GetJwtTokenAsync();
+            client.DefaultRequestHeaders.Add("Authorization", token);
+            
+            DocService.ShowNotification("Rebuilding Description");
+
+            string url = "https://sqlflowapi.azurewebsites.net/api/ExecSysDocPrompt";
+            var payload = new
+            {
+                objectname = ObjectName,
+                useDbPayload = true,
+                model= "gpt-4-0125-preview",
+                max_tokens= 4095,
+                temperature= 0.7,
+                top_p= 1,
+                frequency_penalty= 0,
+                presence_penalty= 0,
+                prompt= ""
+            };
+           
+            // Serialize our concrete class into a JSON String
+            var stringPayload = Newtonsoft.Json.JsonConvert.SerializeObject(payload);
+
+            // Wrap our JSON inside a StringContent which then can be used by the HttpClient class
+            var httpContent = new StringContent(stringPayload, Encoding.UTF8, "application/json");
+
+            // Send the request to the server
+            HttpResponseMessage response = await client.PostAsync(url, httpContent);
+
+            // Ensure we receive a successful response.
+            if (response.IsSuccessStatusCode)
+            {
+                // Read the response as a string and return it
+                string trace =  await response.Content.ReadAsStringAsync();
+                await ResetData(SysDocID);
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Refresh", Detail = trace });
+                StateHasChanged();
+            }
+            else
+            {
+                // Handle non-success status codes
+                NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Refresh", Detail = response.ReasonPhrase });
+                //throw new Exception();
+            }
+
+            DocService.HideNotification();
+        }
+       
+    }
+
+}
+
+<RadzenTabs RenderMode="TabRenderMode.Server">
+    <Tabs>
+        <RadzenTabsItem Text="Description">
+            <RadzenCard Variant="Variant.Text" Style="width: 100%;margin: 0px;padding:0px; p {margin-bottom: 20px;}">
+                <style>
+                    p {
+                        margin-bottom: 20px;
+                    }
+                </style>
+                @((MarkupString)markdownDescHtml)
+                <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="save" Text="Save" Variant="Variant.Flat" Click="@SaveChanges" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="Notes">
+            <RadzenCard Variant="Variant.Text" Style="width: 100%;margin: 0px;padding:0px">
+                <SysDocNotes ObjectName="@ObjectName"></SysDocNotes>
+            </RadzenCard>
+        </RadzenTabsItem>
+        <RadzenTabsItem Text="Meta">
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenLabel Text="Label" Component="Label" />
+                <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDoc.Label" Name="Label" />
+            </RadzenRow>
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenLabel Text="Summary" Component="Summary" />
+                <RadzenTextArea style="display: block; width: 100% ;height: 10vh" @bind-Value="@sysDoc.Summary" Name="Summary" />
+            </RadzenRow>
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenLabel Text="Question" Component="Question" />
+                <RadzenTextArea style="display: block; width: 100% ;height: 10vh" @bind-Value="@sysDoc.Question" Name="Question" />
+            </RadzenRow>
+            <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton ButtonStyle="ButtonStyle.Primary" Icon="cached" Text="Refresh" Variant="Variant.Flat" Click="@CallWebAPIAsync" />
+                <RadzenButton ButtonStyle=" ButtonStyle.Primary" Icon="save" Text="Save" Variant="Variant.Flat" Click="@SaveChanges"  />
+            </RadzenStack>
+        </RadzenTabsItem>
+    </Tabs>
+</RadzenTabs>
+
+@code {
+    
+    async Task OnDone(string finalStr)
+    {
+        string cuValue = sysDoc.AdditionalInfo;
+        sysDoc.AdditionalInfo = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+        StateHasChanged();
+    }
+
+    async Task OnImprove(string language)
+    {
+        string cuValue = sysDoc.AdditionalInfo;
+        ///sysError.Solution = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+
+        OpenAiService ai = new OpenAiService();
+        string improvedText = await ai.CallChatCompletionAsync(language, cuValue);
+
+        string OldNew = $@"#Source
+{sysDoc.AdditionalInfo}
+---------------------------------------------------------------------
+#Improved                           
+{improvedText}
+";
+        sysDoc.AdditionalInfo = OldNew;
+        StateHasChanged();
+    }
+}
+
+
+
+

@@ -1,0 +1,70 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-data-subscriber-query"
+
+
+ <PageTitle>Edit DataSubscriberQuery</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save DataSubscriberQuery</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery" Data="@dataSubscriberQuery" Visible="@(dataSubscriberQuery != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[DataSubscriberQuery].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" Data="@dataSubscriberForFlowID" TextProperty="SubscriberName" ValueProperty="FlowID"
+                                            Disabled=@(hasFlowIDValue) style="display: block; width: 100%" @bind-Value="@dataSubscriberQuery.FlowID" Name="FlowID" ReadOnly="true" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriberQuery].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriberQuery].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[DataSubscriberQuery].[srcServer]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Name="srcServer" Data="@sysDataSources" AllowSorting="true" @bind-Value="@dataSubscriberQuery.srcServer" AllowPaging="true" AllowFiltering="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriberQuery].[srcServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriberQuery].[srcServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="srcServer" Text="srcServer is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[DataSubscriberQuery].[QueryName]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@dataSubscriberQuery.QueryName" Name="QueryName" />
+                </ChildContent>   <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriberQuery].[QueryName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriberQuery].[QueryName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="QueryName" Text="QueryName is required" />
+                </Helper>
+            </RadzenFormField>
+
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[DataSubscriberQuery].[FullyQualifiedQuery]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 40vh" @bind-Value="@dataSubscriberQuery.FullyQualifiedQuery" Name="FullyQualifiedQuery" class="w-100" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[DataSubscriberQuery].[FullyQualifiedQuery]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[DataSubscriberQuery].[FullyQualifiedQuery]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></div></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FullyQualifiedQuery" Text="FullyQualifiedQuery is required" />
+                </Helper>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

@@ -1,0 +1,108 @@
+@using SQLFlowUi.Controllers
+@using SQLFlowUi.Data
+@inject DocumentationService DocService
+@page "/match-key"
+@page "/match-key/{MatchKeyID:int}"
+
+
+@code {
+
+    public async Task OpenInitialize()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "FlowType", "mkey" },
+            { "OnActionCompleted", new EventCallback<InitCompletedEventArgs>(this, OpenNewFlowId) }
+        };
+
+        await DialogService.OpenAsync<InitPipeline>($"Initialize Match Key",
+            parameters,
+            new DialogOptions() { Width = "700px", Height = "320px", Resizable = true, Draggable = true });
+    }
+
+    private void OpenNewFlowId(InitCompletedEventArgs args)
+    {
+        matchKey = sqlflowProdService.GetMatchKey().Result;
+        DialogService.Close();
+        DialogService.OpenAsync<EditMatchKey>("Edit Match Key", new Dictionary<string, object> { { "MatchKeyID", args.MatchKeyID } }, GlobalSettings.EditOptions);
+    }
+}
+
+<PageTitle>MatchKey</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text="MatchKey" TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @OpenInitialize()) Variant="Variant.Flat" Icon="note_add" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" aria-label="Search by all string columns" />
+    <RadzenRow>
+        <RadzenColumn SizeMD=12>
+            <RadzenDataGrid @ref="grid0" ColumnWidth="200px" AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+                            Data="@matchKey" TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" RowDoubleClick="@EditRow">
+                <Columns>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="MatchKeyID" Title="MatchKeyID">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="Batch" Title="Batch">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="SysAlias" Title="SysAlias">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="srcServer" Title="srcServer">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="srcDatabase" Title="srcDatabase">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="srcSchema" Title="srcSchema">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="srcObject" Title="srcObject">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="trgServer" Title="trgServer">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="trgDBSchTbl" Title="trgDBSchTbl">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="DeactivateFromBatch" Title="DeactivateFromBatch">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="DateColumn" Title="Date Column">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="IgnoreDeletedRowsAfter" Title="IgnoreDeletedRowsAfter">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="srcFilter" Title="srcFilter">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="OnErrorResume" Title="OnErrorResume">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="PreProcessOnTrg" Title="PreProcessOnTrg">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="PostProcessOnTrg" Title="PostProcessOnTrg">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="Description" Title="Description">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="CreatedBy" Title="Created By">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Property="CreatedDate" Title="Created Date">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                        <Template Context="matchKey">
+
+                            <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                          Click=@(args => GridDeleteButtonClick(args, matchKey)) @onclick:stopPropagation="true" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+
+            </RadzenDataGrid>
+
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenStack>

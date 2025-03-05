@@ -1,0 +1,50 @@
+@page "/add-application-user"
+@attribute [Authorize]
+
+<RadzenRow>
+    <RadzenColumn SizeMD="12">
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.ApplicationUser" Data="@user" Visible="@(user != null)" Submit="@FormSubmit">
+            <RadzenAlert Title="Cannot create user" Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">@error</RadzenAlert>
+
+            <RadzenStack style="margin-bottom: 1rem;">
+                
+                <RadzenFormField Text="Roles" Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenDropDown Data="@roles" Multiple="true" Style="width: 100%" TextProperty="Name" @bind-Value="@(userRoles)" ValueProperty="Id" Name="Roles" />
+                    </ChildContent>
+                </RadzenFormField>
+                
+                <RadzenFormField Text="Email" Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenTextBox style="width: 100%" @bind-Value="@(user.Email)" Name="Email" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="Email" Text="Email is required" />
+                    </Helper>
+                </RadzenFormField>
+
+                <RadzenFormField Text="Password" Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenPassword @bind-Value="@(user.Password)" style="display: block; width: 100%" Name="Password" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="Password" Text="Password is required" />
+                    </Helper>
+                </RadzenFormField>
+                <RadzenFormField Text="Confirm Password" Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenPassword style="display: block; width: 100%" @bind-Value="@(user.ConfirmPassword)" Name="ConfirmPassword" />
+                    </ChildContent>
+                    <Helper>
+                        <RadzenRequiredValidator Component="ConfirmPassword" Text="ConfirmPassword is required" />
+                        <RadzenCompareValidator Text="Passwords must match" Component="ConfirmPassword" Value="@user.Password" />
+                    </Helper>
+                </RadzenFormField>
+            </RadzenStack>
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Click="@CancelClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenRow>

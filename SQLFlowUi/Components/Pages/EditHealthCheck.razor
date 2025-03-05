@@ -1,0 +1,74 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-health-check"
+
+
+ <PageTitle>Edit HealthCheck</PageTitle>
+
+<RadzenColumn SizeMD=12>
+    <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save HealthCheckForError</RadzenAlert>
+    <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.HealthCheck" Data="@healthCheck" Visible="@(healthCheck != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[HealthCheck].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@healthCheck.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                            <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                            <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[HealthCheck].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[HealthCheck].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                </Helper>
+            </RadzenFormField>
+
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[HealthCheck].[HealthCheckName]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@healthCheck.HealthCheckName" Name="HealthCheckName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[HealthCheck].[HealthCheckName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[HealthCheck].[HealthCheckName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="HealthCheckName" Text="HealthCheckName is required" />
+                </Helper>
+            </RadzenFormField>
+
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[HealthCheck].[DBSchTbl]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@healthCheck.DBSchTbl" Name="DBSchTbl" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[HealthCheck].[DBSchTbl]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[HealthCheck].[DBSchTbl]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[HealthCheck].[DateColumn]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 10vh" @bind-Value="@healthCheck.DateColumn" Name="DateColumn" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[HealthCheck].[DateColumn]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[HealthCheck].[DateColumn]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="DateColumn" Text="DateColumn is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[HealthCheck].[BaseValueExp]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 10vh" @bind-Value="@healthCheck.BaseValueExp" Name="BaseValueExp" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[HealthCheck].[BaseValueExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[HealthCheck].[BaseValueExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="BaseValueExp" Text="BaseValueExp is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[HealthCheck].[FilterCriteria]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 10vh" @bind-Value="@healthCheck.FilterCriteria" Name="FilterCriteria" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[HealthCheck].[FilterCriteria]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[HealthCheck].[FilterCriteria]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[HealthCheck].[MLMaxExperimentTimeInSeconds]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@healthCheck.MLMaxExperimentTimeInSeconds" Name="MLMaxExperimentTimeInSeconds" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[HealthCheck].[MLMaxExperimentTimeInSeconds]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[HealthCheck].[MLMaxExperimentTimeInSeconds]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+        </RadzenStack>
+        <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick" />
+        </RadzenStack>
+    </RadzenTemplateForm>
+</RadzenColumn>
+

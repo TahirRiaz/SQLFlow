@@ -1,0 +1,83 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-sys-log-file"
+
+
+ <PageTitle>Add SysLogFile</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysLogFile</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysLogFile" Data="@sysLogFile" Visible="@(sysLogFile != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[BatchID]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogFile.BatchID" Name="BatchID" />
+              </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[BatchID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[BatchID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                  <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@sysLogFile.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                          <Columns>
+                              <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                              <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                              <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                          </Columns>
+                      </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[FileDate_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogFile.FileDate_DW" Name="FileDate_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[FileDate_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[FileDate_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[FileName_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogFile.FileName_DW" Name="FileName_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[FileName_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[FileName_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[FileRowDate_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysLogFile.FileRowDate_DW" Name="FileRowDate_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[FileRowDate_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[FileRowDate_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[FileSize_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLogFile.FileSize_DW" Name="FileSize_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[FileSize_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[FileSize_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[FileColumnCount]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLogFile.FileColumnCount" Name="FileColumnCount" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[FileColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[FileColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[ExpectedColumnCount]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysLogFile.ExpectedColumnCount" Name="ExpectedColumnCount" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[ExpectedColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[ExpectedColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysLogFile].[DataSet_DW]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogFile.DataSet_DW" Name="DataSet_DW" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysLogFile].[DataSet_DW]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysLogFile].[DataSet_DW]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

@@ -1,0 +1,662 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-pre-ingestion-a-d-o"
+
+@code
+{
+    
+    private bool FullScreen { get; set; } = false;
+
+    private void ToggleFullScreen()
+    {
+        FullScreen = !FullScreen;
+    }
+
+    private string pastedText;
+    private async Task PasteText1()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            preIngestionADO.srcFilter = pastedText;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PasteText2()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            preIngestionADO.preFilter = pastedText;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PasteText3()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            preIngestionADO.IncrementalClauseExp = pastedText;
+            StateHasChanged();
+        }
+    }
+
+    private async Task PasteIndexScript()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            preIngestionADO.trgDesiredIndex = pastedText;
+            StateHasChanged();
+        }
+    }
+}
+
+ <PageTitle>Edit PreIngestionADO</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save PreIngestionADO</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionADO" Data="@preIngestionADO" Visible="@(preIngestionADO != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenSteps>
+                <Steps>
+                    <RadzenStepsItem Text="Source">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[Batch]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.Batch" Name="Batch" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[Batch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[Batch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[SysAlias]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.SysAlias" Name="SysAlias" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[SysAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[SysAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="SysAlias" Text="SysAlias is required" />
+                                </Helper>
+                            </RadzenFormField>
+
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[srcServer]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Name="srcServer" Data="@sysDataSources" AllowSorting="true" @bind-Value="@preIngestionADO.srcServer" AllowPaging="true" AllowFiltering="true">
+                                        <Columns>
+                                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                                        </Columns>
+                                    </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[srcServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[srcServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="srcServer" Text="srcServer is required" />
+                                </Helper>
+                            </RadzenFormField>
+
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[srcDatabase]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.srcDatabase" Name="srcDatabase" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[srcDatabase]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[srcDatabase]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="srcDatabase" Text="srcDatabase is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[srcSchema]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.srcSchema" Name="srcSchema" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[srcSchema]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[srcSchema]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[srcObject]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.srcObject" Name="srcObject" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[srcObject]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[srcObject]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="srcObject" Text="srcObject is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[srcFilter]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                                            <div class="editor-buttons-row">
+                                                <div class="editor-buttons-container">
+                                                    <RadzenButton Click=@(args => @PasteText1())
+                                                                  Icon="input"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Primary"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[srcFilter]"))
+                                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionADO].[srcFilter]"))"
+                                                                  Icon="help_outline"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Dark"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click="@ToggleFullScreen"
+                                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                                  Variant="Variant.Flat" />
+                                                </div>
+                                            </div>
+                                            <div class="editor-container">
+                                                <CodeMirror6Wrapper @bind-Doc="@preIngestionADO.srcFilter"
+                                                                    Language=CodeMirrorLanguage.MsSql
+                                                                    LineNumbers=false
+                                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                                    FullScreen="@FullScreen"
+                                                                    LineWrapping="true"
+                                                                    ScrollPastEnd="false"
+                                                                    AllowHorizontalResize="true"
+                                                                    AllowVerticalResize="true"
+                                                                    Editable="true"
+                                                                    ReadOnly="false"
+                                                                    MaxHeight="20em">
+                                                </CodeMirror6Wrapper>
+                                            </div>
+                                        </div>
+                                    </RadzenRow>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenRow style="margin-bottom: 1rem">
+                                <RadzenCheckBox @bind-Value="@preIngestionADO.srcFilterIsAppend" Name="srcFilterIsAppend" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[srcFilterIsAppend]").Result Component="srcFilterIsAppend" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[srcFilterIsAppend]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[srcFilterIsAppend]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenRow>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[preFilter]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                                            <div class="editor-buttons-row">
+                                                <div class="editor-buttons-container">
+                                                    <RadzenButton Click=@(args => @PasteText2())
+                                                                  Icon="input"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Primary"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[preFilter]"))
+                                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionADO].[preFilter]"))"
+                                                                  Icon="help_outline"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Dark"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click="@ToggleFullScreen"
+                                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                                  Variant="Variant.Flat" />
+                                                </div>
+                                            </div>
+                                            <div class="editor-container">
+                                                <CodeMirror6Wrapper @bind-Doc="@preIngestionADO.preFilter"
+                                                                    Language=CodeMirrorLanguage.MsSql
+                                                                    LineNumbers=false
+                                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                                    FullScreen="@FullScreen"
+                                                                    LineWrapping="true"
+                                                                    ScrollPastEnd="false"
+                                                                    AllowHorizontalResize="true"
+                                                                    AllowVerticalResize="true"
+                                                                    Editable="true"
+                                                                    ReadOnly="false"
+                                                                    MaxHeight="20em">
+                                                </CodeMirror6Wrapper>
+                                            </div>
+                                        </div>
+                                    </RadzenRow>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[IgnoreColumns]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.IgnoreColumns" Name="IgnoreColumns" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[IgnoreColumns]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[IgnoreColumns]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@preIngestionADO.DeactivateFromBatch" Name="DeactivateFromBatch" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@preIngestionADO.OnErrorResume" Name="OnErrorResume" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[OnErrorResume]").Result Component="OnErrorResume" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                    </RadzenStepsItem>
+                    <RadzenStepsItem Text="Target">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[trgServer]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Data="@sysDataSources" AllowSorting="true" Name="trgServer" @bind-Value="@preIngestionADO.trgServer" AllowPaging="true" AllowFiltering="true">
+                                        <Columns>
+                                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                                        </Columns>
+                                    </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[trgServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[trgServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="trgServer" Text="trgServer is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[trgDBSchTbl]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.trgDBSchTbl" Name="trgDBSchTbl" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[trgDBSchTbl]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[trgDBSchTbl]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="trgDBSchTbl" Text="trgDBSchTbl is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[IncrementalColumns]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.IncrementalColumns" Name="IncrementalColumns" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[IncrementalColumns]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[IncrementalColumns]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[IncrementalClauseExp]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                <ChildContent>
+                                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                                            <div class="editor-buttons-row">
+                                                <div class="editor-buttons-container">
+                                                    <RadzenButton Click=@(args => @PasteText3())
+                                                                  Icon="input"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Primary"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[IncrementalClauseExp]"))
+                                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionADO].[IncrementalClauseExp]"))"
+                                                                  Icon="help_outline"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Dark"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click="@ToggleFullScreen"
+                                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                                  Variant="Variant.Flat" />
+                                                </div>
+                                            </div>
+                                            <div class="editor-container">
+                                                <CodeMirror6Wrapper @bind-Doc="@preIngestionADO.IncrementalClauseExp"
+                                                                    Language=CodeMirrorLanguage.MsSql
+                                                                    LineNumbers=false
+                                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                                    FullScreen="@FullScreen"
+                                                                    LineWrapping="true"
+                                                                    ScrollPastEnd="false"
+                                                                    AllowHorizontalResize="true"
+                                                                    AllowVerticalResize="true"
+                                                                    Editable="true"
+                                                                    ReadOnly="false"
+                                                                    MaxHeight="20em">
+                                                </CodeMirror6Wrapper>
+                                            </div>
+                                        </div>
+                                    </RadzenRow>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[DateColumn]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.DateColumn" Name="DateColumn" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[DateColumn]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[DateColumn]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[NoOfOverlapDays]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.NoOfOverlapDays" Name="NoOfOverlapDays" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[NoOfOverlapDays]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[NoOfOverlapDays]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@preIngestionADO.FetchMinValuesFromSysLog" Name="FetchMinValuesFromSysLog" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[FetchMinValuesFromSysLog]").Result Component="FetchMinValuesFromSysLog" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[FetchMinValuesFromSysLog]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[FetchMinValuesFromSysLog]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@preIngestionADO.FullLoad" Name="FullLoad" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[FullLoad]").Result Component="FullLoad" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[FullLoad]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[FullLoad]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@preIngestionADO.TruncateTrg" Name="TruncateTrg" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[TruncateTrg]").Result Component="TruncateTrg" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[TruncateTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[TruncateTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+
+                        </RadzenRow>
+                    </RadzenStepsItem>
+
+                    <RadzenStepsItem Text="Advance">
+
+                        <RadzenFieldset Text="Data Processing Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenColumn>
+                                    <RadzenCheckBox @bind-Value="@preIngestionADO.StreamData" Name="StreamData" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[StreamData]").Result Component="StreamData" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[StreamData]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[StreamData]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                                <RadzenColumn>
+                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[NoOfThreads]").Result Variant="Variant.Outlined">
+                                        <ChildContent>
+                                            <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.NoOfThreads" Name="NoOfThreads" />
+                                        </ChildContent>
+                                        <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenColumn>
+                                    <RadzenCheckBox @bind-Value="@preIngestionADO.SyncSchema" Name="SyncSchema" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[SyncSchema]").Result Component="SyncSchema" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[SyncSchema]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[SyncSchema]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenFieldset>
+                        
+                        <RadzenFieldset Text="Init Load" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenColumn Style="width: 100%">
+                                    <RadzenCheckBox @bind-Value="@preIngestionADO.InitLoad" Name="InitLoad" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionADO].[InitLoad]").Result Component="InitLoad" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[InitLoad]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[InitLoad]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenColumn>
+                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[InitLoadFromDate]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                        <ChildContent>
+                                            <RadzenDatePicker style="display: block; width: 100%" @bind-Value="@preIngestionADO.InitLoadFromDate" Name="InitLoadFromDate" DateFormat="yyyy-MM-dd" />
+                                        </ChildContent>
+                                        <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[InitLoadFromDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[InitLoadFromDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn>
+                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[InitLoadToDate]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                        <ChildContent>
+                                            <RadzenDatePicker style="display: block; width: 100%" @bind-Value="@preIngestionADO.InitLoadToDate" Name="InitLoadToDate" DateFormat="yyyy-MM-dd" />
+                                        </ChildContent>
+                                        <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[InitLoadToDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[InitLoadToDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenColumn>
+                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[InitLoadBatchBy]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                        <ChildContent>
+                                            <RadzenDropDown Name="ExportBy" style="display: block; width: 100%" TValue="string" ValueProperty="ExportBy" TextProperty="ExportByName" Data="@sysExportBies" @bind-Value="@preIngestionADO.InitLoadBatchBy" />
+                                        </ChildContent>
+                                        <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[InitLoadBatchBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[InitLoadBatchBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn>
+                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[InitLoadBatchSize]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                        <ChildContent>
+                                            <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.InitLoadBatchSize" Name="InitLoadBatchSize" />
+                                        </ChildContent>
+                                        <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[InitLoadBatchSize]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[InitLoadBatchSize]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenColumn>
+                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[InitLoadKeyColumn]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                        <ChildContent>
+                                            <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.InitLoadKeyColumn" Name="InitLoadKeyColumn" />
+                                        </ChildContent>
+                                        <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[InitLoadKeyColumn]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[InitLoadKeyColumn]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                                <RadzenColumn>
+                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[InitLoadKeyMaxValue]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                        <ChildContent>
+                                            <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.InitLoadKeyMaxValue" Name="InitLoadKeyMaxValue" />
+                                        </ChildContent>
+                                        <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[InitLoadKeyMaxValue]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[InitLoadKeyMaxValue]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                    </RadzenFormField>
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenFieldset>
+
+                        <RadzenFieldset Text="Indexing" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[trgDesiredIndex]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                                    <ChildContent>
+                                        <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                                            <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                                                <div class="editor-buttons-row">
+                                                    <div class="editor-buttons-container">
+                                                        <RadzenButton Click=@(args => @PasteIndexScript())
+                                                                      Icon="input"
+                                                                      Size="ButtonSize.Small"
+                                                                      ButtonStyle="ButtonStyle.Primary"
+                                                                      Variant="Variant.Flat"
+                                                                      Style="margin-right: 5px;" />
+                                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[trgDesiredIndex]"))
+                                                                      MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionADO].[trgDesiredIndex]"))"
+                                                                      Icon="help_outline"
+                                                                      Size="ButtonSize.Small"
+                                                                      ButtonStyle="ButtonStyle.Dark"
+                                                                      Variant="Variant.Flat"
+                                                                      Style="margin-right: 5px;" />
+                                                        <RadzenButton Click="@ToggleFullScreen"
+                                                                      Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                      Size="ButtonSize.Small"
+                                                                      ButtonStyle="ButtonStyle.Secondary"
+                                                                      Variant="Variant.Flat" />
+                                                    </div>
+                                                </div>
+                                                <div class="editor-container">
+                                                    <CodeMirror6Wrapper @bind-Doc="@preIngestionADO.trgDesiredIndex"
+                                                                        Language=CodeMirrorLanguage.MsSql
+                                                                        LineNumbers=false
+                                                                        Theme=ThemeMirrorTheme.GithubDark
+                                                                        FullScreen="@FullScreen"
+                                                                        LineWrapping="true"
+                                                                        ScrollPastEnd="false"
+                                                                        AllowHorizontalResize="true"
+                                                                        AllowVerticalResize="true"
+                                                                        Editable="true"
+                                                                        ReadOnly="false"
+                                                                        MaxHeight="40em">
+                                                    </CodeMirror6Wrapper>
+                                                </div>
+                                            </div>
+                                        </RadzenRow>
+                                    </ChildContent>
+                                </RadzenFormField>
+                            </RadzenRow>
+                        </RadzenFieldset>
+
+                        <RadzenFieldset Text="Column Customization" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[CleanColumnNameSQLRegExp]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.CleanColumnNameSQLRegExp" Name="CleanColumnNameSQLRegExp" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[CleanColumnNameSQLRegExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[CleanColumnNameSQLRegExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[RemoveInColumnName]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.RemoveInColumnName" Name="RemoveInColumnName" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[RemoveInColumnName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[RemoveInColumnName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.PreProcessOnTrg" Name="PreProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[PreProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[PreProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.PostProcessOnTrg" Name="PostProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[PostProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[PostProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                        </RadzenFieldset>
+
+                        <RadzenFieldset Text="Process Invocation Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[PreInvokeAlias]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenDropDown Name="PreInvokeAlias" AllowClear="true" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@preIngestionADO.PreInvokeAlias" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[PreInvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[PreInvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[PostInvokeAlias]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenDropDown Name="PostInvokeAlias" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@preIngestionADO.PostInvokeAlias" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[PostInvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[PostInvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                        </RadzenFieldset>
+
+                        <RadzenFieldset Text="General Information" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[Description]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.Description" Name="Description" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[Description]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[Description]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                        </RadzenFieldset>
+
+                    </RadzenStepsItem>
+
+                    <RadzenStepsItem Text="System">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.FlowID" Name="FlowID" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[FlowType]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.FlowType" Name="FlowType" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[FlowType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[FlowType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[FromObjectMK]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.FromObjectMK" Name="FromObjectMK" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[FromObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[FromObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[ToObjectMK]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.ToObjectMK" Name="ToObjectMK" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[ToObjectMK]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[ToObjectMK]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[CreatedBy]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionADO.CreatedBy" Name="CreatedBy" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[CreatedBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[CreatedBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[CreatedDate]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@preIngestionADO.CreatedDate" Name="CreatedDate" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[CreatedDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[CreatedDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                        <RadzenRow>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionADO].[BatchOrderBy]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionADO.BatchOrderBy" Name="BatchOrderBy" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionADO].[BatchOrderBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionADO].[BatchOrderBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+
+                        </RadzenRow>
+                        <RadzenRow></RadzenRow>
+                    </RadzenStepsItem>
+
+                </Steps>
+            </RadzenSteps>
+
+
+
+
+
+
+
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+    @code {
+
+        public async Task OpenSysDoc(string ObjectName)
+        {
+            var parameters = new Dictionary<string, object>
+            {
+                { "ObjectName", ObjectName }
+            };
+
+            await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+                parameters,
+                new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+        }
+    }

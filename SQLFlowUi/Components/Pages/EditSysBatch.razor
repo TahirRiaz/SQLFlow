@@ -1,0 +1,28 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-batch"
+
+<PageTitle>Edit SysBatch</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysBatch</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysBatch" Data="@sysBatch" Visible="@(sysBatch != null)" Submit="@FormSubmit">
+            <RadzenStack>
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SysBatch].[Batch]").Result Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysBatch.Batch" Name="Batch" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysBatch].[Batch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysBatch].[Batch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+                <RadzenFormField Text=@DocService.GetLabel("[flw].[SysBatch].[NoOfThreads]").Result Variant="Variant.Outlined">
+                    <ChildContent>
+                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@sysBatch.NoOfThreads" Name="NoOfThreads" />
+                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysBatch].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysBatch].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                </RadzenFormField>
+            </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+

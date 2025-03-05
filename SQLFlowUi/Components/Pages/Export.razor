@@ -1,0 +1,171 @@
+@using SQLFlowUi.Controllers
+@using SQLFlowUi.Data
+@inject DocumentationService DocService
+@page "/export"
+@page "/export/{FlowID:int}"
+
+@attribute [Authorize]  
+
+@code {
+
+    public async Task OpenInitialize()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "FlowType", "exp" },
+            { "OnActionCompleted", new EventCallback<InitCompletedEventArgs>(this, OpenNewFlowId) }
+        };
+
+        await DialogService.OpenAsync<InitPipeline>($"Initialize Export Pipeline",
+            parameters,
+            new DialogOptions() { Width = "700px", Height = "340px", Resizable = true, Draggable = true });
+    }
+
+    private void OpenNewFlowId(InitCompletedEventArgs args)
+    {
+        export = sqlflowProdService.GetExport().Result;
+        DialogService.Close();
+        DialogService.OpenAsync<EditExport>("Edit Export", new Dictionary<string, object> { { "FlowID", args.FlowId } }, GlobalSettings.EditOptions);
+    }
+
+    private async Task OpenInNewTab(string url)
+    {
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    protected async Task Redirect(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.Export data)
+    {
+        string fileSearchURL = $"/search/{data.FlowID}";
+        await OpenInNewTab(fileSearchURL);
+    }
+}
+<PageTitle>Export</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[Export]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @OpenInitialize()) Variant="Variant.Flat" Icon="note_add" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Export]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Export]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"  AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@export"    TItem="SQLFlowUi.Models.sqlflowProd.Export" RowDoubleClick="@EditRow" >
+            <Columns>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Filterable="false" Sortable="false" Width="90px" TextAlign="TextAlign.Center">
+                        <Template Context="Export">
+                        <RadzenButton ButtonStyle="ButtonStyle.Info" Image="/icons/search.png" Size="ButtonSize.Medium"
+                                      Shade="Shade.Lighter" Variant="Variant.Flat"
+                                          Click=@(args => Redirect(args, Export)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="FlowID" Title="FlowID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="SysAlias" Title="SysAlias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="Batch" Title="Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="srcServer" Title="srcServer">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="srcDBSchTbl" Title="srcDBSchTbl">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="srcWithHint" Title="src With Hint">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="srcFilter" Title="src Filter">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="IncrementalColumn" Title="Incremental Column">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="DateColumn" Title="Date Column">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="NoOfOverlapDays" Title="No Of Overlap Days">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="FromDate" Title="From Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="ToDate" Title="To Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="ExportBy" Title="Export By">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="ExportSize" Title="Export Size">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="ServicePrincipalAlias" Title="ServicePrincipalAlias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="trgPath" Title="trg Path">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="trgFileName" Title="trg File Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="trgFiletype" Title="trg Filetype">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="trgEncoding" Title="trg Encoding">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="CompressionType" Title="Compression Type">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="ColumnDelimiter" Title="Column Delimiter">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="TextQualifier" Title="Text Qualifier">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="AddTimeStampToFileName" Title="Add Time Stamp To File Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="Subfolderpattern" Title="Subfolderpattern">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="NoOfThreads" Title="No Of Threads">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="ZipTrg" Title="Zip Trg">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="OnErrorResume" Title="On Error Resume">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="PostInvokeAlias" Title="Post Invoke Alias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="DeactivateFromBatch" Title="Deactivate From Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="FlowType" Title="FlowType">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="FromObjectMK" Title="FromObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="ToObjectMK" Title="ToObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="CreatedBy" Title="Created By">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Property="CreatedDate" Title="Created Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.Export" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="export">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, export)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

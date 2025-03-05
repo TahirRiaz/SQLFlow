@@ -1,0 +1,260 @@
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <RadzenTheme @rendermode="@InteractiveServer" Theme="material3-dark" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <base href="/" />
+    <HeadOutlet @rendermode="@InteractiveServer" />
+    <link rel="stylesheet" href="/css/bootstrap/bootstrap.min.css" />
+    <link href="/css/material3-dark-base.css" rel="stylesheet" />
+    <link rel="stylesheet" href="/css/site.css" />
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.2/css/all.css">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script src="/js/audiorecorder.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs/loader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    
+    <script>
+
+        function triggerOpenCloneDialogJs(flowid) {
+            if (window.OpenCloneAsyncJS) {
+                window.OpenCloneAsyncJS(flowid);
+            } else {
+                console.error("Blazor method is not registered yet.");
+            }
+        }
+
+        function openInNewTab(url) {
+            window.open(url, '_self').focus();
+        }
+
+        function registerBlazorMethod(dotNetObject) {
+            window.triggerCloseableDialog = (title, message) => {
+                dotNetObject.invokeMethodAsync('TriggerDialogFromJS', title, message);
+            }
+
+            window.OpenCloneAsyncJS = (flowid) => {
+                dotNetObject.invokeMethodAsync('OpenCloneAsyncJS', flowid);
+            }
+
+            window.OpenResetAsyncJS = (flowid) => {
+                dotNetObject.invokeMethodAsync('OpenResetAsyncJS', flowid);
+            }
+
+            window.OpenInitPipelineAsyncJS = (flowid) => {
+                dotNetObject.invokeMethodAsync('OpenInitPipelineAsyncJS', flowid);
+            }
+        }
+
+        function triggerInitPipelineAsyncJs(flowid) {
+            if (window.OpenInitPipelineAsyncJS) {
+                window.OpenInitPipelineAsyncJS(flowid);
+            } else {
+                console.error("Blazor method is not registered yet.");
+            }
+        }
+
+        function triggerDialogFromClient(title, message) {
+            if (window.triggerCloseableDialog) {
+                window.triggerCloseableDialog(title, message);
+            } else {
+                console.error("Blazor method is not registered yet.");
+            }
+        }
+
+        function registerBlazorExecMethod(dotNetObject) {
+            window.triggerExecDialog = (title, url) => {
+                dotNetObject.invokeMethodAsync('TriggerExecDialogFromJS', title, url);
+            }
+        }
+
+        function triggerExecDialogFromClient(title, url) {
+
+            if (window.triggerExecDialog) {
+                window.triggerExecDialog(title, url);
+            } else {
+                console.error("Blazor method is not registered yet.");
+            }
+        }
+
+
+        let originalSvgWidth = null;
+        let originalSvgHeight = null;
+
+        function scaleSVG() {
+            const svg = document.getElementById('svg2');
+
+            if (!svg) {
+                console.warn('SVG element with id "svg2" not found.');
+                return;
+            }
+
+            const fixedWidth = 800; // Define your desired width here
+            const fixedHeight = 600; // Define your desired height here
+
+            svg.setAttribute('width', fixedWidth);
+            svg.setAttribute('height', fixedHeight);
+        }
+
+        function downloadSVG(svgContent, filename) {
+            var blob = new Blob([svgContent], { type: "image/svg+xml" });
+            var url = window.URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        var chart = null;
+        var chartLine = null;
+
+
+        window.copyTextToClipboard = async (text) => {
+            try {
+                await navigator.clipboard.writeText(text);
+                return true;
+            } catch (err) {
+                console.error('Failed to copy: ', err);
+                return false;
+            }
+        };
+
+        window.readTextFromClipboard = async () => {
+            try {
+                const text = await navigator.clipboard.readText();
+                return text;
+            } catch (err) {
+                console.error('Failed to read: ', err);
+                return ''; // Return empty string in case of an error
+            }
+        };
+
+    </script>
+
+    
+    <style>
+        .editor-section {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-buttons-row {
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+            padding-bottom: 2px;
+            margin-bottom: 2px;
+        }
+
+        .editor-buttons-container {
+            display: flex;
+            flex-direction: row;
+        }
+
+        .editor-container {
+            position: relative;
+            width: 100%;
+            overflow: auto;
+            max-height: 400px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+
+        /* Fullscreen styling */
+        .fullscreen-wrapper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 9999;
+            background-color: white;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+            /* Editor container inside the fullscreen wrapper */
+            .fullscreen-wrapper .editor-container {
+                flex: 1;
+                max-height: none !important;
+                height: calc(100vh - 100px) !important;
+                border: 1px solid #ccc;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+
+                /* Make sure the CodeMirror component fills the container in fullscreen mode */
+                .fullscreen-wrapper .editor-container :global(.cm-editor) {
+                    height: 100% !important;
+                }
+
+                /* Target the specific CodeMirror elements */
+                .fullscreen-wrapper .editor-container :global(.cm-scroller) {
+                    min-height: calc(100vh - 120px) !important;
+                    height: auto !important;
+                }
+    </style>
+    
+    <style>
+        /* Make the tab container take full available height */
+        ::deep .rz-tabview {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 140px); /* Adjust based on your layout */
+        }
+
+        /* Make the tab content area expand to fill available space */
+        ::deep .rz-tabview-panels {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Make each individual tab panel fill the container */
+        ::deep .rz-tabview-panel {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+            /* Style for the Graph component within the Lineage tab */
+            ::deep .rz-tabview-panel:has(> Graph) {
+                min-height: 500px; /* Fallback minimum height */
+            }
+
+        .compact-dialog :deep(.rz-dialog-titlebar) {
+            padding: 0.2rem 1rem !important;
+            min-height: 32px !important;
+        }
+
+        .compact-dialog :deep(.rz-dialog-content) {
+            padding: 0 !important;
+        }
+    </style>
+
+
+</head>
+
+<body>
+<Routes @rendermode="@InteractiveServer" />
+<script src="_framework/blazor.web.js"></script>
+<script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=@(typeof(Radzen.Colors).Assembly.GetName().Version)"></script>
+</body>
+
+</html>

@@ -1,0 +1,71 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-sys-a-p-i-key"
+
+
+ <PageTitle>Add SysAPIKey</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysAPIKey</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysAPIKey" Data="@sysAPIKey" Visible="@(sysAPIKey != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAPIKey].[ServiceType]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAPIKey.ServiceType" Name="ServiceType" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAPIKey].[ServiceType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAPIKey].[ServiceType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="ServiceType" Text="ServiceType is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAPIKey].[ApiKeyAlias]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAPIKey.ApiKeyAlias" Name="ApiKeyAlias" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAPIKey].[ApiKeyAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAPIKey].[ApiKeyAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAPIKey].[AccessKey]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAPIKey.AccessKey" Name="AccessKey" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAPIKey].[AccessKey]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAPIKey].[AccessKey]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAPIKey].[SecretKey]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAPIKey.SecretKey" Name="SecretKey" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAPIKey].[SecretKey]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAPIKey].[SecretKey]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAPIKey].[ServicePrincipalAlias]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="ServicePrincipalAlias" TextProperty="ServicePrincipalAlias" Name="ServicePrincipalAlias" Data="@sysServicePrincipal" AllowSorting="true" @bind-Value="@sysAPIKey.ServicePrincipalAlias" AllowPaging="true" AllowFiltering="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="ServicePrincipalAlias" Title="SourceType" />
+                            <RadzenDropDownDataGridColumn Property="KeyVaultName" Title="KeyVaultName" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAPIKey].[ServicePrincipalAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAPIKey].[ServicePrincipalAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysAPIKey].[KeyVaultSecretName]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAPIKey.KeyVaultSecretName" Name="KeyVaultSecretName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysAPIKey].[KeyVaultSecretName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysAPIKey].[KeyVaultSecretName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

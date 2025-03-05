@@ -1,0 +1,114 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-column"
+
+@code
+{
+    
+    private bool FullScreen { get; set; } = false;
+
+    private void ToggleFullScreen()
+    {
+        FullScreen = !FullScreen;
+    }
+
+    private string pastedText;
+    private async Task PasteText1()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            sysColumn.SelectExp = pastedText;
+            StateHasChanged();
+        }
+    }
+}
+
+ <PageTitle>Edit SysColumn</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysColumn</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysColumn" Data="@sysColumn" Visible="@(sysColumn != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysColumn].[ColumnName]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysColumn.ColumnName" Name="ColumnName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysColumn].[ColumnName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysColumn].[ColumnName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysColumn].[DataType]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysColumn.DataType" Name="DataType" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysColumn].[DataType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysColumn].[DataType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysColumn].[DataTypeExp]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysColumn.DataTypeExp" Name="DataTypeExp" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysColumn].[DataTypeExp]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysColumn].[DataTypeExp]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysColumn].[SelectExp]").Result Variant="Variant.Outlined" Style="width: 100%;">
+                <ChildContent>
+                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                            <div class="editor-buttons-row">
+                                <div class="editor-buttons-container">
+                                    <RadzenButton Click=@(args => @PasteText1())
+                                                  Icon="input"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Primary"
+                                                  Variant="Variant.Flat"
+                                                  Style="margin-right: 5px;" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysColumn].[SelectExp]"))
+                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[SysColumn].[SelectExp]"))"
+                                                  Icon="help_outline"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Dark"
+                                                  Variant="Variant.Flat"
+                                                  Style="margin-right: 5px;" />
+                                    <RadzenButton Click="@ToggleFullScreen"
+                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                  Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                  Variant="Variant.Flat" />
+                                </div>
+                            </div>
+                            <div class="editor-container">
+                                <CodeMirror6Wrapper @bind-Doc="@sysColumn.SelectExp"
+                                                    Language=CodeMirrorLanguage.MsSql
+                                                    LineNumbers="true"
+                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                    FullScreen="@FullScreen"
+                                                    LineWrapping="true"
+                                                    ScrollPastEnd="false"
+                                                    AllowHorizontalResize="false"
+                                                    AllowVerticalResize="false"
+                                                    Editable="true"
+                                                    ReadOnly="false"
+                                                    MinHeight="200px">
+                                </CodeMirror6Wrapper>
+                            </div>
+                        </div>
+                    </RadzenRow>
+                </ChildContent>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}

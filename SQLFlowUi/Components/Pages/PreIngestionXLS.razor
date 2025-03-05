@@ -1,0 +1,164 @@
+@using SQLFlowUi.Controllers
+@using SQLFlowUi.Data
+@inject DocumentationService DocService
+@page "/pre-ingestion-xls"
+@page "/pre-ingestion-xls/{FlowID:int}"
+
+@code {
+
+    public async Task OpenInitialize()
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "FlowType", "xls" },
+            { "OnActionCompleted", new EventCallback<InitCompletedEventArgs>(this, OpenNewFlowId) }
+        };
+
+        await DialogService.OpenAsync<InitPipeline>($"Initialize XLS Pipeline",
+            parameters,
+            new DialogOptions() { Width = "700px", Height = "240px", Resizable = true, Draggable = true });
+    }
+
+    private void OpenNewFlowId(InitCompletedEventArgs args)
+    {
+        preIngestionXLS = sqlflowProdService.GetPreIngestionXLS().Result;
+        DialogService.Close();
+        DialogService.OpenAsync<EditPreIngestionXLS>("Edit PreIngestionXLS", new Dictionary<string, object> { { "FlowID", args.FlowId } }, GlobalSettings.EditOptions);
+    }
+
+    private async Task OpenInNewTab(string url)
+    {
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    protected async Task Redirect(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.PreIngestionXLS data)
+    {
+        string fileSearchURL = $"/search/{data.FlowID}";
+        await OpenInNewTab(fileSearchURL);
+    }
+}
+
+ @attribute [Authorize]  
+ <PageTitle>PreIngestionXLS</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text=@DocService.GetLabel("[flw].[PreIngestionXLS]").Result TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Click=@(args => @OpenInitialize()) Variant="Variant.Flat" Icon="note_add" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"  AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@preIngestionXLS"    TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" RowDoubleClick="@EditRow" >
+            <Columns>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Filterable="false" Sortable="false" Width="90px" TextAlign="TextAlign.Center">
+                    <Template Context="PreIngestionXLS">
+                        <RadzenButton ButtonStyle="ButtonStyle.Info" Image="/icons/search.png" Size="ButtonSize.Medium"
+                                      Shade="Shade.Lighter" Variant="Variant.Flat"
+                                      Click=@(args => Redirect(args, PreIngestionXLS)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="FlowID" Title="FlowID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="SysAlias" Title="SysAlias">
+                </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="ServicePrincipalAlias" Title="Storage Alias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="srcPath" Title="src Path">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="srcPathMask" Title="src Path Mask">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="srcFile" Title="src File">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="SearchSubDirectories" Title="Search Sub Directories">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="copyToPath" Title="copy To Path">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="srcDeleteIngested" Title="src Delete Ingested">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="srcDeleteAtPath" Title="src Delete At Path">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="zipToPath" Title="zip To Path">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="trgServer" Title="trgServer">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="trgDBSchTbl" Title="trgDBSchTbl">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="preFilter" Title="pre Filter">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="FirstRowHasHeader" Title="First Row Has Header">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="SheetName" Title="Sheet Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="SheetRange" Title="Sheet Range">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="UseSheetIndex" Title="Use Sheet Index">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="SyncSchema" Title="Sync Schema">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="ExpectedColumnCount" Title="Expected Column Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="DefaultColDataType" Title="Default Col Data Type">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="FetchDataTypes" Title="Fetch Data Types">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="OnErrorResume" Title="On Error Resume">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="NoOfThreads" Title="No Of Threads">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="PreProcessOnTrg" Title="Pre Process On Trg">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="PostProcessOnTrg" Title="Post Process On Trg">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="InitFromFileDate" Title="Init From File Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="InitToFileDate" Title="Init To File Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="PreInvokeAlias" Title="Pre Invoke Alias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="Batch" Title="Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="BatchOrderBy" Title="Batch Order By">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="DeactivateFromBatch" Title="Deactivate From Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="FlowType" Title="FlowType">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="FromObjectMK" Title="FromObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="ToObjectMK" Title="ToObjectMK">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="ShowPathWithFileName" Title="Show Path With File Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="CreatedBy" Title="Created By">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Property="CreatedDate" Title="Created Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.PreIngestionXLS" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="preIngestionXLS">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, preIngestionXLS)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>

@@ -1,0 +1,90 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/build-dim-period"
+
+
+@code {
+    private DateTime dFromDate = new DateTime(2021, 1, 1);
+    private DateTime dToDate = new DateTime(DateTime.Now.Year + 1, 1, 1);
+
+    private int dFiscalStartMonth = 1;
+
+    private RadzenDatePicker<DateTime> FromDateComponent;
+    private RadzenDatePicker<DateTime> ToDateComponent;
+    private RadzenDropDownDataGrid<string> CountryComponent;
+    private RadzenDropDown<string> HolidayLangComponent;
+    private RadzenDropDown<string> APIKeyComponent;
+    private RadzenDropDown<int> FiscalMonthStartComponent;
+    
+
+}
+
+@attribute [Authorize] 
+<PageTitle>ExecDimPeriod</PageTitle>
+
+<RadzenRow Gap="0" RowGap="0">
+    <RadzenColumn Size="12">
+        <RadzenCard Style="padding: 20px,20px 20px 20px;">
+            <RadzenRow>
+                <RadzenText Text="ExecDimPeriod" TextStyle="TextStyle.H3" TagName="TagName.H1" />
+            </RadzenRow>
+            
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenColumn></RadzenColumn><RadzenDatePicker Name="FromDate" TValue="DateTime" Value="@dFromDate" @ref="FromDateComponent" DateFormat="yyyy-MM-dd"></RadzenDatePicker>
+                <RadzenColumn><RadzenDatePicker TValue="DateTime" Name="ToDate" Value="@dToDate" @ref="ToDateComponent" DateFormat="yyyy-MM-dd"></RadzenDatePicker></RadzenColumn>
+            </RadzenRow>
+            <RadzenFieldset Text="Holiday API" Style="margin-bottom: 20px">
+                <RadzenRow Style="margin-bottom: 16px">
+                    <RadzenFormField Text="ApiKeyAlias" Variant="Variant.Outlined" Style="width: 32%;">
+                        <ChildContent>
+                            <RadzenDropDown TValue="string" ValueProperty="ApiKeyAlias" TextProperty="ApiKeyAlias" @ref="APIKeyComponent" Data="@getGoogleApiKeys" Name="ApiKeyAlias" />
+                        </ChildContent>
+                        <Helper>
+                            <RadzenRequiredValidator Component="ApiKeyAlias" Text="APIKey is required" />
+                        </Helper>
+                    </RadzenFormField>
+                    <RadzenFormField Text="Fiscal Year Start Month" Variant="Variant.Outlined" Style="width: 32%;">
+                        <ChildContent>
+                            <RadzenDropDown TValue="int" ValueProperty="Key" TextProperty="Value" Value="@dFiscalStartMonth" @ref="FiscalMonthStartComponent" Data="@fiscalMonthStart" Name="fiscalMonthStart" />
+                        </ChildContent>
+                        <Helper>
+                            <RadzenRequiredValidator Component="fiscalMonthStart" Text="Fiscal Year Start Month is required" />
+                        </Helper>
+                    </RadzenFormField>
+                </RadzenRow>
+                <RadzenRow Style="margin-bottom: 16px">
+                    <RadzenFormField Text="Country" Variant="Variant.Outlined" Style="width: 32%;">
+                        <ChildContent>
+                            <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Value" TextProperty="Value" @ref="CountryComponent" Data="@countryList" AllowSorting="true" Name="Country" AllowPaging="true" AllowFiltering="true">
+                                <Columns>
+                                    <RadzenDropDownDataGridColumn Property="Key" Title="Key"/>
+                                    <RadzenDropDownDataGridColumn Property="Value" Title="Value"/>
+                                </Columns>
+                            </RadzenDropDownDataGrid>
+                        </ChildContent>
+                        <Helper>
+                            <RadzenRequiredValidator Component="Country" Text="Country is required"/>
+                        </Helper>
+                    </RadzenFormField>
+                    <RadzenFormField Text="Holiday Language" Variant="Variant.Outlined" Style="width: 32%;">
+                        <ChildContent>
+                            <RadzenDropDown style="display: block; width: 100%" TValue="string" Name="holidayLang" @ref="HolidayLangComponent" ValueProperty="Key" TextProperty="Value" Data="@holidayLang" />
+                        </ChildContent>
+                    </RadzenFormField>
+                </RadzenRow>
+            </RadzenFieldset>
+            
+            <RadzenRow Style="margin-bottom: 16px">
+                <RadzenButton Text="Build" Click="@Button0Click"></RadzenButton>
+            </RadzenRow>
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+
+
+
+
+
+
+

@@ -1,0 +1,107 @@
+﻿using System.Collections;
+
+namespace SQLFlowCore.Common
+{
+    class RetryCodes
+    {
+
+        internal Hashtable HashTbl;
+
+        internal RetryCodes()
+        {
+            HashTbl = new Hashtable()
+            {
+                {"539","Schema changed after the target table was created. Rerun the Select Into query."},
+                {"617","Descriptor for object ID %ld in database ID %d not found in the hash table during attempt to unhash it. A work table is missing an entry. Rerun the query. If a cursor is involved, close and reopen the cursor."},
+                {"844","Time out occurred while waiting for buffer latch -- type %d, bp %p, page %d:%d, stat %#x, database id: %d, allocation unit id: %I64d%ls, task 0x%p : %d, waittime %d seconds, flags 0x%I64x, owning task 0x%p. Continuing to wait."},
+                {"952","Database '%.*ls' is in transition. Try the statement later."},
+                {"956","Database %.*ls is enabled for Database Mirroring, but has not yet synchronized with its partner. Try the operation again later."},
+                {"988","Unable to access database '%.*ls' because it lacks a quorum of nodes for high availability. Try the operation again later."},
+                {"1205","Transaction (Process ID %d) was deadlocked on %.*ls resources with another process and has been chosen as the deadlock victim. Rerun the transaction."},
+                {"1222","Lock request time out period exceeded."},
+                {"1471","The database mirroring connection terminated. Out of memory sending message for database %.*ls."},
+                {"1472","The database mirroring connection terminated. Communications error sending message for database %.*ls."},
+                {"1807","Could not obtain exclusive lock on database '%.*ls'. Retry the operation later."},
+                {"3055","Backup destination %.*ls supports a FILESTREAM filegroup. This filegroup cannot be used as a backup destination. Rerun the BACKUP statement with a valid backup destination."},
+                {"3762","Cannot drop database '%.*ls' because of temporary unavailability. Please try again later."},
+                {"3903","The ROLLBACK TRANSACTION request has no corresponding BEGIN TRANSACTION."},
+                {"3919","Cannot enlist in the transaction because the transaction has already been committed or rolled back."},
+                {"3965","The PROMOTE TRANSACTION request failed because there is no local transaction active."},
+                {"3989","New request is not allowed to start because it should come with valid transaction descriptor."},
+                {"4060","Cannot open database %.*ls requested by the login. The login failed."},
+                {"4068","sp_resetconnection was sent as part of a remote procedure call (RPC) batch, but it was not the last RPC in the batch. This connection will be terminated."},
+                {"5034","The file %ls is currently being autogrown or modified by another process. Try the operation again later."},
+                {"5059","Database '%.*ls' is in transition. Try the ALTER DATABASE statement later."},
+                {"5061","ALTER DATABASE failed because a lock could not be placed on database '%.*ls'. Try again later."},
+                {"5065","The file %ls is currently being scanned or used by a background or user process. Try the operation again later."},
+                {"5295","DBCC UPDATEUSAGE cannot acquire lock on object 'sysallocunits'. Please try again later."},
+                {"7214","Remote procedure time out of %d seconds exceeded. Remote procedure '%.*ls' is canceled."},
+                {"7604","Full-text operation failed due to a time out."},
+                {"7884","Violation of tabular data stream (TDS) protocol. This is most often caused by a previous exception on this task. The last exception on the task was error %d, severity %d, address 0x%p. This connection will be terminated."},
+                {"7885","Network error 0x%lx occurred while sending data to the client on process ID %d batch ID %d. A common cause for this error is if the client disconnected without reading the entire response from the server. This connection will be terminated."},
+                {"7886","A read operation on a large object failed while sending data to the client. A common cause for this is if the application is running in READ UNCOMMITTED isolation level. This connection will be terminated."},
+                {"8628","A time out occurred while waiting to optimize the query. Rerun the query."},
+                {"8645","A timeout occurred while waiting for memory resources to execute the query in resource pool '%ls' (%ld). Rerun the query."},
+                {"10922","%ls failed. Rerun the statement."},
+                {"10928","Resource ID : %d. The %ls limit for the database is %d and has been reached. See 'http://go.microsoft.com/fwlink/?LinkId=267637' for assistance."},
+                {"10930","The service is currently too busy. Please try again later."},
+                {"12111","MODIFY MAXSIZE failed. The DynamicFileAllocationDetectionUnderLock is running by other thread, try again later."},
+                {"14258","Cannot perform this operation while SQLServerAgent is starting. Try again later."},
+                {"16528","Operation '%ls %ls' failed. Retry the operation later."},
+                {"17165","The RANU instance is terminating in response to its internal time out. This is an informational message only. No user action is required."},
+                {"17191","Cannot accept a new connection because the session has been terminated. This error occurs when a new batch execution is attempted on a session that is logging out, or when a severe error is encountered upon connection. CheckForError the error log to see if this s"},
+                {"19510","Distributed availability group '%.*ls' not found. Rerun the command with an existing distributed availbility group."},
+                {"20689","The check for a Publisher needing a new identity range allocation failed on table %s. This check occurs every time the Merge Agent and Snapshot Agent run. Rerun the Merge Agent or Snapshot Agent."},
+                {"22380","Updating the rowcount of a distributed table is not allowed unless trace flag 12127 is enabled. Rerun the statement by enabling the said trace flag."},
+                {"25003","Upgrade of the distribution database MSmerge_subscriptions table failed. Rerun the upgrade procedure in order to upgrade the distribution database."},
+                {"25738","Event session '%.*ls' could not be started because system is currently busy. Please try again later."},
+                {"25740","Unable to start event session '%.*ls' because system is busy. Please try again later."},
+                {"27118","Failed to deploy the project. Try again later."},
+                {"27230","Failed to deploy the packages. Try again later."},
+                {"30024","The fulltext stoplist '%.*ls' already exists in the current database. Duplicate stoplist names are not allowed. Rerun the statement and specify a unique stoplist name."},
+                {"30026","The search property list '%.*ls' already exists in the current database. Duplicate search property list names are not allowed. Rerun the statement and specify a unique name for the search property list. For a list of the search property lists on the curre"},
+                {"30085","A stoplist cache cannot be generated while processing a full-text query or performing full-text indexing. There is not enough memory to load the stoplist cache. Rerun the query or indexing command when more resources are available."},
+                {"33115","CREATE/ALTER/DROP DATABASE ENCRYPTION KEY failed because a lock could not be placed on the database. Try again later."},
+                {"33116","CREATE/ALTER/DROP DATABASE ENCRYPTION KEY failed because a lock could not be placed on database '%.*ls'. Try again later."},
+                {"33136","The operation could not be completed at this time. Please try again later."},
+                {"35267","Always On Availability Groups connection with %S_MSG database terminated for %S_MSG database '%.*ls' on the availability replica '%.*ls' with Replica ID: {%.8x-%.4x-%.4x-%.2x%.2x-%.2x%.2x%.2x%.2x%.2x%.2x}. This is an informational message only. No user ac"},
+                {"40197","The service has encountered an error processing your request. Please try again. Error code %d."},
+                {"40501","The service is currently busy. Retry the request after 10 seconds. Incident ID: %ls. Code: %d"},
+                {"40532","Cannot open server %.*ls requested by the login.  The login failed."},
+                {"40544","The database '%.*ls' has reached its size quota. Partition or delete data, drop indexes, or consult the documentation for possible resolutions."},
+                {"40549","Session is terminated because you have a long running transaction. Try shortening your transaction."},
+                {"40550","The session has been terminated because it has acquired too many locks. Try reading or modifying fewer rows in a single transaction."},
+                {"40551","The session has been terminated because of excessive TEMPDB usage. Try modifying your query to reduce temporary table space usage."},
+                {"40552","The session has been terminated because of excessive transaction log space usage. Try modifying fewer rows in a single transaction."},
+                {"40553","The session has been terminated because of excessive memory usage. Try modifying your query to process fewer rows."},
+                {"40602","Could not create login. Please try again later."},
+                {"40611","Windows Azure SQL Database supports a maximum of 128 firewall rules."},
+                {"40613","Database '%.*ls' on server '%.*ls' is not currently available.  Please retry the connection later.  If the problem persists, contact customer support, and provide them the session tracing ID of '%.*ls'."},
+                {"40615","Cannot open server '%.*ls' requested by the login. Client with IP address '%.*ls' is not allowed to access the server.  To enable access, use the Windows Azure Management Portal or run sp_set_firewall_rule on the master database to create a firewall rule "},
+                {"40642","The server is currently too busy.  Please try again later."},
+                {"40648","Too many requests have been performed.  Please retry later."},
+                {"40671","Unable to '%.*ls' '%.*ls' on server '%.*ls'. Please retry the connection later."},
+                {"40675","The service is currently too busy.  Please try again later."},
+                {"40806","The request to retrieve subscription information has timed out. Please try again later."},
+                {"40807","Could not retrieve subscription information for subscription id: %.*ls, after %d attempts. Please try again later."},
+                {"40825","Unable to complete request now. Please try again later."},
+                {"40938","The Server DNS Alias '%.*ls' is busy with another operation and cannot perform the '%.*ls' operation. Please try again later."},
+                {"41828","Creation of memory-optimized tables is temporarily disabled. Please try again later."},
+                {"41838","Failed to retrieve size for this file due to an internal error. Please try again later."},
+                {"45156","Subscription '%.*ls' is busy with another operation. Please try your operation later."},
+                {"45157","Server '%.*ls' is busy with another operation. Please try your operation later."},
+                {"45161","Managed instance '%.*ls' is busy with another operation. Please try your operation later."},
+                {"45168","The server '%.*ls' has too many active connections.  Try again later."},
+                {"45169","The subscription '%.*ls' has too many active connections.  Try again later."},
+                {"45182","Database '%ls' is busy with another operation. Please try your operation later."},
+                {"45509","Managed Instance Failover cannot be initiated. Automated backup needs to complete the first full backup for a new database. Please try again later."},
+                {"46712","Unexpected error encountered during request processing. Connection will be terminated."},
+                {"47132","Joining availability group '%.*ls' with rebuilding contained system DB has failed because rebuilding contained MSDB has failed. This is caused by contained MSDB is still used. Retry the operation later."},
+                {"49510","Managed instance is busy with another operation. Please try your operation later."},
+                {"49918","Cannot process request. Not enough resources to process request. Please retry your request later."}
+            };
+
+        }
+
+    }
+}

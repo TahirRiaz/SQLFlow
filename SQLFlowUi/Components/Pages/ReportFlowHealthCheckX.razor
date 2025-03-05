@@ -1,0 +1,248 @@
+@page "/report-flow-health-check"
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@using SQLFlowUi.Models.sqlflowProd
+
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+
+ @attribute [Authorize]  
+ <PageTitle>ReportFlowHealthCheck</PageTitle>
+<RadzenText Text=@pgTitle TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+@if (reportAssertion.Count() > 0)
+{
+    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[ReportFlowHealthCheck]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[ReportFlowHealthCheck]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+    <RadzenButton Variant="Variant.Flat" Click=@(args => OnClick("Primary button")) Text="Perform HealthCheck" ButtonStyle="ButtonStyle.Primary" />
+    <RadzenButton Variant="Variant.Flat" Click=@(args => OnClick("Primary button")) Text="Run Assertions" ButtonStyle="ButtonStyle.Primary" />
+}
+<RadzenTabs Style="widht=100%; padding:4px; margin:0px">
+    <Tabs>
+        @foreach (var group in groupedData) 
+        {
+            var tabText = group.FirstOrDefault()?.HealthCheckName ?? "RowCount";
+            var headerLoop = GetSingleMLModelSelection(group);
+            noOfRows = group.Count();
+            <RadzenTabsItem Text="@tabText" >
+                @if (headerLoop?.MLModelSelectionParsed != null)
+                {
+                    <RadzenPanel Collapsed="true" AllowCollapse="true" Class="rz-my-10 rz-mx-auto" Style="widht=100%; padding:4px; margin:0px">
+                        <HeaderTemplate>
+                            <RadzenText TextStyle="TextStyle.H6" Class="rz-display-flex rz-align-items-center rz-m-0">
+                                <RadzenImage Path="/icons/artificial-intelligence-x32.png" />
+                                <b>&nbsp;&nbsp;Evaluated ML Models</b>
+                            </RadzenText>
+                        </HeaderTemplate>
+                        <ChildContent>
+                            <RadzenDataList PageSize="2" AllowPaging="true" Data="@headerLoop.MLModelSelectionParsed" TItem="ValidationModelData">
+                                <Template Context="modelData">
+                                    <RadzenCard Style="width: 100%">
+                                        <table>
+                                            <tr><td colspan="2"><b>@modelData.TrainerName</b></td></tr>
+                                            <tr>
+                                                <td>Model Test Date:</td>
+
+                                                <td>@headerLoop.MLModelDate</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Mean Absolute Error:</td>
+                                                <td>@Math.Round(modelData.ValidationMetrics.MeanAbsoluteError)</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Mean Squared Error:</td>
+                                                <td>@Math.Round(modelData.ValidationMetrics.MeanSquaredError)</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Root Mean Squared Error:</td>
+                                                <td>@Math.Round(modelData.ValidationMetrics.RootMeanSquaredError)</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Loss Function:</td>
+                                                <td>@Math.Round(modelData.ValidationMetrics.LossFunction)</td>
+                                            </tr>
+                                            <tr>
+                                                <td>R-Squared:</td>
+                                                <td>@Math.Round(modelData.ValidationMetrics.RSquared, 4)</td>
+                                            </tr>
+                                        </table>
+                                    </RadzenCard>
+                                </Template>
+                            </RadzenDataList>
+                        </ChildContent>
+                    </RadzenPanel>
+
+                }
+                else
+                {
+                    <div>No validation model data available</div>
+                }
+                
+                @if (noOfRows > 0)
+                {
+                    <RadzenPanel Collapsed="true" AllowCollapse="true" Class="rz-my-10 rz-mx-auto" Style="widht=100%; padding:4px; margin:0px">
+                        <HeaderTemplate>
+                            <RadzenText TextStyle="TextStyle.H6" Class="rz-display-flex rz-align-items-center rz-m-0">
+                                <RadzenImage Path="/icons/anomaly.png" />
+                                <b>&nbsp;&nbsp;Detected Anomalies</b>
+                            </RadzenText>
+                        </HeaderTemplate>
+                        <ChildContent>
+                            <style>
+                .rz-grid-table td {
+                    padding: 2 !important;
+                }
+
+                .rz-data-row {
+                    padding: 2 !important;
+                }
+                </style>
+                            <RadzenDataGrid @ref="grid0" AllowFiltering="false" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[] { 5, 10, 20, 30 })
+                                            Data="@group" TItem="SQLFlowUi.Models.sqlflowProd.FlowHealthCheck">
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.FlowHealthCheck" Property="Date" Title="Date">
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.FlowHealthCheck" Property="BaseValue" Title="Value">
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.FlowHealthCheck" Property="PredictedValue" Title="PredictedValue">
+                                    </RadzenDataGridColumn>
+                                </Columns>
+                            </RadzenDataGrid>
+                        </ChildContent>
+                    </RadzenPanel>
+                }
+                else
+                {
+                    <div>No Detected Anomalies</div>
+                }
+
+
+                @if (reportAssertion.Count() > 0)
+                {
+                    <RadzenPanel Collapsed="true" AllowCollapse="true" Class="rz-my-10 rz-mx-auto" Style="widht=100%; padding:4px; margin:0px">
+                        <HeaderTemplate>
+                            <RadzenText TextStyle="TextStyle.H6" Class="rz-display-flex rz-align-items-center rz-m-0">
+                                <RadzenImage Path="/icons/asserted_x32.png" />
+                                <b>&nbsp;&nbsp; Assertion Results</b>
+                            </RadzenText>
+                        </HeaderTemplate>
+                        <ChildContent>
+                            <RadzenDataGrid AllowFiltering="false" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[] { 5, 10, 20, 30 })
+                                            Data="@reportAssertion" TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion">
+                                
+                                <Columns>
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                                        <Template Context="reportAssertion">
+
+                                            <RadzenButton ButtonStyle="@ProcessAssertionColor(reportAssertion)" Icon="@ProcessAssertion(reportAssertion)" Size="ButtonSize.Medium"
+                                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                                          @onclick:stopPropagation="true"/>
+                                        </Template>
+                                    </RadzenDataGridColumn>
+                                    
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Property="AssertionName" Title="Date">
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Property="AssertionDate" Title="AssertionDate">
+                                    </RadzenDataGridColumn>
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Property="Result" Title="Result">
+                                    </RadzenDataGridColumn>
+                                    
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                                        <Template Context="reportAssertion">
+
+                                            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="find_in_page" Size="ButtonSize.Medium"
+                                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                                          Click=@(args => OpenAssertion(reportAssertion)) />
+                                        </Template>
+                                    </RadzenDataGridColumn>
+
+                                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.ReportAssertion" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                                        <Template Context="reportAssertion">
+                                            <RadzenButton ButtonStyle="ButtonStyle.Secondary" Icon="build" Size="ButtonSize.Medium"
+                                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                                          Click=@(args => EditAssertion(reportAssertion)) />
+
+                                        </Template>
+                                    </RadzenDataGridColumn>
+
+                                </Columns>
+                            </RadzenDataGrid>
+                            
+                            
+                        </ChildContent>
+                    </RadzenPanel>
+
+                }
+                else
+                {
+                    <div>No assertion data available</div>
+                }
+                
+
+            </RadzenTabsItem>
+                
+        }
+
+
+
+       
+    </Tabs>
+    
+</RadzenTabs>
+
+@code {
+
+
+    private void OnClick(string text)
+    {
+        NotificationService.Notify(new NotificationMessage { Severity = NotificationSeverity.Info, Summary = "Button Clicked", Detail = text });
+    }
+    
+    async Task EditAssertion(SQLFlowUi.Models.sqlflowProd.ReportAssertion reportAssertion)
+    {
+
+        string url = $"/assertion/{reportAssertion.AssertionID}";
+        await JSRuntime.InvokeVoidAsync("openInNewTab", url);
+    }
+
+    async Task OpenAssertion(SQLFlowUi.Models.sqlflowProd.ReportAssertion reportAssertion)
+    {
+        await DialogService.OpenAsync(@$"{reportAssertion.TraceLog}", ds =>
+            @BuildHtmlMarkup(reportAssertion), new DialogOptions() { CloseDialogOnOverlayClick = true });
+    }
+
+
+    public static RenderFragment BuildHtmlMarkup(ReportAssertion reportAssertion) => builder =>
+    {
+        if (reportAssertion == null)
+            throw new ArgumentNullException(nameof(reportAssertion));
+
+        builder.OpenElement(0, "div");
+
+        builder.OpenElement(3, "p");
+        builder.AddContent(4, reportAssertion.AssertionSqlCmd);
+        builder.CloseElement();
+
+
+        builder.CloseElement();
+    };
+}
+
+
+
+
+    
+    
+    

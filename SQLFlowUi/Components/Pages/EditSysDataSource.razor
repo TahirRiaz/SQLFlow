@@ -1,0 +1,157 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-data-source"
+@using SQLFlowCore.Services.AzureResources;
+    using SQLFlowCore.Services.Services.AzureResources
+
+
+ <PageTitle>Edit SysDataSource</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysDataSource</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysDataSource" Data="@sysDataSource" Visible="@(sysDataSource != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDataSource].[SourceType]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                      <RadzenDropDown style="display: block; width: 100%"
+                                      @bind-Value="@sysDataSource.SourceType"
+                                      Name="Model"
+                                      Data="@(new List<string> { "AZDB", "MSSQL", "MySQL"})"
+                                      TValue="string"
+                                       />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[SourceType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[SourceType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDataSource].[DatabaseName]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDataSource.DatabaseName" Name="DatabaseName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[DatabaseName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[DatabaseName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDataSource].[Alias]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDataSource.Alias" Name="Alias" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[Alias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[Alias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDataSource].[ConnectionString]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 20vh" @bind-Value="@sysDataSource.ConnectionString" Name="ConnectionString" class="w-100" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[ConnectionString]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[ConnectionString]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDataSource].[ServicePrincipalAlias]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                      <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="ServicePrincipalAlias" TextProperty="ServicePrincipalAlias" Name="ServicePrincipalAlias" Data="@sysServicePrincipal" AllowSorting="true" @bind-Value="@sysDataSource.ServicePrincipalAlias" AllowPaging="true" AllowFiltering="true">
+                          <Columns>
+                              <RadzenDropDownDataGridColumn Property="ServicePrincipalAlias" Title="SourceType" />
+                              <RadzenDropDownDataGridColumn Property="KeyVaultName" Title="KeyVaultName" />
+                          </Columns>
+                      </RadzenDropDownDataGrid>
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[ServicePrincipalAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[ServicePrincipalAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+              </RadzenFormField>
+              <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDataSource].[KeyVaultSecretName]").Result Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDataSource.KeyVaultSecretName" Name="KeyVaultSecretName" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[KeyVaultSecretName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[KeyVaultSecretName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+              </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[SysDataSource].[SupportsCrossDBRef]").Result Component="SupportsCrossDBRef" Style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysDataSource.SupportsCrossDBRef" Name="SupportsCrossDBRef" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[SupportsCrossDBRef]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[SupportsCrossDBRef]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[SysDataSource].[IsSynapse]").Result Component="IsSynapse" Style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysDataSource.IsSynapse" Name="IsSynapse" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[IsSynapse]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[IsSynapse]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text=@DocService.GetLabel("[flw].[SysDataSource].[IsLocal]").Result Component="IsLocal" Style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysDataSource.IsLocal" Name="IsLocal" />
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDataSource].[IsLocal]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDataSource].[IsLocal]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                </RadzenColumn>
+            </RadzenRow>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton Text="Create Keyvault Secret" Click="@OnCreateKeyVaultSecretName" />
+                    <RadzenButton Text="Get Keyvault Secret" Click="@OnFetchKeyVaultSecretName" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+@code {
+    private async Task OnCreateKeyVaultSecretName()
+    {
+        try
+        {
+            SQLFlowUi.Models.sqlflowProd.SysServicePrincipal servicePrincipal = await sqlflowProdService.GetSysServicePrincipalByAlias(sysDataSource.ServicePrincipalAlias);
+
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(servicePrincipal.TenantId, servicePrincipal.ApplicationId, servicePrincipal.ClientSecret, servicePrincipal.KeyVaultName);
+
+            string secretName = $"sqlflow-ds-{sysDataSource.Alias}";
+            secretName = AzureKeyVaultManager.MakeValidSecretName(secretName);
+            // Use the current values from sysDataSource
+            var keyVaultSecretName = await keyVaultManager.CreateSecretAsync(secretName, sysDataSource.ConnectionString);
+
+            // Update the KeyVaultSecretName in sysDataSource
+            sysDataSource.KeyVaultSecretName = keyVaultSecretName.Name;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+            // Show a success notification
+            NotificationService.Notify(NotificationSeverity.Success, "Keyvault Secret", "Azure Keyvault Secret has been created. You can remove the database value");
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+
+
+    private async Task OnFetchKeyVaultSecretName()
+    {
+        try
+        {
+            SQLFlowUi.Models.sqlflowProd.SysServicePrincipal servicePrincipal = await sqlflowProdService.GetSysServicePrincipalByAlias(sysDataSource.ServicePrincipalAlias);
+
+            AzureKeyVaultManager keyVaultManager = new AzureKeyVaultManager(servicePrincipal.TenantId, servicePrincipal.ApplicationId, servicePrincipal.ClientSecret, servicePrincipal.KeyVaultName);
+
+            // Use the current values from sysDataSource
+            var keyVaultSecret = keyVaultManager.GetSecret(sysDataSource.KeyVaultSecretName);
+
+            // Update the KeyVaultSecretName in sysDataSource
+            sysDataSource.ConnectionString = keyVaultSecret;
+
+            // Optionally, you can force the UI to refresh if it's not updating automatically
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
+        }
+    }
+}

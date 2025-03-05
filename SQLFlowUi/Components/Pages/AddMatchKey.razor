@@ -1,0 +1,377 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/add-match-key"
+
+@code
+{
+    
+    
+    private string pastedText;
+    private async Task PasteText1()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            matchKey.srcFilter = pastedText;
+            StateHasChanged();
+        }
+    }
+
+
+    private string AnalyzeFrequencyPenalty(double? frequencyPenalty)
+    {
+        if (!frequencyPenalty.HasValue)
+        {
+            return "Invalid Threshold";
+        }
+        string result = frequencyPenalty switch
+        {
+            >= 0.0 and <= 20 => $"Low ({frequencyPenalty})",
+            > 21 and <= 70 => $"Moderate ({frequencyPenalty})",
+            > 71 and <= 100 => $"High ({frequencyPenalty})",
+            _ => "Invalid Frequency Penalty"
+        };
+        return result;
+    }
+}
+<PageTitle>Add MatchKey</PageTitle>
+
+<RadzenColumn SizeMD=12>
+    <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save MatchKey</RadzenAlert>
+    <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.MatchKey" Data="@matchKey" Visible="@(matchKey != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenSteps>
+                <Steps>
+                    <RadzenStepsItem Text="Source">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[FlowID]").Result Variant="Variant.Outlined" Style="width: 100%">
+                            <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" TValue="int" ValueProperty="FlowID" Name="FlowID" ReadOnly="true" TextProperty="ProcessShort" Data="@flowDS" @bind-Value="@matchKey.FlowID" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                                    <Columns>
+                                        <RadzenDropDownDataGridColumn Property="FlowID" Title="FlowID" Width="80px" />
+                                        <RadzenDropDownDataGridColumn Property="Batch" Title="Batch" Width="150px" />
+                                        <RadzenDropDownDataGridColumn Property="ProcessShort" Title="ProcessShort" />
+                                    </Columns>
+                                </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[FlowID]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[FlowID]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                        </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[Batch]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.Batch" Name="Batch" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[Batch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[Batch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[SysAlias]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.SysAlias" Name="SysAlias" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[SysAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[SysAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="SysAlias" Text="SysAlias is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[srcServer]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Name="srcServer" Data="@sysDataSources" AllowSorting="true" @bind-Value="@matchKey.srcServer" AllowPaging="true" AllowFiltering="true">
+                                        <Columns>
+                                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                                        </Columns>
+                                    </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[srcServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[srcServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="srcServer" Text="srcServer is required" />
+                                </Helper>
+                            </RadzenFormField>
+
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[srcDatabase]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.srcDatabase" Name="srcDatabase" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[srcDatabase]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[srcDatabase]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="srcDatabase" Text="srcDatabase is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[srcSchema]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.srcSchema" Name="srcSchema" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[srcSchema]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[srcSchema]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[srcObject]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.srcObject" Name="srcObject" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[srcObject]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[srcObject]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="srcObject" Text="srcObject is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[srcFilter]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                <ChildContent>
+                                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                                            <div class="editor-buttons-row">
+                                                <div class="editor-buttons-container">
+                                                    <RadzenButton Click=@(args => @PasteText1())
+                                                                  Icon="input"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Primary"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[srcFilter]"))
+                                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[MatchKey].[srcFilter]"))"
+                                                                  Icon="help_outline"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Dark"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click="@ToggleFullScreen"
+                                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                                  Variant="Variant.Flat" />
+                                                </div>
+                                            </div>
+                                            <div class="editor-container">
+                                                <CodeMirror6Wrapper @bind-Doc="@matchKey.srcFilter"
+                                                                    Language=CodeMirrorLanguage.MsSql
+                                                                    LineNumbers=false
+                                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                                    FullScreen="@FullScreen"
+                                                                    LineWrapping="true"
+                                                                    ScrollPastEnd="false"
+                                                                    AllowHorizontalResize="true"
+                                                                    AllowVerticalResize="true"
+                                                                    Editable="true"
+                                                                    ReadOnly="false"
+                                                                    MaxHeight="20em">
+                                                </CodeMirror6Wrapper>
+                                            </div>
+                                        </div>
+                                    </RadzenRow>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@matchKey.DeactivateFromBatch" Name="DeactivateFromBatch" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[MatchKey].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@matchKey.OnErrorResume" Name="OnErrorResume" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[MatchKey].[OnErrorResume]").Result Component="OnErrorResume" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+
+                    </RadzenStepsItem>
+                    <RadzenStepsItem Text="Target">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[trgServer]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="Alias" TextProperty="Alias" Data="@sysDataSources" AllowSorting="true" Name="trgServer" @bind-Value="@matchKey.trgServer" AllowPaging="true" AllowFiltering="true">
+                                        <Columns>
+                                            <RadzenDropDownDataGridColumn Property="SourceType" Title="SourceType" />
+                                            <RadzenDropDownDataGridColumn Property="DatabaseName" Title="DbName" />
+                                            <RadzenDropDownDataGridColumn Property="Alias" Title="Alias" />
+                                        </Columns>
+                                    </RadzenDropDownDataGrid>
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[trgServer]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[trgServer]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="trgServer" Text="trgServer is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[trgDBSchTbl]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.trgDBSchTbl" Name="trgDBSchTbl" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[trgDBSchTbl]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[trgDBSchTbl]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="trgDBSchTbl" Text="trgDBSchTbl is required" />
+                                </Helper>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[KeyColumns]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.KeyColumns" Name="KeyColumns" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[KeyColumns]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[KeyColumns]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[DateColumn]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.DateColumn" Name="DateColumn" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[DateColumn]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[DateColumn]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysMatchKeyDeletedRowHandeling].[ActionType]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDropDown Data="@sysMatchKeyDeletedRowHandeling" TValue="string" Multiple="false" Style="width: 100%" TextProperty="ActionTypeDescription" @bind-Value="@matchKey.ActionType" ValueProperty="ActionType" Name="ActionType" />
+                                </ChildContent>
+                                <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysMatchKeyDeletedRowHandeling].[ActionType]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysMatchKeyDeletedRowHandeling].[ActionType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+                                <Helper>
+                                    <RadzenRequiredValidator Component="ActionType" Text="ActionType is required" />
+                                </Helper>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[IgnoreDeletedRowsAfter]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenNumeric ShowUpDown="false" TValue="int?" @bind-Value=@matchKey.IgnoreDeletedRowsAfter Placeholder="Enter or clear value" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter number of days" }})" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[IgnoreDeletedRowsAfter]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[IgnoreDeletedRowsAfter]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[ActionThresholdPercent]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenNumeric ShowUpDown="false" TValue="int?" @bind-Value=@matchKey.ActionThresholdPercent Placeholder="Enter or clear value" InputAttributes="@(new Dictionary<string,object>(){ { "aria-label", "enter Action Threshold Percent" }})" />
+                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[ActionThresholdPercent]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[ActionThresholdPercent]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                        </RadzenRow>
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[trgFilter]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                <ChildContent>
+                                    <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
+                                        <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
+                                            <div class="editor-buttons-row">
+                                                <div class="editor-buttons-container">
+                                                    <RadzenButton Click=@(args => @PasteText1())
+                                                                  Icon="input"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Primary"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[trgFilter]"))
+                                                                  MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[MatchKey].[trgFilter]"))"
+                                                                  Icon="help_outline"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Dark"
+                                                                  Variant="Variant.Flat"
+                                                                  Style="margin-right: 5px;" />
+                                                    <RadzenButton Click="@ToggleFullScreen"
+                                                                  Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                  Size="ButtonSize.Small"
+                                                                  ButtonStyle="ButtonStyle.Secondary"
+                                                                  Variant="Variant.Flat" />
+                                                </div>
+                                            </div>
+                                            <div class="editor-container">
+                                                <CodeMirror6Wrapper @bind-Doc="@matchKey.trgFilter"
+                                                                    Language=CodeMirrorLanguage.MsSql
+                                                                    LineNumbers=false
+                                                                    Theme=ThemeMirrorTheme.GithubDark
+                                                                    FullScreen="@FullScreen"
+                                                                    LineWrapping="true"
+                                                                    ScrollPastEnd="false"
+                                                                    AllowHorizontalResize="true"
+                                                                    AllowVerticalResize="true"
+                                                                    Editable="true"
+                                                                    ReadOnly="false"
+                                                                    MaxHeight="20em">
+                                                </CodeMirror6Wrapper>
+                                            </div>
+                                        </div>
+                                    </RadzenRow>
+                                </ChildContent>
+                            </RadzenFormField>
+                        </RadzenRow>
+
+                    </RadzenStepsItem>
+
+                    <RadzenStepsItem Text="Advance">
+                        <RadzenFieldset Text="Process" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.PreProcessOnTrg" Name="PreProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[PreProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[PreProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.PostProcessOnTrg" Name="PostProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[PostProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[PostProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[Description]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.Description" Name="Description" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[Description]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[Description]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                        </RadzenFieldset>
+                    </RadzenStepsItem>
+
+                    <RadzenStepsItem Text="System">
+
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[CreatedBy]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@matchKey.CreatedBy" Name="CreatedBy" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[CreatedBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[CreatedBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                            <RadzenFormField Text=@DocService.GetLabel("[flw].[MatchKey].[CreatedDate]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                <ChildContent>
+                                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@matchKey.CreatedDate" Name="CreatedDate" ReadOnly="true" />
+                                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[MatchKey].[CreatedDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[MatchKey].[CreatedDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            </RadzenFormField>
+                        </RadzenRow>
+                        <RadzenRow></RadzenRow>
+                    </RadzenStepsItem>
+
+                </Steps>
+            </RadzenSteps>
+
+        </RadzenStack>
+        <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+            <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick" />
+        </RadzenStack>
+    </RadzenTemplateForm>
+</RadzenColumn>
+
+          
+@code {
+
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+}
+
+@code
+{
+    private bool FullScreen { get; set; } = false;
+
+    private void ToggleFullScreen()
+    {
+        FullScreen = !FullScreen;
+    }
+}

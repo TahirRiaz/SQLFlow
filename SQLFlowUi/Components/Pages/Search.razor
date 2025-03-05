@@ -1,0 +1,322 @@
+@using System.Data
+@using Microsoft.Data.SqlClient
+@using System.Net
+@using SQLFlowUi.Controllers
+@using SQLFlowCore.Common
+@using SQLFlowUi.Data
+@page "/search/{searchTerm?}"
+@inject IConfiguration Configuration
+@inject DocumentationService DocService
+
+@code
+{
+    string ProcessShort = "";
+    public async Task SetTitle(string title)
+    {
+        ProcessShort = title;
+    }
+
+    public string GetTitle()
+    {
+        if (ProcessShort.Length > 0)
+        {
+            return $"Search: {ProcessShort}";
+        }
+        else if (searchTerm?.Length > 0)
+        {
+            return $"Search: {searchTerm}";
+        }
+        else
+        {
+            return $"Search";
+        }
+    }
+}
+
+@attribute [Authorize]
+<PageTitle>@GetTitle()</PageTitle>
+ 
+<RadzenCard Variant="Variant.Flat" Style="width: 100%;margin-bottom:6px;">
+    <RadzenText Text="@GetTitle()" TextStyle="TextStyle.H5" TagName="TagName.H5" Style="width: 100%; margin-bottom:6px;" />
+</RadzenCard>
+<RadzenRow Style="width: 100%; margin-top: 0px;">
+    <RadzenTextBox @bind-Value="@searchTerm" @onkeydown="HandelSubmit" Style="width: 295px; height: 50px;margin-top: 0px;"></RadzenTextBox>
+    <RadzenButton BusyText="" Text="Search" Style="width: 120px; height: 50px;margin-top: 0px;" Click="HandleSearch"></RadzenButton>
+    <RadzenButton BusyText="" Text="File Search" Style="width: 140px; height: 50px;margin-top: 0px;" Click="RedirectToPage"></RadzenButton>
+    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Search]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Search]"))" Variant="Variant.Flat" Icon="help_outline" Size="ButtonSize.Large" ButtonStyle="ButtonStyle.Light" />
+</RadzenRow>
+
+@code {
+    
+   
+    
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+    
+    //ValueChanged="HandleTextChanged"
+    [Parameter]
+    public string searchTerm { get; set; } = "638";
+    private DataSet results = new DataSet();
+    private bool searched = false; // To check if a searchTerm has been made.
+    private bool isLoading = false;
+
+    public async Task HandelSubmit(KeyboardEventArgs ev)
+    {
+        if (ev.Key == "Enter")
+           await HandleSearch();
+    }
+
+    async Task ShowCloseableFromOverlayDialog(string title, string message)
+    {
+        await DialogService.OpenAsync(title, ds =>
+            @<div>
+                <p>@message</p>
+            </div>, new DialogOptions() { CloseDialogOnOverlayClick = true });
+    }
+
+    [JSInvokable]
+    public async Task TriggerDialogFromJS(string title, string message)
+    {
+        await ShowCloseableFromOverlayDialog(title, message);
+    }
+
+    [JSInvokable]
+    public async Task TriggerExecDialogFromJS(string title, string url)
+    {
+        await OpenSideDialog(title, url);
+
+        
+        
+    }
+
+    [JSInvokable]
+    public async Task OpenCloneAsyncJS(string _flowid)
+    {
+        // Assuming DialogService is already injected and available
+        var parameters = new Dictionary<string, object>
+        {
+            { "FlowID", int.Parse(_flowid) },
+            { "OnActionCompleted", new EventCallback<string>(this, OpenNewFlowId) }
+        };
+        // Set any required parameters here
+
+        var options = new DialogOptions
+        {
+            Height = "%",
+            Width = "500px",
+            
+            CloseDialogOnOverlayClick = false,
+                Resizable = true,
+                Draggable = true
+        };
+
+        await DialogService.OpenAsync<CloneFlow>($"Clone Flow {_flowid}",parameters,options);
+
+    }  
+
+    [JSInvokable]
+    public async Task OpenResetAsyncJS(string _flowid)
+    {
+        // Assuming DialogService is already injected and available
+        var parameters = new Dictionary<string, object>
+        {
+            { "FlowID", int.Parse(_flowid) },
+            { "OnActionCompleted", new EventCallback<string>(this, OpenNewFlowId) }
+        };
+        // Set any required parameters here
+
+        var options = new DialogOptions
+        {
+            Height = "%",
+            Width = "500px",
+            
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+
+        await DialogService.OpenAsync<ResetFlow>($"Reset Flow {_flowid}",parameters,options);
+
+    }  
+
+    [JSInvokable]
+    public async Task OpenInitPipelineAsyncJS(string _flowid)
+    {
+        // Assuming DialogService is already injected and available
+        var parameters = new Dictionary<string, object>
+        {
+            { "FlowType", "ing" },
+            { "FlowID", int.Parse(_flowid) },
+            { "OnActionCompleted", new EventCallback<InitCompletedEventArgs>(this, OpenInitFlowId) }
+        };
+        // Set any required parameters here
+
+        var options = new DialogOptions
+        {
+            Height = "%",
+            Width = "500px",
+            
+            CloseDialogOnOverlayClick = false,
+            Resizable = true,
+            Draggable = true
+        };
+
+        await DialogService.OpenAsync<InitPipeline>($"Initialize Pipeline With {_flowid}", parameters, options);
+
+    } 
+
+    async Task OpenSideDialog(string title, string url)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "URL", $"{url}" }
+        };
+        await DialogService.OpenSideAsync<ExecAF>(title, parameters, options: new SideDialogOptions { Height = "85%", CloseDialogOnOverlayClick = false, Position = DialogPosition.Bottom, ShowMask = true });
+    }
+
+    private void OpenInitFlowId(InitCompletedEventArgs args)
+    {
+        if (args.NavigateToUrl?.Length > 1)
+        {
+            DialogService.Close();
+            NavigationManager.NavigateTo(args.NavigateToUrl);
+        }
+    }
+
+
+    private void OpenNewFlowId(string url)
+    {
+        if (url?.Length > 1)
+        {
+            DialogService.Close();
+            NavigationManager.NavigateTo(url);
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender)
+        {
+            JSRuntime.InvokeVoidAsync("registerBlazorMethod", DotNetObjectReference.Create(this));
+            JSRuntime.InvokeVoidAsync("registerBlazorExecMethod", DotNetObjectReference.Create(this));
+        }
+    }
+    
+    private void HandleTextChanged(string value)
+    {
+        searchTerm = value; 
+    }
+
+    private void RedirectToPage()
+    {
+        if (searchTerm?.Length > 1)
+        {
+            string encodedString = Decode(searchTerm);
+            string fileSearchURL = $"/sys-log-file/{encodedString}";
+            NavigationManager.NavigateTo(fileSearchURL);
+        }
+    }
+
+    
+
+
+    protected string Decode(string text)
+    {
+        return WebUtility.UrlEncode(text);
+    }
+
+    private async Task HandleSearch()
+    {
+        if (searchTerm?.Length > 1)
+        {
+            isLoading = true;
+        
+            await InvokeAsync(StateHasChanged); // Trigger UI refresh to show the loading message
+       
+            searched = true;
+            results = new DataSet();
+            //results.Clear();
+            currentKey++;
+            string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");//@Configuration.GetConnectionString("sqlflowProdConnection");
+            ConStringParser conStringParser = new ConStringParser(connectionString)
+            {
+                ConBuilderMsSql =
+                {
+                    ApplicationName = "SQLFlow App"
+                }
+            };
+            string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+
+            using SqlConnection connection = new SqlConnection(sqlFlowConStr);
+            await connection.OpenAsync();
+        
+            await using (SqlCommand command = new SqlCommand("[flw].[Search]", connection) { CommandType = CommandType.StoredProcedure })
+            {
+                // If your stored procedure expects a parameter:
+                var objName = new SqlParameter("@ObjName", SqlDbType.NVarChar );
+                objName.Value = searchTerm;
+                command.Parameters.Add(objName); 
+
+                var lineage = new SqlParameter("@Lineage", SqlDbType.Bit);
+                lineage.Value = 0;
+                command.Parameters.Add(lineage);
+            
+                // Create a SqlDataAdapter
+                using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                {
+                    // Create and fill the DataSet
+                    adapter.Fill(results);
+                }
+            
+            };
+
+            await connection.CloseAsync();
+            
+            isLoading = false;
+            await InvokeAsync(StateHasChanged); // Trigger UI refresh
+        }
+    }
+    
+    private string GenerateRandomKey()
+    {
+        return Guid.NewGuid().ToString();
+    }
+ 
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrEmpty(searchTerm))
+        {
+            await HandleSearch();
+        }
+    }
+}
+
+@if (isLoading)
+{
+    <RadzenStack @key="GenerateRandomKey()" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Wrap="FlexWrap.Wrap" Class="rz-m-12" Gap="2rem">
+        <RadzenProgressBarCircular  ShowValue="true" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large">
+            <Template>Searching</Template>
+        </RadzenProgressBarCircular>
+    </RadzenStack>
+}
+else if (results != null)
+{
+    if (results.Tables.Count > 0)
+    {
+        <SearchResult ResultSets="results" OnActionCompleted="@SetTitle" @key="currentKey" />
+    }
+}
+else if (searched)
+{
+    <p>No results found.</p>
+}

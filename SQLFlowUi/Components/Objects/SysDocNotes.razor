@@ -1,0 +1,163 @@
+@namespace SQLFlowUi.Components
+@using SQLFlowUi.Components.Pages
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+    [Parameter] public string ObjectName { get; set; } = "";
+    
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService sqlflowProdService { get; set; }
+
+    protected IEnumerable<SQLFlowUi.Models.sqlflowProd.SysDocNote> sysDocNote;
+
+    protected RadzenDataGrid<SQLFlowUi.Models.sqlflowProd.SysDocNote> grid0;
+
+    protected string search = "";
+
+    protected async Task Search(ChangeEventArgs args)
+    {
+        search = $"{args.Value}";
+
+        await grid0.GoToPage(0);
+
+        sysDocNote = await sqlflowProdService.GetSysDocNote(new Query { Filter = $@"i => i.ObjectName.Contains(@0) || i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        sysDocNote = await sqlflowProdService.GetSysDocNote(new Query { Filter = $@"i => i.ObjectName.Contains(@0) || i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+        
+        if (ObjectName.Length > 0)
+        {
+            sysDocNote = sysDocNote.Where(note => note.ObjectName.Equals(ObjectName,StringComparison.CurrentCultureIgnoreCase)).ToList();
+        }
+    }
+
+    protected async Task AddButtonClick(MouseEventArgs args)
+    {
+        Dictionary<string, object> parameters = new Dictionary<string, object> { { "ObjectName", ObjectName } };
+
+        await DialogService.OpenAsync<AddSysDocNote>("Add SysDocNote", parameters);
+
+        if (ObjectName.Length > 0)
+        {
+            sysDocNote = await sqlflowProdService.GetSysDocNote();
+            sysDocNote = sysDocNote.Where(note => note.ObjectName.Equals(ObjectName, StringComparison.CurrentCultureIgnoreCase)).ToList();
+        }
+        //StateHasChanged();
+        await grid0.Reload();
+    }
+
+    protected async Task EditRow(DataGridRowMouseEventArgs<SQLFlowUi.Models.sqlflowProd.SysDocNote> args)
+    {
+        await DialogService.OpenAsync<EditSysDocNote>("Edit SysDocNote", new Dictionary<string, object> { { "DocNoteID", args.Data.DocNoteID } });
+        if (ObjectName.Length > 0)
+        {
+            sysDocNote = await sqlflowProdService.GetSysDocNote();
+            sysDocNote = sysDocNote.Where(note => note.ObjectName.Equals(ObjectName, StringComparison.CurrentCultureIgnoreCase)).ToList();
+        }
+        //StateHasChanged();
+        await grid0.Reload();
+    }
+
+    protected async Task GridDeleteButtonClick(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.SysDocNote sysDocNoteRec)
+    {
+        try
+        {
+            if (await DialogService.Confirm("Are you sure you want to delete this record?") == true)
+            {
+                var deleteResult = await sqlflowProdService.DeleteSysDocNote(sysDocNoteRec.DocNoteID);
+
+                if (deleteResult != null)
+                {
+                    if (ObjectName.Length > 0)
+                    {
+                        sysDocNote = await sqlflowProdService.GetSysDocNote();
+                        sysDocNote = sysDocNote.Where(note => note.ObjectName.Equals(ObjectName, StringComparison.CurrentCultureIgnoreCase)).ToList();
+                    }
+                    await grid0.Reload();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = $"Error",
+                    Detail = $"Unable to delete SysDocNote"
+                });
+        }
+    }
+
+}
+
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text="Doc Notes" TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenRow>
+        <RadzenColumn SizeMD=12>
+            <RadzenDataGrid @ref="grid0" ColumnWidth="200px"   AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+                            Data="@sysDocNote" TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" RowDoubleClick="@EditRow">
+                <Columns>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" Property="DocNoteID" Title="Doc Note I D">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" Property="ObjectName" Title="Object Name">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" Property="Title" Title="Title">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" Property="Created" Title="Created">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" Property="CreatedBy" Title="Created By">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                        <Template Context="sysDocNote">
+
+                            <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                          Click=@(args => GridDeleteButtonClick(args, sysDocNote)) @onclick:stopPropagation="true" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+
+            </RadzenDataGrid>
+
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenStack>
+
+
+@code {
+
+    
+}
+
+
+
+
+
+
+
+

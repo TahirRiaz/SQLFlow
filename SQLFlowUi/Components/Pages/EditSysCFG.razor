@@ -1,0 +1,120 @@
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+@page "/edit-sys-c-f-g"
+
+@code
+{
+    
+    private bool FullScreen = false;
+    private string ButtonClass(CodeMirrorState state, string docStyleTag = "") => ButtonClass(state.MarkdownStylesAtSelections?.Contains(docStyleTag) == true);
+    private string ButtonClass(bool enabled) => enabled
+        ? "btn btn-sm btn-primary"
+        : "btn btn-sm btn-outline-secondary";
+
+
+    private string pastedText;
+    private async Task PasteText()
+    {
+        pastedText = await JSRuntime.InvokeAsync<string>("readTextFromClipboard");
+        if (!string.IsNullOrEmpty(pastedText))
+        {
+            sysCFG.ParamJsonValue = pastedText;
+            StateHasChanged();
+        }
+    }
+
+
+    private async Task SetFullScreen()
+    {
+        FullScreen = true;
+        StateHasChanged();
+    }
+}
+
+<PageTitle>Edit SysCFG</PageTitle>
+
+<RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysCFG</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysCFG" Data="@sysCFG" Visible="@(sysCFG != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenSteps>
+                <Steps>
+                    <RadzenStepsItem Text="Parameter" Style="width: 50%">
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysCFG].[ParamName]").Result Variant="Variant.Outlined" Style="width: 100%; margin-bottom: 14px">
+                            <ChildContent>
+                                <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysCFG.ParamName" Name="ParamName" />
+                            </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysCFG].[ParamName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysCFG].[ParamName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                            <Helper>
+                                <RadzenRequiredValidator Component="ParamName" Text="ParamName is required" />
+                            </Helper>
+                        </RadzenFormField>
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysCFG].[ParamValue]").Result Variant="Variant.Outlined" Style="width: 100%; margin-bottom: 14px">
+                            <ChildContent>
+                                <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysCFG.ParamValue" Name="ParamValue" />
+                            </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysCFG].[ParamValue]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysCFG].[ParamValue]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
+                        </RadzenFormField>
+                        <table><tr><td><RadzenText TextStyle="TextStyle.Subtitle1">@DocService.GetLabel("[flw].[SysCFG].[ParamJsonValue]").Result</RadzenText></td>
+                            <td><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysCFG].[ParamJsonValue]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysCFG].[ParamJsonValue]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></td>
+                            <td><RadzenButton Click=@(args => @PasteText()) Icon="input" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Primary" /></td>
+                            </tr></table>
+                        <RadzenCard Style="width: 100%">
+                            <CodeMirror6Wrapper @bind-Doc=@sysCFG.ParamJsonValue
+                                                Language=CodeMirrorLanguage.JsonLd
+                                                LineNumbers=false
+                                                Theme=ThemeMirrorTheme.GithubDark
+                                                FullScreen=@FullScreen
+                                                LineWrapping=true
+                                                ScrollPastEnd=false
+                                                AllowHorizontalResize="true"
+                                                AllowVerticalResize="true"
+                                                Editable="true"
+                                                ReadOnly="false"
+                                                MaxHeight="40em">
+                            </CodeMirror6Wrapper>
+                            
+                        </RadzenCard>
+
+                    </RadzenStepsItem>
+                    <RadzenStepsItem Text="Description" Style="width: 50%">
+                        <RadzenFormField Text=@DocService.GetLabel("[flw].[SysCFG].[Description]").Result Variant="Variant.Outlined" Style="width: 100%">
+                            <ChildContent>
+                                <RadzenTextArea style="display: block; width: 100%;height: 20vh" @bind-Value="@sysCFG.Description" Name="Description" class="w-100" />
+                            </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;"><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysCFG].[Description]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysCFG].[Description]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></div></End>
+                        </RadzenFormField>
+                        <Dictation OnDoneCallBack="@OnDone" OnImproveCallBack="@OnImprove" />
+                        
+                        </RadzenStepsItem>
+                    </Steps>
+                </RadzenSteps>
+            </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+   </RadzenColumn>
+
+@code {
+    
+    public async Task OnDone(string finalStr)
+    {
+        string cuValue = sysCFG.Description;
+        sysCFG.Description = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+        StateHasChanged();
+    }
+    
+    public async Task OnImprove(string language)
+    {
+        string cuValue = sysCFG.Description;
+        ///sysError.Solution = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+        
+        OpenAiService  ai = new OpenAiService();
+        string finalStr = await ai.CallChatCompletionAsync(language, cuValue);
+        sysCFG.Description = (cuValue.Length > 0) ? cuValue + Environment.NewLine + Environment.NewLine : "" + finalStr; ;
+        
+        StateHasChanged();
+    }
+
+   
+
+}

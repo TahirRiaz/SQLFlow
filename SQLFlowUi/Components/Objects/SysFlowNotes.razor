@@ -1,0 +1,275 @@
+@namespace SQLFlowUi.Components
+@using System.Data
+@using Microsoft.Data.SqlClient
+@using SQLFlowCore.Common
+@using SQLFlowCore.Lineage
+@using SQLFlowUi.Components.Pages
+@using System.Collections
+@inject IConfiguration Configuration
+@inject IJSRuntime JSRuntime;
+@inject DialogService DialogService
+
+@code {
+    [Parameter] public int FlowID { get; set; } = 0;
+    
+    [Inject]
+    protected NavigationManager NavigationManager { get; set; }
+
+    [Inject]
+    protected TooltipService TooltipService { get; set; }
+
+    [Inject]
+    protected ContextMenuService ContextMenuService { get; set; }
+
+    [Inject]
+    protected NotificationService NotificationService { get; set; }
+
+    [Inject]
+    public sqlflowProdService sqlflowProdService { get; set; }
+
+
+    protected int Direction = 1;
+    protected int ShowAll = 1;
+    protected string dir = "A";
+    protected IEnumerable<SQLFlowUi.Models.sqlflowProd.SysFlowNote> sysFlowNotes;
+
+    protected RadzenDataGrid<SQLFlowUi.Models.sqlflowProd.SysFlowNote> gridX;
+
+    protected string search = "";
+    protected Hashtable relatedIds = new Hashtable();
+
+    protected override async Task OnInitializedAsync()
+    {
+        sysFlowNotes = await sqlflowProdService.GetSysFlowNote(new Query { Filter = $@"i => i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+        if (FlowID > 0)
+        {
+            relatedIds = await GetRelatedFlowIds();
+            //sysFlowNotes = sysFlowNotes.Where(note => note.FlowID == FlowID);
+            sysFlowNotes = sysFlowNotes.Where(note => relatedIds.ContainsKey(note.FlowID)).ToList();
+            if(ShowAll == 1)
+            {
+                sysFlowNotes = sysFlowNotes.Where(note => note.Resolved == false).ToList();
+            }
+        }
+    }
+     
+    protected async Task<Hashtable> GetRelatedFlowIds()
+    {
+        Hashtable rValue = new Hashtable();
+        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr"); //@Configuration.GetConnectionString("sqlflowProdConnection");
+        ConStringParser conStringParser = new ConStringParser(connectionString)
+        {
+            ConBuilderMsSql =
+            {
+                ApplicationName = "SQLFlow App"
+            }
+        };
+
+        string sqlFlowConStr = conStringParser.ConBuilderMsSql.ConnectionString;
+        using (SqlConnection connection = new SqlConnection(sqlFlowConStr))
+        {
+            await connection.OpenAsync();
+
+            DataTable bDSTbl = new DataTable();
+            if (dir == "A")
+            {
+                LineageDescendants dfs = new LineageDescendants(connection, FlowID, false, true);
+                bDSTbl = dfs.GetResult();
+            }
+            else
+            {
+                LineageAncestors dfs = new LineageAncestors(connection, FlowID, false, true);
+                bDSTbl = dfs.GetResult();
+            } 
+
+            foreach (var value in bDSTbl.AsEnumerable().Select(row => row["FlowID"]).Distinct())
+            {
+                // Using the value as both the key and value for the Hashtable
+                rValue[value] = value;
+            }
+        }
+
+        return rValue;
+    }
+
+    protected async Task AddButtonClick(MouseEventArgs args)
+    {
+        Dictionary<string, object> parameters = new Dictionary<string, object> { { "FlowID", FlowID } };
+
+        
+        await DialogService.OpenAsync<AddSysFlowNote>("Add SysFlowNotes", parameters);
+        sysFlowNotes = await sqlflowProdService.GetSysFlowNote(new Query { Filter = $@"i => i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+        sysFlowNotes = sysFlowNotes.Where(note => relatedIds.ContainsKey(note.FlowID)).ToList();
+        if(ShowAll == 1)
+        {
+            sysFlowNotes = sysFlowNotes.Where(note => note.Resolved == false).ToList();
+        }
+        await gridX.Reload();
+        //StateHasChanged();
+    }
+
+    protected async Task EditRow(DataGridRowMouseEventArgs<SQLFlowUi.Models.sqlflowProd.SysFlowNote> args)
+    {
+        await DialogService.OpenAsync<EditSysFlowNote>("Edit SysFlowNotes", new Dictionary<string, object> { { "FlowNoteID", args.Data.FlowNoteID } });
+        
+        sysFlowNotes = await sqlflowProdService.GetSysFlowNote(new Query { Filter = $@"i => i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+        sysFlowNotes = sysFlowNotes.Where(note => relatedIds.ContainsKey(note.FlowID)).ToList();
+        if(ShowAll == 1)
+        {
+            sysFlowNotes = sysFlowNotes.Where(note => note.Resolved == false).ToList();
+        }
+        await gridX.Reload();
+        //StateHasChanged();
+    }
+
+    protected async Task GridDeleteButtonClick(MouseEventArgs args, SQLFlowUi.Models.sqlflowProd.SysFlowNote sysFlowNotesRec)
+    {
+        try
+        {
+            if (await DialogService.Confirm("Are you sure you want to delete this record?") == true)
+            {
+                var deleteResult = await sqlflowProdService.DeleteSysFlowNote(sysFlowNotesRec.FlowNoteID);
+
+                if (deleteResult != null)
+                {
+                    sysFlowNotes = await sqlflowProdService.GetSysFlowNote(new Query { Filter = $@"i => i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+                    sysFlowNotes = sysFlowNotes.Where(note => relatedIds.ContainsKey(note.FlowID)).ToList();
+                    if(ShowAll == 1)
+                    {
+                        sysFlowNotes = sysFlowNotes.Where(note => note.Resolved == false).ToList();
+                    }
+                    await gridX.Reload();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(new NotificationMessage
+                {
+                    Severity = NotificationSeverity.Error,
+                    Summary = $"Error",
+                    Detail = $"Unable to delete SysFlowNotes"
+                });
+        }
+    }
+
+    protected async Task SetDirection()
+    {
+        if(Direction == 1)
+        {
+            dir = "A";
+        }
+        else
+        {
+            dir = "B";
+        }
+        
+        if (FlowID > 0)
+        {
+            sysFlowNotes = await sqlflowProdService.GetSysFlowNote(new Query { Filter = $@"i => i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+            sysFlowNotes = sysFlowNotes.Where(note => relatedIds.ContainsKey(note.FlowID)).ToList();
+            if(ShowAll == 1)
+            {
+                sysFlowNotes = sysFlowNotes.Where(note => note.Resolved == false).ToList();
+            }
+            StateHasChanged();
+            await gridX.Reload();
+        }
+    }
+
+    protected async Task SetAllFilter()
+    {
+        if (FlowID > 0)
+        {
+            sysFlowNotes = await sqlflowProdService.GetSysFlowNote(new Query { Filter = $@"i => i.Title.Contains(@0) || i.Description.Contains(@0) || i.CreatedBy.Contains(@0)", FilterParameters = new object[] { search } });
+            sysFlowNotes = sysFlowNotes.Where(note => relatedIds.ContainsKey(note.FlowID)).ToList();
+
+            if(ShowAll == 1)
+            {
+                sysFlowNotes = sysFlowNotes.Where(note => note.Resolved == false).ToList();
+            }
+
+            StateHasChanged();
+            await gridX.Reload();
+        }
+    }
+
+
+}
+
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text="Flow Notes" TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <table>
+                    <tr>
+                        <td>
+                            <RadzenRadioButtonList @bind-Value=@ShowAll Change="@SetAllFilter" TValue="int">
+                                <Items>
+                                    <RadzenRadioButtonListItem Text="Unresolved" Value="1" />
+                                    <RadzenRadioButtonListItem Text="All" Value="2" />
+                                </Items>
+                            </RadzenRadioButtonList>
+                        </td>
+                        <td>
+                            <RadzenRadioButtonList @bind-Value=@Direction Change="@SetDirection" TValue="int" >
+                                <Items>
+                                    <RadzenRadioButtonListItem Text="Descendants" Value="1" />
+                                    <RadzenRadioButtonListItem Text="Ancestors" Value="2" />
+                                </Items>
+                            </RadzenRadioButtonList>
+                        </td>
+                        <td><RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" /></td>
+                    </tr></table>
+                
+                    
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenRow>
+        <RadzenColumn SizeMD=12>
+            <RadzenDataGrid @ref="gridX" ColumnWidth="200px" AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+                            Data="@sysFlowNotes" TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" RowDoubleClick="@EditRow">
+                <Columns>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" Property="FlowID" Title="FlowID" Width="130px">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" Property="FlowNoteType" Title="Type" Width="140px">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" Property="Title" Title="Title">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" Property="Resolved" Title="Resolved" Width="120px">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" Property="Created" Title="Created">
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysFlowNote" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                        <Template Context="sysFlowNotes">
+                            <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                                          Shade="Shade.Lighter" Variant="Variant.Flat"
+                                          Click=@(args => GridDeleteButtonClick(args, sysFlowNotes)) @onclick:stopPropagation="true" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+
+            </RadzenDataGrid>
+
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenStack>
+
+
+@code {
+
+    
+}
+
+
+
+
+
+
+
+

@@ -1,0 +1,93 @@
+@page "/edit-sys-doc-note"
+@using SQLFlowUi.Controllers
+@inject DocumentationService DocService
+
+
+ <PageTitle>Edit SysDocNote</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysDocNote</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysDocNote" Data="@sysDocNote" Visible="@(sysDocNote != null)" Submit="@FormSubmit">
+        <RadzenStack>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDocNote].[ObjectName]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDropDownDataGrid AllowClear="true" TValue="string" ValueProperty="ObjectName" Name="ObjectName" TextProperty="ObjectName" Data="@sysDoc" @bind-Value="@sysDocNote.ObjectName" AllowSorting="true" AllowPaging="true" AllowFiltering="true" AllowFilteringByWord="true" Style="width: 100%" AllowSelectAll="false" AllowFilteringByAllStringColumns="true">
+                        <Columns>
+                            <RadzenDropDownDataGridColumn Property="ObjectName" Title="ObjectName" />
+                            <RadzenDropDownDataGridColumn Property="ObjectType" Title="ObjectType" />
+                            <RadzenDropDownDataGridColumn Property="ScriptDate" Title="ScriptDate" />
+                        </Columns>
+                    </RadzenDropDownDataGrid>
+                </ChildContent> <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDocNote].[ObjectName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDocNote].[ObjectName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+                <Helper>
+                    <RadzenRequiredValidator Component="ObjectName" Text="ObjectName is required" />
+                </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDocNote].[Title]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDocNote.Title" Name="Title" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDocNote].[Title]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDocNote].[Title]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDocNotes].[Description]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenTextArea style="display: block; width: 100%;height: 25vh" @bind-Value="@sysDocNote.Description" Name="Description" class="w-100" />
+                </ChildContent><End><div style="position: absolute; top: 0; margin-top: 2px; margin-left: -16px;">
+                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDocNotes].[Description]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[SysDocNotes].[Description]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info"/></div>
+                </End>
+            </RadzenFormField>
+            <Dictation OnDoneCallBack="@OnDone" OnImproveCallBack="@OnImprove" />
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDocNote].[Created]").Result Variant="Variant.Outlined">
+                <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysDocNote.Created" Name="Created" />
+                </ChildContent> <End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDocNote].[Created]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDocNote].[Created]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+            </RadzenFormField>
+            <RadzenFormField Text=@DocService.GetLabel("[flw].[SysDocNote].[CreatedBy]").Result Variant="Variant.Outlined" Style="width: 49%">
+                <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysDocNote.CreatedBy" Name="CreatedBy" />
+                </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[SysDocNote].[CreatedBy]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[SysDocNote].[CreatedBy]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Info" /></End>
+            </RadzenFormField>
+        </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+
+@code
+{
+    public async Task OpenSysDoc(string ObjectName)
+    {
+        var parameters = new Dictionary<string, object>
+        {
+            { "ObjectName", ObjectName }
+        };
+
+        await DialogService.OpenAsync<SysDocModal>($"Documentation {ObjectName}",
+            parameters,
+            new DialogOptions() { Width = "1200px", Height = "760px", Resizable = true, Draggable = true });
+    }
+    
+    public async Task OnDone(string finalStr)
+    {
+        string cuValue = (sysDocNote.Description?.Length > 0 ? (sysDocNote.Description + Environment.NewLine + Environment.NewLine) : "");
+
+        sysDocNote.Description = cuValue + finalStr;
+        StateHasChanged();
+    }
+
+    public async Task OnImprove(string language)
+    {
+        string cuValue = sysDocNote.Description;
+        ///sysError.Solution = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+
+        OpenAiService ai = new OpenAiService();
+        string improvedText = await ai.CallChatCompletionAsync(language, cuValue);
+        string title = await ai.CreateTitleAsync(language, cuValue);
+
+        sysDocNote.Description = improvedText;
+        sysDocNote.Title = title.Replace("\"", "");
+        StateHasChanged();
+    }
+
+}
