@@ -62,6 +62,45 @@ DBCC SHRINKFILE (N'$fileName', 10)
     }
 }
 
+
+# Function to create zip archives of backup files
+function Create-BackupZipArchives {
+    Write-Host "Creating zip archives of backup files..." -ForegroundColor Yellow
+    
+    try {
+        # Create separate zip files for .bak and .bacpac files
+        $bakFiles = Get-ChildItem -Path $backupDirectory -Filter "*.bak" -ErrorAction SilentlyContinue
+        $bacpacFiles = Get-ChildItem -Path $backupDirectory -Filter "*.bacpac" -ErrorAction SilentlyContinue
+        
+        if ($bakFiles.Count -gt 0) {
+            $bakZipFileName = "SandboxDb_BAK_Files_$currentDate.zip"
+            $bakZipFilePath = Join-Path -Path $backupDirectory -ChildPath $bakZipFileName
+            
+            Write-Host "Creating zip archive for .bak files: $bakZipFileName" -ForegroundColor Yellow
+            Compress-Archive -Path $bakFiles.FullName -DestinationPath $bakZipFilePath -Force
+            Write-Host "Successfully created .bak files archive: $bakZipFilePath" -ForegroundColor Green
+        } else {
+            Write-Host "No .bak files found to archive" -ForegroundColor Yellow
+        }
+        
+        if ($bacpacFiles.Count -gt 0) {
+            $bacpacZipFileName = "SandboxDb_BAK_BACPAC_Files_$currentDate.zip"
+            $bacpacZipFilePath = Join-Path -Path $backupDirectory -ChildPath $bacpacZipFileName
+            
+            Write-Host "Creating zip archive for .bacpac files: $bacpacZipFileName" -ForegroundColor Yellow
+            Compress-Archive -Path $bacpacFiles.FullName -DestinationPath $bacpacZipFilePath -Force
+            Write-Host "Successfully created .bacpac files archive: $bacpacZipFilePath" -ForegroundColor Green
+        } else {
+            Write-Host "No .bacpac files found to archive" -ForegroundColor Yellow
+        }
+        
+        return $true
+    } catch {
+        Write-Host "Error creating zip archives: $_" -ForegroundColor Red
+        return $false
+    }
+}
+
 # Function to create .bak backup
 function Create-DatabaseBackup {
     param (
@@ -251,6 +290,12 @@ foreach ($database in $databases) {
     }
     
     Write-Host "-------------------------------------------" -ForegroundColor Gray
+}
+
+# Create zip archives of backup files
+$zipResult = Create-BackupZipArchives
+if (-not $zipResult) {
+    Write-Host "Warning: Failed to create zip archives of backup files." -ForegroundColor Yellow
 }
 
 # Display summary

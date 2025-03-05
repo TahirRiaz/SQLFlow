@@ -137,7 +137,7 @@ Once running successfully:
 | API (HTTPS) | https://localhost:9111 |
 | API (HTTP) | http://localhost:9110 |
 
-**Login credentials:** demo@sqlflow.io/demo
+**Login credentials:** demo@sqlflow.io/@Demo123
 
 ## Troubleshooting
 
