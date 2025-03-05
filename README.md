@@ -1,4 +1,4 @@
-# SQLFlow: Metadata-Driven Data Platform for Modern Data Warehousing
+# SQLFlow: Metadata-Driven Automation Framework Modern Data Warehousing
 
 SQLFlow is an open-source, metadata-driven data platform designed to simplify the creation, management, and operation of dynamic, efficient, and scalable data warehouses. It empowers data engineers and architects to build robust data pipelines with ease, leveraging automation and best practices from data engineering.
 
@@ -9,15 +9,18 @@ SQLFlow is an open-source, metadata-driven data platform designed to simplify th
 - **Improved governance:** Achieve transparency and control through automated data lineage and impact analysis.
 - **Optimized scalability:** Utilize containerized environments to scale vertically as needed.
 
-## Trusted by Industry Leaders
+## Trusted by Norwegian Corporate Clients
 
-SQLFlow is utilized by organizations across various sectors to transform their data operations:
+SQLFlow has been implemented by established organizations:
 
-- **Kolumbus AS** - A leading Norwegian company specializing in public transportation services, encompassing buses, boats, and trams, relies on SQLFlow for their data warehousing needs.
+- **Kolumbus AS** - A leading Norwegian company specializing in public transportation services, encompassing buses, boats, and trams.
 
-- **Nortura SA** - Norway's premier food supplier with annual revenue of 23.545 billion NOK has partially implemented SQLFlow in their data infrastructure during your tenure there.
+- **Nortura SA** - Norway's premier food supplier with annual revenue of 23.545 billion NOK, where SQLFlow was partially implemented as a supplementary solution during my tenure there, not as the main framework.
 
-![SQLFlow Architecture](https://raw.githubusercontent.com/TahirRiaz/SQLFlowV1/master/SQLFlowUi/wwwroot/images/sqlflow-arch.svg)
+## Architecture
+
+![SQLFlow Core Components](https://github.com/user-attachments/assets/9a48caf3-d3ed-467d-89cd-f09f579f08b2)
+
 
 ## Core Features
 
