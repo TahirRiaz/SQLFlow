@@ -1,6 +1,6 @@
-# SQLFlow: Metadata-Driven Automation Framework Modern Data Warehousing
+# SQLFlow: Metadata-Driven Automation Framework For Data Warehousing
 
-SQLFlow is an open-source, metadata-driven data platform designed to simplify the creation, management, and operation of dynamic, efficient, and scalable data warehouses. Trusted by large corporates in Norway, SQLFlow delivers reliability and efficiency at scale. It empowers data engineers and architects to build robust data pipelines with ease, leveraging automation and best practices from data engineering.
+SQLFlow is an open-source, metadata-driven automation framework designed to simplify and streamline modern data warehouse management, pipeline creation, and data governance. Trusted by large enterprises in Norway, SQLFlow empowers data engineers and architects to efficiently build scalable, reliable, and maintainable data solutions. The solution is containerized and available on Docker Hub, making deployment quick and straightforward across different environments.
 
 ## Key Benefits
 

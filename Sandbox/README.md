@@ -1,160 +1,178 @@
 # SQLFlow Installation and Configuration Guide
 
-This comprehensive guide will walk you through setting up SQLFlow using Docker containers. Follow these steps carefully to ensure proper installation and configuration of your sandbox environment.
+This guide will walk you through setting up SQLFlow using Docker containers.
 
 ## Prerequisites
 
 - Docker Desktop installed and running
-- SQL Server instance (on-premises) or Azure SQL Database accessible from your Docker host
+- SQL Server instance (on-premises) or Azure SQL Database
 - Sufficient disk space for Docker images and volumes
 - Basic knowledge of Docker and SQL database management
 
 ## Step 1: Prepare the Databases
 
-Before starting the Docker containers, you must set up the required databases:
+### 1.1 Download Database Backups
 
-### 1.1 Restore Database Backups
+1. Go to the GitHub release page for SQLFlow
+2. Download the database backup package (~350 MB)
+3. Extract the files to your local folder
 
-Restore the following database backup files to your SQL Server or Azure SQL Database:
+### 1.2 Restore Database Backups
 
+Restore databases using the provided PowerShell script from [SQLFlow\Sandbox\db](https://github.com/TahirRiaz/SQLFlow/tree/master/Sandbox/db):
+
+```powershell
+# Set environment variable before running
+# $env:SQLFlow = "Connection string to target server"
+
+# Run the database restoration script
+.\db-import.ps1
+```
+
+This script will restore these databases:
 - `dw-sqlflow-prod` (Primary SQLFlow database)
-- `dw-pre-prod` (Sandbox environment database)
-- `dw-ods-prod` (Sandbox environment database)
+- `dw-pre-prod` (Sandbox environment)
+- `dw-ods-prod` (Sandbox environment)
 - `WideWorldImporters` (Sample database)
 
-### 1.2 Enable Full-Text Indexing
+### 1.3 Enable Full-Text Indexing
 
-**Important**: Ensure full-text indexing is enabled for all databases. SQLFlow relies on full-text search capabilities for optimal performance.
+**Important**: SQLFlow requires full-text search capabilities.
 
-### 1.3 Create and Configure Database User
-
-Create a dedicated database user for SQLFlow with appropriate permissions:
+Verify full-text is enabled:
 
 ```sql
--- Create SQLFlow user (SQL Server syntax - adjust for Azure SQL DB if needed)
+SELECT SERVERPROPERTY('IsFullTextInstalled') AS [IsFullTextInstalled];
+```
+
+### 1.4 Create and Configure Database User
+
+```sql
+-- Create SQLFlow user
 CREATE LOGIN SQLFlowUser WITH PASSWORD = 'YourStrongPassword!';
 
--- Configure access for the main SQLFlow database
+-- Configure access for all required databases
 USE [dw-sqlflow-prod];
 CREATE USER SQLFlowUser FOR LOGIN SQLFlowUser;
 EXEC sp_addrolemember 'db_owner', 'SQLFlowUser';
 
--- Configure access for sandbox environment databases
-USE [dw-pre-prod];
-CREATE USER SQLFlowUser FOR LOGIN SQLFlowUser;
-EXEC sp_addrolemember 'db_owner', 'SQLFlowUser';
-
-USE [dw-ods-prod];
-CREATE USER SQLFlowUser FOR LOGIN SQLFlowUser;
-EXEC sp_addrolemember 'db_owner', 'SQLFlowUser';
-
-USE [WideWorldImporters];
-CREATE USER SQLFlowUser FOR LOGIN SQLFlowUser;
-EXEC sp_addrolemember 'db_owner', 'SQLFlowUser';
+-- Repeat for other databases: dw-pre-prod, dw-ods-prod, WideWorldImporters
 ```
 
-### 1.4 Run Authentication Script
+### 1.5 Database Connectivity for Data Pipelines
+The following script updates connection strings required for data pipeline execution in the sandbox environment. In production environments, these connection strings are securely managed through Azure KeyVault.
+
+**Instructions:**
+1. Replace the empty User ID and Password fields with your credentials
+2. Execute the SQL statements to configure your database connections
 
 ```sql
--- Execute the set-authentication.sql script in your database
--- This script updates connection strings for the sandbox environment
+UPDATE [flw].[SysDataSource]
+SET ConnectionString = 'Server=host.docker.internal;Initial Catalog=dw-ods-prod;User ID=;Password=;Persist Security Info=False;TrustServerCertificate=True;Encrypt=False;Command Timeout=360;'
+WHERE Alias = 'dw-ods-prod-db';
+
+UPDATE [flw].[SysDataSource]
+SET ConnectionString = 'Server=host.docker.internal;Initial Catalog=dw-pre-prod;User ID=;Password=;Persist Security Info=False;TrustServerCertificate=True;Encrypt=False;Command Timeout=360;'
+WHERE Alias = 'dw-pre-prod-db';
+
+UPDATE [flw].[SysDataSource]
+SET ConnectionString = 'Server=host.docker.internal;Initial Catalog=WideWorldImporters;User ID=;Password=;Persist Security Info=False;TrustServerCertificate=True;Encrypt=False;Command Timeout=360;'
+WHERE Alias = 'wwi-db';
 ```
 
 ## Step 2: Configure Environment Variables
 
-Create a `.env` file in the same directory as your `docker-compose.yml` file:
+### Required Variables
 
+**For local SQL Server:**
 ```
-# Required environment variables - Adjust server connection string as needed
-# For local SQL Server:
 SQLFlowConStr=Server=host.docker.internal;Database=dw-sqlflow-prod;User Id=SQLFlowUser;Password=YourStrongPassword!;TrustServerCertificate=True;
+```
 
-# For Azure SQL Database:
-# SQLFlowConStr=Server=your-server.database.windows.net;Database=dw-sqlflow-prod;User Id=SQLFlowUser;Password=YourStrongPassword!;
+**For Azure SQL Database:**
+```
+SQLFlowConStr=Server=your-server.database.windows.net;Database=dw-sqlflow-prod;User Id=SQLFlowUser;Password=YourStrongPassword!;
+```
 
+**OpenAI integration:**
+```
 SQLFlowOpenAiApiKey=your-openai-api-key
 ```
 
-**Notes:**
-- Replace connection string parameters with your actual database details
-- Use `host.docker.internal` to reference your host machine's SQL Server from Docker
-- Provide a valid OpenAI API key for the AI functionality
+> **Note:** Use `host.docker.internal` to reference your host machine's SQL DB from Docker
 
 ## Step 3: Download and Run Docker Images
 
-1. Save the Docker Compose configuration to a file named `docker-compose.yml`
+1. Save the Docker Compose configuration to `docker-compose.yml`
 
-2. Open a terminal/command prompt and navigate to the directory containing your `docker-compose.yml` file
-
-3. Pull the required Docker images:
-   ```
+2. Pull the required Docker images:
+   ```bash
    docker-compose pull
    ```
 
-4. Start the services:
-   ```
+3. Start the services:
+   ```bash
    docker-compose up -d
    ```
 
-5. Verify the containers are running:
-   ```
+4. Verify the containers are running:
+   ```bash
    docker-compose ps
    ```
 
+### Persistent Volumes
+The Docker setup creates these volumes:
+- `sqlflow-keys`: Encryption keys
+- `sqlflow-data`: Application data
+- `sqlflow-sample-data`: Sample data (mounted from B:/SQLFlow)
+
 ## Step 4: Access SQLFlow
 
-Once the containers are running successfully:
+Once running successfully:
 
-- Access the SQLFlow UI at:
-  - HTTPS: https://localhost:8111
-  - HTTP: http://localhost:8110
-- The API endpoints are available at:
-  - HTTPS: https://localhost:9111
-  - HTTP: http://localhost:9110
+| Service | URL |
+|---------|-----|
+| SQLFlow UI (HTTPS) | https://localhost:8111 |
+| SQLFlow UI (HTTP) | http://localhost:8110 |
+| API (HTTPS) | https://localhost:9111 |
+| API (HTTP) | http://localhost:9110 |
 
-## Volume Information
-
-The Docker setup creates the following persistent volumes:
-- `sqlflow-keys`: Stores encryption keys
-- `sqlflow-data`: Stores application data
-- `sqlflow-sample-data`: Maps to local sample data (mounted from B:/SQLFlow)
+**Login credentials:** demo@sqlflow.io/demo
 
 ## Troubleshooting
 
 | Issue | Resolution |
 |-------|------------|
-| **Database Connection Issues** | Ensure your database allows remote connections and any firewalls permit access from Docker |
-| **Full-Text Search Issues** | Verify full-text indexing is properly configured in all databases |
-| **Certificate Errors** | For development, the system generates self-signed certificates. Accept browser warnings or provide your own certificates |
-| **Memory Issues** | Both containers are configured with 2GB memory limits. Adjust as needed in the compose file |
-| **Container Startup Failures** | Check logs with `docker-compose logs sqlflowui` or `docker-compose logs sqlflowapi` |
+| **Database Connection** | Ensure your database allows remote connections and check firewall settings |
+| **Full-Text Search** | Verify full-text indexing is properly configured |
+| **Certificate Errors** | Accept browser warnings for self-signed certificates or provide your own |
+| **Memory Issues** | Both containers have 2GB memory limits; adjust as needed |
+| **Container Failures** | Check logs with `docker-compose logs sqlflowui` or `docker-compose logs sqlflowapi` |
 
 ## Stopping the Services
 
-To stop the services:
-```
+```bash
+# Stop services
 docker-compose down
-```
 
-To completely remove containers, networks, and volumes:
-```
+# Remove containers, networks, and volumes
 docker-compose down -v
 ```
 
 ## Security Best Practices
 
-- Change the default certificate password (`ChangeThisInProduction!`) in production environments
-- For production, set `ASPNETCORE_ENVIRONMENT=Production` instead of Development
+- Change default certificate password (`ChangeThisInProduction!`)
+- Set `ASPNETCORE_ENVIRONMENT=Production` in production
 - Rotate database passwords periodically
-- Use a dedicated API key with appropriate permissions for the OpenAI integration
-- Consider implementing network segmentation for production deployments
+- Use a dedicated API key for OpenAI integration
+- Implement network segmentation for production
 
 ## Maintenance
 
-Regular maintenance tasks include:
-- Backing up SQLFlow databases
-- Monitoring Docker container health
-- Updating Docker images when new versions are released
-- Rotating security credentials
+Regular tasks:
+- Back up SQLFlow databases
+- Monitor Docker container health
+- Update Docker images when new versions are released
+- Rotate security credentials
 
-For additional support, please contact your SQLFlow administrator or refer to the official documentation.
+For additional support, contact your SQLFlow administrator or refer to the official documentation.
