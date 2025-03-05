@@ -1,15 +1,15 @@
-# SQLFlow: Metadata-Driven Automation Framework For Data Warehousing
+# 🔄 Metadata-Driven Automation Framework For Data Warehousing
 
 SQLFlow is an open-source, metadata-driven automation framework designed to simplify and streamline modern data warehouse management, pipeline creation, and data governance. Trusted by large enterprises in Norway, SQLFlow empowers data engineers and architects to efficiently build scalable, reliable, and maintainable data solutions. The solution is containerized and available on Docker Hub, making deployment quick and straightforward across different environments.
 
-## Key Benefits
+## ✨ Key Benefits
 
 - **Reduced complexity:** Automate pipeline generation and management with metadata-driven design.
 - **Enhanced agility:** Effortlessly manage schema updates and data transformations.
 - **Improved governance:** Achieve transparency and control through automated data lineage and impact analysis.
 - **Optimized scalability:** Utilize containerized environments to scale vertically as needed.
 
-## Trusted by Norwegian Corporate Clients
+## 🏢 Trusted by Norwegian Corporate Clients
 
 SQLFlow has been implemented by established organizations:
 
@@ -17,12 +17,12 @@ SQLFlow has been implemented by established organizations:
 
 - **Nortura SA** - Norway's premier food supplier with annual revenue of 23.545 billion NOK, where SQLFlow was partially implemented as a supplementary solution during my tenure there, not as the main framework.
 
-## Architecture
+## 🏗️ Architecture
 
 ![SQLFlow Core Components](https://github.com/user-attachments/assets/9a48caf3-d3ed-467d-89cd-f09f579f08b2)
 
 
-## Core Features
+## 🔑 Core Features
 
 ### Metadata-Driven Automation
 Eliminate manual tasks by leveraging metadata to automate the end-to-end data warehouse processes, significantly increasing operational efficiency.
@@ -60,20 +60,29 @@ Ensure fast, reliable performance through pipelines built upon industry best pra
 ### Comprehensive Documentation
 Easily onboard and maximize SQLFlow with detailed documentation covering everything from basic setup to advanced features.
 
-![SQLFlow Core Components](https://github.com/TahirRiaz/SQLFlow/assets/73830648/0d00aa45-518b-411a-b03b-02530c30afc8)
+# 📚 SQLFlow Installation and Configuration Guide
 
-## Getting Started
+This guide will walk you through setting up SQLFlow using Docker containers.
 
-Start revolutionizing your data warehousing experience today. A step-by-step installation guide is available in the `Sandbox` directory.
+## 🚀 Getting Started
 
-## Support and Community
+Start revolutionizing your data warehousing experience today. Setup is a breeze with our fully containerized solution publicly available on Docker Hub:
+
+[businessiq/sqlflow on Docker Hub](https://hub.docker.com/repository/docker/businessiq/sqlflow/general)
+
+The accompanying Docker Compose file and additional setup details can be found in the Sandbox README:
+
+[SQLFlow Sandbox Documentation](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md)
+
+
+## 👥 Support and Community
 
 We value community collaboration and support. Whether you have questions, issues, or success stories, feel free to reach out. Together, let's redefine data warehousing.
 
 - **Email:** [tahir@sqlflow.io](mailto:tahir@sqlflow.io)  
 - **LinkedIn:** [Contact](https://www.linkedin.com/in/businessiq/)
 
-## Contributing
+## 🤝 Contributing
 
 Your contributions help us grow. You can:
 
@@ -84,11 +93,10 @@ Your contributions help us grow. You can:
 - Share with peers
 - Report bugs and feature requests
 
-## Licensing
+## ⚖️ Licensing
 
 SQLFlow is licensed under the **GNU General Public License v3.0**. For detailed terms, refer to the [LICENSE](LICENSE) file or visit [gnu.org/licenses/gpl-3.0](https://gnu.org/licenses/gpl-3.0).
 
 An alternative version under the permissive **MIT License** is available upon request. This license allows reuse in proprietary applications. Please contact us for more details.
 
 ---
-
