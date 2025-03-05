@@ -61,19 +61,7 @@ Ensure fast, reliable performance through pipelines built upon industry best pra
 Easily onboard and maximize SQLFlow with detailed documentation covering everything from basic setup to advanced features.
 
 # 📚 SQLFlow Installation and Configuration Guide
-
-This guide will walk you through setting up SQLFlow using Docker containers.
-
-## 🚀 Getting Started
-
-Start revolutionizing your data warehousing experience today. Setup is a breeze with our fully containerized solution publicly available on Docker Hub:
-
-[businessiq/sqlflow on Docker Hub](https://hub.docker.com/repository/docker/businessiq/sqlflow/general)
-
-The accompanying Docker Compose file and additional setup details can be found in the Sandbox README:
-
-[SQLFlow Sandbox Documentation](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md)
-
+This [guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md) will walk you through setting up SQLFlow using Docker containers. Setup is a breeze with our fully containerized solution that is publicly available on [Docker Hub](https://hub.docker.com/repository/docker/businessiq/sqlflow/general).
 
 ## 👥 Support and Community
 
