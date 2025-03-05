@@ -1,6 +1,6 @@
 services:
   sqlflowui:
-    image: businessiq/sqlflowprv:ui
+    image: businessiq/sqlflow:ui
     container_name: sqlflow-ui
     restart: unless-stopped
     deploy:
@@ -67,7 +67,7 @@ services:
       start_period: 15s
 
   sqlflowapi:
-    image: businessiq/sqlflowprv:api
+    image: businessiq/sqlflow:api
     container_name: sqlflow-api
     restart: unless-stopped
     deploy:
