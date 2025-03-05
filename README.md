@@ -17,10 +17,17 @@ SQLFlow has been implemented by established organizations:
 
 - **Nortura SA** - Norway's premier food supplier with annual revenue of 23.545 billion NOK, where SQLFlow was partially implemented as a supplementary solution during my tenure there, not as the main framework.
 
-## 🏗️ Architecture
 
-![SQLFlow Core Components](https://github.com/user-attachments/assets/9a48caf3-d3ed-467d-89cd-f09f579f08b2)
+## 📚 SQLFlow Ui
 
+<div style="display: flex; flex-wrap: wrap; gap: 10px;">
+  <a href="Media/Slide1.jpg" style="flex: 0 0 30%;"><img src="Media/Slide1.jpg" width="100%"></a>
+  <a href="Media/Slide2.jpg" style="flex: 0 0 30%;"><img src="Media/Slide2.jpg" width="100%"></a>
+  <a href="Media/Slide6.jpg" style="flex: 0 0 30%;"><img src="Media/Slide6.jpg" width="100%"></a>
+  <a href="Media/Slide4.jpg" style="flex: 0 0 30%;"><img src="Media/Slide4.jpg" width="100%"></a>
+  <a href="Media/Slide5.jpg" style="flex: 0 0 30%;"><img src="Media/Slide5.jpg" width="100%"></a>
+  <a href="Media/Slide3.jpg" style="flex: 0 0 30%;"><img src="Media/Slide3.jpg" width="100%"></a>
+</div>
 
 ## 🔑 Core Features
 
@@ -62,6 +69,11 @@ Easily onboard and maximize SQLFlow with detailed documentation covering everyth
 
 # 📚 SQLFlow Installation and Configuration Guide
 This [guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md) will walk you through setting up SQLFlow using Docker containers. Setup is a breeze with our fully containerized solution that is publicly available on [Docker Hub](https://hub.docker.com/repository/docker/businessiq/sqlflow/general).
+
+## 🏗️ Architecture
+
+![SQLFlow Core Components](https://github.com/user-attachments/assets/9a48caf3-d3ed-467d-89cd-f09f579f08b2)
+
 
 ## 👥 Support and Community
 
