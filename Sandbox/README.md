@@ -8,24 +8,8 @@ This guide will walk you through setting up SQLFlow using Docker containers.
 - SQL Server instance (on-premises) or Azure SQL Database
 - Sufficient disk space for Docker images and volumes
 - Basic knowledge of Docker and SQL database management
-
-## Step 0: Prepare the Databases
-
-**Critical Prerequisite**: Before starting SQLFlow setup, ensure your SQL Server or Azure SQL Database has SSL properly configured. This requires:
-
-- SSL must be enabled on SQL Server
-- The certificate must be added to trusted root authorities
-- Connection encryption must be properly configured
-
-Detailed instructions and an automation script are available at:
+- Before starting SQLFlow setup, ensure your SQL Server or Azure SQL Database has SSL properly configured. Detailed instructions and an automation script are available at:
 [SQL Server SSL Configuration Wizard](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/mssql-ssl-wizard.md)
-
-```powershell
-# Example: Run the SSL configuration wizard
-.\mssql-ssl-wizard.ps1
-```
-
-> **Note:** Skipping this step may result in connection failures when running SQLFlow.
 
 ## Step 1: Prepare the Databases
 
@@ -71,7 +55,7 @@ Verify full-text is enabled:
 SELECT SERVERPROPERTY('IsFullTextInstalled') AS [IsFullTextInstalled];
 ```
 
-### 1.4 Create and Configure Database User
+### 1.4 Create and Configure Database User For Pipelines
 
 ```sql
 -- Create SQLFlow user
@@ -90,7 +74,7 @@ The following script updates connection strings required for data pipeline execu
 
 **Instructions:**
 1. Replace the empty User ID and Password fields with your credentials
-2. Execute the SQL statements to configure your database connections
+2. Execute the SQL statements agasting [dw-sqlflow-prod] these connection strings will be used by pipeline executions.
 
 ```sql
 UPDATE [flw].[SysDataSource]
@@ -127,7 +111,24 @@ SQLFlowOpenAiApiKey=your-openai-api-key
 
 > **Note:** Use `host.docker.internal` to reference your host machine's SQL DB from Docker
 
-## Step 3: Download and Run Docker Images
+## Step 3: Download and Configure Sample Data
+
+Before continuing with the Docker setup, you need to download and place the sample data in the correct location:
+
+1. Download the sample data package from:
+   [SQLFlow Sample Data](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/data/SampleData.zip)
+
+2. Create a directory at `C:\SQLFlow` if it doesn't already exist.
+
+3. Extract the contents of `SampleData.zip` directly into the `C:\SQLFlow` directory.
+   - The extraction should result in various folders and files directly under `C:\SQLFlow`
+   - Do not create a nested folder structure (avoid having `C:\SQLFlow\SampleData\`)
+
+4. Verify the sample data is correctly placed by checking that the directory structure matches what the Docker volume expects to mount.
+
+> **Note:** This sample data is required for the SQLFlow Docker container to function properly, as it will be mounted as a volume during container startup. The Docker Compose configuration expects to find this data at the specified location.
+
+## Step 4: Download and Run Docker Images
 
 1. Save the Docker Compose configuration to `docker-compose.yml`
 
@@ -150,9 +151,9 @@ SQLFlowOpenAiApiKey=your-openai-api-key
 The Docker setup creates these volumes:
 - `sqlflow-keys`: Encryption keys
 - `sqlflow-data`: Application data
-- `sqlflow-sample-data`: Sample data (mounted from B:/SQLFlow)
+- `sqlflow-sample-data`: Sample data (mounted from c:/SQLFlow)
 
-## Step 4: Access SQLFlow
+## Step 5: Access SQLFlow
 
 Once running successfully:
 

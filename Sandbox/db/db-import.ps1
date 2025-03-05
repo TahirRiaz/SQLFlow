@@ -454,6 +454,7 @@ WITH $moveFiles,
 }
 
 # Function to import database from .bacpac file
+# Function to import database from .bacpac file
 function Import-DatabaseFromBacpac {
     param (
         [string]$BacpacFile,
@@ -485,18 +486,34 @@ DROP DATABASE [$TargetDatabaseName];
             }
         }
         
-        # Build properties string based on connection string parameters
-        $properties = ""
-        if ($trustServerCertificate -eq "True") { $properties += "TrustServerCertificate=True;" }
-        if ($encrypt -eq "False") { $properties += "Encrypt=False;" }
-        $properties = $properties.TrimEnd(';')
+        # Build connection string with proper parameters for SqlPackage
+        # SqlPackage uses "Property" parameter with name=value format
+        $propertyArgs = @()
         
-        # Import BACPAC using SqlPackage with proper SSL settings
-        if ($properties) {
-            & $SqlPackagePath /Action:Import /SourceFile:$BacpacFile /TargetServerName:$serverName /TargetDatabaseName:$TargetDatabaseName /TargetUser:$userId /TargetPassword:$password /Properties:$properties
-        } else {
-            & $SqlPackagePath /Action:Import /SourceFile:$BacpacFile /TargetServerName:$serverName /TargetDatabaseName:$TargetDatabaseName /TargetUser:$userId /TargetPassword:$password
+        if ($trustServerCertificate -eq "True") { 
+            $propertyArgs += "/p:TrustServerCertificate=True"
         }
+        
+        if ($encrypt -eq "False") { 
+            $propertyArgs += "/p:Encrypt=False"
+        }
+        
+        # Build the command arguments
+        $sqlPackageArgs = @(
+            "/Action:Import",
+            "/SourceFile:$BacpacFile",
+            "/TargetServerName:$serverName",
+            "/TargetDatabaseName:$TargetDatabaseName",
+            "/TargetUser:$userId",
+            "/TargetPassword:$password"
+        )
+        
+        # Add the property arguments if any exist
+        $sqlPackageArgs += $propertyArgs
+        
+        # Execute SqlPackage with all arguments
+        Write-Host "Executing: $SqlPackagePath $($sqlPackageArgs -join ' ')" -ForegroundColor Yellow
+        & $SqlPackagePath $sqlPackageArgs
         
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Database $TargetDatabaseName imported successfully from $BacpacFile." -ForegroundColor Green

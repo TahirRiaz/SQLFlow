@@ -80,7 +80,7 @@ services:
     volumes:
       - sqlflow-keys:/app/data/keys
       - sqlflow-data:/app/data
-      - sqlflow-sample-data:/b/SQLFlow
+      - sqlflow-sample-data:/c/SQLFlow
       # For using custom certificates (when CERT_SOURCE=volume)
       # - ./certs:/https
     extra_hosts:
@@ -150,7 +150,7 @@ volumes:
     driver: local
     driver_opts:
       type: none
-      device: B:/SQLFlow
+      device: C:/SQLFlow
       o: bind
 
 networks:
