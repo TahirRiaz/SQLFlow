@@ -21,12 +21,12 @@ SQLFlow has been implemented by established organizations:
 ## 📚 SQLFlow Ui
 
 <div style="display: flex; flex-wrap: wrap; gap: 10px;">
-  <a href="Media/Slide1.jpg" style="flex: 0 0 30%;"><img src="Media/Slide1.jpg" width="100%"></a>
-  <a href="Media/Slide2.jpg" style="flex: 0 0 30%;"><img src="Media/Slide2.jpg" width="100%"></a>
-  <a href="Media/Slide6.jpg" style="flex: 0 0 30%;"><img src="Media/Slide6.jpg" width="100%"></a>
-  <a href="Media/Slide4.jpg" style="flex: 0 0 30%;"><img src="Media/Slide4.jpg" width="100%"></a>
-  <a href="Media/Slide5.jpg" style="flex: 0 0 30%;"><img src="Media/Slide5.jpg" width="100%"></a>
-  <a href="Media/Slide3.jpg" style="flex: 0 0 30%;"><img src="Media/Slide3.jpg" width="100%"></a>
+  <a href="Media/Slide1.jpg" style="flex: 0 0 30%;"><img src="Media/Slide1.jpg" width="200"></a>
+  <a href="Media/Slide2.jpg" style="flex: 0 0 30%;"><img src="Media/Slide2.jpg" width="200"></a>
+  <a href="Media/Slide6.jpg" style="flex: 0 0 30%;"><img src="Media/Slide6.jpg" width="200"></a>
+  <a href="Media/Slide4.jpg" style="flex: 0 0 30%;"><img src="Media/Slide4.jpg" width="200"></a>
+  <a href="Media/Slide5.jpg" style="flex: 0 0 30%;"><img src="Media/Slide5.jpg" width="200"></a>
+  <a href="Media/Slide3.jpg" style="flex: 0 0 30%;"><img src="Media/Slide3.jpg" width="200"></a>
 </div>
 
 ## 🔑 Core Features
