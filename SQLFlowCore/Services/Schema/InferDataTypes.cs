@@ -10,7 +10,7 @@ BEGIN
 END;
 CREATE TABLE #DecimalPoints
 (
-    Pattern VARCHAR(255),
+    Pattern VARCHAR(255) COLLATE DATABASE_DEFAULT,
     Points INT
 );
 INSERT INTO #DecimalPoints
@@ -44,10 +44,10 @@ END;
 CREATE TABLE #SysDateFormats
 (
     [StyleCode] [INT] NULL,
-    [Query] [NVARCHAR](250) NULL,
-    [DateStyle] [NVARCHAR](50) NULL,
-    [DateSample] [NVARCHAR](50) NULL,
-    [Type] [NVARCHAR](50) NULL
+    [Query] [NVARCHAR](250) COLLATE DATABASE_DEFAULT NULL,
+    [DateStyle] [NVARCHAR](50) COLLATE DATABASE_DEFAULT NULL,
+    [DateSample] [NVARCHAR](50) COLLATE DATABASE_DEFAULT NULL,
+    [Type] [NVARCHAR](50) COLLATE DATABASE_DEFAULT NULL
 ) ON [PRIMARY];
 
 INSERT #SysDateFormats
@@ -112,9 +112,9 @@ END;
 CREATE TABLE #CultureTable
 (
     [CultureID] [INT] IDENTITY(1, 1) NOT NULL,
-    Alias VARCHAR(255),
+    Alias VARCHAR(255) COLLATE DATABASE_DEFAULT,
     LCID INT,
-    SpecificCulture VARCHAR(255)
+    SpecificCulture VARCHAR(255) COLLATE DATABASE_DEFAULT
 );
 
 -- Insert data into the table
@@ -167,18 +167,18 @@ END;
 CREATE TABLE #Describe
 (
     [RecID] [INT] IDENTITY(1, 1) NOT NULL,
-    [TableSchema] [NVARCHAR](128) NULL,
+    [TableSchema] [NVARCHAR](128) COLLATE DATABASE_DEFAULT NULL,
     [TableName] [sysname] NOT NULL,
     [ColumnName] [sysname] NULL,
     [Ordinal] [INT] NULL,
-    [DataType] [NVARCHAR](128) NULL,
-    [MinValue] [NVARCHAR](MAX) NULL,
-    [MaxValue] [NVARCHAR](MAX) NULL,
-    [RandValue] [NVARCHAR](MAX) NULL,
+    [DataType] [NVARCHAR](128) COLLATE DATABASE_DEFAULT NULL,
+    [MinValue] [NVARCHAR](MAX) COLLATE DATABASE_DEFAULT NULL,
+    [MaxValue] [NVARCHAR](MAX) COLLATE DATABASE_DEFAULT NULL,
+    [RandValue] [NVARCHAR](MAX) COLLATE DATABASE_DEFAULT NULL,
     [ValueWeight] INT NULL,
     [MinLength] [INT] NOT NULL,
     [MaxLength] [INT] NOT NULL,
-    [SelectExp] [NVARCHAR](MAX) NULL,
+    [SelectExp] [NVARCHAR](MAX) COLLATE DATABASE_DEFAULT NULL,
     [CommaCount] INT NULL,
     [DotCount] INT NULL,
     [ColonCount] INT NULL,
@@ -189,8 +189,8 @@ CREATE TABLE #Describe
     [ValAsDate] [DATETIME] NULL,
     [IsNumeric] [BIT] NULL,
     [DecimalPoints] [INT] NULL,
-    [cmdSQL] [NVARCHAR](2484) NULL,
-    [SQLFlowExp] [NVARCHAR](2484) NULL
+    [cmdSQL] [NVARCHAR](2484) COLLATE DATABASE_DEFAULT NULL,
+    [SQLFlowExp] [NVARCHAR](2484) COLLATE DATABASE_DEFAULT NULL
 );
 INSERT INTO #Describe
 (
@@ -255,7 +255,7 @@ WHERE TABLE_SCHEMA = '{Schema}'
 -- Ignore columns that dont support max operation
 DELETE FROM #Describe
 WHERE ColumnName IN (
-    SELECT c.COLUMN_NAME
+    SELECT c.COLUMN_NAME COLLATE DATABASE_DEFAULT
     FROM INFORMATION_SCHEMA.COLUMNS c 
     WHERE c.TABLE_SCHEMA = '{Schema}'
       AND c.TABLE_NAME = '{Table}'
