@@ -635,7 +635,13 @@ namespace SQLFlowCore.Pipeline
                                                 else if (sp.trgFiletype == "parquet")
                                                 {
                                                     bool hasData = false;
-                                                    using (Stream dataLakeStream = new FileStream(_item.GetFileNameWithPath(), System.IO.FileMode.OpenOrCreate))
+                                                    if (File.Exists(_item.GetFileNameWithPath()))
+                                                    {
+                                                        File.Delete(_item.GetFileNameWithPath());
+                                                        logger.LogInformation("Existing Parquet file deleted");
+                                                    }
+
+                                                    using (Stream dataLakeStream = new FileStream(_item.GetFileNameWithPath(), System.IO.FileMode.Create))
                                                     using (var taskSqlCon = new SqlConnection(sp.srcConnectionString))
                                                     {
                                                         taskSqlCon.Open();

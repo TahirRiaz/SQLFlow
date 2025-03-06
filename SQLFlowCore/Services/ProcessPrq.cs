@@ -740,5 +740,45 @@ namespace SQLFlowCore.Services
         {
             return input.TrimEnd('/') + "/";
         }
+
+
+        // Add this function to the ProcessPrq class to handle file deletion
+        private static void EnsureParquetFileDeleted(string filePath, ILogger logger)
+        {
+            try
+            {
+                if (File.Exists(filePath))
+                {
+                    logger.LogInformation($"Deleting existing Parquet file before processing: {filePath}");
+                    File.Delete(filePath);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Error deleting Parquet file {filePath}: {ex.Message}");
+                throw new InvalidOperationException($"Unable to delete existing Parquet file. Please ensure no other process is using it: {filePath}", ex);
+            }
+        }
+
+        // For Azure Data Lake files
+        private static async Task EnsureDataLakeParquetFileDeleted(DataLakeFileSystemClient fileSystemClient, string filePath, ILogger logger)
+        {
+            try
+            {
+                DataLakeFileClient fileClient = fileSystemClient.GetFileClient(filePath);
+                var exists = await fileClient.ExistsAsync();
+
+                if (exists)
+                {
+                    logger.LogInformation($"Deleting existing Parquet file from Data Lake before processing: {filePath}");
+                    await fileClient.DeleteAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Error deleting Parquet file from Data Lake {filePath}: {ex.Message}");
+                throw new InvalidOperationException($"Unable to delete existing Parquet file from Data Lake: {filePath}", ex);
+            }
+        }
     }
 }
