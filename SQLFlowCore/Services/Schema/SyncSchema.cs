@@ -14,6 +14,7 @@ using System.Text;
 using SQLFlowCore.Common;
 using Microsoft.SqlServer.Management.Common;
 using SQLFlowCore.Logger;
+using Microsoft.Extensions.Logging;
 
 //using SQLFlowCore.DataExt;
 //using System.Data;
@@ -472,6 +473,12 @@ namespace SQLFlowCore.Services.Schema
                 {
                     // Execute the delta script
                     CommonDB.ExecDDLScript(trgConnection, deltaScript.ToString(), 360, syncInput.TrgIsSynapse);
+
+                    // Refresh the target table to reflect the changes
+                    //trgTable.Refresh();
+
+                    trgTable.Refresh();
+                    trgTable.Columns.Refresh();
                 }
                 
                 string alterScript = "";

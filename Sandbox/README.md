@@ -147,6 +147,14 @@ Before continuing with the Docker setup, you need to download and place the samp
    docker-compose ps
    ```
 
+4. Docker images are updated regularly. Always use the latest database and image version. Check the repository for recent changes.
+To force an update, run:
+   ```bash
+   docker-compose pull
+   docker-compose down
+   docker-compose up -d
+   ```
+
 ### Persistent Volumes
 The Docker setup creates these volumes:
 - `sqlflow-keys`: Encryption keys
