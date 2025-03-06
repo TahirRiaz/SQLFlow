@@ -154,11 +154,12 @@
                         </RadzenRow>
                     </RadzenStepsItem>
 
-                <RadzenStepsItem Text="Advance">
-
-                        <RadzenFieldset Text="Batch Processing Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                    <RadzenStepsItem Text="Advanced">
+                        <!-- Configuration Settings group - combines batch and performance settings -->
+                        <RadzenFieldset Text="Configuration Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <!-- Row 1: Checkboxes -->
                             <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenColumn>
+                                <RadzenColumn Style="width: 48%">
                                     <RadzenCheckBox @bind-Value="@preIngestionPRC.DeactivateFromBatch" Name="DeactivateFromBatch" />
                                     <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
                                     <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
@@ -169,21 +170,87 @@
                                     <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                 </RadzenColumn>
                             </RadzenRow>
+                            <!-- Row 2: More Checkboxes -->
                             <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenColumn>
+                                <RadzenColumn Style="width: 48%">
                                     <RadzenCheckBox @bind-Value="@preIngestionPRC.ShowPathWithFileName" Name="ShowPathWithFileName" />
                                     <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[ShowPathWithFileName]").Result Component="ShowPathWithFileName" />
                                     <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[ShowPathWithFileName]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[ShowPathWithFileName]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                 </RadzenColumn>
-                                <RadzenColumn>
+                                <RadzenColumn Style="width: 48%">
                                     <RadzenCheckBox @bind-Value="@preIngestionPRC.FetchDataTypes" Name="FetchDataTypes" />
                                     <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[FetchDataTypes]").Result Component="FetchDataTypes" />
                                     <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[FetchDataTypes]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[FetchDataTypes]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                 </RadzenColumn>
                             </RadzenRow>
+                            <!-- Row 3: Performance Settings -->
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[ExpectedColumnCount]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionPRC.ExpectedColumnCount" Name="ExpectedColumnCount" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[ExpectedColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[ExpectedColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[NoOfThreads]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionPRC.NoOfThreads" Name="NoOfThreads" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <!-- Row 4: Additional Configuration Setting -->
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenColumn Style="width: 48%">
+                                    <RadzenCheckBox @bind-Value="@preIngestionPRC.SyncSchema" Name="SyncSchema" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[SyncSchema]").Result Component="SyncSchema" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[SyncSchema]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[SyncSchema]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                                <RadzenColumn Style="width: 48%">
+                                    <!-- Intentionally left empty for alignment consistency -->
+                                </RadzenColumn>
+                            </RadzenRow>
                         </RadzenFieldset>
-                        
-                        <RadzenFieldset Text="Indexing" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+
+                        <!-- Processing & Invocation Settings group - combines data processing and invocation -->
+                        <RadzenFieldset Text="Processing & Invocation Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <!-- Row 1: Pre/Post Processing -->
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionPRC.PreProcessOnTrg" Name="PreProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[PreProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[PreProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionPRC.PostProcessOnTrg" Name="PostProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[PostProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[PostProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <!-- Row 2: Invocation Settings -->
+                            <RadzenRow Style="margin-bottom: 16px">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[PreInvokeAlias]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenDropDown Name="PreInvokeAlias" AllowClear="true" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@preIngestionPRC.PreInvokeAlias" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[PreInvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[PreInvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                        </RadzenFieldset>
+
+                        <!-- Database Indexing group - kept separate due to the unique nature of the code editor -->
+                        <RadzenFieldset Text="Database Indexing" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
                             <RadzenRow Style="margin-bottom: 16px">
                                 <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[trgDesiredIndex]").Result Variant="Variant.Outlined" Style="width: 100%;">
                                     <ChildContent>
@@ -191,19 +258,34 @@
                                             <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
                                                 <div class="editor-buttons-row">
                                                     <div class="editor-buttons-container">
-                                                        <RadzenButton Click=@(args => @PasteIndexScript()) Icon="input" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Primary" Variant="Variant.Flat" Style="margin-right: 5px;" />
-                                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[trgDesiredIndex]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionPRC].[trgDesiredIndex]"))" Icon="help_outline" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Dark" Variant="Variant.Flat" Style="margin-right: 5px;" />
-                                                        <RadzenButton Click="@ToggleFullScreen" Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")" Size="ButtonSize.Small" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Flat" />
+                                                        <RadzenButton Click=@(args => @PasteIndexScript())
+                                                                      Icon="input"
+                                                                      Size="ButtonSize.Small"
+                                                                      ButtonStyle="ButtonStyle.Primary"
+                                                                      Variant="Variant.Flat"
+                                                                      Style="margin-right: 5px;" />
+                                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[trgDesiredIndex]"))
+                                                                      MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionPRC].[trgDesiredIndex]"))"
+                                                                      Icon="help_outline"
+                                                                      Size="ButtonSize.Small"
+                                                                      ButtonStyle="ButtonStyle.Dark"
+                                                                      Variant="Variant.Flat"
+                                                                      Style="margin-right: 5px;" />
+                                                        <RadzenButton Click="@ToggleFullScreen"
+                                                                      Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
+                                                                      Size="ButtonSize.Small"
+                                                                      ButtonStyle="ButtonStyle.Secondary"
+                                                                      Variant="Variant.Flat" />
                                                     </div>
                                                 </div>
                                                 <div class="editor-container">
                                                     <CodeMirror6Wrapper @bind-Doc="@preIngestionPRC.trgDesiredIndex"
                                                                         Language=CodeMirrorLanguage.MsSql
-                                                                        LineNumbers=false
+                                                                        LineNumbers="false"
                                                                         Theme=ThemeMirrorTheme.GithubDark
                                                                         FullScreen="@FullScreen"
-                                                                        LineWrapping=true
-                                                                        ScrollPastEnd=false
+                                                                        LineWrapping="true"
+                                                                        ScrollPastEnd="false"
                                                                         AllowHorizontalResize="true"
                                                                         AllowVerticalResize="true"
                                                                         Editable="true"
@@ -217,72 +299,7 @@
                                 </RadzenFormField>
                             </RadzenRow>
                         </RadzenFieldset>
-
-                        <RadzenFieldset Text="Performance Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                                <RadzenRow Style="margin-bottom: 16px">
-                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[ExpectedColumnCount]").Result Variant="Variant.Outlined">
-                                        <ChildContent>
-                                            <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionPRC.ExpectedColumnCount" Name="ExpectedColumnCount" />
-                                        </ChildContent>
-                                        <End>
-                                            <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[ExpectedColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[ExpectedColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                        </End>
-                                    </RadzenFormField>
-                                </RadzenRow>
-                                <RadzenRow Style="margin-bottom: 16px">
-                                    <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[NoOfThreads]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                        <ChildContent>
-                                            <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionPRC.NoOfThreads" Name="NoOfThreads" />
-                                        </ChildContent>
-                                        <End>
-                                            <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                        </End>
-                                    </RadzenFormField>
-                                    <RadzenColumn Style="width: 48%">
-                                        <RadzenCheckBox @bind-Value="@preIngestionPRC.SyncSchema" Name="SyncSchema" />
-                                        <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[SyncSchema]").Result Component="SyncSchema" />
-                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[SyncSchema]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[SyncSchema]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                    </RadzenColumn>
-                                </RadzenRow>
-                         </RadzenFieldset>
-
-                        <RadzenFieldset Text="Data Processing Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                    <ChildContent>
-                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionPRC.PreProcessOnTrg" Name="PreProcessOnTrg" />
-                                    </ChildContent>
-                                    <End>
-                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[PreProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[PreProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                    </End>
-                                </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                    <ChildContent>
-                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionPRC.PostProcessOnTrg" Name="PostProcessOnTrg" />
-                                    </ChildContent>
-                                    <End>
-                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[PostProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[PostProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                    </End>
-                                </RadzenFormField>
-                            </RadzenRow>
-                        </RadzenFieldset>
- 
-                        <RadzenFieldset Text="Invocation Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionPRC].[PreInvokeAlias]").Result Variant="Variant.Outlined" Style="width: 100%">
-                                    <ChildContent>
-                                        <RadzenDropDown Name="PreInvokeAlias" AllowClear="true" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@preIngestionPRC.PreInvokeAlias" />
-                                    </ChildContent>
-                                    <End>
-                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionPRC].[PreInvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionPRC].[PreInvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                    </End>
-                                </RadzenFormField>
-                            </RadzenRow>
-                        </RadzenFieldset>
-
-
-
-                </RadzenStepsItem>
+                    </RadzenStepsItem>
 
                     <RadzenStepsItem Text="System">
                         <RadzenRow Style="margin-bottom: 16px">

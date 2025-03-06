@@ -202,34 +202,137 @@
                         </RadzenFormField>
                     </RadzenRow>
                 </RadzenStepsItem>
+                
                 <RadzenStepsItem Text="Advance">
-
-                    <RadzenFieldset Text="Batch Settings and Error Handling" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                    <!-- Configuration Settings -->
+                    <RadzenFieldset Text="General Configuration" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
                         <RadzenRow Style="margin-bottom: 16px">
-                            <RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
                                 <RadzenCheckBox @bind-Value="@preIngestionXLS.EnableEventExecution" Name="EnableEventExecution" />
                                 <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[EnableEventExecution]").Result Component="EnableEventExecution" />
                                 <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[EnableEventExecution]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[EnableEventExecution]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                             </RadzenColumn>
-                            <RadzenColumn Style="width: 49%">
-        
-                            </RadzenColumn>
-                        </RadzenRow>
-                        <RadzenRow Style="margin-bottom: 16px">
-                            <RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
                                 <RadzenCheckBox @bind-Value="@preIngestionXLS.DeactivateFromBatch" Name="DeactivateFromBatch" />
                                 <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
                                 <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                             </RadzenColumn>
-                            <RadzenColumn Style="width: 49%">
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Size="12" SizeMD="6">
                                 <RadzenCheckBox @bind-Value="@preIngestionXLS.OnErrorResume" Name="OnErrorResume" />
                                 <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[OnErrorResume]").Result Component="OnErrorResume" />
                                 <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                             </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[NoOfThreads]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionXLS.NoOfThreads" Name="NoOfThreads" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Size="12">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[InvokeAlias]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenDropDown Name="PreInvokeAlias" AllowClear="true" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@preIngestionXLS.PreInvokeAlias" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[InvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[InvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
                         </RadzenRow>
                     </RadzenFieldset>
-                    
-                    <RadzenFieldset Text="Indexing" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+
+                    <!-- File Handling Section -->
+                    <RadzenFieldset Text="File Handling" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[copyToPath]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.copyToPath" Name="copyToPath" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[copyToPath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[copyToPath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[zipToPath]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.zipToPath" Name="zipToPath" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[zipToPath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[zipToPath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenCheckBox @bind-Value="@preIngestionXLS.srcDeleteAtPath" Name="srcDeleteAtPath" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[srcDeleteAtPath]").Result Component="srcDeleteAtPath" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[srcDeleteAtPath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[srcDeleteAtPath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenCheckBox @bind-Value="@preIngestionXLS.srcDeleteIngested" Name="srcDeleteIngested" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[srcDeleteIngested]").Result Component="srcDeleteIngested" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[srcDeleteIngested]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[srcDeleteIngested]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenFieldset>
+
+                    <!-- Processing Configuration Section -->
+                    <RadzenFieldset Text="Processing Configuration" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.PreProcessOnTrg" Name="PreProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[PreProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[PreProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.PostProcessOnTrg" Name="PostProcessOnTrg" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[PostProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[PostProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[InitFromFileDate]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.InitFromFileDate" Name="InitFromFileDate" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[InitFromFileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[InitFromFileDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
+                            <RadzenColumn Size="12" SizeMD="6">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[InitToFileDate]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.InitToFileDate" Name="InitToFileDate" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[InitToFileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[InitToFileDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenColumn>
+                        </RadzenRow>
                         <RadzenRow Style="margin-bottom: 16px">
                             <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[trgDesiredIndex]").Result Variant="Variant.Outlined" Style="width: 100%;">
                                 <ChildContent>
@@ -278,100 +381,8 @@
                             </RadzenFormField>
                         </RadzenRow>
                     </RadzenFieldset>
-
-                    <RadzenFieldset Text="File Handling and Path Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                        <RadzenRow Style="margin-bottom: 16px">
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[copyToPath]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.copyToPath" Name="copyToPath" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[copyToPath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[copyToPath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[zipToPath]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.zipToPath" Name="zipToPath" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[zipToPath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[zipToPath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                        </RadzenRow>
-                        <RadzenRow Style="margin-bottom: 16px">
-                            <RadzenColumn>
-                                <RadzenCheckBox @bind-Value="@preIngestionXLS.srcDeleteAtPath" Name="srcDeleteAtPath" />
-                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[srcDeleteAtPath]").Result Component="srcDeleteAtPath" />
-                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[srcDeleteAtPath]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[srcDeleteAtPath]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                            </RadzenColumn>
-                            <RadzenColumn>
-                                <RadzenCheckBox @bind-Value="@preIngestionXLS.srcDeleteIngested" Name="srcDeleteIngested" />
-                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[srcDeleteIngested]").Result Component="srcDeleteIngested" />
-                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[srcDeleteIngested]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[srcDeleteIngested]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                            </RadzenColumn>
-                        </RadzenRow>
-                    </RadzenFieldset>
-
-                    <RadzenFieldset Text="Processing and Date Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                        <RadzenRow Style="margin-bottom: 16px">
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.PreProcessOnTrg" Name="PreProcessOnTrg" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[PreProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[PreProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.PostProcessOnTrg" Name="PostProcessOnTrg" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[PostProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[PostProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                        </RadzenRow>
-                        <RadzenRow Style="margin-bottom: 16px">
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[InitFromFileDate]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.InitFromFileDate" Name="InitFromFileDate" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[InitFromFileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[InitFromFileDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[InitToFileDate]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionXLS.InitToFileDate" Name="InitToFileDate" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[InitToFileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[InitToFileDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                        </RadzenRow>
-                        <RadzenRow Style="margin-bottom: 16px">
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[InvokeAlias]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenDropDown Name="PreInvokeAlias" AllowClear="true" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@preIngestionXLS.PreInvokeAlias" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[InvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[InvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                            <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[NoOfThreads]").Result Variant="Variant.Outlined" Style="width: 49%">
-                                <ChildContent>
-                                    <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionXLS.NoOfThreads" Name="NoOfThreads" />
-                                </ChildContent>
-                                <End>
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[NoOfThreads]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[NoOfThreads]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </End>
-                            </RadzenFormField>
-                        </RadzenRow>
-                    </RadzenFieldset>
-
-
-
                 </RadzenStepsItem>
+                
                 <RadzenStepsItem Text="System">
                     <RadzenRow Style="margin-bottom: 16px">
                         <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">

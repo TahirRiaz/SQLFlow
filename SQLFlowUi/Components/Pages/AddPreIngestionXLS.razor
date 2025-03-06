@@ -191,35 +191,35 @@
                         </RadzenFormField>
                     </RadzenRow>
                 </RadzenStepsItem>
-            <RadzenStepsItem Text="Advance">
-                
-                <RadzenFieldset Text="Batch Settings and Error Handling" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                    <RadzenRow Style="margin-bottom: 16px">
-                        <RadzenColumn>
-                            <RadzenCheckBox @bind-Value="@preIngestionXLS.EnableEventExecution" Name="EnableEventExecution" />
+            
+                <RadzenStepsItem Text="Advance">
+                    <RadzenFieldset Text="Batch Settings and Error Handling" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@preIngestionXLS.EnableEventExecution" Name="EnableEventExecution" />
                                 <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[EnableEventExecution]").Result Component="EnableEventExecution" />
                                 <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[EnableEventExecution]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[EnableEventExecution]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                        </RadzenColumn>
-                        <RadzenColumn Style="width: 49%">
-        
-                        </RadzenColumn>
-                    </RadzenRow>
-                    <RadzenRow Style="margin-bottom: 16px">
-                        <RadzenColumn>
-                            <RadzenCheckBox @bind-Value="@preIngestionXLS.DeactivateFromBatch" Name="DeactivateFromBatch" />
-                            <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
-                            <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                        </RadzenColumn>
-                        <RadzenColumn Style="width: 49%">
-                            <RadzenCheckBox @bind-Value="@preIngestionXLS.OnErrorResume" Name="OnErrorResume" />
-                            <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[OnErrorResume]").Result Component="OnErrorResume" />
-                            <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                        </RadzenColumn>
-                    </RadzenRow>
-                </RadzenFieldset>
-                
-                <RadzenFieldset Text="Indexing" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                    <RadzenRow Style="margin-bottom: 16px">
+                            </RadzenColumn>
+                            <RadzenColumn Style="width: 49%">
+
+                            </RadzenColumn>
+                        </RadzenRow>
+                        <RadzenRow Style="margin-bottom: 16px">
+                            <RadzenColumn>
+                                <RadzenCheckBox @bind-Value="@preIngestionXLS.DeactivateFromBatch" Name="DeactivateFromBatch" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                            <RadzenColumn Style="width: 49%">
+                                <RadzenCheckBox @bind-Value="@preIngestionXLS.OnErrorResume" Name="OnErrorResume" />
+                                <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[OnErrorResume]").Result Component="OnErrorResume" />
+                                <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionXLS].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionXLS].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                            </RadzenColumn>
+                        </RadzenRow>
+                    </RadzenFieldset>
+
+                    <RadzenFieldset Text="Indexing" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                        <RadzenRow Style="margin-bottom: 16px">
                             <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[trgDesiredIndex]").Result Variant="Variant.Outlined" Style="width: 100%;">
                                 <ChildContent>
                                     <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
@@ -265,10 +265,10 @@
                                     </RadzenRow>
                                 </ChildContent>
                             </RadzenFormField>
-                    </RadzenRow>
-                </RadzenFieldset>
+                        </RadzenRow>
+                    </RadzenFieldset>
 
-                <RadzenFieldset Text="File Handling and Path Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                    <RadzenFieldset Text="File Handling and Path Settings" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
                         <RadzenRow Style="margin-bottom: 16px">
                             <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[copyToPath]").Result Variant="Variant.Outlined" Style="width: 49%">
                                 <ChildContent>
@@ -357,10 +357,8 @@
                             </RadzenFormField>
                         </RadzenRow>
                     </RadzenFieldset>
-
-
-
-            </RadzenStepsItem>
+                </RadzenStepsItem>
+                
                 <RadzenStepsItem Text="System">
                     <RadzenRow Style="margin-bottom: 16px">
                         <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionXLS].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">

@@ -224,8 +224,9 @@
                             </RadzenColumn>
                         </RadzenRow>
                     </RadzenStepsItem>
+                    
                     <RadzenStepsItem Text="Advance">
-                        <RadzenFieldset Text="File Configuration & Handling" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                        <RadzenFieldset Text="File Management & Configuration" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
                             <RadzenRow>
                                 <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[copyToPath]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
@@ -273,8 +274,11 @@
                                     <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[srcDeleteIngested]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[srcDeleteIngested]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                 </RadzenColumn>
                             </RadzenRow>
+                        </RadzenFieldset>
+
+                        <RadzenFieldset Text="Data Processing & Analysis" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
                             <RadzenRow>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[DefaultColDataType]").Result Variant="Variant.Outlined" Style="width: 100%">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[DefaultColDataType]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
                                         <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.DefaultColDataType" Name="DefaultColDataType" />
                                     </ChildContent>
@@ -282,9 +286,14 @@
                                         <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[DefaultColDataType]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[DefaultColDataType]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                     </End>
                                 </RadzenFormField>
+                                <RadzenColumn Style="width: 49%">
+                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.EnableEventExecution" Name="EnableEventExecution" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[EnableEventExecution]").Result Component="EnableEventExecution" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[EnableEventExecution]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionCSV].[EnableEventExecution]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
                             </RadzenRow>
                             <RadzenRow>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[InitFromFileDate]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[InitFromFileDate]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
                                         <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.InitFromFileDate" Name="InitFromFileDate" />
                                     </ChildContent>
@@ -292,7 +301,7 @@
                                         <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[InitFromFileDate]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[InitFromFileDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                     </End>
                                 </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[InitToFileDate]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[InitToFileDate]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
                                         <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.InitToFileDate" Name="InitToFileDate" />
                                     </ChildContent>
@@ -301,105 +310,122 @@
                                     </End>
                                 </RadzenFormField>
                             </RadzenRow>
-                        </RadzenFieldset>
-
-                        <RadzenFieldset Text="CSV Parsing Configuration" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[ColumnWidths]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.ColumnWidths" Name="ColumnWidths" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[ColumnWidths]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[ColumnWidths]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[ExpectedColumnCount]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.ExpectedColumnCount" Name="ExpectedColumnCount" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[ExpectedColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[ExpectedColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                            </RadzenRow>
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[SkipStartingDataRows]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.SkipStartingDataRows" Name="SkipStartingDataRows" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[SkipStartingDataRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[SkipStartingDataRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[SkipEndingDataRows]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.SkipEndingDataRows" Name="SkipEndingDataRows" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[SkipEndingDataRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[SkipEndingDataRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                            </RadzenRow>
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenColumn Style="width: 48%">
-                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.SkipEmptyRows" Name="SkipEmptyRows" />
-                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[SkipEmptyRows]").Result Component="SkipEmptyRows" />
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[SkipEmptyRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[SkipEmptyRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </RadzenColumn>
-                                <RadzenColumn Style="width: 48%">
-                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.FirstRowSetsExpectedColumnCount" Name="FirstRowSetsExpectedColumnCount" />
-                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[FirstRowSetsExpectedColumnCount]").Result Component="FirstRowSetsExpectedColumnCount" />
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[FirstRowSetsExpectedColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[FirstRowSetsExpectedColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </RadzenColumn>
-                            </RadzenRow>
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenColumn Style="width: 48%">
-                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.TrimResults" Name="TrimResults" />
-                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[TrimResults]").Result Component="TrimResults" />
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[TrimResults]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[TrimResults]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </RadzenColumn>
-                                <RadzenColumn Style="width: 48%">
-                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.StripControlChars" Name="StripControlChars" />
-                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[StripControlChars]").Result Component="StripControlChars" />
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[StripControlChars]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[StripControlChars]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </RadzenColumn>
-                            </RadzenRow>
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[EscapeCharacter]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.EscapeCharacter" Name="EscapeCharacter" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[EscapeCharacter]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[EscapeCharacter]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[CommentCharacter]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.CommentCharacter" Name="CommentCharacter" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[CommentCharacter]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[CommentCharacter]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                            </RadzenRow>
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[MaxBufferSize]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.MaxBufferSize" Name="MaxBufferSize" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[MaxBufferSize]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[MaxBufferSize]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[MaxRows]").Result Variant="Variant.Outlined" Style="width: 48%">
-                                    <ChildContent>
-                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.MaxRows" Name="MaxRows" />
-                                    </ChildContent><End><RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[MaxRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[MaxRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" /></End>
-                                </RadzenFormField>
-                            </RadzenRow>
-                        </RadzenFieldset>
-
-                        <RadzenFieldset Text="Processing & Error Handling" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenColumn>
-                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.EnableEventExecution" Name="EnableEventExecution" />
-                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[EnableEventExecution]").Result Component="EnableEventExecution" />
-                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[EnableEventExecution]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[PreIngestionCSV].[EnableEventExecution]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
-                                </RadzenColumn>
-                            </RadzenRow>
                             <RadzenRow>
-                                <RadzenColumn Style="width: 48%">
+                                <RadzenColumn Style="width: 49%">
                                     <RadzenCheckBox @bind-Value="@preIngestionCSV.DeactivateFromBatch" Name="DeactivateFromBatch" />
                                     <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[DeactivateFromBatch]").Result Component="DeactivateFromBatch" />
                                     <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[DeactivateFromBatch]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[DeactivateFromBatch]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                 </RadzenColumn>
-                                <RadzenColumn Style="width: 48%">
+                                <RadzenColumn Style="width: 49%">
                                     <RadzenCheckBox @bind-Value="@preIngestionCSV.OnErrorResume" Name="OnErrorResume" />
                                     <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[OnErrorResume]").Result Component="OnErrorResume" />
                                     <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[OnErrorResume]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[OnErrorResume]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                 </RadzenColumn>
                             </RadzenRow>
+                        </RadzenFieldset>
+
+                        <RadzenFieldset Text="CSV Parsing & Structure" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
                             <RadzenRow>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[ColumnWidths]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.ColumnWidths" Name="ColumnWidths" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[ColumnWidths]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[ColumnWidths]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[ExpectedColumnCount]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.ExpectedColumnCount" Name="ExpectedColumnCount" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[ExpectedColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[ExpectedColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <RadzenRow>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[SkipStartingDataRows]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.SkipStartingDataRows" Name="SkipStartingDataRows" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[SkipStartingDataRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[SkipStartingDataRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[SkipEndingDataRows]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.SkipEndingDataRows" Name="SkipEndingDataRows" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[SkipEndingDataRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[SkipEndingDataRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <RadzenRow>
+                                <RadzenColumn Style="width: 49%">
+                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.SkipEmptyRows" Name="SkipEmptyRows" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[SkipEmptyRows]").Result Component="SkipEmptyRows" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[SkipEmptyRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[SkipEmptyRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                                <RadzenColumn Style="width: 49%">
+                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.FirstRowSetsExpectedColumnCount" Name="FirstRowSetsExpectedColumnCount" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[FirstRowSetsExpectedColumnCount]").Result Component="FirstRowSetsExpectedColumnCount" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[FirstRowSetsExpectedColumnCount]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[FirstRowSetsExpectedColumnCount]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                            <RadzenRow>
+                                <RadzenColumn Style="width: 49%">
+                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.TrimResults" Name="TrimResults" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[TrimResults]").Result Component="TrimResults" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[TrimResults]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[TrimResults]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                                <RadzenColumn Style="width: 49%">
+                                    <RadzenCheckBox @bind-Value="@preIngestionCSV.StripControlChars" Name="StripControlChars" />
+                                    <RadzenLabel Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[StripControlChars]").Result Component="StripControlChars" />
+                                    <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[StripControlChars]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[StripControlChars]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                </RadzenColumn>
+                            </RadzenRow>
+                        </RadzenFieldset>
+
+                        <RadzenFieldset Text="Processing Options & Performance" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
+                            <RadzenRow>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[EscapeCharacter]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.EscapeCharacter" Name="EscapeCharacter" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[EscapeCharacter]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[EscapeCharacter]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[CommentCharacter]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.CommentCharacter" Name="CommentCharacter" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[CommentCharacter]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[CommentCharacter]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <RadzenRow>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[MaxBufferSize]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.MaxBufferSize" Name="MaxBufferSize" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[MaxBufferSize]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[MaxBufferSize]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[MaxRows]").Result Variant="Variant.Outlined" Style="width: 49%">
+                                    <ChildContent>
+                                        <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.MaxRows" Name="MaxRows" />
+                                    </ChildContent>
+                                    <End>
+                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[MaxRows]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[MaxRows]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
+                                    </End>
+                                </RadzenFormField>
+                            </RadzenRow>
+                            <RadzenRow>
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[PreProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
                                         <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.PreProcessOnTrg" Name="PreProcessOnTrg" />
                                     </ChildContent>
@@ -407,7 +433,7 @@
                                         <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[PreProcessOnTrg]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[PreProcessOnTrg]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                     </End>
                                 </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[PostProcessOnTrg]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
                                         <RadzenTextBox style="display: block; width: 100%" @bind-Value="@preIngestionCSV.PostProcessOnTrg" Name="PostProcessOnTrg" />
                                     </ChildContent>
@@ -417,7 +443,7 @@
                                 </RadzenFormField>
                             </RadzenRow>
                             <RadzenRow>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[PreInvokeAlias]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[PreInvokeAlias]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
                                         <RadzenDropDown Name="PreInvokeAlias" AllowClear="true" style="display: block; width: 100%" TValue="string" ValueProperty="InvokeAlias" TextProperty="InvokeAlias" Data="@invokes" @bind-Value="@preIngestionCSV.PreInvokeAlias" />
                                     </ChildContent>
@@ -425,7 +451,7 @@
                                         <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[PreInvokeAlias]")) MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[PreInvokeAlias]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                     </End>
                                 </RadzenFormField>
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[NoOfThreads]").Result Variant="Variant.Outlined" Style="width: 48%">
+                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[NoOfThreads]").Result Variant="Variant.Outlined" Style="width: 49%">
                                     <ChildContent>
                                         <RadzenNumeric Style="width: 100%; height: 40px" ShowUpDown="false" @bind-Value="@preIngestionCSV.NoOfThreads" Name="NoOfThreads" />
                                     </ChildContent>
@@ -436,56 +462,8 @@
                             </RadzenRow>
                         </RadzenFieldset>
 
-                        <RadzenFieldset Text="Database Configuration" AllowCollapse="true" Collapsed="true" Style="width: 100%; margin-bottom: 20px">
-                            <RadzenRow Style="margin-bottom: 16px">
-                                <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[trgDesiredIndex]").Result Variant="Variant.Outlined" Style="width: 100%;">
-                                    <ChildContent>
-                                        <RadzenRow Style="width: 100%;margin-bottom: 12px;margin-top: 12px;">
-                                            <div class="@(FullScreen ? "fullscreen-wrapper" : "editor-section")">
-                                                <div class="editor-buttons-row">
-                                                    <div class="editor-buttons-container">
-                                                        <RadzenButton Click=@(args => @PasteIndexScript())
-                                                                      Icon="input"
-                                                                      Size="ButtonSize.Small"
-                                                                      ButtonStyle="ButtonStyle.Primary"
-                                                                      Variant="Variant.Flat"
-                                                                      Style="margin-right: 5px;" />
-                                                        <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[PreIngestionCSV].[trgDesiredIndex]"))
-                                                                      MouseEnter="@(args => DocService.ShowTooltip(args, "[flw].[PreIngestionCSV].[trgDesiredIndex]"))"
-                                                                      Icon="help_outline"
-                                                                      Size="ButtonSize.Small"
-                                                                      ButtonStyle="ButtonStyle.Dark"
-                                                                      Variant="Variant.Flat"
-                                                                      Style="margin-right: 5px;" />
-                                                        <RadzenButton Click="@ToggleFullScreen"
-                                                                      Icon="@(FullScreen ? "fullscreen_exit" : "fullscreen")"
-                                                                      Size="ButtonSize.Small"
-                                                                      ButtonStyle="ButtonStyle.Secondary"
-                                                                      Variant="Variant.Flat" />
-                                                    </div>
-                                                </div>
-                                                <div class="editor-container">
-                                                    <CodeMirror6Wrapper @bind-Doc="@preIngestionCSV.trgDesiredIndex"
-                                                                        Language=CodeMirrorLanguage.MsSql
-                                                                        LineNumbers=false
-                                                                        Theme=ThemeMirrorTheme.GithubDark
-                                                                        FullScreen="@FullScreen"
-                                                                        LineWrapping="true"
-                                                                        ScrollPastEnd="false"
-                                                                        AllowHorizontalResize="true"
-                                                                        AllowVerticalResize="true"
-                                                                        Editable="true"
-                                                                        ReadOnly="false"
-                                                                        MaxHeight="40em">
-                                                    </CodeMirror6Wrapper>
-                                                </div>
-                                            </div>
-                                        </RadzenRow>
-                                    </ChildContent>
-                                </RadzenFormField>
-                            </RadzenRow>
-                        </RadzenFieldset>
                     </RadzenStepsItem>
+                    
                     <RadzenStepsItem Text="System">
                         <RadzenRow Style="margin-bottom: 16px">
                             <RadzenFormField Text=@DocService.GetLabel("[flw].[PreIngestionCSV].[FlowID]").Result Variant="Variant.Outlined" Style="width: 49%">
