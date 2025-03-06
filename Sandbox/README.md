@@ -4,9 +4,9 @@ This guide will walk you through setting up SQLFlow using Docker containers.
 
 ## Prerequisites
 
-- Docker Desktop installed and running
-- SQL Server instance (on-premises) or Azure SQL Database
-- Sufficient disk space for Docker images and volumes
+- [Docker Desktop](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/install-docker.md)  installed and running
+- [SQL Server](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/install-mssql.md) instance (on-premises) or Azure SQL Database
+- Sufficient disk space for Docker images and volumes (~550Mb)
 - Basic knowledge of Docker and SQL database management
 - Before starting SQLFlow setup, ensure your SQL Server or Azure SQL Database has SSL properly configured. Detailed instructions and an automation script are available at:
 [SQL Server SSL Configuration Wizard](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/mssql-ssl-wizard.md)
@@ -110,6 +110,7 @@ SQLFlowOpenAiApiKey=your-openai-api-key
 ```
 
 > **Note:** Use `host.docker.internal` to reference your host machine's SQL DB from Docker
+> **Note:** `OpenAI API` is used for dictation (Whisper, OpenAI's audio-to-text API) and to generate automated documentation for your SQLFlow instance.
 
 ## Step 3: Download and Configure Sample Data
 
