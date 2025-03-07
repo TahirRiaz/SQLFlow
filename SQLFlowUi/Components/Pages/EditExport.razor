@@ -143,7 +143,8 @@
                                         <RadzenLabel Text=@DocService.GetLabel("[flw].[Export].[FromDate]").Result Component="ToDate" />
                                         <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Export].[FromDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Export].[FromDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                     </RadzenStack>
-                                    <RadzenDatePicker Style="display: block;width: 42%" @bind-Value="@export.FromDate" Name="ToDate" DateFormat="yyyy-MM-dd" />
+                                    <RadzenDatePicker  @bind-Value="@export.FromDate" Name="ToDate" DateFormat="yyyy-MM-dd" />
+                                    <RadzenDatePicker @bind-Value="@export.FromDate" Name="RadzenDatePickerBindValue" ShowCalendarWeek />
                                 </RadzenColumn>
                                 
                                 <RadzenColumn Style="width: 49%">
@@ -151,7 +152,7 @@
                                         <RadzenLabel Text=@DocService.GetLabel("[flw].[Export].[ToDate]").Result Component="InitLoadFromDate" />
                                         <RadzenButton Click=@(args => @DocService.OpenSysDoc("[flw].[Export].[ToDate]")) MouseEnter="@(args => DocService.ShowTooltip(args,"[flw].[Export].[ToDate]"))" Icon="help_outline" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark" />
                                     </RadzenStack>
-                                    <RadzenDatePicker Style="display: block;width: 42%" @bind-Value="@export.ToDate" Name="ToDate" DateFormat="yyyy-MM-dd" />
+                                    <RadzenDatePicker @bind-Value="@export.ToDate" Name="ToDate" DateFormat="yyyy-MM-dd" />
                                 </RadzenColumn>
                             </RadzenRow>
                         </RadzenFieldset>

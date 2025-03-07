@@ -8,7 +8,7 @@
     <base href="/" />
     <HeadOutlet @rendermode="@InteractiveServer" />
     <link rel="stylesheet" href="/css/bootstrap/bootstrap.min.css" />
-    <link href="/css/material3-dark-base.css" rel="stylesheet" />
+    
     <link rel="stylesheet" href="/css/site.css" />
     <link rel="icon" href="/favicon.ico" />
     <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.2/css/all.css">
@@ -82,37 +82,9 @@
             }
         }
 
-
         let originalSvgWidth = null;
         let originalSvgHeight = null;
-
-        function scaleSVG() {
-            const svg = document.getElementById('svg2');
-
-            if (!svg) {
-                console.warn('SVG element with id "svg2" not found.');
-                return;
-            }
-
-            const fixedWidth = 800; // Define your desired width here
-            const fixedHeight = 600; // Define your desired height here
-
-            svg.setAttribute('width', fixedWidth);
-            svg.setAttribute('height', fixedHeight);
-        }
-
-        function downloadSVG(svgContent, filename) {
-            var blob = new Blob([svgContent], { type: "image/svg+xml" });
-            var url = window.URL.createObjectURL(blob);
-            var a = document.createElement("a");
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            window.URL.revokeObjectURL(url);
-        }
-
+ 
         var chart = null;
         var chartLine = null;
 

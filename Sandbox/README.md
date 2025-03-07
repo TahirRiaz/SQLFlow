@@ -4,8 +4,8 @@ This guide will walk you through setting up SQLFlow using Docker containers.
 
 ## Prerequisites
 
-- [Docker Desktop](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/install-docker.md)  installed and running
-- [SQL Server](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/install-mssql.md) instance (on-premises) or Azure SQL Database
+- [Docker Desktop](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/install-docker.md)  installed and running
+- [SQL Server](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/install-mssql.md) instance (on-premises) or Azure SQL Database
 - Sufficient disk space for Docker images and volumes (~550Mb)
 - Basic knowledge of Docker and SQL database management
 - Before starting SQLFlow setup, ensure your SQL Server or Azure SQL Database has SSL properly configured. Detailed instructions and an automation script are available at:
@@ -14,14 +14,13 @@ This guide will walk you through setting up SQLFlow using Docker containers.
 ## Step 1: Prepare the Databases
 
 ### 1.1 Download Database Backups
-
 1. Download the database backup package (~350 MB) in your preferred format:
    - [SandboxDb BACPAC format](https://github.com/TahirRiaz/SQLFlow/releases/download/SQLFlow_Sandbox_V1/SandboxDb_BACPAC_Files_20250305.zip)
    - [SandboxDb BAK format](https://github.com/TahirRiaz/SQLFlow/releases/download/SQLFlow_Sandbox_V1/SandboxDb_BAK_Files_20250305.zip)
 
 2. Extract the files to a folder of your choice on your local system.
 
-3. Create an environment variable named "SQLFlow" containing the connection string to your target server. This variable will be used for the automated database restoration process. This is an optional step if you want to restore the databases manually
+3. Create an environment variable named "SQLFlow" containing the connection string to your target server. This variable will be used for the automated database restoration process. This is an optional step if you want to restore the databases automatically
 Example:
 ```
 Server=localhost;Initial Catalog=master;User ID=;Password=;Persist Security Info=False;TrustServerCertificate=True;Encrypt=False;Command Timeout=660;
@@ -110,6 +109,7 @@ SQLFlowOpenAiApiKey=your-openai-api-key
 ```
 
 > **Note:** Use `host.docker.internal` to reference your host machine's SQL DB from Docker
+
 > **Note:** `OpenAI API` is used for dictation (Whisper, OpenAI's audio-to-text API) and to generate automated documentation for your SQLFlow instance.
 
 ## Step 3: Download and Configure Sample Data
@@ -131,7 +131,7 @@ Before continuing with the Docker setup, you need to download and place the samp
 
 ## Step 4: Download and Run Docker Images
 
-1. Save the Docker Compose configuration to `docker-compose.yml`
+1. Save the Docker Compose configuration to [`docker-compose.yml`](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/docker-compose.yml)
 
 2. Pull the required Docker images:
    ```bash
