@@ -1,3 +1,7 @@
+
+using System;
+using System.Collections.Generic;
+
 namespace SQLFlowUi.Models
 {
     public class ApplicationClaim

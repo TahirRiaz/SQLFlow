@@ -1,0 +1,100 @@
+@page "/sys-check-data-types"
+@attribute [Authorize]
+
+<PageTitle>SysCheckDataTypes</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text="SysCheckDataTypes" TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" aria-label="Search by all string columns" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"   AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@sysCheckDataTypesCollection" TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" RowDoubleClick="@EditRow">
+            <Columns>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="RecID" Title="RecID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="TableSchema" Title="Table Schema">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="TableName" Title="Table Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="ColumnName" Title="Column Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="Ordinal" Title="Ordinal">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="DataType" Title="Data Type">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="DataTypeExp" Title="Data Type Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="NewDataTypeExp" Title="New Data Type Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="NewMaxDataTypeExp" Title="New Max Data Type Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="MinValue" Title="Min Value">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="MaxValue" Title="Max Value">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="RandValue" Title="Rand Value">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="ValueWeight" Title="Value Weight">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="MinLength" Title="Min Length">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="MaxLength" Title="Max Length">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="SelectExp" Title="Select Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="CommaCount" Title="Comma Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="DotCount" Title="Dot Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="ColonCount" Title="Colon Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="IsDate" Title="Is Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="IsDateTime" Title="Is Date Time">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="IsTime" Title="Is Time">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="DateLocal" Title="Date Local">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="ValAsDate" Title="Val As Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="IsNumeric" Title="Is Numeric">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="IsString" Title="Is String">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="DecimalPoints" Title="Decimal Points">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="cmdSQL" Title="cmdSQL">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="SQLFlowExp" Title="SQL Flow Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Property="MaxSQLFlowExp" Title="MaxSQL Flow Exp">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="sysCheckDataTypes">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, sysCheckDataTypes)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -7,13 +9,12 @@ namespace SQLFlowUi.Models.sqlflowProd
     public partial class PreIngestionXML
     {
         [Key]
-        [Required]
         public int FlowID { get; set; }
+
+        public string Batch { get; set; }
 
         [Required]
         public string SysAlias { get; set; }
-
-        public string Batch { get; set; }
 
         public string ServicePrincipalAlias { get; set; }
 
@@ -29,10 +30,11 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string trgDBSchTbl { get; set; }
 
+        public string trgDesiredIndex { get; set; }
+
         public string hierarchyIdentifier { get; set; }
 
         public string XmlToDataTableCode { get; set; }
-        
 
         public string preFilter { get; set; }
 
@@ -71,7 +73,9 @@ namespace SQLFlowUi.Models.sqlflowProd
         public int? BatchOrderBy { get; set; }
 
         public bool? DeactivateFromBatch { get; set; }
+
         public bool? EnableEventExecution { get; set; }
+
         public string FlowType { get; set; }
 
         public int? FromObjectMK { get; set; }
@@ -83,8 +87,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string CreatedBy { get; set; }
 
         public DateTime? CreatedDate { get; set; }
-
-        public string trgDesiredIndex { get; set; }
-
     }
 }

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -36,5 +38,8 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string ObjectDef { get; set; }
 
+        public string RelationJson { get; set; }
+
+        public string CurrentIndexes { get; set; }
     }
 }

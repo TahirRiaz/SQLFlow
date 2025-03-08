@@ -56,7 +56,7 @@
     protected async Task<Hashtable> GetRelatedFlowIds()
     {
         Hashtable rValue = new Hashtable();
-        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr"); //@Configuration.GetConnectionString("sqlflowProdConnection");
+        string connectionString = System.Environment.GetEnvironmentVariable("SQLFlowConStr"); //@Configuration.GetConnectionString("sqlflowProdConnection");
         ConStringParser conStringParser = new ConStringParser(connectionString)
         {
             ConBuilderMsSql =

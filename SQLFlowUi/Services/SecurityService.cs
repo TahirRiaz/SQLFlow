@@ -1,43 +1,44 @@
+using System;
+using System.Web;
+using System.Linq;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Threading.Tasks;
 using System.Text;
+using System.Text.Json;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+
+using Radzen;
+
 using SQLFlowUi.Models;
-using SQLFlowUi.Service;
-using SQLFlowUi.Services;
 using Microsoft.IdentityModel.Tokens;
+using SQLFlowUi.Service;
 using System.IdentityModel.Tokens.Jwt;
+using SQLFlowUi.Services;
 
 namespace SQLFlowUi
 {
     public partial class SecurityService
     {
-        private readonly HttpClient httpClient;
 
-        private readonly Uri baseUri;
-        private readonly NavigationManager navigationManager;
-        private readonly ConfigService configService;
+        private readonly HttpClient httpClient;
         private readonly IHttpService httpService;
-        private readonly SignInManager<ApplicationUser> signInManager;
-        private readonly UserManager<ApplicationUser> userManager;
-        private readonly IHttpContextAccessor httpContextAccessor;
+        private readonly Uri baseUri;
+
+        private readonly NavigationManager navigationManager;
+
         public ApplicationUser User { get; private set; } = new ApplicationUser { Name = "Anonymous" };
 
         public ClaimsPrincipal Principal { get; private set; }
 
-        public SecurityService(IHttpContextAccessor httpContextAccessor, SignInManager<ApplicationUser> signInManager, NavigationManager navigationManager, UserManager<ApplicationUser> userManager, IHttpClientFactory factory, ConfigService configService, IHttpService httpService, IUserInformationService userInformationService) //, IHttpService HttpService
+        public SecurityService(NavigationManager navigationManager, IHttpClientFactory factory)
         {
             this.baseUri = new Uri($"{navigationManager.BaseUri}odata/Identity/");
             this.httpClient = factory.CreateClient("SQLFlowUi");
             this.navigationManager = navigationManager;
-            this.configService = configService;
-            this.httpService = httpService;
-            this.signInManager = signInManager;
-            this.httpContextAccessor = httpContextAccessor;
-            this.userManager = userManager;
-
-            
         }
 
         public bool IsInRole(params string[] roles)
@@ -75,7 +76,14 @@ namespace SQLFlowUi
         public async Task<bool> InitializeAsync(AuthenticationState result)
         {
             Principal = result.User;
+#if DEBUG
+            if (Principal.Identity.Name == "admin")
+            {
+                User = new ApplicationUser { Name = "Admin" };
 
+                return true;
+            }
+#endif
             var userId = Principal?.FindFirstValue(ClaimTypes.NameIdentifier);
 
             if (userId != null && User?.Id != userId)
@@ -86,41 +94,14 @@ namespace SQLFlowUi
             return IsAuthenticated();
         }
 
+
         public async Task<ApplicationAuthenticationState> GetAuthenticationStateAsync()
         {
-            var authenticationState = await GetCurrentUser();
-            return authenticationState;
+            var uri =  new Uri($"{navigationManager.BaseUri}Account/CurrentUser");
 
-            //return await httpService.GetAuthenticationStateAsync();
+            var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Post, uri));
 
-            /*
-                var uri = new Uri($"{navigationManager.BaseUri}Account/CurrentUser");
-
-                var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Post, uri));
-
-                return await response.ReadAsync<ApplicationAuthenticationState>();
-            */
-        }
-
-        private async Task<ApplicationAuthenticationState> GetCurrentUser()
-        {
-            var user = await signInManager.UserManager.GetUserAsync(httpContextAccessor.HttpContext?.User);
-
-            if (user != null)
-            {
-                var principal = await signInManager.CreateUserPrincipalAsync(user);
-
-                var authenticationState = new ApplicationAuthenticationState
-                {
-                    IsAuthenticated = principal.Identity.IsAuthenticated,
-                    Name = principal.Identity.Name,
-                    Claims = principal.Claims.Select(c => new ApplicationClaim { Type = c.Type, Value = c.Value })
-                };
-
-                return authenticationState;
-            }
-
-            return new ApplicationAuthenticationState(); ;
+            return await response.ReadAsync<ApplicationAuthenticationState>();
         }
 
         public void Logout()
@@ -135,9 +116,6 @@ namespace SQLFlowUi
 
         public async Task<IEnumerable<ApplicationRole>> GetRoles()
         {
-            return await httpService.GetRolesAsync();
-            
-            /*
             var uri = new Uri(baseUri, $"ApplicationRoles");
 
             uri = uri.GetODataUri();
@@ -147,72 +125,60 @@ namespace SQLFlowUi
             var result = await response.ReadAsync<ODataServiceResult<ApplicationRole>>();
 
             return result.Value;
-            */
         }
 
         public async Task<ApplicationRole> CreateRole(ApplicationRole role)
         {
-            return await httpService.CreateRoleAsync(role);
-            
-            /*
             var uri = new Uri(baseUri, $"ApplicationRoles");
+
             var content = new StringContent(ODataJsonSerializer.Serialize(role), Encoding.UTF8, "application/json");
+
             var response = await httpClient.PostAsync(uri, content);
+
             return await response.ReadAsync<ApplicationRole>();
-            */
         }
 
         public async Task<HttpResponseMessage> DeleteRole(string id)
         {
-            return await httpService.DeleteRoleAsync(id);
-            /*
-                var uri = new Uri(baseUri, $"ApplicationRoles('{id}')");
-                return await httpClient.DeleteAsync(uri);
-            */
+            var uri = new Uri(baseUri, $"ApplicationRoles('{id}')");
+
+            return await httpClient.DeleteAsync(uri);
         }
 
         public async Task<IEnumerable<ApplicationUser>> GetUsers()
         {
-
-            return await httpService.GetUsersAsync();
-
-            /*
             var uri = new Uri(baseUri, $"ApplicationUsers");
+
 
             uri = uri.GetODataUri();
 
             var response = await httpClient.GetAsync(uri);
+
             var result = await response.ReadAsync<ODataServiceResult<ApplicationUser>>();
 
             return result.Value;
-            */
         }
 
         public async Task<ApplicationUser> CreateUser(ApplicationUser user)
         {
-            return await httpService.CreateUserAsync(user);
-            
-            /*
-                var uri = new Uri(baseUri, $"ApplicationUsers");
-                var content = new StringContent(JsonSerializer.Serialize(user), Encoding.UTF8, "application/json");
-                var response = await httpClient.PostAsync(uri, content);
-                return await response.ReadAsync<ApplicationUser>();
-            */
+            var uri = new Uri(baseUri, $"ApplicationUsers");
+
+            var content = new StringContent(JsonSerializer.Serialize(user), Encoding.UTF8, "application/json");
+
+            var response = await httpClient.PostAsync(uri, content);
+
+            return await response.ReadAsync<ApplicationUser>();
         }
 
         public async Task<HttpResponseMessage> DeleteUser(string id)
         {
-            return await httpService.DeleteUserAsync(id);
-            /*
-                var uri = new Uri(baseUri, $"ApplicationUsers('{id}')");
-                return await httpClient.DeleteAsync(uri);
-            */
+            var uri = new Uri(baseUri, $"ApplicationUsers('{id}')");
+
+            return await httpClient.DeleteAsync(uri);
         }
 
         public async Task<ApplicationUser> GetUserById(string id)
         {
-            return await httpService.GetUserByIdAsync(id);
-            /*
             var uri = new Uri(baseUri, $"ApplicationUsers('{id}')?$expand=Roles");
 
             var response = await httpClient.GetAsync(uri);
@@ -223,15 +189,10 @@ namespace SQLFlowUi
             }
 
             return await response.ReadAsync<ApplicationUser>();
-            */
         }
 
         public async Task<ApplicationUser> UpdateUser(string id, ApplicationUser user)
         {
-            return await httpService.UpdateUserAsync(id, user);
-
-            /*
-
             var uri = new Uri(baseUri, $"ApplicationUsers('{id}')");
 
             var httpRequestMessage = new HttpRequestMessage(HttpMethod.Patch, uri)
@@ -242,13 +203,10 @@ namespace SQLFlowUi
             var response = await httpClient.SendAsync(httpRequestMessage);
 
             return await response.ReadAsync<ApplicationUser>();
-            */
         }
         public async Task ChangePassword(string oldPassword, string newPassword)
         {
-            await httpService.ChangePasswordAsync(oldPassword, newPassword);
-            /*
-            var uri = new Uri($"{navigationManager.BaseUri}Account/ChangePassword");
+            var uri =  new Uri($"{navigationManager.BaseUri}Account/ChangePassword");
 
             var content = new FormUrlEncodedContent(new Dictionary<string, string> {
                 { "oldPassword", oldPassword },
@@ -263,7 +221,51 @@ namespace SQLFlowUi
 
                 throw new ApplicationException(message);
             }
-            */
+        }
+
+        /// <summary>
+        /// Generates a JWT token for the currently authenticated user
+        /// </summary>
+        /// <returns>JWT token string</returns>
+        public async Task<string> GetJwtTokenAsync()
+        {
+            if (!IsAuthenticated())
+            {
+                throw new InvalidOperationException("User is not authenticated");
+            }
+
+            var claims = new List<Claim>
+            {
+                new Claim(ClaimTypes.Name, User.UserName),
+                new Claim(ClaimTypes.Email, User.Email),
+                new Claim(ClaimTypes.NameIdentifier, User.Id),
+            };
+
+            // Add role claims
+            if (User.Roles != null)
+            {
+                claims.AddRange(User.Roles.Select(role => new Claim(ClaimTypes.Role, role.Name)));
+            }
+
+            // Get configuration from the existing ConfigService
+            var configService = new ConfigService();
+
+            var keyBytes = Encoding.UTF8.GetBytes(configService.configSettings.SecretKey);
+            var key = new SymmetricSecurityKey(keyBytes);
+            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddMinutes(configService.configSettings.ExpireMinutes),
+                SigningCredentials = credentials,
+                Issuer = configService.configSettings.Issuer,
+                Audience = configService.configSettings.Audience
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
         }
 
         public async Task ResetPassword(string userName)
@@ -285,90 +287,6 @@ namespace SQLFlowUi
                 throw new ApplicationException(message);
             }
             */
-        }
-
-
-        public async Task<string> GetJwtTokenAsync()
-        {
-            var user = await userManager.GetUserAsync(httpContextAccessor.HttpContext.User);
-
-            var claims = new List<Claim>
-            {
-                new Claim(ClaimTypes.Name, user.UserName),
-                new Claim(ClaimTypes.Email, user.Email),
-                new Claim(ClaimTypes.NameIdentifier, user.Id),
-            };
-
-            var userRoles = await userManager.GetRolesAsync(user);
-            claims.AddRange(userRoles.Select(role => new Claim(ClaimTypes.Role, role)));
-
-            foreach (var claim in claims)
-            {
-                // Check if the user already has the claim
-                var existingClaim = (await userManager.GetClaimsAsync(user))
-                    .FirstOrDefault(c => c.Type == claim.Type && c.Value == claim.Value);
-
-                if (existingClaim == null)
-                {
-                    // Claim does not exist, add it
-                    await userManager.AddClaimAsync(user, claim);
-                }
-            }
-
-            var keyBytes = Encoding.UTF8.GetBytes(configService.configSettings.SecretKey);
-            var key = new SymmetricSecurityKey(keyBytes);
-            var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
-
-            var expiryDuration = Convert.ToDouble(configService.configSettings.ExpireMinutes);
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(expiryDuration),
-                SigningCredentials = credentials,
-                Issuer = configService.configSettings.Issuer,
-                Audience = configService.configSettings.Audience
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
-
-            /*
-            var payload = new
-            {
-                username = configService.configSettings.JwtAuthUserName,
-                password = configService.configSettings.JwtAuthUserPwd
-            };
-
-            var jsonPayload = JsonConvert.SerializeObject(payload);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
-            try
-            {
-                string _jwtAuthUrl;
-                HttpClient _httpClient = new HttpClient();
-
-                var response = await _httpClient.PostAsync(configService.configSettings.JwtAuthUrl, content);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var token = await response.Content.ReadAsStringAsync();
-                    return token; // Return the JWT token received from the server
-                }
-                else
-                {
-                    // Log or handle error
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new ApplicationException($"Failed to retrieve JWT token: {error}");
-                }
-            }
-            catch (Exception ex)
-            {
-                // Log or handle exception
-                throw new ApplicationException("Error while requesting JWT token", ex);
-            }
-            */
-            
         }
     }
 }

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -7,14 +9,13 @@ namespace SQLFlowUi.Models.sqlflowProd
     public partial class PreIngestionPRC
     {
         [Key]
-        [Required]
         public int FlowID { get; set; }
+
+        public string Batch { get; set; }
 
         public string SysAlias { get; set; }
 
         public string ServicePrincipalAlias { get; set; }
-
-        public string Batch { get; set; }
 
         [Required]
         public string srcServer { get; set; }
@@ -29,6 +30,8 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string trgServer { get; set; }
 
         public string trgDBSchTbl { get; set; }
+
+        public string trgDesiredIndex { get; set; }
 
         public string preFilter { get; set; }
 
@@ -63,8 +66,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string CreatedBy { get; set; }
 
         public DateTime? CreatedDate { get; set; }
-
-        public string trgDesiredIndex { get; set; }
-
     }
 }

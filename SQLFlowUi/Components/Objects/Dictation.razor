@@ -163,7 +163,7 @@
         var httpClientFactory = serviceProvider.GetService<IHttpClientFactory>();
         var client = httpClientFactory.CreateClient();
 
-        var apiToken = Environment.GetEnvironmentVariable("SQLFlowOpenAiApiKey");
+        var apiToken = System.Environment.GetEnvironmentVariable("SQLFlowOpenAiApiKey");
         var apiUrl = translate
             ? "https://api.openai.com/v1/audio/translations"
             : "https://api.openai.com/v1/audio/transcriptions";

@@ -1,0 +1,14 @@
+@layout LoginLayout
+@page "/securitycode"
+
+<PageTitle>Verify it is you</PageTitle>
+<RadzenText Text="Verify it is you" TextStyle="Radzen.Blazor.TextStyle.H5" class="mb-4" TagName="Radzen.Blazor.TagName.P" />
+<RadzenRow>
+    <RadzenColumn SizeMD="12">
+        <RadzenTemplateForm Action="@($"account/verifysecuritycode")" Data="@("code")" Method="post">
+            <RadzenText Text="@message" TextStyle="Radzen.Blazor.TextStyle.Body2" TagName="Radzen.Blazor.TagName.P" />
+            <RadzenSecurityCode @ref=sc Count="6" Name="code" Change=@VerifySecurityCode />
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenRow>
+

@@ -1,12 +1,18 @@
+using System;
+using System.Linq;
 using System.Linq.Dynamic.Core;
+using System.Data;
 using System.Globalization;
+using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc;
 using System.Text;
+using System.IO;
 using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using System.Reflection;
+using Microsoft.AspNetCore.Http;
 
 namespace SQLFlowUi.Controllers
 {
@@ -28,7 +34,7 @@ namespace SQLFlowUi.Controllers
                 var filter = query.ContainsKey("$filter") ? query["$filter"].ToString() : null;
                 if (!string.IsNullOrEmpty(filter))
                 {
-                    if (keyless)
+                    if(keyless)
                     {
                         items = items.ToList().AsQueryable();
                     }
@@ -156,7 +162,14 @@ namespace SQLFlowUi.Controllers
                         {
                             if (value != null)
                             {
-                                stringValue = Convert.ToString(value, CultureInfo.InvariantCulture);
+                                if (value is Enum enumValue)
+                                {
+                                    stringValue = Radzen.Blazor.EnumExtensions.GetDisplayDescription(enumValue);
+                                }
+                                else 
+                                {
+                                    stringValue = Convert.ToString(value, CultureInfo.InvariantCulture);
+                                }
                             }
                             cell.CellValue = new CellValue(stringValue);
                             cell.DataType = new EnumValue<CellValues>(CellValues.Number);
@@ -206,9 +219,13 @@ namespace SQLFlowUi.Controllers
                 type.GetGenericTypeDefinition() == typeof(Nullable<>) ?
                 Nullable.GetUnderlyingType(type) : type;
 
-            if (underlyingType == typeof(System.Guid) || underlyingType == typeof(System.DateTimeOffset))
+            if(underlyingType == typeof(System.Guid) || underlyingType == typeof(System.DateTimeOffset))
                 return true;
 
+#if NET6_0_OR_GREATER
+            if(underlyingType == typeof(System.DateOnly) || underlyingType == typeof(System.TimeOnly))
+                return true;
+#endif
             var typeCode = Type.GetTypeCode(underlyingType);
 
             switch (typeCode)

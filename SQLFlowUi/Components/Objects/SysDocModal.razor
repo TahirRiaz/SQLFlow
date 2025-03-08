@@ -212,14 +212,14 @@
     async Task OnDone(string finalStr)
     {
         string cuValue = sysDoc.AdditionalInfo;
-        sysDoc.AdditionalInfo = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+        sysDoc.AdditionalInfo = cuValue + System.Environment.NewLine + System.Environment.NewLine + finalStr;
         StateHasChanged();
     }
 
     async Task OnImprove(string language)
     {
         string cuValue = sysDoc.AdditionalInfo;
-        ///sysError.Solution = cuValue + Environment.NewLine + Environment.NewLine + finalStr;
+        ///sysError.Solution = cuValue + System.Environment.NewLine + System.Environment.NewLine + finalStr;
 
         OpenAiService ai = new OpenAiService();
         string improvedText = await ai.CallChatCompletionAsync(language, cuValue);

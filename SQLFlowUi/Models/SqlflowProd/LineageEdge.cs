@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -27,10 +29,11 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string ToObject { get; set; }
 
         public string Dependency { get; set; }
+
         public bool? IsAfterDependency { get; set; }
-        
+
+        public bool? Circular { get; set; }
+
         public DateTime? CreateDate { get; set; }
-
-
     }
 }

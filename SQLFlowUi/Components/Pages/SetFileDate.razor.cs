@@ -4,7 +4,7 @@ using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Data.SqlClient;
 using Radzen;
-using SQLFlowUi.Models.MetaData;
+using SQLFlowUi.Data.MetaData;
 using SQLFlowCore.Common;
 
 

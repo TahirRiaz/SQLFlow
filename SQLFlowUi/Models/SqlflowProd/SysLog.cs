@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -43,6 +45,10 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string Batch { get; set; }
 
         public string Process { get; set; }
+
+        public string SrcAlias { get; set; }
+
+        public string TrgAlias { get; set; }
 
         public string FileName { get; set; }
 
@@ -105,5 +111,8 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string TrgIndexes { get; set; }
 
+        public string TraceLog { get; set; }
+
+        public string InferDatatypeCmd { get; set; }
     }
 }

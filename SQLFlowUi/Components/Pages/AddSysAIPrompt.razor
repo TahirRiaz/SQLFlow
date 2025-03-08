@@ -1,0 +1,36 @@
+@page "/add-sysai-prompt"
+@attribute [Authorize]
+
+<PageTitle>Add SysAIPrompt</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysAIPrompt</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysAIPrompt" Data="@sysAIPrompt" Visible="@(sysAIPrompt != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text="Api Key Alias" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAIPrompt.ApiKeyAlias" Name="ApiKeyAlias" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Prompt Name" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAIPrompt.PromptName" Name="PromptName" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Pay Load Json" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysAIPrompt.PayLoadJson" Name="PayLoadJson" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Run Order" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysAIPrompt.RunOrder" Name="RunOrder" />
+              </ChildContent>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+

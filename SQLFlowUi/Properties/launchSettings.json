@@ -1,15 +1,6 @@
 {
   "profiles": {
-    "SQLFlowUi-HTTP": {
-      "commandName": "Project",
-      "launchBrowser": true,
-      "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
-      },
-      "dotnetRunMessages": true,
-      "applicationUrl": "http://localhost:5002"
-    },
-    "SQLFlowUi": {
+    "SQLFlowUi.Server": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
@@ -25,24 +16,13 @@
         "ASPNETCORE_ENVIRONMENT": "Development"
       }
     },
-    "Container (.NET SDK)": {
-      "commandName": "SdkContainer",
-      "launchBrowser": true,
-      "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
-      "environmentVariables": {
-        "ASPNETCORE_HTTPS_PORTS": "443"
-
-      },
-      "publishAllPorts": true,
-      "useSSL": true
-    },
     "Container (Dockerfile)": {
       "commandName": "Docker",
       "launchBrowser": true,
       "launchUrl": "{Scheme}://{ServiceHost}:{ServicePort}",
       "environmentVariables": {
-        "ASPNETCORE_HTTPS_PORTS": "443"
-
+        "ASPNETCORE_HTTPS_PORTS": "8081",
+        "ASPNETCORE_HTTP_PORTS": "8080"
       },
       "publishAllPorts": true,
       "useSSL": true

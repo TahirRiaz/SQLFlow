@@ -1,0 +1,78 @@
+@page "/sys-log-match-key"
+@attribute [Authorize]
+
+<PageTitle>SysLogMatchKey</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text="SysLogMatchKey" TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" aria-label="Search by all string columns" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"   AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@sysLogMatchKeyCollection" TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" RowDoubleClick="@EditRow">
+            <Columns>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="SysLogMatchKey1" Title="Sys Log Match Key1">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="MatchKeyID" Title="Match KeyID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="FlowID" Title="FlowID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="BatchID" Title="BatchID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="SysAlias" Title="Sys Alias">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="Batch" Title="Batch">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="StartTime" Title="Start Time">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="EndTime" Title="End Time">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="Status" Title="Status">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="DurationMatch" Title="Duration Match">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="DurationPre" Title="Duration Pre">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="DurationPost" Title="Duration Post">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="SrcRowCount" Title="Src Row Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="SrcDelRowCount" Title="Src Del Row Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="TrgRowCount" Title="Trg Row Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="TrgDelRowCount" Title="Trg Del Row Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="TaggedRowCount" Title="Tagged Row Count">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="ErrorMessage" Title="Error Message">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Property="TraceLog" Title="Trace Log">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="sysLogMatchKey">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, sysLogMatchKey)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>

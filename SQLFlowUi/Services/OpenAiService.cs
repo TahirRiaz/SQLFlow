@@ -1,15 +1,15 @@
-﻿namespace SQLFlowUi.Controllers
-{
-    using System;
-    using System.Net.Http;
-    using System.Text;
-    using System.Threading.Tasks;
-    using Newtonsoft.Json; // Make sure to install Newtonsoft.Json via NuGet
+﻿using System;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
+using Newtonsoft.Json; 
 
+namespace SQLFlowUi
+{
     public class OpenAiService
     {
         private readonly HttpClient _httpClient;
-        private string ApiKey = Environment.GetEnvironmentVariable("SQLFlowOpenAiApiKey"); 
+        private string ApiKey = Environment.GetEnvironmentVariable("SQLFlowOpenAiApiKey");
 
         public OpenAiService()
         {
@@ -56,8 +56,8 @@ ${inputText}";
             {
                 model = "gpt-4-0125-preview", // Replace with the model you intend to use
                 temperature = 0.0,
-                frequency_penalty= 0.0,
-                presence_penalty=0,
+                frequency_penalty = 0.0,
+                presence_penalty = 0,
                 max_tokens = 4065,
                 messages = new[]
                 {

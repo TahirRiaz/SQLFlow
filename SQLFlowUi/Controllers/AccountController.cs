@@ -1,9 +1,16 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using SQLFlowUi.Models;
-using SQLFlowUi.Service;
 
 namespace SQLFlowUi.Controllers
 {
@@ -13,26 +20,24 @@ namespace SQLFlowUi.Controllers
         private readonly SignInManager<ApplicationUser> signInManager;
         private readonly UserManager<ApplicationUser> userManager;
         private readonly RoleManager<ApplicationRole> roleManager;
-        private readonly ConfigService configService;
         private readonly IWebHostEnvironment env;
         private readonly IConfiguration configuration;
 
         public AccountController(IWebHostEnvironment env, SignInManager<ApplicationUser> signInManager, UserManager<ApplicationUser> userManager,
-            RoleManager<ApplicationRole> roleManager, IConfiguration configuration, ConfigService configService)
+            RoleManager<ApplicationRole> roleManager, IConfiguration configuration)
         {
             this.signInManager = signInManager;
             this.userManager = userManager;
             this.roleManager = roleManager;
             this.env = env;
             this.configuration = configuration;
-            this.configService = configService;
         }
 
         private IActionResult RedirectWithError(string error, string redirectUrl = null)
         {
              if (!string.IsNullOrEmpty(redirectUrl))
              {
-                 return Redirect($"~/Login?error={error}&redirectUrl={Uri.EscapeDataString(redirectUrl)}");
+                 return Redirect($"~/Login?error={error}&redirectUrl={Uri.EscapeDataString(redirectUrl.Replace("~", ""))}");
              }
              else
              {
@@ -54,7 +59,7 @@ namespace SQLFlowUi.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(string userName, string password, string redirectUrl)
         {
-            redirectUrl = string.IsNullOrEmpty(redirectUrl) ? "~/" : redirectUrl.StartsWith("/") ? $"~{redirectUrl}" : $"~/{redirectUrl}";
+            redirectUrl = string.IsNullOrEmpty(redirectUrl) ? "~/" : redirectUrl.StartsWith("/") ? redirectUrl : $"~/{redirectUrl}";
 
             if (env.EnvironmentName == "Development" && userName == "admin" && password == "admin")
             {
@@ -82,7 +87,6 @@ namespace SQLFlowUi.Controllers
 
             return RedirectWithError("Invalid user or password", redirectUrl);
         }
-
         [HttpPost]
         [Authorize]
         public async Task<IActionResult> ChangePassword(string oldPassword, string newPassword)
@@ -95,7 +99,6 @@ namespace SQLFlowUi.Controllers
             var id = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
             var user = await userManager.FindByIdAsync(id);
-
             var result = await userManager.ChangePasswordAsync(user, oldPassword, newPassword);
 
             if (result.Succeeded)
@@ -124,31 +127,6 @@ namespace SQLFlowUi.Controllers
             await signInManager.SignOutAsync();
 
             return Redirect("~/");
-        }
-
-        
-
-        private async Task SendEmailAsync(string to, string subject, string body)
-        {
-
-            var mailMessage = new System.Net.Mail.MailMessage();
-            mailMessage.From = new System.Net.Mail.MailAddress(configService.configSettings.User);
-            mailMessage.Body = body;
-            mailMessage.Subject = subject;
-            mailMessage.BodyEncoding = System.Text.Encoding.UTF8;
-            mailMessage.SubjectEncoding = System.Text.Encoding.UTF8;
-            mailMessage.IsBodyHtml = true;
-            mailMessage.To.Add(to);
-
-            var client = new System.Net.Mail.SmtpClient(configService.configSettings.Host)
-            {
-                UseDefaultCredentials = false,
-                EnableSsl = configService.configSettings.Ssl,
-                Port = configService.configSettings.Port,
-                Credentials = new System.Net.NetworkCredential(configService.configSettings.User, configService.configSettings.Password)
-            };
-
-            await client.SendMailAsync(mailMessage);
         }
     }
 }

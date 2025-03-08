@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -9,6 +11,8 @@ namespace SQLFlowUi.Models.sqlflowProd
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int MatchKeyID { get; set; }
+
+        public int FlowID { get; set; }
 
         public string Batch { get; set; }
 
@@ -36,19 +40,18 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string KeyColumns { get; set; }
 
-        public string ActionType { get; set; }
-        
         public string DateColumn { get; set; }
 
-        public int? IgnoreDeletedRowsAfter { get; set; }
+        public string ActionType { get; set; }
 
         public int? ActionThresholdPercent { get; set; }
-        
+
+        public int? IgnoreDeletedRowsAfter { get; set; }
 
         public string srcFilter { get; set; }
 
         public string trgFilter { get; set; }
-        
+
         public bool? OnErrorResume { get; set; }
 
         public string PreProcessOnTrg { get; set; }
@@ -57,10 +60,10 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string Description { get; set; }
 
+        public int? ToObjectMK { get; set; }
+
         public string CreatedBy { get; set; }
 
-        public int FlowID { get; set; }
-        
         public DateTime? CreatedDate { get; set; }
     }
 }

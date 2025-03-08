@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -12,7 +14,7 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string BatchID { get; set; }
 
-        public int FlowID { get; set; }
+        public int? FlowID { get; set; }
 
         public string SqlCMD { get; set; }
 
@@ -31,6 +33,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public int? NextExportValue { get; set; }
 
         public DateTime? ExportDate { get; set; }
-
     }
 }

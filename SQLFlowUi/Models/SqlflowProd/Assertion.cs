@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -14,6 +16,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string AssertionName { get; set; }
 
         public string AssertionExp { get; set; }
-
     }
 }

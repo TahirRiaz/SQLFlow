@@ -1,5 +1,12 @@
+using System;
+using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Mvc;
 
@@ -228,7 +235,7 @@ namespace SQLFlowUi.Controllers
             }
 
             response.Headers.Remove("Content-Length");
-            response.Headers["Content-Length"] = new string[] { System.Text.Encoding.UTF8.GetByteCount(result).ToString() };
+            response.Headers.Append("Content-Length", new string[] { System.Text.Encoding.UTF8.GetByteCount(result).ToString() });
 
             await response.WriteAsync(result);
         }

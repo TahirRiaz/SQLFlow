@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -21,18 +23,16 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string ClientSecret { get; set; }
 
-        public string KeyVaultName { get; set; }
-
         public string ResourceGroup { get; set; }
 
         public string DataFactoryName { get; set; }
 
         public string AutomationAccountName { get; set; }
 
+        public string StorageAccountName { get; set; }
+
         public string BlobContainer { get; set; }
 
-        public string StorageAccountName { get; set; }
-        
-
+        public string KeyVaultName { get; set; }
     }
 }

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -7,13 +9,11 @@ namespace SQLFlowUi.Models.sqlflowProd
     public partial class PreIngestionJSN
     {
         [Key]
-        [Required]
         public int FlowID { get; set; }
 
-        [Required]
-        public string SysAlias { get; set; }
-
         public string Batch { get; set; }
+
+        public string SysAlias { get; set; }
 
         public string ServicePrincipalAlias { get; set; }
 
@@ -25,11 +25,19 @@ namespace SQLFlowUi.Models.sqlflowProd
         [Required]
         public string srcFile { get; set; }
 
+        public string JsonToDataTableCode { get; set; }
+
         public string trgServer { get; set; }
 
         public string trgDBSchTbl { get; set; }
 
-        public string JsonToDataTableCode { get; set; }
+        public string trgDesiredIndex { get; set; }
+
+        public bool? altTrgIsEmbedded { get; set; }
+
+        public string altTrgDBSchTbl { get; set; }
+
+        public string altSrcDBSchTbl { get; set; }
 
         public string preFilter { get; set; }
 
@@ -44,11 +52,6 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string zipToPath { get; set; }
 
         public bool? SyncSchema { get; set; }
-
-        public bool? altTrgIsEmbedded { get; set; }
-        public string altTrgDBSchTbl { get; set; }
-        public string altSrcDBSchTbl { get; set; }
-        
 
         public int? ExpectedColumnCount { get; set; }
 
@@ -73,7 +76,9 @@ namespace SQLFlowUi.Models.sqlflowProd
         public int? BatchOrderBy { get; set; }
 
         public bool? DeactivateFromBatch { get; set; }
+
         public bool? EnableEventExecution { get; set; }
+
         public string FlowType { get; set; }
 
         public int? FromObjectMK { get; set; }
@@ -85,7 +90,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string CreatedBy { get; set; }
 
         public DateTime? CreatedDate { get; set; }
-
-        public string trgDesiredIndex { get; set; }
     }
 }

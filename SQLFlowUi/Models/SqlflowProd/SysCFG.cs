@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -13,8 +15,7 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string ParamValue { get; set; }
 
         public string ParamJsonValue { get; set; }
-        
-        public string Description { get; set; }
 
+        public string Description { get; set; }
     }
 }

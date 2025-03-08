@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -17,6 +19,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string DataTypeExp { get; set; }
 
         public string SelectExp { get; set; }
-
     }
 }

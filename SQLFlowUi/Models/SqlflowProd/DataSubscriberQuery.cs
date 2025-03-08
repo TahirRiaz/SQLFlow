@@ -1,4 +1,5 @@
-#nullable enable
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -14,18 +15,14 @@ namespace SQLFlowUi.Models.sqlflowProd
         [Required]
         public int FlowID { get; set; }
 
-        [Required]
-        public  string QueryName { get; set; }
+        public string srcServer { get; set; }
 
-        [Required]
+        public string QueryName { get; set; }
+
         public string FullyQualifiedQuery { get; set; }
-
-        [Required]
-        public string? srcServer { get; set; }
 
         public DataSubscriber DataSubscriber { get; set; }
 
-        
 
 
     }

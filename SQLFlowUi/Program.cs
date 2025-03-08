@@ -3,24 +3,28 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.OData;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.JSInterop;
 using Microsoft.OData.ModelBuilder;
 using Radzen;
+using SQLFlowUi.Components;
 using SQLFlowUi.Controllers;
 using SQLFlowUi.Data;
 using SQLFlowUi.Models;
 using SQLFlowUi.Service;
 using SQLFlowUi.Services;
-using GaelJ.BlazorCodeMirror6;
-using SQLFlowUi.Components;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Get connection string
+// Get connection string (supports both environment variable and configuration)
 var connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr")
-    ?? throw new InvalidOperationException("Connection string 'SQLFlowConStr' not found in environment variables.");
+    ?? builder.Configuration.GetConnectionString("sqlflowProdConnection")
+    ?? throw new InvalidOperationException("Connection string not found. Please provide either 'SQLFlowConStr' environment variable or 'sqlflowProdConnection' in configuration.");
 
 
+
+// Configure application cookie settings
 builder.Services.ConfigureApplicationCookie(options =>
 {
     options.Cookie.SameSite = builder.Environment.IsDevelopment() ? SameSiteMode.Lax : SameSiteMode.Strict;
@@ -34,18 +38,23 @@ builder.Services.ConfigureApplicationCookie(options =>
 // Configure Razor components and server-side interactivity
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
-    .AddHubOptions(options => options.MaximumReceiveMessageSize = 10 * 1024 * 1024); // Corrected size calculation
+    .AddHubOptions(options => options.MaximumReceiveMessageSize = 10 * 1024 * 1024);
 
 // Configure controllers
 builder.Services.AddControllers();
 
 // Add UI and client services
 builder.Services.AddRadzenComponents();
+builder.Services.AddRadzenCookieThemeService(options =>
+{
+    options.Name = "SQLFlowUiTheme";
+    options.Duration = TimeSpan.FromDays(365);
+});
 builder.Services.AddHttpClient();
 
 // Add scoped services
 builder.Services.AddScoped<ConfigService>();
-builder.Services.AddScoped<Radzen.DialogService>();
+builder.Services.AddScoped<DialogService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<TooltipService>();
 builder.Services.AddScoped<ContextMenuService>();
@@ -55,7 +64,6 @@ builder.Services.AddScoped<IUserInformationService, HttpService>();
 builder.Services.AddScoped<IHttpService, HttpService>();
 builder.Services.AddScoped<SQLFlowUi.SecurityService>();
 builder.Services.AddScoped<AuthenticationStateProvider, SQLFlowUi.ApplicationAuthenticationStateProvider>();
-builder.Services.AddScoped<CodeMirror6Wrapper>();
 builder.Services.AddScoped<SQLFlowGraphService>();
 
 // Configure database contexts
@@ -102,12 +110,12 @@ builder.Services.AddControllers().AddOData(o =>
 
 var app = builder.Build();
 
-// Add security headers middleware right here
+// Add security headers middleware
 app.Use(async (context, next) =>
 {
-    context.Response.Headers.Add("X-Content-Type-Options", "nosniff");
-    context.Response.Headers.Add("X-Frame-Options", "DENY");
-    context.Response.Headers.Add("X-XSS-Protection", "1; mode=block");
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
     await next();
 });
 
@@ -115,7 +123,7 @@ app.Use(async (context, next) =>
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
-    ForwardLimit = null // No limit on the number of forwarded headers to trust
+    ForwardLimit = null
 });
 
 // Configure error handling for production
@@ -125,14 +133,37 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts(); // Enable HTTP Strict Transport Security
 }
 
-// Apply HTTPS redirection based on configuration
-if (builder.Environment.IsDevelopment() == false)
+// Apply HTTPS redirection based on environment
+if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
+app.UseStaticFiles();
+
 // Configure middleware pipeline in the correct order
-app.UseStaticFiles(); // Must be called before UseRouting
+var provider = new FileExtensionContentTypeProvider();
+provider.Mappings[".css"] = "text/css";
+provider.Mappings[".js"] = "application/javascript";
+provider.Mappings[".woff"] = "font/woff";
+provider.Mappings[".woff2"] = "font/woff2";
+provider.Mappings[".ttf"] = "font/ttf";
+provider.Mappings[".svg"] = "image/svg+xml";
+provider.Mappings[".ico"] = "image/x-icon";
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = provider,
+    OnPrepareResponse = ctx =>
+    {
+        // Explicitly set content type for CSS files regardless of query string
+        if (ctx.File.Name.EndsWith(".css", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.ContentType = "text/css";
+        }
+    }
+});
+
 app.UseRouting(); // Must come before authentication/authorization
 app.UseHeaderPropagation();
 app.UseAuthentication();
@@ -143,7 +174,7 @@ app.UseAntiforgery();
 app.MapControllers();
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
-// Uncomment to automatically run migrations on startup (use with caution in production)
+// Database migrations (uncomment if you want to automatically run migrations)
 // app.Services.CreateScope().ServiceProvider.GetRequiredService<ApplicationIdentityDbContext>().Database.Migrate();
 
 app.Run();

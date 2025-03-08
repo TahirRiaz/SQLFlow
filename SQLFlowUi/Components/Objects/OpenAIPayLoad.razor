@@ -25,7 +25,7 @@
     public SQLFlowCore.ExecParams.OpenAIPayLoad openAIPayLoad { get; set; }
 
     protected IQueryable<SQLFlowUi.Models.sqlflowProd.SysOpenAIModel> sysOpenAIModel;
-
+    
     protected override async Task OnInitializedAsync()
     {
         UpdateSliderRange(openAIPayLoad.model);

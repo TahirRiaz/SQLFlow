@@ -57,7 +57,7 @@
     protected async System.Threading.Tasks.Task Button0Click()
     {
 
-        string connectionString = Environment.GetEnvironmentVariable("SQLFlowConStr");//@Configuration.GetConnectionString("sqlflowProdConnection");
+        string connectionString = System.Environment.GetEnvironmentVariable("SQLFlowConStr");//@Configuration.GetConnectionString("sqlflowProdConnection");
         ConStringParser conStringParser = new ConStringParser(connectionString)
         {
             ConBuilderMsSql =

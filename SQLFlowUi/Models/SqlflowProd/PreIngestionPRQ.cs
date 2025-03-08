@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -7,8 +9,9 @@ namespace SQLFlowUi.Models.sqlflowProd
     public partial class PreIngestionPRQ
     {
         [Key]
-        [Required]
         public int FlowID { get; set; }
+
+        public string Batch { get; set; }
 
         public string SysAlias { get; set; }
 
@@ -34,6 +37,8 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string trgDBSchTbl { get; set; }
 
+        public string trgDesiredIndex { get; set; }
+
         public string preFilter { get; set; }
 
         public string PartitionList { get; set; }
@@ -43,6 +48,8 @@ namespace SQLFlowUi.Models.sqlflowProd
         public int? ExpectedColumnCount { get; set; }
 
         public bool? FetchDataTypes { get; set; }
+
+        public string DefaultColDataType { get; set; }
 
         public bool? OnErrorResume { get; set; }
 
@@ -58,12 +65,12 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string PreInvokeAlias { get; set; }
 
-        public string Batch { get; set; }
-
         public int? BatchOrderBy { get; set; }
 
         public bool? DeactivateFromBatch { get; set; }
+
         public bool? EnableEventExecution { get; set; }
+
         public string FlowType { get; set; }
 
         public int? FromObjectMK { get; set; }
@@ -75,8 +82,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string CreatedBy { get; set; }
 
         public DateTime? CreatedDate { get; set; }
-
-        public string trgDesiredIndex { get; set; }
-
     }
 }

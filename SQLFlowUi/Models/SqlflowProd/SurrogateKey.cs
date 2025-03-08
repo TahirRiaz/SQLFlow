@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -10,6 +12,7 @@ namespace SQLFlowUi.Models.sqlflowProd
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int SurrogateKeyID { get; set; }
 
+        [Required]
         public int FlowID { get; set; }
 
         public string SurrogateServer { get; set; }
@@ -27,6 +30,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string PostProcess { get; set; }
 
         public int? ToObjectMK { get; set; }
-
     }
 }

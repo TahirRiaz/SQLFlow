@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -13,7 +15,6 @@ namespace SQLFlowUi.Models.sqlflowProd
         [Required]
         public int FlowID { get; set; }
 
-        [Required]
         public string HealthCheckName { get; set; }
 
         public string DBSchTbl { get; set; }
@@ -26,16 +27,18 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string FilterCriteria { get; set; }
 
-        public int MLMaxExperimentTimeInSeconds { get; set; }
-         
+        public int? MLMaxExperimentTimeInSeconds { get; set; }
 
         public string MLModelSelection { get; set; }
-        
+
         public string MLModelName { get; set; }
 
-        public string Result { get; set; }
-        
+        public DateTime? MLModelDate { get; set; }
+
         public byte[] MLModel { get; set; }
-        
+
+        public string Result { get; set; }
+
+        public DateTime? ResultDate { get; set; }
     }
 }

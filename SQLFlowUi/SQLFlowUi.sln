@@ -2,7 +2,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.0.0
 MinimumVisualStudioVersion = 17.0.0.0
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SQLFlowUi", "SQLFlowUi.csproj", "{AE3015D4-28F2-4D6D-9F2A-881705B64E12}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SQLFlowUi", "SQLFlowUi.csproj", "{DCF205F6-F014-431B-860B-47D5B5375C8B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SQLFlowCore", "..\SQLFlowCore\SQLFlowCore.csproj", "{2AD72165-DA78-47CA-AC59-29288B05E8A9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,15 +12,19 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{AE3015D4-28F2-4D6D-9F2A-881705B64E12}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{AE3015D4-28F2-4D6D-9F2A-881705B64E12}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{AE3015D4-28F2-4D6D-9F2A-881705B64E12}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{AE3015D4-28F2-4D6D-9F2A-881705B64E12}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DCF205F6-F014-431B-860B-47D5B5375C8B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DCF205F6-F014-431B-860B-47D5B5375C8B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DCF205F6-F014-431B-860B-47D5B5375C8B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DCF205F6-F014-431B-860B-47D5B5375C8B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2AD72165-DA78-47CA-AC59-29288B05E8A9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AD72165-DA78-47CA-AC59-29288B05E8A9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AD72165-DA78-47CA-AC59-29288B05E8A9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AD72165-DA78-47CA-AC59-29288B05E8A9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {C3F56170-F60C-415E-91A2-6880CE45B397}
+		SolutionGuid = {81BFD407-BAA4-43DB-94D8-473D7CEC23B7}
 	EndGlobalSection
 EndGlobal

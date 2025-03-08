@@ -1,7 +1,7 @@
 ﻿#nullable enable
 using System.ComponentModel.DataAnnotations;
 
-namespace SQLFlowUi.Models.MetaData
+namespace SQLFlowUi.Data.MetaData
 {
     public class JsonGuiModel
     {

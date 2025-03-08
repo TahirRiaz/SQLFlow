@@ -1,4 +1,9 @@
+using System;
+using System.Diagnostics;
+using System.Linq;
+using System.Net.Http;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components.Authorization;
 
 using SQLFlowUi.Models;
@@ -30,11 +35,10 @@ namespace SQLFlowUi
             }
             catch (HttpRequestException ex)
             {
-                Console.WriteLine(ex.ToString());
             }
 
             var result = new AuthenticationState(new ClaimsPrincipal(identity));
-            //NotifyAuthenticationStateChanged(Task.FromResult(result));
+
             await securityService.InitializeAsync(result);
 
             return result;

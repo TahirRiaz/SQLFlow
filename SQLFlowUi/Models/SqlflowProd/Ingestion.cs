@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -7,10 +9,10 @@ namespace SQLFlowUi.Models.sqlflowProd
     public partial class Ingestion
     {
         [Key]
-        [Required]
         public int FlowID { get; set; }
 
-        [Required]
+        public string Batch { get; set; }
+
         public string SysAlias { get; set; }
 
         [Required]
@@ -25,23 +27,13 @@ namespace SQLFlowUi.Models.sqlflowProd
         [Required]
         public string trgDBSchTbl { get; set; }
 
-        public string Batch { get; set; }
+        public string trgDesiredIndex { get; set; }
 
-        public int? BatchOrderBy { get; set; }
-
-        public bool? MatchKeysInSrcTrg { get; set; }
-
-        public string IgnoreColumnsInHashkey { get; set; }
-        
         public bool? DeactivateFromBatch { get; set; }
 
         public bool? StreamData { get; set; }
 
         public int? NoOfThreads { get; set; }
-
-        public bool? UseBatchUpsertToAvoideLockEscalation { get; set; }
-
-        public int? BatchUpsertRowCount { get; set; }
 
         public string KeyColumns { get; set; }
 
@@ -79,6 +71,8 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string IgnoreColumns { get; set; }
 
+        public string IgnoreColumnsInHashkey { get; set; }
+
         public string SysColumns { get; set; }
 
         public bool? ColumnStoreIndexOnTrg { get; set; }
@@ -87,28 +81,11 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public bool? OnErrorResume { get; set; }
 
-        public bool? InitLoad { get; set; }
-
-        public DateTime? InitLoadFromDate { get; set; }
-
-        public DateTime? InitLoadToDate { get; set; }
-
-        public string InitLoadBatchBy { get; set; }
-
-        public int? InitLoadBatchSize { get; set; }
-
-        public string InitLoadKeyColumn { get; set; }
-
-        public int? InitLoadKeyMaxValue { get; set; }
+        public bool? OnSyncCleanColumnName { get; set; }
 
         public string ReplaceInvalidCharsWith { get; set; }
 
-
-        public bool? OnSyncCleanColumnName { get; set; }
-
         public bool? OnSyncConvertUnicodeDataType { get; set; }
-
-        
 
         public string CleanColumnNameSQLRegExp { get; set; }
 
@@ -128,6 +105,30 @@ namespace SQLFlowUi.Models.sqlflowProd
 
         public string PostInvokeAlias { get; set; }
 
+        public string Assertions { get; set; }
+
+        public bool? MatchKeysInSrcTrg { get; set; }
+
+        public bool? UseBatchUpsertToAvoideLockEscalation { get; set; }
+
+        public int? BatchUpsertRowCount { get; set; }
+
+        public bool? InitLoad { get; set; }
+
+        public DateTime? InitLoadFromDate { get; set; }
+
+        public DateTime? InitLoadToDate { get; set; }
+
+        public string InitLoadBatchBy { get; set; }
+
+        public int? InitLoadBatchSize { get; set; }
+
+        public string InitLoadKeyColumn { get; set; }
+
+        public int? InitLoadKeyMaxValue { get; set; }
+
+        public int? BatchOrderBy { get; set; }
+
         public string FlowType { get; set; }
 
         public string Description { get; set; }
@@ -139,9 +140,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string CreatedBy { get; set; }
 
         public DateTime? CreatedDate { get; set; }
-
-        public string Assertions { get; set; }
-
-        public string trgDesiredIndex { get; set; }
     }
 }

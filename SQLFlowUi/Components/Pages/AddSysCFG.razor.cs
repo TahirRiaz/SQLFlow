@@ -2,7 +2,7 @@ using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Radzen;
-using SQLFlowUi.Models.MetaData;
+using SQLFlowUi.Data.MetaData;
 
 namespace SQLFlowUi.Components.Pages
 {

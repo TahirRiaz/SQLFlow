@@ -1,6 +1,12 @@
+using System;
+using System.Data;
+using System.Linq;
 using System.Linq.Dynamic.Core;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
 
@@ -37,36 +43,39 @@ namespace SQLFlowUi
                 {
                     try
                     {
-                        // Parse the filter to handle ToString() calls safely
+                        // Create a custom parsing config with available properties
+                        var config = new ParsingConfig
+                        {
+                            ResolveTypesBySimpleName = true
+                            // NullPropagation is not available in your version
+                        };
+
+                        // Apply preprocessing to handle ToString() safely
                         var safeFilter = PreprocessDynamicFilter(query.Filter);
 
                         if (query.FilterParameters != null)
                         {
-                            items = items.Where(safeFilter, query.FilterParameters);
+                            items = items.Where(config, safeFilter, query.FilterParameters);
                         }
                         else
                         {
-                            items = items.Where(safeFilter);
+                            items = items.Where(config, safeFilter);
                         }
                     }
                     catch (Exception ex)
                     {
-                        // Log the exception - replace with your logging system if needed
                         Console.WriteLine($"Error in dynamic query filter: {ex.Message}");
-                        // Continue without applying the filter to avoid crashing
                     }
                 }
-
+                // Rest of your code remains the same
                 if (!string.IsNullOrEmpty(query.OrderBy))
                 {
                     items = items.OrderBy(query.OrderBy);
                 }
-
                 if (query.Skip.HasValue)
                 {
                     items = items.Skip(query.Skip.Value);
                 }
-
                 if (query.Top.HasValue)
                 {
                     items = items.Take(query.Top.Value);
@@ -79,15 +88,498 @@ namespace SQLFlowUi
             if (string.IsNullOrEmpty(filter))
                 return filter;
 
-            // Replace problematic ToString() calls with null-safe versions
-            // This regex looks for property.ToString() patterns
-            // You may need to adjust it based on your actual query patterns
+            // Enhanced regex to capture more complex property paths
+            // This will handle nested properties like "a.b.c.ToString()"
             return System.Text.RegularExpressions.Regex.Replace(
                 filter,
-                @"(\w+)\.ToString\(\)",
+                @"([\w\.\[\]]+)\.ToString\(\)",
                 "($1 != null ? $1.ToString() : string.Empty)"
             );
         }
+         
+        public async Task ExportAssertionToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/assertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/assertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportAssertionToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/assertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/assertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnAssertionRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.Assertion> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.Assertion>> GetAssertion(Query query = null)
+        {
+            var items = Context.Assertion.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnAssertionRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnAssertionGet(SQLFlowUi.Models.sqlflowProd.Assertion item);
+        partial void OnGetAssertionByAssertionId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.Assertion> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> GetAssertionByAssertionId(int assertionid)
+        {
+            var items = Context.Assertion
+                              .AsNoTracking()
+                              .Where(i => i.AssertionID == assertionid);
+
+ 
+            OnGetAssertionByAssertionId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnAssertionGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnAssertionCreated(SQLFlowUi.Models.sqlflowProd.Assertion item);
+        partial void OnAfterAssertionCreated(SQLFlowUi.Models.sqlflowProd.Assertion item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> CreateAssertion(SQLFlowUi.Models.sqlflowProd.Assertion assertion)
+        {
+            OnAssertionCreated(assertion);
+
+            var existingItem = Context.Assertion
+                              .Where(i => i.AssertionID == assertion.AssertionID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.Assertion.Add(assertion);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(assertion).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterAssertionCreated(assertion);
+
+            return assertion;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> CancelAssertionChanges(SQLFlowUi.Models.sqlflowProd.Assertion item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnAssertionUpdated(SQLFlowUi.Models.sqlflowProd.Assertion item);
+        partial void OnAfterAssertionUpdated(SQLFlowUi.Models.sqlflowProd.Assertion item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> UpdateAssertion(int assertionid, SQLFlowUi.Models.sqlflowProd.Assertion assertion)
+        {
+            OnAssertionUpdated(assertion);
+
+            var itemToUpdate = Context.Assertion
+                              .Where(i => i.AssertionID == assertion.AssertionID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(assertion);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterAssertionUpdated(assertion);
+
+            return assertion;
+        }
+
+        partial void OnAssertionDeleted(SQLFlowUi.Models.sqlflowProd.Assertion item);
+        partial void OnAfterAssertionDeleted(SQLFlowUi.Models.sqlflowProd.Assertion item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> DeleteAssertion(int assertionid)
+        {
+            var itemToDelete = Context.Assertion
+                              .Where(i => i.AssertionID == assertionid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnAssertionDeleted(itemToDelete);
+
+
+            Context.Assertion.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterAssertionDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportDataSubscriberToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriber/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriber/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportDataSubscriberToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriber/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriber/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnDataSubscriberRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriber> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriber>> GetDataSubscriber(Query query = null)
+        {
+            var items = Context.DataSubscriber.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnDataSubscriberRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnDataSubscriberGet(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
+        partial void OnGetDataSubscriberByFlowId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriber> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> GetDataSubscriberByFlowId(int flowid)
+        {
+            var items = Context.DataSubscriber
+                              .AsNoTracking()
+                              .Where(i => i.FlowID == flowid);
+
+ 
+            OnGetDataSubscriberByFlowId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnDataSubscriberGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnDataSubscriberCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
+        partial void OnAfterDataSubscriberCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> CreateDataSubscriber(SQLFlowUi.Models.sqlflowProd.DataSubscriber datasubscriber)
+        {
+            OnDataSubscriberCreated(datasubscriber);
+
+            var existingItem = Context.DataSubscriber
+                              .Where(i => i.FlowID == datasubscriber.FlowID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.DataSubscriber.Add(datasubscriber);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(datasubscriber).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterDataSubscriberCreated(datasubscriber);
+
+            return datasubscriber;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> CancelDataSubscriberChanges(SQLFlowUi.Models.sqlflowProd.DataSubscriber item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnDataSubscriberUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
+        partial void OnAfterDataSubscriberUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> UpdateDataSubscriber(int flowid, SQLFlowUi.Models.sqlflowProd.DataSubscriber datasubscriber)
+        {
+            OnDataSubscriberUpdated(datasubscriber);
+
+            var itemToUpdate = Context.DataSubscriber
+                              .Where(i => i.FlowID == datasubscriber.FlowID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(datasubscriber);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterDataSubscriberUpdated(datasubscriber);
+
+            return datasubscriber;
+        }
+
+        partial void OnDataSubscriberDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
+        partial void OnAfterDataSubscriberDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> DeleteDataSubscriber(int flowid)
+        {
+            var itemToDelete = Context.DataSubscriber
+                              .Where(i => i.FlowID == flowid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnDataSubscriberDeleted(itemToDelete);
+
+
+            Context.DataSubscriber.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterDataSubscriberDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportDataSubscriberQueryToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriberquery/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriberquery/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportDataSubscriberQueryToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriberquery/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriberquery/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnDataSubscriberQueryRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery>> GetDataSubscriberQuery(Query query = null)
+        {
+            var items = Context.DataSubscriberQuery.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnDataSubscriberQueryRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnDataSubscriberQueryGet(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
+        partial void OnGetDataSubscriberQueryByQueryId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> GetDataSubscriberQueryByQueryId(int queryid)
+        {
+            var items = Context.DataSubscriberQuery
+                              .AsNoTracking()
+                              .Where(i => i.QueryID == queryid);
+
+ 
+            OnGetDataSubscriberQueryByQueryId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnDataSubscriberQueryGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnDataSubscriberQueryCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
+        partial void OnAfterDataSubscriberQueryCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> CreateDataSubscriberQuery(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery datasubscriberquery)
+        {
+            OnDataSubscriberQueryCreated(datasubscriberquery);
+
+            var existingItem = Context.DataSubscriberQuery
+                              .Where(i => i.QueryID == datasubscriberquery.QueryID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.DataSubscriberQuery.Add(datasubscriberquery);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(datasubscriberquery).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterDataSubscriberQueryCreated(datasubscriberquery);
+
+            return datasubscriberquery;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> CancelDataSubscriberQueryChanges(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnDataSubscriberQueryUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
+        partial void OnAfterDataSubscriberQueryUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> UpdateDataSubscriberQuery(int queryid, SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery datasubscriberquery)
+        {
+            OnDataSubscriberQueryUpdated(datasubscriberquery);
+
+            var itemToUpdate = Context.DataSubscriberQuery
+                              .Where(i => i.QueryID == datasubscriberquery.QueryID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(datasubscriberquery);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterDataSubscriberQueryUpdated(datasubscriberquery);
+
+            return datasubscriberquery;
+        }
+
+        partial void OnDataSubscriberQueryDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
+        partial void OnAfterDataSubscriberQueryDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> DeleteDataSubscriberQuery(int queryid)
+        {
+            var itemToDelete = Context.DataSubscriberQuery
+                              .Where(i => i.QueryID == queryid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnDataSubscriberQueryDeleted(itemToDelete);
+
+
+            Context.DataSubscriberQuery.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterDataSubscriberQueryDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
         public async Task ExportExportToExcel(Query query = null, string fileName = null)
         {
             navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/export/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/export/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
@@ -249,7 +741,6 @@ namespace SQLFlowUi
             return itemToDelete;
         }
     
-
         public async Task ExportGeoCodingToExcel(Query query = null, string fileName = null)
         {
             navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/geocoding/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/geocoding/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
@@ -407,6 +898,167 @@ namespace SQLFlowUi
             }
 
             OnAfterGeoCodingDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportHealthCheckToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/healthcheck/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/healthcheck/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportHealthCheckToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/healthcheck/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/healthcheck/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnHealthCheckRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.HealthCheck> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.HealthCheck>> GetHealthCheck(Query query = null)
+        {
+            var items = Context.HealthCheck.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnHealthCheckRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnHealthCheckGet(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
+        partial void OnGetHealthCheckByHealthCheckId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.HealthCheck> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> GetHealthCheckByHealthCheckId(int healthcheckid)
+        {
+            var items = Context.HealthCheck
+                              .AsNoTracking()
+                              .Where(i => i.HealthCheckID == healthcheckid);
+
+ 
+            OnGetHealthCheckByHealthCheckId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnHealthCheckGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnHealthCheckCreated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
+        partial void OnAfterHealthCheckCreated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> CreateHealthCheck(SQLFlowUi.Models.sqlflowProd.HealthCheck healthcheck)
+        {
+            OnHealthCheckCreated(healthcheck);
+
+            var existingItem = Context.HealthCheck
+                              .Where(i => i.HealthCheckID == healthcheck.HealthCheckID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.HealthCheck.Add(healthcheck);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(healthcheck).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterHealthCheckCreated(healthcheck);
+
+            return healthcheck;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> CancelHealthCheckChanges(SQLFlowUi.Models.sqlflowProd.HealthCheck item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnHealthCheckUpdated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
+        partial void OnAfterHealthCheckUpdated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> UpdateHealthCheck(int healthcheckid, SQLFlowUi.Models.sqlflowProd.HealthCheck healthcheck)
+        {
+            OnHealthCheckUpdated(healthcheck);
+
+            var itemToUpdate = Context.HealthCheck
+                              .Where(i => i.HealthCheckID == healthcheck.HealthCheckID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(healthcheck);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterHealthCheckUpdated(healthcheck);
+
+            return healthcheck;
+        }
+
+        partial void OnHealthCheckDeleted(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
+        partial void OnAfterHealthCheckDeleted(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> DeleteHealthCheck(int healthcheckid)
+        {
+            var itemToDelete = Context.HealthCheck
+                              .Where(i => i.HealthCheckID == healthcheckid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnHealthCheckDeleted(itemToDelete);
+
+
+            Context.HealthCheck.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterHealthCheckDeleted(itemToDelete);
 
             return itemToDelete;
         }
@@ -1856,6 +2508,328 @@ namespace SQLFlowUi
             }
 
             OnAfterLineageObjectMKDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportLineageObjectRelationToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/lineageobjectrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/lineageobjectrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportLineageObjectRelationToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/lineageobjectrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/lineageobjectrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnLineageObjectRelationRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation>> GetLineageObjectRelation(Query query = null)
+        {
+            var items = Context.LineageObjectRelation.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnLineageObjectRelationRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnLineageObjectRelationGet(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
+        partial void OnGetLineageObjectRelationByObjectRelationId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> GetLineageObjectRelationByObjectRelationId(int objectrelationid)
+        {
+            var items = Context.LineageObjectRelation
+                              .AsNoTracking()
+                              .Where(i => i.ObjectRelationID == objectrelationid);
+
+ 
+            OnGetLineageObjectRelationByObjectRelationId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnLineageObjectRelationGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnLineageObjectRelationCreated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
+        partial void OnAfterLineageObjectRelationCreated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> CreateLineageObjectRelation(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation lineageobjectrelation)
+        {
+            OnLineageObjectRelationCreated(lineageobjectrelation);
+
+            var existingItem = Context.LineageObjectRelation
+                              .Where(i => i.ObjectRelationID == lineageobjectrelation.ObjectRelationID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.LineageObjectRelation.Add(lineageobjectrelation);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(lineageobjectrelation).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterLineageObjectRelationCreated(lineageobjectrelation);
+
+            return lineageobjectrelation;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> CancelLineageObjectRelationChanges(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnLineageObjectRelationUpdated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
+        partial void OnAfterLineageObjectRelationUpdated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> UpdateLineageObjectRelation(int objectrelationid, SQLFlowUi.Models.sqlflowProd.LineageObjectRelation lineageobjectrelation)
+        {
+            OnLineageObjectRelationUpdated(lineageobjectrelation);
+
+            var itemToUpdate = Context.LineageObjectRelation
+                              .Where(i => i.ObjectRelationID == lineageobjectrelation.ObjectRelationID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(lineageobjectrelation);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterLineageObjectRelationUpdated(lineageobjectrelation);
+
+            return lineageobjectrelation;
+        }
+
+        partial void OnLineageObjectRelationDeleted(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
+        partial void OnAfterLineageObjectRelationDeleted(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> DeleteLineageObjectRelation(int objectrelationid)
+        {
+            var itemToDelete = Context.LineageObjectRelation
+                              .Where(i => i.ObjectRelationID == objectrelationid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnLineageObjectRelationDeleted(itemToDelete);
+
+
+            Context.LineageObjectRelation.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterLineageObjectRelationDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportMatchKeyToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/matchkey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/matchkey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportMatchKeyToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/matchkey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/matchkey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnMatchKeyRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.MatchKey> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.MatchKey>> GetMatchKey(Query query = null)
+        {
+            var items = Context.MatchKey.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnMatchKeyRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnMatchKeyGet(SQLFlowUi.Models.sqlflowProd.MatchKey item);
+        partial void OnGetMatchKeyByMatchKeyId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.MatchKey> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> GetMatchKeyByMatchKeyId(int matchkeyid)
+        {
+            var items = Context.MatchKey
+                              .AsNoTracking()
+                              .Where(i => i.MatchKeyID == matchkeyid);
+
+ 
+            OnGetMatchKeyByMatchKeyId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnMatchKeyGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnMatchKeyCreated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
+        partial void OnAfterMatchKeyCreated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> CreateMatchKey(SQLFlowUi.Models.sqlflowProd.MatchKey matchkey)
+        {
+            OnMatchKeyCreated(matchkey);
+
+            var existingItem = Context.MatchKey
+                              .Where(i => i.MatchKeyID == matchkey.MatchKeyID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.MatchKey.Add(matchkey);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(matchkey).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterMatchKeyCreated(matchkey);
+
+            return matchkey;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> CancelMatchKeyChanges(SQLFlowUi.Models.sqlflowProd.MatchKey item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnMatchKeyUpdated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
+        partial void OnAfterMatchKeyUpdated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> UpdateMatchKey(int matchkeyid, SQLFlowUi.Models.sqlflowProd.MatchKey matchkey)
+        {
+            OnMatchKeyUpdated(matchkey);
+
+            var itemToUpdate = Context.MatchKey
+                              .Where(i => i.MatchKeyID == matchkey.MatchKeyID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(matchkey);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterMatchKeyUpdated(matchkey);
+
+            return matchkey;
+        }
+
+        partial void OnMatchKeyDeleted(SQLFlowUi.Models.sqlflowProd.MatchKey item);
+        partial void OnAfterMatchKeyDeleted(SQLFlowUi.Models.sqlflowProd.MatchKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> DeleteMatchKey(int matchkeyid)
+        {
+            var itemToDelete = Context.MatchKey
+                              .Where(i => i.MatchKeyID == matchkeyid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnMatchKeyDeleted(itemToDelete);
+
+
+            Context.MatchKey.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterMatchKeyDeleted(itemToDelete);
 
             return itemToDelete;
         }
@@ -3792,6 +4766,167 @@ namespace SQLFlowUi
             return itemToDelete;
         }
     
+        public async Task ExportSysAIPromptToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysaiprompt/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysaiprompt/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysAIPromptToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysaiprompt/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysaiprompt/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysAIPromptRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysAIPrompt>> GetSysAIPrompt(Query query = null)
+        {
+            var items = Context.SysAIPrompt.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysAIPromptRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysAIPromptGet(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
+        partial void OnGetSysAIPromptByPromptId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> GetSysAIPromptByPromptId(int promptid)
+        {
+            var items = Context.SysAIPrompt
+                              .AsNoTracking()
+                              .Where(i => i.PromptID == promptid);
+
+ 
+            OnGetSysAIPromptByPromptId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysAIPromptGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysAIPromptCreated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
+        partial void OnAfterSysAIPromptCreated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> CreateSysAIPrompt(SQLFlowUi.Models.sqlflowProd.SysAIPrompt sysaiprompt)
+        {
+            OnSysAIPromptCreated(sysaiprompt);
+
+            var existingItem = Context.SysAIPrompt
+                              .Where(i => i.PromptID == sysaiprompt.PromptID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysAIPrompt.Add(sysaiprompt);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(sysaiprompt).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysAIPromptCreated(sysaiprompt);
+
+            return sysaiprompt;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> CancelSysAIPromptChanges(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysAIPromptUpdated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
+        partial void OnAfterSysAIPromptUpdated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> UpdateSysAIPrompt(int promptid, SQLFlowUi.Models.sqlflowProd.SysAIPrompt sysaiprompt)
+        {
+            OnSysAIPromptUpdated(sysaiprompt);
+
+            var itemToUpdate = Context.SysAIPrompt
+                              .Where(i => i.PromptID == sysaiprompt.PromptID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(sysaiprompt);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysAIPromptUpdated(sysaiprompt);
+
+            return sysaiprompt;
+        }
+
+        partial void OnSysAIPromptDeleted(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
+        partial void OnAfterSysAIPromptDeleted(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> DeleteSysAIPrompt(int promptid)
+        {
+            var itemToDelete = Context.SysAIPrompt
+                              .Where(i => i.PromptID == promptid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysAIPromptDeleted(itemToDelete);
+
+
+            Context.SysAIPrompt.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysAIPromptDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
         public async Task ExportSysAliasToExcel(Query query = null, string fileName = null)
         {
             navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysalias/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysalias/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
@@ -3953,8 +5088,328 @@ namespace SQLFlowUi
             return itemToDelete;
         }
     
-        
+        public async Task ExportSysAPIKeyToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysapikey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysapikey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
 
+        public async Task ExportSysAPIKeyToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysapikey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysapikey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysAPIKeyRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAPIKey> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysAPIKey>> GetSysAPIKey(Query query = null)
+        {
+            var items = Context.SysAPIKey.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysAPIKeyRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysAPIKeyGet(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
+        partial void OnGetSysAPIKeyByApiKeyId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAPIKey> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> GetSysAPIKeyByApiKeyId(int apikeyid)
+        {
+            var items = Context.SysAPIKey
+                              .AsNoTracking()
+                              .Where(i => i.ApiKeyID == apikeyid);
+
+ 
+            OnGetSysAPIKeyByApiKeyId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysAPIKeyGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysAPIKeyCreated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
+        partial void OnAfterSysAPIKeyCreated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> CreateSysAPIKey(SQLFlowUi.Models.sqlflowProd.SysAPIKey sysapikey)
+        {
+            OnSysAPIKeyCreated(sysapikey);
+
+            var existingItem = Context.SysAPIKey
+                              .Where(i => i.ApiKeyID == sysapikey.ApiKeyID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysAPIKey.Add(sysapikey);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(sysapikey).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysAPIKeyCreated(sysapikey);
+
+            return sysapikey;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> CancelSysAPIKeyChanges(SQLFlowUi.Models.sqlflowProd.SysAPIKey item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysAPIKeyUpdated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
+        partial void OnAfterSysAPIKeyUpdated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> UpdateSysAPIKey(int apikeyid, SQLFlowUi.Models.sqlflowProd.SysAPIKey sysapikey)
+        {
+            OnSysAPIKeyUpdated(sysapikey);
+
+            var itemToUpdate = Context.SysAPIKey
+                              .Where(i => i.ApiKeyID == sysapikey.ApiKeyID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(sysapikey);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysAPIKeyUpdated(sysapikey);
+
+            return sysapikey;
+        }
+
+        partial void OnSysAPIKeyDeleted(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
+        partial void OnAfterSysAPIKeyDeleted(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> DeleteSysAPIKey(int apikeyid)
+        {
+            var itemToDelete = Context.SysAPIKey
+                              .Where(i => i.ApiKeyID == apikeyid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysAPIKeyDeleted(itemToDelete);
+
+
+            Context.SysAPIKey.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysAPIKeyDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportSysBatchToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysbatch/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysbatch/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysBatchToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysbatch/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysbatch/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysBatchRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysBatch> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysBatch>> GetSysBatch(Query query = null)
+        {
+            var items = Context.SysBatch.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysBatchRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysBatchGet(SQLFlowUi.Models.sqlflowProd.SysBatch item);
+        partial void OnGetSysBatchBySysBatchId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysBatch> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> GetSysBatchBySysBatchId(int sysbatchid)
+        {
+            var items = Context.SysBatch
+                              .AsNoTracking()
+                              .Where(i => i.SysBatchID == sysbatchid);
+
+ 
+            OnGetSysBatchBySysBatchId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysBatchGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysBatchCreated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
+        partial void OnAfterSysBatchCreated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> CreateSysBatch(SQLFlowUi.Models.sqlflowProd.SysBatch sysbatch)
+        {
+            OnSysBatchCreated(sysbatch);
+
+            var existingItem = Context.SysBatch
+                              .Where(i => i.SysBatchID == sysbatch.SysBatchID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysBatch.Add(sysbatch);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(sysbatch).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysBatchCreated(sysbatch);
+
+            return sysbatch;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> CancelSysBatchChanges(SQLFlowUi.Models.sqlflowProd.SysBatch item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysBatchUpdated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
+        partial void OnAfterSysBatchUpdated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> UpdateSysBatch(int sysbatchid, SQLFlowUi.Models.sqlflowProd.SysBatch sysbatch)
+        {
+            OnSysBatchUpdated(sysbatch);
+
+            var itemToUpdate = Context.SysBatch
+                              .Where(i => i.SysBatchID == sysbatch.SysBatchID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(sysbatch);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysBatchUpdated(sysbatch);
+
+            return sysbatch;
+        }
+
+        partial void OnSysBatchDeleted(SQLFlowUi.Models.sqlflowProd.SysBatch item);
+        partial void OnAfterSysBatchDeleted(SQLFlowUi.Models.sqlflowProd.SysBatch item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> DeleteSysBatch(int sysbatchid)
+        {
+            var itemToDelete = Context.SysBatch
+                              .Where(i => i.SysBatchID == sysbatchid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysBatchDeleted(itemToDelete);
+
+
+            Context.SysBatch.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysBatchDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
         public async Task ExportSysCFGToExcel(Query query = null, string fileName = null)
         {
             navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syscfg/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syscfg/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
@@ -4116,6 +5571,167 @@ namespace SQLFlowUi
             return itemToDelete;
         }
     
+        public async Task ExportSysCheckDataTypesToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syscheckdatatypes/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syscheckdatatypes/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysCheckDataTypesToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syscheckdatatypes/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syscheckdatatypes/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysCheckDataTypesRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes>> GetSysCheckDataTypes(Query query = null)
+        {
+            var items = Context.SysCheckDataTypes.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysCheckDataTypesRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysCheckDataTypesGet(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item);
+        partial void OnGetSysCheckDataTypesByRecId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes> GetSysCheckDataTypesByRecId(int recid)
+        {
+            var items = Context.SysCheckDataTypes
+                              .AsNoTracking()
+                              .Where(i => i.RecID == recid);
+
+ 
+            OnGetSysCheckDataTypesByRecId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysCheckDataTypesGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysCheckDataTypesCreated(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item);
+        partial void OnAfterSysCheckDataTypesCreated(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes> CreateSysCheckDataTypes(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes syscheckdatatypes)
+        {
+            OnSysCheckDataTypesCreated(syscheckdatatypes);
+
+            var existingItem = Context.SysCheckDataTypes
+                              .Where(i => i.RecID == syscheckdatatypes.RecID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysCheckDataTypes.Add(syscheckdatatypes);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(syscheckdatatypes).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysCheckDataTypesCreated(syscheckdatatypes);
+
+            return syscheckdatatypes;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes> CancelSysCheckDataTypesChanges(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysCheckDataTypesUpdated(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item);
+        partial void OnAfterSysCheckDataTypesUpdated(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes> UpdateSysCheckDataTypes(int recid, SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes syscheckdatatypes)
+        {
+            OnSysCheckDataTypesUpdated(syscheckdatatypes);
+
+            var itemToUpdate = Context.SysCheckDataTypes
+                              .Where(i => i.RecID == syscheckdatatypes.RecID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(syscheckdatatypes);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysCheckDataTypesUpdated(syscheckdatatypes);
+
+            return syscheckdatatypes;
+        }
+
+        partial void OnSysCheckDataTypesDeleted(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item);
+        partial void OnAfterSysCheckDataTypesDeleted(SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysCheckDataTypes> DeleteSysCheckDataTypes(int recid)
+        {
+            var itemToDelete = Context.SysCheckDataTypes
+                              .Where(i => i.RecID == recid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysCheckDataTypesDeleted(itemToDelete);
+
+
+            Context.SysCheckDataTypes.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysCheckDataTypesDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
         public async Task ExportSysColumnToExcel(Query query = null, string fileName = null)
         {
             navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syscolumn/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syscolumn/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
@@ -4273,167 +5889,6 @@ namespace SQLFlowUi
             }
 
             OnAfterSysColumnDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-    
-        public async Task ExportSysCompressionTypeToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syscompressiontype/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syscompressiontype/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysCompressionTypeToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syscompressiontype/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syscompressiontype/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysCompressionTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysCompressionType> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysCompressionType>> GetSysCompressionType(Query query = null)
-        {
-            var items = Context.SysCompressionType.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach(var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnSysCompressionTypeRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnSysCompressionTypeGet(SQLFlowUi.Models.sqlflowProd.SysCompressionType item);
-        partial void OnGetSysCompressionTypeByCompressionType(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysCompressionType> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysCompressionType> GetSysCompressionTypeByCompressionType(string compressiontype)
-        {
-            var items = Context.SysCompressionType
-                              .AsNoTracking()
-                              .Where(i => i.CompressionType == compressiontype);
-
- 
-            OnGetSysCompressionTypeByCompressionType(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysCompressionTypeGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysCompressionTypeCreated(SQLFlowUi.Models.sqlflowProd.SysCompressionType item);
-        partial void OnAfterSysCompressionTypeCreated(SQLFlowUi.Models.sqlflowProd.SysCompressionType item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysCompressionType> CreateSysCompressionType(SQLFlowUi.Models.sqlflowProd.SysCompressionType syscompressiontype)
-        {
-            OnSysCompressionTypeCreated(syscompressiontype);
-
-            var existingItem = Context.SysCompressionType
-                              .Where(i => i.CompressionType == syscompressiontype.CompressionType)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-               throw new Exception("Item already available");
-            }            
-
-            try
-            {
-                Context.SysCompressionType.Add(syscompressiontype);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(syscompressiontype).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysCompressionTypeCreated(syscompressiontype);
-
-            return syscompressiontype;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysCompressionType> CancelSysCompressionTypeChanges(SQLFlowUi.Models.sqlflowProd.SysCompressionType item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-              entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysCompressionTypeUpdated(SQLFlowUi.Models.sqlflowProd.SysCompressionType item);
-        partial void OnAfterSysCompressionTypeUpdated(SQLFlowUi.Models.sqlflowProd.SysCompressionType item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysCompressionType> UpdateSysCompressionType(string compressiontype, SQLFlowUi.Models.sqlflowProd.SysCompressionType syscompressiontype)
-        {
-            OnSysCompressionTypeUpdated(syscompressiontype);
-
-            var itemToUpdate = Context.SysCompressionType
-                              .Where(i => i.CompressionType == syscompressiontype.CompressionType)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-               throw new Exception("Item no longer available");
-            }
-                
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(syscompressiontype);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysCompressionTypeUpdated(syscompressiontype);
-
-            return syscompressiontype;
-        }
-
-        partial void OnSysCompressionTypeDeleted(SQLFlowUi.Models.sqlflowProd.SysCompressionType item);
-        partial void OnAfterSysCompressionTypeDeleted(SQLFlowUi.Models.sqlflowProd.SysCompressionType item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysCompressionType> DeleteSysCompressionType(string compressiontype)
-        {
-            var itemToDelete = Context.SysCompressionType
-                              .Where(i => i.CompressionType == compressiontype)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-               throw new Exception("Item no longer available");
-            }
-
-            OnSysCompressionTypeDeleted(itemToDelete);
-
-
-            Context.SysCompressionType.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysCompressionTypeDeleted(itemToDelete);
 
             return itemToDelete;
         }
@@ -4806,34 +6261,6 @@ namespace SQLFlowUi
             navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdoc/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdoc/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
         }
 
-        partial void OnSysDocSubSetRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocSubSet> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocSubSet>> GetSysDocSubSet(Query query = null)
-        {
-            var items = Context.SysDocSubset.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnSysDocSubSetRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-
-
         partial void OnSysDocRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDoc> items);
 
         public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysDoc>> GetSysDoc(Query query = null)
@@ -4871,23 +6298,6 @@ namespace SQLFlowUi
                               .Where(i => i.SysDocID == sysdocid);
 
  
-            OnGetSysDocBySysDocId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysDocGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDoc> GetSysDocByObjectname(string ObjectName)
-        {
-            var items = Context.SysDoc
-                .AsNoTracking()
-                .Where(i => i.ObjectName == ObjectName);
-
-
             OnGetSysDocBySysDocId(ref items);
 
             var itemToReturn = items.FirstOrDefault();
@@ -4998,6 +6408,328 @@ namespace SQLFlowUi
             }
 
             OnAfterSysDocDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportSysDocNoteToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocnote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocnote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysDocNoteToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocnote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocnote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysDocNoteRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocNote> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocNote>> GetSysDocNote(Query query = null)
+        {
+            var items = Context.SysDocNote.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysDocNoteRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysDocNoteGet(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
+        partial void OnGetSysDocNoteByDocNoteId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocNote> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> GetSysDocNoteByDocNoteId(int docnoteid)
+        {
+            var items = Context.SysDocNote
+                              .AsNoTracking()
+                              .Where(i => i.DocNoteID == docnoteid);
+
+ 
+            OnGetSysDocNoteByDocNoteId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysDocNoteGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysDocNoteCreated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
+        partial void OnAfterSysDocNoteCreated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> CreateSysDocNote(SQLFlowUi.Models.sqlflowProd.SysDocNote sysdocnote)
+        {
+            OnSysDocNoteCreated(sysdocnote);
+
+            var existingItem = Context.SysDocNote
+                              .Where(i => i.DocNoteID == sysdocnote.DocNoteID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysDocNote.Add(sysdocnote);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(sysdocnote).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysDocNoteCreated(sysdocnote);
+
+            return sysdocnote;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> CancelSysDocNoteChanges(SQLFlowUi.Models.sqlflowProd.SysDocNote item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysDocNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
+        partial void OnAfterSysDocNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> UpdateSysDocNote(int docnoteid, SQLFlowUi.Models.sqlflowProd.SysDocNote sysdocnote)
+        {
+            OnSysDocNoteUpdated(sysdocnote);
+
+            var itemToUpdate = Context.SysDocNote
+                              .Where(i => i.DocNoteID == sysdocnote.DocNoteID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(sysdocnote);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysDocNoteUpdated(sysdocnote);
+
+            return sysdocnote;
+        }
+
+        partial void OnSysDocNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
+        partial void OnAfterSysDocNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> DeleteSysDocNote(int docnoteid)
+        {
+            var itemToDelete = Context.SysDocNote
+                              .Where(i => i.DocNoteID == docnoteid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysDocNoteDeleted(itemToDelete);
+
+
+            Context.SysDocNote.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysDocNoteDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportSysDocRelationToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysDocRelationToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysDocRelationRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocRelation> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocRelation>> GetSysDocRelation(Query query = null)
+        {
+            var items = Context.SysDocRelation.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysDocRelationRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysDocRelationGet(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
+        partial void OnGetSysDocRelationByRelationId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocRelation> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> GetSysDocRelationByRelationId(int relationid)
+        {
+            var items = Context.SysDocRelation
+                              .AsNoTracking()
+                              .Where(i => i.RelationID == relationid);
+
+ 
+            OnGetSysDocRelationByRelationId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysDocRelationGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysDocRelationCreated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
+        partial void OnAfterSysDocRelationCreated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> CreateSysDocRelation(SQLFlowUi.Models.sqlflowProd.SysDocRelation sysdocrelation)
+        {
+            OnSysDocRelationCreated(sysdocrelation);
+
+            var existingItem = Context.SysDocRelation
+                              .Where(i => i.RelationID == sysdocrelation.RelationID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysDocRelation.Add(sysdocrelation);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(sysdocrelation).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysDocRelationCreated(sysdocrelation);
+
+            return sysdocrelation;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> CancelSysDocRelationChanges(SQLFlowUi.Models.sqlflowProd.SysDocRelation item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysDocRelationUpdated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
+        partial void OnAfterSysDocRelationUpdated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> UpdateSysDocRelation(int relationid, SQLFlowUi.Models.sqlflowProd.SysDocRelation sysdocrelation)
+        {
+            OnSysDocRelationUpdated(sysdocrelation);
+
+            var itemToUpdate = Context.SysDocRelation
+                              .Where(i => i.RelationID == sysdocrelation.RelationID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(sysdocrelation);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysDocRelationUpdated(sysdocrelation);
+
+            return sysdocrelation;
+        }
+
+        partial void OnSysDocRelationDeleted(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
+        partial void OnAfterSysDocRelationDeleted(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> DeleteSysDocRelation(int relationid)
+        {
+            var itemToDelete = Context.SysDocRelation
+                              .Where(i => i.RelationID == relationid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysDocRelationDeleted(itemToDelete);
+
+
+            Context.SysDocRelation.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysDocRelationDeleted(itemToDelete);
 
             return itemToDelete;
         }
@@ -5324,21 +7056,21 @@ namespace SQLFlowUi
             return itemToDelete;
         }
     
-        public async Task ExportSysHashKeyTypeToExcel(Query query = null, string fileName = null)
+        public async Task ExportSysFlowNoteToExcel(Query query = null, string fileName = null)
         {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syshashkeytype/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syshashkeytype/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysflownote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysflownote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
         }
 
-        public async Task ExportSysHashKeyTypeToCSV(Query query = null, string fileName = null)
+        public async Task ExportSysFlowNoteToCSV(Query query = null, string fileName = null)
         {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syshashkeytype/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syshashkeytype/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysflownote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysflownote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
         }
 
-        partial void OnSysHashKeyTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> items);
+        partial void OnSysFlowNoteRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNote> items);
 
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysHashKeyType>> GetSysHashKeyType(Query query = null)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNote>> GetSysFlowNote(Query query = null)
         {
-            var items = Context.SysHashKeyType.AsQueryable();
+            var items = Context.SysFlowNote.AsQueryable();
 
 
             if (query != null)
@@ -5355,40 +7087,40 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysHashKeyTypeRead(ref items);
+            OnSysFlowNoteRead(ref items);
 
             return await Task.FromResult(items);
         }
 
-        partial void OnSysHashKeyTypeGet(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
-        partial void OnGetSysHashKeyTypeByHashKeyType(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> items);
+        partial void OnSysFlowNoteGet(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
+        partial void OnGetSysFlowNoteByFlowNoteId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNote> items);
 
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> GetSysHashKeyTypeByHashKeyType(string hashkeytype)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> GetSysFlowNoteByFlowNoteId(int flownoteid)
         {
-            var items = Context.SysHashKeyType
+            var items = Context.SysFlowNote
                               .AsNoTracking()
-                              .Where(i => i.HashKeyType == hashkeytype);
+                              .Where(i => i.FlowNoteID == flownoteid);
 
  
-            OnGetSysHashKeyTypeByHashKeyType(ref items);
+            OnGetSysFlowNoteByFlowNoteId(ref items);
 
             var itemToReturn = items.FirstOrDefault();
 
-            OnSysHashKeyTypeGet(itemToReturn);
+            OnSysFlowNoteGet(itemToReturn);
 
             return await Task.FromResult(itemToReturn);
         }
 
-        partial void OnSysHashKeyTypeCreated(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
-        partial void OnAfterSysHashKeyTypeCreated(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
+        partial void OnSysFlowNoteCreated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
+        partial void OnAfterSysFlowNoteCreated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> CreateSysHashKeyType(SQLFlowUi.Models.sqlflowProd.SysHashKeyType syshashkeytype)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> CreateSysFlowNote(SQLFlowUi.Models.sqlflowProd.SysFlowNote sysflownote)
         {
-            OnSysHashKeyTypeCreated(syshashkeytype);
+            OnSysFlowNoteCreated(sysflownote);
 
-            var existingItem = Context.SysHashKeyType
-                              .Where(i => i.HashKeyType == syshashkeytype.HashKeyType)
+            var existingItem = Context.SysFlowNote
+                              .Where(i => i.FlowNoteID == sysflownote.FlowNoteID)
                               .FirstOrDefault();
 
             if (existingItem != null)
@@ -5398,21 +7130,21 @@ namespace SQLFlowUi
 
             try
             {
-                Context.SysHashKeyType.Add(syshashkeytype);
+                Context.SysFlowNote.Add(sysflownote);
                 Context.SaveChanges();
             }
             catch
             {
-                Context.Entry(syshashkeytype).State = EntityState.Detached;
+                Context.Entry(sysflownote).State = EntityState.Detached;
                 throw;
             }
 
-            OnAfterSysHashKeyTypeCreated(syshashkeytype);
+            OnAfterSysFlowNoteCreated(sysflownote);
 
-            return syshashkeytype;
+            return sysflownote;
         }
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> CancelSysHashKeyTypeChanges(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> CancelSysFlowNoteChanges(SQLFlowUi.Models.sqlflowProd.SysFlowNote item)
         {
             var entityToCancel = Context.Entry(item);
             if (entityToCancel.State == EntityState.Modified)
@@ -5424,15 +7156,15 @@ namespace SQLFlowUi
             return item;
         }
 
-        partial void OnSysHashKeyTypeUpdated(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
-        partial void OnAfterSysHashKeyTypeUpdated(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
+        partial void OnSysFlowNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
+        partial void OnAfterSysFlowNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> UpdateSysHashKeyType(string hashkeytype, SQLFlowUi.Models.sqlflowProd.SysHashKeyType syshashkeytype)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> UpdateSysFlowNote(int flownoteid, SQLFlowUi.Models.sqlflowProd.SysFlowNote sysflownote)
         {
-            OnSysHashKeyTypeUpdated(syshashkeytype);
+            OnSysFlowNoteUpdated(sysflownote);
 
-            var itemToUpdate = Context.SysHashKeyType
-                              .Where(i => i.HashKeyType == syshashkeytype.HashKeyType)
+            var itemToUpdate = Context.SysFlowNote
+                              .Where(i => i.FlowNoteID == sysflownote.FlowNoteID)
                               .FirstOrDefault();
 
             if (itemToUpdate == null)
@@ -5441,23 +7173,23 @@ namespace SQLFlowUi
             }
                 
             var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(syshashkeytype);
+            entryToUpdate.CurrentValues.SetValues(sysflownote);
             entryToUpdate.State = EntityState.Modified;
 
             Context.SaveChanges();
 
-            OnAfterSysHashKeyTypeUpdated(syshashkeytype);
+            OnAfterSysFlowNoteUpdated(sysflownote);
 
-            return syshashkeytype;
+            return sysflownote;
         }
 
-        partial void OnSysHashKeyTypeDeleted(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
-        partial void OnAfterSysHashKeyTypeDeleted(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
+        partial void OnSysFlowNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
+        partial void OnAfterSysFlowNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> DeleteSysHashKeyType(string hashkeytype)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> DeleteSysFlowNote(int flownoteid)
         {
-            var itemToDelete = Context.SysHashKeyType
-                              .Where(i => i.HashKeyType == hashkeytype)
+            var itemToDelete = Context.SysFlowNote
+                              .Where(i => i.FlowNoteID == flownoteid)
                               .FirstOrDefault();
 
             if (itemToDelete == null)
@@ -5465,10 +7197,10 @@ namespace SQLFlowUi
                throw new Exception("Item no longer available");
             }
 
-            OnSysHashKeyTypeDeleted(itemToDelete);
+            OnSysFlowNoteDeleted(itemToDelete);
 
 
-            Context.SysHashKeyType.Remove(itemToDelete);
+            Context.SysFlowNote.Remove(itemToDelete);
 
             try
             {
@@ -5480,12 +7212,10 @@ namespace SQLFlowUi
                 throw;
             }
 
-            OnAfterSysHashKeyTypeDeleted(itemToDelete);
+            OnAfterSysFlowNoteDeleted(itemToDelete);
 
             return itemToDelete;
         }
-    
-        
     
         public async Task ExportSysLogToExcel(Query query = null, string fileName = null)
         {
@@ -5644,6 +7374,167 @@ namespace SQLFlowUi
             }
 
             OnAfterSysLogDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportSysLogAssertionToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysLogAssertionToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysLogAssertionRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogAssertion>> GetSysLogAssertion(Query query = null)
+        {
+            var items = Context.SysLogAssertion.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysLogAssertionRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysLogAssertionGet(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
+        partial void OnGetSysLogAssertionByRecId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> GetSysLogAssertionByRecId(int recid)
+        {
+            var items = Context.SysLogAssertion
+                              .AsNoTracking()
+                              .Where(i => i.RecID == recid);
+
+ 
+            OnGetSysLogAssertionByRecId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysLogAssertionGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysLogAssertionCreated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
+        partial void OnAfterSysLogAssertionCreated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> CreateSysLogAssertion(SQLFlowUi.Models.sqlflowProd.SysLogAssertion syslogassertion)
+        {
+            OnSysLogAssertionCreated(syslogassertion);
+
+            var existingItem = Context.SysLogAssertion
+                              .Where(i => i.RecID == syslogassertion.RecID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysLogAssertion.Add(syslogassertion);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(syslogassertion).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysLogAssertionCreated(syslogassertion);
+
+            return syslogassertion;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> CancelSysLogAssertionChanges(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysLogAssertionUpdated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
+        partial void OnAfterSysLogAssertionUpdated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> UpdateSysLogAssertion(int recid, SQLFlowUi.Models.sqlflowProd.SysLogAssertion syslogassertion)
+        {
+            OnSysLogAssertionUpdated(syslogassertion);
+
+            var itemToUpdate = Context.SysLogAssertion
+                              .Where(i => i.RecID == syslogassertion.RecID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(syslogassertion);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysLogAssertionUpdated(syslogassertion);
+
+            return syslogassertion;
+        }
+
+        partial void OnSysLogAssertionDeleted(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
+        partial void OnAfterSysLogAssertionDeleted(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> DeleteSysLogAssertion(int recid)
+        {
+            var itemToDelete = Context.SysLogAssertion
+                              .Where(i => i.RecID == recid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysLogAssertionDeleted(itemToDelete);
+
+
+            Context.SysLogAssertion.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysLogAssertionDeleted(itemToDelete);
 
             return itemToDelete;
         }
@@ -6007,17 +7898,17 @@ namespace SQLFlowUi
         }
 
         partial void OnSysLogFileGet(SQLFlowUi.Models.sqlflowProd.SysLogFile item);
-        partial void OnGetSysLogFileByRecId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogFile> items);
+        partial void OnGetSysLogFileByLogFileId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogFile> items);
 
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFile> GetSysLogFileByRecId(int recid)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFile> GetSysLogFileByLogFileId(int logfileid)
         {
             var items = Context.SysLogFile
                               .AsNoTracking()
-                              .Where(i => i.LogFileID == recid);
+                              .Where(i => i.LogFileID == logfileid);
 
  
-            OnGetSysLogFileByRecId(ref items);
+            OnGetSysLogFileByLogFileId(ref items);
 
             var itemToReturn = items.FirstOrDefault();
 
@@ -6073,7 +7964,7 @@ namespace SQLFlowUi
         partial void OnSysLogFileUpdated(SQLFlowUi.Models.sqlflowProd.SysLogFile item);
         partial void OnAfterSysLogFileUpdated(SQLFlowUi.Models.sqlflowProd.SysLogFile item);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFile> UpdateSysLogFile(int recid, SQLFlowUi.Models.sqlflowProd.SysLogFile syslogfile)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFile> UpdateSysLogFile(int logfileid, SQLFlowUi.Models.sqlflowProd.SysLogFile syslogfile)
         {
             OnSysLogFileUpdated(syslogfile);
 
@@ -6100,10 +7991,10 @@ namespace SQLFlowUi
         partial void OnSysLogFileDeleted(SQLFlowUi.Models.sqlflowProd.SysLogFile item);
         partial void OnAfterSysLogFileDeleted(SQLFlowUi.Models.sqlflowProd.SysLogFile item);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFile> DeleteSysLogFile(int recid)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFile> DeleteSysLogFile(int logfileid)
         {
             var itemToDelete = Context.SysLogFile
-                              .Where(i => i.LogFileID == recid)
+                              .Where(i => i.LogFileID == logfileid)
                               .FirstOrDefault();
 
             if (itemToDelete == null)
@@ -6127,6 +8018,489 @@ namespace SQLFlowUi
             }
 
             OnAfterSysLogFileDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportSysLogFileEventToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogfileevent/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogfileevent/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysLogFileEventToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogfileevent/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogfileevent/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysLogFileEventRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent>> GetSysLogFileEvent(Query query = null)
+        {
+            var items = Context.SysLogFileEvent.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysLogFileEventRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysLogFileEventGet(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item);
+        partial void OnGetSysLogFileEventByLogFileEventId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent> GetSysLogFileEventByLogFileEventId(int logfileeventid)
+        {
+            var items = Context.SysLogFileEvent
+                              .AsNoTracking()
+                              .Where(i => i.LogFileEventID == logfileeventid);
+
+ 
+            OnGetSysLogFileEventByLogFileEventId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysLogFileEventGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysLogFileEventCreated(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item);
+        partial void OnAfterSysLogFileEventCreated(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent> CreateSysLogFileEvent(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent syslogfileevent)
+        {
+            OnSysLogFileEventCreated(syslogfileevent);
+
+            var existingItem = Context.SysLogFileEvent
+                              .Where(i => i.LogFileEventID == syslogfileevent.LogFileEventID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysLogFileEvent.Add(syslogfileevent);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(syslogfileevent).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysLogFileEventCreated(syslogfileevent);
+
+            return syslogfileevent;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent> CancelSysLogFileEventChanges(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysLogFileEventUpdated(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item);
+        partial void OnAfterSysLogFileEventUpdated(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent> UpdateSysLogFileEvent(int logfileeventid, SQLFlowUi.Models.sqlflowProd.SysLogFileEvent syslogfileevent)
+        {
+            OnSysLogFileEventUpdated(syslogfileevent);
+
+            var itemToUpdate = Context.SysLogFileEvent
+                              .Where(i => i.LogFileEventID == syslogfileevent.LogFileEventID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(syslogfileevent);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysLogFileEventUpdated(syslogfileevent);
+
+            return syslogfileevent;
+        }
+
+        partial void OnSysLogFileEventDeleted(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item);
+        partial void OnAfterSysLogFileEventDeleted(SQLFlowUi.Models.sqlflowProd.SysLogFileEvent item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFileEvent> DeleteSysLogFileEvent(int logfileeventid)
+        {
+            var itemToDelete = Context.SysLogFileEvent
+                              .Where(i => i.LogFileEventID == logfileeventid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysLogFileEventDeleted(itemToDelete);
+
+
+            Context.SysLogFileEvent.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysLogFileEventDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportSysLogMatchKeyToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogmatchkey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogmatchkey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysLogMatchKeyToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogmatchkey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogmatchkey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysLogMatchKeyRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey>> GetSysLogMatchKey(Query query = null)
+        {
+            var items = Context.SysLogMatchKey.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysLogMatchKeyRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysLogMatchKeyGet(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item);
+        partial void OnGetSysLogMatchKeyBySysLogMatchKey1(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey> GetSysLogMatchKeyBySysLogMatchKey1(int syslogmatchkey1)
+        {
+            var items = Context.SysLogMatchKey
+                              .AsNoTracking()
+                              .Where(i => i.SysLogMatchKey1 == syslogmatchkey1);
+
+ 
+            OnGetSysLogMatchKeyBySysLogMatchKey1(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysLogMatchKeyGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysLogMatchKeyCreated(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item);
+        partial void OnAfterSysLogMatchKeyCreated(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey> CreateSysLogMatchKey(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey syslogmatchkey)
+        {
+            OnSysLogMatchKeyCreated(syslogmatchkey);
+
+            var existingItem = Context.SysLogMatchKey
+                              .Where(i => i.SysLogMatchKey1 == syslogmatchkey.SysLogMatchKey1)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysLogMatchKey.Add(syslogmatchkey);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(syslogmatchkey).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysLogMatchKeyCreated(syslogmatchkey);
+
+            return syslogmatchkey;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey> CancelSysLogMatchKeyChanges(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysLogMatchKeyUpdated(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item);
+        partial void OnAfterSysLogMatchKeyUpdated(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey> UpdateSysLogMatchKey(int syslogmatchkey1, SQLFlowUi.Models.sqlflowProd.SysLogMatchKey syslogmatchkey)
+        {
+            OnSysLogMatchKeyUpdated(syslogmatchkey);
+
+            var itemToUpdate = Context.SysLogMatchKey
+                              .Where(i => i.SysLogMatchKey1 == syslogmatchkey.SysLogMatchKey1)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(syslogmatchkey);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysLogMatchKeyUpdated(syslogmatchkey);
+
+            return syslogmatchkey;
+        }
+
+        partial void OnSysLogMatchKeyDeleted(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item);
+        partial void OnAfterSysLogMatchKeyDeleted(SQLFlowUi.Models.sqlflowProd.SysLogMatchKey item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogMatchKey> DeleteSysLogMatchKey(int syslogmatchkey1)
+        {
+            var itemToDelete = Context.SysLogMatchKey
+                              .Where(i => i.SysLogMatchKey1 == syslogmatchkey1)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysLogMatchKeyDeleted(itemToDelete);
+
+
+            Context.SysLogMatchKey.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysLogMatchKeyDeleted(itemToDelete);
+
+            return itemToDelete;
+        }
+    
+        public async Task ExportSysPeriodToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysperiod/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysperiod/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportSysPeriodToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysperiod/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysperiod/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnSysPeriodRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysPeriod> items);
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysPeriod>> GetSysPeriod(Query query = null)
+        {
+            var items = Context.SysPeriod.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach(var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysPeriodRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnSysPeriodGet(SQLFlowUi.Models.sqlflowProd.SysPeriod item);
+        partial void OnGetSysPeriodByPeriodId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysPeriod> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysPeriod> GetSysPeriodByPeriodId(int periodid)
+        {
+            var items = Context.SysPeriod
+                              .AsNoTracking()
+                              .Where(i => i.PeriodID == periodid);
+
+ 
+            OnGetSysPeriodByPeriodId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysPeriodGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysPeriodCreated(SQLFlowUi.Models.sqlflowProd.SysPeriod item);
+        partial void OnAfterSysPeriodCreated(SQLFlowUi.Models.sqlflowProd.SysPeriod item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysPeriod> CreateSysPeriod(SQLFlowUi.Models.sqlflowProd.SysPeriod sysperiod)
+        {
+            OnSysPeriodCreated(sysperiod);
+
+            var existingItem = Context.SysPeriod
+                              .Where(i => i.PeriodID == sysperiod.PeriodID)
+                              .FirstOrDefault();
+
+            if (existingItem != null)
+            {
+               throw new Exception("Item already available");
+            }            
+
+            try
+            {
+                Context.SysPeriod.Add(sysperiod);
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(sysperiod).State = EntityState.Detached;
+                throw;
+            }
+
+            OnAfterSysPeriodCreated(sysperiod);
+
+            return sysperiod;
+        }
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysPeriod> CancelSysPeriodChanges(SQLFlowUi.Models.sqlflowProd.SysPeriod item)
+        {
+            var entityToCancel = Context.Entry(item);
+            if (entityToCancel.State == EntityState.Modified)
+            {
+              entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
+              entityToCancel.State = EntityState.Unchanged;
+            }
+
+            return item;
+        }
+
+        partial void OnSysPeriodUpdated(SQLFlowUi.Models.sqlflowProd.SysPeriod item);
+        partial void OnAfterSysPeriodUpdated(SQLFlowUi.Models.sqlflowProd.SysPeriod item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysPeriod> UpdateSysPeriod(int periodid, SQLFlowUi.Models.sqlflowProd.SysPeriod sysperiod)
+        {
+            OnSysPeriodUpdated(sysperiod);
+
+            var itemToUpdate = Context.SysPeriod
+                              .Where(i => i.PeriodID == sysperiod.PeriodID)
+                              .FirstOrDefault();
+
+            if (itemToUpdate == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+                
+            var entryToUpdate = Context.Entry(itemToUpdate);
+            entryToUpdate.CurrentValues.SetValues(sysperiod);
+            entryToUpdate.State = EntityState.Modified;
+
+            Context.SaveChanges();
+
+            OnAfterSysPeriodUpdated(sysperiod);
+
+            return sysperiod;
+        }
+
+        partial void OnSysPeriodDeleted(SQLFlowUi.Models.sqlflowProd.SysPeriod item);
+        partial void OnAfterSysPeriodDeleted(SQLFlowUi.Models.sqlflowProd.SysPeriod item);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysPeriod> DeleteSysPeriod(int periodid)
+        {
+            var itemToDelete = Context.SysPeriod
+                              .Where(i => i.PeriodID == periodid)
+                              .FirstOrDefault();
+
+            if (itemToDelete == null)
+            {
+               throw new Exception("Item no longer available");
+            }
+
+            OnSysPeriodDeleted(itemToDelete);
+
+
+            Context.SysPeriod.Remove(itemToDelete);
+
+            try
+            {
+                Context.SaveChanges();
+            }
+            catch
+            {
+                Context.Entry(itemToDelete).State = EntityState.Unchanged;
+                throw;
+            }
+
+            OnAfterSysPeriodDeleted(itemToDelete);
 
             return itemToDelete;
         }
@@ -6178,23 +8552,6 @@ namespace SQLFlowUi
                               .Where(i => i.ServicePrincipalID == serviceprincipalid);
 
  
-            OnGetSysServicePrincipalByServicePrincipalId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysServicePrincipalGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysServicePrincipal> GetSysServicePrincipalByAlias(string servicePrincipalAlias)
-        {
-            var items = Context.SysServicePrincipal
-                .AsNoTracking()
-                .Where(i => i.ServicePrincipalAlias == servicePrincipalAlias);
-
-
             OnGetSysServicePrincipalByServicePrincipalId(ref items);
 
             var itemToReturn = items.FirstOrDefault();
@@ -6791,22 +9148,13 @@ namespace SQLFlowUi
 
             return itemToDelete;
         }
-    
-        public async Task ExportSysStorageToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysstorage/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysstorage/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
 
-        public async Task ExportSysStorageToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysstorage/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysstorage/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
+        //CustomCode Bellow This:
+        partial void OnSysDocSubSetRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocSubSet> items);
 
-        partial void OnSysExportByRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysExportBy> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysExportBy>> GetSysExportBy(Query query = null)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocSubSet>> GetSysDocSubSet(Query query = null)
         {
-            var items = Context.SysExportBy.AsQueryable();
+            var items = Context.SysDocSubset.AsQueryable();
 
 
             if (query != null)
@@ -6823,872 +9171,26 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysExportByRead(ref items);
+            OnSysDocSubSetRead(ref items);
 
             return await Task.FromResult(items);
         }
 
-        partial void OnSysExportByGet(SQLFlowUi.Models.sqlflowProd.SysExportBy item);
-        partial void OnGetSysExportByByExportBy(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysExportBy> items);
 
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysExportBy> GetSysExportByByExportBy(string exportby)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysDoc> GetSysDocByObjectname(string ObjectName)
         {
-            var items = Context.SysExportBy
-                              .AsNoTracking()
-                              .Where(i => i.ExportBy == exportby);
+            var items = Context.SysDoc
+                .AsNoTracking()
+                .Where(i => i.ObjectName == ObjectName);
 
 
-            OnGetSysExportByByExportBy(ref items);
+            OnGetSysDocBySysDocId(ref items);
 
             var itemToReturn = items.FirstOrDefault();
 
-            OnSysExportByGet(itemToReturn);
+            OnSysDocGet(itemToReturn);
 
             return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysExportByCreated(SQLFlowUi.Models.sqlflowProd.SysExportBy item);
-        partial void OnAfterSysExportByCreated(SQLFlowUi.Models.sqlflowProd.SysExportBy item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysExportBy> CreateSysExportBy(SQLFlowUi.Models.sqlflowProd.SysExportBy sysexportby)
-        {
-            OnSysExportByCreated(sysexportby);
-
-            var existingItem = Context.SysExportBy
-                              .Where(i => i.ExportBy == sysexportby.ExportBy)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysExportBy.Add(sysexportby);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysexportby).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysExportByCreated(sysexportby);
-
-            return sysexportby;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysExportBy> CancelSysExportByChanges(SQLFlowUi.Models.sqlflowProd.SysExportBy item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysExportByUpdated(SQLFlowUi.Models.sqlflowProd.SysExportBy item);
-        partial void OnAfterSysExportByUpdated(SQLFlowUi.Models.sqlflowProd.SysExportBy item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysExportBy> UpdateSysExportBy(string exportby, SQLFlowUi.Models.sqlflowProd.SysExportBy sysexportby)
-        {
-            OnSysExportByUpdated(sysexportby);
-
-            var itemToUpdate = Context.SysExportBy
-                              .Where(i => i.ExportBy == sysexportby.ExportBy)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysexportby);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysExportByUpdated(sysexportby);
-
-            return sysexportby;
-        }
-
-        partial void OnSysExportByDeleted(SQLFlowUi.Models.sqlflowProd.SysExportBy item);
-        partial void OnAfterSysExportByDeleted(SQLFlowUi.Models.sqlflowProd.SysExportBy item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysExportBy> DeleteSysExportBy(string exportby)
-        {
-            var itemToDelete = Context.SysExportBy
-                              .Where(i => i.ExportBy == exportby)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysExportByDeleted(itemToDelete);
-
-
-            Context.SysExportBy.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysExportByDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-        public async Task ExportSysExportByToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysexportby/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysexportby/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysExportByToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysexportby/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysexportby/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-
-        public async Task ExportSysSubFolderPatternsToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syssubfolderpatterns/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syssubfolderpatterns/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysSubFolderPatternsToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syssubfolderpatterns/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syssubfolderpatterns/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysSubFolderPatternsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern>> GetSysSubFolderPatterns(Query query = null)
-        {
-            var items = Context.SysSubFolderPatterns.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnSysSubFolderPatternsRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnSysSubFolderPatternGet(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item);
-        partial void OnGetSysSubFolderPatternBySubFolderPattern(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> GetSysSubFolderPatternBySubFolderPattern(string subfolderpattern)
-        {
-            var items = Context.SysSubFolderPatterns
-                              .AsNoTracking()
-                              .Where(i => i.SubFolderPattern == subfolderpattern);
-
-
-            OnGetSysSubFolderPatternBySubFolderPattern(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysSubFolderPatternGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysSubFolderPatternCreated(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item);
-        partial void OnAfterSysSubFolderPatternCreated(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> CreateSysSubFolderPattern(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern syssubfolderpattern)
-        {
-            OnSysSubFolderPatternCreated(syssubfolderpattern);
-
-            var existingItem = Context.SysSubFolderPatterns
-                              .Where(i => i.SubFolderPattern == syssubfolderpattern.SubFolderPattern)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysSubFolderPatterns.Add(syssubfolderpattern);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(syssubfolderpattern).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysSubFolderPatternCreated(syssubfolderpattern);
-
-            return syssubfolderpattern;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> CancelSysSubFolderPatternChanges(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysSubFolderPatternUpdated(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item);
-        partial void OnAfterSysSubFolderPatternUpdated(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> UpdateSysSubFolderPattern(string subfolderpattern, SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern syssubfolderpattern)
-        {
-            OnSysSubFolderPatternUpdated(syssubfolderpattern);
-
-            var itemToUpdate = Context.SysSubFolderPatterns
-                              .Where(i => i.SubFolderPattern == syssubfolderpattern.SubFolderPattern)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(syssubfolderpattern);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysSubFolderPatternUpdated(syssubfolderpattern);
-
-            return syssubfolderpattern;
-        }
-
-        partial void OnSysSubFolderPatternDeleted(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item);
-        partial void OnAfterSysSubFolderPatternDeleted(SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> DeleteSysSubFolderPattern(string subfolderpattern)
-        {
-            var itemToDelete = Context.SysSubFolderPatterns
-                              .Where(i => i.SubFolderPattern == subfolderpattern)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysSubFolderPatternDeleted(itemToDelete);
-
-
-            Context.SysSubFolderPatterns.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysSubFolderPatternDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-        public async Task ExportSysFileEncodingsToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysfileencodings/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysfileencodings/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysFileEncodingsToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysfileencodings/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysfileencodings/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysFileEncodingsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysFileEncoding>> GetSysFileEncodings(Query query = null)
-        {
-            var items = Context.SysFileEncodings.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnSysFileEncodingsRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnSysFileEncodingGet(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item);
-        partial void OnGetSysFileEncodingByEncoding(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> GetSysFileEncodingByEncoding(string encoding)
-        {
-            var items = Context.SysFileEncodings
-                              .AsNoTracking()
-                              .Where(i => i.Encoding == encoding);
-
-
-            OnGetSysFileEncodingByEncoding(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysFileEncodingGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysFileEncodingCreated(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item);
-        partial void OnAfterSysFileEncodingCreated(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> CreateSysFileEncoding(SQLFlowUi.Models.sqlflowProd.SysFileEncoding sysfileencoding)
-        {
-            OnSysFileEncodingCreated(sysfileencoding);
-
-            var existingItem = Context.SysFileEncodings
-                              .Where(i => i.Encoding == sysfileencoding.Encoding)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysFileEncodings.Add(sysfileencoding);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysfileencoding).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysFileEncodingCreated(sysfileencoding);
-
-            return sysfileencoding;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> CancelSysFileEncodingChanges(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysFileEncodingUpdated(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item);
-        partial void OnAfterSysFileEncodingUpdated(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> UpdateSysFileEncoding(string encoding, SQLFlowUi.Models.sqlflowProd.SysFileEncoding sysfileencoding)
-        {
-            OnSysFileEncodingUpdated(sysfileencoding);
-
-            var itemToUpdate = Context.SysFileEncodings
-                              .Where(i => i.Encoding == sysfileencoding.Encoding)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysfileencoding);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysFileEncodingUpdated(sysfileencoding);
-
-            return sysfileencoding;
-        }
-
-        partial void OnSysFileEncodingDeleted(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item);
-        partial void OnAfterSysFileEncodingDeleted(SQLFlowUi.Models.sqlflowProd.SysFileEncoding item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> DeleteSysFileEncoding(string encoding)
-        {
-            var itemToDelete = Context.SysFileEncodings
-                              .Where(i => i.Encoding == encoding)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysFileEncodingDeleted(itemToDelete);
-
-
-            Context.SysFileEncodings.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysFileEncodingDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-
-        public async Task ExportFlowDsToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/flowds/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/flowds/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportFlowDsToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/flowds/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/flowds/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnFlowDsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.FlowDS> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.FlowDS>> GetFlowDs(Query query = null)
-        {
-            var items = Context.FlowDs.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnFlowDsRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-
-        public async Task ExportGetGoogleApiKeysToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/getgoogleapikeys/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/getgoogleapikeys/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportGetGoogleApiKeysToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/getgoogleapikeys/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/getgoogleapikeys/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.GetApiKey>> GetGetGoogleApiKeys(Query query = null)
-        {
-            OnGetGoogleApiKeysDefaultParams();
-
-            var items = Context.GetGoogleApiKeys.FromSqlInterpolated($"EXEC [flw].[GetApiKey] ").ToList().AsQueryable();
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnGetGoogleApiKeysInvoke(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnGetGoogleApiKeysDefaultParams();
-
-        partial void OnGetGoogleApiKeysInvoke(ref IQueryable<SQLFlowUi.Models.sqlflowProd.GetApiKey> items);
-
-
-
-        public async Task ExportReportBatchStartEndToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportbatchstartend/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportbatchstartend/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportReportBatchStartEndToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportbatchstartend/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportbatchstartend/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnReportBatchStartEndRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd>> GetReportBatchStartEnd(Query query = null)
-        {
-            var items = Context.ReportBatchStartEnd.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnReportBatchStartEndRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnReportBatchStartEndGet(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
-        partial void OnGetReportBatchStartEndByFlowId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> GetReportBatchStartEndByFlowId(int flowid)
-        {
-            var items = Context.ReportBatchStartEnd
-                              .AsNoTracking()
-                              .Where(i => i.FlowID == flowid);
-
-
-            OnGetReportBatchStartEndByFlowId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnReportBatchStartEndGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnReportBatchStartEndCreated(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
-        partial void OnAfterReportBatchStartEndCreated(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> CreateReportBatchStartEnd(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd reportbatchstartend)
-        {
-            OnReportBatchStartEndCreated(reportbatchstartend);
-
-            var existingItem = Context.ReportBatchStartEnd
-                              .Where(i => i.FlowID == reportbatchstartend.FlowID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.ReportBatchStartEnd.Add(reportbatchstartend);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(reportbatchstartend).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterReportBatchStartEndCreated(reportbatchstartend);
-
-            return reportbatchstartend;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> CancelReportBatchStartEndChanges(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnReportBatchStartEndUpdated(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
-        partial void OnAfterReportBatchStartEndUpdated(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> UpdateReportBatchStartEnd(int flowid, SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd reportbatchstartend)
-        {
-            OnReportBatchStartEndUpdated(reportbatchstartend);
-
-            var itemToUpdate = Context.ReportBatchStartEnd
-                              .Where(i => i.FlowID == reportbatchstartend.FlowID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(reportbatchstartend);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterReportBatchStartEndUpdated(reportbatchstartend);
-
-            return reportbatchstartend;
-        }
-
-        partial void OnReportBatchStartEndDeleted(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
-        partial void OnAfterReportBatchStartEndDeleted(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> DeleteReportBatchStartEnd(int flowid)
-        {
-            var itemToDelete = Context.ReportBatchStartEnd
-                              .Where(i => i.FlowID == flowid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnReportBatchStartEndDeleted(itemToDelete);
-
-
-            Context.ReportBatchStartEnd.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterReportBatchStartEndDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-
-
-        public async Task ExportHealthCheckToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/healthcheck/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/healthcheck/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportHealthCheckToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/healthcheck/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/healthcheck/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnHealthCheckRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.HealthCheck> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.HealthCheck>> GetHealthCheck(Query query = null)
-        {
-            var items = Context.HealthCheck.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnHealthCheckRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnHealthCheckGet(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
-        partial void OnGetHealthCheckByHealthCheckId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.HealthCheck> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> GetHealthCheckByHealthCheckId(int healthcheckid)
-        {
-            var items = Context.HealthCheck
-                              .AsNoTracking()
-                              .Where(i => i.HealthCheckID == healthcheckid);
-
-
-            OnGetHealthCheckByHealthCheckId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnHealthCheckGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnHealthCheckCreated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
-        partial void OnAfterHealthCheckCreated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> CreateHealthCheck(SQLFlowUi.Models.sqlflowProd.HealthCheck healthcheck)
-        {
-            OnHealthCheckCreated(healthcheck);
-
-            var existingItem = Context.HealthCheck
-                              .Where(i => i.HealthCheckID == healthcheck.HealthCheckID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.HealthCheck.Add(healthcheck);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(healthcheck).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterHealthCheckCreated(healthcheck);
-
-            return healthcheck;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> CancelHealthCheckChanges(SQLFlowUi.Models.sqlflowProd.HealthCheck item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnHealthCheckUpdated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
-        partial void OnAfterHealthCheckUpdated(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> UpdateHealthCheck(int healthcheckid, SQLFlowUi.Models.sqlflowProd.HealthCheck healthcheck)
-        {
-            OnHealthCheckUpdated(healthcheck);
-
-            var itemToUpdate = Context.HealthCheck
-                              .Where(i => i.HealthCheckID == healthcheck.HealthCheckID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(healthcheck);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterHealthCheckUpdated(healthcheck);
-
-            return healthcheck;
-        }
-
-        partial void OnHealthCheckDeleted(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
-        partial void OnAfterHealthCheckDeleted(SQLFlowUi.Models.sqlflowProd.HealthCheck item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.HealthCheck> DeleteHealthCheck(int healthcheckid)
-        {
-            var itemToDelete = Context.HealthCheck
-                              .Where(i => i.HealthCheckID == healthcheckid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnHealthCheckDeleted(itemToDelete);
-
-
-            Context.HealthCheck.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterHealthCheckDeleted(itemToDelete);
-
-            return itemToDelete;
         }
 
 
@@ -7729,23 +9231,11 @@ namespace SQLFlowUi
             return await Task.FromResult(items);
         }
 
+        partial void OnFlowDsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.FlowDS> items);
 
-
-        public async Task ExportAssertionToExcel(Query query = null, string fileName = null)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.FlowDS>> GetFlowDs(Query query = null)
         {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/assertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/assertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportAssertionToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/assertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/assertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnAssertionRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.Assertion> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.Assertion>> GetAssertion(Query query = null)
-        {
-            var items = Context.Assertion.AsQueryable();
+            var items = Context.FlowDs.AsQueryable();
 
 
             if (query != null)
@@ -7762,152 +9252,16 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnAssertionRead(ref items);
+            OnFlowDsRead(ref items);
 
             return await Task.FromResult(items);
         }
 
-        partial void OnAssertionGet(SQLFlowUi.Models.sqlflowProd.Assertion item);
-        partial void OnGetAssertionByAssertionId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.Assertion> items);
+        partial void OnSysOpenAIModelsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysOpenAIModel> items);
 
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> GetAssertionByAssertionId(int assertionid)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysOpenAIModel>> GetSysOpenAIModels(Query query = null)
         {
-            var items = Context.Assertion
-                              .AsNoTracking()
-                              .Where(i => i.AssertionID == assertionid);
-
-
-            OnGetAssertionByAssertionId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnAssertionGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnAssertionCreated(SQLFlowUi.Models.sqlflowProd.Assertion item);
-        partial void OnAfterAssertionCreated(SQLFlowUi.Models.sqlflowProd.Assertion item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> CreateAssertion(SQLFlowUi.Models.sqlflowProd.Assertion assertion)
-        {
-            OnAssertionCreated(assertion);
-
-            var existingItem = Context.Assertion
-                              .Where(i => i.AssertionID == assertion.AssertionID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.Assertion.Add(assertion);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(assertion).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterAssertionCreated(assertion);
-
-            return assertion;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> CancelAssertionChanges(SQLFlowUi.Models.sqlflowProd.Assertion item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnAssertionUpdated(SQLFlowUi.Models.sqlflowProd.Assertion item);
-        partial void OnAfterAssertionUpdated(SQLFlowUi.Models.sqlflowProd.Assertion item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> UpdateAssertion(int assertionid, SQLFlowUi.Models.sqlflowProd.Assertion assertion)
-        {
-            OnAssertionUpdated(assertion);
-
-            var itemToUpdate = Context.Assertion
-                              .Where(i => i.AssertionID == assertion.AssertionID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(assertion);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterAssertionUpdated(assertion);
-
-            return assertion;
-        }
-
-        partial void OnAssertionDeleted(SQLFlowUi.Models.sqlflowProd.Assertion item);
-        partial void OnAfterAssertionDeleted(SQLFlowUi.Models.sqlflowProd.Assertion item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.Assertion> DeleteAssertion(int assertionid)
-        {
-            var itemToDelete = Context.Assertion
-                              .Where(i => i.AssertionID == assertionid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnAssertionDeleted(itemToDelete);
-
-
-            Context.Assertion.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterAssertionDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-        public async Task ExportSysLogAssertionToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysLogAssertionToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/syslogassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/syslogassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysLogAssertionRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogAssertion>> GetSysLogAssertion(Query query = null)
-        {
-            var items = Context.SysLogAssertion.AsQueryable();
-
+            var items = Context.SysOpenAIModel.AsQueryable();
 
             if (query != null)
             {
@@ -7923,146 +9277,9 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysLogAssertionRead(ref items);
+            OnSysOpenAIModelsRead(ref items);
 
             return await Task.FromResult(items);
-        }
-
-        partial void OnSysLogAssertionGet(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
-        partial void OnGetSysLogAssertionByRecId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> GetSysLogAssertionByRecId(int recid)
-        {
-            var items = Context.SysLogAssertion
-                              .AsNoTracking()
-                              .Where(i => i.RecID == recid);
-
-
-            OnGetSysLogAssertionByRecId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysLogAssertionGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysLogAssertionCreated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
-        partial void OnAfterSysLogAssertionCreated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> CreateSysLogAssertion(SQLFlowUi.Models.sqlflowProd.SysLogAssertion syslogassertion)
-        {
-            OnSysLogAssertionCreated(syslogassertion);
-
-            var existingItem = Context.SysLogAssertion
-                              .Where(i => i.RecID == syslogassertion.RecID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysLogAssertion.Add(syslogassertion);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(syslogassertion).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysLogAssertionCreated(syslogassertion);
-
-            return syslogassertion;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> CancelSysLogAssertionChanges(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysLogAssertionUpdated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
-        partial void OnAfterSysLogAssertionUpdated(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> UpdateSysLogAssertion(int recid, SQLFlowUi.Models.sqlflowProd.SysLogAssertion syslogassertion)
-        {
-            OnSysLogAssertionUpdated(syslogassertion);
-
-            var itemToUpdate = Context.SysLogAssertion
-                              .Where(i => i.RecID == syslogassertion.RecID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(syslogassertion);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysLogAssertionUpdated(syslogassertion);
-
-            return syslogassertion;
-        }
-
-        partial void OnSysLogAssertionDeleted(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
-        partial void OnAfterSysLogAssertionDeleted(SQLFlowUi.Models.sqlflowProd.SysLogAssertion item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogAssertion> DeleteSysLogAssertion(int recid)
-        {
-            var itemToDelete = Context.SysLogAssertion
-                              .Where(i => i.RecID == recid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysLogAssertionDeleted(itemToDelete);
-
-
-            Context.SysLogAssertion.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysLogAssertionDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-
-        public async Task ExportReportAssertionToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportReportAssertionToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
         }
 
         partial void OnReportAssertionRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.ReportAssertion> items);
@@ -8091,23 +9308,37 @@ namespace SQLFlowUi
             return await Task.FromResult(items);
         }
 
+        partial void OnSysFlowNoteTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNoteType> items);
 
-
-        public async Task ExportSysAIPromptToExcel(Query query = null, string fileName = null)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNoteType>> GetSysFlowNoteTypes(Query query = null)
         {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysaiprompt/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysaiprompt/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+            var items = Context.SysFlowNoteType.AsQueryable();
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach (var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnSysFlowNoteTypeRead(ref items);
+
+            return await Task.FromResult(items);
         }
 
-        public async Task ExportSysAIPromptToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysaiprompt/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysaiprompt/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
 
-        partial void OnSysAIPromptRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> items);
+        partial void OnSysExportByRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysExportBy> items);
 
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysAIPrompt>> GetSysAIPrompt(Query query = null)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysExportBy>> GetSysExportBy(Query query = null)
         {
-            var items = Context.SysAIPrompt.AsQueryable();
+            var items = Context.SysExportBy.AsQueryable();
 
 
             if (query != null)
@@ -8124,152 +9355,17 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysAIPromptRead(ref items);
+            OnSysExportByRead(ref items);
 
             return await Task.FromResult(items);
         }
 
-        partial void OnSysAIPromptGet(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
-        partial void OnGetSysAIPromptByPromptId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> items);
 
+        partial void OnSysSubFolderPatternsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern> items);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> GetSysAIPromptByPromptId(int promptid)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysSubFolderPattern>> GetSysSubFolderPatterns(Query query = null)
         {
-            var items = Context.SysAIPrompt
-                              .AsNoTracking()
-                              .Where(i => i.PromptID == promptid);
-
-
-            OnGetSysAIPromptByPromptId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysAIPromptGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysAIPromptCreated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
-        partial void OnAfterSysAIPromptCreated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> CreateSysAIPrompt(SQLFlowUi.Models.sqlflowProd.SysAIPrompt sysaiprompt)
-        {
-            OnSysAIPromptCreated(sysaiprompt);
-
-            var existingItem = Context.SysAIPrompt
-                              .Where(i => i.PromptID == sysaiprompt.PromptID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysAIPrompt.Add(sysaiprompt);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysaiprompt).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysAIPromptCreated(sysaiprompt);
-
-            return sysaiprompt;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> CancelSysAIPromptChanges(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysAIPromptUpdated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
-        partial void OnAfterSysAIPromptUpdated(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> UpdateSysAIPrompt(int promptid, SQLFlowUi.Models.sqlflowProd.SysAIPrompt sysaiprompt)
-        {
-            OnSysAIPromptUpdated(sysaiprompt);
-
-            var itemToUpdate = Context.SysAIPrompt
-                              .Where(i => i.PromptID == sysaiprompt.PromptID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysaiprompt);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysAIPromptUpdated(sysaiprompt);
-
-            return sysaiprompt;
-        }
-
-        partial void OnSysAIPromptDeleted(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
-        partial void OnAfterSysAIPromptDeleted(SQLFlowUi.Models.sqlflowProd.SysAIPrompt item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAIPrompt> DeleteSysAIPrompt(int promptid)
-        {
-            var itemToDelete = Context.SysAIPrompt
-                              .Where(i => i.PromptID == promptid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysAIPromptDeleted(itemToDelete);
-
-
-            Context.SysAIPrompt.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysAIPromptDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-        public async Task ExportLineageObjectRelationToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/lineageobjectrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/lineageobjectrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportLineageObjectRelationToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/lineageobjectrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/lineageobjectrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnLineageObjectRelationRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation>> GetLineageObjectRelation(Query query = null)
-        {
-            var items = Context.LineageObjectRelation.AsQueryable();
+            var items = Context.SysSubFolderPatterns.AsQueryable();
 
 
             if (query != null)
@@ -8286,151 +9382,17 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnLineageObjectRelationRead(ref items);
+            OnSysSubFolderPatternsRead(ref items);
 
             return await Task.FromResult(items);
         }
 
-        partial void OnLineageObjectRelationGet(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
-        partial void OnGetLineageObjectRelationByObjectRelationId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> items);
 
+        partial void OnSysCompressionTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysCompressionType> items);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> GetLineageObjectRelationByObjectRelationId(int objectrelationid)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysCompressionType>> GetSysCompressionType(Query query = null)
         {
-            var items = Context.LineageObjectRelation
-                              .AsNoTracking()
-                              .Where(i => i.ObjectRelationID == objectrelationid);
-
-
-            OnGetLineageObjectRelationByObjectRelationId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnLineageObjectRelationGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnLineageObjectRelationCreated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
-        partial void OnAfterLineageObjectRelationCreated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> CreateLineageObjectRelation(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation lineageobjectrelation)
-        {
-            OnLineageObjectRelationCreated(lineageobjectrelation);
-
-            var existingItem = Context.LineageObjectRelation
-                              .Where(i => i.ObjectRelationID == lineageobjectrelation.ObjectRelationID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.LineageObjectRelation.Add(lineageobjectrelation);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(lineageobjectrelation).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterLineageObjectRelationCreated(lineageobjectrelation);
-
-            return lineageobjectrelation;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> CancelLineageObjectRelationChanges(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnLineageObjectRelationUpdated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
-        partial void OnAfterLineageObjectRelationUpdated(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> UpdateLineageObjectRelation(int objectrelationid, SQLFlowUi.Models.sqlflowProd.LineageObjectRelation lineageobjectrelation)
-        {
-            OnLineageObjectRelationUpdated(lineageobjectrelation);
-
-            var itemToUpdate = Context.LineageObjectRelation
-                              .Where(i => i.ObjectRelationID == lineageobjectrelation.ObjectRelationID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(lineageobjectrelation);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterLineageObjectRelationUpdated(lineageobjectrelation);
-
-            return lineageobjectrelation;
-        }
-
-        partial void OnLineageObjectRelationDeleted(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
-        partial void OnAfterLineageObjectRelationDeleted(SQLFlowUi.Models.sqlflowProd.LineageObjectRelation item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.LineageObjectRelation> DeleteLineageObjectRelation(int objectrelationid)
-        {
-            var itemToDelete = Context.LineageObjectRelation
-                              .Where(i => i.ObjectRelationID == objectrelationid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnLineageObjectRelationDeleted(itemToDelete);
-
-
-            Context.LineageObjectRelation.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterLineageObjectRelationDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-        public async Task ExportSysDocRelationToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocrelation/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysDocRelationToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocrelation/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysDocRelationRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocRelation> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocRelation>> GetSysDocRelation(Query query = null)
-        {
-            var items = Context.SysDocRelation.AsQueryable();
+            var items = Context.SysCompressionType.AsQueryable();
 
 
             if (query != null)
@@ -8447,152 +9409,17 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysDocRelationRead(ref items);
+            OnSysCompressionTypeRead(ref items);
 
             return await Task.FromResult(items);
         }
 
-        partial void OnSysDocRelationGet(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
-        partial void OnGetSysDocRelationByRelationId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocRelation> items);
 
+        partial void OnSysFileEncodingsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFileEncoding> items);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> GetSysDocRelationByRelationId(int relationid)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysFileEncoding>> GetSysFileEncodings(Query query = null)
         {
-            var items = Context.SysDocRelation
-                              .AsNoTracking()
-                              .Where(i => i.RelationID == relationid);
-
-
-            OnGetSysDocRelationByRelationId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysDocRelationGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysDocRelationCreated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
-        partial void OnAfterSysDocRelationCreated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> CreateSysDocRelation(SQLFlowUi.Models.sqlflowProd.SysDocRelation sysdocrelation)
-        {
-            OnSysDocRelationCreated(sysdocrelation);
-
-            var existingItem = Context.SysDocRelation
-                              .Where(i => i.RelationID == sysdocrelation.RelationID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysDocRelation.Add(sysdocrelation);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysdocrelation).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysDocRelationCreated(sysdocrelation);
-
-            return sysdocrelation;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> CancelSysDocRelationChanges(SQLFlowUi.Models.sqlflowProd.SysDocRelation item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysDocRelationUpdated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
-        partial void OnAfterSysDocRelationUpdated(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> UpdateSysDocRelation(int relationid, SQLFlowUi.Models.sqlflowProd.SysDocRelation sysdocrelation)
-        {
-            OnSysDocRelationUpdated(sysdocrelation);
-
-            var itemToUpdate = Context.SysDocRelation
-                              .Where(i => i.RelationID == sysdocrelation.RelationID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysdocrelation);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysDocRelationUpdated(sysdocrelation);
-
-            return sysdocrelation;
-        }
-
-        partial void OnSysDocRelationDeleted(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
-        partial void OnAfterSysDocRelationDeleted(SQLFlowUi.Models.sqlflowProd.SysDocRelation item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocRelation> DeleteSysDocRelation(int relationid)
-        {
-            var itemToDelete = Context.SysDocRelation
-                              .Where(i => i.RelationID == relationid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysDocRelationDeleted(itemToDelete);
-
-
-            Context.SysDocRelation.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysDocRelationDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-        public async Task ExportSysAPIKeyToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysapikey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysapikey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysAPIKeyToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysapikey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysapikey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysAPIKeyRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAPIKey> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysAPIKey>> GetSysAPIKey(Query query = null)
-        {
-            var items = Context.SysAPIKey.AsQueryable();
+            var items = Context.SysFileEncodings.AsQueryable();
 
 
             if (query != null)
@@ -8609,152 +9436,17 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysAPIKeyRead(ref items);
+            OnSysFileEncodingsRead(ref items);
 
             return await Task.FromResult(items);
         }
 
-        partial void OnSysAPIKeyGet(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
-        partial void OnGetSysAPIKeyByApiKeyId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysAPIKey> items);
 
+        partial void OnSysHashKeyTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> items);
 
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> GetSysAPIKeyByApiKeyId(int apikeyid)
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysHashKeyType>> GetSysHashKeyType(Query query = null)
         {
-            var items = Context.SysAPIKey
-                              .AsNoTracking()
-                              .Where(i => i.ApiKeyID == apikeyid);
-
-
-            OnGetSysAPIKeyByApiKeyId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysAPIKeyGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysAPIKeyCreated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
-        partial void OnAfterSysAPIKeyCreated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> CreateSysAPIKey(SQLFlowUi.Models.sqlflowProd.SysAPIKey sysapikey)
-        {
-            OnSysAPIKeyCreated(sysapikey);
-
-            var existingItem = Context.SysAPIKey
-                              .Where(i => i.ApiKeyID == sysapikey.ApiKeyID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysAPIKey.Add(sysapikey);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysapikey).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysAPIKeyCreated(sysapikey);
-
-            return sysapikey;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> CancelSysAPIKeyChanges(SQLFlowUi.Models.sqlflowProd.SysAPIKey item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysAPIKeyUpdated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
-        partial void OnAfterSysAPIKeyUpdated(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> UpdateSysAPIKey(int apikeyid, SQLFlowUi.Models.sqlflowProd.SysAPIKey sysapikey)
-        {
-            OnSysAPIKeyUpdated(sysapikey);
-
-            var itemToUpdate = Context.SysAPIKey
-                              .Where(i => i.ApiKeyID == sysapikey.ApiKeyID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysapikey);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysAPIKeyUpdated(sysapikey);
-
-            return sysapikey;
-        }
-
-        partial void OnSysAPIKeyDeleted(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
-        partial void OnAfterSysAPIKeyDeleted(SQLFlowUi.Models.sqlflowProd.SysAPIKey item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysAPIKey> DeleteSysAPIKey(int apikeyid)
-        {
-            var itemToDelete = Context.SysAPIKey
-                              .Where(i => i.ApiKeyID == apikeyid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysAPIKeyDeleted(itemToDelete);
-
-
-            Context.SysAPIKey.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysAPIKeyDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-        public async Task ExportSysDocNoteToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocnote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocnote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysDocNoteToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysdocnote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysdocnote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysDocNoteRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocNote> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocNote>> GetSysDocNote(Query query = null)
-        {
-            var items = Context.SysDocNote.AsQueryable();
+            var items = Context.SysHashKeyType.AsQueryable();
 
 
             if (query != null)
@@ -8771,301 +9463,10 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysDocNoteRead(ref items);
+            OnSysHashKeyTypeRead(ref items);
 
             return await Task.FromResult(items);
         }
-
-        partial void OnSysDocNoteGet(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
-        partial void OnGetSysDocNoteByDocNoteId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDocNote> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> GetSysDocNoteByDocNoteId(int docnoteid)
-        {
-            var items = Context.SysDocNote
-                              .AsNoTracking()
-                              .Where(i => i.DocNoteID == docnoteid);
-
-
-            OnGetSysDocNoteByDocNoteId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysDocNoteGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysDocNoteCreated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
-        partial void OnAfterSysDocNoteCreated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> CreateSysDocNote(SQLFlowUi.Models.sqlflowProd.SysDocNote sysdocnote)
-        {
-            OnSysDocNoteCreated(sysdocnote);
-
-            var existingItem = Context.SysDocNote
-                              .Where(i => i.DocNoteID == sysdocnote.DocNoteID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysDocNote.Add(sysdocnote);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysdocnote).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysDocNoteCreated(sysdocnote);
-
-            return sysdocnote;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> CancelSysDocNoteChanges(SQLFlowUi.Models.sqlflowProd.SysDocNote item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysDocNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
-        partial void OnAfterSysDocNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> UpdateSysDocNote(int docnoteid, SQLFlowUi.Models.sqlflowProd.SysDocNote sysdocnote)
-        {
-            OnSysDocNoteUpdated(sysdocnote);
-
-            var itemToUpdate = Context.SysDocNote
-                              .Where(i => i.DocNoteID == sysdocnote.DocNoteID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysdocnote);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysDocNoteUpdated(sysdocnote);
-
-            return sysdocnote;
-        }
-
-        partial void OnSysDocNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
-        partial void OnAfterSysDocNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysDocNote item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysDocNote> DeleteSysDocNote(int docnoteid)
-        {
-            var itemToDelete = Context.SysDocNote
-                              .Where(i => i.DocNoteID == docnoteid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysDocNoteDeleted(itemToDelete);
-
-
-            Context.SysDocNote.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysDocNoteDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-
-
-
-        public async Task ExportSysFlowNoteToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysflownote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysflownote/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysFlowNoteToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysflownote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysflownote/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysFlowNoteRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNote> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNote>> GetSysFlowNote(Query query = null)
-        {
-            var items = Context.SysFlowNote.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnSysFlowNoteRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnSysFlowNoteGet(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
-        partial void OnGetSysFlowNoteByFlowNoteId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNote> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> GetSysFlowNoteByFlowNoteId(int flownoteid)
-        {
-            var items = Context.SysFlowNote
-                              .AsNoTracking()
-                              .Where(i => i.FlowNoteID == flownoteid);
-
-
-            OnGetSysFlowNoteByFlowNoteId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysFlowNoteGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysFlowNoteCreated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
-        partial void OnAfterSysFlowNoteCreated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> CreateSysFlowNote(SQLFlowUi.Models.sqlflowProd.SysFlowNote sysflownote)
-        {
-            OnSysFlowNoteCreated(sysflownote);
-
-            var existingItem = Context.SysFlowNote
-                              .Where(i => i.FlowNoteID == sysflownote.FlowNoteID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysFlowNote.Add(sysflownote);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysflownote).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysFlowNoteCreated(sysflownote);
-
-            return sysflownote;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> CancelSysFlowNoteChanges(SQLFlowUi.Models.sqlflowProd.SysFlowNote item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysFlowNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
-        partial void OnAfterSysFlowNoteUpdated(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> UpdateSysFlowNote(int flownoteid, SQLFlowUi.Models.sqlflowProd.SysFlowNote sysflownote)
-        {
-            OnSysFlowNoteUpdated(sysflownote);
-
-            var itemToUpdate = Context.SysFlowNote
-                              .Where(i => i.FlowNoteID == sysflownote.FlowNoteID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysflownote);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysFlowNoteUpdated(sysflownote);
-
-            return sysflownote;
-        }
-
-        partial void OnSysFlowNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
-        partial void OnAfterSysFlowNoteDeleted(SQLFlowUi.Models.sqlflowProd.SysFlowNote item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysFlowNote> DeleteSysFlowNote(int flownoteid)
-        {
-            var itemToDelete = Context.SysFlowNote
-                              .Where(i => i.FlowNoteID == flownoteid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysFlowNoteDeleted(itemToDelete);
-
-
-            Context.SysFlowNote.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysFlowNoteDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
 
         partial void OnDataSubscriberTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDataSubscriberType> items);
 
@@ -9121,521 +9522,6 @@ namespace SQLFlowUi
             return await Task.FromResult(items);
         }
 
-
-        public async Task ExportDataSubscriberToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriber/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriber/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportDataSubscriberToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriber/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriber/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnDataSubscriberRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriber> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriber>> GetDataSubscriber(Query query = null)
-        {
-            var items = Context.DataSubscriber.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnDataSubscriberRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnDataSubscriberGet(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
-        partial void OnGetDataSubscriberByFlowId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriber> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> GetDataSubscriberByFlowId(int flowid)
-        {
-            var items = Context.DataSubscriber
-                              .AsNoTracking()
-                              .Where(i => i.FlowID == flowid);
-
-
-            OnGetDataSubscriberByFlowId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnDataSubscriberGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnDataSubscriberCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
-        partial void OnAfterDataSubscriberCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> CreateDataSubscriber(SQLFlowUi.Models.sqlflowProd.DataSubscriber datasubscriber)
-        {
-            OnDataSubscriberCreated(datasubscriber);
-
-            var existingItem = Context.DataSubscriber
-                              .Where(i => i.FlowID == datasubscriber.FlowID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.DataSubscriber.Add(datasubscriber);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(datasubscriber).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterDataSubscriberCreated(datasubscriber);
-
-            return datasubscriber;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> CancelDataSubscriberChanges(SQLFlowUi.Models.sqlflowProd.DataSubscriber item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnDataSubscriberUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
-        partial void OnAfterDataSubscriberUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> UpdateDataSubscriber(int flowid, SQLFlowUi.Models.sqlflowProd.DataSubscriber datasubscriber)
-        {
-            OnDataSubscriberUpdated(datasubscriber);
-
-            var itemToUpdate = Context.DataSubscriber
-                              .Where(i => i.FlowID == datasubscriber.FlowID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(datasubscriber);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterDataSubscriberUpdated(datasubscriber);
-
-            return datasubscriber;
-        }
-
-        partial void OnDataSubscriberDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
-        partial void OnAfterDataSubscriberDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriber item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriber> DeleteDataSubscriber(int flowid)
-        {
-            var itemToDelete = Context.DataSubscriber
-                              .Where(i => i.FlowID == flowid)
-                              .Include(i => i.DataSubscriberQuery)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnDataSubscriberDeleted(itemToDelete);
-
-
-            Context.DataSubscriber.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterDataSubscriberDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-        public async Task ExportDataSubscriberQueryToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriberquery/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriberquery/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportDataSubscriberQueryToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/datasubscriberquery/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/datasubscriberquery/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnDataSubscriberQueryRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery>> GetDataSubscriberQuery(Query query = null)
-        {
-            var items = Context.DataSubscriberQuery.AsQueryable();
-
-            items = items.Include(i => i.DataSubscriber);
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnDataSubscriberQueryRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnDataSubscriberQueryGet(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
-        partial void OnGetDataSubscriberQueryByQueryID(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> GetDataSubscriberQueryByQueryID(int QueryID)
-        {
-            var items = Context.DataSubscriberQuery
-                              .AsNoTracking()
-                              .Where(i => i.QueryID == QueryID);
-
-            items = items.Include(i => i.DataSubscriber);
-
-            OnGetDataSubscriberQueryByQueryID(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnDataSubscriberQueryGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnDataSubscriberQueryCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
-        partial void OnAfterDataSubscriberQueryCreated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> CreateDataSubscriberQuery(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery datasubscriberquery)
-        {
-            OnDataSubscriberQueryCreated(datasubscriberquery);
-
-            var existingItem = Context.DataSubscriberQuery
-                              .Where(i => i.QueryID == datasubscriberquery.QueryID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.DataSubscriberQuery.Add(datasubscriberquery);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(datasubscriberquery).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterDataSubscriberQueryCreated(datasubscriberquery);
-
-            return datasubscriberquery;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> CancelDataSubscriberQueryChanges(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnDataSubscriberQueryUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
-        partial void OnAfterDataSubscriberQueryUpdated(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> UpdateDataSubscriberQuery(int QueryID, SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery datasubscriberquery)
-        {
-            OnDataSubscriberQueryUpdated(datasubscriberquery);
-
-            var itemToUpdate = Context.DataSubscriberQuery
-                              .Where(i => i.QueryID == datasubscriberquery.QueryID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(datasubscriberquery);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterDataSubscriberQueryUpdated(datasubscriberquery);
-
-            return datasubscriberquery;
-        }
-
-        partial void OnDataSubscriberQueryDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
-        partial void OnAfterDataSubscriberQueryDeleted(SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> DeleteDataSubscriberQuery(int QueryID)
-        {
-            var itemToDelete = Context.DataSubscriberQuery
-                              .Where(i => i.QueryID == QueryID)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnDataSubscriberQueryDeleted(itemToDelete);
-
-
-            Context.DataSubscriberQuery.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterDataSubscriberQueryDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-
-        public async Task ExportSysBatchToExcel(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysbatch/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysbatch/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        public async Task ExportSysBatchToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/sysbatch/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/sysbatch/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnSysBatchRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysBatch> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysBatch>> GetSysBatch(Query query = null)
-        {
-            var items = Context.SysBatch.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnSysBatchRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnSysBatchGet(SQLFlowUi.Models.sqlflowProd.SysBatch item);
-        partial void OnGetSysBatchBySysBatchId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysBatch> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> GetSysBatchBySysBatchId(int sysbatchid)
-        {
-            var items = Context.SysBatch
-                              .AsNoTracking()
-                              .Where(i => i.SysBatchID == sysbatchid);
-
-
-            OnGetSysBatchBySysBatchId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnSysBatchGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnSysBatchCreated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
-        partial void OnAfterSysBatchCreated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> CreateSysBatch(SQLFlowUi.Models.sqlflowProd.SysBatch sysbatch)
-        {
-            OnSysBatchCreated(sysbatch);
-
-            var existingItem = Context.SysBatch
-                              .Where(i => i.SysBatchID == sysbatch.SysBatchID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.SysBatch.Add(sysbatch);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(sysbatch).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterSysBatchCreated(sysbatch);
-
-            return sysbatch;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> CancelSysBatchChanges(SQLFlowUi.Models.sqlflowProd.SysBatch item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnSysBatchUpdated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
-        partial void OnAfterSysBatchUpdated(SQLFlowUi.Models.sqlflowProd.SysBatch item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> UpdateSysBatch(int sysbatchid, SQLFlowUi.Models.sqlflowProd.SysBatch sysbatch)
-        {
-            OnSysBatchUpdated(sysbatch);
-
-            var itemToUpdate = Context.SysBatch
-                              .Where(i => i.SysBatchID == sysbatch.SysBatchID)
-                              .FirstOrDefault();
-
-            if (itemToUpdate == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(sysbatch);
-            entryToUpdate.State = EntityState.Modified;
-
-            Context.SaveChanges();
-
-            OnAfterSysBatchUpdated(sysbatch);
-
-            return sysbatch;
-        }
-
-        partial void OnSysBatchDeleted(SQLFlowUi.Models.sqlflowProd.SysBatch item);
-        partial void OnAfterSysBatchDeleted(SQLFlowUi.Models.sqlflowProd.SysBatch item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.SysBatch> DeleteSysBatch(int sysbatchid)
-        {
-            var itemToDelete = Context.SysBatch
-                              .Where(i => i.SysBatchID == sysbatchid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnSysBatchDeleted(itemToDelete);
-
-
-            Context.SysBatch.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterSysBatchDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
-        partial void OnSysOpenAIModelsRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysOpenAIModel> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysOpenAIModel>> GetSysOpenAIModels(Query query = null)
-        {
-            var items = Context.SysOpenAIModel.AsQueryable();
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnSysOpenAIModelsRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-
-
         partial void OnSysFlowTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowType> items);
 
         public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowType>> GetSysFlowType(Query query = null)
@@ -9662,11 +9548,27 @@ namespace SQLFlowUi
         }
 
 
-        partial void OnSysFlowNoteTypeRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNoteType> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.SysFlowNoteType>> GetSysFlowNoteTypes(Query query = null)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysServicePrincipal> GetSysServicePrincipalByAlias(string servicePrincipalAlias)
         {
-            var items = Context.SysFlowNoteType.AsQueryable();
+            var items = Context.SysServicePrincipal
+                .AsNoTracking()
+                .Where(i => i.ServicePrincipalAlias == servicePrincipalAlias);
+
+
+            OnGetSysServicePrincipalByServicePrincipalId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysServicePrincipalGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.GetApiKey>> GetGetGoogleApiKeys(Query query = null)
+        {
+            OnGetGoogleApiKeysDefaultParams();
+
+            var items = Context.GetGoogleApiKeys.FromSqlInterpolated($"EXEC [flw].[GetApiKey] ").ToList().AsQueryable();
 
             if (query != null)
             {
@@ -9682,10 +9584,152 @@ namespace SQLFlowUi
                 ApplyQuery(ref items, query);
             }
 
-            OnSysFlowNoteTypeRead(ref items);
+            OnGetGoogleApiKeysInvoke(ref items);
 
             return await Task.FromResult(items);
         }
+
+        partial void OnGetGoogleApiKeysDefaultParams();
+
+        partial void OnGetGoogleApiKeysInvoke(ref IQueryable<SQLFlowUi.Models.sqlflowProd.GetApiKey> items);
+
+
+        partial void OnReportBatchStartEndGet(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
+        partial void OnGetReportBatchStartEndByFlowId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> GetReportBatchStartEndByFlowId(int flowid)
+        {
+            var items = Context.ReportBatchStartEnd
+                              .AsNoTracking()
+                              .Where(i => i.FlowID == flowid);
+
+
+            OnGetReportBatchStartEndByFlowId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnReportBatchStartEndGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnReportBatchStartEndCreated(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
+        partial void OnAfterReportBatchStartEndCreated(SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd item);
+
+        partial void OnReportBatchStartEndRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd> items);
+
+        public async Task ExportReportAssertionToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportassertion/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportReportAssertionToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportassertion/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportReportBatchStartEndToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportbatchstartend/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportbatchstartend/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportReportBatchStartEndToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/reportbatchstartend/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/reportbatchstartend/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.ReportBatchStartEnd>> GetReportBatchStartEnd(Query query = null)
+        {
+            var items = Context.ReportBatchStartEnd.AsQueryable();
+
+
+            if (query != null)
+            {
+                if (!string.IsNullOrEmpty(query.Expand))
+                {
+                    var propertiesToExpand = query.Expand.Split(',');
+                    foreach (var p in propertiesToExpand)
+                    {
+                        items = items.Include(p.Trim());
+                    }
+                }
+
+                ApplyQuery(ref items, query);
+            }
+
+            OnReportBatchStartEndRead(ref items);
+
+            return await Task.FromResult(items);
+        }
+
+        partial void OnGetSysLogFileByRecId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysLogFile> items);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysLogFile> GetSysLogFileByRecId(int recid)
+        {
+            var items = Context.SysLogFile
+                              .AsNoTracking()
+                              .Where(i => i.LogFileID == recid);
+
+
+            OnGetSysLogFileByRecId(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysLogFileGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        public async Task ExportFlowDsToCSV(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/flowds/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/flowds/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        public async Task ExportFlowDsToExcel(Query query = null, string fileName = null)
+        {
+            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/flowds/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/flowds/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
+        }
+
+        partial void OnGetDataSubscriberQueryByQueryID(ref IQueryable<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> items);
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.DataSubscriberQuery> GetDataSubscriberQueryByQueryID(int QueryID)
+        {
+            var items = Context.DataSubscriberQuery
+                              .AsNoTracking()
+                              .Where(i => i.QueryID == QueryID);
+
+            items = items.Include(i => i.DataSubscriber);
+
+            OnGetDataSubscriberQueryByQueryID(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnDataSubscriberQueryGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
+        partial void OnSysHashKeyTypeGet(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
+        partial void OnGetSysHashKeyTypeByHashKeyType(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> items);
+
+
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> GetSysHashKeyTypeByHashKeyType(string hashkeytype)
+        {
+            var items = Context.SysHashKeyType
+                              .AsNoTracking()
+                              .Where(i => i.HashKeyType == hashkeytype);
+
+
+            OnGetSysHashKeyTypeByHashKeyType(ref items);
+
+            var itemToReturn = items.FirstOrDefault();
+
+            OnSysHashKeyTypeGet(itemToReturn);
+
+            return await Task.FromResult(itemToReturn);
+        }
+
 
 
         partial void OnSysDetectUniqueKeyRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.SysDetectUniqueKey> items);
@@ -9714,117 +9758,15 @@ namespace SQLFlowUi
         }
 
 
+        partial void OnSysHashKeyTypeUpdated(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
+        partial void OnAfterSysHashKeyTypeUpdated(SQLFlowUi.Models.sqlflowProd.SysHashKeyType item);
 
-
-        public async Task ExportMatchKeyToExcel(Query query = null, string fileName = null)
+        public async Task<SQLFlowUi.Models.sqlflowProd.SysHashKeyType> UpdateSysHashKeyType(string hashkeytype, SQLFlowUi.Models.sqlflowProd.SysHashKeyType syshashkeytype)
         {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/matchkey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/matchkey/excel(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
+            OnSysHashKeyTypeUpdated(syshashkeytype);
 
-        public async Task ExportMatchKeyToCSV(Query query = null, string fileName = null)
-        {
-            navigationManager.NavigateTo(query != null ? query.ToUrl($"export/sqlflowprod/matchkey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')") : $"export/sqlflowprod/matchkey/csv(fileName='{(!string.IsNullOrEmpty(fileName) ? UrlEncoder.Default.Encode(fileName) : "Export")}')", true);
-        }
-
-        partial void OnMatchKeyRead(ref IQueryable<SQLFlowUi.Models.sqlflowProd.MatchKey> items);
-
-        public async Task<IQueryable<SQLFlowUi.Models.sqlflowProd.MatchKey>> GetMatchKey(Query query = null)
-        {
-            var items = Context.MatchKey.AsQueryable();
-
-
-            if (query != null)
-            {
-                if (!string.IsNullOrEmpty(query.Expand))
-                {
-                    var propertiesToExpand = query.Expand.Split(',');
-                    foreach (var p in propertiesToExpand)
-                    {
-                        items = items.Include(p.Trim());
-                    }
-                }
-
-                ApplyQuery(ref items, query);
-            }
-
-            OnMatchKeyRead(ref items);
-
-            return await Task.FromResult(items);
-        }
-
-        partial void OnMatchKeyGet(SQLFlowUi.Models.sqlflowProd.MatchKey item);
-        partial void OnGetMatchKeyByMatchKeyId(ref IQueryable<SQLFlowUi.Models.sqlflowProd.MatchKey> items);
-
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> GetMatchKeyByMatchKeyId(int matchkeyid)
-        {
-            var items = Context.MatchKey
-                              .AsNoTracking()
-                              .Where(i => i.MatchKeyID == matchkeyid);
-
-
-            OnGetMatchKeyByMatchKeyId(ref items);
-
-            var itemToReturn = items.FirstOrDefault();
-
-            OnMatchKeyGet(itemToReturn);
-
-            return await Task.FromResult(itemToReturn);
-        }
-
-        partial void OnMatchKeyCreated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
-        partial void OnAfterMatchKeyCreated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> CreateMatchKey(SQLFlowUi.Models.sqlflowProd.MatchKey matchkey)
-        {
-            OnMatchKeyCreated(matchkey);
-
-            var existingItem = Context.MatchKey
-                              .Where(i => i.MatchKeyID == matchkey.MatchKeyID)
-                              .FirstOrDefault();
-
-            if (existingItem != null)
-            {
-                throw new Exception("Item already available");
-            }
-
-            try
-            {
-                Context.MatchKey.Add(matchkey);
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(matchkey).State = EntityState.Detached;
-                throw;
-            }
-
-            OnAfterMatchKeyCreated(matchkey);
-
-            return matchkey;
-        }
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> CancelMatchKeyChanges(SQLFlowUi.Models.sqlflowProd.MatchKey item)
-        {
-            var entityToCancel = Context.Entry(item);
-            if (entityToCancel.State == EntityState.Modified)
-            {
-                entityToCancel.CurrentValues.SetValues(entityToCancel.OriginalValues);
-                entityToCancel.State = EntityState.Unchanged;
-            }
-
-            return item;
-        }
-
-        partial void OnMatchKeyUpdated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
-        partial void OnAfterMatchKeyUpdated(SQLFlowUi.Models.sqlflowProd.MatchKey item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> UpdateMatchKey(int matchkeyid, SQLFlowUi.Models.sqlflowProd.MatchKey matchkey)
-        {
-            OnMatchKeyUpdated(matchkey);
-
-            var itemToUpdate = Context.MatchKey
-                              .Where(i => i.MatchKeyID == matchkey.MatchKeyID)
+            var itemToUpdate = Context.SysHashKeyType
+                              .Where(i => i.HashKeyType == syshashkeytype.HashKeyType)
                               .FirstOrDefault();
 
             if (itemToUpdate == null)
@@ -9833,54 +9775,14 @@ namespace SQLFlowUi
             }
 
             var entryToUpdate = Context.Entry(itemToUpdate);
-            entryToUpdate.CurrentValues.SetValues(matchkey);
+            entryToUpdate.CurrentValues.SetValues(syshashkeytype);
             entryToUpdate.State = EntityState.Modified;
 
             Context.SaveChanges();
 
-            OnAfterMatchKeyUpdated(matchkey);
+            OnAfterSysHashKeyTypeUpdated(syshashkeytype);
 
-            return matchkey;
+            return syshashkeytype;
         }
-
-        partial void OnMatchKeyDeleted(SQLFlowUi.Models.sqlflowProd.MatchKey item);
-        partial void OnAfterMatchKeyDeleted(SQLFlowUi.Models.sqlflowProd.MatchKey item);
-
-        public async Task<SQLFlowUi.Models.sqlflowProd.MatchKey> DeleteMatchKey(int matchkeyid)
-        {
-            var itemToDelete = Context.MatchKey
-                              .Where(i => i.MatchKeyID == matchkeyid)
-                              .FirstOrDefault();
-
-            if (itemToDelete == null)
-            {
-                throw new Exception("Item no longer available");
-            }
-
-            OnMatchKeyDeleted(itemToDelete);
-
-
-            Context.MatchKey.Remove(itemToDelete);
-
-            try
-            {
-                Context.SaveChanges();
-            }
-            catch
-            {
-                Context.Entry(itemToDelete).State = EntityState.Unchanged;
-                throw;
-            }
-
-            OnAfterMatchKeyDeleted(itemToDelete);
-
-            return itemToDelete;
-        }
-
     }
-
-
 }
-
-
-

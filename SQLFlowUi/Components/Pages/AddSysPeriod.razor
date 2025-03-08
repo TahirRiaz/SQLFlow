@@ -1,0 +1,159 @@
+@page "/add-sys-period"
+@attribute [Authorize]
+
+<PageTitle>Add SysPeriod</PageTitle>
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysPeriod</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Data="@sysPeriod" Visible="@(sysPeriod != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text="PeriodID" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.PeriodID" Name="PeriodID" />
+                  </ChildContent>    
+                  <Helper>
+                    <RadzenRequiredValidator Component="PeriodID" Text="PeriodID is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text="Date" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysPeriod.Date" Name="Date" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Day Of Month" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.DayOfMonth" Name="DayOfMonth" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Day Of Week Name" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.DayOfWeekName" Name="DayOfWeekName" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Day Of Week Name Short" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.DayOfWeekNameShort" Name="DayOfWeekNameShort" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Day Of Week Number" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.DayOfWeekNumber" Name="DayOfWeekNumber" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Week Of Year" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.WeekOfYear" Name="WeekOfYear" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Month Number" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.MonthNumber" Name="MonthNumber" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Month Name" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.MonthName" Name="MonthName" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Month Name Short" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.MonthNameShort" Name="MonthNameShort" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Month Num Name" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.MonthNumName" Name="MonthNumName" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Quarter" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.Quarter" Name="Quarter" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Year" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.Year" Name="Year" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text="Is Weekend" Component="IsWeekend" style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysPeriod.IsWeekend" Name="IsWeekend" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text="Is Leap Year" Component="IsLeapYear" style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysPeriod.IsLeapYear" Name="IsLeapYear" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text="Is Last Day Of Month" Component="IsLastDayOfMonth" style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysPeriod.IsLastDayOfMonth" Name="IsLastDayOfMonth" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text="Fiscal Week Of Year" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.FiscalWeekOfYear" Name="FiscalWeekOfYear" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Fiscal Month" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.FiscalMonth" Name="FiscalMonth" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Fiscal Quarter" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.FiscalQuarter" Name="FiscalQuarter" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Fiscal Year" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.FiscalYear" Name="FiscalYear" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text="Is Holiday" Component="IsHoliday" style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysPeriod.IsHoliday" Name="IsHoliday" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text="Holiday Name" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.HolidayName" Name="HolidayName" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Season" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysPeriod.Season" Name="Season" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text="Daylight Saving Time" Component="DaylightSavingTime" style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysPeriod.DaylightSavingTime" Name="DaylightSavingTime" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text="ISO Week Number" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysPeriod.ISOWeekNumber" Name="ISOWeekNumber" />
+              </ChildContent>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+

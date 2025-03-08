@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SQLFlowUi.Models.sqlflowProd
@@ -14,6 +17,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string DateSample { get; set; }
 
         public string Type { get; set; }
-
     }
 }

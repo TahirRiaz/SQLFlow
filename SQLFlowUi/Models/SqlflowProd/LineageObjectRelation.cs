@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -19,6 +21,5 @@ namespace SQLFlowUi.Models.sqlflowProd
         public string RightObjectCol { get; set; }
 
         public bool? ManualEntry { get; set; }
-
     }
 }

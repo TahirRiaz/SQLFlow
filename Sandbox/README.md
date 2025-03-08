@@ -156,6 +156,36 @@ To force an update, run:
    docker-compose up -d
    ```
 
+### Platform Compatibility Note for Mac Users
+
+SQLFlow Docker images are built using the `linux/amd64` platform architecture. This may cause compatibility issues when running on Mac computers, especially those with Apple Silicon (M1/M2/M3) processors.
+
+If you encounter issues running the SQLFlow containers on a Mac, use the `--platform` flag to specify the target platform:
+
+#### Option 1: Modify your docker-compose.yml file
+Add the platform specification to each service in your docker-compose.yml:
+
+```yaml
+services:
+  sqlflowapi:
+    platform: linux/amd64
+    image: ...
+    
+  sqlflowui:
+    platform: linux/amd64
+    image: ...
+```
+
+#### Option 2: Use the platform flag with Docker run commands
+If you're not using docker-compose, specify the platform when running containers:
+
+```bash
+docker run --platform linux/amd64 -d [other options] sqlflowapi
+docker run --platform linux/amd64 -d [other options] sqlflowui
+```
+
+This configuration enables Docker to properly emulate the required architecture on Mac systems, which may cause a slight performance impact but ensures compatibility.
+
 ### Persistent Volumes
 The Docker setup creates these volumes:
 - `sqlflow-keys`: Encryption keys
@@ -164,7 +194,7 @@ The Docker setup creates these volumes:
 
 ## Step 5: Access SQLFlow
 
-Once running successfully:
+Once running successfully use HTTP to avoid certificate errors for local testing.
 
 | Service | URL |
 |---------|-----|
@@ -184,6 +214,7 @@ Once running successfully:
 | **Certificate Errors** | Accept browser warnings for self-signed certificates or provide your own |
 | **Memory Issues** | Both containers have 2GB memory limits; adjust as needed |
 | **Container Failures** | Check logs with `docker-compose logs sqlflowui` or `docker-compose logs sqlflowapi` |
+| **Mac Compatibility** | Use `--platform linux/amd64` flag as described in the platform compatibility section |
 
 ## Stopping the Services
 

@@ -1,0 +1,116 @@
+@page "/edit-sys-log-match-key"
+@attribute [Authorize]
+
+<PageTitle>Edit SysLogMatchKey</PageTitle>
+
+    <RadzenColumn SizeMD=12>
+        <RadzenAlert Shade="Shade.Lighter" Variant="Variant.Flat" Size="AlertSize.Small" AlertStyle="AlertStyle.Danger" Visible="@errorVisible">Cannot save SysLogMatchKey</RadzenAlert>
+        <RadzenTemplateForm TItem="SQLFlowUi.Models.sqlflowProd.SysLogMatchKey" Data="@sysLogMatchKey" Visible="@(sysLogMatchKey != null)" Submit="@FormSubmit">
+          <RadzenStack>
+            <RadzenFormField Text="Match KeyID" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.MatchKeyID" Name="MatchKeyID" />
+                  </ChildContent>    
+                  <Helper>
+                    <RadzenRequiredValidator Component="MatchKeyID" Text="MatchKeyID is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text="FlowID" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.FlowID" Name="FlowID" />
+                  </ChildContent>    
+                  <Helper>
+                    <RadzenRequiredValidator Component="FlowID" Text="FlowID is required" />
+                  </Helper>
+            </RadzenFormField>
+            <RadzenFormField Text="BatchID" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.BatchID" Name="BatchID" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Sys Alias" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.SysAlias" Name="SysAlias" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Batch" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.Batch" Name="Batch" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Start Time" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.StartTime" Name="StartTime" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="End Time" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenDatePicker DateFormat="yyyy-MM-dd" style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.EndTime" Name="EndTime" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenRow style="margin-bottom: 1rem">
+                <RadzenColumn SizeMD="3">
+                    <RadzenLabel Text="Status" Component="Status" style="width: 100%" />
+                </RadzenColumn>
+                <RadzenColumn SizeMD="9">
+                    <RadzenCheckBox @bind-Value="@sysLogMatchKey.Status" Name="Status" />
+                </RadzenColumn>
+            </RadzenRow>
+            <RadzenFormField Text="Duration Match" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.DurationMatch" Name="DurationMatch" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Duration Pre" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.DurationPre" Name="DurationPre" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Duration Post" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.DurationPost" Name="DurationPost" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Src Row Count" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.SrcRowCount" Name="SrcRowCount" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Src Del Row Count" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.SrcDelRowCount" Name="SrcDelRowCount" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Trg Row Count" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.TrgRowCount" Name="TrgRowCount" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Trg Del Row Count" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.TrgDelRowCount" Name="TrgDelRowCount" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Tagged Row Count" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenNumeric style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.TaggedRowCount" Name="TaggedRowCount" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Error Message" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.ErrorMessage" Name="ErrorMessage" />
+              </ChildContent>
+            </RadzenFormField>
+            <RadzenFormField Text="Trace Log" Variant="Variant.Outlined">
+                  <ChildContent>
+                    <RadzenTextBox style="display: block; width: 100%" @bind-Value="@sysLogMatchKey.TraceLog" Name="TraceLog" />
+              </ChildContent>
+            </RadzenFormField>
+          </RadzenStack>
+          <RadzenStack style="margin-top:1rem;" Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                    <RadzenButton ButtonStyle="ButtonStyle.Primary" ButtonType="ButtonType.Submit" Icon="save" Text="Save" Variant="Variant.Flat" />
+                    <RadzenButton ButtonStyle="ButtonStyle.Light" Text="Cancel" Variant="Variant.Flat" Click="@CancelButtonClick"  />
+          </RadzenStack>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+

@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -13,18 +15,12 @@ namespace SQLFlowUi.Models.sqlflowProd
         [Required]
         public string ObjectName { get; set; }
 
-       
-
         public string Title { get; set; }
 
         public string Description { get; set; }
 
-       
-        
-
         public DateTime? Created { get; set; }
 
         public string CreatedBy { get; set; }
-
     }
 }

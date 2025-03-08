@@ -1,0 +1,90 @@
+@page "/sys-period"
+@attribute [Authorize]
+
+<PageTitle>SysPeriod</PageTitle>
+<RadzenStack>
+    <RadzenRow AlignItems="AlignItems.Center">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenText Text="SysPeriod" TextStyle="TextStyle.H3" TagName="TagName.H1" style="margin: 0" />
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.End" Gap="0.5rem">
+                <RadzenSplitButton Icon="get_app" Text="Export" Click="@ExportClick" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    <RadzenSplitButtonItem Text="Excel" Value="xlsx" />
+                    <RadzenSplitButtonItem Text="CSV" Value="csv" />
+                </RadzenSplitButton>
+                <RadzenButton Icon="add_circle_outline" Text="Add" Click="@AddButtonClick" Variant="Variant.Flat" />
+            </RadzenStack>
+        </RadzenColumn>
+    </RadzenRow>
+    <RadzenTextBox Placeholder="Search ..." style="display: block; width: 100%" @oninput="@Search" aria-label="Search by all string columns" />
+    <RadzenRow>
+      <RadzenColumn SizeMD=12>
+        <RadzenDataGrid @ref="grid0" ColumnWidth="200px"   AllowFiltering="true" FilterMode="FilterMode.Advanced" AllowPaging="true" AllowSorting="true" ShowPagingSummary="true" PageSizeOptions=@(new int[]{5, 10, 20, 30})
+            Data="@sysPeriodCollection" TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" RowDoubleClick="@EditRow">
+            <Columns>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="PeriodID" Title="PeriodID">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="Date" Title="Date">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="DayOfMonth" Title="Day Of Month">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="DayOfWeekName" Title="Day Of Week Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="DayOfWeekNameShort" Title="Day Of Week Name Short">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="DayOfWeekNumber" Title="Day Of Week Number">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="WeekOfYear" Title="Week Of Year">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="MonthNumber" Title="Month Number">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="MonthName" Title="Month Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="MonthNameShort" Title="Month Name Short">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="MonthNumName" Title="Month Num Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="Quarter" Title="Quarter">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="Year" Title="Year">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="IsWeekend" Title="Is Weekend">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="IsLeapYear" Title="Is Leap Year">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="IsLastDayOfMonth" Title="Is Last Day Of Month">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="FiscalWeekOfYear" Title="Fiscal Week Of Year">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="FiscalMonth" Title="Fiscal Month">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="FiscalQuarter" Title="Fiscal Quarter">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="FiscalYear" Title="Fiscal Year">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="IsHoliday" Title="Is Holiday">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="HolidayName" Title="Holiday Name">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="Season" Title="Season">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="DaylightSavingTime" Title="Daylight Saving Time">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Property="ISOWeekNumber" Title="ISO Week Number">
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="SQLFlowUi.Models.sqlflowProd.SysPeriod" Filterable="false" Sortable="false" Width="70px" TextAlign="TextAlign.Center">
+                    <Template Context="sysPeriod">
+
+                        <RadzenButton ButtonStyle="ButtonStyle.Danger" Icon="delete" Size="ButtonSize.Medium"
+                            Shade="Shade.Lighter" Variant="Variant.Flat"
+                            Click=@(args => GridDeleteButtonClick(args, sysPeriod)) @onclick:stopPropagation="true" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+
+        </RadzenDataGrid>
+
+    </RadzenColumn>
+  </RadzenRow>
+</RadzenStack>

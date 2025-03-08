@@ -11,14 +11,13 @@
     
     <link rel="stylesheet" href="/css/site.css" />
     <link rel="icon" href="/favicon.ico" />
-    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.2/css/all.css">
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <script src="/js/audiorecorder.js"></script>
+
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs/loader.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
-    
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v6.4.2/css/all.css">
+
     <script>
 
         function triggerOpenCloneDialogJs(flowid) {
@@ -136,6 +135,7 @@
             position: relative;
             width: 100%;
             overflow: auto;
+            height: 400px;
             max-height: 400px;
             border: 1px solid #ccc;
             background-color: #f9f9f9;
@@ -230,3 +230,26 @@
 </body>
 
 </html>
+
+@code {
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; }
+
+    [Inject]
+    private ThemeService ThemeService { get; set; }
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+
+        if (HttpContext != null)
+        {
+            var theme = HttpContext.Request.Cookies["SQLFlowUiTheme"];
+
+            if (!string.IsNullOrEmpty(theme))
+            {
+                ThemeService.SetTheme(theme, false);
+            }
+        }
+    }
+}
