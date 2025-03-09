@@ -2078,6 +2078,172 @@ namespace SQLFlowCore.Services.Schema
             }
             catch { }
         }
+
+        /// <summary>
+        /// Validates database objects in bulk and returns their information including URNs
+        /// </summary>
+        /// <param name="sqlConnection">An existing SqlConnection to the database</param>
+        /// <param name="databaseName">The name of the database</param>
+        /// <param name="objectsTable">DataTable containing objects to validate with Schema and Object columns</param>
+        /// <returns>DataTable with validated objects including Schema, Object, ObjectType, and URN</returns>
+        public static DataTable ValidateObjectsBulk(SqlConnection sqlConnection, DataTable objectsTable)
+        {
+            // Create result table with appropriate schema
+            DataTable result = new DataTable("ValidatedObjects");
+            result.Columns.Add("Schema", typeof(string));
+            result.Columns.Add("Object", typeof(string));
+            result.Columns.Add("ObjectType", typeof(string));
+            result.Columns.Add("ObjectTypeDescription", typeof(string));
+            result.Columns.Add("URN", typeof(string));
+            result.Columns.Add("IsValid", typeof(bool));
+
+            if (objectsTable == null || objectsTable.Rows.Count == 0)
+                return result;
+
+            // Extract schema and object names from the DataTable
+            List<Tuple<string, string>> objectsToLookup = new List<Tuple<string, string>>();
+            foreach (DataRow row in objectsTable.Rows)
+            {
+                string schema = row["Schema"]?.ToString() ?? string.Empty;
+                string objectName = row["Object"]?.ToString() ?? string.Empty;
+
+                if (!string.IsNullOrEmpty(schema) && !string.IsNullOrEmpty(objectName))
+                {
+                    objectsToLookup.Add(new Tuple<string, string>(schema, objectName));
+                }
+            }
+
+            if (objectsToLookup.Count == 0)
+                return result;
+
+            // Handle batching for large number of objects
+            const int batchSize = 500; // Adjust based on your database performance
+            bool connectionWasOpen = (sqlConnection.State == ConnectionState.Open);
+
+            try
+            {
+                if (!connectionWasOpen)
+                    sqlConnection.Open();
+
+                // Process in batches
+                for (int batchStart = 0; batchStart < objectsToLookup.Count; batchStart += batchSize)
+                {
+                    // Define the current batch
+                    int currentBatchSize = Math.Min(batchSize, objectsToLookup.Count - batchStart);
+                    var currentBatch = objectsToLookup.Skip(batchStart).Take(currentBatchSize).ToList();
+
+                    // Build query using parameters for security
+                    StringBuilder queryBuilder = new StringBuilder();
+                    queryBuilder.AppendLine(@"
+                    SELECT 
+                        SCHEMA_NAME(o.schema_id) AS [Schema], 
+                        o.name AS [Object], 
+                        o.type AS ObjectType,
+                        CASE o.type 
+                            WHEN 'U' THEN 'Table' 
+                            WHEN 'V' THEN 'View' 
+                            WHEN 'P' THEN 'Stored Procedure' 
+                            ELSE o.type 
+                        END AS ObjectTypeDescription,
+                        CONCAT('Server[@Name=''', @@SERVERNAME, ''']',
+                               '/Database[@Name=''', DB_NAME(), ''']',
+                               '/', CASE o.type 
+                                      WHEN 'U' THEN 'Table' 
+                                      WHEN 'V' THEN 'View' 
+                                      WHEN 'P' THEN 'StoredProcedure' 
+                                      ELSE 'UnknownObjectType' 
+                                    END,
+                               '[@Name=''', o.name, ''' and @Schema=''', SCHEMA_NAME(o.schema_id), ''']') AS URN
+                    FROM sys.objects o
+                    WHERE (o.type = 'U' OR o.type = 'V' OR o.type = 'P')
+                    AND (");
+
+                    List<string> conditions = new List<string>();
+                    for (int i = 0; i < currentBatch.Count; i++)
+                    {
+                        conditions.Add($"(SCHEMA_NAME(o.schema_id) = @Schema{i} AND o.name = @Object{i})");
+                    }
+
+                    queryBuilder.AppendLine(string.Join(" OR ", conditions));
+                    queryBuilder.AppendLine(")");
+
+                    using (SqlCommand command = new SqlCommand(queryBuilder.ToString(), sqlConnection))
+                    {
+                        // Add parameters
+                        for (int i = 0; i < currentBatch.Count; i++)
+                        {
+                            command.Parameters.AddWithValue($"@Schema{i}", currentBatch[i].Item1);
+                            command.Parameters.AddWithValue($"@Object{i}", currentBatch[i].Item2);
+                        }
+
+                        command.CommandTimeout = 300;
+                        using (SqlDataAdapter adapter = new SqlDataAdapter(command))
+                        {
+                            DataTable batchResults = new DataTable();
+                            adapter.Fill(batchResults);
+
+                            // Merge results
+                            foreach (DataRow row in batchResults.Rows)
+                            {
+                                DataRow newRow = result.NewRow();
+                                newRow["Schema"] = row["Schema"];
+                                newRow["Object"] = row["Object"];
+                                newRow["ObjectType"] = row["ObjectType"];
+                                newRow["ObjectTypeDescription"] = row["ObjectTypeDescription"];
+                                newRow["URN"] = row["URN"];
+                                newRow["IsValid"] = true;
+                                result.Rows.Add(newRow);
+                            }
+                        }
+                    }
+                }
+
+                // Add entries for objects that were not found
+                foreach (var objectToLookup in objectsToLookup)
+                {
+                    string schema = objectToLookup.Item1;
+                    string objectName = objectToLookup.Item2;
+
+                    // Check if this object was found
+                    bool found = false;
+                    foreach (DataRow row in result.Rows)
+                    {
+                        if (string.Equals(row["Schema"].ToString(), schema, StringComparison.OrdinalIgnoreCase) &&
+                            string.Equals(row["Object"].ToString(), objectName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    // If not found, add a row with IsValid = false
+                    if (!found)
+                    {
+                        DataRow newRow = result.NewRow();
+                        newRow["Schema"] = schema;
+                        newRow["Object"] = objectName;
+                        newRow["ObjectType"] = DBNull.Value;
+                        newRow["ObjectTypeDescription"] = "Not Found";
+                        newRow["URN"] = DBNull.Value;
+                        newRow["IsValid"] = false;
+                        result.Rows.Add(newRow);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Add error handling as needed
+                // Consider adding a column for error messages or throw a more specific exception
+                throw new Exception($"Error during bulk object validation: {ex.Message}", ex);
+            }
+            finally
+            {
+                if (!connectionWasOpen && sqlConnection.State == ConnectionState.Open)
+                    sqlConnection.Close();
+            }
+
+            return result;
+        }
     }
 }
 

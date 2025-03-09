@@ -829,7 +829,7 @@ namespace SQLFlowApi.Controllers
                 {
                     // This Task.Run should also respect cancellation
                     cts.Token.ThrowIfCancellationRequested();
-                    rValue = ExecLineageMap.Exec(sw, conStr, request.All, request.Alias, request.ExecMode, int.Parse(request.Threads), int.Parse(request.Dbg));
+                    ExecLineageMap.Exec(sw, conStr, request.All, request.Alias, request.ExecMode, int.Parse(request.Threads), int.Parse(request.Dbg));
                 });
 
                 await KeepAliveWithCancel(t, sw, request.cancelTokenId);
@@ -2232,7 +2232,7 @@ namespace SQLFlowApi.Controllers
         /// <param name="Duration">The duration of the processing time in seconds.</param>
         private static void writeProcTime(StreamWriter sw, string Duration)
         {
-            sw.WriteAsync($"#### Processing time {Duration} (sec) {Environment.NewLine}");
+            sw.WriteAsync($"{Environment.NewLine}"); //#### Processing time {Duration} (sec) 
             sw.FlushAsync();
         }
 

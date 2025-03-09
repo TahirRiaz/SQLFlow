@@ -20,6 +20,11 @@ using SQLFlowCore.Services.TsqlParser;
 using SQLFlowCore.Lineage;
 using Renci.SshNet.Common;
 using System.Reflection;
+using SQLFlowCore.Logger;
+using System.Text;
+using Tensorflow.IO;
+using Microsoft.Extensions.Logging;
+using SQLFlowCore.Services;
 
 namespace SQLFlowCore.Pipeline
 {
@@ -40,8 +45,6 @@ namespace SQLFlowCore.Pipeline
         /// </remarks>
         public static event EventHandler<EventArgsLineage> OnLineageCalculated;
        
-        private static string _lineageLog = "";
-        private static string _dbLog = "";
         private static int _objectCounter = 0;
         private static int _total = 1;
 
@@ -49,7 +52,7 @@ namespace SQLFlowCore.Pipeline
         /// <summary>
         /// Executes the lineage map and returns the result as a string.
         /// </summary>
-        /// <param name="logWriter">The StreamWriter object to write logs.</param>
+        /// <param name="logOutput">The StreamWriter object to write logs.</param>
         /// <param name="sqlFlowConString">The connection string to the SQLFlow database.</param>
         /// <param name="all">Optional parameter to specify whether to fetch lineage information for all objects. Default is "0".</param>
         /// <param name="alias">Optional parameter to specify the alias for fetching lineage information for flow objects. Default is an empty string.</param>
@@ -60,66 +63,67 @@ namespace SQLFlowCore.Pipeline
         /// <remarks>
         /// This method also updates the `_lineageLog` and `_objectCounter` static fields of the `ExecLineageMap` class.
         /// </remarks>
-        public static string Exec(StreamWriter logWriter, string sqlFlowConString, string all = "0", string alias = "", string execMode = "adf", int noOfThreads = 4, int dbg = 0)
+        public static void Exec(StreamWriter logOutput, string sqlFlowConString, string all = "0", string alias = "", string execMode = "adf", int noOfThreads = 4, int dbg = 0)
         {
             _objectCounter = 0;
             _total = 1;
 
-            var result = "false";
-            _lineageLog = "";
-            new object();
-            ConStringParser conStringParser = new ConStringParser(sqlFlowConString)
-            {
-                ConBuilderMsSql =
-                {
-                    ApplicationName = "SQLFlow App"
-                }
-            };
+            var logger = RealTimeLogger.CreateFromStream(
+                        "LineageLogger",
+                        logOutput,
+                        leaveOpen: true, // The logger will own and dispose the stream
+                        LogLevel.Information,
+                        debugLevel: dbg);
+
+            ConStringParser conStringParser = new ConStringParser(sqlFlowConString) { ConBuilderMsSql = { ApplicationName = "SQLFlow App" }};
             sqlFlowConString = conStringParser.ConBuilderMsSql.ConnectionString;
 
+            logger.LogInformation("Init Lineage Calculation");
+            
             string LineageDsCmd = $@"exec [flw].[GetLineageObjects] @alias = '{alias}', @all = '{all}', @dbg = {dbg.ToString()}";
 
-            _lineageLog += "## " + LineageDsCmd + Environment.NewLine;
-            logWriter.Write("## " + LineageDsCmd + Environment.NewLine);
-            logWriter.Flush();
+            
+            logger.Flush();
+
             long logDurationPre = 0;
             var totalTime = new Stopwatch();
-            var watch = new Stopwatch();
+            
             totalTime.Start();
             using (var sqlFlowCon = new SqlConnection(sqlFlowConString))
             {
                 try
                 {
                     sqlFlowCon.Open();
-                    watch.Restart();
-                    using (SqlCommand cmd = new SqlCommand("[flw].[CalcLineagePre]", sqlFlowCon))
-                    {
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.Parameters.Add("@Alias", SqlDbType.VarChar).Value = alias;
-                        cmd.ExecuteNonQuery();
-                    }
-                    watch.Stop();
-                    logDurationPre = watch.ElapsedMilliseconds / 1000;
-                    _lineageLog += $"## Executing LineagePre Step [flw].[CalcLineagePre] ({logDurationPre.ToString()} sec)  {Environment.NewLine}";
-                    logWriter.Write($"## Executing LineagePre Step [flw].[CalcLineagePre] ({logDurationPre.ToString()} sec)  {Environment.NewLine}");
-                    logWriter.Flush();
 
-                    //_execNodeLog += batchDsCmd;
+
                     DataSet ds = new DataSet();
-                    ds = CommonDB.GetDataSetFromSP(sqlFlowCon, LineageDsCmd, 720);
-
+                    using (logger.TrackOperation("Fetch lineage base data"))
+                    {
+                        logger.LogInformation(LineageDsCmd);
+                        ds = CommonDB.GetDataSetFromSP(sqlFlowCon, LineageDsCmd, 720);
+                    }
                     DataTable ObjectTbl = ds.Tables[0];
                     DataTable SubscriberTbl = ds.Tables[1];
                     DataTable SubscriberRelationTbl = ds.Tables[2];
-
                     _total = ObjectTbl.Rows.Count;
 
+                    using (logger.TrackOperation("Execute lineage preparation step [flw].[CalcLineagePre]"))
+                    {
+                        using (SqlCommand cmd = new SqlCommand("[flw].[CalcLineagePre]", sqlFlowCon))
+                        {
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.Parameters.Add("@Alias", SqlDbType.VarChar).Value = alias;
+                            cmd.ExecuteNonQuery();
+                        }
+                    }
+                    logger.Flush();
+
                     List<DataTable> DTSplitOnAlias = ObjectTbl.AsEnumerable()
-                    .AsParallel().AsOrdered()
-                    .OrderBy(row => row.Field<string>("Alias"))
-                    .GroupBy(row => row.Field<string>("Alias"))
-                    .Select(g => g.CopyToDataTable())
-                    .ToList();
+                                    .AsParallel().AsOrdered()
+                                    .OrderBy(row => row.Field<string>("Alias"))
+                                    .GroupBy(row => row.Field<string>("Alias"))
+                                    .Select(g => g.CopyToDataTable())
+                                    .ToList();
 
                     List<Tuple<Urn, string>> tableIndexes = new List<Tuple<Urn, string>>();
                     List<string> Rows = new List<string>();
@@ -131,14 +135,12 @@ namespace SQLFlowCore.Pipeline
                     foreach (DataTable _tb in DTSplitOnAlias)
                     {
                         string dbase = _tb.Rows[0]["Database"]?.ToString() ?? string.Empty;
-                        _lineageLog += $"## Database {dbase} ({_tb.Rows.Count.ToString()} objects) {Environment.NewLine}";
-                        logWriter.Write($"## Database {dbase} ({_tb.Rows.Count.ToString()} objects) {Environment.NewLine}");
-                        logWriter.Flush();
+                        logger.LogInformation($"Database {dbase} ({_tb.Rows.Count.ToString()} objects)");
+                        logOutput.Flush();
                     }
 
-                    _lineageLog += $"## Fetched objects from meta data ({ObjectTbl.Rows.Count.ToString()}) {Environment.NewLine}";
-                    logWriter.Write($"## Fetched objects from meta data ({ObjectTbl.Rows.Count.ToString()}) {Environment.NewLine}");
-                    logWriter.Flush();
+                    logger.LogInformation($"Fetched objects from meta data ({ObjectTbl.Rows.Count.ToString()})");
+                    logOutput.Flush();
 
                     Dictionary<string, string> _relationJson = new Dictionary<string, string>();
 
@@ -176,22 +178,19 @@ namespace SQLFlowCore.Pipeline
                         ConStringParser objConStringParser = new ConStringParser(ConnectionString);
                         string conStrParsed = objConStringParser.ConBuilderMsSql.ConnectionString;
 
-                        _dbLog += $"## Database {Database}  {Environment.NewLine}";
-
-                        //using Microsoft.Data.SqlClient;
-                        SqlConnection sqlCon = new SqlConnection(conStrParsed);
-                        ServerConnection srvCon = new ServerConnection(sqlCon);
-                        Server srv = new Server(srvCon);
-                        //srv.SetDefaultInitFields(typeof(Table), "Name", "Schema", "IsSystemObject");
-                        //srv.SetDefaultInitFields(typeof(View), "Name", "Schema", "IsSystemObject");
-                        //srv.SetDefaultInitFields(typeof(StoredProcedure), "Name", "Schema", "IsSystemObject");
-                        //srv.SetDefaultInitFields(typeof(Column), "Name", "DataType", "Nullable");
-                        try
+                        using (logger.TrackOperation($"Processing database {Database}"))
                         {
-                            Database db = srv.Databases[Database];
-                            Scripter scripter = new Scripter(srv)
+                            SqlConnection sqlCon = new SqlConnection(conStrParsed);
+                            ServerConnection srvCon = new ServerConnection(sqlCon);
+                            Server srv = new Server(srvCon);
+
+                         
+                            try
                             {
-                                Options =
+                                Database db = srv.Databases[Database];
+                                Scripter scripter = new Scripter(srv)
+                                {
+                                    Options =
                                         {
                                             ScriptDrops = false,
                                             WithDependencies = false,
@@ -201,277 +200,261 @@ namespace SQLFlowCore.Pipeline
                                             AllowSystemObjects = false,
                                             Permissions = false
                                         }
-                            };
-                            scripter.Options.DriAllConstraints = false;
-                            scripter.Options.SchemaQualify = true;
-                            scripter.Options.DriIndexes = false;
-                            scripter.Options.DriClustered = false;
-                            scripter.Options.DriNonClustered = false;
-                            scripter.Options.NonClusteredIndexes = false;
-                            scripter.Options.ClusteredIndexes = false;
-                            scripter.Options.FullTextIndexes = false;
-                            scripter.Options.EnforceScriptingOptions = false;
-                            scripter.Options.IncludeHeaders = false;
-                            scripter.Options.ScriptBatchTerminator = false;
-                            scripter.Options.Triggers = false;
-                            scripter.Options.NoCollation = true;
-                            scripter.ScriptingProgress += (sender, e) => Scripter_ScriptingProgress(sender, e, logWriter);
+                                };
+                                scripter.Options.DriAllConstraints = false;
+                                scripter.Options.SchemaQualify = true;
+                                scripter.Options.DriIndexes = false;
+                                scripter.Options.DriClustered = false;
+                                scripter.Options.DriNonClustered = false;
+                                scripter.Options.NonClusteredIndexes = false;
+                                scripter.Options.ClusteredIndexes = false;
+                                scripter.Options.FullTextIndexes = false;
+                                scripter.Options.EnforceScriptingOptions = false;
+                                scripter.Options.IncludeHeaders = false;
+                                scripter.Options.ScriptBatchTerminator = false;
+                                scripter.Options.Triggers = false;
+                                scripter.Options.NoCollation = true;
+                                scripter.ScriptingProgress += (sender, e) => Scripter_ScriptingProgress(sender, e, logger);
 
-                            try
-                            {
-                                if (db != null)
+                                try
                                 {
-                                    ScriptingOptions opt = SmoHelper.SmoScriptingOptionsBasic();
-                                    db.PrefetchObjects(typeof(Table), opt);
-                                    db.PrefetchObjects(typeof(View), opt);
-                                    db.PrefetchObjects(typeof(StoredProcedure), opt);
-
-                                    //List<Tuple<string, SqlSmoObject>> scriptedObjects = new List<Tuple< string, SqlSmoObject>>();
-                                    new List<Tuple<string, int, string, bool>>();
-
-                                    UrnCollection baseObjects = new UrnCollection();
-                                    UrnCollection allObjects = new UrnCollection();
-                                    Dictionary<string, string> relationJson = _relationJson;
-
-                                    new List<Tuple<Urn, UrnCollection>>();
-                                    string ObjectMK = "";
-                                    string ObjectName = "";
-
-                                    string Schema = "";
-                                    string Object = "";
-                                    string SysAlias = "";
-
-                                    bool IsDependencyObject = false;
-
-
-                                    foreach (DataRow dr in tb.Rows)
+                                    if (db != null)
                                     {
-                                        ObjectMK = dr["ObjectMK"]?.ToString() ?? string.Empty;
-                                        ObjectName = dr["ObjectName"]?.ToString() ?? string.Empty;
-                                        Schema = dr["Schema"]?.ToString() ?? string.Empty;
-                                        Object = dr["Object"]?.ToString() ?? string.Empty;
-                                        SysAlias = dr["SysAlias"]?.ToString() ?? string.Empty;
-                                        ObjectMK = dr["ObjectMK"]?.ToString() ?? string.Empty;
+                                        ScriptingOptions opt = SmoHelper.SmoScriptingOptionsBasic();
+                                        db.PrefetchObjects(typeof(Table), opt);
+                                        db.PrefetchObjects(typeof(View), opt);
+                                        db.PrefetchObjects(typeof(StoredProcedure), opt);
 
-                                        // Use LookupObject method to find the appropriate object
-                                        Table table = null;
-                                        View view = null;
-                                        StoredProcedure storedProc = null;
+                                        //List<Tuple<string, SqlSmoObject>> scriptedObjects = new List<Tuple< string, SqlSmoObject>>();
+                                        new List<Tuple<string, int, string, bool>>();
 
-                                        SmoHelper.LookupObject(srv, db, Schema, Object, out table, out view, out storedProc);
+                                        UrnCollection baseObjects = new UrnCollection();
+                                        UrnCollection allObjects = new UrnCollection();
+                                        Dictionary<string, string> relationJson = _relationJson;
 
-                                        if (view != null)
+                                        new List<Tuple<Urn, UrnCollection>>();
+                                        string ObjectMK = "";
+                                        string ObjectName = "";
+
+                                        string Schema = "";
+                                        string Object = "";
+                                        string SysAlias = "";
+
+                                        bool IsDependencyObject = false;
+
+                                        using (logger.TrackOperation($"## Enumerating objects"))
                                         {
-                                            if (FetchLineageDep.DupeUrnInCollection(baseObjects, view.Urn) ==
-                                                false)
-                                            {
-                                                baseObjects.Add(view.Urn);
-                                                allObjects.Add(view.Urn);
-                                                ValidObjectMK = ValidObjectMK + "," + ObjectMK;
+                                            // First, validate all objects in bulk
+                                            DataTable validatedObjects = SmoHelper.ValidateObjectsBulk(sqlCon, tb);
 
-                                                SQLObject s = FetchLineageDep.SQLObjectFromUrn(view.Urn);
-                                                string rJson = ObjectRelations.Parse(ConnectionString, "View", s.ObjFullName, view, "");
-                                                relationJson.Add(s.ObjFullName, rJson);
-                                            }
-                                        }
-                                        else if (table != null)
-                                        {
-                                            if (FetchLineageDep.DupeUrnInCollection(baseObjects, table.Urn) ==
-                                                false)
+                                            // Process each row in the original table
+                                            foreach (DataRow dr in tb.Rows)
                                             {
-                                                baseObjects.Add(table.Urn);
-                                                allObjects.Add(table.Urn);
-                                                ValidObjectMK = ValidObjectMK + "," + ObjectMK;
+                                                ObjectMK = dr["ObjectMK"]?.ToString() ?? string.Empty;
+                                                ObjectName = dr["ObjectName"]?.ToString() ?? string.Empty;
+                                                Schema = dr["Schema"]?.ToString() ?? string.Empty;
+                                                Object = dr["Object"]?.ToString() ?? string.Empty;
+                                                SysAlias = dr["SysAlias"]?.ToString() ?? string.Empty;
 
-                                                // Retrieve index scripts for the table
-                                                StringCollection indexScripts = new StringCollection();
-                                                foreach (Microsoft.SqlServer.Management.Smo.Index index in table.Indexes)
+                                                // Look up this object in the validated objects table
+                                                DataRow[] matchingRows = validatedObjects.Select(
+                                                    $"Schema = '{Schema.Replace("'", "''")}' AND Object = '{Object.Replace("'", "''")}'");
+
+                                                if (matchingRows.Length > 0 && (bool)matchingRows[0]["IsValid"])
                                                 {
-                                                    foreach (string script in index.Script())
+                                                    DataRow validatedRow = matchingRows[0];
+                                                    string objectType = validatedRow["ObjectTypeDescription"].ToString();
+                                                    string urnString = validatedRow["URN"].ToString();
+                                                    Urn objectUrn = new Urn(urnString);
+
+                                                    // Handle based on the object type
+                                                    switch (objectType)
                                                     {
-                                                        indexScripts.Add(script);
+                                                        case "View":
+                                                            if (FetchLineageDep.DupeUrnInCollection(baseObjects, objectUrn) == false)
+                                                            {
+                                                                baseObjects.Add(objectUrn);
+                                                                allObjects.Add(objectUrn);
+                                                                ValidObjectMK = ValidObjectMK + "," + ObjectMK;
+                                                                logger.LogInformation($"Identified: {objectUrn}");
+
+                                                                // For views, we still need the SMO object for the ObjectRelations.Parse method
+                                                                View view = (View)srv.GetSmoObject(objectUrn);
+                                                                SQLObject s = FetchLineageDep.SQLObjectFromUrn(objectUrn);
+                                                                string rJson = ObjectRelations.Parse(ConnectionString, "View", s.ObjFullName, view, "");
+                                                                relationJson.Add(s.ObjFullName, rJson);
+                                                            }
+                                                            else
+                                                            {
+                                                                logger.LogInformation($"Skipping duplicate view {objectUrn}");
+                                                            }
+                                                            break;
+
+                                                        case "Table":
+                                                            if (FetchLineageDep.DupeUrnInCollection(baseObjects, objectUrn) == false)
+                                                            {
+                                                                baseObjects.Add(objectUrn);
+                                                                allObjects.Add(objectUrn);
+                                                                ValidObjectMK = ValidObjectMK + "," + ObjectMK;
+                                                                logger.LogInformation($"Identified: {objectUrn}");
+
+                                                                //// Convert StringCollection to a single string
+                                                                //string indexScriptsString = string.Join(";" + Environment.NewLine + Environment.NewLine, indexScripts.Cast<string>().ToArray());
+                                                                //// Add the table's Urn and indexes to the tableIndexes list
+                                                                //tableIndexes.Add(Tuple.Create(table.Urn, indexScriptsString));
+
+                                                                //// Retrieve index scripts for the table
+                                                                //StringCollection indexScripts = new StringCollection();
+                                                                //foreach (Microsoft.SqlServer.Management.Smo.Index index in table.Indexes)
+                                                                //{
+                                                                //    foreach (string script in index.Script())
+                                                                //    {
+                                                                //        indexScripts.Add(script);
+                                                                //    }
+                                                                //}
+                                                                //// Convert StringCollection to a single string
+                                                                //string indexScriptsString = string.Join(";" + Environment.NewLine + Environment.NewLine, indexScripts.Cast<string>().ToArray());
+                                                                //// Add the table's Urn and indexes to the tableIndexes list
+                                                                //tableIndexes.Add(Tuple.Create(table.Urn, indexScriptsString));
+
+                                                            }
+                                                            else
+                                                            {
+                                                                logger.LogInformation($"Skipping duplicate table {objectUrn}");
+                                                            }
+                                                            break;
+
+                                                        case "Stored Procedure":
+                                                            if (FetchLineageDep.DupeUrnInCollection(baseObjects, objectUrn) == false)
+                                                            {
+                                                                baseObjects.Add(objectUrn);
+                                                                allObjects.Add(objectUrn);
+                                                                ValidObjectMK = ValidObjectMK + "," + ObjectMK;
+                                                                logger.LogInformation($"Identified: {objectUrn}");
+
+                                                                // For stored procedures, we still need the SMO object for the ObjectRelations.Parse method
+                                                                StoredProcedure storedProc = (StoredProcedure)srv.GetSmoObject(objectUrn);
+                                                                SQLObject s = FetchLineageDep.SQLObjectFromUrn(objectUrn);
+                                                                string rJson = ObjectRelations.Parse(ConnectionString, "StoredProcedure", s.ObjFullName, storedProc, "");
+                                                                relationJson.Add(s.ObjFullName, rJson);
+                                                            }
+                                                            else
+                                                            {
+                                                                logger.LogInformation($"Skipping duplicate stored procedure {objectUrn}");
+                                                            }
+                                                            break;
                                                     }
                                                 }
-
-                                                // Convert StringCollection to a single string
-                                                string indexScriptsString = string.Join(";" + Environment.NewLine + Environment.NewLine, indexScripts.Cast<string>().ToArray());
-
-                                                // Add the table's Urn and indexes to the tableIndexes list
-                                                tableIndexes.Add(Tuple.Create(table.Urn, indexScriptsString));
-
-                                            }
-                                        }
-                                        else if (storedProc != null)
-                                        {
-                                            if (FetchLineageDep.DupeUrnInCollection(baseObjects,storedProc.Urn) == false)
-                                            {
-                                                baseObjects.Add(storedProc.Urn);
-                                                allObjects.Add(storedProc.Urn);
-                                                ValidObjectMK = ValidObjectMK + "," + ObjectMK;
-
-                                                SQLObject s = FetchLineageDep.SQLObjectFromUrn(storedProc.Urn);
-                                                string rJson = ObjectRelations.Parse(ConnectionString, "StoredProcedure", s.ObjFullName, storedProc, "");
-                                                relationJson.Add(s.ObjFullName, rJson);
-                                            }
-                                        }
-                                        else
-                                        {
-                                            inValidObjectMK = inValidObjectMK + "," + ObjectMK;
-                                        }
-
-                                    }
-
-                                    //Tag Invalid and Valid Objects
-                                    using (SqlCommand cmd = new SqlCommand("flw.UpdLineageObjectNotInUse",sqlFlowCon))
-                                    {
-                                        cmd.CommandType = CommandType.StoredProcedure;
-                                        cmd.Parameters.Add("@InvalidMKList", SqlDbType.VarChar).Value =
-                                            inValidObjectMK;
-                                        cmd.Parameters.Add("@ValidMKList", SqlDbType.VarChar).Value =
-                                            ValidObjectMK;
-                                        //string cmdTxt = SqlCommandText.GetCommandText(cmd);
-                                        cmd.ExecuteNonQuery();
-                                    }
-
-                                    DependencyWalker dependencyWalker = new DependencyWalker(srv);
-                                    List<DepObject> rootWithDep = new List<DepObject>();
-                                    UrnCollection depObjects = new UrnCollection();
-
-                                    foreach (Urn urn in baseObjects)
-                                    {
-                                        if (FetchLineageDep.IsDependencyObject(urn))
-                                        {
-                                            DataRow dr = FetchLineageDep.GetDataRowFromUrn(tb, urn);
-                                            DepObject dO = new DepObject
-                                            {
-                                                RootDataRow = dr,
-                                                RootObject = FetchLineageDep.SQLObjectFromUrn(urn)
-                                            };
-                                            DependencyTree tree =
-                                                dependencyWalker.DiscoverDependencies(new Urn[] { urn },
-                                                    DependencyType.Parents);
-                                            var depends = dependencyWalker.WalkDependencies(tree)
-                                                .Where(x => x.Urn != urn);
-
-                                            UrnCollection currentObjects = new UrnCollection();
-                                            foreach (var item in depends)
-                                            {
-                                                if (FetchLineageDep.IsLineageObject(item.Urn))
+                                                else
                                                 {
-                                                    if (FetchLineageDep.DupeUrnInCollection(allObjects,
-                                                            item.Urn) == false)
-                                                    {
-                                                        allObjects.Add(item.Urn);
-                                                        depObjects.Add(item.Urn);
-
-                                                        SQLObject s = FetchLineageDep.SQLObjectFromUrn(item.Urn);
-                                                        string rJson = ObjectRelations.Parse(ConnectionString, item.Urn.Type, s.ObjFullName, item, "");
-                                                        relationJson.Add(s.ObjFullName, rJson);
-                                                    }
-
-                                                    currentObjects.Add(item.Urn);
+                                                    inValidObjectMK = inValidObjectMK + "," + ObjectMK;
+                                                    logger.LogWarning($"Not found: {db}.[{Schema}].[{Object}] ({ObjectMK})");
                                                 }
                                             }
-
-                                            //objectsWithDependency.Add(Tuple<urn, depends>);
-
-                                            dO.DependencyObjects = currentObjects;
-                                            rootWithDep.Add(dO);
                                         }
-                                    }
 
-                                    //Increase total count with dependent objects
-                                    _total = _total + depObjects.Count;
-
-                                    //_total = _total + allObjects.Count + depObjects.Count;
-
-                                    StringCollection sc = new StringCollection();
-                                    sc = scripter.Script(allObjects);
-
-                                    List<SQLObject> SQLObjectsWithScript = FetchLineageDep.BuildSQLObjectFromCollection(Database, sc, allObjects);
-
-                                    //loop base objects
-                                    foreach (Urn u in baseObjects)
-                                    {
-                                        DataRow dr = FetchLineageDep.GetDataRowFromUrn(tb, u);
-                                        
-                                        string dmlSQL = FetchLineageDep.GetDDLForUrn(SQLObjectsWithScript, u);
-
-                                        ObjectMK = dr["ObjectMK"]?.ToString() ?? string.Empty;
-                                        ObjectName = dr["ObjectName"]?.ToString() ?? string.Empty;
-                                        Schema = dr["Schema"]?.ToString() ?? string.Empty;
-                                        Object = dr["Object"]?.ToString() ?? string.Empty;
-                                        SysAlias = dr["SysAlias"]?.ToString() ?? string.Empty;
-                                        IsDependencyObject = FetchLineageDep.IsDependencyObject(u);
-                                        string ObjectType = FetchLineageDep.GetSQLFlowObjectType(u);
-                                        string AfterDependency = "";
-                                        string BeforeDependency = "";
-
-                                        if (FetchLineageDep.IsDependencyObject(u))
+                                        //Tag Invalid and Valid Objects
+                                        using (SqlCommand cmd = new SqlCommand("flw.UpdLineageObjectNotInUse", sqlFlowCon))
                                         {
-                                            string dmlSQLCleaned = dmlSQL;
-                                            if (u.Type == "View")
+                                            logger.LogInformation("Tag objects not in in use");
+                                            cmd.CommandType = CommandType.StoredProcedure;
+                                            cmd.Parameters.Add("@InvalidMKList", SqlDbType.VarChar).Value =
+                                                inValidObjectMK;
+                                            cmd.Parameters.Add("@ValidMKList", SqlDbType.VarChar).Value =
+                                                ValidObjectMK;
+                                            //string cmdTxt = SqlCommandText.GetCommandText(cmd);
+                                            cmd.ExecuteNonQuery();
+                                        }
+
+                                        DependencyWalker dependencyWalker = new DependencyWalker(srv);
+                                        List<DepObject> rootWithDep = new List<DepObject>();
+                                        UrnCollection depObjects = new UrnCollection();
+
+                                        using (logger.TrackOperation("Detecting base dependencies"))
+                                        {
+                                            foreach (Urn urn in baseObjects)
                                             {
-                                                dmlSQLCleaned = ViewHelper.ExtractAfterCreateViewAs(dmlSQL);
-                                                //RemoveCreateViewStatement(dmlSQL);
+                                                if (FetchLineageDep.IsDependencyObject(urn))
+                                                {
+                                                    DataRow dr = FetchLineageDep.GetDataRowFromUrn(tb, urn);
+                                                    DepObject dO = new DepObject
+                                                    {
+                                                        RootDataRow = dr,
+                                                        RootObject = FetchLineageDep.SQLObjectFromUrn(urn)
+                                                    };
+                                                    DependencyTree tree =
+                                                        dependencyWalker.DiscoverDependencies(new Urn[] { urn },
+                                                            DependencyType.Parents);
+                                                    var depends = dependencyWalker.WalkDependencies(tree)
+                                                        .Where(x => x.Urn != urn);
+
+                                                    UrnCollection currentObjects = new UrnCollection();
+                                                    foreach (var item in depends)
+                                                    {
+                                                        if (FetchLineageDep.IsLineageObject(item.Urn))
+                                                        {
+                                                            if (FetchLineageDep.DupeUrnInCollection(allObjects,
+                                                                    item.Urn) == false)
+                                                            {
+                                                                allObjects.Add(item.Urn);
+                                                                depObjects.Add(item.Urn);
+
+                                                                SQLObject s = FetchLineageDep.SQLObjectFromUrn(item.Urn);
+                                                                string rJson = ObjectRelations.Parse(ConnectionString, item.Urn.Type, s.ObjFullName, item, "");
+                                                                relationJson.Add(s.ObjFullName, rJson);
+                                                            }
+
+                                                            currentObjects.Add(item.Urn);
+                                                        }
+                                                    }
+                                                    dO.DependencyObjects = currentObjects;
+                                                    rootWithDep.Add(dO);
+                                                }
                                             }
-                                            DependencyParser dp = new DependencyParser(Database, Schema, dmlSQLCleaned, ObjectName, IsDependencyObject);
-
-                                            BeforeDependency = dp.BeforeDependencyObjectsString;
-                                            AfterDependency = dp.AfterDependencyObjectsString;
                                         }
 
-                                        // Find the indexes for the current table using the Urn
-                                        string indexesString = "";
-                                        if (u.Type == "Table")
+                                        //Increase total count with dependent objects
+                                        _total = _total + depObjects.Count;
+
+                                        StringCollection sc = new StringCollection();
+                                        List<SQLObject> SQLObjectsWithScript = new List<SQLObject>();
+                                        using (var operation = logger.TrackOperation("Script objects"))
                                         {
-                                            var tableIndex = tableIndexes.FirstOrDefault(ti => ti.Item1 == u);
-                                            if (tableIndex != null)
-                                            {
-                                                indexesString = tableIndex.Item2;
-                                            }
+                                            sc = scripter.Script(allObjects);
+                                            SQLObjectsWithScript = FetchLineageDep.BuildSQLObjectFromCollection(Database, sc, allObjects);
                                         }
 
-
-                                        Rows.Add(
-                                            $"1|||{ObjectMK}|||{SysAlias}|||{ObjectName}|||{ObjectType}|||{dmlSQL}|||{AfterDependency}|||{BeforeDependency}|||{indexesString}");
-                                    }
-
-                                    foreach (DepObject depObj in rootWithDep)
-                                    {
-                                        DataRow dr = depObj.RootDataRow;
-                                        string xSysAlias = dr["SysAlias"]?.ToString() ?? string.Empty;
-
-                                        foreach (Urn u in depObj.DependencyObjects)
+                                        using (logger.TrackOperation("Parse base object dependencies"))
                                         {
-                                            if (FetchLineageDep.DupeUrnInCollection(depObjects, u))
+                                            //loop base objects
+                                            foreach (Urn u in baseObjects)
                                             {
-                                                SQLObject sQLObjectFromUrn =
-                                                    FetchLineageDep.SQLObjectFromUrn(u);
-                                                string xObjectType = FetchLineageDep.GetSQLFlowObjectType(u);
-                                                string xDmlSQL =
-                                                    FetchLineageDep.GetDDLForUrn(SQLObjectsWithScript, u);
-                                                bool xIsDependencyObject =
-                                                    FetchLineageDep.IsDependencyObject(u);
+                                                DataRow dr = FetchLineageDep.GetDataRowFromUrn(tb, u);
+
+                                                string dmlSQL = FetchLineageDep.GetDDLForUrn(SQLObjectsWithScript, u);
+
+                                                ObjectMK = dr["ObjectMK"]?.ToString() ?? string.Empty;
+                                                ObjectName = dr["ObjectName"]?.ToString() ?? string.Empty;
+                                                Schema = dr["Schema"]?.ToString() ?? string.Empty;
+                                                Object = dr["Object"]?.ToString() ?? string.Empty;
+                                                SysAlias = dr["SysAlias"]?.ToString() ?? string.Empty;
+                                                IsDependencyObject = FetchLineageDep.IsDependencyObject(u);
+                                                string ObjectType = FetchLineageDep.GetSQLFlowObjectType(u);
                                                 string AfterDependency = "";
                                                 string BeforeDependency = "";
+
                                                 if (FetchLineageDep.IsDependencyObject(u))
                                                 {
-                                                    //FetchLineageCalc calc =
-                                                    //    new FetchLineageCalc(sQLObjectFromUrn.ObjDatabase,
-                                                    //        sQLObjectFromUrn.ObjSchema,
-                                                    //        sQLObjectFromUrn.ObjName, xIsDependencyObject,
-                                                    //        xDmlSQL);
-                                                    //BeforeDependency = string.Join(",",
-                                                    //    MergeBeforeDependency(u, calc.BeforeDependency,
-                                                    //        calc.AfterDependency, rootWithDep));
-                                                    //AfterDependency = string.Join(",", calc.AfterDependency);
-                                                    SQLObject s = FetchLineageDep.SQLObjectFromUrn(u);
+                                                    string dmlSQLCleaned = dmlSQL;
+                                                    if (u.Type == "View")
+                                                    {
+                                                        dmlSQLCleaned = ViewHelper.ExtractAfterCreateViewAs(dmlSQL);
+                                                        //RemoveCreateViewStatement(dmlSQL);
+                                                    }
+                                                    DependencyParser dp = new DependencyParser(Database, Schema, dmlSQLCleaned, ObjectName, IsDependencyObject);
 
-                                                    DependencyParser dp = new DependencyParser(Database, sQLObjectFromUrn.ObjSchema, xDmlSQL, s.ObjFullName, xIsDependencyObject);
                                                     BeforeDependency = dp.BeforeDependencyObjectsString;
                                                     AfterDependency = dp.AfterDependencyObjectsString;
-
                                                 }
 
                                                 // Find the indexes for the current table using the Urn
@@ -485,13 +468,115 @@ namespace SQLFlowCore.Pipeline
                                                     }
                                                 }
 
+                                                if (!string.IsNullOrEmpty(BeforeDependency))
+                                                {
+                                                    logger.LogInformation($"BeforeDependency for {ObjectName}: {BeforeDependency}");
+                                                }
+
+                                                if (!string.IsNullOrEmpty(AfterDependency))
+                                                {
+                                                    logger.LogInformation($"AfterDependency for {ObjectName}: {AfterDependency}");
+                                                }
                                                 Rows.Add(
-                                                    $"2|||0|||{xSysAlias}|||{sQLObjectFromUrn.ObjFullName}|||{xObjectType}|||{xDmlSQL}|||{AfterDependency}|||{BeforeDependency}|||{indexesString}");
+                                                    $"1|||{ObjectMK}|||{SysAlias}|||{ObjectName}|||{ObjectType}|||{dmlSQL}|||{AfterDependency}|||{BeforeDependency}|||{indexesString}");
                                             }
                                         }
+
+                                        using (logger.TrackOperation("Parse all dependencies "))
+                                        {
+                                            foreach (DepObject depObj in rootWithDep)
+                                            {
+                                                DataRow dr = depObj.RootDataRow;
+                                                string xSysAlias = dr["SysAlias"]?.ToString() ?? string.Empty;
+
+                                                foreach (Urn u in depObj.DependencyObjects)
+                                                {
+                                                    if (FetchLineageDep.DupeUrnInCollection(depObjects, u))
+                                                    {
+                                                        SQLObject sQLObjectFromUrn =
+                                                            FetchLineageDep.SQLObjectFromUrn(u);
+                                                        string xObjectType = FetchLineageDep.GetSQLFlowObjectType(u);
+                                                        string xDmlSQL =
+                                                            FetchLineageDep.GetDDLForUrn(SQLObjectsWithScript, u);
+                                                        bool xIsDependencyObject =
+                                                            FetchLineageDep.IsDependencyObject(u);
+                                                        string AfterDependency = "";
+                                                        string BeforeDependency = "";
+                                                        if (FetchLineageDep.IsDependencyObject(u))
+                                                        {
+                                                            //FetchLineageCalc calc =
+                                                            //    new FetchLineageCalc(sQLObjectFromUrn.ObjDatabase,
+                                                            //        sQLObjectFromUrn.ObjSchema,
+                                                            //        sQLObjectFromUrn.ObjName, xIsDependencyObject,
+                                                            //        xDmlSQL);
+                                                            //BeforeDependency = string.Join(",",
+                                                            //    MergeBeforeDependency(u, calc.BeforeDependency,
+                                                            //        calc.AfterDependency, rootWithDep));
+                                                            //AfterDependency = string.Join(",", calc.AfterDependency);
+                                                            SQLObject s = FetchLineageDep.SQLObjectFromUrn(u);
+
+                                                            DependencyParser dp = new DependencyParser(Database, sQLObjectFromUrn.ObjSchema, xDmlSQL, s.ObjFullName, xIsDependencyObject);
+                                                            BeforeDependency = dp.BeforeDependencyObjectsString;
+                                                            AfterDependency = dp.AfterDependencyObjectsString;
+
+                                                        }
+
+                                                        // Find the indexes for the current table using the Urn
+                                                        string indexesString = "";
+                                                        if (u.Type == "Table")
+                                                        {
+                                                            var tableIndex = tableIndexes.FirstOrDefault(ti => ti.Item1 == u);
+                                                            if (tableIndex != null)
+                                                            {
+                                                                indexesString = tableIndex.Item2;
+                                                            }
+                                                        }
+
+                                                        if (!string.IsNullOrEmpty(BeforeDependency))
+                                                        {
+                                                            logger.LogInformation($"Extended BeforeDependency for {ObjectName}: {BeforeDependency}");
+                                                        }
+
+                                                        if (!string.IsNullOrEmpty(AfterDependency))
+                                                        {
+                                                            logger.LogInformation($"Extended AfterDependency for {ObjectName}: {AfterDependency}");
+                                                        }
+
+                                                        Rows.Add(
+                                                            $"2|||0|||{xSysAlias}|||{sQLObjectFromUrn.ObjFullName}|||{xObjectType}|||{xDmlSQL}|||{AfterDependency}|||{BeforeDependency}|||{indexesString}");
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        
+
+                                    }
+                                }
+                                catch (Exception e)
+                                {
+                                    string innerExceptionDetails = "";
+                                    Exception innerEx = e.InnerException;
+                                    int depth = 0;
+
+                                    // Build a chain of inner exceptions with their details
+                                    while (innerEx != null && depth < 5)  // Limit depth to avoid infinite loops
+                                    {
+                                        innerExceptionDetails += $"\n--- Inner Exception Level {depth + 1}: {innerEx.GetType().Name}\n" +
+                                                                 $"    Message: {innerEx.Message}\n" +
+                                                                 $"    Stack Trace: {innerEx.StackTrace}\n";
+                                        innerEx = innerEx.InnerException;
+                                        depth++;
                                     }
 
+                                    logOutput.Write($"Error: {e.Message}\n" +
+                                                    $"Exception Type: {e.GetType().Name}\n" +
+                                                    $"Stack Trace: {e.StackTrace}\n" +
+                                                    innerExceptionDetails);
+                                    logOutput.Flush();
                                 }
+
+
                             }
                             catch (Exception e)
                             {
@@ -499,8 +584,7 @@ namespace SQLFlowCore.Pipeline
                                 Exception innerEx = e.InnerException;
                                 int depth = 0;
 
-                                // Build a chain of inner exceptions with their details
-                                while (innerEx != null && depth < 5)  // Limit depth to avoid infinite loops
+                                while (innerEx != null && depth < 5)
                                 {
                                     innerExceptionDetails += $"\n--- Inner Exception Level {depth + 1}: {innerEx.GetType().Name}\n" +
                                                              $"    Message: {innerEx.Message}\n" +
@@ -509,50 +593,22 @@ namespace SQLFlowCore.Pipeline
                                     depth++;
                                 }
 
-                                _lineageLog += $"Error: {e.Message}\n" +
-                                               $"Exception Type: {e.GetType().Name}\n" +
-                                               $"Stack Trace: {e.StackTrace}\n" +
-                                               innerExceptionDetails + Environment.NewLine;
-
-                                logWriter.Write($"Error: {e.Message}\n" +
+                                logOutput.Write($"--- Connection Error: {e.Message}\n" +
                                                 $"Exception Type: {e.GetType().Name}\n" +
                                                 $"Stack Trace: {e.StackTrace}\n" +
-                                                innerExceptionDetails);
-                                logWriter.Flush();
+                                                innerExceptionDetails + Environment.NewLine);
+                                logOutput.Flush();
+
+                                //Remove Objects for this database from total
+                                _total = _total - tb.Rows.Count;
                             }
-
-
-                        }
-                        catch (Exception e)
-                        {
-                            string innerExceptionDetails = "";
-                            Exception innerEx = e.InnerException;
-                            int depth = 0;
-
-                            while (innerEx != null && depth < 5)
+                            finally
                             {
-                                innerExceptionDetails += $"\n--- Inner Exception Level {depth + 1}: {innerEx.GetType().Name}\n" +
-                                                         $"    Message: {innerEx.Message}\n" +
-                                                         $"    Stack Trace: {innerEx.StackTrace}\n";
-                                innerEx = innerEx.InnerException;
-                                depth++;
+                                srv.ConnectionContext.Disconnect();
+                                srvCon.Disconnect();
+                                sqlCon.Close();
+                                sqlCon.Dispose();
                             }
-
-                            logWriter.Write($"--- Connection Error: {e.Message}\n" +
-                                            $"Exception Type: {e.GetType().Name}\n" +
-                                            $"Stack Trace: {e.StackTrace}\n" +
-                                            innerExceptionDetails + Environment.NewLine);
-                            logWriter.Flush();
-
-                            //Remove Objects for this database from total
-                            _total = _total - tb.Rows.Count;
-                        }
-                        finally
-                        {
-                            srv.ConnectionContext.Disconnect();
-                            srvCon.Disconnect();
-                            sqlCon.Close();
-                            sqlCon.Dispose();
                         }
 
                     }
@@ -671,60 +727,47 @@ namespace SQLFlowCore.Pipeline
                         }
                     }
 
-                    watch.Restart();
-                    using (SqlCommand cmd = new SqlCommand("[flw].[CalcLineagePost]", sqlFlowCon))
+                    using (var operation = logger.TrackOperation("Executing LineagePost Step [flw].[CalcLineagePost]"))
                     {
-                        cmd.CommandTimeout = 600;
-                        cmd.CommandType = CommandType.StoredProcedure;
-                        cmd.ExecuteNonQuery();
-                        cmd.Dispose();
+                        using (SqlCommand cmd = new SqlCommand("[flw].[CalcLineagePost]", sqlFlowCon))
+                        {
+                            cmd.CommandTimeout = 600;
+                            cmd.CommandType = CommandType.StoredProcedure;
+                            cmd.ExecuteNonQuery();
+                            cmd.Dispose();
+                        }
                     }
-                    watch.Stop();
-                    logDurationPre = watch.ElapsedMilliseconds / 1000;
-                    _lineageLog += $"## Executing LineagePost Step [flw].[CalcLineagePost] ({logDurationPre.ToString()} sec)  {Environment.NewLine}";
-                    logWriter.Write($"## Executing LineagePost Step [flw].[CalcLineagePost] ({logDurationPre.ToString()} sec)  {Environment.NewLine}");
-                    logWriter.Flush();
+                    logger.Flush();
 
+                    using (var operation = logger.TrackOperation("Build Pipeline Graph"))
+                    {
+                        DataTable lineageMapBase = CommonDB.GetData(sqlFlowCon, "[flw].[GetLineageMapObjects]", 300);
+                        LineageParser lineage = new LineageParser(lineageMapBase);
+                        DataTable lineageResult = lineage.GetResult();
+                        logger.LogInformation("Lineage Map Calculated ({logDurationPre.ToString()} sec)");
+                        logger.Flush();
 
-                    watch.Restart();
-                    DataTable lineageMapBase = CommonDB.GetData(sqlFlowCon, "[flw].[GetLineageMapObjects]", 300);
-                    LineageParser lineage = new LineageParser(lineageMapBase);
-                    DataTable lineageResult = lineage.GetResult();
+                        Dictionary<string, string> linMap = CommonDB.BuildColumnMapping(lineageResult);
+                        CommonDB.TruncateAndBulkInsert(sqlFlowCon, "[flw].[LineageMap]", true, lineageResult, linMap);
 
-                    watch.Stop();
-                    logDurationPre = watch.ElapsedMilliseconds / 1000;
-                    _lineageLog += $"## Lineage Map Calculated ({logDurationPre.ToString()} sec)  {Environment.NewLine}";
-                    logWriter.Write($"## Lineage Map Calculated ({logDurationPre.ToString()} sec)  {Environment.NewLine}");
-                    logWriter.Flush();
-
-                    watch.Restart();
-                    Dictionary<string, string> linMap = CommonDB.BuildColumnMapping(lineageResult);
-                    CommonDB.TruncateAndBulkInsert(sqlFlowCon, "[flw].[LineageMap]", true, lineageResult, linMap);
-                    watch.Stop();
-                    logDurationPre = watch.ElapsedMilliseconds / 1000;
-                    _lineageLog += $"## Lineage Map Saved To SQLFlow ({logDurationPre.ToString()} sec)  {Environment.NewLine}";
-                    logWriter.Write($"## Lineage Map Saved To SQLFlow ({logDurationPre.ToString()} sec)  {Environment.NewLine}");
-                    logWriter.Flush();
+                        logger.LogInformation($"Lineage Map Saved To SQLFlow ({logDurationPre.ToString()} sec)  {Environment.NewLine}");
+                        logger.Flush();
+                    }
 
                     sqlFlowCon.Close();
                     sqlFlowCon.Dispose();
                 }
                 catch (Exception e)
                 {
-                    _lineageLog += e.Message + Environment.NewLine + e.StackTrace + Environment.NewLine;
-                    logWriter.Write(e.Message);
-                    logWriter.Flush();
+                    logger.LogInformation(e.Message + Environment.NewLine + e.StackTrace + Environment.NewLine);
+                    logger.Flush();
                 }
 
                 totalTime.Stop();
                 logDurationPre = totalTime.ElapsedMilliseconds / 1000;
-                _lineageLog += Environment.NewLine + string.Format("## Info: Total processing time {0} (sec) {1}", logDurationPre.ToString(), Environment.NewLine);
-                logWriter.Write(Environment.NewLine + string.Format("## Info: Total processing time {0} (sec) {1}", logDurationPre.ToString(), Environment.NewLine));
-                logWriter.Flush();
-                result = _lineageLog;
-            }
-
-            return result;
+                logger.LogInformation($"Total processing time {logDurationPre.ToString()} (sec)");
+                logOutput.Flush();
+           }
         }
 
         /// <summary>
@@ -737,7 +780,7 @@ namespace SQLFlowCore.Pipeline
         /// This method increments the object counter, calculates the status, and writes the progress information to the StreamWriter. 
         /// It also triggers the OnLineageCalculated event with the current lineage status.
         /// </remarks>
-        private static void Scripter_ScriptingProgress(object sender, ProgressReportEventArgs e, StreamWriter sw)
+        private static void Scripter_ScriptingProgress(object sender, ProgressReportEventArgs e, RealTimeLogger logger)
         {
             Interlocked.Increment(ref _objectCounter);
             double Status = _objectCounter / (double)_total; //Adding One For the StatusBar
@@ -755,8 +798,8 @@ namespace SQLFlowCore.Pipeline
             };
 
             OnLineageCalculated?.Invoke(Thread.CurrentThread, arg);
-            sw.Write($"--- {_objectCounter}/{_total} " + Var + Environment.NewLine);
-            sw.Flush();
+            logger.LogInformation($"Scripted: {Var} {_objectCounter}/{_total}");
+            logger.Flush();
         }
 
         /// <summary>

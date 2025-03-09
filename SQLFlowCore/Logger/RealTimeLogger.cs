@@ -8,14 +8,17 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
+using K4os.Compression.LZ4.Streams.Abstractions;
 using Microsoft.Extensions.Logging;
 
 namespace SQLFlowCore.Logger
 {
-    public class RealTimeLogger : ILogger
+    public class RealTimeLogger : ILogger, IDisposable
     {
         private readonly string _name;
-        private readonly Action<string> _writeToOutput;
+        private readonly Action<string>? _writeToOutput;
+        private readonly StreamWriter? _streamWriter;
+        private readonly bool _ownsStreamWriter;
         private readonly ConcurrentDictionary<string, OperationMetrics> _activeOperations;
         private readonly ConcurrentDictionary<string, ProcessingMetrics> _processingMetrics;
 
@@ -35,11 +38,55 @@ namespace SQLFlowCore.Logger
         {
             _name = name;
             _writeToOutput = writeToOutput;
+            _streamWriter = null;
+            _ownsStreamWriter = false;
             _minLogLevel = minLogLevel;
             _debugLevel = debugLevel;
 
             _activeOperations = new ConcurrentDictionary<string, OperationMetrics>();
             _processingMetrics = new ConcurrentDictionary<string, ProcessingMetrics>();
+        }
+
+        public RealTimeLogger(
+            string name,
+            StreamWriter streamWriter,
+            bool ownsStreamWriter = true,
+            LogLevel minLogLevel = LogLevel.Trace,
+            int debugLevel = 1)
+        {
+            _name = name;
+            _writeToOutput = null;
+            _streamWriter = streamWriter;
+            _ownsStreamWriter = ownsStreamWriter;
+            _minLogLevel = minLogLevel;
+            _debugLevel = debugLevel;
+
+            _activeOperations = new ConcurrentDictionary<string, OperationMetrics>();
+            _processingMetrics = new ConcurrentDictionary<string, ProcessingMetrics>();
+        }
+
+        public static RealTimeLogger CreateFromStream(
+            string name,
+            StreamWriter streamWriter,
+            bool leaveOpen = false,
+            LogLevel minLogLevel = LogLevel.Trace,
+            int debugLevel = 1)
+        {
+            streamWriter.AutoFlush = true;
+            return new RealTimeLogger(name, streamWriter, !leaveOpen, minLogLevel, debugLevel);
+        }
+
+        private void WriteToOutput(string message)
+        {
+            if (_writeToOutput != null)
+            {
+                _writeToOutput(message);
+            }
+            else if (_streamWriter != null)
+            {
+                _streamWriter.Write(message);
+                _streamWriter.Flush();
+            }
         }
 
         // We don't use scopes, so no-op here
@@ -116,7 +163,7 @@ namespace SQLFlowCore.Logger
 
             var finalMessage = BuildLogMessage(logLevel, message, exception, memberName, sourceFilePath, sourceLineNumber, indentLevel);
 
-            _writeToOutput(finalMessage + Environment.NewLine);
+            WriteToOutput(finalMessage + Environment.NewLine);
         }
 
         /// <summary>
@@ -229,7 +276,7 @@ namespace SQLFlowCore.Logger
                 sourceLineNumber: 0,
                 indentLevel: indentLevel);
 
-            _writeToOutput(finalMessage + Environment.NewLine);
+            WriteToOutput(finalMessage + Environment.NewLine);
         }
 
         private static string FormatCodeBlock(string header, string code)
@@ -259,7 +306,7 @@ namespace SQLFlowCore.Logger
             int indentLevel = OperationStack.Count;
             var finalLog = IndentMessage(sb.ToString(), indentLevel);
 
-            _writeToOutput(finalLog + Environment.NewLine);
+            WriteToOutput(finalLog + Environment.NewLine);
         }
 
         public IDisposable TimeOperation(string operationName, Dictionary<string, string>? tags = null)
@@ -272,6 +319,31 @@ namespace SQLFlowCore.Logger
         public ProcessingMetrics GetOrCreateProcessingMetrics(string name)
         {
             return _processingMetrics.GetOrAdd(name, _ => new ProcessingMetrics());
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        public void Flush()
+        {
+            if (_streamWriter != null)
+            {
+                _streamWriter.Flush();
+            }
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_streamWriter != null && _ownsStreamWriter)
+                {
+                    _streamWriter.Dispose();
+                }
+            }
         }
 
         private class NoopDisposable : IDisposable
@@ -411,6 +483,7 @@ namespace SQLFlowCore.Logger
             var histogram = _histograms.GetOrAdd(name, _ => new ConcurrentQueue<double>());
             histogram.Enqueue(value);
         }
+        
 
         public HistogramStats? GetHistogramStats(string name)
         {
@@ -524,5 +597,7 @@ namespace SQLFlowCore.Logger
         {
             logger.Log(LogLevel.Error, 0, message, exception, (m, e) => m);
         }
+
+        
     }
 }
