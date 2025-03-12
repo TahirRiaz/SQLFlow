@@ -770,6 +770,11 @@ Write-Host "`nRunning update statements against [flw].[SysDataSource]..." -Foreg
 # Modify connection string to use dw-sqlflow-prod instead of master
 $sqlFlowConnStr = $finalConnectionString -replace "Initial Catalog=master", "Initial Catalog=dw-sqlflow-prod"
 
+# Create Docker-compatible connection string by replacing the server name with host.docker.internal
+$sqlFlowConnStr = $sqlFlowConnStr -replace "Server=$serverName", "Server=host.docker.internal"
+Write-Host "Using host.docker.internal instead of $serverName for Docker connectivity." -ForegroundColor Cyan
+
+
 # Save connection string in a system environment variable named SQLFlowConStr
 [Environment]::SetEnvironmentVariable("SQLFlowConStr", $sqlFlowConnStr, "Machine")
 Write-Host "`nCreated/updated system environment variable 'SQLFlowConStr' with the chosen connection string." -ForegroundColor Green
