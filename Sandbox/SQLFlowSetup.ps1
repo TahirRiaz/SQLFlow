@@ -242,6 +242,9 @@ function Verify-ConnectionParameters {
     return $true
 }
 
+
+
+
 ############################################################################
 # PART 3: Database import logic
 ############################################################################
@@ -287,6 +290,156 @@ if (-not (Get-Module -ListAvailable -Name SqlServer)) {
     Install-Module -Name SqlServer -Force -AllowClobber -Scope CurrentUser
 }
 Import-Module SqlServer
+
+
+############################################################################
+# PART 2b: Check and configure SQL Server Full-Text Search
+############################################################################
+Write-Host "`n===== Checking SQL Server Full-Text Search =====" -ForegroundColor Cyan
+
+function Check-FullTextInstalled {
+    param(
+        [string]$ServerInstance,
+        [string]$UserID,
+        [string]$Password
+    )
+    
+    try {
+        $query = "SELECT SERVERPROPERTY('IsFullTextInstalled') AS IsFullTextInstalled;"
+        $result = Invoke-Sqlcmd -ServerInstance $ServerInstance -Username $UserID -Password $Password -Database "master" -Query $query -ErrorAction Stop
+        
+        return [bool]$result.IsFullTextInstalled
+    }
+    catch {
+        Write-Host "Error checking Full-Text status: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    }
+}
+
+function Enable-FullText {
+    param(
+        [string]$ServerInstance,
+        [string]$UserID,
+        [string]$Password
+    )
+    
+    try {
+        # First check if the service is already running
+        $serviceCheckQuery = "SELECT FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') AS IsServiceRunning;"
+        $serviceStatus = Invoke-Sqlcmd -ServerInstance $ServerInstance -Username $UserID -Password $Password -Database "master" -Query $serviceCheckQuery -ErrorAction Stop
+        
+        if ($serviceStatus.IsServiceRunning -eq 1) {
+            Write-Host "Full-Text service is already running." -ForegroundColor Green
+            return $true
+        }
+        
+        # Try to start the service 
+        $startServiceQuery = "EXEC sp_fulltext_service 'start_full_text_service', 1;"
+        Invoke-Sqlcmd -ServerInstance $ServerInstance -Username $UserID -Password $Password -Database "master" -Query $startServiceQuery -ErrorAction Stop
+        
+        # Verify service is now running
+        $verifyServiceQuery = "SELECT FULLTEXTSERVICEPROPERTY('IsFullTextInstalled') AS IsServiceRunning;"
+        $verifyStatus = Invoke-Sqlcmd -ServerInstance $ServerInstance -Username $UserID -Password $Password -Database "master" -Query $verifyServiceQuery -ErrorAction Stop
+        
+        if ($verifyStatus.IsServiceRunning -eq 1) {
+            Write-Host "Full-Text service was successfully started." -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "Failed to start Full-Text service programmatically." -ForegroundColor Red
+            return $false
+        }
+    }
+    catch {
+        Write-Host "Error enabling Full-Text service: $($_.Exception.Message)" -ForegroundColor Red
+        return $false
+    }
+}
+
+function Get-FullTextInstallationInstructions {
+    $instructions = @"
+==== Manual Full-Text Search Installation Instructions ====
+
+1. For SQL Server on Windows:
+   a. Open SQL Server Configuration Manager
+   b. Go to SQL Server Services
+   c. Right-click on "SQL Full-text Filter Daemon Launcher" and select "Start"
+   d. If the service is not listed, you need to install Full-Text Search feature:
+      - Run SQL Server Installation Center
+      - Select "Maintenance" -> "Modify Features"
+      - Check "Full-Text and Semantic Extractions for Search"
+      - Complete the installation wizard
+
+2. Via PowerShell (requires administrative privileges):
+   ```powershell
+   # Start the service if it exists but is stopped
+   Start-Service MSSQLFTDSRV -ErrorAction SilentlyContinue
+   
+   # If you need to install the feature
+   # For SQL Server 2019 example (adjust path for your version)
+   Start-Process -FilePath "C:\SQL2019\Setup.exe" -ArgumentList "/Action=Install", "/Features=FullText", "/InstanceName=MSSQLSERVER", "/quiet" -Wait
+   ```
+
+3. Via T-SQL (if Full-Text is installed but not started):
+   ```sql
+   -- Run as a SQL Server administrator
+   EXEC sp_fulltext_service 'start_full_text_service', 1;
+   ```
+
+Note: After installation, you may need to restart the SQL Server instance.
+"@
+    return $instructions
+}
+
+# Check if Full-Text is installed
+Write-Host "Checking if SQL Server Full-Text Search is installed..." -ForegroundColor Yellow
+$isFullTextInstalled = Check-FullTextInstalled -ServerInstance $serverName -UserID $userId -Password $password
+
+if ($isFullTextInstalled) {
+    Write-Host "Full-Text Search is installed on the SQL Server instance." -ForegroundColor Green
+} else {
+    Write-Host "Full-Text Search is not installed or not enabled on the SQL Server instance." -ForegroundColor Red
+    Write-Host "Full-Text Search is required for SQLFlow to function properly." -ForegroundColor Yellow
+    
+    $enableChoice = Read-Host "Would you like to try enabling Full-Text Search automatically? (y/n)"
+    
+    if ($enableChoice.ToLower() -eq "y") {
+        Write-Host "Attempting to enable Full-Text Search..." -ForegroundColor Yellow
+        $enableResult = Enable-FullText -ServerInstance $serverName -UserID $userId -Password $password
+        
+        if (-not $enableResult) {
+            Write-Host "Could not enable Full-Text Search automatically." -ForegroundColor Red
+            Write-Host "This typically requires administrative privileges on the SQL Server." -ForegroundColor Yellow
+            
+            $showInstructions = Read-Host "Would you like to see manual installation instructions? (y/n)"
+            if ($showInstructions.ToLower() -eq "y") {
+                Write-Host (Get-FullTextInstallationInstructions) -ForegroundColor Cyan
+            }
+            
+            $continueChoice = Read-Host "Continue with setup without Full-Text Search? (y/n)"
+            if ($continueChoice.ToLower() -ne "y") {
+                Write-Host "Setup cannot continue without Full-Text Search. Exiting..." -ForegroundColor Red
+                exit 1
+            } else {
+                Write-Host "Continuing setup without Full-Text Search. Some SQLFlow features may not work properly." -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "Full-Text Search was successfully enabled!" -ForegroundColor Green
+        }
+    } else {
+        $showInstructions = Read-Host "Would you like to see manual installation instructions? (y/n)"
+        if ($showInstructions.ToLower() -eq "y") {
+            Write-Host (Get-FullTextInstallationInstructions) -ForegroundColor Cyan
+        }
+        
+        $continueChoice = Read-Host "Continue with setup without Full-Text Search? (y/n)"
+        if ($continueChoice.ToLower() -ne "y") {
+            Write-Host "Setup cannot continue without Full-Text Search. Exiting..." -ForegroundColor Red
+            exit 1
+        } else {
+            Write-Host "Continuing setup without Full-Text Search. Some SQLFlow features may not work properly." -ForegroundColor Yellow
+        }
+    }
+}
 
 function Ensure-SqlPackageInstalled {
     $possiblePaths = @(
