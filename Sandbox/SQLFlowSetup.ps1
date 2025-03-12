@@ -1253,8 +1253,9 @@ $env:SQLFlowOpenAiApiKey = [Environment]::GetEnvironmentVariable("SQLFlowOpenAiA
 
 Write-Host "Environment variables refreshed." -ForegroundColor Green
 
+# Replace the existing "Pull and start containers" section with this updated code
 # Pull and start containers
-Write-Host "`nPulling Docker images (this may take some time)..." -ForegroundColor Yellow
+Write-Host "`nChecking for existing SQLFlow containers..." -ForegroundColor Yellow
 try {
     # Verify docker-compose.yml exists before proceeding
     if (-not (Test-Path $dockerComposePath)) {
@@ -1264,8 +1265,53 @@ try {
     # Change to the download directory
     Set-Location -Path $downloadPath
     
+    # Stop any running SQLFlow containers by name/image rather than by compose file
+    # This will catch containers started from any directory
+    Write-Host "Stopping any existing SQLFlow containers..." -ForegroundColor Yellow
+    
+    # Get all container IDs with sqlflow-api, sqlflow-ui, or businessiq in the name or image
+    $sqlflowContainers = docker ps -a --filter "name=sqlflow" --format "{{.ID}}"
+    # Also look for containers with businessiq in the image name (as shown in your screenshot)
+    $businessiqContainers = docker ps -a --filter "ancestor=businessiq" --format "{{.ID}}"
+    # Combine the container lists, using Select-Object -Unique to remove duplicates
+    $containersToStop = @($sqlflowContainers) + @($businessiqContainers) | Select-Object -Unique
+    
+    if ($containersToStop -and $containersToStop.Count -gt 0) {
+        Write-Host "Found existing SQLFlow containers. Stopping and removing them..." -ForegroundColor Yellow
+        $containersToStop | ForEach-Object {
+            if ($_) {  # Make sure the ID is not empty
+                Write-Host "Stopping container $_..." -ForegroundColor Yellow
+                docker stop $_ 2>&1 | Out-Null
+                Write-Host "Removing container $_..." -ForegroundColor Yellow
+                docker rm $_ 2>&1 | Out-Null
+            }
+        }
+    } else {
+        Write-Host "No existing SQLFlow containers found." -ForegroundColor Green
+    }
+    
+    # Also check for any demo containers (as shown in your screenshot with demo09)
+    $demoContainers = docker ps -a --filter "name=demo" --format "{{.ID}}"
+    if ($demoContainers) {
+        Write-Host "Found demo containers that may be related. Stopping and removing them..." -ForegroundColor Yellow
+        $demoContainers | ForEach-Object {
+            if ($_) {  # Make sure the ID is not empty
+                Write-Host "Stopping container $_..." -ForegroundColor Yellow
+                docker stop $_ 2>&1 | Out-Null
+                Write-Host "Removing container $_..." -ForegroundColor Yellow
+                docker rm $_ 2>&1 | Out-Null
+            }
+        }
+    }
+    
+    # Still run compose down in the current directory to clean up networks
     if ($composeCommand -eq "docker-compose") {
         # Docker Compose V1
+        Write-Host "Executing: docker-compose down" -ForegroundColor Yellow
+        $downOutput = Invoke-Expression "docker-compose down" 2>&1
+        # We don't check LASTEXITCODE here as it might fail if no containers are running, which is fine
+        
+        Write-Host "`nPulling Docker images (this may take some time)..." -ForegroundColor Yellow
         Write-Host "Executing: docker-compose pull" -ForegroundColor Yellow
         $pullOutput = Invoke-Expression "docker-compose pull" 2>&1
         if ($LASTEXITCODE -ne 0) {
@@ -1283,6 +1329,11 @@ try {
     }
     else {
         # Docker Compose V2
+        Write-Host "Executing: docker compose down" -ForegroundColor Yellow
+        $downOutput = Invoke-Expression "docker compose down" 2>&1
+        # We don't check LASTEXITCODE here as it might fail if no containers are running, which is fine
+        
+        Write-Host "`nPulling Docker images (this may take some time)..." -ForegroundColor Yellow
         Write-Host "Executing: docker compose pull" -ForegroundColor Yellow
         $pullOutput = Invoke-Expression "docker compose pull" 2>&1
         if ($LASTEXITCODE -ne 0) {
