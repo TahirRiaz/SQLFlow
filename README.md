@@ -13,7 +13,7 @@ With SQLFlow, data engineers and architects can **build scalable, resilient, and
 ## 🏢 **Trusted by Leading Enterprises**  
 SQLFlow is actively used by organizations optimizing large-scale data operations:  
 
-- **Kolumbus AS** – Norway’s public transportation leader, managing data for buses, boats, and trams.  
+- **Kolumbus AS** – Norway’s public transportation leader, managing data for buses, boats, and trams. 
 - **Nortura SA** – Norway’s largest food supplier (23.545B NOK revenue), where SQLFlow supported critical data operations.  
 
 ## 📚 **SQLFlow UI**  
