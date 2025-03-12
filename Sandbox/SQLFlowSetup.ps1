@@ -1087,15 +1087,11 @@ $sqlFlowConnStr = $finalConnectionString -replace "Initial Catalog=master", "Ini
 $sqlFlowConnStr = $sqlFlowConnStr -replace "Server=$serverName", "Server=host.docker.internal"
 Write-Host "Using host.docker.internal instead of $serverName for Docker connectivity." -ForegroundColor Cyan
 
-
 # Save connection string in a system environment variable named SQLFlowConStr
 [Environment]::SetEnvironmentVariable("SQLFlowConStr", $sqlFlowConnStr, "Machine")
 Write-Host "`nCreated/updated system environment variable 'SQLFlowConStr' with the chosen connection string." -ForegroundColor Green
 
-# Create base connection string template that always uses host.docker.internal
-$baseConnString = $finalConnectionString -replace "Server=$serverName", "Server=host.docker.internal"
-
-# Create connection strings for different databases
+# Create connection strings for different databases with explicit credentials
 $databases = @{
     "dw-ods-prod-db" = "dw-ods-prod";
     "dw-pre-prod-db" = "dw-pre-prod";
@@ -1105,23 +1101,35 @@ $databases = @{
 # Initialize an array to store all update statements
 $updateStatements = @()
 
-# Generate update statements for each database
+# Generate update statements for each database with explicit username and password
 foreach ($alias in $databases.Keys) {
     $dbName = $databases[$alias]
-    $connString = $baseConnString -replace "Initial Catalog=master", "Initial Catalog=$dbName"
     
-    # Add Command Timeout if not present
-    if (-not ($connString -match "Command Timeout")) {
-        $connString = $connString.TrimEnd(";") + ";Command Timeout=360;"
-    }
+    # Create connection string with explicit parameters instead of modifying the existing one
+    $connString = "Server=host.docker.internal;Initial Catalog=$dbName;User ID=$userId;Password=$password;Persist Security Info=False;"
+    
+    # Add TrustServerCertificate and Encrypt settings
+    $connString += "TrustServerCertificate=$trustServerCertificate;Encrypt=$encrypt;"
+    
+    # Add Command Timeout
+    $connString += "Command Timeout=360;"
     
     # Create the update statement
     $updateStatements += "UPDATE [flw].[SysDataSource] SET ConnectionString = '$connString' WHERE Alias = '$alias';"
+    
+    # Log the update (without showing the password)
+    $logConnString = $connString -replace "Password=[^;]+", "Password=*****"
+    Write-Host "Preparing update for $alias with connection string: $logConnString" -ForegroundColor Yellow
 }
 
 # Execute all update statements
 try {
+    Write-Host "`nExecuting update statements..." -ForegroundColor Yellow
     foreach ($statement in $updateStatements) {
+        # Create safe version for logging (without showing the password)
+        $logStatement = $statement -replace "Password=[^;]+", "Password=*****"
+        Write-Host "Executing: $logStatement" -ForegroundColor Yellow
+        
         Invoke-Sqlcmd -ConnectionString $sqlFlowConnStr -Query $statement
     }
     Write-Host "Update statements executed successfully against dw-sqlflow-prod database." -ForegroundColor Green
