@@ -4,6 +4,7 @@
 
 With SQLFlow, data engineers and architects can **build scalable, resilient, and future-proof data pipelines** without the constant overhead of manual schema updates or pipeline disruptions. SQLFlow is fully containerized and available on [Docker Hub](https://hub.docker.com/repository/docker/businessiq/sqlflow/general), making deployment seamless across environments.
 
+
 ## ✨ **What Sets SQLFlow Apart?**  
 🔹 **Automatic Schema Evolution** – Unlike other frameworks, SQLFlow dynamically adjusts to incoming schema changes, eliminating the need for manual intervention.  
 🔹 **Zero Maintenance Pipelines** – Say goodbye to pipeline failures caused by evolving data structures.  
@@ -15,6 +16,16 @@ SQLFlow is actively used by organizations optimizing large-scale data operations
 
 - **Kolumbus AS** – Norway’s public transportation leader, managing data for buses, boats, and trams. 
 - **Nortura SA** – Norway’s largest food supplier (23.545B NOK revenue), where SQLFlow supported critical data operations.  
+
+## 👥 **Support and Community**  
+Whether you have questions, issues, or success stories, feel free to reach out. Together, let's redefine data warehousing.  
+
+- **Email:** [tahir@sqlflow.io](mailto:tahir@sqlflow.io)  
+- **LinkedIn:** [Contact](https://www.linkedin.com/in/businessiq/)  
+
+## SQLFlow presentation at anual BouvetOne Developer Conference
+[![Demonstration of Dynamic Schema Evolution](https://img.shields.io/badge/YouTube-Watch%20Video-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=VIDEO_ID)
+
 
 ## 📚 **SQLFlow UI**  
 
@@ -69,11 +80,6 @@ This [guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md)
 
 ![SQLFlow Core Components](https://github.com/user-attachments/assets/9a48caf3-d3ed-467d-89cd-f09f579f08b2)  
 
-## 👥 **Support and Community**  
-Whether you have questions, issues, or success stories, feel free to reach out. Together, let's redefine data warehousing.  
-
-- **Email:** [tahir@sqlflow.io](mailto:tahir@sqlflow.io)  
-- **LinkedIn:** [Contact](https://www.linkedin.com/in/businessiq/)  
 
 ## 🤝 **Contributing**  
 Your contributions help us grow. You can:  

@@ -18,7 +18,17 @@ Use the PowerShell auto-installer script:
 .\SQLFlowSetup.ps1
 ```
 [View Script Source](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/SQLFlowSetup.ps1)
-
 ### Option 2: Manual Installation
 Follow the step-by-step instructions in our [Manual Setup Guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/ManualSetup.md)
+
+## Access SQLFlow
+Once running successfully use HTTP to avoid certificate errors for local testing.
+
+| Service | URL |
+|---------|-----|
+| SQLFlow UI (HTTP) | http://localhost:8110 |
+| API (HTTP) | http://localhost:9110 |
+
+**Login credentials:** demo@sqlflow.io/@Demo123
+
 
