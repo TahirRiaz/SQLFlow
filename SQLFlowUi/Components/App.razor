@@ -1,19 +1,18 @@
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject NavigationManager NavigationManager
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <RadzenTheme @rendermode="@InteractiveServer" Theme="material3-dark" />
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <base href="/" />
-    <HeadOutlet @rendermode="@InteractiveServer" />
+    <base href="@NavigationManager.BaseUri" />
+    <RadzenTheme @rendermode="@InteractiveServer" Theme="material3-dark" />
+    
     <link rel="stylesheet" href="/css/bootstrap/bootstrap.min.css" />
     
     <link rel="stylesheet" href="/css/site.css" />
     <link rel="icon" href="/favicon.ico" />
     <script src="/js/audiorecorder.js"></script>
-
-
     <script>
 
         function triggerOpenCloneDialogJs(flowid) {
@@ -106,7 +105,6 @@
 
     </script>
 
-    
     <style>
         .editor-section {
             width: 100%;
@@ -216,7 +214,7 @@
         }
     </style>
 
-
+    <HeadOutlet @rendermode="@InteractiveServer" />
 </head>
 
 <body>

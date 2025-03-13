@@ -110,6 +110,33 @@ builder.Services.AddControllers().AddOData(o =>
 
 var app = builder.Build();
 
+
+app.UseStaticFiles();
+
+// Configure middleware pipeline in the correct order
+var provider = new FileExtensionContentTypeProvider();
+provider.Mappings[".css"] = "text/css";
+provider.Mappings[".js"] = "application/javascript";
+provider.Mappings[".woff"] = "font/woff";
+provider.Mappings[".woff2"] = "font/woff2";
+provider.Mappings[".ttf"] = "font/ttf";
+provider.Mappings[".svg"] = "image/svg+xml";
+provider.Mappings[".ico"] = "image/x-icon";
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = provider,
+    OnPrepareResponse = ctx =>
+    {
+        // Explicitly set content type for CSS files regardless of query string
+        if (ctx.File.Name.EndsWith(".css", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.Context.Response.ContentType = "text/css";
+        }
+    }
+});
+
+
 // Add security headers middleware
 app.Use(async (context, next) =>
 {
@@ -138,31 +165,6 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
-
-app.UseStaticFiles();
-
-// Configure middleware pipeline in the correct order
-var provider = new FileExtensionContentTypeProvider();
-provider.Mappings[".css"] = "text/css";
-provider.Mappings[".js"] = "application/javascript";
-provider.Mappings[".woff"] = "font/woff";
-provider.Mappings[".woff2"] = "font/woff2";
-provider.Mappings[".ttf"] = "font/ttf";
-provider.Mappings[".svg"] = "image/svg+xml";
-provider.Mappings[".ico"] = "image/x-icon";
-
-app.UseStaticFiles(new StaticFileOptions
-{
-    ContentTypeProvider = provider,
-    OnPrepareResponse = ctx =>
-    {
-        // Explicitly set content type for CSS files regardless of query string
-        if (ctx.File.Name.EndsWith(".css", StringComparison.OrdinalIgnoreCase))
-        {
-            ctx.Context.Response.ContentType = "text/css";
-        }
-    }
-});
 
 app.UseRouting(); // Must come before authentication/authorization
 app.UseHeaderPropagation();
