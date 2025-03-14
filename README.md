@@ -21,7 +21,7 @@ SQLFlow is actively used by organizations optimizing large-scale data operations
 Whether you have questions, issues, or success stories, feel free to reach out. Together, let's redefine data warehousing.  
 This Slack workspace allows developers, data engineers, and contributors to discuss SQLFlow, ask questions, and share insights.
 
-### Click the link to join the workspace: [**Join SQLFlow Community Slack**](https://join.slack.com/t/sqlflow)
+### Click the link to join the workspace: [**Join SQLFlow Community Slack**](https://join.slack.com/t/sqlflow/shared_invite/zt-31tob1pxv-t4uVIjgucYRakm~W5Oik8A)
 
 - **Email:** [tahir@sqlflow.io](mailto:tahir@sqlflow.io)  
 - **LinkedIn:** [Contact](https://www.linkedin.com/in/businessiq/)  
