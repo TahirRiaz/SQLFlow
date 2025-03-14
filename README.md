@@ -19,11 +19,14 @@ SQLFlow is actively used by organizations optimizing large-scale data operations
 
 ## 👥 **Support and Community**  
 Whether you have questions, issues, or success stories, feel free to reach out. Together, let's redefine data warehousing.  
+This Slack workspace allows developers, data engineers, and contributors to discuss SQLFlow, ask questions, and share insights.
+
+### Click the link to join the workspace: [**Join SQLFlow Community Slack**](https://join.slack.com/t/sqlflow)
 
 - **Email:** [tahir@sqlflow.io](mailto:tahir@sqlflow.io)  
 - **LinkedIn:** [Contact](https://www.linkedin.com/in/businessiq/)  
 
-## SQLFlow presentation at anual BouvetOne Developer Conference
+## SQLFlow presentation in Norwegian at anual BouvetOne Developer Conference
 [![Demonstration of Dynamic Schema Evolution](https://img.shields.io/badge/YouTube-Watch%20Video-red?style=for-the-badge&logo=youtube)](https://www.youtube.com/watch?v=xa-NkFe6Rrw)
 
 

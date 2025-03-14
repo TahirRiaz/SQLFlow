@@ -129,7 +129,7 @@ namespace SQLFlowCore.Services
 
                             using (var operation = logger.TrackOperation("FetchFileDateFromNextFlow"))
                             {
-                                Shared.GetFildateFromNextFlow(logger, incrTbl, sp);
+                                Shared.FileDateFromNextFlow(logger, incrTbl, sp);
                             }
 
                         }

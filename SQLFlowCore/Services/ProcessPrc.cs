@@ -134,7 +134,7 @@ namespace SQLFlowCore.Services
                         //ToDo:  check if this is needed for prc flows
                         if (sp.fileDate > 0)
                         {
-                            Shared.GetFildateFromNextFlow(logger, incrTbl, sp);
+                            Shared.FileDateFromNextFlow(logger, incrTbl, sp);
                         }
 
                         //Ensure valid copy Path

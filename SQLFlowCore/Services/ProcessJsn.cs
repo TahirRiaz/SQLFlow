@@ -129,7 +129,7 @@ namespace SQLFlowCore.Services
                         //Fetch file date from related tables
                         if (sp.fileDate > 0 && sp.altTrgIsEmbedded == false)
                         {
-                            string fileDateFromNextFlow = Shared.GetFildateFromNextFlow(logger, incrTbl, sp);
+                            string fileDateFromNextFlow = Shared.FileDateFromNextFlow(logger, incrTbl, sp);
                         }
 
                         if (sp.copyToPath.Length > 0)

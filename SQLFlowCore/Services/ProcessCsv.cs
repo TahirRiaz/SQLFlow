@@ -121,7 +121,7 @@ namespace SQLFlowCore.Services
                         //Fetch file date from related tables
                         if (sp.fileDate > 0)
                         {
-                            Shared.GetFildateFromNextFlow(logger, incrTbl, sp);
+                            Shared.FileDateFromNextFlow(logger, incrTbl, sp);
                         }
 
                         //Ensure valid copy Path

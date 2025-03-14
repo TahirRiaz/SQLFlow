@@ -568,7 +568,7 @@ namespace SQLFlowCore.Services
             return tblPreFiles;
         }
 
-        internal static string GetFildateFromNextFlow(RealTimeLogger logger, DataTable incrTbl, ServiceParam sp)
+        internal static string FileDateFromNextFlow(RealTimeLogger logger, DataTable incrTbl, ServiceParam sp)
         {
             string fileDateFromNextFlow = string.Empty;
             using (var operation = logger.TrackOperation("Fetch file date from next flow"))
