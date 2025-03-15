@@ -1,0 +1,42 @@
+CREATE TABLE [flw].[LineageMap]
+(
+[LineageParsedID] [int] NOT NULL IDENTITY(1, 1),
+[RecID] [int] NOT NULL,
+[Virtual] [bit] NULL,
+[Batch] [nvarchar] (250) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[SysAlias] [nvarchar] (70) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[FlowID] [int] NOT NULL,
+[FlowType] [varchar] (25) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[FromObjectMK] [int] NULL,
+[ToObjectMK] [int] NULL,
+[FromObject] [nvarchar] (255) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[ToObject] [nvarchar] (255) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[PathStr] [nvarchar] (max) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[PathNum] [nvarchar] (max) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[RootObjectMK] [int] NULL,
+[RootObject] [nvarchar] (225) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[Circular] [bit] NULL,
+[Step] [int] NULL,
+[Sequence] [int] NULL,
+[Level] [int] NULL,
+[Priority] [int] NULL,
+[NoOfChildren] [int] NULL,
+[MaxLevel] [int] NULL,
+[FromObjectType] [varchar] (25) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[ToObjectType] [varchar] (25) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[SourceIsAzCont] [bit] NULL,
+[CommandTimeout] [int] NULL,
+[MaxConcurrency] [int] NULL,
+[LastExec] [datetime] NULL,
+[Status] [int] NULL,
+[SolidEdge] [int] NULL,
+[LatestFileProcessed] [nvarchar] (250) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[DeactivateFromBatch] [bit] NULL,
+[DataStatus] [bit] NULL,
+[NextStepFlows] [nvarchar] (max) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[SrcAlias] [varchar] (70) COLLATE SQL_Latin1_General_CP1_CI_AS NULL,
+[TrgAlias] [varchar] (70) COLLATE SQL_Latin1_General_CP1_CI_AS NULL
+) ON [PRIMARY]
+GO
+ALTER TABLE [flw].[LineageMap] ADD CONSTRAINT [PK_LineageMap] PRIMARY KEY CLUSTERED ([LineageParsedID]) ON [PRIMARY]
+GO
