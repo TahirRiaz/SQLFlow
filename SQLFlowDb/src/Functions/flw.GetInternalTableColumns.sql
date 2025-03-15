@@ -1,0 +1,20 @@
+SET QUOTED_IDENTIFIER ON
+GO
+SET ANSI_NULLS ON
+GO
+
+CREATE FUNCTION [flw].[GetInternalTableColumns]
+()
+RETURNS TABLE
+AS
+RETURN
+(
+    SELECT QUOTENAME(TABLE_SCHEMA) + '.' + QUOTENAME(TABLE_NAME) + '.' + QUOTENAME(COLUMN_NAME) AS ObjectName
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE QUOTENAME(TABLE_SCHEMA) + '.' + QUOTENAME(TABLE_NAME)IN
+          (
+              SELECT ObjectName FROM [flw].[GetInternalTables]()
+          )
+          --AND CHARACTER_MAXIMUM_LENGTH <> -1 --Exclude Varchar Max columns
+);
+GO

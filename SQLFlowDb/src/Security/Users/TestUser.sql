@@ -1,0 +1,2 @@
+CREATE USER [TestUser] FOR LOGIN [TestUser] WITH DEFAULT_SCHEMA=[flw]
+GO
