@@ -1,0 +1,3 @@
+CREATE SCHEMA [sqf]
+AUTHORIZATION [dbo]
+GO
