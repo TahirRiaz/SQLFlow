@@ -77,7 +77,11 @@ Ensure fast, reliable performance through pipelines built upon industry best pra
 Easily onboard and maximize SQLFlow with detailed documentation covering everything from basic setup to advanced features.  
 
 ## 📚 **SQLFlow Installation and Configuration Guide**  
-This [guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md) will walk you through setting up SQLFlow using Docker containers. Setup is a breeze with our fully containerized solution that is publicly available on [Docker Hub](https://hub.docker.com/repository/docker/businessiq/sqlflow/general).  
+Download and run the powershell script to get SQLFlow up and running with zero manual configuration.
+Access SQLFlow at http://localhost:8110 or https://localhost:8111 using the default credentials (demo@sqlflow.io/@Demo123).
+[Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.ps1)
+
+This [guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md) will walk you through setting up SQLFlow using Docker containers.  
 
 ## 🏗️ **Architecture**  
 

@@ -1,34 +1,46 @@
-# SQLFlow Installation and Configuration Guide
-This guide will walk you through setting up SQLFlow using Docker containers.
+# SQLFlow Installation Guide
+
+This guide explains how to quickly set up SQLFlow using Docker containers.
 
 ## Prerequisites
 
 - [Docker Desktop](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/install-docker.md) installed and running
-- [SQL Server](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/install-mssql.md) instance (on-premises) or Azure SQL Database
-  - **Full-text Search** must be enabled on your SQL Server instance
-- Sufficient disk space for Docker images and volumes (~550MB)
-- Basic knowledge of Docker and SQL database management
-- SSL Configuration:
-  - Before starting SQLFlow setup, ensure your SQL Server or Azure SQL Database has SSL properly configured
-  - Detailed instructions and an automation script are available in our [SQL Server SSL Configuration Wizard](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/db/mssql-ssl-wizard.md)
-## Setup Options
-### Option 1: Automated Installation
-Use the PowerShell auto-installer script:
+- Sufficient disk space for Docker images and volumes (~650MB)
+
+## Automated Installation
+Our new fully automated PowerShell script handles the entire setup process in just 5 minutes:
+
 ```powershell
-.\SQLFlowSetup.ps1
+.\setup.ps1
 ```
-[View Script Source](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/SQLFlowSetup.ps1)
-### Option 2: Manual Installation
-Follow the step-by-step instructions in our [Manual Setup Guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/ManualSetup.md)
+
+### What the script does:
+- Downloads required backup files from GitHub
+- Sets up environment variables and cleans previous installations
+- Pulls Docker images and configures paths
+- Restores databases and updates connection strings
+- Starts all containers with proper configuration
+
+The script only requires Docker Desktop to be running - everything else is handled automatically.
+
+[Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.ps1)
 
 ## Access SQLFlow
-Once running successfully use HTTP to avoid certificate errors for local testing.
+
+Once installation completes, access SQLFlow via:
 
 | Service | URL |
 |---------|-----|
-| SQLFlow UI (HTTP) | http://localhost:8110 |
-| API (HTTP) | http://localhost:9110 |
+| SQLFlow UI | http://localhost:8110 |
+| SQLFlow UI (HTTPS) | https://localhost:8111 |
+| API | http://localhost:9110 |
 
 **Login credentials:** demo@sqlflow.io/@Demo123
 
+## Manual Installation
 
+If you prefer a manual approach, follow our [Manual Setup Guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/ManualSetup.md)
+
+## Support
+
+If you encounter any issues during installation, please [open an issue](https://github.com/TahirRiaz/SQLFlow/issues) on our GitHub repository.
