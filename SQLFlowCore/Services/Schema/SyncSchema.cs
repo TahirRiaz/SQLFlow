@@ -15,6 +15,7 @@ using SQLFlowCore.Common;
 using Microsoft.SqlServer.Management.Common;
 using SQLFlowCore.Logger;
 using Microsoft.Extensions.Logging;
+using Org.BouncyCastle.Tls;
 
 //using SQLFlowCore.DataExt;
 //using System.Data;
@@ -71,9 +72,12 @@ namespace SQLFlowCore.Services.Schema
             Table srcTable = null;
             Table trgTable = null;
 
+            string serverName = smoSrc.Urn.Value.Split('/')[0].Replace("Server[@Name='", "").Replace("']", "");
+
             try
             {
-                var objUrn = SmoHelper.CreateTableUrnFromComponents(smoSrc.NetName, srcDatabaseObj.Name, syncInput.SrcSchema,
+               
+                var objUrn = SmoHelper.CreateTableUrnFromComponents(serverName, srcDatabaseObj.Name, syncInput.SrcSchema,
                     syncInput.SrcObject);
                 var smoObject = smoSrc.GetSmoObject(objUrn);
                 if (smoObject is Table)
@@ -87,7 +91,7 @@ namespace SQLFlowCore.Services.Schema
 
             try
             {
-                var objUrn = SmoHelper.CreateViewUrnFromComponents(smoSrc.NetName, srcDatabaseObj.Name, syncInput.SrcSchema,
+                var objUrn = SmoHelper.CreateViewUrnFromComponents(serverName, srcDatabaseObj.Name, syncInput.SrcSchema,
                     syncInput.SrcObject);
                 var smoObject = smoSrc.GetSmoObject(objUrn);
                 if (smoObject is View)
@@ -103,12 +107,12 @@ namespace SQLFlowCore.Services.Schema
 
             if (srcView == null && srcTable == null)
             {
-                throw new Exception($"Source object {syncInput.SrcSchema}.{syncInput.SrcObject} not found on server {smoSrc.NetName}");
+                throw new Exception($"Source object {syncInput.SrcSchema}.{syncInput.SrcObject} not found on server {serverName}");
             }
 
             try
             {
-                var trgObjUrn = SmoHelper.CreateTableUrnFromComponents(smoTrg.NetName, trgDatabaseObj.Name, syncInput.TrgSchema, syncInput.TrgObject);
+                var trgObjUrn = SmoHelper.CreateTableUrnFromComponents(serverName, trgDatabaseObj.Name, syncInput.TrgSchema, syncInput.TrgObject);
                 var trgSmoObject = smoSrc.GetSmoObject(trgObjUrn);
                 if (trgSmoObject is Table)
                 {

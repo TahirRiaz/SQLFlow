@@ -232,7 +232,8 @@ WHERE OBJECT_SCHEMA_NAME(i.object_id) = @schema
                 Table tblObj = null;
                 try
                 {
-                    var tblUrn = SmoHelper.CreateTableUrnFromComponents(srv.Name, Database, Schema, Object);
+                    string serverName = srv.Urn.Value.Split('/')[0].Replace("Server[@Name='", "").Replace("']", "");
+                    var tblUrn = SmoHelper.CreateTableUrnFromComponents(serverName, Database, Schema, Object);
                     var tbl = srv.GetSmoObject(tblUrn);
                     tblObj = tbl as Table;
                     

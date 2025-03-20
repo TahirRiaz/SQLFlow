@@ -1,3 +1,0 @@
-CREATE SCHEMA [dtk]
-AUTHORIZATION [dbo]
-GO

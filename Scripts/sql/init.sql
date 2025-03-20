@@ -1,0 +1,82 @@
+-- USE master;
+-- -- Enable advanced options
+-- EXEC sp_configure 'show advanced options', 1;
+-- RECONFIGURE;
+
+-- -- Force master key regeneration
+-- ALTER SERVICE MASTER KEY FORCE REGENERATE;
+
+-- -- Create master key if it doesn't exist
+-- IF NOT EXISTS (SELECT * FROM sys.symmetric_keys WHERE name LIKE '%DatabaseMasterKey%')
+-- BEGIN
+--     CREATE MASTER KEY ENCRYPTION BY PASSWORD = 'StrongMasterKeyPassword123!';
+--     PRINT 'Created new master key';
+-- END
+-- ELSE
+--     PRINT 'Master key already exists';
+
+-- -- Drop existing certificate if it exists
+-- IF EXISTS (SELECT * FROM sys.certificates WHERE name = 'SSLCert')
+-- BEGIN
+--     DROP CERTIFICATE SSLCert;
+--     PRINT 'Dropped existing certificate';
+-- END
+
+-- -- First verify the file exists and is accessible
+-- DECLARE @FileExists BIT;
+-- EXEC master.dbo.xp_fileexist '/var/opt/mssql/security/mssql.pfx', @FileExists OUTPUT;
+
+-- IF @FileExists = 1
+-- BEGIN
+--     -- Use the certificate that we created in the Dockerfile
+--     BEGIN TRY
+--         CREATE CERTIFICATE SSLCert
+--         FROM FILE = '/var/opt/mssql/security/mssql.pfx'
+--         WITH PRIVATE KEY (
+--             FILE = '/var/opt/mssql/security/mssql.pfx',
+--             DECRYPTION BY PASSWORD = 'YourCertificatePassword'
+--         );
+--         PRINT 'Created new SSL certificate successfully';
+--     END TRY
+--     BEGIN CATCH
+--         PRINT 'Certificate creation failed: ' + ERROR_MESSAGE();
+--     END CATCH
+-- END
+-- ELSE
+-- BEGIN
+--     PRINT 'Certificate file not found at /var/opt/mssql/security/mssql.pfx';
+--     RETURN;
+-- END
+
+-- -- Only continue if certificate was created successfully
+-- IF EXISTS (SELECT * FROM sys.certificates WHERE name = 'SSLCert')
+-- BEGIN
+--     -- Enable SSL encryption - use the correct option name for SQL Server 2022
+--     EXEC sp_configure 'remote access', 1;
+--     RECONFIGURE;
+
+--     -- Enable secure connections
+--     EXEC sp_configure 'remote query timeout', 0;
+--     RECONFIGURE;
+
+--     -- Create database endpoint with encryption
+--     IF NOT EXISTS (SELECT * FROM sys.endpoints WHERE name = 'Hadr_endpoint')
+--     BEGIN
+--         CREATE ENDPOINT Hadr_endpoint
+--         STATE = STARTED
+--         AS TCP (
+--             LISTENER_PORT = 5022,
+--             LISTENER_IP = ALL
+--         )
+--         FOR DATABASE_MIRRORING (
+--             AUTHENTICATION = CERTIFICATE SSLCert,
+--             ENCRYPTION = REQUIRED ALGORITHM AES,
+--             ROLE = ALL
+--         );
+--         PRINT 'Created endpoint successfully';
+--     END
+-- END
+-- ELSE
+-- BEGIN
+--     PRINT 'Cannot create endpoint because SSLCert was not created successfully';
+-- END

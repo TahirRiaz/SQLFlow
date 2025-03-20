@@ -65,20 +65,23 @@ namespace SQLFlowCore.Services.Schema
             SqlSmoObject smoObject = new Default();
             try
             {
+                // This ensures we're using the correct server identification format that SMO expects
+                string serverName = srv.Urn.Value.Split('/')[0].Replace("Server[@Name='", "").Replace("']", "");
+
                 string objUrn = String.Empty;
                 if (type == "sp")
                 {
-                    objUrn = SmoHelper.CreateStoredProcedureUrnFromComponents(srv.NetName, sp.trgDatabase, sp.trgSchema,
+                    objUrn = SmoHelper.CreateStoredProcedureUrnFromComponents(serverName, sp.trgDatabase, sp.trgSchema,
                         sp.trgObject);
                 }
                 if (type == "Table")
                 {
-                    objUrn = SmoHelper.CreateTableUrnFromComponents(srv.NetName, sp.trgDatabase, sp.trgSchema,
+                    objUrn = SmoHelper.CreateTableUrnFromComponents(serverName, sp.trgDatabase, sp.trgSchema,
                         sp.trgObject);
                 }
                 if (type == "View")
                 {
-                    objUrn = SmoHelper.CreateViewUrnFromComponents(srv.NetName, sp.trgDatabase, sp.trgSchema,
+                    objUrn = SmoHelper.CreateViewUrnFromComponents(serverName, sp.trgDatabase, sp.trgSchema,
                         sp.trgObject);
                 }
                 smoObject = srv.GetSmoObject(objUrn);
@@ -824,7 +827,9 @@ namespace SQLFlowCore.Services.Schema
 
                 Table newSkeyTbl = BuildSurrogateKeyTable(baseTable, keyColumnsList, smoDbSKey, sKeyObject, sKeySchema, surrogateColumn);
 
-                var objUrn = SmoHelper.CreateTableUrnFromComponents(smoSrvSKey.NetName, sKeyDatabase, sKeySchema,sKeyObject);
+                string serverName = smoSrvSKey.Urn.Value.Split('/')[0].Replace("Server[@Name='", "").Replace("']", "");
+
+                var objUrn = SmoHelper.CreateTableUrnFromComponents(serverName, sKeyDatabase, sKeySchema,sKeyObject);
                 Table sKeyTable = null;
                 try
                 {
@@ -2040,9 +2045,12 @@ namespace SQLFlowCore.Services.Schema
             lkpView = null;
             lkpSp = null;
 
+            string serverName = smoSrc.Urn.Value.Split('/')[0].Replace("Server[@Name='", "").Replace("']", "");
+
             try
             {
-                var objUrn = SmoHelper.CreateTableUrnFromComponents(smoSrc.NetName, srcDatabaseObj.Name, SrcSchema,
+               
+                var objUrn = SmoHelper.CreateTableUrnFromComponents(serverName, srcDatabaseObj.Name, SrcSchema,
                     SrcObject);
                 var smoObject = smoSrc.GetSmoObject(objUrn);
                 if (smoObject is Table)
@@ -2055,7 +2063,7 @@ namespace SQLFlowCore.Services.Schema
 
             try
             {
-                var objUrn = SmoHelper.CreateViewUrnFromComponents(smoSrc.NetName, srcDatabaseObj.Name, SrcSchema,
+                var objUrn = SmoHelper.CreateViewUrnFromComponents(serverName, srcDatabaseObj.Name, SrcSchema,
                     SrcObject);
                 var smoObject = smoSrc.GetSmoObject(objUrn);
                 if (smoObject is View)
@@ -2068,7 +2076,7 @@ namespace SQLFlowCore.Services.Schema
 
             try
             {
-                var objUrn = SmoHelper.CreateStoredProcedureUrnFromComponents(smoSrc.NetName, srcDatabaseObj.Name, SrcSchema, SrcObject);
+                var objUrn = SmoHelper.CreateStoredProcedureUrnFromComponents(serverName, srcDatabaseObj.Name, SrcSchema, SrcObject);
                 var smoObject = smoSrc.GetSmoObject(objUrn);
                 if (smoObject is StoredProcedure)
                 {

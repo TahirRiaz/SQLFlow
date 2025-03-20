@@ -1,15 +1,6 @@
 services:
   sqlflowui:
-    build:
-      context: .
-      dockerfile: SQLFlowUi/Dockerfile
-      args:
-        BUILD_CONFIGURATION: Release
-    image: sqlflow-ui:latest
-    deploy:
-      resources:
-        limits:
-          memory: 2G
+    image: businessiq/sqlflow:ui
     container_name: sqlflow-ui
     restart: unless-stopped
     ports:
@@ -70,17 +61,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-  sqlflowapi: 
-    build:
-      context: .
-      dockerfile: /SQLFlowApi/Dockerfile
-      args:
-        BUILD_CONFIGURATION: Release
-    image: sqlflow-api:latest
-    deploy:
-      resources:
-        limits:
-          memory: 2G
+
+  sqlflowapi:
+    image: businessiq/sqlflow:api
     container_name: sqlflow-api
     restart: unless-stopped
     ports:
@@ -150,46 +133,6 @@ services:
       retries: 3
       start_period: 15s
 
-  # Added SQL Server service
-  sqlflow-mssql:
-    build:
-      context: .
-      dockerfile: SQLFlowDb/Dockerfile
-    image: sqlflow-mssql:latest
-    container_name: sqlflow-mssql
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 6G
-        reservations:
-          memory: 4G
-    ports:
-      - "1477:1433"
-    volumes:
-      - sqlflow-mssql-data:/var/opt/mssql/data
-      - sqlflow-mssql-log:/var/opt/mssql/log
-      - sqlflow-mssql-bak:/var/opt/mssql/bak
-    environment:
-      - ACCEPT_EULA=Y
-      - MSSQL_PID=Developer
-      - MSSQL_SA_PASSWORD=Passw0rd123456
-      - MSSQL_AGENT_ENABLED=true
-    networks:
-      - sqlflow-network
-    healthcheck:
-      test: ["CMD", "/var/opt/mssql/healthcheck.sh"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    ulimits:
-      nofile:
-        soft: 65536
-        hard: 65536
-    security_opt:
-      - seccomp:unconfined
-
 volumes:
   sqlflow-keys:
     driver: local
@@ -201,24 +144,7 @@ volumes:
       type: none
       device: C:/SQLFlow
       o: bind
-  sqlflow-mssql-data:
-    driver: local
-    driver_opts:
-      type: none
-      device: C:/SQLFlow/mssql/data
-      o: bind
-  sqlflow-mssql-log:
-    driver: local
-    driver_opts:
-      type: none
-      device: C:/SQLFlow/mssql/log
-      o: bind
-  sqlflow-mssql-bak:
-    driver: local
-    driver_opts:
-      type: none
-      device: C:/SQLFlow/mssql/bak
-      o: bind
+
 networks:
   sqlflow-network:
     driver: bridge

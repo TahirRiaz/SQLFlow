@@ -340,3 +340,7 @@ ASALocalRun/
 healthchecksdb
 /SQLFlowAf/local.settings.json
 
+# SQLFlow Sandbox sample files
+Sandbox/export/
+Sandbox/import/
+Sandbox/mssql/

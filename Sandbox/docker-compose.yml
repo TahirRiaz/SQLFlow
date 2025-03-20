@@ -141,6 +141,37 @@ services:
       retries: 3
       start_period: 15s
 
+  # Added SQL Server service
+  sqlflow-mssql:
+    image: businessiq/sqlflow:mssql
+    container_name: sqlflow-mssql
+    restart: unless-stopped
+    ports:
+      - "1477:1433"
+    volumes:
+      - sqlflow-mssql-data:/var/opt/mssql/data
+      - sqlflow-mssql-log:/var/opt/mssql/log
+      - sqlflow-mssql-bak:/var/opt/mssql/bak
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_PID=Developer
+      - MSSQL_SA_PASSWORD=Passw0rd123456
+      - MSSQL_AGENT_ENABLED=true
+    networks:
+      - sqlflow-network
+    healthcheck:
+      test: ["CMD", "/var/opt/mssql/healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    security_opt:
+      - seccomp:unconfined
+
 volumes:
   sqlflow-keys:
     driver: local
@@ -152,7 +183,15 @@ volumes:
       type: none
       device: C:/SQLFlow
       o: bind
+  sqlflow-mssql-data:
+    driver: local
+  sqlflow-mssql-log:
+    driver: local
+  sqlflow-mssql-bak:
+    driver: local
 
 networks:
   sqlflow-network:
     driver: bridge
+
+

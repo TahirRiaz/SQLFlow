@@ -1,6 +1,6 @@
 #!/usr/bin/env pwsh
 
-# Script to build and push Docker images for SQLFlow API and UI
+# Script to build and push Docker images for SQLFlow API, UI, and DB
 # PowerShell script for Docker buildx multi-platform builds
 
 # Repository configuration
@@ -39,6 +39,7 @@ Write-Host "`nStarting Docker buildx build process..." -ForegroundColor Cyan
 # Determine tag names
 $apiTag = "$selectedRepo`:api"
 $uiTag = "$selectedRepo`:ui"
+$dbTag = "$selectedRepo`:mssql"
 
 # Build and push the API image (multi-platform: linux/amd64, linux/arm64)
 Write-Host "Building API image (linux/amd64)..." -ForegroundColor Green
@@ -79,6 +80,27 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "UI image built and pushed successfully to $uiTag!" -ForegroundColor Green
 } else {
     Write-Host "UI image build failed with exit code $LASTEXITCODE" -ForegroundColor Red
+    exit $LASTEXITCODE
+}
+
+# Build and push the DB image (MSSQL)
+Write-Host "Building DB image (linux/amd64)..." -ForegroundColor Green
+docker buildx build `
+    --builder mybuilder `
+    --platform linux/amd64 `
+    --attest type=provenance,mode=max `
+    --attest type=sbom `
+    -t $dbTag `
+    -f ./SQLFlowDb/Dockerfile `
+    --build-arg BUILD_CONFIGURATION=Release `
+    --push `
+    .
+
+# Check if the DB build was successful
+if ($LASTEXITCODE -eq 0) {
+    Write-Host "DB image built and pushed successfully to $dbTag!" -ForegroundColor Green
+} else {
+    Write-Host "DB image build failed with exit code $LASTEXITCODE" -ForegroundColor Red
     exit $LASTEXITCODE
 }
 

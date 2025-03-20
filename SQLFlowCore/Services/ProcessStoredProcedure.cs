@@ -256,6 +256,7 @@ namespace SQLFlowCore.Services
                                     ServerConnection srvCon = new ServerConnection(sqlCon);
                                     Server srv = new Server(srvCon);
                                     
+
                                     var smoObject = SmoHelper.GetSmoObjectFromUrn(srv, sp, "sp");
                                     if (smoObject is StoredProcedure)
                                     {
