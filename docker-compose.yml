@@ -77,10 +77,6 @@ services:
       args:
         BUILD_CONFIGURATION: Release
     image: sqlflow-api:latest
-    deploy:
-      resources:
-        limits:
-          memory: 2G
     container_name: sqlflow-api
     restart: unless-stopped
     ports:
@@ -149,8 +145,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
-
-  # Added SQL Server service
   sqlflow-mssql:
     build:
       context: .
@@ -158,12 +152,6 @@ services:
     image: sqlflow-mssql:latest
     container_name: sqlflow-mssql
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 6G
-        reservations:
-          memory: 4G
     ports:
       - "1477:1433"
     volumes:
@@ -203,22 +191,10 @@ volumes:
       o: bind
   sqlflow-mssql-data:
     driver: local
-    driver_opts:
-      type: none
-      device: C:/SQLFlow/mssql/data
-      o: bind
   sqlflow-mssql-log:
     driver: local
-    driver_opts:
-      type: none
-      device: C:/SQLFlow/mssql/log
-      o: bind
   sqlflow-mssql-bak:
     driver: local
-    driver_opts:
-      type: none
-      device: C:/SQLFlow/mssql/bak
-      o: bind
 networks:
   sqlflow-network:
     driver: bridge
