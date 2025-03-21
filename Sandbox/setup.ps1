@@ -1,16 +1,21 @@
 ﻿<#
 .SYNOPSIS
-    Streamlined SQLFlow Setup and Database Restoration Wizard.
+    SQLFlow Setup and Database Restoration Utility - Automates complete deployment of SQLFlow environment with database restoration.
 
 .DESCRIPTION
-    This script guides users through installing SQLFlow, pulling Docker images,
-    cleaning up old containers, downloading .bak backups from GitHub, and restoring them
-    to a running SQL Server container before starting the remaining SQLFlow containers.
+    This comprehensive utility script streamlines SQLFlow deployment by:
+    - Downloading SQLFlow backups from GitHub repositories
+    - Setting necessary environment variables (requires admin rights)
+    - Cleaning up existing Docker containers, networks, and volumes
+    - Configuring Docker Compose paths
+    - Pulling required Docker images
+    - Starting SQL Server container
+    - Restoring databases from backups
+    - Updating connection strings in configuration
+    - Starting all remaining containers
+    - Providing complete system access information
 
-    All original logic has been preserved, but reorganized and refactored for clarity.
-
-    The script uses a "wizard" approach. Each step is executed in sequence,
-    and the user can decide whether to continue or abort if any step encounters an error.
+    Administrator privileges are required to run this script due to environment variable configuration.
 #>
 
 # -----------------------------[ Global Variables ]----------------------------- #
