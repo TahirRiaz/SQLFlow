@@ -8,6 +8,7 @@ This guide explains how to quickly set up SQLFlow using Docker containers.
 - Sufficient disk space for Docker images and volumes (~650MB)
 
 ## Automated Installation
+[Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.ps1) 
 PowerShell script to handle the entire setup process in just 5 minutes:
 
 ```powershell
@@ -22,7 +23,6 @@ PowerShell script to handle the entire setup process in just 5 minutes:
 - Starts all containers with proper configuration
 
 The script only requires Docker Desktop to be running - everything else is handled automatically.
-[Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.ps1)
 [Manual setup guide with mssql](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup-guide.md)
 
 ## Access SQLFlow

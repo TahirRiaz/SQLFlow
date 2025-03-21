@@ -1,9 +1,8 @@
 ﻿using Azure.Identity;
 using Azure.ResourceManager.Automation;
-using Microsoft.Azure.Management.DataFactory;
-using Microsoft.Azure.Management.DataFactory.Models;
-using Microsoft.IdentityModel.Clients.ActiveDirectory;
-using Microsoft.Rest;
+using Azure.ResourceManager.DataFactory;
+using Azure.ResourceManager.DataFactory.Models;
+
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
@@ -174,68 +173,92 @@ namespace SQLFlowCore.Services
                                 
                                 }
 
-
                                 if (sp.invokeType == "adf")
                                 {
                                     using (var operation = logger.TrackOperation("Invoke Azure Data Factory"))
                                     {
                                         logger.LogInformation($"Executing ADF Pipeline {sp.trgPipelineName}");
 
-                                        var adfContext = new AuthenticationContext("https://login.windows.net/" + sp.trgTenantId);
-
-                                        //clientSecretCredential = new ClientSecretCredential(TenantId, ClientId, ClientSecret);
+                                        // Deserialize pipeline parameters if provided.
                                         Dictionary<string, object> adfParam = new Dictionary<string, object>();
-                                        if (sp.trgParameterJSON.Length > 0)
+                                        if (!string.IsNullOrEmpty(sp.trgParameterJSON))
                                         {
                                             adfParam = JsonConvert.DeserializeObject<Dictionary<string, object>>(sp.trgParameterJSON);
                                         }
 
-                                        //var adfClientCredential = new ClientCredential(trgApplicationId, trgClientSecret);
-                                        //var adfResult = adfContext.AcquireTokenAsync("https://management.azure.com/", adfClientCredential).Result;
-                                        //var cred = new TokenCredentials(adfResult.AccessToken);
+                                        // Convert parameters into IDictionary<string, BinaryData>
+                                        IDictionary<string, BinaryData> binaryParams = new Dictionary<string, BinaryData>();
+                                        foreach (var kv in adfParam)
+                                        {
+                                            // Using BinaryData.FromObjectAsJson for proper JSON conversion.
+                                            binaryParams[kv.Key] = BinaryData.FromObjectAsJson(kv.Value);
+                                        }
 
-                                        // Initialize ClientSecretCredential
+                                        // Initialize credential and ArmClient.
                                         var clientSecretCredential = new ClientSecretCredential(sp.trgTenantId, sp.trgApplicationId, sp.trgClientSecret);
+                                        var armClient = new ArmClient(clientSecretCredential);
 
-                                        var token = clientSecretCredential.GetToken(new TokenRequestContext(new[] { "https://management.azure.com/.default" }));
+                                        // Get the Data Factory resource.
+                                        var dataFactoryId = DataFactoryResource.CreateResourceIdentifier(sp.trgSubscriptionId, sp.trgResourceGroup, sp.trgDataFactoryName);
+                                        DataFactoryResource dataFactory = armClient.GetDataFactoryResource(dataFactoryId);
 
-                                        var tokenCred = new TokenCredentials(token.Token);
+                                        // Retrieve the pipeline resource (unwrap the response using .Value).
+                                        var pipelineResponse = dataFactory.GetDataFactoryPipelineAsync(sp.trgPipelineName).Result;
+                                        DataFactoryPipelineResource pipeline = pipelineResponse.Value;
 
-                                        var client = new DataFactoryManagementClient(tokenCred) { SubscriptionId = sp.trgSubscriptionId };
-                                        var runResponse = client.Pipelines.CreateRunWithHttpMessagesAsync(sp.trgResourceGroup, sp.trgDataFactoryName, sp.trgPipelineName, null, null, null, null, adfParam, null, CancellationToken.None).Result.Body;
+                                        // Trigger the pipeline run.
+                                        PipelineCreateRunResult runResult = pipeline
+                                            .CreateRunAsync(parameterValueSpecification: binaryParams, cancellationToken: CancellationToken.None)
+                                            .Result.Value;
 
-                                        logger.LogCodeBlock("Job RunID:", runResponse.RunId);
-                                        logger.LogInformation($"Pipeline RunID {runResponse.RunId}");
+                                        logger.LogCodeBlock("Job RunID:", runResult.RunId.ToString());
+                                        logger.LogInformation($"Pipeline RunID {runResult.RunId}");
 
+                                        // Poll for pipeline run status.
                                         using (logger.TrackOperation("Azure Data Factory Running"))
                                         {
                                             var watch = new Stopwatch();
                                             watch.Start();
-                                            PipelineRun pipelineRun;
+                                            DataFactoryPipelineRunInfo pipelineRunInfo;
+
                                             while (true)
                                             {
-                                                pipelineRun = client.PipelineRuns.Get(sp.trgResourceGroup, sp.trgDataFactoryName, runResponse.RunId);
+                                                // Get the latest run status.
+                                                pipelineRunInfo = dataFactory
+                                                    .GetPipelineRunAsync(runResult.RunId.ToString(), CancellationToken.None)
+                                                    .Result.Value;
+
                                                 EventArgsInvoke arg = new EventArgsInvoke
                                                 {
                                                     TimeSpan = watch.ElapsedMilliseconds / 1000,
                                                     EventDateTime = DateTime.Now,
                                                     InvokedObjectName = "Data Factory pipeline " + sp.trgPipelineName,
-                                                    InvokeStatus = pipelineRun.Status
+                                                    InvokeStatus = pipelineRunInfo.Status
                                                 };
                                                 InvokeIsRunning?.Invoke(Thread.CurrentThread, arg);
 
-                                                logger.LogInformation(
-                                                    $"Status {pipelineRun.Status} ({watch.ElapsedMilliseconds / 1000} sec)");
-                                                if (pipelineRun.Status == "Running" || pipelineRun.Status == "New" || pipelineRun.Status == "InProgress" || pipelineRun.Status == "Queued" ||
-                                                    pipelineRun.Status == "Activating" || pipelineRun.Status == "Starting")
+                                                logger.LogInformation($"Status {pipelineRunInfo.Status} ({watch.ElapsedMilliseconds / 1000} sec)");
+
+                                                if (pipelineRunInfo.Status == "Running" ||
+                                                    pipelineRunInfo.Status == "New" ||
+                                                    pipelineRunInfo.Status == "InProgress" ||
+                                                    pipelineRunInfo.Status == "Queued" ||
+                                                    pipelineRunInfo.Status == "Activating" ||
+                                                    pipelineRunInfo.Status == "Starting")
+                                                {
                                                     Thread.Sleep(8000);
+                                                }
                                                 else
+                                                {
                                                     break;
+                                                }
                                             }
                                         }
                                     }
                                 }
-                                
+
+
+
                                 if (sp.invokeType == "aut")
                                 {
                                     using (var operation = logger.TrackOperation("Invoke Azure Automation"))
