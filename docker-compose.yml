@@ -6,10 +6,6 @@ services:
       args:
         BUILD_CONFIGURATION: Release
     image: sqlflow-ui:latest
-    deploy:
-      resources:
-        limits:
-          memory: 2G
     container_name: sqlflow-ui
     restart: unless-stopped
     ports:

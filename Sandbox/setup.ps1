@@ -52,7 +52,7 @@ $global:defaultDataPath     = "/var/opt/mssql/data"
 $global:defaultLogPath      = "/var/opt/mssql/log"
 
 # Connection info for local container
-$global:localSqlServerInstance = "localhost,1477"
+$global:localSqlServerInstance = "host.docker.internal,1477"
 $global:localSqlUsername       = "SQLFlow"
 $global:localSqlPassword       = "Passw0rd123456"
 
@@ -777,7 +777,7 @@ function Step2-SetEnvironmentVariables {
 
     # Just re-using the script-level variables:
     # Format: Server=host,port;Database=database;User ID=username;Password=password;
-    $sqlServerInstance = "sqlflow-mssql,1433"
+    $sqlServerInstance = "host.docker.internal,1477"
     $sqlDatabase       = "dw-sqlflow-prod"
 
     # Construct a default connection string
@@ -968,12 +968,25 @@ function Step4-UpdateDockerComposePaths {
     # Create backup
     Copy-Item -Path $dockerComposePath -Destination "$dockerComposePath.backup" -Force
     
-    # Normalize download path for Docker
+    # Normalize download path for Docker (Windows style)
     $normalizedPath = $DownloadPath.Replace("\", "/")
     Write-Host "Using normalized path: $normalizedPath" -ForegroundColor Cyan
     
-    # Simple replacement
-    (Get-Content -Path $dockerComposePath -Raw) -replace "C:/SQLFlow", $normalizedPath | Set-Content -Path $dockerComposePath
+    # Convert to Docker container style path
+    $containerizedPath = ConvertTo-DockerPath -Path $DownloadPath
+    Write-Host "Using containerized path: $containerizedPath" -ForegroundColor Cyan
+    
+    # Get the content of the file
+    $content = Get-Content -Path $dockerComposePath -Raw
+    
+    # Replace Windows-style paths
+    $content = $content -replace "C:/SQLFlow", $normalizedPath
+    
+    # Also replace containerized format paths
+    $content = $content -replace "/c/SQLFlow", $containerizedPath
+    
+    # Save the updated content
+    $content | Set-Content -Path $dockerComposePath
     
     Write-Host "docker-compose.yml updated successfully." -ForegroundColor Green
 }
@@ -1268,6 +1281,117 @@ function Step7b-UpdateConnectionStrings {
     }
 }
 
+function Step7c-ReplacePaths {
+    [CmdletBinding()]
+    param()
+    
+    Write-Host "`nExecuting flw.ReplacePaths stored procedure to update path references..." -ForegroundColor Cyan
+    
+    # Use the globally defined SQL connection variables
+    $serverInstance = $global:localSqlServerInstance
+    $userId = $global:localSqlUsername
+    $password = $global:localSqlPassword
+    
+    # Get the path and containerize it for Docker
+    $containerizedPath = ConvertTo-DockerPath -Path $global:DownloadPath
+    Write-Host "Using containerized path for replacement: $containerizedPath" -ForegroundColor Yellow
+    
+    # Create the stored procedure execution command
+    $spCommand = "EXEC [flw].[ReplacePaths] @NewPathBase = '$containerizedPath'"
+    
+    try {
+        Write-Host "Executing stored procedure against dw-sqlflow-prod database..." -ForegroundColor Yellow
+        
+        # First check if the SQLFlow module is available
+        $sqlCmdAvailable = Get-Command Invoke-Sqlcmd -ErrorAction SilentlyContinue
+        
+        if ($sqlCmdAvailable) {
+            # Use Invoke-Sqlcmd if available
+            $sqlFlowConnStr = "Server=$serverInstance;Database=dw-sqlflow-prod;User ID=$userId;Password=$password;TrustServerCertificate=True;Command Timeout=360;"
+            Invoke-Sqlcmd -ConnectionString $sqlFlowConnStr -Query $spCommand -QueryTimeout 300
+            Write-Host "Stored procedure executed successfully." -ForegroundColor Green
+        } else {
+            # Fallback to direct SQL execution using SqlClient if Invoke-Sqlcmd is not available
+            Write-Host "Invoke-Sqlcmd not available, using SqlClient directly..." -ForegroundColor Yellow
+            
+            # Load SqlClient assembly if not already loaded
+            if (-not ("System.Data.SqlClient.SqlConnection" -as [type])) {
+                Add-Type -AssemblyName System.Data.SqlClient
+            }
+            
+            $sqlFlowConnStr = "Server=$serverInstance;Database=dw-sqlflow-prod;User ID=$userId;Password=$password;TrustServerCertificate=True;Command Timeout=360;"
+            $connection = New-Object System.Data.SqlClient.SqlConnection($sqlFlowConnStr)
+            $command = New-Object System.Data.SqlClient.SqlCommand($spCommand, $connection)
+            $command.CommandTimeout = 300
+            
+            try {
+                $connection.Open()
+                $command.ExecuteNonQuery() | Out-Null
+                Write-Host "Stored procedure executed successfully." -ForegroundColor Green
+            } finally {
+                $connection.Close()
+            }
+        }
+        
+    } catch {
+        Write-Host "Error executing stored procedure: $($_.Exception.Message)" -ForegroundColor Red
+        
+        # Provide additional troubleshooting information
+        Write-Host "`nTroubleshooting tips:" -ForegroundColor Yellow
+        Write-Host "1. Ensure the dw-sqlflow-prod database was properly restored" -ForegroundColor Yellow
+        Write-Host "2. Verify the [flw].[ReplacePaths] stored procedure exists in the database" -ForegroundColor Yellow
+        Write-Host "3. Check if the path format is compatible with the stored procedure" -ForegroundColor Yellow
+        
+        $choice = Read-Host "Would you like to continue with the rest of the setup? (Y/N)"
+        if ($choice.ToUpper() -ne "Y") {
+            Write-Host "Exiting script at user request." -ForegroundColor Yellow
+            exit 1
+        }
+    }
+}
+
+function ConvertTo-DockerPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Path
+    )
+    
+    # Normalize the path first (replace backslashes with forward slashes)
+    $normalizedPath = $Path.Replace("\", "/")
+    
+    # Check if it's a Windows path (starts with drive letter followed by colon)
+    if ($normalizedPath -match '^([A-Za-z]):(.+)$') {
+        # Extract drive letter and rest of path
+        $driveLetter = $matches[1].ToLower()
+        $restOfPath = $matches[2]
+        
+        # Ensure the path starts with / and ends with /
+        $dockerPath = "/$driveLetter$restOfPath"
+        
+        # Make sure the path ends with a slash
+        if (-not $dockerPath.EndsWith("/")) {
+            $dockerPath += "/"
+        }
+        
+        return $dockerPath
+    }
+    # Handle UNC paths (network shares) - convert to Docker's format with lowercase drive letter
+    elseif ($normalizedPath -match '^//(.+)$') {
+        Write-Warning "UNC paths may not work correctly in Docker contexts: $normalizedPath"
+        return $normalizedPath
+    }
+    # For other paths (already Unix-like or relative paths)
+    else {
+        # Make sure the path ends with a slash
+        if (-not $normalizedPath.EndsWith("/")) {
+            $normalizedPath += "/"
+        }
+        
+        return $normalizedPath
+    }
+}
+
 function Step8-StartRemainingContainers {
     Write-Host "Starting all remaining containers (docker-compose up -d)..." -ForegroundColor Cyan
     
@@ -1338,7 +1462,6 @@ function Invoke-ExternalCommandWithCleanOutput {
     }
 }
 
-
 function Step9-Summary {
     Write-Host "`nSQLFlow Setup and Database Restoration Complete!" -ForegroundColor Green
     Write-Host "------------------------------------------------" -ForegroundColor Green
@@ -1359,6 +1482,53 @@ function Step9-Summary {
    
 }
 
+
+function Step10-OpenBrowser {
+    Write-Host "`nWould you like to open the SQLFlow UI in your browser now?" -ForegroundColor Cyan
+    Write-Host "Login credentials: demo@sqlflow.io/@Demo123" -ForegroundColor Green
+    
+    $openBrowser = Read-Host "Open SQLFlow UI in browser? (Y/N)"
+    
+    if ($openBrowser.ToUpper() -eq "Y") {
+        try {
+            Write-Host "Opening SQLFlow UI in your default browser..." -ForegroundColor Cyan
+            # Try to use the Start-Process cmdlet first (more reliable in PowerShell)
+            Start-Process "http://localhost:8110"
+            Write-Host "Browser launched successfully!" -ForegroundColor Green
+        }
+        catch {
+            # Fallback to using Invoke-Expression if Start-Process fails
+            try {
+                Write-Host "Using alternative method to launch browser..." -ForegroundColor Yellow
+                Invoke-Expression "cmd.exe /c start http://localhost:8110"
+                Write-Host "Browser launched successfully!" -ForegroundColor Green
+            }
+            catch {
+                Write-Host "Failed to open browser automatically. Please manually navigate to:" -ForegroundColor Red
+                Write-Host "http://localhost:8110" -ForegroundColor White
+            }
+        }
+        
+        # Remind about credentials again
+        Write-Host "`nRemember to log in with:" -ForegroundColor Yellow
+        Write-Host "  Username: demo@sqlflow.io" -ForegroundColor White
+        Write-Host "  Password: @Demo123" -ForegroundColor White
+        Write-Host "`nNote: It may take a few moments for all services to fully initialize." -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "`nYou can access SQLFlow UI later at: http://localhost:8110" -ForegroundColor Cyan
+        Write-Host "Remember the login credentials: demo@sqlflow.io/@Demo123" -ForegroundColor Green
+    }
+    
+    # Provide some tips for first-time users
+    Write-Host "`nQuick Start Tips:" -ForegroundColor Cyan
+    Write-Host "1. After logging in, you'll see the SQLFlow dashboard." -ForegroundColor White
+    Write-Host "2. Click on 'New Analysis' to start exploring your databases." -ForegroundColor White
+    Write-Host "3. Select a datasource from the dropdown menu." -ForegroundColor White
+    Write-Host "4. You can run SQL queries or use the visual interface to build queries." -ForegroundColor White
+    Write-Host "5. Explore data lineage and impact analysis features in the 'Data Lineage' section." -ForegroundColor White
+}
+
 # -----------------------------[ Main Script Flow ]----------------------------- #
 Write-Host "Starting SQLFlow Setup and Database Restoration Wizard..." -ForegroundColor Green
 
@@ -1370,7 +1540,9 @@ Run-Step "Step 5: Pull Docker Images"                 { Step5-PullDockerImages }
 Run-Step "Step 6: Start SQL Server Container"         { Step6-StartSqlServerContainer }
 Run-Step "Step 7: Database Restoration"               { Step7-RestoreDatabases }
 Run-Step "Step 7b: Update Connection Strings"         { Step7b-UpdateConnectionStrings }
+Run-Step "Step 7c: Replace Path References"           { Step7c-ReplacePaths }
 Run-Step "Step 8: Start Remaining Containers"         { Step8-StartRemainingContainers }
 Run-Step "Step 9: Summary"                            { Step9-Summary }
+Run-Step "Step 10: Open SQLFlow UI"                   { Step10-OpenBrowser }
 
 Write-Host "`nWizard complete! Review any warnings above for additional actions." -ForegroundColor Green

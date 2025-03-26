@@ -24,6 +24,9 @@ using SQLFlowCore.Services.Prq;
 using SQLFlowCore.Services.Schema;
 using SQLFlowCore.Services.TsqlParser;
 using SQLFlowCore.Logger;
+using Parquet.Data.Ado;
+
+
 
 namespace SQLFlowCore.Services
 {
@@ -281,9 +284,12 @@ namespace SQLFlowCore.Services
                                             }
                                         }
 
-                                        using (ParquetReader prqReader = ParquetReader.CreateAsync(stream).Result)
+                                        using (ParquetDataReader parquetReader = ParquetDataReaderFactory.Create(
+                                                   stream,
+                                                   readNextGroup: false,
+                                                   leaveOpen: false))
                                         {
-                                            DataTable prqSchemaTable = ParquetHelper.GetParquetColumns(prqReader, sp.defaultColDataType);
+                                            DataTable prqSchemaTable = ParquetHelper.GetParquetColumns(parquetReader, sp.defaultColDataType);
 
                                             if (prqSchemaTable.Rows.Count != sp.expectedColumnCount && sp.expectedColumnCount > 0)
                                             {
@@ -388,7 +394,7 @@ namespace SQLFlowCore.Services
                                                         logger.LogCodeBlock("File Column List:", fileColumnList);
                                                         Dictionary<string, string> colDic = new Dictionary<string, string>();
 
-                                                        DataTable prqSchemaWithVirtualColTbl = ParquetHelper.GetParquetColumns(prqReader, virtualColumns, sp.defaultColDataType);
+                                                        DataTable prqSchemaWithVirtualColTbl = ParquetHelper.GetParquetColumns(parquetReader, virtualColumns, sp.defaultColDataType);
                                                         foreach (DataRow row in prqSchemaWithVirtualColTbl.Rows)
                                                         {
                                                             var columnName = row["ColumnName"]?.ToString() ?? string.Empty;
@@ -505,33 +511,71 @@ namespace SQLFlowCore.Services
                                                         columnMappingList = string.Join(", ", columnMappings.Select(kvp => $"{kvp.Key}:{kvp.Value}"));
                                                         logger.LogCodeBlock("Column Mapping List:", columnMappingList);
 
-                                                        sp.logFetched = sp.logFetched + prqReader.Metadata.NumRows;
+                                                        // Get complete metadata including row count and row groups
+                                                        var metadata = parquetReader.GetMetadata();
+
+                                                        // Access the total rows across all row groups
+                                                        long totalRows = metadata.TotalRowCount;
                                                         
-                                                        if (sp.noOfThreads > prqReader.RowGroupCount)
+
+                                                        sp.logFetched = sp.logFetched + totalRows;
+                                                        
+                                                        if (sp.noOfThreads > parquetReader.GetRowGroupCount())
                                                         {
-                                                            sp.noOfThreads = prqReader.RowGroupCount;
+                                                            sp.noOfThreads = parquetReader.GetRowGroupCount();
                                                         }
 
                                                         //string cmd = "";
+                                                        // Before the row group loop, convert your DataColumn collection to VirtualColumn collection
+                                                        SortedList<int, VirtualColumn> virtualColumnsList = new SortedList<int, VirtualColumn>();
+                                                        foreach (var kvp in virtualColumns)
+                                                        {
+                                                            virtualColumnsList.Add(kvp.Key, new VirtualColumn(
+                                                                kvp.Value.ColumnName,
+                                                                kvp.Value.DataType,
+                                                                kvp.Value.DefaultValue,
+                                                                true // isVirtual = true
+                                                            ));
+                                                        }
+
+                                                        int rowGroupCount = parquetReader.GetRowGroupCount();
                                                         int cCounter = 0;
 
-                                                        for (int x = 0; x < prqReader.RowGroupCount; x++)
+                                                        // Loop through each row group
+                                                        for (int x = 0; x < rowGroupCount; x++)
                                                         {
-                                                            ParquetReader _prqReader = prqReader;
-                                                            int _x = x;
+                                                            // Get the underlying ParquetReader
+                                                            var parquetReaderInstance = GetUnderlyingParquetReader(parquetReader);
 
+                                                            // Initialize counter for this row group
                                                             var currentRowCount = cCounter;
 
-                                                            using (var dataReader = new ParquetDataReaderWithVirtualColumns(_prqReader, _x, false, virtualColumns))
+                                                            // Create a reader for the specific row group with virtual columns
+                                                            using (var dataReader = new ParquetDataReaderWithVirtualColumns(
+                                                                       parquetReaderInstance,
+                                                                       x,  // Row group index
+                                                                       false, // Don't read next group
+                                                                       virtualColumnsList)) // Use the converted list
                                                             {
-                                                                var bulk = new StreamToSql(sp.trgConString,
-                                                                   $"[{sp.trgDatabase}].[{sp.trgSchema}].[{sp.trgObject}]", $"[{sp.trgDatabase}].[{sp.trgSchema}].[{sp.trgObject}]", columnMappings,
-                                                                   sp.bulkLoadTimeoutInSek, 0, logger, sp.maxRetry, sp.retryDelayMs,
-                                                                    retryErrorCodes, sqlFlowParam.dbg, ref currentRowCount); // BatchSize
+                                                                var bulk = new StreamToSql(
+                                                                    sp.trgConString,
+                                                                    $"[{sp.trgDatabase}].[{sp.trgSchema}].[{sp.trgObject}]",
+                                                                    $"[{sp.trgDatabase}].[{sp.trgSchema}].[{sp.trgObject}]",
+                                                                    columnMappings,
+                                                                    sp.bulkLoadTimeoutInSek,
+                                                                    0,
+                                                                    logger,
+                                                                    sp.maxRetry,
+                                                                    sp.retryDelayMs,
+                                                                    retryErrorCodes,
+                                                                    sqlFlowParam.dbg,
+                                                                    ref currentRowCount);
 
                                                                 bulk.StreamWithRetries(dataReader);
                                                             }
-                                                            cCounter = cCounter + 1;
+
+                                                            // Update the counter after processing this row group
+                                                            cCounter = currentRowCount;
                                                         }
 
                                                         if (sp.targetExsits)
@@ -736,49 +780,26 @@ namespace SQLFlowCore.Services
         }
         #endregion ProcessPrq
 
+        // Helper method to extract the underlying ParquetReader
+        private  static Parquet.ParquetReader GetUnderlyingParquetReader(Parquet.Data.Ado.ParquetDataReader reader)
+        {
+            var readerField = typeof(Parquet.Data.Ado.ParquetDataReader).GetField("_reader",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            if (readerField == null)
+                throw new InvalidOperationException("Could not access internal reader field");
+
+            var parquetReader = readerField.GetValue(reader) as Parquet.ParquetReader;
+            if (parquetReader == null)
+                throw new InvalidOperationException("Could not extract underlying ParquetReader");
+
+            return parquetReader;
+        }
+
         private static string GetFullPathWithEndingSlashes(string input)
         {
             return input.TrimEnd('/') + "/";
         }
 
-
-        // Add this function to the ProcessPrq class to handle file deletion
-        private static void EnsureParquetFileDeleted(string filePath, ILogger logger)
-        {
-            try
-            {
-                if (File.Exists(filePath))
-                {
-                    logger.LogInformation($"Deleting existing Parquet file before processing: {filePath}");
-                    File.Delete(filePath);
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError($"Error deleting Parquet file {filePath}: {ex.Message}");
-                throw new InvalidOperationException($"Unable to delete existing Parquet file. Please ensure no other process is using it: {filePath}", ex);
-            }
-        }
-
-        // For Azure Data Lake files
-        private static async Task EnsureDataLakeParquetFileDeleted(DataLakeFileSystemClient fileSystemClient, string filePath, ILogger logger)
-        {
-            try
-            {
-                DataLakeFileClient fileClient = fileSystemClient.GetFileClient(filePath);
-                var exists = await fileClient.ExistsAsync();
-
-                if (exists)
-                {
-                    logger.LogInformation($"Deleting existing Parquet file from Data Lake before processing: {filePath}");
-                    await fileClient.DeleteAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                logger.LogError($"Error deleting Parquet file from Data Lake {filePath}: {ex.Message}");
-                throw new InvalidOperationException($"Unable to delete existing Parquet file from Data Lake: {filePath}", ex);
-            }
-        }
     }
 }

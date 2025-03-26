@@ -3,7 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using Parquet.Data.Ado;
 using SQLFlowCore.Common;
+using TorchSharp.Modules;
 namespace SQLFlowCore.Services.Prq
 {
     /// <summary>
@@ -18,13 +20,14 @@ namespace SQLFlowCore.Services.Prq
         /// <param name="threePartTableName">The name of the table to be created.</param>
         /// <param name="virtualColumns">A list of virtual columns to be added to the table.</param>
         /// <returns>A string containing the SQL command.</returns>
-        internal static string GenerateCreateTableSql(ParquetReader reader, string threePartTableName, SortedList<int, DataColumn> virtualColumns, string defaultColDataType)
+        internal static string GenerateCreateTableSql(ParquetDataReader dataReader, string threePartTableName, SortedList<int, DataColumn> virtualColumns, string defaultColDataType)
         {
-            if (reader == null)
+            if (dataReader == null)
             {
-                throw new ArgumentNullException(nameof(reader));
+                throw new ArgumentNullException(nameof(dataReader));
             }
-            var columnsSql = BuildColumnsSql(reader, virtualColumns, defaultColDataType);
+
+            var columnsSql = BuildColumnsSql(dataReader, virtualColumns, defaultColDataType);
             return $"CREATE TABLE {threePartTableName} ({string.Join(", ", columnsSql)});";
         }
 
@@ -35,10 +38,10 @@ namespace SQLFlowCore.Services.Prq
         /// <param name="virtualColumns">A list of virtual columns to be added to the table.</param>
         /// <param name="defaultColDataType">The default data type to be used for the columns.</param>
         /// <returns>A list of strings, where each string is a SQL column definition.</returns>
-        private static List<string> BuildColumnsSql(ParquetReader reader, SortedList<int, DataColumn> virtualColumns, string defaultColDataType)
+        private static List<string> BuildColumnsSql(ParquetDataReader dataReader, SortedList<int, DataColumn> virtualColumns, string defaultColDataType)
         {
             var columnsSql = new List<string>();
-            var schema = GetParquetColumns(reader, virtualColumns, defaultColDataType);
+            var schema = GetParquetColumns(dataReader, virtualColumns, defaultColDataType);
             foreach (DataRow row in schema.Rows)
             {
                 var columnSql = BuildColumnSql(row, defaultColDataType);
@@ -68,17 +71,25 @@ namespace SQLFlowCore.Services.Prq
         /// <param name="defaultColDataType">The default data type to be used for the columns.</param>
         /// <returns>A SortedList where the key is the column index and the value is a Tuple containing the column name and its data type.</returns>
         /// <exception cref="ArgumentNullException">Thrown when the provided ParquetReader is null.</exception>
-        internal static SortedList<int, Tuple<string, string>> GetSQLColumnsWithDT(ParquetReader reader, string defaultColDataType)
+        internal static SortedList<int, Tuple<string, string>> GetSQLColumnsWithDT(ParquetDataReader dataReader, string defaultColDataType)
         {
-            if (reader == null) throw new ArgumentNullException(nameof(reader));
-            SortedList<int, Tuple<string, string>> col = new SortedList<int, Tuple<string, string>>();
+            if (dataReader == null) throw new ArgumentNullException(nameof(dataReader));
 
-            int colCounter = 0;
-            foreach (var field in reader.Schema.DataFields)
+            SortedList<int, Tuple<string, string>> col = new SortedList<int, Tuple<string, string>>();
+            DataTable schemaTable = dataReader.GetSchemaTable();
+
+            foreach (DataRow row in schemaTable.Rows)
             {
-                Tuple<string, string> tp = new Tuple<string, string>($"[{field.Name}]", DataTypeMapper.GetSqlServerDataType(field.ClrType, defaultColDataType));
-                col.Add(colCounter, tp);
-                colCounter++;
+                string columnName = row[SchemaTableColumn.ColumnName].ToString();
+                int ordinal = Convert.ToInt32(row[SchemaTableColumn.ColumnOrdinal]);
+                Type dataType = (Type)row[SchemaTableColumn.DataType];
+
+                Tuple<string, string> tp = new Tuple<string, string>(
+                    $"[{columnName}]",
+                    DataTypeMapper.GetSqlServerDataType(dataType, defaultColDataType)
+                );
+
+                col.Add(ordinal, tp);
             }
 
             return col;
@@ -112,78 +123,118 @@ namespace SQLFlowCore.Services.Prq
             return schemaTable;
         }
 
+
         /// <summary>
-        /// Retrieves the columns from a Parquet file and maps them to a DataTable.
+        /// Retrieves the schema of columns from a Parquet data source, including both physical and virtual columns.
         /// </summary>
-        /// <param name="reader">The ParquetReader used to read the Parquet file.</param>
-        /// <param name="virtualColumns">A SortedList of virtual columns to be added to the DataTable.</param>
-        /// <param name="defaultColDataType">The default data type to be used for the columns.</param>
-        /// <returns>A DataTable representing the schema of the Parquet file, including virtual columns.</returns>
-        internal static DataTable GetParquetColumns(ParquetReader reader, SortedList<int, DataColumn> virtualColumns, string defaultColDataType)
+        /// <param name="dataReader">
+        /// The <see cref="ParquetDataReader"/> instance used to read the schema of physical columns from the Parquet file.
+        /// </param>
+        /// <param name="virtualColumns">
+        /// A sorted list of virtual columns where the key represents the column ordinal, and the value is a <see cref="DataColumn"/> object.
+        /// </param>
+        /// <param name="defaultColDataType">
+        /// The default data type to be used for columns when no specific data type is provided.
+        /// </param>
+        /// <returns>
+        /// A <see cref="DataTable"/> containing the combined schema of physical and virtual columns, including metadata such as column names, ordinals, and data types.
+        /// </returns>
+        /// <remarks>
+        /// This method processes the schema from the provided <paramref name="dataReader"/> and enriches it with virtual columns.
+        /// It ensures that all columns, whether physical or virtual, are included in the resulting schema table.
+        /// </remarks>
+        /// <exception cref="ArgumentNullException">
+        /// Thrown if <paramref name="dataReader"/> or <paramref name="virtualColumns"/> is <c>null</c>.
+        /// </exception>
+        /// <exception cref="InvalidOperationException">
+        /// Thrown if the schema table cannot be retrieved or processed correctly.
+        /// </exception>
+        internal static DataTable GetParquetColumns(ParquetDataReader dataReader, SortedList<int, DataColumn> virtualColumns, string defaultColDataType)
         {
             DataTable schemaTable = GetSchemaTable();
 
-            for (int i = 0; i < reader.Schema.Fields.Count; i++)
+            // Get the base schema table from ParquetDataReader
+            DataTable baseSchemaTable = dataReader.GetSchemaTable();
+
+            // Process physical columns from the ParquetDataReader's schema
+            for (int i = 0; i < baseSchemaTable.Rows.Count; i++)
             {
-                DataRow row = schemaTable.NewRow();
-                row[SchemaTableColumn.ColumnName] = reader.Schema.Fields[i].Name;
-                row[SchemaTableColumn.ColumnOrdinal] = i;
-                row[SchemaTableColumn.ColumnSize] = -1; // Unknown size
-                row[SchemaTableColumn.DataType] = reader.Schema.DataFields[i].ClrType;
-                row[SchemaTableColumn.AllowDBNull] = true; // Assume nullable
-                //row[SchemaTableColumn.IsReadOnly] = true; // ReadOnly from data source
-                row[SchemaTableColumn.IsUnique] = false; // Assume not unique
-                row[SchemaTableColumn.IsKey] = false; // Assume not primary key
-                row["SqlDataType"] = DataTypeMapper.GetSqlServerDataType(reader.Schema.DataFields[i].ClrType, defaultColDataType);
-                row["SQLFlowExp"] = $"CAST(@ColName AS {DataTypeMapper.GetSqlServerDataType(reader.Schema.DataFields[i].ClrType, defaultColDataType)})";
-                schemaTable.Rows.Add(row);
+                DataRow sourceRow = baseSchemaTable.Rows[i];
+                string columnName = sourceRow[SchemaTableColumn.ColumnName].ToString();
+                int ordinal = Convert.ToInt32(sourceRow[SchemaTableColumn.ColumnOrdinal]);
+                Type dataType = (Type)sourceRow[SchemaTableColumn.DataType];
+
+                AddColumnToSchemaTable(
+                    schemaTable,
+                    columnName,
+                    ordinal,
+                    dataType,
+                    defaultColDataType);
             }
 
-            foreach (var item in virtualColumns)
+            // Process virtual columns
+            foreach (var kvp in virtualColumns)
             {
-                DataColumn dc = item.Value;
-                DataRow rowx = schemaTable.NewRow();
-                rowx[SchemaTableColumn.ColumnName] = dc.ColumnName;
-                rowx[SchemaTableColumn.ColumnOrdinal] = item.Key;
-                rowx[SchemaTableColumn.ColumnSize] = -1; // Unknown size
-                rowx[SchemaTableColumn.DataType] = dc.DataType;
-                rowx[SchemaTableColumn.AllowDBNull] = true; // Assume nullable
-                rowx[SchemaTableColumn.IsUnique] = false; // Assume not unique
-                rowx[SchemaTableColumn.IsKey] = false; // Assume not primary key
-                rowx["SqlDataType"] = DataTypeMapper.GetSqlServerDataType(dc.DataType, defaultColDataType);
-                rowx["SQLFlowExp"] = $"CAST(@ColName AS {DataTypeMapper.GetSqlServerDataType(dc.DataType, defaultColDataType)})";
-                schemaTable.Rows.Add(rowx);
+                AddColumnToSchemaTable(
+                    schemaTable,
+                    kvp.Value.ColumnName,
+                    kvp.Key,
+                    kvp.Value.DataType,
+                    defaultColDataType);
             }
 
             return schemaTable;
         }
 
-        /// <summary>
-        /// Retrieves the columns from a Parquet file and maps them to a DataTable.
-        /// </summary>
-        /// <param name="reader">The ParquetReader used to read the Parquet file.</param>
-        /// <param name="defaultColDataType">The default data type to be used for the columns.</param>
-        /// <returns>A DataTable representing the schema of the Parquet file.</returns>
-        internal static DataTable GetParquetColumns(ParquetReader reader, string defaultColDataType)
+        private static void AddColumnToSchemaTable(
+            DataTable schemaTable,
+            string columnName,
+            int ordinal,
+            Type dataType,
+            string defaultColDataType)
         {
-            DataTable schemaTable = GetSchemaTable();
+            DataRow row = schemaTable.NewRow();
+            string sqlDataType = DataTypeMapper.GetSqlServerDataType(dataType, defaultColDataType);
 
-            for (int i = 0; i < reader.Schema.Fields.Count; i++)
+            row[SchemaTableColumn.ColumnName] = columnName;
+            row[SchemaTableColumn.ColumnOrdinal] = ordinal;
+            row[SchemaTableColumn.ColumnSize] = -1; // Unknown size
+            row[SchemaTableColumn.DataType] = dataType;
+            row[SchemaTableColumn.AllowDBNull] = true; // Assume nullable
+            row[SchemaTableColumn.IsUnique] = false; // Assume not unique
+            row[SchemaTableColumn.IsKey] = false; // Assume not primary key
+            row["SqlDataType"] = sqlDataType;
+            row["SQLFlowExp"] = $"CAST(@ColName AS {sqlDataType})";
+
+            schemaTable.Rows.Add(row);
+        }
+
+
+        internal static DataTable GetParquetColumns(ParquetDataReader dataReader, string defaultColDataType)
+        {
+            // Get the schema table from the data reader
+            DataTable baseSchemaTable = dataReader.GetSchemaTable();
+            DataTable schemaTable = GetSchemaTable(); // Your custom schema table
+
+            for (int i = 0; i < baseSchemaTable.Rows.Count; i++)
             {
+                DataRow sourceRow = baseSchemaTable.Rows[i];
                 DataRow row = schemaTable.NewRow();
-                row[SchemaTableColumn.ColumnName] = reader.Schema.Fields[i].Name;
-                row[SchemaTableColumn.ColumnOrdinal] = i;
+
+                row[SchemaTableColumn.ColumnName] = sourceRow[SchemaTableColumn.ColumnName];
+                row[SchemaTableColumn.ColumnOrdinal] = sourceRow[SchemaTableColumn.ColumnOrdinal];
                 row[SchemaTableColumn.ColumnSize] = -1; // Unknown size
-                row[SchemaTableColumn.DataType] = reader.Schema.DataFields[i].ClrType;
+                row[SchemaTableColumn.DataType] = sourceRow[SchemaTableColumn.DataType];
                 row[SchemaTableColumn.AllowDBNull] = true; // Assume nullable
-                //row[SchemaTableColumn.IsReadOnly] = true; // ReadOnly from data source
                 row[SchemaTableColumn.IsUnique] = false; // Assume not unique
                 row[SchemaTableColumn.IsKey] = false; // Assume not primary key
-                row["SqlDataType"] = DataTypeMapper.GetSqlServerDataType(reader.Schema.DataFields[i].ClrType, defaultColDataType);
-                row["SQLFlowExp"] = $"CAST(@ColName AS {DataTypeMapper.GetSqlServerDataType(reader.Schema.DataFields[i].ClrType, defaultColDataType)})";
+
+                Type clrType = (Type)sourceRow[SchemaTableColumn.DataType];
+                row["SqlDataType"] = DataTypeMapper.GetSqlServerDataType(clrType, defaultColDataType);
+                row["SQLFlowExp"] = $"CAST(@ColName AS {DataTypeMapper.GetSqlServerDataType(clrType, defaultColDataType)})";
+
                 schemaTable.Rows.Add(row);
             }
-
             return schemaTable;
         }
 

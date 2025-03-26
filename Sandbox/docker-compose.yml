@@ -1,6 +1,7 @@
 services:
   sqlflowui:
     image: businessiq/sqlflow:ui
+    platform: linux/amd64
     container_name: sqlflow-ui
     restart: unless-stopped
     deploy:
@@ -68,6 +69,7 @@ services:
 
   sqlflowapi:
     image: businessiq/sqlflow:api
+    platform: linux/amd64
     container_name: sqlflow-api
     restart: unless-stopped
     deploy:
@@ -144,6 +146,7 @@ services:
   # Added SQL Server service
   sqlflow-mssql:
     image: businessiq/sqlflow:mssql
+    platform: linux/amd64
     container_name: sqlflow-mssql
     restart: unless-stopped
     ports:

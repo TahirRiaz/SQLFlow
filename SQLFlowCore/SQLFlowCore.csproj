@@ -51,6 +51,7 @@
     <PackageReference Include="MySql.Data" Version="9.2.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Octokit" Version="14.0.0" />
+    <PackageReference Include="Parquet.Data.Ado" Version="1.1.1" />
     <PackageReference Include="Parquet.Net" Version="5.1.1" />
     <PackageReference Include="Renci.SshNet.Async" Version="1.4.0" />
     <PackageReference Include="SharpBucket" Version="0.17.0" />

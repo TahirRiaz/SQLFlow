@@ -12,7 +12,7 @@
     <PackageReference Include="Markdig" Version="0.40.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.2" />
     <PackageReference Include="PoorMansTSqlFormatterRedux" Version="1.0.3" />
-    <PackageReference Include="Radzen.Blazor" Version="6.2.6" />
+    <PackageReference Include="Radzen.Blazor" Version="6.3.2" />
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.3" />

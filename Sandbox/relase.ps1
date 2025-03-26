@@ -10,7 +10,7 @@ $zipFileName = "SQLFlow_Sandbox_Release_$currentDate.zip"
 $zipFilePath = Join-Path -Path $releaseDirectory -ChildPath $zipFileName
 
 # Get connection string from environment variable
-$connectionString = $env:SQLFlow
+$connectionString = $env:SQLFlowConStr
 
 # Parse connection string to get server, user, and password
 if ($connectionString -match "Server=(.*?);.*?User ID=(.*?);Password=(.*?);") {
