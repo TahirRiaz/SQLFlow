@@ -11,7 +11,6 @@ This guide explains how to quickly set up SQLFlow using Docker containers.
 
 ### For Windows Users
 [Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.ps1) 
-PowerShell script to handle the entire setup process in just 5 minutes:
 
 ```powershell
 .\setup.ps1
@@ -19,7 +18,6 @@ PowerShell script to handle the entire setup process in just 5 minutes:
 
 ### For Mac Users
 [Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.sh)
-Shell script to handle the entire setup process in just 5 minutes:
 
 ```bash
 chmod +x setup.sh
