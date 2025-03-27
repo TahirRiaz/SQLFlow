@@ -79,7 +79,23 @@ Easily onboard and maximize SQLFlow with detailed documentation covering everyth
 ## 📚 **SQLFlow Installation and Configuration Guide**  
 Download and run the powershell script to get SQLFlow up and running with zero manual configuration.
 Access SQLFlow at http://localhost:8110 or https://localhost:8111 using the default credentials (demo@sqlflow.io/@Demo123).
-[Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.ps1)
+
+### For Windows Users
+[Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.ps1) 
+PowerShell script to handle the entire setup process in just 5 minutes:
+
+```powershell
+.\setup.ps1
+```
+
+### For Mac Users
+[Download Setup Script](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/setup.sh)
+Shell script to handle the entire setup process in just 5 minutes:
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
 
 This [guide](https://github.com/TahirRiaz/SQLFlow/blob/master/Sandbox/README.md) will walk you through setting up SQLFlow using Docker containers.  
 
