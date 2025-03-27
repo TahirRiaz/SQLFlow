@@ -45,7 +45,7 @@ $dbTag = "$selectedRepo`:mssql"
 Write-Host "Building API image (linux/amd64)..." -ForegroundColor Green
 docker buildx build `
     --builder mybuilder `
-    --platform linux/amd64,linux/arm64 `
+    --platform linux/amd64 `
     --attest type=provenance,mode=max `
     --attest type=sbom `
     -t $apiTag `
@@ -66,7 +66,7 @@ if ($LASTEXITCODE -eq 0) {
 Write-Host "Building UI image (linux/amd64)..." -ForegroundColor Green
 docker buildx build `
     --builder mybuilder `
-    --platform linux/amd64,linux/arm64 `
+    --platform linux/amd64 `
     --attest type=provenance,mode=max `
     --attest type=sbom `
     -t $uiTag `
@@ -87,7 +87,7 @@ if ($LASTEXITCODE -eq 0) {
 Write-Host "Building DB image (linux/amd64)..." -ForegroundColor Green
 docker buildx build `
     --builder mybuilder `
-    --platform linux/amd64,linux/arm64 `
+    --platform linux/amd64 `
     --attest type=provenance,mode=max `
     --attest type=sbom `
     -t $dbTag `

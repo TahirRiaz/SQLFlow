@@ -1,4 +1,5 @@
 # PowerShell script to create both .bak and .bacpac files for specified databases and package the entire Sandbox environment
+# Updated with cross-platform compatible zip creation
 
 # Set variables
 $backupBaseDirectory = "B:\Github\SQLFlow\Sandbox\mssql\bak"
@@ -43,6 +44,53 @@ if (-not (Test-Path $releaseDirectory)) {
     Write-Host "Created release directory: $releaseDirectory" -ForegroundColor Green
 }
 
+# Function to install 7-Zip if needed
+function Ensure-7ZipInstalled {
+    $sevenZipPath = "C:\Program Files\7-Zip\7z.exe"
+    
+    if (Test-Path $sevenZipPath) {
+        Write-Host "7-Zip is already installed at: $sevenZipPath" -ForegroundColor Green
+        return $true
+    }
+    
+    Write-Host "7-Zip not found. Attempting to install..." -ForegroundColor Yellow
+    
+    # Create temp directory
+    $tempDir = "$env:TEMP\7ZipInstall"
+    if (-not (Test-Path $tempDir)) {
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+    }
+    
+    # Download 7-Zip
+    $downloadUrl = "https://www.7-zip.org/a/7z2301-x64.msi"
+    $msiFile = "$tempDir\7z.msi"
+    
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $msiFile
+        
+        # Install 7-Zip silently
+        Write-Host "Installing 7-Zip..." -ForegroundColor Yellow
+        Start-Process -FilePath "msiexec.exe" -ArgumentList "/i `"$msiFile`" /qn" -Wait
+        
+        if (Test-Path $sevenZipPath) {
+            Write-Host "7-Zip installed successfully" -ForegroundColor Green
+            return $true
+        } else {
+            Write-Host "Error: 7-Zip installation failed" -ForegroundColor Red
+            return $false
+        }
+    } catch {
+        Write-Host "Error installing 7-Zip: $_" -ForegroundColor Red
+        return $false
+    } finally {
+        # Clean up
+        if (Test-Path $msiFile) {
+            Remove-Item $msiFile -Force
+        }
+    }
+}
+
 # Function to shrink database files
 function Shrink-Database {
     param (
@@ -83,7 +131,7 @@ DBCC SHRINKFILE (N'$fileName', 10)
 
 # Function to create a single zip archive of the entire Sandbox environment
 function Create-SandboxReleaseArchive {
-    Write-Host "Creating SQLFlow Sandbox release archive..." -ForegroundColor Yellow
+    Write-Host "Creating cross-platform compatible SQLFlow Sandbox release archive..." -ForegroundColor Yellow
     
     try {
         # Ensure the release directory exists
@@ -102,16 +150,71 @@ function Create-SandboxReleaseArchive {
         $fileCount = (Get-ChildItem -Path $sandboxDirectory -File -Recurse -ErrorAction SilentlyContinue).Count
         Write-Host "Found $fileCount files in the Sandbox environment to package" -ForegroundColor White
         
-        # Create the zip file directly from the Sandbox directory
-        Write-Host "Creating SQLFlow Sandbox release package: $zipFilePath" -ForegroundColor Yellow
-        Write-Host "This may take some time depending on the size of the Sandbox environment..." -ForegroundColor Yellow
+        # Create the zip file using 7-Zip if available (more compatible across platforms)
+        $sevenZipPath = "C:\Program Files\7-Zip\7z.exe"
         
-        # Use -Force to overwrite any existing zip file
-        Compress-Archive -Path "$sandboxDirectory\*" -DestinationPath $zipFilePath -Force
+        if (Test-Path $sevenZipPath) {
+            Write-Host "Using 7-Zip for creating a cross-platform compatible archive" -ForegroundColor Yellow
+            
+            # Remove existing zip file if it exists
+            if (Test-Path $zipFilePath) {
+                Remove-Item -Path $zipFilePath -Force
+            }
+            
+            # Use 7-Zip to create a standard zip file (more compatible with macOS)
+            # Use forward slashes in path for better compatibility
+            $sandboxDirForwardSlash = $sandboxDirectory -replace '\\', '/'
+            & $sevenZipPath a -tzip -mx=5 $zipFilePath "$sandboxDirForwardSlash/*" -r
+            
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Error: 7-Zip returned exit code $LASTEXITCODE" -ForegroundColor Red
+                return $false
+            }
+        } else {
+            # Fall back to .NET System.IO.Compression for better compatibility than Compress-Archive
+            Write-Host "7-Zip not found. Using .NET for zip creation" -ForegroundColor Yellow
+            
+            # Remove existing zip file if it exists
+            if (Test-Path $zipFilePath) {
+                Remove-Item -Path $zipFilePath -Force
+            }
+            
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $compressionLevel = [System.IO.Compression.CompressionLevel]::Optimal
+            
+            # Create a temporary directory with the contents to ensure proper directory structure
+            $tempDir = "$env:TEMP\SQLFlowZipTemp"
+            if (Test-Path $tempDir) {
+                Remove-Item -Path $tempDir -Recurse -Force
+            }
+            New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+            
+            # Copy files using robocopy for better handling of long paths and special characters
+            $robocopyParams = @(
+                $sandboxDirectory,
+                $tempDir,
+                "/E",     # Copy subdirectories, including empty ones
+                "/R:1",   # Number of retries on failed copies
+                "/W:1",   # Wait time between retries
+                "/NFL",   # No file list - don't log file names
+                "/NDL",   # No directory list - don't log directory names
+                "/NJH",   # No job header
+                "/NJS"    # No job summary
+            )
+            & robocopy $robocopyParams
+            
+            # Create zip file from temp directory
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($tempDir, $zipFilePath, $compressionLevel, $false)
+            
+            # Clean up
+            if (Test-Path $tempDir) {
+                Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
         
         if (Test-Path $zipFilePath) {
             $zipSize = (Get-Item $zipFilePath).Length / 1MB
-            Write-Host "Successfully created SQLFlow Sandbox release package: $zipFilePath (Size: $($zipSize.ToString('0.00')) MB)" -ForegroundColor Green
+            Write-Host "Successfully created cross-platform SQLFlow Sandbox release package: $zipFilePath (Size: $($zipSize.ToString('0.00')) MB)" -ForegroundColor Green
             return $true
         } else {
             Write-Host "Failed to create the release package" -ForegroundColor Red
@@ -280,6 +383,9 @@ if (-not (Get-Module -ListAvailable -Name SqlServer)) {
 # Import SqlServer module
 Import-Module SqlServer
 
+# Ensure 7-Zip is installed for cross-platform compatible zip creation
+Ensure-7ZipInstalled
+
 # Ensure SqlPackage is installed
 $sqlPackagePath = Ensure-SqlPackageInstalled
 if (-not $sqlPackagePath) {
@@ -338,5 +444,5 @@ if (-not $skipBacpac) {
 }
 
 Write-Host "Backup location: $backupDirectory" -ForegroundColor White
-Write-Host "SQLFlow Sandbox release package: $zipFilePath" -ForegroundColor White
-Write-Host "`nThe release package contains the complete SQLFlow Sandbox environment ready for deployment." -ForegroundColor Cyan
+Write-Host "Cross-platform SQLFlow Sandbox release package: $zipFilePath" -ForegroundColor White
+Write-Host "`nThe release package contains the complete SQLFlow Sandbox environment ready for deployment on Windows, macOS, and Linux systems." -ForegroundColor Cyan
