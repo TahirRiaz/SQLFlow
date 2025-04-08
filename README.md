@@ -27,24 +27,30 @@ This Slack workspace allows developers, data engineers, and contributors to disc
 - **LinkedIn:** [Contact](https://www.linkedin.com/in/businessiq/)  
 
 ## SQLFlow presentation in Norwegian at anual BouvetOne Developer Conference
-<div style="display: flex; justify-content: space-between; flex-wrap: wrap;">
-  <div style="width: 30%; min-width: 200px; margin-bottom: 20px;">
+<div>
+  <div style="display: flex; align-items: center; margin-bottom: 15px;">
     <a href="https://www.youtube.com/watch?v=ybiEdjSAvcI">
-      <img src="https://img.youtube.com/vi/ybiEdjSAvcI/0.jpg" width="200" alt="Hvordan SQLFlow løste komplekse datautfordringer hos Kolumbus AS">
+      <img src="https://img.youtube.com/vi/ybiEdjSAvcI/0.jpg" width="200" alt="Kolumbus">
     </a>
-    <p>Hvordan SQLFlow løste komplekse datautfordringer hos Kolumbus AS</p>
+    <div style="margin-left: 15px;">
+      <a href="https://www.youtube.com/watch?v=ybiEdjSAvcI">Hvordan SQLFlow løste komplekse datautfordringer hos Kolumbus AS</a>
+    </div>
   </div>
-  <div style="width: 30%; min-width: 200px; margin-bottom: 20px;">
+  <div style="display: flex; align-items: center; margin-bottom: 15px;">
     <a href="https://www.youtube.com/watch?v=EJZiZii7cmU">
-      <img src="https://img.youtube.com/vi/EJZiZii7cmU/0.jpg" width="200" alt="SQLFlow i praksis – Bygg automatisert dataflyt uten kode og vedlikehold">
+      <img src="https://img.youtube.com/vi/EJZiZii7cmU/0.jpg" width="200" alt="SQLFlow i praksis">
     </a>
-    <p>SQLFlow i praksis – Bygg automatisert dataflyt uten kode og vedlikehold</p>
+    <div style="margin-left: 15px;">
+      <a href="https://www.youtube.com/watch?v=EJZiZii7cmU">SQLFlow i praksis – Bygg automatisert dataflyt uten kode og vedlikehold</a>
+    </div>
   </div>
-  <div style="width: 30%; min-width: 200px; margin-bottom: 20px;">
+  <div style="display: flex; align-items: center; margin-bottom: 15px;">
     <a href="https://www.youtube.com/watch?v=xa-NkFe6Rrw">
-      <img src="https://img.youtube.com/vi/xa-NkFe6Rrw/0.jpg" width="200" alt="SQLFlow - Dynamic schema evolution (Norwegian @BouvetOne)">
+      <img src="https://img.youtube.com/vi/xa-NkFe6Rrw/0.jpg" width="200" alt="Schema evolution">
     </a>
-    <p>SQLFlow - Dynamic schema evolution (Norwegian @BouvetOne)</p>
+    <div style="margin-left: 15px;">
+      <a href="https://www.youtube.com/watch?v=xa-NkFe6Rrw">SQLFlow - Dynamic schema evolution (Norwegian @BouvetOne)</a>
+    </div>
   </div>
 </div>
 
