@@ -14,56 +14,56 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.13.2" />
-    <PackageReference Include="Azure.Messaging.EventGrid" Version="4.30.0" />
-    <PackageReference Include="Azure.ResourceManager" Version="1.13.0" />
+    <PackageReference Include="Azure.Identity" Version="1.14.1" />
+    <PackageReference Include="Azure.Messaging.EventGrid" Version="5.0.0" />
+    <PackageReference Include="Azure.ResourceManager" Version="1.13.1" />
     <PackageReference Include="Azure.ResourceManager.Automation" Version="1.1.1" />
-    <PackageReference Include="Azure.ResourceManager.DataFactory" Version="1.7.0" />
-    <PackageReference Include="Azure.ResourceManager.EventGrid" Version="1.0.1" />
-    <PackageReference Include="Azure.ResourceManager.KeyVault" Version="1.3.1" />
-    <PackageReference Include="Azure.ResourceManager.Storage" Version="1.4.0" />
-    <PackageReference Include="Azure.Security.KeyVault.Certificates" Version="4.7.0" />
-    <PackageReference Include="Azure.Security.KeyVault.Keys" Version="4.7.0" />
-    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.7.0" />
+    <PackageReference Include="Azure.ResourceManager.DataFactory" Version="1.9.0" />
+    <PackageReference Include="Azure.ResourceManager.EventGrid" Version="1.1.0" />
+    <PackageReference Include="Azure.ResourceManager.KeyVault" Version="1.3.2" />
+    <PackageReference Include="Azure.ResourceManager.Storage" Version="1.4.3" />
+    <PackageReference Include="Azure.Security.KeyVault.Certificates" Version="4.8.0" />
+    <PackageReference Include="Azure.Security.KeyVault.Keys" Version="4.8.0" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.8.0" />
     <PackageReference Include="Azure.Storage.Files.DataLake" Version="12.22.0" />
     <PackageReference Include="Azure.Storage.Files.Shares" Version="12.22.0" />
     <PackageReference Include="Azure.Storage.Queues" Version="12.22.0" />
     <PackageReference Include="CoreCLR-NCalc" Version="3.1.253" />
-    <PackageReference Include="CsvHelper" Version="33.0.1" />
-    <PackageReference Include="DatabaseSchemaReader" Version="2.12.0" />
+    <PackageReference Include="CsvHelper" Version="33.1.0" />
+    <PackageReference Include="DatabaseSchemaReader" Version="2.15.0" />
     <PackageReference Include="ExcelDataReader" Version="3.7.0" />
     <PackageReference Include="ExcelDataReader.DataSet" Version="3.7.0" />
     <PackageReference Include="GenericParsing.Standard" Version="1.4.1" />
-    <PackageReference Include="HtmlAgilityPack" Version="1.12.0" />
+    <PackageReference Include="HtmlAgilityPack" Version="1.12.1" />
     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.13.0" />
-    <PackageReference Include="Microsoft.CodeAnalysis.Scripting" Version="4.13.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Identity.Client" Version="4.70.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Scripting" Version="4.14.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Identity.Client" Version="4.73.1" />
     <PackageReference Include="Microsoft.ML" Version="4.0.2" />
     <PackageReference Include="Microsoft.ML.AutoML" Version="0.22.2" />
-    <PackageReference Include="Microsoft.SqlServer.Management.Assessment" Version="172.64.0" />
-    <PackageReference Include="Microsoft.SqlServer.Management.SqlParser" Version="172.18.0" />
+    <PackageReference Include="Microsoft.SqlServer.Management.Assessment" Version="172.76.0" />
+    <PackageReference Include="Microsoft.SqlServer.Management.SqlParser" Version="172.20.0" />
     <PackageReference Include="Microsoft.SqlServer.Server" Version="1.0.0" />
-    <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" Version="172.64.0" />
-    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.28.0" />
+    <PackageReference Include="Microsoft.SqlServer.SqlManagementObjects" Version="172.76.0" />
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.64.0" />
     <PackageReference Include="Microsoft.SqlServer.Types" Version="160.1000.6" />
-    <PackageReference Include="MySql.Data" Version="9.2.0" />
+    <PackageReference Include="MySql.Data" Version="9.3.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Octokit" Version="14.0.0" />
     <PackageReference Include="Parquet.Data.Ado" Version="1.1.1" />
     <PackageReference Include="Parquet.Net" Version="5.1.1" />
     <PackageReference Include="Renci.SshNet.Async" Version="1.4.0" />
     <PackageReference Include="SharpBucket" Version="0.17.0" />
-    <PackageReference Include="SSH.NET" Version="2024.2.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.3" />
+    <PackageReference Include="SSH.NET" Version="2025.0.0" />
+    <PackageReference Include="System.Configuration.ConfigurationManager" Version="9.0.6" />
     <PackageReference Include="System.Data.DataSetExtensions" Version="4.5.0" />
-    <PackageReference Include="System.Data.OleDb" Version="9.0.3" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
-    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.3" />
-    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.0.2" />
+    <PackageReference Include="System.Data.OleDb" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+    <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.6" />
+    <PackageReference Include="System.Linq.Dynamic.Core" Version="1.6.6" />
     <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Text.Json" Version="9.0.3" />
+    <PackageReference Include="System.Text.Json" Version="9.0.6" />
     <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
     <PackageReference Include="TimeAndDate.Services" Version="1.0.1" />
   </ItemGroup>
