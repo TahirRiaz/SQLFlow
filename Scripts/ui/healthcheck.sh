@@ -15,6 +15,7 @@ check_signalr_installed() {
     fi
 }
 
+
 # Extract host and port from ASPNETCORE_URLS
 # Parse URLs properly to support both HTTP and HTTPS
 parse_urls() {
