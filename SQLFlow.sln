@@ -58,6 +58,13 @@ EndProject
 Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "SQLFlowDb", "SQLFlowDb\SQLFlowDb.sqlproj", "{70DC633B-A3B9-4CD0-BB87-7834F1FFCF79}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sql", "sql", "{D0ED8DA3-DABE-45DC-9AE2-235821BDCA9E}"
+	ProjectSection(SolutionItems) = preProject
+		Scripts\sql\entrypoint.sh = Scripts\sql\entrypoint.sh
+		Scripts\sql\fix-smk.sh = Scripts\sql\fix-smk.sh
+		Scripts\sql\healthcheck.sh = Scripts\sql\healthcheck.sh
+		Scripts\sql\init.sql = Scripts\sql\init.sql
+		Scripts\sql\initialize-db.sh = Scripts\sql\initialize-db.sh
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -55,7 +55,8 @@ RUN echo '#!/bin/bash\n\
 
 # Copy entrypoint script
 COPY ./Scripts/sql/entrypoint.sh /var/opt/mssql/
-RUN chmod +x /var/opt/mssql/entrypoint.sh
+RUN sed -i 's/\r$//' /var/opt/mssql/entrypoint.sh && \
+    chmod +x /var/opt/mssql/entrypoint.sh
 
 # Switch to non-root user for security
 USER mssql
