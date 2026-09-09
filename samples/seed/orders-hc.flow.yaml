@@ -1,0 +1,27 @@
+# SQLFlow seed pipeline - ML health check (flowType: hc), used to populate the shadow catalog with a
+# genuine health-check run (RunHealthCheckMetric per metric). It watches the dbo.Orders table by date.
+# The demo table is tiny, so the run reports limited-data findings; that still exercises the per-metric
+# result projection end to end.
+#
+#   sqlflow run samples/seed/orders-hc.flow.yaml
+
+flowType: hc
+name: orders-hc-seed
+
+connections:
+  dwh: ${env:SQLFLOW_DW}
+
+target:
+  server: dwh
+  object: TestDB.dbo.OrdersDaily
+
+dateColumn: OrderDate
+metrics:
+  - name: orders
+    baseValue: SUM(Orders)
+  - name: revenue
+    baseValue: SUM(Amount)
+
+maturityDays: 0
+ml:
+  maxExperimentSeconds: 15

@@ -1,0 +1,1246 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>Ghana is a multiethnic country rich in natural resources and is one of the most stable and democratic countries in West Africa. Ghana has been inhabited for at least several thousand years, but little is known about its early inhabitants. By the 12th century, the gold trade started to boom in Bono (Bonoman) state in what is today southern Ghana, and it became the genesis of the Akan people's power and wealth in the region. Beginning in the 15th century, the Portuguese, followed by other European powers, arrived and competed for trading rights. Numerous kingdoms and empires emerged in the area, among the most powerful were the Kingdom of Dagbon in the north and the Asante (Ashanti) Empire in the south. By the mid-18th century, Asante was a highly organized state with immense wealth; it provided enslaved people for the Atlantic slave trade, and in return received firearms that facilitated its territorial expansion. The Asante resisted increasing British influence in the coastal areas, engaging in a series of wars during the 19th century before ultimately falling under British control. Formed from the merger of the British colony of the Gold Coast and the Togoland trust territory, Ghana in 1957 became the first Sub-Saharan country in colonial Africa to gain its independence, with Kwame NKRUMAH as its first leader.<br><br>Ghana endured a series of coups before Lt. Jerry RAWLINGS took power in 1981 and banned political parties. After approving a new constitution and restoring multiparty politics in 1992, RAWLINGS won presidential elections in 1992 and 1996 but was constitutionally prevented from running for a third term in 2000. John KUFUOR of the opposition New Patriotic Party (NPP) succeeded him and was reelected in 2004. John Atta MILLS of the National Democratic Congress won the 2008 presidential election and took over as head of state. MILLS died in 2012 and was constitutionally succeeded by his vice president, John Dramani MAHAMA, who subsequently won the 2012 presidential election. In 2016, Nana Addo Dankwa AKUFO-ADDO of the NPP defeated MAHAMA, marking the third time that Ghana’s presidency had changed parties since the return to democracy. AKUFO-ADDO was reelected in 2020. In recent years, Ghana has taken an active role in promoting regional stability and is highly integrated in international affairs.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Western Africa, bordering the Gulf of Guinea, between Cote d'Ivoire and Togo"
+    },
+    "Geographic coordinates": {
+      "text": "8 00 N, 2 00 W"
+    },
+    "Map references": {
+      "text": "Africa"
+    },
+    "Area": {
+      "total ": {
+        "text": "238,533 sq km"
+      },
+      "land": {
+        "text": "227,533 sq km"
+      },
+      "water": {
+        "text": "11,000 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than Oregon"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "2,420 km"
+      },
+      "border countries": {
+        "text": "Burkina Faso 602 km; Cote d'Ivoire 720 km; Togo 1098 km"
+      }
+    },
+    "Coastline": {
+      "text": "539 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical; warm and comparatively dry along southeast coast; hot and humid in southwest; hot and dry in north"
+    },
+    "Terrain": {
+      "text": "mostly low plains with dissected plateau in south-central area"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mount Afadjato 885 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "190 m"
+      }
+    },
+    "Natural resources": {
+      "text": "gold, timber, industrial diamonds, bauxite, manganese, fish, rubber, hydropower, petroleum, silver, salt, limestone"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "69.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 20.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 11.9% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 36.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "21.2% (2018 est.)"
+      },
+      "other": {
+        "text": "9.7% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "360 sq km (2013)"
+    },
+    "Major rivers (by length in km)": {
+      "text": "Volta river mouth (shared with Burkina Faso [s]) - 1,600 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Volta (410,991 sq km)"
+    },
+    "Population distribution": {
+      "text": "population is concentrated in the southern half of the country, with the highest concentrations being on or near the Atlantic coast as shown in this population distribution map"
+    },
+    "Natural hazards": {
+      "text": "dry, dusty, northeastern harmattan winds from January to March; droughts"
+    },
+    "Geography - note": {
+      "text": "Lake Volta is the world's largest artificial lake (manmade reservoir) by surface area (8,482 sq km; 3,275 sq mi); the lake was created following the completion of the Akosombo Dam in 1965, which holds back the White Volta and Black Volta Rivers"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "34,589,092"
+      },
+      "male": {
+        "text": "16,902,073"
+      },
+      "female": {
+        "text": "17,687,019 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Ghanaian(s)"
+      },
+      "adjective": {
+        "text": "Ghanaian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Akan 45.7%, Mole-Dagbani 18.5%, Ewe 12.8%, Ga-Dangme 7.1%, Gurma 6.4%, Guan 3.2%, Grusi 2.7%, Mande 2%, other 1.6% (2021 est.)"
+    },
+    "Languages": {
+      "text": "Asante 16%, Ewe 14%, Fante 11.6%, Boron (Brong) 4.9%, Dagomba 4.4%, Dangme 4.2%, Dagarte (Dagaba) 3.9%, Kokomba 3.5%, Akyem 3.2%, Ga 3.1%, other 31.2% (2010 est.)",
+      "note": "<strong>note:</strong> English is the official language"
+    },
+    "Religions": {
+      "text": "Christian 71.3% (Pentecostal/Charismatic 31.6%, Protestant 17.4%, Catholic 10%, other 12.3%), Muslim 19.9%, traditionalist 3.2%, other 4.5%, none 1.1% (2021 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>Ghana has a young age structure, with approximately 56% of the population under the age of 25 as of 2020. Its total fertility rate fell significantly during the 1980s and 1990s but has stalled at around four children per woman for the last few years. Fertility remains higher in the northern region than the Greater Accra region. On average, desired fertility has remained stable for several years; urban dwellers want fewer children than rural residents. Increased life expectancy, due to better health care, nutrition, and hygiene, and reduced fertility have increased Ghana’s share of elderly persons; Ghana’s proportion of persons aged 60+ is among the highest in Sub-Saharan Africa. Poverty has declined in Ghana, but it remains pervasive in the northern region, which is susceptible to droughts and floods and has less access to transportation infrastructure, markets, fertile farming land, and industrial centers. The northern region also has lower school enrollment, higher illiteracy, and fewer opportunities for women.</p> <p>Ghana was a country of immigration in the early years after its 1957 independence, attracting labor migrants largely from Nigeria and other neighboring countries to mine minerals and harvest cocoa – immigrants composed about 12% of Ghana’s population in 1960. In the late 1960s, worsening economic and social conditions discouraged immigration, and hundreds of thousands of immigrants, mostly Nigerians, were expelled.</p> <p>During the 1970s, severe drought and an economic downturn transformed Ghana into a country of emigration; neighboring Cote d’Ivoire was the initial destination. Later, hundreds of thousands of Ghanaians migrated to Nigeria to work in its booming oil industry, but most were deported in 1983 and 1985 as oil prices plummeted. Many Ghanaians then turned to more distant destinations, including other parts of Africa, Europe, and North America, but the majority continued to migrate within West Africa. Since the 1990s, increased emigration of skilled Ghanaians, especially to the US and the UK, drained the country of its health care and education professionals. Internally, poverty and other developmental disparities continue to drive Ghanaians from the north to the south, particularly to its urban centers.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "37.4% (male 6,527,386/female 6,400,245)"
+      },
+      "15-64 years": {
+        "text": "58.2% (male 9,690,498/female 10,444,197)"
+      },
+      "65 years and over": {
+        "text": "4.4% (2024 est.) (male 684,189/female 842,577)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "68.7"
+      },
+      "youth dependency ratio": {
+        "text": "62.9"
+      },
+      "elderly dependency ratio": {
+        "text": "5.9"
+      },
+      "potential support ratio": {
+        "text": "17 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "21.4 years (2024 est.)"
+      },
+      "male": {
+        "text": "20.6 years"
+      },
+      "female": {
+        "text": "22.3 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "2.15% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "27.6 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "5.9 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.2 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "population is concentrated in the southern half of the country, with the highest concentrations being on or near the Atlantic coast as shown in this population distribution map"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "59.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "3.06% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "3.768 million Kumasi, 2.660 million ACCRA (capital), 1.078 million Sekondi Takoradi (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.03 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.93 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.81 male(s)/female"
+      },
+      "total population": {
+        "text": "0.96 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "22.1 years (2022 est.)",
+      "note": "<strong>note:</strong> data represents median age at first birth among women 25-49"
+    },
+    "Maternal mortality ratio": {
+      "text": "263 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "31.2 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "34.5 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "27.8 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "70.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "68.4 years"
+      },
+      "female": {
+        "text": "71.8 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "3.56 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.75 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "27.2% (2017/18)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 98.7% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 83.8% of population"
+      },
+      "improved: total": {
+        "text": "total: 92.4% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 1.3% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 16.2% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 7.6% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "4% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.17 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "0.9 beds/1,000 population (2011)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 84.8% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 52.8% of population"
+      },
+      "improved: total": {
+        "text": "total: 71.1% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 15.2% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 47.2% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 28.9% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "10.9% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "1.59 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "0.53 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.05 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.39 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.61 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "3.5% (2020 est.)"
+      },
+      "male": {
+        "text": "6.6% (2020 est.)"
+      },
+      "female": {
+        "text": "0.3% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "12.6% (2017/18)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "54.3% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "5%"
+      },
+      "women married by age 18": {
+        "text": "19.3%"
+      },
+      "men married by age 18": {
+        "text": "3.9% (2018 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "3.9% of GDP (2018 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "79%"
+      },
+      "male": {
+        "text": "83.5%"
+      },
+      "female": {
+        "text": "74.5% (2018)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "12 years"
+      },
+      "male": {
+        "text": "12 years"
+      },
+      "female": {
+        "text": "12 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "recurrent drought in north severely affects agricultural activities; deforestation; overgrazing; soil erosion; poaching and habitat destruction threaten wildlife populations; water pollution; inadequate supplies of potable water"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Marine Dumping-London Protocol, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "Marine Life Conservation"
+      }
+    },
+    "Climate": {
+      "text": "tropical; warm and comparatively dry along southeast coast; hot and humid in southwest; hot and dry in north"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "69.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 20.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 11.9% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 36.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "21.2% (2018 est.)"
+      },
+      "other": {
+        "text": "9.7% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "59.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "3.06% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "3.51% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "46.04 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "16.67 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "22.75 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "3,538,275 tons (2005 est.)"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Volta river mouth (shared with Burkina Faso [s]) - 1,600 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Volta (410,991 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "300 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "100 million cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "1.07 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "56.2 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Ghana"
+      },
+      "conventional short form": {
+        "text": "Ghana"
+      },
+      "former": {
+        "text": "Gold Coast"
+      },
+      "etymology": {
+        "text": "named for the medieval West African kingdom of the same name but whose location was actually further north than the modern country"
+      }
+    },
+    "Government type": {
+      "text": "presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Accra"
+      },
+      "geographic coordinates": {
+        "text": "5 33 N, 0 13 W"
+      },
+      "time difference": {
+        "text": "UTC 0 (5 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "the name derives from the Akan word \"nkran\" meaning \"ants,\" and refers to the numerous anthills in the area around the capital"
+      }
+    },
+    "Administrative divisions": {
+      "text": "16 regions; Ahafo, Ashanti, Bono, Bono East, Central, Eastern, Greater Accra, North East, Northern, Oti, Savannah, Upper East, Upper West, Volta, Western, Western North"
+    },
+    "Independence": {
+      "text": "6 March 1957 (from the UK)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 6 March (1957)"
+    },
+    "Legal system": {
+      "text": "mixed system of English common law and customary law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest drafted 31 March 1992, approved and promulgated 28 April 1992, entered into force 7 January 1993"
+      },
+      "amendments": {
+        "text": "proposed by Parliament; consideration requires prior referral to the Council of State, a body of prominent citizens who advise the president of the republic; passage of amendments to \"entrenched\" constitutional articles (including those on national sovereignty, fundamental rights and freedoms, the structure and authorities of the branches of government, and amendment procedures) requires approval in a referendum by at least 40% participation of eligible voters and at least 75% of votes cast, followed by at least two-thirds majority vote in Parliament, and assent of the president; amendments to non-entrenched articles do not require referenda; amended 1996"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent or grandparent must be a citizen of Ghana"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President John Dramani MAHAMA (since 7 January 2025)"
+      },
+      "head of government": {
+        "text": "President Nana Addo Dankwa AKUFO-ADDO (since 7 January 2017)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers; nominated by the president, approved by Parliament"
+      },
+      "elections/appointments": {
+        "text": "president and vice president directly elected on the same ballot by absolute majority popular vote in 2 rounds if needed for a 4-year term (eligible for a second term); election last held on 7 December 2024 (next to be held on 7 December 2028); the president is both chief of state and head of government"
+      },
+      "election results": {
+        "text": "<em>2024: </em>John Dramani MAHAMA elected president in the first round; percent of vote- John Dramani MAHAMA (NDC) 56.5%, Mahamudu BAWUMIA (NPC) 41%, other 2.5% <em><br><br>2020:</em> Nana Addo Dankwa AKUFO-ADDO reelected president in the first round; percent of vote - Nana Addo Dankwa AKUFO-ADDO (NPP) 51.3%, John Dramani MAHAMA (NDC) 47.4%, other 1.3% (2020)"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Parliament"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "276 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "12/7/2024"
+      },
+      "parties elected and seats per party": {
+        "text": "National Democratic Congress (NDC) (183); New Patriotic Party (NPP) (88); Other (4)"
+      },
+      "percentage of women in chamber": {
+        "text": "14.5%"
+      },
+      "expected date of next election": {
+        "text": "December 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of the chief justice and 13 justices)"
+      },
+      "judge selection and term of office": {
+        "text": "chief justice appointed by the president in consultation with the Council of State (a small advisory body of prominent citizens) and with the approval of Parliament; other justices appointed by the president upon the advice of the Judicial Council (an 18-member independent body of judicial, military and police officials, and presidential nominees) and on the advice of the Council of State; justices can retire at age 60, with compulsory retirement at age 70"
+      },
+      "subordinate courts": {
+        "text": "Court of Appeal; High Court; Circuit Court; District Court; regional tribunals"
+      }
+    },
+    "Political parties": {
+      "text": "All Peoples Congress or APC <br>Convention People's Party or CPP <br>Ghana Freedom Party or GFP <br>Ghana Union Movement or GUM <br>Great Consolidated Popular Party or GCPP <br>Liberal Party of Ghana or LPG <br>National Democratic Congress or NDC <br>National Democratic Party or NDP <br>New Patriotic Party or NPP <br>People's National Convention or PNC <br>Progressive People's Party or PPP <br>United Front Party or UFP <br>United Progressive Party or UPP "
+    },
+    "International organization participation": {
+      "text": "ACP, AfDB, ATMIS, AU, C, ECOWAS, EITI (compliant country), FAO, G-24, G-77, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IFAD, IFC, IFRCS, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, MINURSO, MONUSCO, NAM, OAS (observer), OIF, OPCW, UN, UNAMID, UNCTAD, UNESCO, UNHCR, UNHRC, UNIDO, UNIFIL, UNISFA, UNMIL, UNMISS, UNOCI, UNOOSA, UNSOM, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Alima MAHAMA (since 7 July 2021)"
+      },
+      "chancery": {
+        "text": "3512 International Drive NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 686-4520"
+      },
+      "FAX": {
+        "text": "[1] (202) 686-4527"
+      },
+      "email address and website": {
+        "text": "<br>info@ghanaembassydc.org<br><br>https://ghanaembassydc.org/"
+      },
+      "consulate(s) general": {
+        "text": "New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Virginia E. PALMER (since 16 June 2022)"
+      },
+      "embassy": {
+        "text": "No. 24, Fourth Circular Road, Cantonments, Accra, P.O. Box 2288, Accra"
+      },
+      "mailing address": {
+        "text": "2020 Accra Place, Washington DC&nbsp; 20521-2020"
+      },
+      "telephone": {
+        "text": "[233] (0) 30-274-1000"
+      },
+      "email address and website": {
+        "text": "<br>ACSAccra@state.gov<br><br>https://gh.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "three equal horizontal bands of red (top), yellow, and green, with a large black five-pointed star centered in the yellow band; red symbolizes the blood shed for independence, yellow represents the country's mineral wealth, while green stands for its forests and natural wealth; the black star is said to be the lodestar of African freedom",
+      "note": "<strong>note:</strong> uses the popular Pan-African colors of Ethiopia; similar to the flag of Bolivia, which has a coat of arms centered in the yellow band"
+    },
+    "National symbol(s)": {
+      "text": "black star, golden eagle; national colors: red, yellow, green, black"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"God Bless Our Homeland Ghana\""
+      },
+      "lyrics/music": {
+        "text": "unknown/Philip GBEHO"
+      },
+      "note": "<strong>note:</strong> music adopted 1957, lyrics adopted 1966; the lyrics were changed twice, in 1960 when a republic was declared and after a 1966 coup"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "2 (both cultural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Forts and Castles, Volta, Greater Accra, Central and Western Regions; Asante Traditional Buildings"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "West African lower-middle income economy; major gold, oil and cocoa exporter; macroeconomic challenges following nearly four decades of sustained growth; recent progress in debt restructuring, fiscal reforms, financial stability, and curbing runaway inflation under 2023-26 IMF credit facility program"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$229.639 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$223.07 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$214.867 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "2.94% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "3.82% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "5.08% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$6,800 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$6,700 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$6,600 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$76.37 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "38.11% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "31.26% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "9.97% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "B (2013)"
+      },
+      "Moody's rating": {
+        "text": "B3 (2015)"
+      },
+      "Standard & Poors rating": {
+        "text": "B- (2020)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "21.1% (2023 est.)"
+      },
+      "industry": {
+        "text": "29.5% (2023 est.)"
+      },
+      "services": {
+        "text": "42.5% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "84.2% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "5.9% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "10.7% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0.2% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "34% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-35% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "cassava, yams, plantains, maize, oil palm fruit, taro, rice, cocoa beans, oranges, pineapples (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "mining, lumbering, light manufacturing, aluminum smelting, food processing, cement, small commercial ship building, petroleum"
+    },
+    "Industrial production growth rate": {
+      "text": "-1.22% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "14.84 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "3.08% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "3.08% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "3.34% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "5.5% (2023 est.)"
+      },
+      "male": {
+        "text": "5.6% (2023 est.)"
+      },
+      "female": {
+        "text": "5.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "23.4% (2016 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2016": {
+        "text": "43.5 (2016 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "39.1% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "0.4% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "1.6% (2016 est.)"
+      },
+      "highest 10%": {
+        "text": "32.2% (2016 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "3.18% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "2.79% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "2.42% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$11.684 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$16.842 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues and expenses (excluding grants/extrabudgetary units/social security funds) converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "71.8% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "12.3% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$1.407 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$1.741 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$2.541 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$25.365 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$25.52 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$23.901 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "UAE 24%, Switzerland 17%, US 14%, India 10%, China 10% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "gold, crude petroleum, cocoa beans, coconuts/Brazil nuts/cashews, cocoa paste (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$26.024 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$26.329 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$25.967 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 41%, Netherlands 7%, India 5%, US 5%, Cote d'Ivoire 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, plastic products, garments, coated flat-rolled iron, ships (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$3.624 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$5.205 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$9.917 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$30.242 billion (2023 est.)"
+      }
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "cedis (GHC) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "11.02 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "8.272 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "5.806 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "5.596 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "5.217 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "85.1% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "95%"
+      },
+      "electrification - rural areas": {
+        "text": "71.6%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "5.444 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "19.142 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "1.787 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "48.461 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "1.619 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "66% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.6% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "33.3% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "consumption": {
+        "text": "85,000 metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "9 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "85,000 metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "174,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "110,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "660 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "3.192 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "3.912 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "539.629 million cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "22.653 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "22.882 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "172,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "15.035 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "7.675 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "11.416 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "320,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "1 (2023 est.) less than 1"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "33.4 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "120 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "challenged by unreliable electricity and shortage of skilled labor, Ghana seeks to extend telecom services nationally; investment in fiber infrastructure and off-grid solutions provide data coverage to over 23 million people; launch of LTE has improved mobile data services, including m-commerce and banking; moderately competitive Internet market, most through mobile networks; international submarine cables, and terrestrial cables have improved Internet capacity; LTE services are widely available; the relatively high cost of 5G-compatible devices also inhibits most subscribers from migrating from 3G and LTE platforms (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line data less than 1 per 100 subscriptions; mobile-cellular subscriptions 123 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 233; landing points for the SAT-3/WASC, MainOne, ACE, WACS and GLO-1 fiber-optic submarine cables that provide connectivity to South and West Africa, and Europe; satellite earth stations - 4 Intelsat (Atlantic Ocean); microwave radio relay link to Panaftel system connects Ghana to its neighbors; GhanaSat-1 nanosatellite launched in 2017 (2017)"
+      }
+    },
+    "Broadcast media": {
+      "text": "state-owned TV station, 2 state-owned radio networks; several privately owned TV stations and a large number of privately owned radio stations; transmissions of multiple international broadcasters are accessible; several cable and satellite TV subscription services are obtainable"
+    },
+    "Internet country code": {
+      "text": ".gh"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "70% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "223,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "1 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "3 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "21"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "467,438 (2018)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "9G"
+    },
+    "Airports": {
+      "text": "11 (2024)"
+    },
+    "Heliports": {
+      "text": "7 (2024)"
+    },
+    "Pipelines": {
+      "text": "681.3 km gas, 11.4 km oil, 435 km refined products (2022)"
+    },
+    "Railways": {
+      "total": {
+        "text": "947 km (2022)"
+      },
+      "narrow gauge": {
+        "text": "947 km (2022) 1.067-m gauge"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "65,725 km"
+      },
+      "paved": {
+        "text": "14,948 km"
+      },
+      "unpaved": {
+        "text": "50,777 km (2021)"
+      },
+      "urban": {
+        "text": "28,480 km 27% total paved 73% total unpaved"
+      }
+    },
+    "Waterways": {
+      "text": "1,293 km (2011) (168 km for launches and lighters on Volta, Ankobra, and Tano Rivers; 1,125 km of arterial and feeder waterways on Lake Volta)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "52 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 8, oil tanker 3, other 41"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "4 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "1"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "2"
+      },
+      "ports with oil terminals": {
+        "text": "3"
+      },
+      "key ports": {
+        "text": "Saltpond, Sekondi, Takoradi, Tema"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Ghana Armed Forces (GAF): Army, Navy, Air Force (2024)",
+      "note": "<strong>note:</strong> the Ghana Police Service is under the Ministry of the Interior"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "0.4% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "0.4% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "0.5% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "0.4% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "0.4% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 16,000 active Armed Forces personnel (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory is a mix of older and some newer Chinese, Russian, and Western equipment, including US, which has donated items such as patrol boats; the government in recent years has committed to an increase in funding for equipment acquisitions, including armor, mechanized, and special forces capabilities for the Army, light attack aircraft for the Air Force, and more modern coastal patrol vessels for the Navy (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-27 years of age for voluntary military service, with basic education certificate; no conscription (2024)",
+      "note": "<strong>note:</strong> as of 2024, women comprised approximately 15% of the military; Ghanaian women first began serving in the late 1950s"
+    },
+    "Military deployments": {
+      "text": "875 Lebanon (UNIFIL); 725 (plus about 275 police) South Sudan (UNMISS); 670 Sudan (UNISFA) (2024)",
+      "note": "<strong>note:</strong> since sending a contingent of troops to the Congo in 1960, the military has been a regular contributor to African- and UN-sponsored peacekeeping missions"
+    },
+    "Military - note": {
+      "text": "the military’s primary missions are border defense, assisting with internal security, peacekeeping, and protecting the country’s territorial waters, particularly its offshore oil and gas infrastructure; it has benefited from cooperation with foreign partners, such as the UK and the US, and experience gained from participation in multiple international peacekeeping missions<br> <br>in 2022, Ghana began beefing up its military presence in the north of the country against threats from the terrorist organization Jama’at Nasr al-Islam wal Muslimin (JNIM), a coalition of al-Qa'ida linked militant groups, which has conducted attacks in the neighboring countries of Burkina Faso, Cote d'Ivoire, and Togo; Ghana’s northern frontier with Burkina Faso is also an area with well-established smuggling routes, porous borders, and illegal gold mining; Ghana has also made efforts to increase its naval capabilities to protect its maritime claims and counter threats such as piracy<br><br>the military traces its origins to the Gold Coast Constabulary that was established in 1879 and renamed the Gold Coast Regiment in 1901; the Gold Coast Regiment was part of the West African Frontier Force, a multi-regiment unit formed by the British colonial office in 1900 to garrison Britain's West African colonies, which went on to serve in both World Wars; following Ghana's independence in 1957, the Gold Coast Regiment formed the basis for the new Ghanaian Army (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Ghana Space Science and Technology Center (GSSTC; established 2011); note &ndash; the GSSTC is eventually slated to become the Ghana Space Agency (2024)"
+    },
+    "Space program overview": {
+      "text": "has a small, nascent space program focused on research in space sciences and exploiting remote sensing (RS) technology for natural resource management, weather forecasting, agriculture, and national security issues; relies on foreign imagery for analysis but seeks to develop its own RS satellite capabilities; one of Africa’s leaders in satellite dish research; trains aerospace scientists and engineers; has established relations on space-related issues with China, Japan, and South Africa; cooperating with Egypt, Kenya, Nigeria, Sudan, and Uganda to establish a joint satellite to monitor climate changes in the African continent; partner of the Square Kilometer Array (SKA) international astronomy initiative (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Illicit drugs": {
+      "text": "<p>Ghana is a transit and destination point for illicit drugs trafficked from Asia and South America to other African countries, Europe, and to a lesser extent North America; not a significant source for drugs entering the United States; limited local consumption of controlled pharmaceuticals, cocaine, and heroin from Asia and South America; cannabis cultivated and produced in large quantities in most rural areas of Ghana  </p> <p> </p>"
+    }
+  }
+}

@@ -1,0 +1,883 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The British colonized the Cayman Islands during the 18th and 19th centuries, and Jamaica -- also a British colony at the time -- administered the islands after 1863. In 1959, the islands became a territory within the Federation of the West Indies. When the Federation dissolved in 1962, the Cayman Islands chose to remain a British dependency. The territory has transformed itself into a significant offshore financial center."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Caribbean, three-island group (Grand Cayman, Cayman Brac, Little Cayman) in Caribbean Sea, 240 km south of Cuba and 268 km northwest of Jamaica"
+    },
+    "Geographic coordinates": {
+      "text": "19 30 N, 80 30 W"
+    },
+    "Map references": {
+      "text": "Central America and the Caribbean"
+    },
+    "Area": {
+      "total ": {
+        "text": "264 sq km"
+      },
+      "land": {
+        "text": "264 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "1.5 times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "160 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "exclusive fishing zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical marine; warm, rainy summers (May to October) and cool, relatively dry winters (November to April)"
+    },
+    "Terrain": {
+      "text": "low-lying limestone base surrounded by coral reefs"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "1 km SW of The Bluff on Cayman Brac 50 m"
+      },
+      "lowest point": {
+        "text": "Caribbean Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "fish, climate and beaches that foster tourism"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "11.2% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 2.1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 8.3% (2018 est.)"
+      },
+      "forest": {
+        "text": "52.9% (2018 est.)"
+      },
+      "other": {
+        "text": "35.9% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "NA"
+    },
+    "Population distribution": {
+      "text": "majority of the population resides on Grand Cayman"
+    },
+    "Natural hazards": {
+      "text": "hurricanes (July to November)"
+    },
+    "Geography - note": {
+      "text": "important location between Cuba and Central America"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "66,653"
+      },
+      "male": {
+        "text": "32,379"
+      },
+      "female": {
+        "text": "34,274 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Caymanian(s)"
+      },
+      "adjective": {
+        "text": "Caymanian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Cayman Islander 35.4%, Jamaican 24.8%, Filipino 5.5%, British 5.3%, American 5.2%, Honduran 4.2%, Canadian 3.3%, Indian 2.1%, Cuban 1.6%, Nicaraguan 1%, other 11.1%, unspecified 0.5% (2021 est.)",
+      "note": "<strong>note: </strong>data represent population by country of birth"
+    },
+    "Languages": {
+      "text": "English (official) 88.8%, Spanish 3.9%, Filipino 3.8%, other 2.8%, unspecified 0.7% (2021 est.)",
+      "note": "<strong>note:</strong>  data represent main language spoken at home"
+    },
+    "Religions": {
+      "text": "Protestant 60.8% (includes Church of God 19.5%, Seventh Day Adventist 8.7%, non-denominational 8.3%, Baptist 6.9%, Pentecostal 6.8%, Presbyterian/United Church 5.7%, Anglican 2.8%, Wesleyan Holiness 1.5%, Methodist 0.5%), Roman Catholic 13.6%, Hindu 1.7%, Jehovah's Witness 0.9%, other 4.8%, none 16.7%, unspecified 1.4% (2021 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "17.4% (male 5,845/female 5,767)"
+      },
+      "15-64 years": {
+        "text": "65.9% (male 21,480/female 22,456)"
+      },
+      "65 years and over": {
+        "text": "16.7% (2024 est.) (male 5,054/female 6,051)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "32.6"
+      },
+      "youth dependency ratio": {
+        "text": "22.3"
+      },
+      "elderly dependency ratio": {
+        "text": "10.4"
+      },
+      "potential support ratio": {
+        "text": "9.6 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "41.2 years (2024 est.)"
+      },
+      "male": {
+        "text": "40.3 years"
+      },
+      "female": {
+        "text": "42 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "1.75% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "11.5 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6.1 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "12.1 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "majority of the population resides on Grand Cayman"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.13% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "35,000 GEORGE TOWN (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.02 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.01 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.96 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.84 male(s)/female"
+      },
+      "total population": {
+        "text": "0.95 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "7.3 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "8.8 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "5.7 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "82.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "79.8 years"
+      },
+      "female": {
+        "text": "85.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.82 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.9 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 97.4% of population"
+      },
+      "improved: total": {
+        "text": "total: 97.4% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 2.6% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 2.6% of population (2015 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 95.6% of population"
+      },
+      "improved: total": {
+        "text": "total: 95.6% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 4.4% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 4.4% of population (2015 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "51.4% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "2.1% of GDP (2019)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "98.9% NA"
+      },
+      "male": {
+        "text": "98.7% NA"
+      },
+      "female": {
+        "text": "99% (2021) NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "no natural freshwater resources; drinking water supplies are met by reverse osmosis desalination plants and rainwater catchment; trash washing up on the beaches or being deposited there by residents; no recycling or waste treatment facilities; deforestation (trees being cut down to create space for commercial use)"
+    },
+    "Climate": {
+      "text": "tropical marine; warm, rainy summers (May to October) and cool, relatively dry winters (November to April)"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "11.2% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 2.1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 8.3% (2018 est.)"
+      },
+      "forest": {
+        "text": "52.9% (2018 est.)"
+      },
+      "other": {
+        "text": "35.9% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.13% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "carbon dioxide emissions": {
+        "text": "0.55 megatons (2016 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "60,000 tons (2014 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "12,600 tons (2013 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "21% (2013 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Cayman Islands"
+      },
+      "etymology": {
+        "text": "the islands' name comes from the native Carib word \"caiman,\" describing the marine crocodiles living there"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy; self-governing overseas territory of the UK"
+    },
+    "Dependency status": {
+      "text": "overseas territory of the UK"
+    },
+    "Capital": {
+      "name": {
+        "text": "George Town (on Grand Cayman)"
+      },
+      "geographic coordinates": {
+        "text": "19 18 N, 81 23 W"
+      },
+      "time difference": {
+        "text": "UTC-5 (same time as Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "named after English King GEORGE III (1738-1820)"
+      }
+    },
+    "Administrative divisions": {
+      "text": "6 districts; Bodden Town, Cayman Brac and Little Cayman, East End, George Town, North Side, West Bay"
+    },
+    "Independence": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "National holiday": {
+      "text": "Constitution Day, the first Monday in July (1959)"
+    },
+    "Legal system": {
+      "text": "English common law and local statutes"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest approved 10 June 2009, entered into force 6 November 2009 (The Cayman Islands Constitution Order 2009)"
+      },
+      "amendments": {
+        "text": "amended 2016, 2020"
+      }
+    },
+    "Citizenship": {
+      "text": "see United Kingdom"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King CHARLES III (since 8 September 2022); represented by Governor Jane OWEN (since 21 April 2023)"
+      },
+      "head of government": {
+        "text": "Premier Juliana O'CONNOR-CONNOLLY (since 15 November 2023)"
+      },
+      "cabinet": {
+        "text": "Cabinet selected from the Parliament and appointed by the governor on the advice of the premier"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; governor appointed by the monarch; following legislative elections, the leader of the majority party or majority coalition appointed premier by the governor"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Parliament"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "21 (directly elected and appointed)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "4/14/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "independent (12); PPM (7)"
+      },
+      "percentage of women in chamber": {
+        "text": "23.8%"
+      },
+      "expected date of next election": {
+        "text": "2025"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Court of Appeal (consists of the court president and at least 2 judges); Grand Court (consists of the court president and at least 2 judges); note - appeals beyond the Court of Appeal are heard by the Judicial Committee of the Privy Council (in London)"
+      },
+      "judge selection and term of office": {
+        "text": "Court of Appeal and Grand Court judges appointed by the governor on the advice of the Judicial and Legal Services Commission, an 8-member independent body consisting of governor appointees, Court of Appeal president, and attorneys; Court of Appeal judges' tenure based on their individual instruments of appointment; Grand Court judges normally appointed until retirement at age 65 but can be extended until age 70"
+      },
+      "subordinate courts": {
+        "text": "Summary Court"
+      }
+    },
+    "Political parties": {
+      "text": "Cayman Islands Peoples Party or CIPP<br>People's Progressive Movement or PPM"
+    },
+    "International organization participation": {
+      "text": "Caricom (associate), CDB, Interpol (subbureau), IOC, UNESCO (associate), UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (overseas territory of the UK); consular services provided through the US Embassy in Jamaica"
+      }
+    },
+    "Flag description": {
+      "text": "a blue field with the flag of the UK in the upper hoist-side quadrant and the Caymanian coat of arms centered on the outer half of the flag; the coat of arms includes a crest with a pineapple, representing the connection with Jamaica, and a turtle, representing Cayman's seafaring tradition, above a shield bearing a golden lion, symbolizing Great Britain, below which are three green stars (representing the three islands) surmounting white and blue wavy lines representing the sea; a scroll below the shield bears the motto HE HATH FOUNDED IT UPON THE SEAS"
+    },
+    "National symbol(s)": {
+      "text": "green sea turtle"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Beloved Isle Cayman\""
+      },
+      "lyrics/music": {
+        "text": "Leila E. ROSS"
+      },
+      "note": "<strong>note:</strong> adopted 1993; served as an unofficial anthem since 1930; as an overseas territory of the United Kingdom, in addition to the local anthem, \"God Save the King\" is official (see United Kingdom)"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "dominant offshore banking territory; services sector accounts for over 85% of economic activity; recently adopted a fiscal responsibility framework to combat tax evasion and money laundering; large tourism sector; does not have any welfare system; high standard of living"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$5.705 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$5.467 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$5.199 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "4.36% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "5.16% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "4.9% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$78,100 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$76,400 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$74,200 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$7.139 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2017": {
+        "text": "2% (2017 est.)"
+      },
+      "Inflation rate (consumer prices) 2016": {
+        "text": "-0.63% (2016 est.)"
+      },
+      "Inflation rate (consumer prices) 2015": {
+        "text": "-2.35% (2015 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Moody's rating": {
+        "text": "Aa3 (1997)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0.5% (2022 est.)"
+      },
+      "industry": {
+        "text": "8.2% (2022 est.)"
+      },
+      "services": {
+        "text": "85.4% (2022 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "62.3% (2017 est.)"
+      },
+      "government consumption": {
+        "text": "2.6% (2020 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "22.1% (2017 est.)"
+      },
+      "investment in inventories": {
+        "text": "0.1% (2017 est.)"
+      },
+      "exports of goods and services": {
+        "text": "59.6% (2020 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-45.8% (2020 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "vegetables, fruit; livestock; turtle farming"
+    },
+    "Industries": {
+      "text": "tourism, banking, insurance and finance, construction, construction materials, furniture"
+    },
+    "Industrial production growth rate": {
+      "text": "3.45% (2022 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "13.8% (2015 est.)"
+      },
+      "male": {
+        "text": "16.4%"
+      },
+      "female": {
+        "text": "11.4%"
+      }
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.14% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.19% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.17% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$874.5 million (2017 est.)"
+      },
+      "expenditures": {
+        "text": "$766.6 million (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "38.9% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2022": {
+        "text": "-$647.271 million (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$794.205 million (2021 est.)"
+      },
+      "Current account balance 2020": {
+        "text": "-$827.492 million (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2022": {
+        "text": "$5.019 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$4.138 billion (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$3.951 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Malta 30%, Norway 22%, Seychelles 16%, Grenada 8%, US 5% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "ships, aircraft, refined petroleum, natural gas, broadcasting equipment (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2022": {
+        "text": "$3.3 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$2.808 billion (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$2.51 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "US 47%, Italy 19%, Turkey 7%, Germany 6%, Switzerland 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "ships, refined petroleum, diamonds, cars, gold (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$234 million (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$225.4 million (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$228.3 million (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Caymanian dollars (KYD) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.833 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.833 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.833 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.833 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.833 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "175,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "697.351 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "2.117 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "96.9% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "3.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "5,000 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "718,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "718,000 metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "144.845 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "36,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "50 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "100,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "147 (2021 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the telecom sector has seen a decline in subscriber numbers (particularly for prepaid mobile services the mainstay of short term visitors) and revenue; fixed and mobile broadband services are two areas that have benefited from the crisis as employees and students have resorted to working from home; one area of the telecom market that is not prepared for growth is 5G mobile; governments, regulators, and even the mobile network operators have shown that they have not been investing in 5G opportunities at the present time; network expansion and enhancements remain concentrated around improving LTE coverage (2021)"
+      },
+      "domestic": {
+        "text": "53 per 100 fixed-line and 150 per 100 mobile-cellular (2021)"
+      },
+      "international": {
+        "text": "country code - 1-345; landing points for the Maya-1, Deep Blue Cable, and the Cayman-Jamaica Fiber System submarine cables that provide links to the US and parts of Central and South America; satellite earth station - 1 Intelsat (Atlantic Ocean) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "4 TV stations; cable and satellite subscription services offer a variety of international programming; government-owned Radio Cayman operates 2 networks broadcasting on 5 stations; 10 privately owned radio stations operate alongside Radio Cayman"
+    },
+    "Internet country code": {
+      "text": ".ky"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "81% (2017 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "40,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "56 (2022 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "1 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "6"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "VP-C"
+    },
+    "Airports": {
+      "text": "3 (2024)"
+    },
+    "Heliports": {
+      "text": "5 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "785 km"
+      },
+      "paved": {
+        "text": "785 km (2007)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "130 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 29, container ship 3, general cargo 1, oil tanker 20, other 77"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "2 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "2"
+      },
+      "ports with oil terminals": {
+        "text": "2"
+      },
+      "key ports": {
+        "text": "Cayman Brac, Georgetown"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular military forces; Royal Cayman Islands Police Service"
+    },
+    "Military - note": {
+      "text": "defense is the responsibility of the UK"
+    }
+  },
+  "Transnational Issues": {
+    "Illicit drugs": {
+      "text": "<p>major offshore financial center vulnerable to drug trafficking money laundering</p> <p> </p>"
+    }
+  }
+}

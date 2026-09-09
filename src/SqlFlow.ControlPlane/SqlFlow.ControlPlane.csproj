@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.ControlPlane</RootNamespace>
+    <Description>The SQLFlow control plane: the enterprise API and coordination host over the EF-managed shadow catalog. Read API, JWT auth, run trigger, scheduling, multi-node fleet, managed sync, and identity. The catalog (and EF) stay in SqlFlow.Catalog; this host consumes them.</Description>
+    <!-- A test project drives the host through WebApplicationFactory. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <!-- PasswordHasher (PBKDF2) for local SQLFlow users; no other part of ASP.NET Identity is used. -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    <!-- OIDC metadata + JWKS retrieval for validating Microsoft Entra ID tokens on /auth/exchange. -->
+    <PackageReference Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" />
+    <!-- SMTP transport for the notification email channel (the Graph provider needs no package: plain HTTP). -->
+    <PackageReference Include="MailKit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Catalog\SqlFlow.Catalog.csproj" />
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\SqlFlow.Azure\SqlFlow.Azure.csproj" />
+    <ProjectReference Include="..\SqlFlow.Execution\SqlFlow.Execution.csproj" />
+    <!-- The anomaly estimators behind /datastreams. Already in the closure via SqlFlow.Execution (the hc flow
+         kind runs there); referenced directly because this host uses its types. -->
+    <ProjectReference Include="..\SqlFlow.HealthCheck\SqlFlow.HealthCheck.csproj" />
+    <ProjectReference Include="..\SqlFlow.Node\SqlFlow.Node.csproj" />
+    <ProjectReference Include="..\SqlFlow.SourceControl\SqlFlow.SourceControl.csproj" />
+    <!-- The proposal preflight parses proposed flow files with the engine's own loaders and projects their
+         declared endpoints. Already in the closure via SqlFlow.Catalog; referenced directly because this host
+         uses their types. -->
+    <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
+    <ProjectReference Include="..\SqlFlow.Lineage\SqlFlow.Lineage.csproj" />
+    <!-- The shared assistant core behind /api/v1/chat: the exact code path the Slack bot answers
+         with, streamed to the GUI with per-user MCP authority. -->
+    <ProjectReference Include="..\SqlFlow.Assistant\SqlFlow.Assistant.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SqlFlow.ControlPlane.Tests" />
+  </ItemGroup>
+
+</Project>

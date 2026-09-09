@@ -1,0 +1,1237 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>The region of present-day Georgia once contained the ancient kingdoms of Colchis (known as Egrisi locally) and Kartli-Iberia. The area came under Roman influence in the first centuries A.D., and Christianity became the state religion in the 330s. Persian, Arab, and Turk domination was followed by a Georgian golden age (11th-13th centuries) that was cut short when the Mongols invaded in 1236. Subsequently, the Ottoman and Persian empires competed for influence in the region. Georgia was absorbed into the Russian Empire in the 19th century. Independent for three years (1918-1921) following the Russian revolution, it was forcibly incorporated into the USSR in 1921 and regained its independence when the Soviet Union dissolved in 1991.</p> <p>In 2003, mounting public discontent over rampant corruption, ineffective government services, and a government attempt to manipulate parliamentary elections touched off widespread protests that led to the resignation of Eduard SHEVARDNADZE, who had been president since 1995. In the aftermath of this \"Rose Revolution,\" new elections in 2004 swept Mikheil SAAKASHVILI and his United National Movement (UNM) party into power. SAAKASHVILI made progress on market reforms and governance, but he faced accusations of abuse of office. Progress was further complicated when Russian support for the separatist regions of Abkhazia and South Ossetia led to a five-day conflict between Russia and Georgia in August 2008, which included Russia invading large portions of Georgian territory. Russia initially pledged to pull back from most Georgian territory but then unilaterally recognized the independence of Abkhazia and South Ossetia, and Russian military forces have remained in those regions.</p> <p>Billionaire Bidzina IVANISHVILI's unexpected entry into politics in 2011 brought the divided opposition together under his Georgian Dream coalition, which won a majority of seats in the 2012 parliamentary elections and removed UNM from power. Conceding defeat, SAAKASHVILI named IVANISHVILI as prime minister and left the country after his presidential term ended in 2013. IVANISHVILI voluntarily resigned from office after the presidential succession, and in the years since, the prime minister position has seen frequent turnover. In 2021, SAAKASHVILI returned to Georgia, where he was immediately arrested to serve six years in prison on outstanding abuse-of-office convictions. <br><br>Popular support for integration with the West is high in Georgia. Joining the EU and NATO are among the country's top foreign policy goals, and Georgia applied for EU membership in 2022, becoming a candidate country in December 2023. Georgia and the EU have a Deep and Comprehensive Free Trade Agreement, and since 2017, Georgian citizens have been able to travel to the Schengen area without a visa.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southwestern Asia, bordering the Black Sea, between Turkey and Russia, with a sliver of land north of the Caucasus extending into Europe; note - Georgia views itself as part of Europe; geopolitically, it can be classified as falling within Europe, the Middle East, or both"
+    },
+    "Geographic coordinates": {
+      "text": "42 00 N, 43 30 E"
+    },
+    "Map references": {
+      "text": "Asia"
+    },
+    "Area": {
+      "total ": {
+        "text": "69,700 sq km"
+      },
+      "land": {
+        "text": "69,700 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      },
+      "note": "<strong>note:</strong> approximately 12,560 sq km, or about 18% of Georgia's area, is Russian occupied; the seized area includes all of Abkhazia and the breakaway region of South Ossetia, which consists of the northern part of Shida Kartli, eastern slivers of the Imereti region and Racha-Lechkhumi and Kvemo Svaneti, and part of western Mtskheta-Mtianeti"
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than South Carolina; slightly larger than West Virginia"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "1,814 km"
+      },
+      "border countries": {
+        "text": "Armenia 219 km; Azerbaijan 428 km; Russia 894 km; Turkey 273 km"
+      }
+    },
+    "Coastline": {
+      "text": "310 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "warm and pleasant; Mediterranean-like on Black Sea coast"
+    },
+    "Terrain": {
+      "text": "largely mountainous with Great Caucasus Mountains in the north and Lesser Caucasus Mountains in the south; Kolkhet'is Dablobi (Kolkhida Lowland) opens to the Black Sea in the west; Mtkvari River Basin in the east; fertile soils in river valley flood plains and foothills of Kolkhida Lowland"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mt'a Shkhara 5,193 m"
+      },
+      "lowest point": {
+        "text": "Black Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "1,432 m"
+      }
+    },
+    "Natural resources": {
+      "text": "timber, hydropower, manganese deposits, iron ore, copper, minor coal and oil deposits; coastal climate and soils allow for important tea and citrus growth"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "35.5% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 5.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 27.9% (2018 est.)"
+      },
+      "forest": {
+        "text": "39.4% (2018 est.)"
+      },
+      "other": {
+        "text": "25.1% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "4,330 sq km (2012)"
+    },
+    "Population distribution": {
+      "text": "settlement concentrated in the central valley, particularly in the capital city of Tbilisi in the east; smaller urban agglomerations dot the Black Sea coast, with Bat'umi being the largest"
+    },
+    "Natural hazards": {
+      "text": "earthquakes"
+    },
+    "Geography - note": {
+      "text": "<strong>note 1:</strong> strategically located east of the Black Sea; Georgia controls much of the Caucasus Mountains and the routes through them <br><br><strong>note 2:</strong> the world's four deepest caves are all in Georgia, including two that are the only known caves on earth deeper than 2,000 m: Krubera Cave at -2,197 m (-7,208 ft; reached in 2012) and Veryovkina Cave at -2,212 (-7,257 ft; reached in 2018)"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "4,900,961"
+      },
+      "male": {
+        "text": "2,343,068"
+      },
+      "female": {
+        "text": "2,557,893 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Georgian(s)"
+      },
+      "adjective": {
+        "text": "Georgian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Georgian 86.8%, Azeri 6.3%, Armenian 4.5%, other 2.3% (includes Russian, Ossetian, Yazidi, Ukrainian, Kist, Greek) (2014 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Georgian (official) 87.6%, Azeri 6.2%, Armenian 3.9%, Russian 1.2%, other 1% (including Abkhaz, the official language in Abkhazia) (2014 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>მსოფლიო ფაქტების წიგნი, ძირითადი ინფორმაციის აუცილებელი წყარო. (Georgian)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Eastern Orthodox Christian (official) 83.4%, Muslim 10.7%, Armenian Apostolic Christian 2.9%, other 1.2% (includes Roman Catholic Christian, Jehovah's Witness, Yazidi, Protestant Christian, Jewish), none 0.5%, unspecified/no answer 1.2% (2014 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>Analyzing population trends in Georgia since independence in 1991 has proven difficult due to a lack of reliable demographic statistics.  Censuses were fairly accurately and regularly updated through a vital statistics system during Georgia’s period of Soviet rule, but from independence until about 2010, the system broke down as a result of institutional and economic change, social unrest, and large-scale outmigration.  The 2002 census is believed to have significantly overestimated the size of Georgia’s population, in part because respondents continued to include relatives living abroad as part of their household count.  The 2014 census indicates that Georgia’s population is decreasing and aging.  Census data shows that the median age increased from 34.5 years in 2002 to 37.7 years in 2014.  The working-age population (ages 15-65 years) was fairly high in 2002 and rose between 2005 and 2011. Nonetheless, Georgia did not reap economic benefits from this age structure, since the working-age population increase seems to have stimulated labor outmigration to Russia, Ukraine, and other neighboring countries.</p> <p>Since the Russian invasion of Ukraine in 2022, Georgia has seen its economy grow to its highest level in years due to the influx of Russian businesses, information and communications technology specialists, and money transfers.  This growth may only be temporary and conditions could still easily change depending on future events.  Meanwhile, the Russian inflow is also a source of concern, as some Georgians fear it could prompt Putin to target their country next.  In addition, Ukrainian refugees use Georgia not just as a transit country but also as a destination.  Some 25,000 Ukrainians remain in the country as of November 2022; they pose an additional strain on resources in Georgia, which has a significant population of its own displaced citizens – from the 2008 Russian occupation of Abkhazia and South Ossetia – who continue to need government support.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "20.6% (male 520,091/female 489,882)"
+      },
+      "15-64 years": {
+        "text": "62.7% (male 1,500,036/female 1,572,637)"
+      },
+      "65 years and over": {
+        "text": "16.7% (2024 est.) (male 322,941/female 495,374)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "55.4"
+      },
+      "youth dependency ratio": {
+        "text": "32.8"
+      },
+      "elderly dependency ratio": {
+        "text": "22.6"
+      },
+      "potential support ratio": {
+        "text": "4.4 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "38.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "35.9 years"
+      },
+      "female": {
+        "text": "40.6 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "-0.5% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "12 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "13.3 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-3.8 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "settlement concentrated in the central valley, particularly in the capital city of Tbilisi in the east; smaller urban agglomerations dot the Black Sea coast, with Bat'umi being the largest"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "60.7% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.35% annual rate of change (2020-25 est.)"
+      },
+      "note": "<strong>note:</strong> data include Abkhazia and South Ossetia"
+    },
+    "Major urban areas - population": {
+      "text": "1.082 million TBILISI (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.07 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.95 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.65 male(s)/female"
+      },
+      "total population": {
+        "text": "0.92 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "25.9 years (2019 est.)",
+      "note": "<strong>note:</strong> data does not cover Abkhazia and South Ossetia"
+    },
+    "Maternal mortality ratio": {
+      "text": "28 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "21.7 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "23.6 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "19.7 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "72.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "68.7 years"
+      },
+      "female": {
+        "text": "77.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.95 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.94 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "40.6% (2018)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 99.4% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 94.3% of population"
+      },
+      "improved: total": {
+        "text": "total: 97.3% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.6% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 5.7% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 2.7% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "7.6% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "5.11 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "2.9 beds/1,000 population (2014)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 96.3% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 72.7% of population"
+      },
+      "improved: total": {
+        "text": "total: 86.7% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 3.7% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 27.3% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 13.3% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "21.7% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "7.45 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "1.71 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "3.19 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "2.52 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.02 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "31.7% (2020 est.)"
+      },
+      "male": {
+        "text": "56.3% (2020 est.)"
+      },
+      "female": {
+        "text": "7.1% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "2.1% (2018)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "67.1% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "0.3%"
+      },
+      "women married by age 18": {
+        "text": "13.9%"
+      },
+      "men married by age 18": {
+        "text": "0.5% (2018 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "3.6% of GDP (2021 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "99.6%"
+      },
+      "male": {
+        "text": "99.7%"
+      },
+      "female": {
+        "text": "99.5% (2019)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "16 years"
+      },
+      "male": {
+        "text": "16 years"
+      },
+      "female": {
+        "text": "16 years (2021)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air pollution, particularly in Rust'avi; heavy water pollution of Mtkvari River and the Black Sea; inadequate supplies of potable water; soil pollution from toxic chemicals; land and forest degradation; biodiversity loss; waste management"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Protocol, Ozone Layer Protection, Ship Pollution, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "warm and pleasant; Mediterranean-like on Black Sea coast"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "35.5% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 5.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 27.9% (2018 est.)"
+      },
+      "forest": {
+        "text": "39.4% (2018 est.)"
+      },
+      "other": {
+        "text": "25.1% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "60.7% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.35% annual rate of change (2020-25 est.)"
+      },
+      "note": "<strong>note:</strong> data include Abkhazia and South Ossetia"
+    },
+    "Revenue from forest resources": {
+      "text": "0.07% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.01% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "19.06 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "10.13 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "6.05 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "800,000 tons (2015 est.)"
+      }
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "610 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "340 million cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "710 million cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "63.33 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Georgia"
+      },
+      "local long form": {
+        "text": "Republic of Georgia"
+      },
+      "local short form": {
+        "text": "Sak'art'velo"
+      },
+      "former": {
+        "text": "Georgian Soviet Socialist Republic"
+      },
+      "etymology": {
+        "text": "the Western name may derive from the Persian designation \"gurgan\" meaning \"Land of the Wolves\"; the native name \"Sak'art'velo\" means \"Land of the Kartvelians\" and refers to the core central Georgian region of Kartli"
+      }
+    },
+    "Government type": {
+      "text": "semi-presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Tbilisi"
+      },
+      "geographic coordinates": {
+        "text": "41 41 N, 44 50 E"
+      },
+      "time difference": {
+        "text": "UTC+4 (9 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "the name in Georgian means \"warm place,\" referring to the numerous sulfuric hot springs in the area"
+      }
+    },
+    "Administrative divisions": {
+      "text": "<p>9 regions (mkharebi, singular - mkhare), 1 city (kalaki), and 2 autonomous republics (avtomnoy respubliki, singular - avtom respublika)</p> <p><strong>regions:</strong> Guria, Imereti, Kakheti, Kvemo Kartli, Mtskheta Mtianeti, Racha-Lechkhumi and Kvemo Svaneti, Samegrelo and Zemo Svaneti, Samtskhe-Javakheti, Shida Kartli; note - the breakaway region of South Ossetia consists of the northern part of Shida Kartli, eastern slivers of the Imereti region and Racha-Lechkhumi and Kvemo Svaneti, and part of western Mtskheta-Mtianeti</p> <p><strong>city:</strong> Tbilisi</p> <p><strong>autonomous republics:</strong> Abkhazia or Ap'khazet'is Avtonomiuri Respublika (Sokhumi), Ajaria or Acharis Avtonomiuri Respublika (Bat'umi)</p>",
+      "note": "<strong>note 1:</strong> the administrative centers of the two autonomous republics are shown in parentheses <br><br><strong>note 2:</strong> the United States recognizes the breakaway regions of Abkhazia and South Ossetia to be part of Georgia"
+    },
+    "Independence": {
+      "text": "9 April 1991 (from the Soviet Union); notable earlier date: A.D. 1008 (Georgia unified under King BAGRAT III)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 26 May (1918); note - 26 May 1918 was the date of independence from Soviet Russia, 9 April 1991 was the date of independence from the Soviet Union"
+    },
+    "Legal system": {
+      "text": "civil law system"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1921, 1978 (based on 1977 Soviet Union constitution); latest approved 24 August 1995, effective 17 October 1995"
+      },
+      "amendments": {
+        "text": "proposed as a draft law supported by more than one half of the Parliament membership or by petition of at least 200,000 voters; passage requires support by at least three fourths of the Parliament membership in two successive sessions three months apart and the signature and promulgation by the president of Georgia; amended several times, last in 2020 (legislative electoral system revised)"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Georgia"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "10 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Mikheil KAVELASHVILI (since 29 December 2024)"
+      },
+      "head of government": {
+        "text": "Prime Minister Irakli KOBAKHIDZE (since 8 February 2024)"
+      },
+      "cabinet": {
+        "text": "Cabinet of Ministers"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); election last held on 14 December 2024; next election in 2029; prime minister nominated by Parliament, appointed by the president; note - 2017 constitutional amendments made the 2018 election the last where the president was directly elected; future presidents will be elected by a 300-member College of Electors"
+      },
+      "election results": {
+        "text": "<em><br>2024: </em>Mikheil KAVELASHVILI (Georgian Dream Party) was formally inaugurated on 29 December 2024<br><em><br>2024: </em>Irakli KOBAKHIDZE approved as prime minister by Parliamentary vote 84-10<em><br><br>2018:</em> Salome ZOURABICHVILI elected president in second round; percent of vote in second round - Salome ZOURABICHVILI (independent, backed by Georgian Dream) 59.5%, Grigol VASHADZE (UNM) 40.5%; Irakli GARIBASHVILI approved as prime minister by Parliamentary vote 89-2; note-resigned on January 29, 2024"
+      },
+      "note": "<strong>note: </strong>Irakli GARIBASHVILI resigned on 29 January 2024 to prepare for general elections in October 2024"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Parliament (Sakartvelos Parlamenti)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "150 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "10/26/2024"
+      },
+      "parties elected and seats per party": {
+        "text": "Georgian Dream (89); Coalition for Changes (19); Unity - National Movement (16); Strong Georgia – Lelo, For people, For Liberty! (14); For Georgia (12)"
+      },
+      "percentage of women in chamber": {
+        "text": "22%"
+      },
+      "expected date of next election": {
+        "text": "October 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of 28 judges organized into several specialized judicial chambers; number of judges determined by the president of Georgia); Constitutional Court (consists of 9 judges); note - the Abkhazian and Ajarian Autonomous republics each have a supreme court and a hierarchy of lower courts"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court judges nominated by the High Council of Justice (a 14-member body consisting of the Supreme Court chairperson, common court judges, and appointees of the president of Georgia) and appointed by Parliament; judges appointed for life; Constitutional Court judges appointed 3 each by the president, by Parliament, and by the Supreme Court judges; judges appointed for 10-year terms"
+      },
+      "subordinate courts": {
+        "text": "Courts of Appeal; regional (town) and district courts"
+      }
+    },
+    "Political parties": {
+      "text": "Citizens<br>European Socialists<br>For Georgia<br>Georgian Dream<br>Girchi<br>Law and Justice<br>Lelo for Georgia<br>National Democratic Party<br>People's Power<br>Progress and Freedom<br>Republican Party<br>State for the People<br>Strategy Aghmashenebeli<br>United National Movement or UNM<br>Victorious Georgia"
+    },
+    "International organization participation": {
+      "text": "ADB, BSEC, CD, CE, CPLP (associate), EAPC, EBRD, FAO, G-11, GCTU, GUAM, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IFAD, IFC, IFRCS, ILO, IMF, IMO, Interpol, IOC, IOM, IPU, ISO (correspondent), ITSO, ITU, ITUC (NGOs), MIGA, OAS (observer), OIF (observer), OPCW, OSCE, PFP, SELEC (observer), UN, UNCTAD, UNESCO, UNIDO, UNWTO, UPU, WCO, WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires&nbsp;Khatuna KVESELAVA (since 31 December 2024)"
+      },
+      "chancery": {
+        "text": "1824 R Street NW, Washington, DC 20009"
+      },
+      "telephone": {
+        "text": "[1] (202) 387-2390"
+      },
+      "FAX": {
+        "text": "[1] (202) 387-0864"
+      },
+      "email address and website": {
+        "text": "<br>embgeo.usa@mfa.gov.ge<br><br>https://georgiaembassyusa.org/contact/"
+      },
+      "consulate(s) general": {
+        "text": "New York, San Francisco"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Robin L. DUNNIGAN (since 12 October 2023)"
+      },
+      "embassy": {
+        "text": "29 Georgian-American Friendship Avenue, Didi Dighomi, Tbilisi, 0131"
+      },
+      "mailing address": {
+        "text": "7060 Tbilisi Place, Washington, DC&nbsp; 20521-7060"
+      },
+      "telephone": {
+        "text": "[995] (32) 227-70-00"
+      },
+      "FAX": {
+        "text": "[995] (32) 253-23-10"
+      },
+      "email address and website": {
+        "text": "<br>askconsultbilisi@state.gov<br><br>https://ge.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "white rectangle with a central red cross extending to all four sides of the flag; each of the four quadrants displays a small red bolnur-katskhuri cross; sometimes referred to as the Five-Cross Flag; although adopted as the official Georgian flag in 2004, the five-cross design is based on a 14th century banner of the Kingdom of Georgia"
+    },
+    "National symbol(s)": {
+      "text": "Saint George, lion; national colors: red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Tavisupleba\" (Liberty)"
+      },
+      "lyrics/music": {
+        "text": "Davit MAGRADSE/Zakaria PALIASHVILI (adapted by Joseb KETSCHAKMADSE)"
+      },
+      "note": "<strong>note:</strong> adopted 2004; after the Rose Revolution, a new anthem with music based on the operas \"Abesalom da Eteri\" and \"Daisi\" was adopted"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "4 (3 cultural, 1 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Gelati Monastery (c); Historical Monuments of Mtskheta (c); Upper Svaneti (c); Colchic Rainforests and Wetlands (n)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "<p>main economic activities include cultivation of agricultural products, such as grapes, citrus fruits, and hazelnuts; mining of manganese, copper, and gold; producing alcoholic and nonalcoholic beverages</p>"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$83.935 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$77.838 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$70.151 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "7.83% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "10.96% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "10.64% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$22,600 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$21,000 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$18,900 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$30.778 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "2.49% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "11.9% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "9.57% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BB (2019)"
+      },
+      "Moody's rating": {
+        "text": "Ba2 (2017)"
+      },
+      "Standard & Poors rating": {
+        "text": "BB (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "6% (2023 est.)"
+      },
+      "industry": {
+        "text": "18.9% (2023 est.)"
+      },
+      "services": {
+        "text": "62.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "71.5% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "12.1% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "21.5% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "3.5% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "49.3% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-57.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "milk, grapes, potatoes, wheat, maize, apples, watermelons, barley, tangerines/mandarins, tomatoes (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "steel, machine tools, electrical appliances, mining (manganese, copper, gold), chemicals, wood products, wine"
+    },
+    "Industrial production growth rate": {
+      "text": "5.13% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "1.838 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "11.62% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "11.66% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "11.79% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "30.2% (2023 est.)"
+      },
+      "male": {
+        "text": "28.7% (2023 est.)"
+      },
+      "female": {
+        "text": "32.7% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "15.6% (2022 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2022": {
+        "text": "33.5 (2022 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "39% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "3.8% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2.6% (2022 est.)"
+      },
+      "highest 10%": {
+        "text": "25.2% (2022 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "13.65% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "15.42% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "14.02% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$6.712 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$6.23 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "42.97% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "22.9% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$1.708 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$1.105 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$1.943 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$15.173 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$13.24 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$8.086 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "China 11%, Azerbaijan 10%, Russia 9%, Armenia 8%, Bulgaria 7% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "copper ore, cars, fertilizers, iron alloys, wine (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$17.816 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$15.665 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$11.151 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Turkey 17%, Russia 12%, China 8%, US 8%, Germany 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "cars, refined petroleum, natural gas, packaged medicine, copper ore (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$5.002 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$4.886 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$4.271 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$9.791 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "laris (GEL) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "2.628 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "2.916 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "3.222 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "3.109 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "2.818 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "4.128 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "13.902 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "4.131 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "4.693 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "905.421 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "23.8% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "0.6% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "75.6% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "256,000 metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "516,000 metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "100 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "241,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "900.999 million metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "300 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "32,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "35 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "8.76 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "2.796 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "2.787 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "8.495 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "10.958 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "1.157 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "4.34 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "5.46 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "58.044 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "278,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "7 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "5.91 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "156 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "<p>the telecom sector has been attempting for many years to overcome the decades of under-investment in its fixed-line infrastructure during the Soviet era; concerted efforts to privatize state-owned enterprises and open up the telecom market have been mostly successful, with a large number of operators now competing in both the fixed-line and the mobile segments; Georgia’s government moved fast following the collapse of the Soviet Union to liberalize the country’s telecom market; this resulted in a relatively high number of operators competing in the under-developed fixed-line segment as well as in the emerging mobile market;  the mobile and mobile broadband segments have both demonstrated solid growth in 2021; this upturn follows a significant contraction in subscriber numbers as well as revenue during 2020 due to the Covid-19 crisis; funding has continued to flow into mobile ventures, with the Mobile Network Operators (MNOs) preparing for 5G</p> (2024)"
+      },
+      "domestic": {
+        "text": "fixed-line subscriptions 8 per 100, mobile-cellular tele density roughly 156 per 100 persons (2022)"
+      },
+      "international": {
+        "text": "country code - 995; landing points for the Georgia-Russia, Diamond Link Global, and Caucasus Cable System fiber-optic submarine cable that provides connectivity to Russia, Romania and Bulgaria; international service is available by microwave, landline, and satellite through the Moscow switch; international electronic mail and telex service are available (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "The Tbilisi-based Georgian Public Broadcaster (GPB) includes Channel 1, Channel 2, and the Batumi-based Adjara TV, and the State Budget funds all three; there are also a number of independent commercial television broadcasters, such as Imedi, Rustavi 2, Pirveli TV, Maestro, Kavkasia, Georgian Dream Studios (GDS), Obiektivi, Mtavari Arkhi, and a small Russian language operator TOK TV; Tabula and Post TV are web-based television outlets; all of these broadcasters and web-based television outlets, except GDS, carry the news; the Georgian Orthodox Church also operates a satellite-based television station called Unanimity; there are 26 regional television broadcasters across Georgia that are members of the Georgian Association of Regional Broadcasters and/or the Alliance of Georgian Broadcasters; the broadcaster organizations seek to strengthen the regional media's capacities and distribution of regional products: a nationwide digital switchover occurred in 2015; there are several dozen private radio stations; GPB operates 2 radio stations (2019)"
+    },
+    "Internet country code": {
+      "text": ".ge"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "82% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "1.1 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "29 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "4 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "12"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "516,034 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "750,000 (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "4L"
+    },
+    "Airports": {
+      "text": "19 (2024)"
+    },
+    "Heliports": {
+      "text": "4 (2024)"
+    },
+    "Pipelines": {
+      "text": "1,596 km gas, 1,175 km oil (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "1,363 km (2014)"
+      },
+      "narrow gauge": {
+        "text": "37 km (2014) 0.912-m gauge (37 km electrified)"
+      },
+      "broad gauge": {
+        "text": "1,326 km (2014) 1.520-m gauge (1,251 km electrified)"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "40,044 km (2021)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "26 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 3, other 23"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "3 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "2"
+      },
+      "ports with oil terminals": {
+        "text": "2"
+      },
+      "key ports": {
+        "text": "Batumi, Sokhumi, Supsa Marine Terminal"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Georgian Defense Forces (GDF; aka Defense Forces of Georgia or DFG): Ground Forces, Air Force, National Guard, Special Operations Forces, National Guard; Ministry of Internal Affairs: Border Police, Coast Guard (includes Georgian naval forces, which were merged with the Coast Guard in 2009) (2024)",
+      "note": "<strong>note:</strong> the Ministry of Internal Affairs also has forces for protecting strategic infrastructure and conducting special operations"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "1.7% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.7% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.7% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.8% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "1.8% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "information varies widely; estimated 35,000 active Defense Force troops (2023)",
+      "note": "<strong>note: </strong>in December 2020, the Parliament of Georgia adopted a resolution determining that the Georgian Defense Forces would have a maximum peacetime strength of 37,000 troops"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the majority of the military's inventory consists of Soviet-era weapons and equipment, some of which has been upgraded; it has smaller quantities of mostly secondhand material from such countries as Israel, Turkey, and the US, as well as some domestically produced equipment; Georgia has a small defense industry which produces such items as small arms and light armored vehicles (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-27 years of age for voluntary military service for men and women; conscription was abolished in 2016, but reinstated in 2017 for men 18-27 years of age; conscript service obligation is 12 months (2024)",
+      "note": "<strong>note 1: </strong>approximately 6-7,000 individuals are called up annually for conscription for service; conscripts serve in the Defense Forces, the Ministry of Internal Affairs, or the Ministry of Corrections<br><br><strong>note 2:</strong> as of 2022, women made up about 8% of the military's full-time personnel"
+    },
+    "Military - note": {
+      "text": "the Defense Forces of Georgia (DFG) are responsible for protecting the independence, sovereignty, and territorial integrity of the country; the DFG also provides units for multinational military operations abroad and supports the Border Police in border protection and civil authorities in counter-terrorist operations, if requested; it is focused primarily on Russia, which maintains military bases and troops in occupied Abkhazia and South Ossetia; a five-day conflict with Russian forces in 2008 resulted in the defeat and expulsion of Georgian forces from the breakaway regions <br><br>Georgia is not a member of NATO but has had a relationship with the Alliance since 1992 and declared its aspiration to join in 2002; the military is working to make itself more compatible with NATO and has participated in multinational exercises and security operations abroad with NATO, such as Afghanistan, where it was one of the top non-NATO contributors, and Kosovo; the DFG has also contributed troops to EU and UN missions (2024)"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "26,660 (Ukraine) (as of 30 December 2023)"
+      },
+      "IDPs": {
+        "text": "308,000 (displaced in the 1990s as a result of armed conflict in the breakaway republics of Abkhazia and South Ossetia; displaced in 2008 by fighting between Georgia and Russia over South Ossetia) (2022)"
+      },
+      "stateless persons": {
+        "text": "530 (2022)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a transit country for opiates produced in Asia trafficked into Ukraine or Moldova via the Black Sea for other European destinations; not a major corridor for synthetic drug smuggling operations; domestic synthetic market for ecstasy/MDMA, amphetamines, and cannabis with ecstasy laced with fentanyl the drug of choice</p>"
+    }
+  }
+}

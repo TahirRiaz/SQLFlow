@@ -1,0 +1,1200 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>Gabon, a sparsely populated country known for its dense rainforests and vast petroleum reserves, is one of the most prosperous and stable countries in central Africa. Approximately 40 ethnic groups are represented, the largest of which is the Fang, a group that covers the northern third of Gabon and expands north into Equatorial Guinea and Cameroon. From about the early 1300s, various kingdoms emerged in present-day Gabon and the surrounding area, including the Kingdoms of Loango and Orungu. Because most early Bantu languages spoken in these kingdoms did not have a written form, much of Gabon's early history was lost over time. Portuguese traders who arrived in the mid-1400s gave the area its name of Gabon. At that time, indigenous trade networks began to engage with European traders, exchanging goods such as ivory and wood. For a century beginning in the 1760s, trade came to focus mostly on enslaved people. While many groups in Gabon participated in the slave trade, the Fang were a notable exception. As the slave trade declined in the late 1800s, France colonized the country and directed a widespread extraction of Gabonese resources. Anti-colonial rhetoric by Gabon’s educated elites increased significantly in the early 1900s, but no widespread rebellion materialized. French decolonization after World War II led to the country’s independence in 1960.</p> <p>Within a year of independence, the government changed from a parliamentary to a presidential system, and Leon M’BA won the first presidential election in 1961. El Hadj Omar BONGO Ondimba was M’BA’s vice president and assumed the presidency after M’BA’s death in 1967. BONGO went on to dominate the country's political scene for four decades (1967-2009). In 1968, he declared Gabon a single-party state and created the still-dominant Parti Democratique Gabonais (PDG). In the early 1990s, he reintroduced a multiparty system under a new constitution in response to growing political opposition. He was reelected by wide margins in 1995, 1998, 2002, and 2005 against a divided opposition and amidst allegations of fraud. After BONGO's death in 2009, a new election brought his son, Ali BONGO Ondimba, to power, and he was reelected in 2016. He won a third term in the August 2023 election but was overthrown in a military coup a few days later. Gen. Brice OLIGUI Nguema led a military group called the Committee for the Transition and Restoration of Institutions that arrested BONGO, canceled the election results, and dissolved state institutions. In September 2023, OLIGUI was sworn in as transitional president of Gabon.</p> <p> </p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Central Africa, bordering the Atlantic Ocean at the Equator, between Republic of the Congo and Equatorial Guinea"
+    },
+    "Geographic coordinates": {
+      "text": "1 00 S, 11 45 E"
+    },
+    "Map references": {
+      "text": "Africa"
+    },
+    "Area": {
+      "total ": {
+        "text": "267,667 sq km"
+      },
+      "land": {
+        "text": "257,667 sq km"
+      },
+      "water": {
+        "text": "10,000 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than Colorado"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "3,261 km"
+      },
+      "border countries": {
+        "text": "Cameroon 349 km; Republic of the Congo 2,567 km; Equatorial Guinea 345 km"
+      }
+    },
+    "Coastline": {
+      "text": "885 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical; always hot, humid"
+    },
+    "Terrain": {
+      "text": "narrow coastal plain; hilly interior; savanna in east and south"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mont Bengoue 1,050 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "377 m"
+      }
+    },
+    "Natural resources": {
+      "text": "petroleum, natural gas, diamond, niobium, manganese, uranium, gold, timber, iron ore, hydropower"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "19% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 1.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.6% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 17.2% (2018 est.)"
+      },
+      "forest": {
+        "text": "81% (2018 est.)"
+      },
+      "other": {
+        "text": "0% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "40 sq km (2012)"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Congo (3,730,881 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Congo Basin"
+    },
+    "Population distribution": {
+      "text": "the relatively small population is spread in pockets throughout the country; the largest urban center is the capital of Libreville, located along the Atlantic coast in the northwest as shown in this population distribution map"
+    },
+    "Natural hazards": {
+      "text": "none"
+    },
+    "Geography - note": {
+      "text": "a small population and oil and mineral reserves have helped Gabon become one of Africa's wealthier countries; in general, these circumstances have allowed the country to maintain and conserve its pristine rain forest and rich biodiversity"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "2,455,105"
+      },
+      "male": {
+        "text": "1,270,023"
+      },
+      "female": {
+        "text": "1,185,082 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Gabonese (singular and plural)"
+      },
+      "adjective": {
+        "text": "Gabonese"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Fang 23.5%, Shira-Punu'Vii 20.6%, Nzabi-Duma 11.2%, Mbede-Teke 5.6%, Myene 4.4%, Kota-Kele 4.3%, Okande-Tsogho 1.6%, other 12.6%, foreigner 16.2% (2021 est.)"
+    },
+    "Languages": {
+      "text": "French (official), Fang, Myene, Nzebi, Bapounou/Eschira, Bandjabi"
+    },
+    "Religions": {
+      "text": "Protestant 46.4% (Revival Church 37%, other Protestant 9.4%), Roman Catholic 29.8%, other Christian 4%, Muslim 10.8%, traditional/animist 1.1%, other 0.9%, none 7% (2019-21 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>Gabon’s oil revenues have given it one of the highest per capita income levels in Sub-Saharan Africa, but the wealth is not evenly distributed and poverty is widespread. Unemployment is especially prevalent among the large youth population; more than 60% of the population is under the age of 25 as of 2020. With a fertility rate still averaging more than 3 children per woman, the youth population will continue to grow and further strain the mismatch between Gabon’s supply of jobs and the skills of its labor force.</p> <p>Gabon has been a magnet to migrants from neighboring countries since the 1960s because of the discovery of oil, as well as the country’s political stability and timber, mineral, and natural gas resources. Nonetheless, income inequality and high unemployment have created slums in Libreville full of migrant workers from Senegal, Nigeria, Cameroon, Benin, Togo, and elsewhere in West Africa. In 2011, Gabon declared an end to refugee status for 9,500 remaining Congolese nationals to whom it had granted asylum during the Republic of the Congo’s civil war between 1997 and 2003. About 5,400 of these refugees received permits to reside in Gabon.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "34.6% (male 429,133/female 421,120)"
+      },
+      "15-64 years": {
+        "text": "61.1% (male 787,480/female 711,913)"
+      },
+      "65 years and over": {
+        "text": "4.3% (2024 est.) (male 53,410/female 52,049)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "67.6"
+      },
+      "youth dependency ratio": {
+        "text": "61"
+      },
+      "elderly dependency ratio": {
+        "text": "6.5"
+      },
+      "potential support ratio": {
+        "text": "15.3 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "22 years (2024 est.)"
+      },
+      "male": {
+        "text": "22.5 years"
+      },
+      "female": {
+        "text": "21.5 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "2.37% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "25.7 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "5.5 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "3.5 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the relatively small population is spread in pockets throughout the country; the largest urban center is the capital of Libreville, located along the Atlantic coast in the northwest as shown in this population distribution map"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "91% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.27% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "870,000 LIBREVILLE (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.03 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.11 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "1.03 male(s)/female"
+      },
+      "total population": {
+        "text": "1.07 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "19.6 years (2012 est.)",
+      "note": "<strong>note:</strong> data represents median age at first birth among women 20-49"
+    },
+    "Maternal mortality ratio": {
+      "text": "227 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "26.9 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "29.7 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "24 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "70.4 years (2024 est.)"
+      },
+      "male": {
+        "text": "68.6 years"
+      },
+      "female": {
+        "text": "72.1 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "3.21 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.58 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "31.1% (2012)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 97.2% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 55.3% of population"
+      },
+      "improved: total": {
+        "text": "total: 93.1% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 2.8% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 44.7% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 6.9% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "3.4% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.65 physicians/1,000 population (2018)"
+    },
+    "Hospital bed density": {
+      "text": "6.3 beds/1,000 population"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 81.3% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 55.1% of population"
+      },
+      "improved: total": {
+        "text": "total: 78.7% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 18.7% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 44.9% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 21.3% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "15% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "6.47 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "5.31 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.62 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.5 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.04 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "6.4% (2019/20)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "49.7% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "3.2% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "85.5%"
+      },
+      "male": {
+        "text": "86.2%"
+      },
+      "female": {
+        "text": "84.7% (2021)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "deforestation (the forests that cover three-quarters of the country are threatened by excessive logging); burgeoning population exacerbating disposal of solid waste; oil industry contributing to water pollution; wildlife poaching"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "tropical; always hot, humid"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "19% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 1.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.6% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 17.2% (2018 est.)"
+      },
+      "forest": {
+        "text": "81% (2018 est.)"
+      },
+      "other": {
+        "text": "0% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "91% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.27% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "2.6% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "26.29 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "5.32 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "1.13 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "238,102 tons (1995 est.)"
+      }
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Congo (3,730,881 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Congo Basin"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "80 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "10 million cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "40 million cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "166 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Gabonese Republic"
+      },
+      "conventional short form": {
+        "text": "Gabon"
+      },
+      "local long form": {
+        "text": "R&eacute;publique Gabonaise"
+      },
+      "local short form": {
+        "text": "Gabon"
+      },
+      "etymology": {
+        "text": "name originates from the Portuguese word \"gabao\" meaning \"cloak,\" which is roughly the shape that the early explorers gave to the estuary of the Komo River by the capital of Libreville"
+      }
+    },
+    "Government type": {
+      "text": "presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Libreville"
+      },
+      "geographic coordinates": {
+        "text": "0 23 N, 9 27 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "original site settled by freed slaves and the name means \"free town\" in French; named in imitation of Freetown, the capital of Sierra Leone"
+      }
+    },
+    "Administrative divisions": {
+      "text": "9 provinces; Estuaire, Haut-Ogooue, Moyen-Ogooue, Ngounie, Nyanga, Ogooue-Ivindo, Ogooue-Lolo, Ogooue-Maritime, Woleu-Ntem"
+    },
+    "Independence": {
+      "text": "17 August 1960 (from France)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 17 August (1960)"
+    },
+    "Legal system": {
+      "text": "mixed legal system of French civil law and customary law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1961, 1991; latest approved in November 2024 referendum"
+      },
+      "amendments": {
+        "text": "proposed by the president of the republic, by the Council of Ministers, or by one third of either house of Parliament; passage requires Constitutional Court evaluation, at least two-thirds majority vote of two thirds of the Parliament membership convened in joint session, and approval in a referendum; constitutional articles on Gabon&rsquo;s democratic form of government cannot be amended; amended several times, last in 2023 (presidential term reduced to 5 years and election reduced to a single vote)"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Gabon"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "10 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "Transitional President Gen. Brice OLIGUI Nguema (since 4 September 2023)"
+      },
+      "head of government": {
+        "text": "Prime Minister Raymond NDONG SIMA (since 7 September 2023)"
+      },
+      "cabinet": {
+        "text": "formerly the Council of Ministers, appointed by the prime minister in consultation with the president"
+      },
+      "elections/appointments": {
+        "text": "formerly, the president directly elected by plurality vote for a 5-year term (no term limits); election last held on 26 August 2023; prime minister appointed by the president; note - in August 2023, Gen. Brice OLIGUI Nguema led a military group called Committee for the Transition and Restoration of Institutions in a coup in which President Ali BONGO Ondimba was arrested and detained, election results were canceled, and state institutions were dissolved; in September 2023, OLIGUI was sworn in as transitional president; a general election is planned for August 2025; note - November 2024 voters in Gabon voted on a referendum to extend the presidential term to seven years and replace the prime minister with a vice president, elections slated for August 2025&nbsp;"
+      },
+      "election results": {
+        "text": "<em><br>2016: </em>Ali BONGO Ondimba reelected president; percent of vote - Ali BONGO Ondimba (PDG) 49.8%, Jean PING (UFC) 48.2%, other 2.0%<br><br><em>2009: </em>Ali BONGO Ondimba elected president; percent of vote - Ali BONGO Ondimba (PDG) 41.7%, Andre MBA OBAME (independent) 25.9%, Pierre MAMBOUNDOU (UPG) 25.2%, Zacharie MYBOTO (UGDD) 3.9%, other 3.3%"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Transitional Parlement (Parliament de la transition)"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      }
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "Transitional National Assembly (Assemblée nationale de la transition)"
+      },
+      "number of seats": {
+        "text": "98 (all appointed)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "most recent election date": {
+        "text": "10/6/2023"
+      },
+      "percentage of women in chamber": {
+        "text": "25.5%"
+      },
+      "expected date of next election": {
+        "text": "August 2025"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "Transitional Senate (Sénat de la transition)"
+      },
+      "number of seats": {
+        "text": "70 (all appointed)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "most recent election date": {
+        "text": "10/6/2023"
+      },
+      "percentage of women in chamber": {
+        "text": "20.3%"
+      },
+      "expected date of next election": {
+        "text": "August 2025"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of 4 permanent specialized supreme courts - Supreme Court or Cour de Cassation, Administrative Supreme Court or Conseil d'Etat, Accounting Supreme Court or Cour des Comptes, Constitutional Court or Cour Constitutionnelle, and the non-permanent Court of State Security, initiated only for cases of high treason by the president and criminal activity by executive branch officials)"
+      },
+      "judge selection and term of office": {
+        "text": "appointment and tenure of Supreme, Administrative, Accounting, and State Security courts NA; Constitutional Court judges appointed - 3 by the national president, 3 by the president of the Senate, and 3 by the president of the National Assembly; judges serve single renewable 7-year terms"
+      },
+      "subordinate courts": {
+        "text": "Courts of Appeal; county courts; military courts"
+      }
+    },
+    "Political parties": {
+      "text": "Gabonese Democratic Party or PDG <br>Restoration of Republican Values or RV<br>The Democrats or LD",
+      "note": "Paul Mba Abessole"
+    },
+    "International organization participation": {
+      "text": "ACP, AfDB, AU (suspended), BDEAC, CEMAC, FAO, FZ, G-24, G-77, IAEA, IBRD, ICAO, ICCt, ICRM, IDA, IDB, IFAD, IFC, IFRCS, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, MINUSCA, NAM, OIC, OIF, OPCW, UN, UNCTAD, UNESCO, UNIDO, UNWTO, UPU, WCO, WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador No&euml;l Nelson MESSONE (12 December 2022)"
+      },
+      "chancery": {
+        "text": "2034 20th Street NW, Suite 200, Washington, DC 20009"
+      },
+      "telephone": {
+        "text": "[1] (202) 797-1000"
+      },
+      "FAX": {
+        "text": "[1] (301) 332-0668"
+      },
+      "email address and website": {
+        "text": "<br>info@gaboneembassyusa.org<br><br>https://gabonembassyusa.org/en/"
+      },
+      "consulate(s) general": {
+        "text": "New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Vernelle Trim FITZPATRICK (since 26 January 2024); note - also accredited to Sao Tome and Principe"
+      },
+      "embassy": {
+        "text": "Sabliere, B.P. 4000, Libreville"
+      },
+      "mailing address": {
+        "text": "2270 Libreville Place, Washington, DC 20521-2270"
+      },
+      "telephone": {
+        "text": "[241] 011-45-71-00"
+      },
+      "FAX": {
+        "text": "[241] 011-45-71-05"
+      },
+      "email address and website": {
+        "text": "<br>ACSLibreville@state.gov<br><br>https://ga.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "three equal horizontal bands of green (top), yellow, and blue; green represents the country's forests and natural resources, gold represents the equator (which transects Gabon) as well as the sun, blue represents the sea"
+    },
+    "National symbol(s)": {
+      "text": "black panther; national colors: green, yellow, blue"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"La Concorde\" (The Concorde)"
+      },
+      "lyrics/music": {
+        "text": "Georges Aleka DAMAS"
+      },
+      "note": "<strong>note:</strong> adopted 1960"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "2 (1 natural, 1 mixed)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Ecosystem and Relict Cultural Landscape of Lop&eacute;-Okanda (m); Ivindo National Park (n)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "natural-resource-rich, upper-middle-income, Central African economy; significant reliance on oil and mineral exports; highly urbanized population; high levels of poverty and unemployment; uncertainty on institutional and development reform progress following 2023 military coup"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$46.472 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$45.363 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$44.025 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "2.45% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "3.04% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "1.47% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$18,700 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$18,700 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$18,500 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$19.388 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "3.63% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "4.23% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "1.09% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "CCC (2020)"
+      },
+      "Moody's rating": {
+        "text": "Caa1 (2018)"
+      },
+      "Standard & Poors rating": {
+        "text": "N/A (2016)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "6.5% (2023 est.)"
+      },
+      "industry": {
+        "text": "53.5% (2023 est.)"
+      },
+      "services": {
+        "text": "38.2% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "34.5% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "11.5% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "18.1% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "63.7% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-27.8% (2023 est.)"
+      },
+      "note": "<strong>note:</strong> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "plantains, cassava, sugarcane, yams, taro, vegetables, maize, groundnuts, game meat, rubber (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "petroleum extraction and refining; manganese, gold; chemicals, ship repair, food and beverages, textiles, lumbering and plywood, cement"
+    },
+    "Industrial production growth rate": {
+      "text": "3.94% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "771,000 (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "20.36% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "20.5% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "21.23% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "36.5% (2023 est.)"
+      },
+      "male": {
+        "text": "31.7% (2023 est.)"
+      },
+      "female": {
+        "text": "42.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "33.4% (2017 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2017": {
+        "text": "38 (2017 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2.2% (2017 est.)"
+      },
+      "highest 10%": {
+        "text": "27.7% (2017 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.1% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.09% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.09% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$2.939 billion (2021 est.)"
+      },
+      "expenditures": {
+        "text": "$2.732 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> central government revenues and expenses (excluding grants/extrabudgetary units/social security funds) converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "62.7% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "9.49% (of GDP) (2021 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2015": {
+        "text": "$140.996 million (2015 est.)"
+      },
+      "Current account balance 2014": {
+        "text": "$1.112 billion (2014 est.)"
+      },
+      "Current account balance 2013": {
+        "text": "$1.463 billion (2013 est.)"
+      },
+      "note": "<strong>note:</strong> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2022": {
+        "text": "$12.935 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$11.229 billion (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$7.275 billion (2020 est.)"
+      },
+      "note": "<strong>note:</strong> GDP expenditure basis - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "China 43%, South Korea 8%, Italy 7%, India 7%, Indonesia 5% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "crude petroleum, manganese ore, wood, veneer sheets, refined petroleum (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2022": {
+        "text": "$3.499 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$3.353 billion (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$3.454 billion (2020 est.)"
+      },
+      "note": "<strong>note:</strong> GDP expenditure basis - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 22%, France 21%, UAE 5%, US 5%, Belgium 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "poultry, plastic products, iron pipes, fish, excavation machinery (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2019": {
+        "text": "$1.372 billion (2019 est.)"
+      },
+      "Reserves of foreign exchange and gold 2018": {
+        "text": "$1.321 billion (2018 est.)"
+      },
+      "Reserves of foreign exchange and gold 2017": {
+        "text": "$965.054 million (2017 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$6.672 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Cooperation Financiere en Afrique Centrale francs (XAF) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "606.57 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "623.76 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "554.531 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "575.586 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "585.911 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "93.5% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "98.5%"
+      },
+      "electrification - rural areas": {
+        "text": "29%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "784,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "2.497 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "544.035 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "433.104 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "58.1% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "41.4% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "0.5% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "imports": {
+        "text": "82,000 metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "204,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "16,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "2 billion barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "463 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "463 million cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "25.995 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "3.47 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "251,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "2.311 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "908,000 metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "23.955 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "43,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "2 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "3 million (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "125 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the telecom market was liberalized in 1999 when the government awarded three mobile telephony licenses and two ISP licenses and established an independent regulatory authority; in contrast with the mobile market, Gabon&rsquo;s fixed-line and internet sectors have remained underdeveloped due to a lack of competition and high prices; the country has sufficient international bandwidth on the SAT-3/WASC/SAFE submarine cable; the arrival of the ACE submarine cable, combined with progressing work on the CAB cable, has increased back haul capacity supporting mobile data traffic (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line 1 per 100 subscriptions; mobile cellular subscriptions are 134 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 241; landing points for the SAT-3/WASC, ACE and Libreville-Port Gentil Cable&nbsp;fiber-optic submarine cable that provides connectivity to Europe and West Africa; satellite earth stations - 3 Intelsat (Atlantic Ocean) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "state owns and operates 2 TV stations and 2 radio broadcast stations; a few private radio and TV stations; transmissions of at least 2 international broadcasters are accessible; satellite service subscriptions are available"
+    },
+    "Internet country code": {
+      "text": ".ga"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "74% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "80,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "3 (2022 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "3 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "8"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "TR"
+    },
+    "Airports": {
+      "text": "40 (2024)"
+    },
+    "Pipelines": {
+      "text": "807 km gas, 1,639 km oil, 3 km water (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "649 km (2014)"
+      },
+      "standard gauge": {
+        "text": "649 km (2014) 1.435-m gauge"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "14,300 km"
+      },
+      "paved": {
+        "text": "900 km"
+      },
+      "unpaved": {
+        "text": "13,400 km (2001)"
+      }
+    },
+    "Waterways": {
+      "text": "1,600 km (2010) (310 km on Ogooue River)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "87 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 1, general cargo 19, oil tanker 30, other 37"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "9 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "2"
+      },
+      "small": {
+        "text": "2"
+      },
+      "very small": {
+        "text": "5"
+      },
+      "ports with oil terminals": {
+        "text": "7"
+      },
+      "key ports": {
+        "text": "Libreville, Oguendjo Terminal, Port Gentil, Port Owendo"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Gabonese Armed Forces (Force Armées Gabonaise or FAG; aka National Defense and Security Forces of Gabon or des Forces Nationales de Défense et de Sécurité (FNDS) du Gabon): Army (Armée de Terre, AT), Navy (Marine Nationale, MN), Air Force (l'Armée de l'Air, AA), Light Aviation (L’Aviation Légère des Armées, ALA), Fire Brigade (du Corps des Sapeurs-Pompiers); National Gendarmerie (Gendarmerie Gabonaise, GENA); Republican Guard (Garde Républicaine, GR); Military Health Service (Service de Santé Militaire, SSM); Military Engineering (Génie Militaire) (2024)",
+      "note": "<strong>note 1: </strong>the National Police Forces, under the Ministry of Interior, and the National Gendarmerie (GENA), under the Ministry of Defense, are responsible for law enforcement and public security; elements of the armed forces and the Republican Guard, an elite unit that protects the president under his direct authority, sometimes perform internal security functions<br><br><strong>note 2:</strong> the GENA is organized into regionally-based “legions,” mobile forces, a national parks security unit, and a special intervention group"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "1.3% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.3% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.7% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.8% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "1.6% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 7,000 active-duty troops including the Republican Guard and Gendarmerie (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the Gabonese military has a mix of older and more modern weapons and equipment from a variety of suppliers including Brazil, China, France, Germany, Russia/former Soviet Union, and South Africa (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-24 years of age for voluntary military service; no conscription (2024)"
+    },
+    "Military - note": {
+      "text": "the Gabonese military is a small and lightly armed force that is responsible for both external and internal security; the military may also participate in the economic and social development work of the nation; in August 2023, officers from the Republican Guard seized control of the government and placed the president under arrest; the coup leader and chief of the Republican Guard, Gen. Brice OLIGUI Nguema, was subsequently announced as the leader of a transitional government (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Gabonese Studies and Space Observations Agency (Agence Gabonaise d&rsquo;Etudes et d&rsquo;Observations Spatiales or AGEOS; established 2015) (2024)"
+    },
+    "Space program overview": {
+      "text": "has a small space program focused on the acquisition, processing, analysis, and furnishing of data from foreign remote sensing (RS) satellites for environmental management, mapping, natural resources, land use planning, and maritime surveillance, as well as research and innovation; has relationships with Brazil, China, the European Space Agency (ESA) and its member states (particularly France), Kenya, Niger, Rwanda, South Africa, and the US; shares RS data with neighboring countries (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Trafficking in persons": {
+      "tier rating": {
+        "text": "Tier 2 Watch List — Gabon does not fully meet the minimum standards for the elimination of trafficking, but the government has devoted sufficient resources to a written plan that, if implemented, would constitute significant efforts to meet the minimum standards; therefore, Gabon was granted a waiver per the Trafficking Victims Protection Act from an otherwise required downgrade to Tier 3 and remained on Tier 2 Watch List for the third consecutive year; for more details, go to:  https://www.state.gov/reports/2024-trafficking-in-persons-report/gabon/"
+      }
+    }
+  }
+}

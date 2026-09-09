@@ -1,0 +1,74 @@
+# Slack app manifest for the SQLFlow assistant. Create the app at https://api.slack.com/apps with
+# "From an app manifest", paste this document, and install it to the workspace. Then collect the two
+# tokens the bot needs:
+#   - App-level token: app settings > Basic Information > App-Level Tokens > Generate, with the
+#     connections:write scope. This is the xapp-... Socket Mode credential.
+#   - Bot token: app settings > OAuth & Permissions > Bot User OAuth Token (xoxb-...).
+# Socket Mode means the bot dials out to Slack; no public request URL is ever configured.
+#
+# The description and long_description are written for the people who USE the bot, not for
+# whoever deploys it, so they lead with what someone can ask rather than with the machinery.
+# Slack enforces lengths on both: description at most 140 characters, long_description at
+# least 174. Shortening long_description makes the manifest fail validation on paste with
+# "Must be more than 174 characters".
+
+display_information:
+  name: SQLFlow
+  description: Ask where to find data, whether it is up to date, and where a number comes from. In plain language, answered in seconds.
+  long_description: |
+    Ask about the data platform in plain language and get an answer in seconds, instead
+    of waiting on the data team.
+
+    Find what you need. "Where can I find ferry passenger numbers?" It searches
+    everything the platform holds and tells you what exists and where it sits.
+
+    Check it is current. "Is the city bike data updated today?" You get when data last
+    arrived, how much came in, and how often it is meant to update.
+
+    See where a number comes from. "Where does this figure originate?" It traces the
+    number back to the system it came from and shows every step in between.
+
+    Understand the impact of a change. "If we change this, what else is affected?" It
+    lists everything downstream that depends on it.
+
+    Catch problems early. "Is anything broken this morning?" A ranked list of what has
+    failed, slowed down, or quietly stopped delivering.
+
+    The assistant knows how the data platform is organised: what data exists, where it
+    comes from, when it last updated, and how everything connects. It cannot see the
+    data itself. No passenger records, no payments, no personal details ever pass
+    through it. When you need the actual numbers, it writes the query for you and hands
+    it over for someone to run.
+  background_color: "#1a4d7c"
+
+features:
+  bot_user:
+    display_name: sqlflow
+    always_online: true
+
+oauth_config:
+  scopes:
+    bot:
+      # Receive @-mentions in channels.
+      - app_mentions:read
+      # Read thread replies for conversation context when the bot is invoked inside a thread (public
+      # channels, private channels, DMs). The bot never reads the broader channel history.
+      - channels:history
+      - groups:history
+      - im:history
+      # Download image attachments (error screenshots, flow YAML) for the vision model to read.
+      - files:read
+      # Post answers and the eyes acknowledgement reaction.
+      - chat:write
+      - reactions:write
+
+settings:
+  event_subscriptions:
+    bot_events:
+      - app_mention
+      - message.im
+  interactivity:
+    is_enabled: false
+  org_deploy_enabled: false
+  socket_mode_enabled: true
+  token_rotation_enabled: false

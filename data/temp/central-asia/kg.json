@@ -1,0 +1,1206 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>Kyrgyzstan is a Central Asian country of incredible natural beauty and proud nomadic traditions. The Russian Empire annexed most of the territory of present-day Kyrgyzstan in 1876. The Kyrgyz staged a major revolt against the Tsarist Empire in 1916, during which almost one-sixth of the Kyrgyz population was killed. Kyrgyzstan became a Soviet republic in 1926 and achieved independence in 1991 when the USSR dissolved. Nationwide demonstrations in 2005 and 2010 resulted in the ouster of the country’s first two presidents, Askar AKAEV and Kurmanbek BAKIEV. Almazbek ATAMBAEV was sworn in as president in 2011. In 2017, ATAMBAEV became the first Kyrgyzstani president to serve a full term and respect constitutional term limits, voluntarily stepping down at the end of his mandate. Former prime minister and ruling Social-Democratic Party of Kyrgyzstan member Sooronbay JEENBEKOV replaced him after winning the 2017 presidential election, which was the most competitive in the country’s history despite reported cases of vote buying and abuse of public resources. <br><br>In 2020, protests against parliamentary election results spread across Kyrgyzstan, leading to JEENBEKOV’s resignation and catapulting previously imprisoned Sadyr JAPAROV to acting president. In 2021, Kyrgyzstanis formally elected JAPAROV as president and approved a referendum to move Kyrgyzstan from a parliamentary to a presidential system. In 2021, Kyrgyzstanis voted in favor of constitutional changes that consolidated power in the presidency. Pro-government parties won a majority in the 2021 legislative elections. Continuing concerns for Kyrgyzstan include the trajectory of democratization, endemic corruption, tense regional relations, vulnerabilities due to climate change, border security vulnerabilities, and potential terrorist threats.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Central Asia, west of China, south of Kazakhstan"
+    },
+    "Geographic coordinates": {
+      "text": "41 00 N, 75 00 E"
+    },
+    "Map references": {
+      "text": "Asia"
+    },
+    "Area": {
+      "total ": {
+        "text": "199,951 sq km"
+      },
+      "land": {
+        "text": "191,801 sq km"
+      },
+      "water": {
+        "text": "8,150 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than South Dakota"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "4,573 km"
+      },
+      "border countries": {
+        "text": "China 1,063 km; Kazakhstan 1,212 km; Tajikistan 984 km; Uzbekistan 1,314 km"
+      }
+    },
+    "Coastline": {
+      "text": "0 km (landlocked)"
+    },
+    "Maritime claims": {
+      "text": "none (landlocked)"
+    },
+    "Climate": {
+      "text": "dry continental to polar in high Tien Shan Mountains; subtropical in southwest (Fergana Valley); temperate in northern foothill zone"
+    },
+    "Terrain": {
+      "text": "peaks of the Tien Shan mountain range and associated valleys and basins encompass the entire country"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Jengish Chokusu (Pik Pobedy) 7,439 m"
+      },
+      "lowest point": {
+        "text": "Kara-Daryya (Karadar'ya) 132 m"
+      },
+      "mean elevation": {
+        "text": "2,988 m"
+      }
+    },
+    "Natural resources": {
+      "text": "abundant hydropower; gold, rare earth metals; locally exploitable coal, oil, and natural gas; other deposits of nepheline, mercury, bismuth, lead, and zinc"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "55.4% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 6.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 48.3% (2018 est.)"
+      },
+      "forest": {
+        "text": "5.1% (2018 est.)"
+      },
+      "other": {
+        "text": "39.5% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "10,043 sq km (2020)"
+    },
+    "Major lakes (area sq km)": {
+      "salt water lake(s)": {
+        "text": "Ozero Issyk-Kul 6,240 sq km<br>note - second largest saline lake after the Caspian Sea; second highest mountain lake after Lake Titicaca; it is an endorheic mountain basin; although surrounded by snow capped mountains it never freezes"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Syr Darya river source (shared with Tajikistan, Uzbekistan, and Kazakhstan [m] ) - 3,078 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Internal <em>(endorheic basin) </em>drainage: Tarim Basin (1,152,448 sq km), <em>(Aral Sea basin)</em> Amu Darya (534,739 sq km), Syr Darya (782,617 sq km)"
+    },
+    "Population distribution": {
+      "text": "the vast majority of Kyrgyzstanis live in rural areas; densest population settlement is to the north in and around the capital, Bishkek, followed by Osh in the west; the least densely populated area is the east, southeast in the Tien Shan mountains"
+    },
+    "Natural hazards": {
+      "text": "major flooding during snow melt; prone to earthquakes"
+    },
+    "Geography - note": {
+      "text": "landlocked; entirely mountainous, dominated by the Tien Shan range; 94% of the country is 1,000 m above sea level with an average elevation of 2,750 m; many tall peaks, glaciers, and high-altitude lakes"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "6,172,101"
+      },
+      "male": {
+        "text": "3,021,318"
+      },
+      "female": {
+        "text": "3,150,783 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Kyrgyzstani(s)"
+      },
+      "adjective": {
+        "text": "Kyrgyzstani"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Kyrgyz 73.8%, Uzbek 14.8%, Russian 5.1%, Dungan 1.1%, other 5.2% (includes Uyghur, Tajik, Turk, Kazakh, Tatar, Ukrainian, Korean, German) (2021 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Kyrgyz (state language) 71.4%, Uzbek 14.4%, Russian (official language) 9%, other 5.2% (2009 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Дүйнөлүк фактылар китеби, негизги маалыматтын маанилүү булагы. (Kyrgyz)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Muslim 90% (majority Sunni), Christian 7% (Russian Orthodox 3%), other 3% (includes Jewish, Buddhist, Baha'i) (2017 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>Kyrgyzstan is a sparsely populated country whose population is unevenly distributed.  More than 50% of the population lives in or around the two cities of Bishkek and Osh and their surrounding districts, which together account for about 12% of the country’s area.  Kyrgyzstan’s population continues to grow rapidly owing to its high fertility rate and the traditional preference for larger families, a low mortality rate, a growing share of women of reproductive age, and measures to support families with children. The country has a youthful age structure; over 45% of the population is under the age of 25 as of 2022.  Nevertheless, Kyrgyzstan is transitioning from an agricultural society with high fertility and mortality rates to an industrial society with lower fertility and mortality rates.</p> <p>As part of the USSR, Kyrgyzstan’s rapid population growth was not problematic because its needs were redistributed among the Soviet States.  As an independent state, however, population growth became burdensome.  International labor migration continues to serve as a safety valve that decreases pressure on the labor market and resources (healthcare, education, and pensions), while also reducing poverty through much-needed remittances.  The main destinations for labor migrants are Russia and Kazakhstan, where wages are higher; almost a third of Kyrgyzstan’s working-age population migrates to Russia alone.  Outmigration was most pronounced in the 1990s, after the collapse of the USSR, when ethnic Russians, Ukrainians, and Germans left Kyrgyzstan, changing the proportion of ethnic Kyrgyz in the country from barely 50% in 1992 to almost three-quarters today.</p> <p>While Kyrgyzstan is a net emigration country, it does receive immigrants.  The majority of immigrants are from the Commonwealth of Independent States – particularly Kazakhstan, Russia, and Uzbekistan – but more recent arrivals also include persons from China, Turkey, and Turkmenistan.  Chinese immigrants work primarily in construction and gold mining, while Turkish immigrants mainly work in construction, trade, education, and services.  Border areas between Kyrgyzstan, Tajikistan, and Uzbekistan experience irregular migration, but many of these migrants plan to move on to Europe.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "29.1% (male 922,086/female 873,245)"
+      },
+      "15-64 years": {
+        "text": "64% (male 1,935,200/female 2,013,733)"
+      },
+      "65 years and over": {
+        "text": "6.9% (2024 est.) (male 164,032/female 263,805)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "63.5"
+      },
+      "youth dependency ratio": {
+        "text": "56.4"
+      },
+      "elderly dependency ratio": {
+        "text": "7.2"
+      },
+      "potential support ratio": {
+        "text": "13.9 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "28.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "26.9 years"
+      },
+      "female": {
+        "text": "29.8 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.79% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "18.7 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-4.8 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the vast majority of Kyrgyzstanis live in rural areas; densest population settlement is to the north in and around the capital, Bishkek, followed by Osh in the west; the least densely populated area is the east, southeast in the Tien Shan mountains"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "37.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.05% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "1.105 million BISHKEK (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.07 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.96 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.62 male(s)/female"
+      },
+      "total population": {
+        "text": "0.96 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "22.6 years (2019 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "50 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "24.5 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "28.6 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "20.2 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "72.9 years (2024 est.)"
+      },
+      "male": {
+        "text": "68.9 years"
+      },
+      "female": {
+        "text": "77.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "2.45 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.19 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "39.4% (2018)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 89.9% of population"
+      },
+      "improved: total": {
+        "text": "total: 93.6% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 10.1% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 6.4% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "5.3% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "2.21 physicians/1,000 population (2014)"
+    },
+    "Hospital bed density": {
+      "text": "4.4 beds/1,000 population (2014)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "16.6% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "4.02 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "0.43 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.23 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "3.35 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "25.4% (2020 est.)"
+      },
+      "male": {
+        "text": "48% (2020 est.)"
+      },
+      "female": {
+        "text": "2.8% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "1.8% (2018)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "66.2% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "0.3%"
+      },
+      "women married by age 18": {
+        "text": "12.9% (2018 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "6.2% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "99.6%"
+      },
+      "male": {
+        "text": "99.7%"
+      },
+      "female": {
+        "text": "99.5% (2018)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "14 years"
+      },
+      "male": {
+        "text": "13 years"
+      },
+      "female": {
+        "text": "14 years (2021)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "water pollution; many people get their water directly from contaminated streams and wells; as a result, water-borne diseases are prevalent; increasing soil salinity from faulty irrigation practices; air pollution due to rapid increase of traffic"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Ozone Layer Protection, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "dry continental to polar in high Tien Shan Mountains; subtropical in southwest (Fergana Valley); temperate in northern foothill zone"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "55.4% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 6.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 48.3% (2018 est.)"
+      },
+      "forest": {
+        "text": "5.1% (2018 est.)"
+      },
+      "other": {
+        "text": "39.5% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "37.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.05% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.01% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.21% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "37.58 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "9.79 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "4.47 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "1,113,300 tons (2015 est.)"
+      }
+    },
+    "Major lakes (area sq km)": {
+      "salt water lake(s)": {
+        "text": "Ozero Issyk-Kul 6,240 sq km<br>note - second largest saline lake after the Caspian Sea; second highest mountain lake after Lake Titicaca; it is an endorheic mountain basin; although surrounded by snow capped mountains it never freezes"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Syr Darya river source (shared with Tajikistan, Uzbekistan, and Kazakhstan [m] ) - 3,078 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Internal <em>(endorheic basin) </em>drainage: Tarim Basin (1,152,448 sq km), <em>(Aral Sea basin)</em> Amu Darya (534,739 sq km), Syr Darya (782,617 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "220 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "340 million cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "7.1 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "23.62 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Kyrgyz Republic"
+      },
+      "conventional short form": {
+        "text": "Kyrgyzstan"
+      },
+      "local long form": {
+        "text": "Kyrgyz Respublikasy"
+      },
+      "local short form": {
+        "text": "Kyrgyzstan"
+      },
+      "etymology": {
+        "text": "a combination of the Turkic words \"kyrg\" (forty) and \"-yz\" (tribes) with the Persian suffix \"-stan\" (country) creating the meaning \"Land of the Forty Tribes\"; the name refers to the 40 clans united by the mythic Kyrgyz hero, MANAS"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Bishkek"
+      },
+      "geographic coordinates": {
+        "text": "42 52 N, 74 36 E"
+      },
+      "time difference": {
+        "text": "UTC+6 (11 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "founded in 1868 as a Russian settlement on the site of a previously destroyed fortress named \"Pishpek\"; the name was retained and overtime became \"Bishkek\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "7 provinces (oblustar, singular - oblus) and 2 cities* (shaarlar, singular - shaar); Batken Oblusu, Bishkek Shaary*, Chuy Oblusu (Bishkek), Jalal-Abad Oblusu, Naryn Oblusu, Osh Oblusu, Osh Shaary*, Talas Oblusu, Ysyk-Kol Oblusu (Karakol)",
+      "note": "<strong>note:</strong> administrative divisions have the same names as their administrative centers (exceptions have the administrative center name following in parentheses)"
+    },
+    "Independence": {
+      "text": "31 August 1991 (from the Soviet Union)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 31 August (1991)"
+    },
+    "Legal system": {
+      "text": "civil law system, which includes features of French civil law and Russian Federation laws"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1993, 2007, 2010; latest approved by referendum in April 2021 that transitioned Kyrgyzstan from a parliamentary to a presidential system, and implemented changes that allow the president to serve for two 5-year terms rather than one 6-year term, reduced the number of seats in Kyrgyzstan's legislature from 120 to 90, and established a Kurultay - a public advisory council"
+      },
+      "amendments": {
+        "text": "proposed as a draft law by the majority of the Supreme Council membership or by petition of 300,000 voters; passage requires at least two-thirds majority vote of the Council membership in each of at least three readings of the draft two months apart; the draft may be submitted to a referendum if approved by two thirds of the Council membership; adoption requires the signature of the president"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; non-party state to the ICCt"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Kyrgyzstan"
+      },
+      "dual citizenship recognized": {
+        "text": "yes, but only if a mutual treaty on dual citizenship is in force"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Sadyr JAPAROV (since 28 January 2021)"
+      },
+      "head of government": {
+        "text": "President Adylbek KASYMALIYEV (since 18 December 2024)"
+      },
+      "cabinet": {
+        "text": "Cabinet of Ministers appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by absolute majority popular vote in 2 rounds if needed for a five-year term (eligible for a second term); election last held on 10 January 2021 (next to be held in 2027)"
+      },
+      "election results": {
+        "text": "<em><br>2021:</em> Sadyr JAPAROV elected president in first round; percent of vote - Sadyr JAPAROV (Mekenchil) 79.2%, Adakhan MADUMAROV (United Kyrgyzstan) 6.8%, other 14%<br><br><em>2017:</em> Sooronbay JEENBEKOV elected president; Sooronbay JEENBEKOV (Social Democratic Party of Kyrgyzstan) 54.7%, Omurbek BABANOV (independent) 33.8%, Adakhan MADUMAROV (United Kyrgyzstan) 6.6%, other 4.9%"
+      },
+      "note": "<strong>note:</strong> the president is both chief of state and head of government"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Supreme Council (Jogorku Kenesh)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "90 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "11/28/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "Ata-Jurt Kyrgyzstan (Fatherland) (15); Ishenim (Trust) (12); Yntymak (Harmony) (9); Alyans (Alliance) (7); Butun Kyrgyzstan (United) (6); Yiman Nuru (Ray of Faith) (5); Independents (34)"
+      },
+      "percentage of women in chamber": {
+        "text": "22.2%"
+      },
+      "expected date of next election": {
+        "text": "November 2026"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of 25 judges); Constitutional Chamber of the Supreme Court (consists of the chairperson, deputy chairperson, and 9 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court and Constitutional Court judges appointed by the Supreme Council on the recommendation of the president; Supreme Court judges serve for 10 years, Constitutional Court judges serve for 15 years; mandatory retirement at age 70 for judges of both courts"
+      },
+      "subordinate courts": {
+        "text": "Higher Court of Arbitration; oblast (provincial) and city courts"
+      }
+    },
+    "Political parties": {
+      "text": "Afghan's Party<br>Alliance<br>Ata-Jurt Kyrgyzstan (Fatherland) or AJK<br>Cohesion<br>Ishenim (Trust)<br>Light of Faith<br>Mekenchil or the \"Patriotic\" Political Party<br>Social Democrats or SDK<br>United Kyrgyzstan<br>Yntymak (Unity)"
+    },
+    "International organization participation": {
+      "text": "ADB, CICA, CIS, CSTO, EAEU, EAPC, EBRD, ECO, EITI (compliant country), FAO, GCTU, IAEA, IBRD, ICAO, ICC (NGOs), ICRM, IDA, IDB, IFAD, IFC, IFRCS, ILO, IMF, Interpol, IOC, IOM, IPU, ISO (correspondent), ITSO, ITU, MIGA, NAM (observer), OIC, OPCW, OSCE, PCA, PFP, SCO, UN, UNAMID, UNCTAD, UNESCO, UNIDO, UNISFA, UNMIL, UNMISS, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires&nbsp;Mirel MURATOV (since 22 November 2024)"
+      },
+      "chancery": {
+        "text": "2360 Massachusetts Avenue NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 449-9822"
+      },
+      "FAX": {
+        "text": "[1] (202) 449-8275"
+      },
+      "email address and website": {
+        "text": "<br>kgembassy.usa@mfa.gov.kg<br><br>Embassy of the Kyrgyz Republic in the USA and Canada (mfa.gov.kg)"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Lesslie VIGUERIE (since 29 December 2022)"
+      },
+      "embassy": {
+        "text": "171 Prospect Mira, Bishkek 720016"
+      },
+      "mailing address": {
+        "text": "7040 Bishkek Place, Washington DC&nbsp; 20521-7040"
+      },
+      "telephone": {
+        "text": "[996] (312) 597-000"
+      },
+      "FAX": {
+        "text": "[996] (312) 597-744"
+      },
+      "email address and website": {
+        "text": "<br>ConsularBishkek@state.gov<br><br>https://kg.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "red field with a yellow sun in the center having 40 rays representing the 40 Kyrgyz tribes; on the obverse side the rays run counterclockwise, on the reverse, clockwise; in the center of the sun is a red ring crossed by two sets of three lines, a stylized representation of a \"tunduk\" - the crown of a traditional Kyrgyz yurt; red symbolizes bravery and valor, the sun evinces peace and wealth"
+    },
+    "National symbol(s)": {
+      "text": "white falcon; national colors: red, yellow"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Kyrgyz Respublikasynyn Mamlekettik Gimni\" (National Anthem of the Kyrgyz Republic)"
+      },
+      "lyrics/music": {
+        "text": "Djamil SADYKOV and Eshmambet KULUEV/Nasyr DAVLESOV and Kalyi MOLDOBASANOV"
+      },
+      "note": "<strong>note:</strong> adopted 1992"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "3 (2 cultural, 1 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Sulaiman-Too Sacred Mountain (c); Silk Roads: the Chang'an-Tianshan Corridor (c); Western Tien Shan (n)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "landlocked, lower-middle-income Central Asian economy; natural resource rich; growing hydroelectricity and tourism; high remittances; corruption limits investment; COVID-19 and political turmoil hurt GDP, limited public revenues, and increased spending"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$45.461 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$42.826 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$39.302 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "6.15% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "8.97% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "5.51% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$6,400 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$6,100 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$5,700 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$13.988 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "10.75% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "13.92% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "11.91% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Moody's rating": {
+        "text": "B2 (2015)"
+      },
+      "Standard & Poors rating": {
+        "text": "NR (2016)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "9.7% (2023 est.)"
+      },
+      "industry": {
+        "text": "22.6% (2023 est.)"
+      },
+      "services": {
+        "text": "50.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "89.5% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "16.4% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "21.2% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "9.1% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "39.2% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-101% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "milk, potatoes, maize, wheat, barley, sugar beets, tomatoes, onions, watermelons, carrots/turnips (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "small machinery, textiles, food processing, cement, shoes, lumber, refrigerators, furniture, electric motors, gold, rare earth metals"
+    },
+    "Industrial production growth rate": {
+      "text": "4.93% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "3.144 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "4.04% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "4.06% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "4.1% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "8.2% (2023 est.)"
+      },
+      "male": {
+        "text": "7.6% (2023 est.)"
+      },
+      "female": {
+        "text": "9.2% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "33.3% (2021 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2022": {
+        "text": "26.4 (2022 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "4.4% (2022 est.)"
+      },
+      "highest 10%": {
+        "text": "22% (2022 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "20.38% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "26.58% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "32.56% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$3.859 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$2.892 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2023": {
+        "text": "44% of GDP (2023 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "21.28% (of GDP) (2023 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2022": {
+        "text": "-$5.18 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$737.696 million (2021 est.)"
+      },
+      "Current account balance 2020": {
+        "text": "$374.257 million (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2022": {
+        "text": "$3.628 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$3.292 billion (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$2.435 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Russia 43%, Kazakhstan 18%, Uzbekistan 10%, Turkey 6%, UAE 4% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "garments, refined petroleum, gold, precious metal ore, dried legumes (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2022": {
+        "text": "$10.655 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$5.928 billion (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$4.051 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 64%, Russia 10%, Uzbekistan 4%, Turkey 4%, Kazakhstan 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "garments, footwear, refined petroleum, cars, fabric (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$3.237 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$2.799 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$2.983 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$3.918 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "soms (KGS) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "87.856 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "84.116 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "84.641 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "77.346 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "69.789 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "99.7% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "99.6%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "4.408 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "13.465 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "457 million kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "2.806 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "2.738 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "14.1% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "85.9% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "3.637 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "3.352 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "1.321 million metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "738,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "28.499 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "6,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "31,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "40 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "31.026 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "438 million cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "406.974 million cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "5.663 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "10.197 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "5.066 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "4.272 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "859,000 metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "26.992 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "185,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "3 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "7.68 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "130 (2021 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the country&rsquo;s telecom sector (specifically the mobile segment) has been able to prosper; Kyrgyzstan has opened up its telecom market to competition; the mobile market has achieved high levels of penetration (140% in 2021) along with a fairly competitive operating environment with four major players; mobile broadband has come along strongly, reaching over 125% penetration in 2019 before falling back slightly during the COVID-19 crisis; slow-to-moderate growth is expected for both segments in coming years, supported by the anticipated rollout of 5G services which began testing in 2022 with a pilot service in 2023 which has been delayed into 2024 (2024)"
+      },
+      "domestic": {
+        "text": "fixed-line subscriptions 5 per 100; mobile-cellular subscribership up to over 130 per 100 persons (2022)"
+      },
+      "international": {
+        "text": "country code - 996; connections with other CIS (Commonwealth of Independent States, 9 members post-Soviet Republics in EU) countries by landline or microwave radio relay and with other countries by leased connections with Moscow international gateway switch and by satellite; satellite earth stations - 2 (1 Intersputnik, 1 Intelsat) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "state-funded public TV broadcaster NTRK has nationwide coverage; also operates Ala-Too 24 news channel which broadcasts 24/7 and 4 other educational, cultural, and sports channels; ELTR is a state-owned TV station with national reach; the switchover to digital TV in 2017 resulted in private TV station growth; approximately 20 stations are struggling to increase their own Kyrgyz-language content up to 60% of airtime, as required by law, instead of rebroadcasting primarily programs from Russian channels or airing unlicensed movies and music; several Russian TV stations also broadcast; state-funded radio stations and about 10 significant private radio stations also exist (2023)"
+    },
+    "Internet country code": {
+      "text": ".kg"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "80% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "456,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "6 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "5 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "17"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "709,198 (2018)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "EX"
+    },
+    "Airports": {
+      "text": "28 (2024)"
+    },
+    "Heliports": {
+      "text": "1 (2024)"
+    },
+    "Pipelines": {
+      "text": "4,195 km gas (2022), 16 km oil (2022) (2022)"
+    },
+    "Railways": {
+      "total": {
+        "text": "424 km (2022)"
+      },
+      "broad gauge": {
+        "text": "424 km (2018) 1.520-m gauge"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "34,000 km (2022)"
+      },
+      "paved": {
+        "text": "22,600 km (2020)"
+      },
+      "unpaved": {
+        "text": "7,700 km (2020)"
+      }
+    },
+    "Waterways": {
+      "text": "576 km (2022)"
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Armed Forces of the Kyrgyz Republic: Land Forces, Air Defense Forces, National Guard; Internal Troops; State Committee for National Security (GKNB): State Border Service (2024)"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2022": {
+        "text": "1.5% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.7% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.8% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "2.3% of GDP (2019 est.)"
+      },
+      "Military Expenditures 2018": {
+        "text": "2.3% of GDP (2018 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 15,000 active-duty troops (9,000 Land Forces; 3,000 Air Force/Air Defense; 3,000 National Guard) (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the Kyrgyz military inventory is comprised almost entirely of Russian and Soviet-era weapons and equipment; in recent years, the military has acquired small amounts of material from other suppliers such as Turkey, which provided unmanned aerial vehicles/drones (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-27 years of age for compulsory or voluntary service for men in the Armed Forces or Interior Ministry; 12-month service obligation (9 months for university graduates), with optional fee-based 3-year service in the call-up mobilization reserve; women may volunteer at age 19; 16-17 years of age for military cadets, who cannot take part in military operations (2023)"
+    },
+    "Military - note": {
+      "text": "Kyrgyzstan has been a member of the Collective Security Treaty Organization (CSTO) since 1994 and contributes troops to CSTO's rapid reaction force; it also started a relationship with NATO in 1992 and joined NATO's Partnership for Peace program in 1994<br><br>the Kyrgyz military’s primary responsibility is defense of the country’s sovereignty and territory, although it also has some internal security duties; elements of the military were called out in 2020 to respond to post-election demonstrations for example, and the National Guard’s missions include counterterrorism, responding to emergencies, and the protection of government facilities; the military also participates in UN and CSTO peacekeeping missions; border disputes with Tajikistan and Uzbekistan, as well as the threat posed by militant Islamic groups, have been particular areas of concern for both the military and internal security forces; the military’s closest security partner is Russia, which provides training and material assistance, and maintains a presence in the country, including an airbase; the military also conducts training with other regional countries such as India, traditionally with a focus on counterterrorism<br><br>the Kyrgyz military was formed in 1992 from Soviet Army units then based in Kyrgyzstan following the dissolution of the USSR (2023)"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "US-designated foreign terrorist groups such as the Islamic Jihad Union, the Islamic Movement of Uzbekistan, and the Islamic State of Iraq and ash-Sham-Khorasan Province have operated in the area where the Uzbek, Kyrgyz, and Tajik borders converge and ill-defined and porous borders allow for the relatively free movement of people and illicit goods"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "stateless persons": {
+        "text": "482 (2022)"
+      }
+    },
+    "Trafficking in persons": {
+      "tier rating": {
+        "text": "Tier 2 Watch List — the government did not demonstrate overall increasing efforts to eliminate trafficking compared with the previous reporting period, therefore Kyrgyzstan was downgraded to Tier 2 Watch List; for more details, go to:  https://www.state.gov/reports/2024-trafficking-in-persons-report/kyrgyzstan/"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a prime transit route and transshipment route for illegal drugs transiting north from Afghanistan to Russia and Europe; illicit drugs are primarily smuggled into the country from Tajikistan</p> <p> </p>"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>SQLFlow SFTP engine (flowType: sftp): download files from an SFTP server into the data lake / local, or upload the other way.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SSH.NET" />
+    <PackageReference Include="Azure.Storage.Blobs" />
+    <PackageReference Include="Azure.Identity" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\SqlFlow.Azure\SqlFlow.Azure.csproj" />
+  </ItemGroup>
+
+</Project>

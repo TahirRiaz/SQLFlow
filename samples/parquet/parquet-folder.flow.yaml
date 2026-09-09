@@ -1,0 +1,21 @@
+# A folder of Parquet files, loaded as one stream with dynamic schema evolution. srcFile globs the files;
+# the column set is the additive union across them and missing columns null-fill, so a new file that adds a
+# column just makes that column appear (the engine widens the target table). The _DW provenance columns
+# (FileName_DW, FileDate_DW, FileRowDate_DW, DataSet_DW, FileSize_DW, RowNumber_DW) are injected for every row.
+name: Parquet_Folder
+source:
+  type: parquet
+  location: ./data
+  options:
+    srcFile: "*.parquet"
+    searchSubDirectories: "false"
+    # expectedColumnCount: "0"   # set > 0 to fail a file whose leaf-column count differs
+    # partitionList: "year,month"  # recorded for metadata fidelity (Hive-style), not used to drive reads
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Parquet_Folder
+schema:
+  evolve: widen
+load:
+  mode: truncate-load

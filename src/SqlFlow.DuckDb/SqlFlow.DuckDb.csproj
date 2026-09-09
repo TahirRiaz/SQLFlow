@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.DuckDb</RootNamespace>
+    <Description>DuckDB-backed source reader: reads Parquet/CSV/JSON (local, glob, partitioned, and via extensions ADLS/S3/Delta) with SQL pushdown, streaming rows into the SQLFlow engine. Isolates the native libduckdb dependency from the pure-managed core.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="DuckDB.NET.Data.Full" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+  </ItemGroup>
+
+</Project>

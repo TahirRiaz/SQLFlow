@@ -1,0 +1,138 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "13603088384307135391"
+    }
+  },
+  "parameters": {
+    "displayName": {
+      "type": "string",
+      "defaultValue": "SQLFlow",
+      "metadata": {
+        "description": "Display name of the app registration as it appears in Entra and on the consent prompt."
+      }
+    },
+    "uniqueName": {
+      "type": "string",
+      "defaultValue": "sqlflow",
+      "metadata": {
+        "description": "Stable unique name for the registration (the Graph identity key used to find and update it across deploys). Lowercase, no spaces."
+      }
+    },
+    "redirectUri": {
+      "type": "string",
+      "metadata": {
+        "description": "The exact GUI origin to register as the SPA redirect URI, e.g. https://sqlflow-gui.<env>.azurecontainerapps.io. MSAL signs in against window.location.origin, so this is the origin with no trailing path."
+      }
+    },
+    "allowedGroupObjectId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Object id of the Entra security group whose members may sign in. Its members are assigned the SqlFlow.User role. Empty leaves the app with assignment required but no members, so assign a group or users in the enterprise application before anyone can sign in."
+      }
+    }
+  },
+  "variables": {
+    "appRoleId": "[guid(parameters('uniqueName'), 'SqlFlow.User')]",
+    "microsoftGraphAppId": "00000003-0000-0000-c000-000000000000",
+    "userReadScopeId": "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+  },
+  "imports": {
+    "microsoftGraphV1": {
+      "provider": "MicrosoftGraph",
+      "version": "0.2.0-preview"
+    }
+  },
+  "resources": {
+    "application": {
+      "import": "microsoftGraphV1",
+      "type": "Microsoft.Graph/applications@v1.0",
+      "properties": {
+        "uniqueName": "[parameters('uniqueName')]",
+        "displayName": "[parameters('displayName')]",
+        "signInAudience": "AzureADMyOrg",
+        "spa": {
+          "redirectUris": [
+            "[parameters('redirectUri')]"
+          ]
+        },
+        "appRoles": [
+          {
+            "id": "[variables('appRoleId')]",
+            "allowedMemberTypes": [
+              "User"
+            ],
+            "displayName": "SQLFlow User",
+            "description": "May sign in to SQLFlow. Assignment is required, so only members of this role reach the app.",
+            "value": "SqlFlow.User",
+            "isEnabled": true
+          }
+        ],
+        "requiredResourceAccess": [
+          {
+            "resourceAppId": "[variables('microsoftGraphAppId')]",
+            "resourceAccess": [
+              {
+                "id": "[variables('userReadScopeId')]",
+                "type": "Scope"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "servicePrincipal": {
+      "import": "microsoftGraphV1",
+      "type": "Microsoft.Graph/servicePrincipals@v1.0",
+      "properties": {
+        "appId": "[reference('application').appId]",
+        "appRoleAssignmentRequired": true
+      },
+      "dependsOn": [
+        "application"
+      ]
+    },
+    "groupAssignment": {
+      "condition": "[not(empty(parameters('allowedGroupObjectId')))]",
+      "import": "microsoftGraphV1",
+      "type": "Microsoft.Graph/appRoleAssignedTo@v1.0",
+      "properties": {
+        "appRoleId": "[variables('appRoleId')]",
+        "principalId": "[parameters('allowedGroupObjectId')]",
+        "resourceId": "[reference('servicePrincipal').id]"
+      },
+      "dependsOn": [
+        "servicePrincipal"
+      ]
+    }
+  },
+  "outputs": {
+    "clientId": {
+      "type": "string",
+      "metadata": {
+        "description": "Client (application) id of the registration: pass to the control plane as its AzureAd ClientId."
+      },
+      "value": "[reference('application').appId]"
+    },
+    "servicePrincipalObjectId": {
+      "type": "string",
+      "metadata": {
+        "description": "Object id of the enterprise application (service principal)."
+      },
+      "value": "[reference('servicePrincipal').id]"
+    },
+    "appRoleValue": {
+      "type": "string",
+      "metadata": {
+        "description": "Value of the app role that gates sign-in; appears in the token roles claim for assigned users."
+      },
+      "value": "SqlFlow.User"
+    }
+  }
+}

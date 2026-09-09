@@ -1,0 +1,20 @@
+[package]
+name = "sqlflow-lang-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "WebAssembly bindings for the SQLFlow .flow.yaml analysis engine: hover, diagnostics, and semantic tokens for the browser GUI's Monaco editor"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sqlflow-lang = { path = "../sqlflow-lang" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen = "0.2"
+
+# wasm-opt needs the binaryen toolchain, which is not assumed present; the crate
+# is small and wasm-bindgen already runs its own optimizations.
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

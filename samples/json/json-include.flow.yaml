@@ -1,0 +1,16 @@
+# includePaths is a whitelist: only the listed paths (and the chain needed to reach them) are kept,
+# everything else is dropped. Here we keep $.id and the $.keep subtree; $.drop never reaches the table.
+name: Json_Include
+source:
+  type: json
+  location: ./data/profiles.json
+  options:
+    includePaths: "$.id, $.keep"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_Include
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyt="http://www.nytimes.com/namespaces/rss/2.0" version="2.0">
+  <channel>
+    <title>NYT &gt; World &gt; Europe</title>
+    <link>https://www.nytimes.com/section/world/europe</link>
+    <atom:link href="https://rss.nytimes.com/services/xml/rss/nyt/Europe.xml" rel="self" type="application/rss+xml"></atom:link>
+    <description></description>
+    <language>en-us</language>
+    <copyright>Copyright 2025 The New York Times Company</copyright>
+    <lastBuildDate>Wed, 19 Mar 2025 01:06:06 +0000</lastBuildDate>
+    <pubDate>Tue, 18 Mar 2025 23:02:37 +0000</pubDate>
+    <image>
+      <title>NYT &gt; World &gt; Europe</title>
+      <url>https://static01.nyt.com/images/misc/NYT_logo_rss_250x40.png</url>
+      <link>https://www.nytimes.com/section/world/europe</link>
+    </image>
+    <item>
+      <title>Putin Agrees to Limited Cease-Fire on Ukraine Energy Targets</title>
+      <link>https://www.nytimes.com/2025/03/18/us/politics/trump-putin-call-ukraine-russia-ceasefire.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/us/politics/trump-putin-call-ukraine-russia-ceasefire.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/us/politics/trump-putin-call-ukraine-russia-ceasefire.html" rel="standout"></atom:link>
+      <description>In a call with President Trump, Russia’s leader agreed to pause strikes on energy infrastructure. Ukraine also appeared willing to accept such a halt, though it fell short of the unconditional cease-fire the country had already agreed to.</description>
+      <dc:creator>David E. Sanger and Paul Sonne</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 23:02:37 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Peace Process</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Infrastructure (Public Works)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18dc-prexy-hvkf/18dc-prexy-hvkf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Maxim Shemetov/Reuters</media:credit>
+      <media:description>President Vladimir V. Putin of Russia held a call with President Trump on Tuesday.</media:description>
+    </item>
+    <item>
+      <title>As France Sours on Trump’s America, De Gaulle Is on the Rise</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/de-gaulle-france-trump.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/de-gaulle-france-trump.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/de-gaulle-france-trump.html" rel="standout"></atom:link>
+      <description>Charles de Gaulle’s insistence on French power and autonomy is being cited widely in France; one politician demanded that an America on “the side of the tyrants” return the Statue of Liberty.</description>
+      <dc:creator>Roger Cohen</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 17:16:31 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">de Gaulle, Charles</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Statue of Liberty</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Nuclear Weapons</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-france-us-video-hpbc/18int-france-us-video-hpbc-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Stephane De Sakutin/Agence France-Presse — Getty Images</media:credit>
+    </item>
+    <item>
+      <title>John “Paddy” Hemingway, Last Surviving Pilot of the Battle of Britain, Dies at 105</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/john-a-hemingway-dead.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/john-a-hemingway-dead.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/john-a-hemingway-dead.html" rel="standout"></atom:link>
+      <description>A fighter pilot in a vastly outnumbered Royal Air Force — one of the “few” hailed by Churchill — he took to the skies to help stave off a Nazi land invasion of Britain.</description>
+      <dc:creator>Richard Goldstein</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 19:29:23 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Hemingway, John A (1919-2025)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Obituaries)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">World War II (1939-45)</category>
+      <category domain="">Battle of Britain</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Pilots</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Royal Air Force</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Great Britain</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18Hemingway-hzqv/18Hemingway-hzqv-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>R.A.F./U.K. MOD, via Associated Press</media:credit>
+      <media:description>Mr. Hemingway posed in 2022 in front of a Hurricane fighter plane, the kind he flew in the Battle of Britain. </media:description>
+    </item>
+    <item>
+      <title>Two Men Found Guilty in Theft of $6 Million Gold Toilet</title>
+      <link>https://www.nytimes.com/2025/03/18/arts/design/gold-toilet-theft-verdict-maurizio-cattelan.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/arts/design/gold-toilet-theft-verdict-maurizio-cattelan.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/arts/design/gold-toilet-theft-verdict-maurizio-cattelan.html" rel="standout"></atom:link>
+      <description>The glimmering commode, an artwork by Maurizio Cattelan, was stolen during a break-in at Winston Churchill’s ancestral home in 2019.</description>
+      <dc:creator>Alex Marshall</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 18:17:36 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Robberies and Thefts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Art</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Cattelan, Maurizio</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Decisions and Verdicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Bathrooms and Toilets</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Gold</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">England</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/06/multimedia/TOILET-VERDICT-HFO-cmjh/TOILET-VERDICT-HFO-cmjh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Leon Neal/Getty Images</media:credit>
+      <media:description>The gold toilet, titled “America,” on display at Blenheim Palace near Oxford, England, in 2019.</media:description>
+    </item>
+    <item>
+      <title>Trump’s Focus on Ukrainian Nuclear Plant Is Partly Linked to Minerals Deal, Officials Say</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/ukraine-nuclear-plant-cease-fire-talks.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/ukraine-nuclear-plant-cease-fire-talks.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/ukraine-nuclear-plant-cease-fire-talks.html" rel="standout"></atom:link>
+      <description>The U.S. is seeking access to Ukrainian minerals, which require extensive energy to process. The Zaporizhzhia power plant in southern Ukraine, which Russia controls, could help with that, Kyiv says.</description>
+      <dc:creator>Constant Méheut</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 20:00:12 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Nuclear Energy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Embargoes and Sanctions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kyiv (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-ukraine-plant-qktw/18int-ukraine-plant-qktw-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Finbarr O&#39;Reilly for The New York Times</media:credit>
+      <media:description>The Zaporizhzhia nuclear power plant in 2022. The facility was seized by Russia early in the war.</media:description>
+    </item>
+    <item>
+      <title>UK Aims to Cut Billions in Welfare Amid Budget Crunch</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/uk-welfare-cuts-benefits.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/uk-welfare-cuts-benefits.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/uk-welfare-cuts-benefits.html" rel="standout"></atom:link>
+      <description>Changing disability allowances is a particularly contentious move within Prime Minister Keir Starmer’s center-left Labour Party.</description>
+      <dc:creator>Stephen Castle</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 17:31:29 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Disabilities</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Poverty</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Economic Conditions and Trends</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Labour Party (Great Britain)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Starmer, Keir</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Great Britain</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-uk-welfare-hjvg/18int-uk-welfare-hjvg-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Tolga Akmen/EPA, via Shutterstock</media:credit>
+      <media:description>Liz Kendall, Britain’s work and pensions secretary, told Parliament on Tuesday that the cuts aim to get those who can work into jobs, protect those who cannot work and save taxpayers money.</media:description>
+    </item>
+    <item>
+      <title>E.U. Hatches a Plan to Lure Investors Back to Europe</title>
+      <link>https://www.nytimes.com/2025/03/18/business/dealbook/europe-investment-savings.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/business/dealbook/europe-investment-savings.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/business/dealbook/europe-investment-savings.html" rel="standout"></atom:link>
+      <description>Each year, Europeans invest roughly $325 billion in companies and financial assets outside the region. Officials in Brussels say they have a plan to end that “capital flight.”</description>
+      <dc:creator>Bernhard Warner</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 15:12:09 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Stocks and Bonds</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Hedge Funds</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Regulation and Deregulation of Industry</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">European Commission</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">European Union</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18db-europe-invest-kghv/18db-europe-invest-kghv-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Reuters</media:credit>
+      <media:description>The European Union’s plans to reverse the money flow involves the creation of a savings-and-investment union.</media:description>
+    </item>
+    <item>
+      <title>Lucy Letby Murders Inquiry Should Be Halted, Hospital’s Ex-Managers Say</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/lucy-letby-inquiry-thirlwall.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/lucy-letby-inquiry-thirlwall.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/lucy-letby-inquiry-thirlwall.html" rel="standout"></atom:link>
+      <description>Former executives at the British hospital where Ms. Letby was a nurse requested that a judge’s inquiry into the killings there be suspended amid new evidence.</description>
+      <dc:creator>Megan Specia</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 15:47:28 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Hospitals</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Murders, Attempted Murders and Homicides</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Letby, Lucy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Great Britain</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">England</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Serial Murders</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Fatalities)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Decisions and Verdicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Infant Mortality</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Nursing and Nurses</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Countess of Chester Hospital (Chester, England)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">McDonald, Mark</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-uk-letby-01-fvgj/18int-uk-letby-01-fvgj-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Pool photo by Jacob King</media:credit>
+      <media:description>The Countess of Chester Hospital in 2023. Lucy Letby was convicted of murdering seven babies while she was a neonatal nurse there about a decade ago.</media:description>
+    </item>
+    <item>
+      <title>Germany Is Lifting a Foot Off Its ‘Debt Brake.’ Here’s Why.</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/germany-debt-brake.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/germany-debt-brake.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/germany-debt-brake.html" rel="standout"></atom:link>
+      <description>An incoming government wants to borrow much more to revamp the economy and rebuild the military. That means a change in the country’s Constitution — and its culture.</description>
+      <dc:creator>Jim Tankersley and Christopher F. Schuetze</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 15:37:31 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Economic Conditions and Trends</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Constitutions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Legislatures and Parliaments</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Infrastructure (Public Works)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Government Contracts and Procurement</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Government Bonds</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Subprime Mortgage Crisis</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Alternative for Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Bundesbank</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Democratic Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Deutsche Bank AG</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Green Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Social Democratic Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Hitler, Adolf</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merz, Friedrich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-germany-debt-brake-01-jbkh/18int-germany-debt-brake-01-jbkh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Lisi Niesner/Reuters</media:credit>
+      <media:description>Friedrich Merz, Germany’s chancellor in waiting, is attempting to make a constitutional change even before he takes office.</media:description>
+    </item>
+    <item>
+      <title>Trump and Putin Discuss Ukraine-Russia Cease-Fire: What to Know</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/trump-putin-call-ukraine-russia-war.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/trump-putin-call-ukraine-russia-war.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/trump-putin-call-ukraine-russia-war.html" rel="standout"></atom:link>
+      <description>The Kremlin said that President Vladimir V. Putin had agreed in a call with President Trump to temporarily stop strikes on Ukrainian energy infrastructure.</description>
+      <dc:creator>Constant Méheut and Ivan Nechepurenko</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 22:23:57 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Macron, Emmanuel (1977- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Peskov, Dmitri S</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Rubio, Marco</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Starmer, Keir</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Vance, J D</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Dnipro River (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kursk (Russia)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/world/18int-trump-putin-talks-wtk-promo/18int-trump-putin-talks-wtk-promo-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Doug Mills/The New York Times; Kristina Kormilitsyna/Sputnik</media:credit>
+    </item>
+    <item>
+      <title>Russia Escalated Sabotage to Pressure U.S. and Allies on Ukraine, Study Says</title>
+      <link>https://www.nytimes.com/2025/03/18/us/politics/russia-sabotage-attacks-europe-ukraine.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/us/politics/russia-sabotage-attacks-europe-ukraine.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/us/politics/russia-sabotage-attacks-europe-ukraine.html" rel="standout"></atom:link>
+      <description>Anger at Russia’s covert efforts, which included targeting undersea cables, warehouses and railways, has the potential to influence European reactions to the U.S.-led push for an end to the war.</description>
+      <dc:creator>Julian E. Barnes</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 22:24:16 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Center for Strategic and International Studies</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Sabotage (Crime)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Espionage and Intelligence Services</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">GRU (Russia)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Jones, Seth G</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18dc-sabotage-topart-wbzl/18dc-sabotage-topart-wbzl-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Norbert Ofmanski/Associated Press</media:credit>
+      <media:description>Poland blamed Russia for a fire at a shopping center in Warsaw last May.</media:description>
+    </item>
+    <item>
+      <title>Tuesday Briefing</title>
+      <link>https://www.nytimes.com/2025/03/18/briefing/trump-judge-penguins.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/briefing/trump-judge-penguins.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/briefing/trump-judge-penguins.html" rel="standout"></atom:link>
+      <description>The Trump administration clashes with a judge.</description>
+      <dc:creator>Natasha Frost</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 05:00:08 +0000</pubDate>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/18ambriefing-europe-nl-trump/18ambriefing-europe-nl-trump-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Doug Mills/The New York Times</media:credit>
+      <media:description>President Trump’s administration has come close to open defiance of the federal judiciary.</media:description>
+    </item>
+    <item>
+      <title>Pelicot’s Daughter Pursues Conviction That He Raped Her, Too</title>
+      <link>https://www.nytimes.com/2025/03/18/world/europe/gisele-pelicot-daughter-rape-france.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/europe/gisele-pelicot-daughter-rape-france.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/europe/gisele-pelicot-daughter-rape-france.html" rel="standout"></atom:link>
+      <description>Her mother, Gisèle, was at the center of a trial that gripped France and made her a feminist icon. But it left Caroline Darian with her own pains and suspicions unanswered.</description>
+      <dc:creator>Catherine Porter</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 12:26:15 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">France</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Sex Crimes</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Darian, Caroline</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Pelicot, Dominique</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Pelicot, Gisele</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Decisions and Verdicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Child Abuse and Neglect</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Women&#39;s Rights</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Books and Literature</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Domestic Violence</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Avignon (France)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Paris (France)</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-france-pelicot-trial-01-cwbk/18int-france-pelicot-trial-01-cwbk-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Andrea Mantovani for The New York Times</media:credit>
+      <media:description>“My case, in that court, it was like it didn’t exist,” said the daughter of Gisèle and Dominique Pelicot. She uses the pen name Caroline Darian.</media:description>
+    </item>
+    <item>
+      <title>Trump Discussion With Putin to Focus on What Ukraine Will Lose</title>
+      <link>https://www.nytimes.com/2025/03/17/us/politics/trump-putin-ceasefire-negotiation-ukraine-concessions.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/us/politics/trump-putin-ceasefire-negotiation-ukraine-concessions.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/us/politics/trump-putin-ceasefire-negotiation-ukraine-concessions.html" rel="standout"></atom:link>
+      <description>In an echo of the Yalta Conference in 1945, the American and Russian leaders will talk on Tuesday about who gets what in the process of ending the war in Ukraine.</description>
+      <dc:creator>David E. Sanger</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 12:21:12 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Peace Process</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/17dc-prexy-topart-hvqz/17dc-prexy-topart-hvqz-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Bettmann, via Getty Images</media:credit>
+      <media:description>The Yalta Conference of 1945, where Prime Minister Winston Churchill of Britain, President Franklin D. Roosevelt and the Soviet leader Joseph Stalin carved Europe into the American-aligned West and the Soviet-controlled East.</media:description>
+    </item>
+    <item>
+      <title>Rwanda Cuts Ties With Belgium Over Congo Conflict and E.U. Sanctions</title>
+      <link>https://www.nytimes.com/2025/03/17/world/africa/rwanda-belgium-congo-eu-sanctions.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/africa/rwanda-belgium-congo-eu-sanctions.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/africa/rwanda-belgium-congo-eu-sanctions.html" rel="standout"></atom:link>
+      <description>Belgium, Rwanda’s former colonial ruler, pushed for the European Union to impose sanction against Rwandan officials over their role in invading eastern Congo and plundering its mineral wealth.</description>
+      <dc:creator>Elian Peltier</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 18:01:36 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Rwanda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Belgium</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Congo, Democratic Republic of (Congo-Kinshasa)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">European Union</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Embargoes and Sanctions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Conflict Minerals and Resources</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War and Armed Conflicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Metals and Minerals</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Diplomatic Service, Embassies and Consulates</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">March 23 Movement</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Mines and Mining</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Peace Process</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/17int-rwanda-belgium-1-jhlk/17int-rwanda-belgium-1-jhlk-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Guerchom Ndebo for The New York Times</media:credit>
+      <media:description>M23 fighters with captured Congolese troops on trucks in Goma, Democratic Republic of Congo, in January.</media:description>
+    </item>
+    <item>
+      <title>‘We Are the Lucky Ones’ Gives Operatic Voice to a Generation</title>
+      <link>https://www.nytimes.com/2025/03/17/arts/music/we-are-the-lucky-ones-amsterdam-review.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/arts/music/we-are-the-lucky-ones-amsterdam-review.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/arts/music/we-are-the-lucky-ones-amsterdam-review.html" rel="standout"></atom:link>
+      <description>This new opera assembles a compassionate, haunting portrait of the middle class that emerged from World War II and considers what they leave behind.</description>
+      <dc:creator>Joshua Barone</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 15:19:53 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Opera</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Dutch National Opera</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Venables, Philip</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Huffman, Ted (Theater Director)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_ttl">We Are the Lucky Ones (Opera)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Segal, Nina (Playwright)</category>
+    </item>
+    <item>
+      <title>In Ukraine’s Frontline Town of Sloviansk, a Taste of Normalcy Beckons</title>
+      <link>https://www.nytimes.com/2025/03/17/world/europe/ukraine-sloviansk-sushi-restaurant.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/europe/ukraine-sloviansk-sushi-restaurant.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/europe/ukraine-sloviansk-sushi-restaurant.html" rel="standout"></atom:link>
+      <description>Sushi has long been a popular indulgence in Ukraine. For the residents of Sloviansk, a city in Russian cross hairs, it can provide a sense of normalcy that is akin to a necessity in wartime.</description>
+      <dc:creator>Cassandra Vinograd, Dzvinka Pinchuk and Brendan Hoffman</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 14:45:06 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Sushi</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Donetsk (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Restaurants</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Slovyansk (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Supply Chain</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/05/multimedia/05ukraine-sushi-01-zctf-promo/05ukraine-sushi-01-zctf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Brendan Hoffman for The New York Times</media:credit>
+    </item>
+    <item>
+      <title>In North Macedonia, Officials Investigate Lapses in Deadly Nightclub Fire</title>
+      <link>https://www.nytimes.com/2025/03/17/world/europe/north-macedonia-nightclub-fire-pulse.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/europe/north-macedonia-nightclub-fire-pulse.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/europe/north-macedonia-nightclub-fire-pulse.html" rel="standout"></atom:link>
+      <description>At least 59 people died and more than 150 were injured in the inferno. The authorities said the venue’s hospitality permit had been issued illegally.</description>
+      <dc:creator>Amelia Nierenberg and Alisa Dogramadzieva</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 20:19:16 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Fires and Firefighters</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kocani (North Macedonia)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Bars and Nightclubs</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Corruption (Institutional)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Bribery and Kickbacks</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Mickoski, Hristijan</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Fatalities)</category>
+      <media:content height="1583" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/17northmacedonia-fire-pcjz/17northmacedonia-fire-pcjz-mediumSquareAt3X.jpg" width="1583"></media:content>
+      <media:credit>Robert Atanasovski/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Relatives of the victims of the deadly fire waiting for news at a hospital in Kocani, North Macedonia, on Sunday.</media:description>
+    </item>
+    <item>
+      <title>Telegram’s Pavel Durov, Charged With Range of Crimes, Is Allowed to Leave France</title>
+      <link>https://www.nytimes.com/2025/03/17/world/europe/pavel-durov-france-telegram-founder.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/europe/pavel-durov-france-telegram-founder.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/europe/pavel-durov-france-telegram-founder.html" rel="standout"></atom:link>
+      <description>Pavel Durov said that the investigation into illicit activity on the messaging app he runs is ongoing, but that he had returned home to Dubai.</description>
+      <dc:creator>Eve Sampson and Adam Satariano</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 15:30:00 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Instant Messaging</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Mobile Applications</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Computers and the Internet</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Social Media</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Crime and Criminals</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Telegram LLC</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Durov, Pavel Valeryevich (1984- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">France</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/03/15/multimedia/15int-FRANCE-TELEGRAM-hglj/15int-FRANCE-TELEGRAM-hglj-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Thomas Samson/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Pavel Durov, the chief executive and co-founder of the Telegram messaging app, arriving at a courthouse in Paris for a hearing in December.</media:description>
+    </item>
+    <item>
+      <title>Trump’s Plan to Discuss Ukraine’s Power Plants With Putin Prompts Questions</title>
+      <link>https://www.nytimes.com/2025/03/17/world/europe/putin-trump-russia-ukraine.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/europe/putin-trump-russia-ukraine.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/europe/putin-trump-russia-ukraine.html" rel="standout"></atom:link>
+      <description>The call, scheduled for Tuesday, will be the first known conversation between the two leaders since Mr. Putin laid out numerous conditions for a cease-fire with Ukraine.</description>
+      <dc:creator>Ivan Nechepurenko and Constant Méheut</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 18:32:14 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Peskov, Dmitri S</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Witkoff, Steven</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kursk (Russia)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kyiv (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Moscow (Russia)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/17Int-Russia-fjpc/17Int-Russia-fjpc-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Alexei Babushkin/Sputnik</media:credit>
+      <media:description>A photo released by Russian state media shows President Vladimir V. Putin on a video call outside of Moscow last week.</media:description>
+    </item>
+  </channel>
+</rss>

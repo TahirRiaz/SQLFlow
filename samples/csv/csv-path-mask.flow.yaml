@@ -1,0 +1,17 @@
+# Path mask: a regular expression applied to each candidate file's full path (which includes the
+# file name). Use it to match by file-name pattern, by folder, or both. It is applied after the
+# srcFile glob and intersected with any date window.
+#
+# This example matches order files named like orders_YYYYMMDD.csv. The mask here is wide enough to
+# match the sample data file; the simulated tests (Open_SrcPathMask_*) prove the exclusion behaviour.
+name: Csv_PathMask
+source:
+  type: csv
+  location: ./data
+  options:
+    srcFile: "*.csv"
+    srcPathMask: "orders\\.csv$"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_PathMask

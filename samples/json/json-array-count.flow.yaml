@@ -1,0 +1,15 @@
+# arrayHandling: count stores how many elements an array had (tags -> "3", "1", "0").
+name: Json_ArrayCount
+source:
+  type: json
+  location: ./data/tags.json
+  options:
+    arrayHandling: count
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_ArrayCount
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

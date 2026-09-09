@@ -1,0 +1,11 @@
+# Comment lines: any line beginning with the comment character is ignored.
+name: Csv_Commented
+source:
+  type: csv
+  location: ./data/commented.csv
+  options:
+    commentCharacter: "#"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Commented

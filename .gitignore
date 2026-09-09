@@ -1,0 +1,77 @@
+## .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+artifacts/
+*.user
+*.suo
+.vs/
+
+gui/node_modules
+gui/node_modules/**
+gui/dist/
+gui/.env.local
+gui/playwright-report/
+gui/test-results/
+gui/e2e/.fixtures/
+gui/.tsbuild/
+
+## Rider / VS Code
+.idea/
+.vscode/
+
+## Test results
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+coverage/
+*.cobertura.xml
+
+## NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Local secrets / env (never commit)
+*.env
+.env
+appsettings.*.local.json
+secrets.json
+
+## SQLFlow run artifacts, model state, and local secrets (.sqlflow/env)
+.sqlflow/
+
+## Docker sample-data dumps (fetched on demand by docker/fetch-samples; hand-written init scripts stay tracked)
+docker/mysql/initdb/*.sql
+docker/postgres/initdb/*.sql
+docker/oracle/sakila-sql/*.sql
+
+## GUI local run logs and e2e artifacts (generated when running the control plane / Playwright locally)
+gui/control-plane.log
+gui/control-plane.err.log
+gui/e2e-node.log
+gui/e2e-run.log
+gui/e2e-artifacts/
+
+## Acquisition engine runtime-landed raw files
+_landing/
+
+# Clean build contexts produced by deploy-prod.ps1 (git-archive extracts)
+.deploy-ctx/
+
+# The TypeScript incremental-build cache: pure build output that every typecheck rewrites, so tracking it
+# dirties the tree on any machine that builds the GUI.
+gui/tsconfig.tsbuildinfo
+
+## Coding-agent working files (local to a checkout, never part of the product)
+.claude/
+AGENTS.md
+.cursor/
+.aider*

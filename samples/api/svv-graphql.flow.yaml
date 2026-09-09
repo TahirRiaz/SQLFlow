@@ -1,0 +1,24 @@
+# Ports svv_Trafikkregistreringspunkt.ps1: a no-auth GraphQL POST. The query is a templated JSON body; the
+# raw GraphQL JSON response is landed as-is.
+flowType: api
+name: SVV_TrafficPoints
+batch: svv
+
+source:
+  transport: http
+  baseUrl: https://trafikkdata-api.atlas.vegvesen.no
+  request:
+    method: POST
+    path: /
+    bodyKind: graphql
+    body: >
+      { trafficRegistrationPoints(searchQuery: { roadCategoryIds: [E, R, F] }) {
+          id name location { county { name } coordinates { latLon { lat lon } } } } }
+  reliability:
+    rateLimitRps: 2
+    urlAllowlist: ["*.vegvesen.no"]
+
+landing:
+  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/trafikkregpkt
+  pathTemplate: "{yyyy}/registreringspkt_{yyyy-MM-dd}"
+  format: json

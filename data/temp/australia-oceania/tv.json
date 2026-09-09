@@ -1,0 +1,923 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Voyagers from either Samoa or Tonga first populated Tuvalu in the first millennium A.D., and the islands provided a stepping-stone for various Polynesian communities that subsequently settled in Melanesia and Micronesia. Tuvalu eventually came under Samoan and Tongan spheres of influence, although proximity to Micronesia allowed some Micronesian communities to flourish in Tuvalu, in particular on Nui Atoll. In the late 1700s and early 1800s, a series of American, British, Dutch, and Russian ships visited the islands, which were named the Ellice Islands in 1819. <br><br>The UK declared a protectorate over islands in 1892 and merged them with the Micronesian Gilbert Islands. The Gilbert and Ellice Islands Protectorate became a colony in 1916. During World War II, the US set up military bases on a few islands, and in 1943, after Japan captured many of the northern Gilbert Islands, the UK transferred administration of the colony southward to Funafuti. After the war, Tarawa in the Gilbert Islands was once again made the colony’s capital, and the center of power was firmly in the Gilbert Islands, including the colony’s only secondary school. Amid growing tensions with the Gilbertese, Tuvaluans voted to secede from the colony in 1974, were granted self-rule in 1975, and gained independence in 1978 as Tuvalu. In 1979, the US relinquished its claims to the Tuvaluan islands in a treaty of friendship."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Oceania, island group consisting of nine coral atolls in the South Pacific Ocean, about half way from Hawaii to Australia"
+    },
+    "Geographic coordinates": {
+      "text": "8 00 S, 178 00 E"
+    },
+    "Map references": {
+      "text": "Oceania"
+    },
+    "Area": {
+      "total ": {
+        "text": "26 sq km"
+      },
+      "land": {
+        "text": "26 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "0.1 times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "24 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical; moderated by easterly trade winds (March to November); westerly gales and heavy rain (November to March)"
+    },
+    "Terrain": {
+      "text": "low-lying and narrow coral atolls"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "unnamed location 5 m"
+      },
+      "lowest point": {
+        "text": "Pacific Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "2 m"
+      }
+    },
+    "Natural resources": {
+      "text": "fish, coconut (copra)"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "60% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 60% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "33.3% (2018 est.)"
+      },
+      "other": {
+        "text": "6.7% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Population distribution": {
+      "text": "over half of the population resides on the atoll of Funafuti"
+    },
+    "Natural hazards": {
+      "text": "severe tropical storms are usually rare, but in 1997 there were three cyclones; low levels of islands make them sensitive to changes in sea level"
+    },
+    "Geography - note": {
+      "text": "one of the smallest and most remote countries on Earth; six of the nine coral atolls -- Nanumea, Nui, Vaitupu, Nukufetau, Funafuti, and Nukulaelae -- have lagoons open to the ocean; Nanumaya and Niutao have landlocked lagoons; Niulakita does not have a lagoon"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "11,733"
+      },
+      "male": {
+        "text": "5,816"
+      },
+      "female": {
+        "text": "5,917 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Tuvaluan(s)"
+      },
+      "adjective": {
+        "text": "Tuvaluan"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Tuvaluan 97%, Tuvaluan/I-Kiribati 1.6%, Tuvaluan/other 0.8%, other 0.6% (2017 est.)"
+    },
+    "Languages": {
+      "text": "Tuvaluan (official), English (official), Samoan, Kiribati (on the island of Nui)"
+    },
+    "Religions": {
+      "text": "Protestant 92.7% (Congregational Christian Church of Tuvalu 85.9%, Brethren 2.8%, Seventh Day Adventist 2.5%, Assemblies of God 1.5%), Baha'i 1.5%, Jehovah's Witness 1.5%, other 3.9%, none or refused 0.4% (2017 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "29.2% (male 1,754/female 1,672)"
+      },
+      "15-64 years": {
+        "text": "63.2% (male 3,736/female 3,675)"
+      },
+      "65 years and over": {
+        "text": "7.6% (2024 est.) (male 326/female 570)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "60.9"
+      },
+      "youth dependency ratio": {
+        "text": "50.9"
+      },
+      "elderly dependency ratio": {
+        "text": "10"
+      },
+      "potential support ratio": {
+        "text": "10 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "27.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "26.8 years"
+      },
+      "female": {
+        "text": "28.8 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.78% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "22 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "7.8 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-6.3 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "over half of the population resides on the atoll of Funafuti"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "66.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.08% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "7,000 FUNAFUTI (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.57 male(s)/female"
+      },
+      "total population": {
+        "text": "0.98 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "27.8 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "31.3 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "24 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "69 years (2024 est.)"
+      },
+      "male": {
+        "text": "66.5 years"
+      },
+      "female": {
+        "text": "71.6 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "2.78 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.36 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "23.7% (2019/20)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "21.5% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "1.19 physicians/1,000 population (2020)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 91.8% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 91% of population"
+      },
+      "improved: total": {
+        "text": "total: 91.5% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 9.2% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 9% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 8.5% of population (2017 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "51.6% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "0.93 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "0.01 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.69 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.22 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "35.6% (2020 est.)"
+      },
+      "male": {
+        "text": "49.8% (2020 est.)"
+      },
+      "female": {
+        "text": "21.3% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "3.1% (2019/20) NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "66.1% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 18": {
+        "text": "1.8%"
+      },
+      "men married by age 18": {
+        "text": "1.7% (2020 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "NA"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "water needs met by catchment systems; the use of sand as a building material has led to beachhead erosion; deforestation; damage to coral reefs from increasing ocean temperatures and acidification; rising sea levels threaten water table; in 2000, the government appealed to Australia and New Zealand to take in Tuvaluans if rising sea levels should make evacuation necessary"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Desertification, Hazardous Wastes, Law of the Sea, Ozone Layer Protection, Ship Pollution, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "Comprehensive Nuclear Test Ban"
+      }
+    },
+    "Climate": {
+      "text": "tropical; moderated by easterly trade winds (March to November); westerly gales and heavy rain (November to March)"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "60% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 60% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "33.3% (2018 est.)"
+      },
+      "other": {
+        "text": "6.7% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "66.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.08% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "6.81 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "0.01 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "0.01 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "3,989 tons (2011 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "598 tons (2013 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "15% (2013 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "0 cubic meters (2017 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Tuvalu"
+      },
+      "local long form": {
+        "text": "none"
+      },
+      "local short form": {
+        "text": "Tuvalu"
+      },
+      "former": {
+        "text": "Ellice Islands"
+      },
+      "etymology": {
+        "text": "\"tuvalu\" means \"group of eight\" or \"eight standing together\" referring to the country's eight traditionally inhabited islands"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy under a constitutional monarchy; a Commonwealth realm"
+    },
+    "Capital": {
+      "name": {
+        "text": "Funafuti; note - the capital is an atoll of some 29 islets; administrative offices are in Vaiaku Village on Fongafale Islet"
+      },
+      "geographic coordinates": {
+        "text": "8 31 S, 179 13 E"
+      },
+      "time difference": {
+        "text": "UTC+12 (17 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "the atoll is named after a founding ancestor chief, Funa, from the island of Samoa"
+      }
+    },
+    "Administrative divisions": {
+      "text": "7 island councils and 1 town council*; Funafuti*, Nanumaga, Nanumea, Niutao, Nui, Nukufetau, Nukulaelae, Vaitupu"
+    },
+    "Independence": {
+      "text": "1 October 1978 (from the UK)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 1 October (1978)"
+    },
+    "Legal system": {
+      "text": "mixed legal system of English common law and local customary law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1978 (at independence); latest effective 1 October 1986"
+      },
+      "amendments": {
+        "text": "proposed by the House of Assembly; passage requires at least two-thirds majority vote by the Assembly membership in the final reading; amended 2007, 2010, 2013, 2023"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; non-party state to the ICCt"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "yes"
+      },
+      "citizenship by descent only": {
+        "text": "yes; for a child born abroad, at least one parent must be a citizen of Tuvalu"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "na"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King CHARLES III (since 8 September 2022); represented by Governor General Tofiga Vaevalu FALANI (since 29 August 2021)"
+      },
+      "head of government": {
+        "text": "Prime Minister Feleti Penitala TEO (since 27 February 2024)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the governor general on recommendation of the prime minister"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; governor general appointed by the monarch on recommendation of the prime minister; prime minister and deputy prime minister elected by and from members of House of Assembly following parliamentary elections"
+      },
+      "election results": {
+        "text": "<em>2024: </em>TEO was the only candidate nominated by the House of Assembly<em><br><br>2019: </em>Kausea NATANO elected prime minister by House of Assembly; House of Assembly vote - 10 to 6"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Parliament (Palamene)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "chamber name": {
+        "text": "Parliament of Tuvalu (Palamene o Tuvalu)"
+      },
+      "number of seats": {
+        "text": "16 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "1/26/2024"
+      },
+      "percentage of women in chamber": {
+        "text": "0%"
+      },
+      "expected date of next election": {
+        "text": "January 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Court of Appeal (consists of the chief justice and not less than 3 appeals judges); High Court (consists of the chief justice); appeals beyond the Court of Appeal are heard by the Judicial Committee of the Privy Council (in London)"
+      },
+      "judge selection and term of office": {
+        "text": "Court of Appeal judges appointed by the governor general on the advice of the Cabinet; judge tenure based on terms of appointment; High Court chief justice appointed by the governor general on the advice of the Cabinet; chief justice serves for life; other judges appointed by the governor general on the advice of the Cabinet after consultation with chief justice; judge tenure set by terms of appointment"
+      },
+      "subordinate courts": {
+        "text": "magistrates' courts; island courts; land courts"
+      }
+    },
+    "Political parties": {
+      "text": "there are no political parties, but members of parliament usually align themselves in informal groupings"
+    },
+    "International organization participation": {
+      "text": "ACP, ADB, AOSIS, C, FAO, IBRD, IDA, IFAD, IFRCS (observer), ILO, IMF, IMO, IOC, ITU, OPCW, PIF, Sparteca, SPC, UN, UNCTAD, UNESCO, UNIDO, UPU, WHO, WIPO, WMO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Tapugao FALEFOU (since 19 April 2023); note - also Permanent Representative to UN"
+      },
+      "chancery": {
+        "text": "685 Third Avenue, Suite 1104, New York, NY 10017"
+      },
+      "telephone": {
+        "text": "[1] (212) 490-0534"
+      },
+      "FAX": {
+        "text": "[1] (212) 808-4975"
+      },
+      "email address and website": {
+        "text": "<br>tuvalumission.un@gmail.com<br><br>tuvalu.unmission@gov.tv<br><br>https://www.un.int/tuvalu/about"
+      },
+      "note": "note - the Tuvalu Permanent Mission to the UN serves as the Embassy"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "the US does not have an embassy in Tuvalu; the US Ambassador to Fiji is accredited to Tuvalu"
+      }
+    },
+    "Flag description": {
+      "text": "light blue with the flag of the UK in the upper hoist-side quadrant; the outer half of the flag represents a map of the country with nine yellow, five-pointed stars on a blue field symbolizing the nine atolls in the ocean"
+    },
+    "National symbol(s)": {
+      "text": "maneapa (native meeting house); national colors: light blue, yellow"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Tuvalu mo te Atua\" (Tuvalu for the Almighty)"
+      },
+      "lyrics/music": {
+        "text": "Afaese MANOA"
+      },
+      "note": "<strong>note:</strong> adopted 1978; the anthem's name is also the nation's motto"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "upper middle-income Pacific island economy; extremely environmentally fragile; currency pegged to Australian dollar; large international aid recipient; subsistence agrarian sector; Te Kakeega sustainable development; domain name licensing incomes"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$57.054 million (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$54.938 million (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$54.568 million (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "3.85% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "0.68% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "1.8% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$5,800 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$5,500 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$5,400 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$62.28 million (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2017": {
+        "text": "4.1% (2017 est.)"
+      },
+      "Inflation rate (consumer prices) 2016": {
+        "text": "3.5% (2016 est.)"
+      }
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "15.9% (2015 est.)"
+      },
+      "industry": {
+        "text": "7% (2015 est.)"
+      },
+      "services": {
+        "text": "70% (2012 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "Agricultural products": {
+      "text": "coconuts, vegetables, tropical fruits, bananas, root vegetables, pork, chicken, eggs, pork fat, pork offal (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "fishing"
+    },
+    "Industrial production growth rate": {
+      "text": "4.3% (2014 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "3,615"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "20.6% (2016)"
+      },
+      "male": {
+        "text": "9.8%"
+      },
+      "female": {
+        "text": "45.9%"
+      }
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "3.21% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "4.18% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "4.9% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$87 million (2019 est.)"
+      },
+      "expenditures": {
+        "text": "$88 million (2019 est.)"
+      },
+      "note": "<strong>note:</strong> revenue data include Official Development Assistance from Australia"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "37% of GDP (2017 est.)"
+      }
+    },
+    "Current account balance": {
+      "Current account balance 2022": {
+        "text": "$2.713 million (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$14.533 million (2021 est.)"
+      },
+      "Current account balance 2020": {
+        "text": "$8.46 million (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2022": {
+        "text": "$2.232 million (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$2.745 million (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$3.089 million (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Thailand 69%, Croatia 21%, Philippines 4%, South Korea 2%, Japan 1% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "fish, ships, computers, integrated circuits, nitrile compounds (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2022": {
+        "text": "$57.388 million (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$63.962 million (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$56.947 million (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 34%, Japan 27%, Fiji 20%, NZ 5%, Australia 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "ships, refined petroleum, iron structures, engine parts, plastic products (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Tuvaluan dollars or Australian dollars (AUD) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "1.505 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "1.442 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "1.331 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "1.453 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "1.439 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "99.1%"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "0 cubic meters (2021 est.)"
+      },
+      "consumption": {
+        "text": "0 cubic meters (2021 est.)"
+      },
+      "exports": {
+        "text": "0 cubic meters (2021 est.)"
+      },
+      "imports": {
+        "text": "0 cubic meters (2021 est.)"
+      },
+      "proven reserves": {
+        "text": "0 cubic meters (2021 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "2,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "21 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "9,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "80 (2021 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "provides fixed-line telephone communications to subscribers on each of the islands of Tuvalu; each island relies on the use of a satellite dish for inter-island telephone communication, internet access, and mobile phone services (2023)"
+      },
+      "domestic": {
+        "text": "fixed-line teledensity is 18 per 100 and mobile-cellular is 80 per 100 (2021)"
+      },
+      "international": {
+        "text": "country code - 688; international calls can be made by satellite"
+      }
+    },
+    "Broadcast media": {
+      "text": "no TV stations; many households use satellite dishes to watch foreign TV stations; 1 government-owned radio station, Radio Tuvalu, includes relays of programming from international broadcasters (2019)"
+    },
+    "Internet country code": {
+      "text": ".tv"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "81% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "0 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "5 (2022 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "Civil aircraft registration country code prefix": {
+      "text": "T2"
+    },
+    "Airports": {
+      "text": "1 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "16 km (2022)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "270 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 21, container ship 3, general cargo 29, oil tanker 19, other 198"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "1 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Funafuti Atoll"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular military forces; Tuvalu Police Force (Ministry of Justice, Communications, and Foreign Affairs) (2024)"
+    },
+    "Military - note": {
+      "text": "Tuvalu has a security pact with Australia; Australia also provides support to the Tuvalu Police Force, including donations of patrol boats<br><br>Tuvalu has a \"shiprider\" agreement with the US, which allows local maritime law enforcement officers to embark on US Coast Guard (USCG) and US Navy (USN) vessels, including to board and search vessels suspected of violating laws or regulations within Tuvalu's designated exclusive economic zone (EEZ) or on the high seas; \"shiprider\" agreements also enable USCG personnel and USN vessels with embarked USCG law enforcement personnel to work with host nations to protect critical regional resources (2024)"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

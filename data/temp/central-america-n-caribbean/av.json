@@ -1,0 +1,709 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "English settlers from Saint Kitts first colonized Anguilla in 1650. Great Britain administered the island until the early 19th century, when -- against the wishes of the inhabitants -- Anguilla was incorporated into a single British dependency along with Saint Kitts and Nevis. Several attempts at separation failed. In 1971, two years after a revolt, Anguilla was finally allowed to secede; this arrangement was formally recognized in 1980, when Anguilla became a separate British dependency. In 2017, Hurricane Irma caused extensive damage on the island, particularly to communications and residential and business infrastructure."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Caribbean, islands between the Caribbean Sea and North Atlantic Ocean, east of Puerto Rico"
+    },
+    "Geographic coordinates": {
+      "text": "18 15 N, 63 10 W"
+    },
+    "Map references": {
+      "text": "Central America and the Caribbean"
+    },
+    "Area": {
+      "total ": {
+        "text": "91 sq km"
+      },
+      "land": {
+        "text": "91 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about one-half the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "61 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "exclusive fishing zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical; moderated by northeast trade winds"
+    },
+    "Terrain": {
+      "text": "flat and low-lying island of coral and limestone"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Crocus Hill 73 m"
+      },
+      "lowest point": {
+        "text": "Caribbean Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "salt, fish, lobster"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "0% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "61.1% (2018 est.)"
+      },
+      "other": {
+        "text": "38.9% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2020)"
+    },
+    "Population distribution": {
+      "text": "most of the population is concentrated in The Valley in the center of the island; settlmement is fairly uniform in the southwest, but rather sparce in the northeast"
+    },
+    "Natural hazards": {
+      "text": "frequent hurricanes and other tropical storms (July to October)"
+    },
+    "Geography - note": {
+      "text": "the most northerly of the Leeward Islands in the Lesser Antilles"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "19,416"
+      },
+      "male": {
+        "text": "9,107"
+      },
+      "female": {
+        "text": "10,309 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Anguillan(s)"
+      },
+      "adjective": {
+        "text": "Anguillan"
+      }
+    },
+    "Ethnic groups": {
+      "text": "African/Black 85.3%, Hispanic 4.9%, mixed 3.8%, White 3.2%, East Indian/Indian 1%, other 1.6%, unspecified 0.3% (2011 est.)",
+      "note": "<strong>note:</strong> data represent population by ethnic origin"
+    },
+    "Languages": {
+      "text": "English (official)"
+    },
+    "Religions": {
+      "text": "Protestant 73.2% (includes Anglican 22.7%, Methodist 19.4%, Pentecostal 10.5%, Seventh Day Adventist 8.3%, Baptist 7.1%, Church of God 4.9%, Presbyterian 0.2%, Brethren 0.1%), Roman Catholic 6.8%, Jehovah's Witness 1.1%, other Christian 10.9%, other 3.2%, unspecified 0.3%, none 4.5% (2011 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "20.8% (male 2,056/female 1,992)"
+      },
+      "15-64 years": {
+        "text": "67.5% (male 5,958/female 7,147)"
+      },
+      "65 years and over": {
+        "text": "11.7% (2024 est.) (male 1,093/female 1,170)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "38.6"
+      },
+      "youth dependency ratio": {
+        "text": "24.4"
+      },
+      "elderly dependency ratio": {
+        "text": "14.1"
+      },
+      "potential support ratio": {
+        "text": "7.1 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "37.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "34.8 years"
+      },
+      "female": {
+        "text": "39 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "1.74% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "11.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "4.7 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "10.3 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "most of the population is concentrated in The Valley in the center of the island; settlmement is fairly uniform in the southwest, but rather sparce in the northeast"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.47% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "1,000 THE VALLEY (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.03 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.03 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.83 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.93 male(s)/female"
+      },
+      "total population": {
+        "text": "0.88 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "3 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "3.9 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "2.1 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "82.6 years (2024 est.)"
+      },
+      "male": {
+        "text": "80 years"
+      },
+      "female": {
+        "text": "85.3 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.72 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.85 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 97.5% of population"
+      },
+      "improved: total": {
+        "text": "total: 97.5% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 2.5% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 2.5% of population (2017 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 99.1% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.1% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.9% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.9% of population (2017 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "46.1% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "4% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "supplies of potable water sometimes cannot meet increasing demand largely because of poor distribution system"
+    },
+    "Climate": {
+      "text": "tropical; moderated by northeast trade winds"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "0% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "61.1% (2018 est.)"
+      },
+      "other": {
+        "text": "38.9% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.47% annual rate of change (2020-25 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Anguilla"
+      },
+      "etymology": {
+        "text": "the name Anguilla means \"eel\" in various Romance languages (Spanish, Italian, Portuguese, French) and likely derives from the island's lengthy shape"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy (House of Assembly); self-governing overseas territory of the UK"
+    },
+    "Dependency status": {
+      "text": "overseas territory of the UK"
+    },
+    "Capital": {
+      "name": {
+        "text": "The Valley"
+      },
+      "geographic coordinates": {
+        "text": "18 13 N, 63 03 W"
+      },
+      "time difference": {
+        "text": "UTC-4 (1 hour ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "name may derive from the capital's location among several hills"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "Independence": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "National holiday": {
+      "text": "Anguilla Day, 30 May (1967)"
+    },
+    "Legal system": {
+      "text": "common law based on the English model"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest 1 April 1982"
+      },
+      "amendments": {
+        "text": "amended 1990, 2012, 2017, 2019"
+      }
+    },
+    "Citizenship": {
+      "text": "see United Kingdom"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King CHARLES III (since 8 September 2022); represented by Governor Julia CROUCH (since 11 September 2023)"
+      },
+      "head of government": {
+        "text": "Premier Dr. Ellis WEBSTER (since 30 June 2020)&nbsp;"
+      },
+      "cabinet": {
+        "text": "Executive Council appointed by the governor from among elected members of the House of Assembly"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; governor appointed by the monarch; following legislative elections, the leader of the majority party or majority coalition usually appointed premier by the governor"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "House of Assembly"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "11 (7 directly elected, 2 appointed, 2 ex-officio members)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "6/29/2020"
+      },
+      "parties elected and seats per party": {
+        "text": "APM (7); AUF (4)"
+      },
+      "percentage of women in chamber": {
+        "text": "27.3%"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "the Eastern Caribbean Supreme Court (ECSC) is the superior court of the Organization of Eastern Caribbean States; the ECSC - headquartered on St. Lucia - consists of the Court of Appeal - headed by the chief justice and 4 judges - and the High Court with 18 judges; the Court of Appeal is itinerant, travelling to member states on a schedule to hear appeals from the High Court and subordinate courts; High Court judges reside in the member states, though none on Anguilla"
+      },
+      "judge selection and term of office": {
+        "text": "Eastern Caribbean Supreme Court chief justice appointed by Her Majesty, Queen ELIZABETH II; other justices and judges appointed by the Judicial and Legal Services Commission; Court of Appeal justices appointed for life with mandatory retirement at age 65; High Court judges appointed for life with mandatory retirement at age 62"
+      },
+      "subordinate courts": {
+        "text": "Magistrate's Court; Juvenile Court"
+      }
+    },
+    "Political parties": {
+      "text": "Anguilla Progressive Movement or APM; (formerly Anguilla United Movement or AUM)<br>Anguilla United Front or AUF"
+    },
+    "International organization participation": {
+      "text": "Caricom (associate), CDB, Interpol (subbureau), OECS, UNESCO (associate), UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (overseas territory of the UK); alternate contact is the US Embassy in Barbados [1] (246) 227-4000"
+      }
+    },
+    "Flag description": {
+      "text": "blue, with the flag of the UK in the upper hoist-side quadrant and the Anguillan coat of arms centered in the outer half of the flag; the coat of arms depicts three orange dolphins in an interlocking circular design on a white background with a turquoise-blue field below; the white in the background represents peace; the blue base symbolizes the surrounding sea, as well as faith, youth, and hope; the three dolphins stand for endurance, unity, and strength"
+    },
+    "National symbol(s)": {
+      "text": "dolphin"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"God Bless Anguilla\""
+      },
+      "lyrics/music": {
+        "text": "Alex RICHARDSON"
+      },
+      "note": "<strong>note:</strong> local anthem adopted 1981; as an overseas territory of the United Kingdom, \"God Save the King\" is official (see United Kingdom)"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "small, tourism-dependent, territorial-island economy; very high public debt; COVID-19 crippled economic activity; partial recovery underway via tourism, benefitting from its high amount of timeshare residences; considering reopening oil refinery"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2017": {
+        "text": "1.3% (2017 est.)"
+      },
+      "Inflation rate (consumer prices) 2016": {
+        "text": "-0.6% (2016 est.)"
+      }
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "3% (2017 est.)"
+      },
+      "industry": {
+        "text": "10.5% (2017 est.)"
+      },
+      "services": {
+        "text": "86.4% (2017 est.)"
+      }
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "74.1% (2017 est.)"
+      },
+      "government consumption": {
+        "text": "18.3% (2017 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "26.8% (2017 est.)"
+      },
+      "exports of goods and services": {
+        "text": "48.2% (2017 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-67.4% (2017 est.)"
+      }
+    },
+    "Agricultural products": {
+      "text": "small quantities of tobacco, vegetables; cattle raising"
+    },
+    "Industries": {
+      "text": "tourism, boat building, offshore financial services"
+    },
+    "Industrial production growth rate": {
+      "text": "4% (2017 est.)"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$81.925 million (2017 est.)"
+      },
+      "expenditures": {
+        "text": "$72.352 million (2017 est.)"
+      },
+      "note": "<b>note:</b> central government revenues and expenses (excluding grants/extrabudgetary units/social security funds) converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2015": {
+        "text": "20.1% of GDP (2015 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "46.7% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2017": {
+        "text": "-$23.2 million (2017 est.)"
+      },
+      "Current account balance 2016": {
+        "text": "-$25.3 million (2016 est.)"
+      }
+    },
+    "Exports": {
+      "Exports 2017": {
+        "text": "$7.9 million (2017 est.)"
+      },
+      "Exports 2016": {
+        "text": "$3.9 million (2016 est.)"
+      },
+      "note": "<strong>note:</strong> Data are in current year dollars and do not include illicit exports or re-exports."
+    },
+    "Exports - partners": {
+      "text": "Chile 74%, Hungary 7%, Kyrgyzstan 3%, US 2%, Netherlands 2% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "packaged medicine, garments, vehicle parts/accessories, trucks, blank audio media (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2017": {
+        "text": "$186.2 million (2017 est.)"
+      },
+      "Imports 2016": {
+        "text": "$170.1 million (2016 est.)"
+      }
+    },
+    "Imports - partners": {
+      "text": "Chile 48%, US 27%, Botswana 18%, Canada 1%, Japan 1% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "poultry, copper ore, refined petroleum, natural gas, fish (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 31 December 2017": {
+        "text": "$76.38 million (31 December 2017 est.)"
+      },
+      "Reserves of foreign exchange and gold 31 December 2015": {
+        "text": "$48.14 million (31 December 2015 est.)"
+      }
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "East Caribbean dollars (XCD) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "2.7 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "2.7 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "2.7 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "2.7 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "2.7 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2020)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "6,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "38 (2021 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "26,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "170 (2021 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "in the telecom sector, with declines seen in subscriber numbers (particularly for prepaid mobile services &mdash; the mainstay of short-term visitors) and revenue; fixed and mobile broadband services are two areas that have benefited from the crisis to a small extent as employees and students have resorted to working from home, but their contribution to the sector has been insufficient to offset steep falls in other areas of the market; one area of the telecom market that does not yet appear poised for growth is 5G mobile; governments, regulators, and even the mobile network operators have shown that they have little appetite for investing in 5G opportunities at the present time; network expansion and enhancements remain concentrated around improving LTE coverage; until the economies and markets stabilize, and overseas visitors return there is unlikely to be much momentum towards implementing 5G capabilities anywhere in the region (2021)"
+      },
+      "domestic": {
+        "text": "fixed-line teledensity is about 38 per 100 persons; mobile-cellular teledensity is roughly 170 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 1-264; landing points for the&nbsp;SSCS, ECFS, GCN&nbsp;and Southern Caribbean Fiber with submarine cable&nbsp;links to&nbsp;Caribbean islands&nbsp;and to the US; microwave radio relay to island of Saint Martin/Sint Maarten (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "1 private TV station; multi-channel cable TV subscription services are available; about 10 radio stations, one of which is government-owned (2024)"
+    },
+    "Internet country code": {
+      "text": ".ai"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "81.6% (2021 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "5,000 (2018 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "35 (2018 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "2 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "4"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "VP-A"
+    },
+    "Airports": {
+      "text": "1 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "175 km"
+      },
+      "paved": {
+        "text": "82 km"
+      },
+      "unpaved": {
+        "text": "93 km (2004)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "2 (2023)"
+      },
+      "by type": {
+        "text": "other 2"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of the UK"
+    }
+  },
+  "Transnational Issues": {
+    "Illicit drugs": {
+      "text": "<p>transshipment point for South American narcotics destined for the US and Europe</p>"
+    }
+  }
+}

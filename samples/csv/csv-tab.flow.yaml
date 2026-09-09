@@ -1,0 +1,11 @@
+# Tab-separated file. Use the escape sequence \t for the tab delimiter.
+name: Csv_Tab
+source:
+  type: csv
+  location: ./data/tab.csv
+  options:
+    delimiter: "\\t"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Tab

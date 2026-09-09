@@ -1,0 +1,13 @@
+# Fixed-width file: no delimiter, each column is a fixed number of characters.
+# columnWidths lists the width of each column in order; trim removes the padding.
+name: Csv_FixedWidth
+source:
+  type: csv
+  location: ./data/fixed-width.csv
+  options:
+    columnWidths: "3,5"
+    trim: "true"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_FixedWidth

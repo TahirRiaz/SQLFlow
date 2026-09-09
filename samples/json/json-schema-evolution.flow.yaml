@@ -1,0 +1,21 @@
+# Schema evolution: one process over two versions of the same dataset in a folder.
+#   v1 records have { id, name };  v2 records have { id, fullName, email }.
+# - The additive union gives the table every column (id, person_name, email); the older shape null-fills
+#   the newer fields.
+# - pathAliases reconciles the RENAMED field: $.name (v1) and $.fullName (v2) both feed one person_name
+#   column, so a missing version-specific path is never left null.
+name: Json_SchemaEvolution
+source:
+  type: json
+  location: ./data/evolution
+  options:
+    srcFile: "*.json"
+    pathAliases: "person_name=$.name|$.fullName"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_SchemaEvolution
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

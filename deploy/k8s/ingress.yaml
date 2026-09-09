@@ -1,0 +1,38 @@
+# One host, path-split: the API surface routes to the control plane, everything else to the SPA. Same-origin
+# means no CORS anywhere. TLS terminates here; the control plane sees the real client via the forwarded headers
+# it is configured to trust (controlplane.yaml's ControlPlane__Proxy settings).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sqlflow
+  namespace: sqlflow
+  annotations:
+    # Adjust for your controller; these are the common nginx-ingress settings.
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [sqlflow.example.com]
+      secretName: sqlflow-tls # provision via cert-manager or your PKI
+  rules:
+    - host: sqlflow.example.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: sqlflow-controlplane
+                port: { number: 80 }
+          - path: /openapi
+            pathType: Prefix
+            backend:
+              service:
+                name: sqlflow-controlplane
+                port: { number: 80 }
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sqlflow-gui
+                port: { number: 80 }

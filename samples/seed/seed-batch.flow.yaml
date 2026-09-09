@@ -1,0 +1,11 @@
+# SQLFlow seed pipeline - batch (flowType: batch), used to verify that a batch run and its members are
+# recorded into the shadow catalog automatically. It runs the export seed flow as its single member.
+#
+#   sqlflow run samples/seed/seed-batch.flow.yaml
+
+flowType: batch
+name: seed-batch
+
+members:
+  include:
+    - orders-export.flow.yaml

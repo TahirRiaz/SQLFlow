@@ -1,0 +1,8 @@
+# Rust
+/target/
+
+# VSCode extension
+sqlflow-vscode/node_modules/
+sqlflow-vscode/dist/
+sqlflow-vscode/bin/
+sqlflow-vscode/*.vsix

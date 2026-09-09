@@ -1,0 +1,5 @@
+# Monthly orders export. Lines starting with '#' are comments and are skipped.
+OrderId,Customer
+1,Acme
+# mid-file comment
+2,Globex

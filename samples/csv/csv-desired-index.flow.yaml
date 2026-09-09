@@ -1,0 +1,14 @@
+# Desired indexes: declare the indexes the target table should have. When the table is
+# created they are built automatically; on an existing table the load-time index manager
+# disables/rebuilds the indexes already present. Provide one or more CREATE INDEX statements.
+name: Csv_DesiredIndex
+source:
+  type: csv
+  location: ./data/orders.csv
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_DesiredIndex
+desiredIndexes: |
+  CREATE NONCLUSTERED INDEX IX_Csv_DesiredIndex_OrderId ON dbo.Csv_DesiredIndex (OrderId);
+  CREATE NONCLUSTERED INDEX IX_Csv_DesiredIndex_Customer ON dbo.Csv_DesiredIndex (Customer) INCLUDE (Amount);

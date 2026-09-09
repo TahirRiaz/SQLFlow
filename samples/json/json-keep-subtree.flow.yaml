@@ -1,0 +1,16 @@
+# jsonPaths keeps a whole subtree as a single JSON-string column instead of flattening its children.
+# Here $.payload stays as one 'payload' column (handy for irregular or schemaless blobs you store verbatim).
+name: Json_KeepSubtree
+source:
+  type: json
+  location: ./data/payloads.json
+  options:
+    jsonPaths: "$.payload"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_KeepSubtree
+schema:
+  defaultColumnType: nvarchar(max)
+load:
+  mode: truncate-load

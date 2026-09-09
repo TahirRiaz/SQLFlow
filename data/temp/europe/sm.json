@@ -1,0 +1,902 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Geographically the third-smallest state in Europe (after the Holy See and Monaco), San Marino also claims to be the world's oldest republic. According to tradition, it was founded by a Christian stonemason named MARINUS in A.D. 301. San Marino's foreign policy is aligned with that of the EU, although it is not a member.&nbsp; San Marino is negotiating an Association Agreement that is expected to allow participation in the EU&rsquo;s internal market and cooperation in other policy areas by late 2024. Social and political trends in the republic track closely with those of its larger neighbor, Italy."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southern Europe, an enclave in central Italy"
+    },
+    "Geographic coordinates": {
+      "text": "43 46 N, 12 25 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "61 sq km"
+      },
+      "land": {
+        "text": "61 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about one-third the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "37 km"
+      },
+      "border countries": {
+        "text": "Italy 37 km"
+      }
+    },
+    "Coastline": {
+      "text": "0 km (landlocked)"
+    },
+    "Maritime claims": {
+      "text": "none (landlocked)"
+    },
+    "Climate": {
+      "text": "Mediterranean; mild to cool winters; warm, sunny summers"
+    },
+    "Terrain": {
+      "text": "rugged mountains"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Monte Titano 739 m"
+      },
+      "lowest point": {
+        "text": "Torrente Ausa 55 m"
+      }
+    },
+    "Natural resources": {
+      "text": "building stone"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "16.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 16.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "83.3% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Natural hazards": {
+      "text": "occasional earthquakes"
+    },
+    "Geography - note": {
+      "text": "landlocked; an enclave of (completely surrounded by) Italy; smallest independent state in Europe after the Holy See and Monaco; dominated by the Apennine Mountains"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "35,095"
+      },
+      "male": {
+        "text": "16,944"
+      },
+      "female": {
+        "text": "18,151 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Sammarinese (singular and plural)"
+      },
+      "adjective": {
+        "text": "Sammarinese"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Sammarinese, Italian"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Italian"
+      },
+      "major-language sample(s)": {
+        "text": "<br>L'Almanacco dei fatti del mondo, l'indispensabile fonte per le informazioni di base. (Italian)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Roman Catholic"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "14.2% (male 2,614/female 2,387)"
+      },
+      "15-64 years": {
+        "text": "64.3% (male 10,916/female 11,648)"
+      },
+      "65 years and over": {
+        "text": "21.5% (2024 est.) (male 3,414/female 4,116)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "49.6"
+      },
+      "youth dependency ratio": {
+        "text": "19.6"
+      },
+      "elderly dependency ratio": {
+        "text": "30"
+      },
+      "potential support ratio": {
+        "text": "3.3 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "46.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "44.5 years"
+      },
+      "female": {
+        "text": "47.4 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.57% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "9 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "8.9 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "5.6 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "97.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.41% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "4,000 SAN MARINO (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.09 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.1 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.94 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.83 male(s)/female"
+      },
+      "total population": {
+        "text": "0.93 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "31.9 years (2019)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "6.2 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "7.4 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "5 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "84.2 years (2024 est.)"
+      },
+      "male": {
+        "text": "81.7 years"
+      },
+      "female": {
+        "text": "87 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.54 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.74 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "8.7% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "6.11 physicians/1,000 population (2014)"
+    },
+    "Hospital bed density": {
+      "text": "3.8 beds/1,000 population (2012)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "47.7% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "3.4% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "99.9%"
+      },
+      "male": {
+        "text": "99.9%"
+      },
+      "female": {
+        "text": "99.9% (2018)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "12 years"
+      },
+      "male": {
+        "text": "13 years"
+      },
+      "female": {
+        "text": "12 years (2021)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air pollution; urbanization decreasing rural farmlands; water shortage"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Nuclear Test Ban, Ozone Layer Protection, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "Air Pollution"
+      }
+    },
+    "Climate": {
+      "text": "Mediterranean; mild to cool winters; warm, sunny summers"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "16.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 16.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "83.3% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "97.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.41% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "9.85 micrograms per cubic meter (2019 est.)"
+      },
+      "methane emissions": {
+        "text": "0.02 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "17,175 tons (2016 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "7,737 tons (2016 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "45.1% (2016 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of San Marino"
+      },
+      "conventional short form": {
+        "text": "San Marino"
+      },
+      "local long form": {
+        "text": "Repubblica di San Marino"
+      },
+      "local short form": {
+        "text": "San Marino"
+      },
+      "etymology": {
+        "text": "named after Saint MARINUS, who in A.D. 301 founded the monastic settlement around which the city and later the state of San Marino coalesced"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "San Marino (city)"
+      },
+      "geographic coordinates": {
+        "text": "43 56 N, 12 25 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "named after Saint MARINUS, who in A.D. 301 founded a monastic settlement around which the city and later the state of San Marino coalesced"
+      }
+    },
+    "Administrative divisions": {
+      "text": "9 municipalities (castelli, singular - castello); Acquaviva, Borgo Maggiore, Chiesanuova, Domagnano, Faetano, Fiorentino, Montegiardino, San Marino Citta, Serravalle"
+    },
+    "Independence": {
+      "text": "3 September 301 (traditional founding date)"
+    },
+    "National holiday": {
+      "text": "Founding of the Republic (or Feast of Saint Marinus), 3 September (A.D. 301)"
+    },
+    "Legal system": {
+      "text": "civil law system with Italian civil law influences"
+    },
+    "Constitution": {
+      "history": {
+        "text": "San Marino&rsquo;s principal legislative instruments consist of old customs (antiche consuetudini), the Statutory Laws of San Marino (Leges Statutae Sancti Marini), old statutes (antichi statute) from the1600s, Brief Notes on the Constitutional Order and Institutional Organs of the Republic of San Marino (Brevi Cenni sull&rsquo;Ordinamento Costituzionale e gli Organi Istituzionali della Repubblica di San Marino) and successive legislation, chief among them is the Declaration of the Rights of Citizens and Fundamental Principles of the San Marino Legal Order (Dichiarazione dei Diritti dei Cittadini e dei Principi Fondamentali dell&rsquo;Ordinamento Sammarinese), approved 8 July 1974"
+      },
+      "amendments": {
+        "text": "proposed by the Great and General Council; passage requires two-thirds majority Council vote; Council passage by absolute majority vote also requires passage in a referendum; Declaration of Civil Rights amended several times, last in 2019"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of San Marino"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "30 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "co-chiefs of state Captains Regent Francesca CIVERCHIA and Dalibor RICCARDI (for the period 1 October 2024 - 30 March 2025)"
+      },
+      "head of government": {
+        "text": "Secretary of State for Foreign and Political Affairs Luca BECCARI (since 8 January 2020)"
+      },
+      "cabinet": {
+        "text": "Congress of State elected by the Grand and General Council"
+      },
+      "elections/appointments": {
+        "text": "co-chiefs of state (captains regent) indirectly elected by the Grand and General Council for a single 6-month term; election last held on 1 October 2024 (next to be held in March 2025); Secretary of State for Foreign and Political Affairs indirectly elected by the Grand and General Council for a single 5-year term; election last held on 28 December 2019"
+      },
+      "election results": {
+        "text": "October 2024:  Francesca CIVERCHIA (PDCS) and Dalibor RICCARDI (Free San Marino) elected captains regent; percent of Grand and General Council vote - NA<br><em><br>March 2024:  </em>Alessandro ROSSI (Demos) and Milena GASPERONI (We for the Republic) elected captains regent; percent of Grand and General Council vote - NA<em><br><br>September 2023:</em> Filippo TAMAGNINI and Gaetano TROINA elected captains regent; percent of Grand and General Council vote - NA<br><br><em>2019:</em> Luca BECCARI (PDCS) elected Secretary of State for Foreign and Political Affairs; percent of Grand and General Council vote - NA"
+      },
+      "note": "<strong>note:</strong> the captains regent preside over meetings of the Grand and General Council and its cabinet (Congress of State), which has seven other members who are selected by the Grand and General Council; assisting the captains regent are seven secretaries of state; the secretary of state for Foreign Affairs has some prime ministerial roles"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Great and General Council (Consiglio grande e generale)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "60 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "6/9/2024"
+      },
+      "parties elected and seats per party": {
+        "text": "Christian Democratic Party of San Marino (PDCS) (22); Free (Libera) – Socialist Party (PS) (10); Future Republic (RF) (8); Party of Socialists and Democrats (PSD) (8); Tomorrow - Motus Liberi (5); Reformist Alliance (AR) (4); R.E.T.E. Citizens' Movement (3)"
+      },
+      "percentage of women in chamber": {
+        "text": "35%"
+      },
+      "expected date of next election": {
+        "text": "June 2029"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Council of Twelve or Consiglio dei XII (consists of 12 members); note - the College of Guarantors for the Constitutionality and General Norms functions as San Marino's constitutional court"
+      },
+      "judge selection and term of office": {
+        "text": "judges elected by the Grand and General Council from among its own to serve 5-year terms"
+      },
+      "subordinate courts": {
+        "text": "first instance and first appeal criminal, administrative, and civil courts; Court for the Trust and Trustee Relations; justices of the peace or conciliatory judges"
+      }
+    },
+    "Political parties": {
+      "text": "Domani - Modus Liberi or DML <br>Free San Marino (Libera San Marino) or Libera <br>Future Republic or RF <br>Party of Socialists and Democrats or PSD <br>Reformist Alliance or AR <br>RETE Movement <br>Sammarinese Christian Democratic Party or PDCS <br>Socialist Party or PS <br>Tomorrow in Movement coalition (includes RETE Movement, DML)"
+    },
+    "International organization participation": {
+      "text": "CE, FAO, IAEA, IBRD, ICAO, ICC (NGOs), ICCt, ICRM, IDA, IFRCS, ILO, IMF, IMO, Interpol, IOC, IOM (observer), IPU, ITU, ITUC (NGOs), LAIA (observer), OPCW, OSCE, Schengen Convention (de facto member), UN, UNCTAD, UNESCO, Union Latina, UNWTO, UPU, WHO, WIPO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Damiano BELEFFI (since 21 July 2017); note - also Permanent Representative to the UN"
+      },
+      "chancery": {
+        "text": "327 E 50th Street, New York, NY 10022"
+      },
+      "telephone": {
+        "text": "[1] (212) 751-1234"
+      },
+      "FAX": {
+        "text": "[1] (212) 751-1436"
+      },
+      "email address and website": {
+        "text": "<br>sanmarinoun@gmail.com<br><br>Republic of San Marino Permanent Mission to the United Nations"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "the United States does not have an Embassy in San Marino; the US Ambassador to Italy is accredited to San Marino, and the US Consulate General in Florence maintains day-to-day ties"
+      }
+    },
+    "Flag description": {
+      "text": "two equal horizontal bands of white (top) and light blue with the national coat of arms superimposed in the center; the main colors derive from the shield of the coat of arms, which features three white towers on three peaks on a blue field; the towers represent three castles built on San Marino's highest feature, Mount Titano: Guaita, Cesta, and Montale; the coat of arms is flanked by a wreath, below a crown and above a scroll bearing the word LIBERTAS (Liberty); the white and blue colors are also said to stand for peace and liberty respectively"
+    },
+    "National symbol(s)": {
+      "text": "three peaks each displaying a tower; national colors: white, blue"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Inno Nazionale della Repubblica\" (National Anthem of the Republic)"
+      },
+      "lyrics/music": {
+        "text": "no lyrics/Federico CONSOLO"
+      },
+      "note": "<strong>note:</strong> adopted 1894; the music for the lyric-less anthem is based on a 10th century chorale piece"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "1 (cultural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "San Marino Historic Center and Mount Titano"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income, non-EU European economy; surrounded by Italy, which is the dominant importer and exporter; open border to EU and a euro user; strong financial sector; high foreign investments; low taxation; increasingly high and risky debt"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$2.393 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$2.218 billion (2021 est.)"
+      },
+      "Real GDP (purchasing power parity) 2020": {
+        "text": "$1.947 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2022": {
+        "text": "7.9% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "13.9% (2021 est.)"
+      },
+      "Real GDP growth rate 2020": {
+        "text": "-6.65% (2020 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2022": {
+        "text": "$70,900 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$64,700 (2021 est.)"
+      },
+      "Real GDP per capita 2020": {
+        "text": "$56,000 (2020 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$1.832 billion (2022 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2017": {
+        "text": "1.05% (2017 est.)"
+      },
+      "Inflation rate (consumer prices) 2016": {
+        "text": "0.57% (2016 est.)"
+      },
+      "Inflation rate (consumer prices) 2015": {
+        "text": "0.15% (2015 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BB+ (2020)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0% (2022 est.)"
+      },
+      "industry": {
+        "text": "37.6% (2022 est.)"
+      },
+      "services": {
+        "text": "55.1% (2022 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "35.5% (2022 est.)"
+      },
+      "government consumption": {
+        "text": "17.1% (2022 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "17.8% (2022 est.)"
+      },
+      "investment in inventories": {
+        "text": "5.2% (2022 est.)"
+      },
+      "exports of goods and services": {
+        "text": "197.4% (2022 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-173% (2022 est.)"
+      },
+      "note": "<strong>note:</strong> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "wheat, grapes, corn, olives; cattle, pigs, horses, beef, cheese, hides"
+    },
+    "Industries": {
+      "text": "tourism, banking, textiles, electronics, ceramics, cement, wine"
+    },
+    "Industrial production growth rate": {
+      "text": "10.72% (2022 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2017": {
+        "text": "8.1% (2017 est.)"
+      },
+      "Unemployment rate 2016": {
+        "text": "8.6% (2016 est.)"
+      }
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "27.4% (2016 est.)"
+      },
+      "male": {
+        "text": "21.4%"
+      },
+      "female": {
+        "text": "36%"
+      }
+    },
+    "Remittances": {
+      "Remittances 2022": {
+        "text": "1.15% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "1.13% of GDP (2021 est.)"
+      },
+      "Remittances 2020": {
+        "text": "1.14% of GDP (2020 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$817.27 million (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$816.572 million (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "103.15% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "17.81% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2022": {
+        "text": "$284.256 million (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$100.118 million (2021 est.)"
+      },
+      "Current account balance 2020": {
+        "text": "$42.98 million (2020 est.)"
+      }
+    },
+    "Exports": {
+      "Exports 2022": {
+        "text": "$3.616 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$3.23 billion (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$2.439 billion (2020 est.)"
+      },
+      "note": "<strong>note: </strong>GDP expenditure basis - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "US 10%, Germany 9%, France 9%, Austria 9%, Romania 7% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "washing and bottling machines, woodworking machines, furniture, other foods, packaged medicine (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2022": {
+        "text": "$3.169 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$2.94 billion (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$2.232 billion (2020 est.)"
+      },
+      "note": "<strong>note: </strong>GDP expenditure basis - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Italy 22%, Germany 20%, Poland 7%, Spain 7%, Netherlands 7% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "electricity, garments, cars, aluminum, footwear (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$836.088 million (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$716.066 million (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$954.383 million (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.951 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.877 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      },
+      "note": "<strong>note: </strong>while not an EU member state, San Marino, due to its preexisting monetary and banking agreements with Italy, has a 2000 monetary agreement with the EU to produce limited euro coinage—but not banknotes—that began enforcement in January 2002 and was superseded by a new EU agreement in 2012"
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "16,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "48 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "41,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "122 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "automatic telephone system completely integrated into Italian system (2018)"
+      },
+      "domestic": {
+        "text": "fixed-line is 47 per 100 and mobile-cellular teledensity is 119 telephones per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 378; connected to Italian international network"
+      }
+    },
+    "Broadcast media": {
+      "text": "state-owned public broadcaster operates 1 TV station and 3 radio stations; receives radio and TV broadcasts from Italy (2019)"
+    },
+    "Internet country code": {
+      "text": ".sm"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "75% (2021 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "11,000 (2020 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "32 (2020 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "Civil aircraft registration country code prefix": {
+      "text": "T7"
+    },
+    "Airports": {
+      "text": "1 (2024)"
+    },
+    "Heliports": {
+      "text": "1 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "292 km"
+      },
+      "paved": {
+        "text": "292 km (2006)"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Military Corps (National Guard): Guard of the Rock (or Fortress Guard), Uniformed Militia, Guard of the Great and General Council, Corps of the Gendarmerie<br><br>Ministry of Internal Affairs: Civil Police Corps (2024)",
+      "note": "<strong>note:</strong> the captains regent oversees the Gendarmerie and National Guard when they are performing duties related to public order and security; the Ministry of Foreign Affairs exercises control over such administrative functions as personnel and equipment, and the courts exercise control over the Gendarmerie when it acts as judicial police"
+    },
+    "Military service age and obligation": {
+      "text": "18 is the legal minimum age for voluntary military service; no conscription; government has the authority to call up all San Marino citizens from 16-60 years of age to serve in the military (2024)"
+    },
+    "Military - note": {
+      "text": "defense is the responsibility of Italy"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

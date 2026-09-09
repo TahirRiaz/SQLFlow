@@ -1,0 +1,16 @@
+# excludePaths drops a subtree entirely (no column is produced). Here the $.debug object is removed,
+# so the table has only id and name.
+name: Json_Exclude
+source:
+  type: json
+  location: ./data/with-debug.json
+  options:
+    excludePaths: "$.debug"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_Exclude
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

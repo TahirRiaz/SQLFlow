@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.Execution</RootNamespace>
+    <Description>SQLFlow execution: the single flow-document run path (DocumentExecutor) plus the run-history, run-log, and invoke-executor helpers it composes. Shared by the CLI, the control plane, and worker nodes so every flow kind runs through one pathway.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
+    <ProjectReference Include="..\SqlFlow.Sources\SqlFlow.Sources.csproj" />
+    <ProjectReference Include="..\SqlFlow.SqlServer\SqlFlow.SqlServer.csproj" />
+    <ProjectReference Include="..\SqlFlow.DuckDb\SqlFlow.DuckDb.csproj" />
+    <ProjectReference Include="..\SqlFlow.Orchestration\SqlFlow.Orchestration.csproj" />
+    <ProjectReference Include="..\SqlFlow.HealthCheck\SqlFlow.HealthCheck.csproj" />
+    <ProjectReference Include="..\SqlFlow.Azure\SqlFlow.Azure.csproj" />
+    <ProjectReference Include="..\SqlFlow.Acquire\SqlFlow.Acquire.csproj" />
+    <ProjectReference Include="..\SqlFlow.Copy\SqlFlow.Copy.csproj" />
+    <ProjectReference Include="..\SqlFlow.Sftp\SqlFlow.Sftp.csproj" />
+    <ProjectReference Include="..\SqlFlow.Translate\SqlFlow.Translate.csproj" />
+    <ProjectReference Include="..\SqlFlow.Providers\SqlFlow.Providers.csproj" />
+    <ProjectReference Include="..\SqlFlow.SourceControl\SqlFlow.SourceControl.csproj" />
+  </ItemGroup>
+
+</Project>

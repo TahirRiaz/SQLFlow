@@ -1,0 +1,1296 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>Belgium became independent from the Netherlands in 1830; it was occupied by Germany during World Wars I and II. The country prospered as a modern, technologically advanced European state and member of NATO and the EU. In recent years, longstanding tensions between the Dutch-speaking Flemish of the north and the French-speaking Walloons of the south have led to constitutional amendments granting these regions formal recognition and autonomy. The capital city of Brussels is home to numerous international organizations, including the EU and NATO.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Western Europe, bordering the North Sea, between France and the Netherlands"
+    },
+    "Geographic coordinates": {
+      "text": "50 50 N, 4 00 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "30,528 sq km"
+      },
+      "land": {
+        "text": "30,278 sq km"
+      },
+      "water": {
+        "text": "250 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about the size of Maryland"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "1,297 km"
+      },
+      "border countries": {
+        "text": "France 556 km; Germany 133 km; Luxembourg 130 km; Netherlands 478 km"
+      }
+    },
+    "Coastline": {
+      "text": "66.5 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "geographic coordinates define outer limit"
+      },
+      "continental shelf": {
+        "text": "median line with neighbors"
+      }
+    },
+    "Climate": {
+      "text": "temperate; mild winters, cool summers; rainy, humid, cloudy"
+    },
+    "Terrain": {
+      "text": "flat coastal plains in northwest, central rolling hills, rugged mountains of Ardennes Forest in southeast"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Botrange 694 m"
+      },
+      "lowest point": {
+        "text": "North Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "181 m"
+      }
+    },
+    "Natural resources": {
+      "text": "construction materials, silica sand, carbonates, arable land"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "44.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 27.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 16.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "22.4% (2018 est.)"
+      },
+      "other": {
+        "text": "33.5% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "57 sq km (2013)"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Seine (78,919 sq km), Rhine-Maas (198,735 sq km)"
+    },
+    "Population distribution": {
+      "text": "most of the population concentrated in the northern two-thirds of the country; the southeast is more thinly populated; considered to have one of the highest population densities in the world; approximately 97% live in urban areas"
+    },
+    "Natural hazards": {
+      "text": "flooding is a threat along rivers and in areas of reclaimed coastal land, protected from the sea by concrete dikes"
+    },
+    "Geography - note": {
+      "text": "crossroads of Western Europe; most West European capitals are within 1,000 km of Brussels, the seat of both the EU and NATO"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "11,977,634"
+      },
+      "male": {
+        "text": "5,909,057"
+      },
+      "female": {
+        "text": "6,068,577 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Belgian(s)"
+      },
+      "adjective": {
+        "text": "Belgian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Belgian 75.2%, Italian 4.1%, Moroccan 3.7%, French 2.4%, Turkish 2%, Dutch 2%, other 10.6% (2012 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Dutch (official) 60%, French (official) 40%, German (official) less than 1%"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Het Wereld Feitenboek, een onmisbare bron van informatie. (Dutch)<br><br>The World Factbook, une source indispensable d'informations de base. (French)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Roman Catholic 57.1%, Protestant 2.3%, other Christian, 2.8%, Muslim 6.8%, other 1.7%, atheist 9.1%, nonbeliever/agnostic 20.2% (2018 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "16.9% (male 1,038,578/female 990,215)"
+      },
+      "15-64 years": {
+        "text": "62.8% (male 3,796,844/female 3,730,784)"
+      },
+      "65 years and over": {
+        "text": "20.2% (2024 est.) (male 1,073,635/female 1,347,578)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "56.5"
+      },
+      "youth dependency ratio": {
+        "text": "26.1"
+      },
+      "elderly dependency ratio": {
+        "text": "30.4"
+      },
+      "potential support ratio": {
+        "text": "3.3 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "42 years (2024 est.)"
+      },
+      "male": {
+        "text": "40.8 years"
+      },
+      "female": {
+        "text": "43.1 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.53% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "10.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "9.5 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "4 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "most of the population concentrated in the northern two-thirds of the country; the southeast is more thinly populated; considered to have one of the highest population densities in the world; approximately 97% live in urban areas"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "98.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.38% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "2.122 million BRUSSELS (capital), 1.057 million Antwerp (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.8 male(s)/female"
+      },
+      "total population": {
+        "text": "0.97 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "29.2 years (2020 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "5 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "3.1 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "3.5 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "2.7 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "82.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "79.7 years"
+      },
+      "female": {
+        "text": "85 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.76 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.86 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "66.7% (2018)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "11.1% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "6.08 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "5.6 beds/1,000 population (2019)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "22.1% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "9.15 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "4.35 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "3.41 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "1.09 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.3 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "23.4% (2020 est.)"
+      },
+      "male": {
+        "text": "25.8% (2020 est.)"
+      },
+      "female": {
+        "text": "21% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "1% (2014/15)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "43.2% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "6.7% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "19 years"
+      },
+      "male": {
+        "text": "18 years"
+      },
+      "female": {
+        "text": "20 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "intense pressures from human activities: urbanization, dense transportation network, industry, extensive animal breeding and crop cultivation; air and water pollution also have repercussions for neighboring countries"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Air Pollution-Heavy Metals, Air Pollution-Multi-effect Protocol, Air Pollution-Nitrogen Oxides, Air Pollution-Persistent Organic Pollutants, Air Pollution-Sulphur 85, Air Pollution-Sulphur 94, Air Pollution-Volatile Organic Compounds, Antarctic-Environmental Protection, Antarctic-Marine Living Resources, Antarctic Seals, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Marine Dumping-London Protocol, Marine Life Conservation, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "temperate; mild winters, cool summers; rainy, humid, cloudy"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "44.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 27.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 16.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "22.4% (2018 est.)"
+      },
+      "other": {
+        "text": "33.5% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "98.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.38% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.02% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "11.26 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "96.89 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "7.78 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "4.708 million tons (2015 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "1,614,985 tons (2015 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "34.3% (2015 est.)"
+      }
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Seine (78,919 sq km), Rhine-Maas (198,735 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "740 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "3.47 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "50 million cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "18.3 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "2 (2024)"
+      },
+      "global geoparks and regional networks": {
+        "text": "Famenne-Ardenne; Schelde Delta (includes Netherlands) (2024)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Kingdom of Belgium"
+      },
+      "conventional short form": {
+        "text": "Belgium"
+      },
+      "local long form": {
+        "text": "Royaume de Belgique (French)/Koninkrijk Belgie (Dutch)/Koenigreich Belgien (German)"
+      },
+      "local short form": {
+        "text": "Belgique/Belgie/Belgien"
+      },
+      "etymology": {
+        "text": "the name derives from the Belgae, an ancient Celtic tribal confederation that inhabited an area between the English Channel and the west bank of the Rhine in the first centuries B.C."
+      }
+    },
+    "Government type": {
+      "text": "federal parliamentary democracy under a constitutional monarchy"
+    },
+    "Capital": {
+      "name": {
+        "text": "Brussels"
+      },
+      "geographic coordinates": {
+        "text": "50 84 N, 4 35 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "may derive from the Old Dutch <em>bruoc/broek</em>, meaning \"marsh\" and <em>sella/zele/sel</em> signifying \"home\" to express the meaning \"home in the marsh\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "3 regions (French: regions, singular - region; Dutch: gewesten, singular - gewest); Brussels-Capital Region, also known as Brussels Hoofdstedelijk Gewest (Dutch), Region de Bruxelles-Capitale (French long form), Bruxelles-Capitale (French short form); Flemish Region (Flanders), also known as Vlaams Gewest (Dutch long form), Vlaanderen (Dutch short form), Region Flamande (French long form), Flandre (French short form); Walloon Region (Wallonia), also known as Region Wallone (French long form), Wallonie (French short form), Waals Gewest (Dutch long form), Wallonie (Dutch short form)",
+      "note": "<strong>note:</strong> as a result of the 1993 constitutional revision that furthered devolution into a federal state, there are now three levels of government (federal, regional, and linguistic community) with a complex division of responsibilities; the 2012 sixth state reform transferred additional competencies from the federal state to the regions and linguistic communities"
+    },
+    "Independence": {
+      "text": "4 October 1830 (a provisional government declared independence from the Netherlands); 21 July 1831 (King LEOPOLD I ascended to the throne)"
+    },
+    "National holiday": {
+      "text": "Belgian National Day (ascension to the throne of King LEOPOLD I), 21 July (1831)"
+    },
+    "Legal system": {
+      "text": "civil law system based on the French Civil Code; note - Belgian law continues to be modified in conformance with the legislative norms mandated by the European Union; judicial review of legislative acts"
+    },
+    "Constitution": {
+      "history": {
+        "text": "drafted 25 November 1830, approved 7 February 1831, entered into force 26 July 1831, revised 14 July 1993 (creating a federal state)"
+      },
+      "amendments": {
+        "text": "\"revisions\" proposed as declarations by the federal government in accord with the king or by Parliament followed by dissolution of Parliament and new elections; adoption requires two-thirds majority vote of a two-thirds quorum in both houses of the next elected Parliament; amended many times, last in 2019"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction with reservations; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Belgium"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal and compulsory"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King PHILIPPE (since 21 July 2013)"
+      },
+      "head of government": {
+        "text": "Prime Minister Bart DE WEVER (since 3 February 2025)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers formally appointed by the monarch"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary and constitutional; following legislative elections, the leader of the majority party or majority coalition usually appointed prime minister by the monarch and approved by Parliament"
+      },
+      "note": "<strong>note </strong>- Alexander DE CROO resigned on 9 June 2024 following the parliamentary elections and is serving as prime minister in a caretaker status until a new prime minister is sworn into office"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Federal Parliament (Parlement fédéral - Federaal Parlement - Föderales Parlament)"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      },
+      "note": "<strong>note:</strong> the 1993 constitutional revision that further devolved Belgium into a federal state created three levels of government (federal, regional, and linguistic community) with a complex division of responsibilities; this results in six governments, each with its own legislative assembly"
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "House of Representatives (Chambre des Représentants)"
+      },
+      "number of seats": {
+        "text": "150 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "6/9/2024"
+      },
+      "parties elected and seats per party": {
+        "text": "New Flemish Alliance (N-VA) (24); Vlaams Belang (Flemish Interest) (20); Movement for Reform (MR) (20); Socialist Party in Wallonia (PS) (16); Workers' Party of Belgium (PTB*PVDA) (15); LES ENGAGÉS (14); Vooruit (13); Christian Democratic and Flemish (CD&V) (11); Other (17)"
+      },
+      "percentage of women in chamber": {
+        "text": "39.3%"
+      },
+      "expected date of next election": {
+        "text": "June 2029"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "Senate (Sénat - Senaat - Senat)"
+      },
+      "number of seats": {
+        "text": "60 (all indirectly elected)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "7/18/2024"
+      },
+      "percentage of women in chamber": {
+        "text": "47.5%"
+      },
+      "expected date of next election": {
+        "text": "July 2029"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Constitutional Court or Grondwettelijk Hof (in Dutch) and Cour Constitutionelle (in French) (consists of 12 judges - 6 Dutch-speaking and 6 French-speaking); Supreme Court of Justice or Hof van Cassatie (in Dutch) and Cour de Cassation (in French) (court organized into 3 chambers: civil and commercial; criminal; social, fiscal, and armed forces; each chamber includes a Dutch division and a French division, each with a chairperson and 5-6 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "Constitutional Court judges appointed by the monarch from candidates submitted by Parliament; judges appointed for life with mandatory retirement at age 70; Supreme Court judges appointed by the monarch from candidates submitted by the High Council of Justice, a 44-member independent body of judicial and non-judicial members; judges appointed for life"
+      },
+      "subordinate courts": {
+        "text": "Courts of Appeal; regional courts; specialized courts for administrative, commercial, labor, immigration, and audit issues; magistrate's courts; justices of the peace"
+      }
+    },
+    "Political parties": {
+      "text": "<strong>Flemish parties:</strong> <br>Christian Democratic and Flemish or CD&amp;V <br>Vooruit or Forward (formerly Social Progressive Alternative or SP.A)<br>Groen or Green (formerly AGALEV, Flemish Greens)<br>New Flemish Alliance or N-VA <br>Open Flemish Liberals and Democrats or Open VLD <br>Vlaams Belang (Flemish Interest) or VB <br><strong>Francophone parties:</strong> <br>Ecolo (Francophone Greens) <br>Francophone Federalist Democrats or Defi <br>Les Engages (formerly Humanist and Democratic Center or CDH)<br>Reform Movement or MR <br>Socialist Party or PS <br>Workers' Party or PVDA-PTB"
+    },
+    "International organization participation": {
+      "text": "ADB (nonregional members), AfDB (nonregional members), Australia Group, Benelux, BIS, CD, CE, CERN, EAPC, EBRD, ECB, EIB, EITI (implementing country), EMU, ESA, EU, FAO, FATF, G-9, G-10, IADB, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IEA, IFAD, IFC, IFRCS, IGAD (partners), IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, MONUSCO, NATO, NEA, NSG, OAS (observer), OECD, OIF, OPCW, OSCE, Pacific Alliance (observer), Paris Club, PCA, Schengen Convention, SELEC (observer), UN, UNCTAD, UNESCO, UNHCR, UNIDO, UNIFIL, UNOOSA, UNRWA, UNTSO, UPU, Wassenaar Arrangement, WCO, WHO, WIPO, WMO, WTO, ZC"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires Sophie Chaska KARLSHAUSEN (since 1 August 2024)"
+      },
+      "chancery": {
+        "text": "1430 K Street NW, Washington DC 20005"
+      },
+      "telephone": {
+        "text": "[1] (202) 333-6900"
+      },
+      "FAX": {
+        "text": "[1] (202) 338-4960"
+      },
+      "email address and website": {
+        "text": "<br>Washington@diplobel.fed.be<br><br>https://unitedstates.diplomatie.belgium.be/en"
+      },
+      "consulate(s) general": {
+        "text": "Atlanta, Los Angeles, New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires Tim RICHARDSON (since January 2025)"
+      },
+      "embassy": {
+        "text": "Regentlaan 27 Boulevard du Regent, B-1000 Brussels"
+      },
+      "mailing address": {
+        "text": "7600 Brussels Place, Washington DC&nbsp; 20521-7600"
+      },
+      "telephone": {
+        "text": "[32] (2) 811-4000"
+      },
+      "FAX": {
+        "text": "[32] (2) 811-4500"
+      },
+      "email address and website": {
+        "text": "<br>uscitizenBrussels@state.gov<br><br>https://be.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "three equal vertical bands of black (hoist side), yellow, and red; the vertical design was based on the flag of France; the colors are those of the arms of the duchy of Brabant (yellow lion with red claws and tongue on a black field)"
+    },
+    "National symbol(s)": {
+      "text": "golden rampant lion; national colors: red, black, yellow"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"La Brabanconne\" (The Song of Brabant)"
+      },
+      "lyrics/music": {
+        "text": "Louis-Alexandre DECHET [French] and Victor CEULEMANS [Dutch]/Francois VAN CAMPENHOUT"
+      },
+      "note": "<strong>note:</strong> adopted 1830; according to legend, Louis-Alexandre DECHET, an actor at the theater in which the revolution against the Netherlands began, wrote the lyrics with a group of young people in a Brussels cafe"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "16 (15 cultural, 1 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Belfries of Belgium (c); Historic Brugge (c); The Grand Place, Brussels (c); Major Town Houses of Victor Horta (c); Notre-Dame Cathedral, Tournai (c); Spa, Liege (c); Primeval Beech Forests - Sonian Wood (n); Stoclet Palace (c)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income, core EU and eurozone economy; slow but steady growth supported by household consumption and energy shock recovery; high public debt and structural deficits linked to social spending; aging workforce with weak productivity growth and participation rates"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$756.586 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$747.233 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$716.884 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "1.25% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "4.23% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "6.93% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$64,200 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$64,000 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$61,900 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$644.783 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "4.05% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "9.6% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "2.44% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "AA- (2016)"
+      },
+      "Moody's rating": {
+        "text": "Aa3 (2011)"
+      },
+      "Standard & Poors rating": {
+        "text": "AA (2011)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0.8% (2023 est.)"
+      },
+      "industry": {
+        "text": "18.5% (2023 est.)"
+      },
+      "services": {
+        "text": "71.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "50.4% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "23.8% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "24.4% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0.9% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "84.2% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-84.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "sugar beets, milk, potatoes, wheat, pork, lettuce, maize, chicken, barley, pears (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "engineering and metal products, motor vehicle assembly, transportation equipment, scientific instruments, processed food and beverages, chemicals, pharmaceuticals, base metals, textiles, glass, petroleum"
+    },
+    "Industrial production growth rate": {
+      "text": "0.25% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "5.419 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "5.51% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "5.56% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "6.26% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "16.1% (2023 est.)"
+      },
+      "male": {
+        "text": "17.8% (2023 est.)"
+      },
+      "female": {
+        "text": "14.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "12.3% (2022 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "26.6 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "12.2% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "4% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "3.6% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "21.9% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "2.3% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "2.35% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "2.39% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$220.744 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$234.883 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "92.48% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "22.71% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$4.503 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$7.031 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$11.165 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$542.508 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$565.233 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$535.988 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Germany 19%, France 15%, Netherlands 14%, US 6%, Italy 5% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "natural gas, vaccines, refined petroleum, packaged medicine, cars (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$546.426 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$573.192 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$524.617 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Netherlands 19%, Germany 12%, France 9%, US 6%, China 6% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "natural gas, refined petroleum, cars, packaged medicine, vaccines (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$40.813 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$41.274 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$41.872 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.95 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.876 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "26.31 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "79.972 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "23.877 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "16.35 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "3.394 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "29% of total installed capacity (2022 est.)"
+      },
+      "nuclear": {
+        "text": "45.8% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "7.7% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "13% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "-0.2% of total installed capacity (2022 est.) <b>note:</b> Belgium has negative net hydroelectric power generation based on losses from use of pumped storage hydropower"
+      },
+      "biomass and waste": {
+        "text": "4.7% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of operational nuclear reactors": {
+        "text": "5 (2023)"
+      },
+      "Net capacity of operational nuclear reactors": {
+        "text": "3.91GW (2023 est.)"
+      },
+      "Percent of total electricity production": {
+        "text": "41.2% (2023 est.)"
+      },
+      "Number of nuclear reactors permanently shut down": {
+        "text": "3 (2023)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "1.27 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "4.869 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "557,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "4.554 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "4.1 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "11,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "585,000 bbl/day (2023 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "13.436 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "15.347 billion cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "9.86 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "25.327 billion cubic meters (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "116.271 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "8.163 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "78.995 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "29.113 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "205.444 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "2.667 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "23 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "12.1 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "102 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "mobile networks have been upgraded to support growing mobile data use among subscribers, with near-comprehensive LTE coverage; operators have also trialed 5G in preparation for launching services; the auction of 5G-suitable spectrum has been delayed to the beginning of 2022, while the onerous restrictions on radiation have meant that some 5G trials have been suspended; there is effective competition in Belgium between the DSL and cable platforms, while in recent years government support has also encouraged investment in fiber networks; in a bid to encourage investment in under served areas, the regulator in 2018 amended the conditions by which market players grant wholesale access to copper and fiber infrastructure; in May 2019 it opened a further consultation on cost models for access to the networks of cablecos and fiber infrastructure (2021)"
+      },
+      "domestic": {
+        "text": "about 28 per 100 fixed-line and 101 per 100 mobile-cellular; nationwide mobile-cellular telephone system; extensive cable network; limited microwave radio relay network (2021)"
+      },
+      "international": {
+        "text": "country code - 32; landing points for Concerto, UK-Belgium, Tangerine, and SeaMeWe-3, submarine cables that provide links to Europe, the Middle East, Australia, and Asia; satellite earth stations - 7 (Intelsat - 3) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "a segmented market with the three major communities (Flemish, French, and German speaking) each having responsibility for their own broadcast media; multiple TV channels exist for each community; additionally, in excess of 90% of households are connected to cable and can access broadcasts of TV stations from neighboring countries; each community has a public radio network coexisting with private broadcasters"
+    },
+    "Internet country code": {
+      "text": ".be"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "95% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "5.12 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "44 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "7 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "117"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "13,639,487 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "1,285,340,000 (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "OO"
+    },
+    "Airports": {
+      "text": "49 (2024)"
+    },
+    "Heliports": {
+      "text": "108 (2024)"
+    },
+    "Pipelines": {
+      "text": "3,139 km gas, 154 km oil, 535 km refined products (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "3,602 km (2020) 3,160 km electrified"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "118,414 km"
+      },
+      "paved": {
+        "text": "118,414 km (2015) (includes 1,747 km of expressways)"
+      }
+    },
+    "Waterways": {
+      "text": "2,043 km (2012) (1,528 km in regular commercial use)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "198 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 17, container ship 2, general cargo 16, oil tanker 21, other 142"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "7 (2024)"
+      },
+      "large": {
+        "text": "1"
+      },
+      "medium": {
+        "text": "2"
+      },
+      "small": {
+        "text": "2"
+      },
+      "very small": {
+        "text": "2"
+      },
+      "ports with oil terminals": {
+        "text": "5"
+      },
+      "key ports": {
+        "text": "Antwerpen, Bruxelles, Ghent, Oostende, Zeebrugge"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Belgian Armed Forces (Defensie or  La Défense): Land Component, Marine (Naval) Component, Air Component, Medical Component (2024)",
+      "note": "<strong>note: </strong>the Belgian Federal Police is the national police force and responsible for internal security and nationwide law and order, including migration and border enforcement; the force reports to the ministers of interior and justice"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2024": {
+        "text": "1.3% of GDP (2024 est.)"
+      },
+      "Military Expenditures 2023": {
+        "text": "1.2% of GDP (2023)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.2% of GDP (2022)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.1% of GDP (2021)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1% of GDP (2020)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 23,000 active-duty personnel (10,000 Land Component; 1,500 Marine Component; 5,000 Air Force Component; 1,500 Medical Component; 5,000 other, including joint staff, support, and training schools) (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the armed forces have a mix of weapons systems from European countries, Israel, and the US; Belgium has an export-focused defense industry that focuses on components and subcontracting (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18 years of age for voluntary military service for men and women; conscription abolished in 1995 (2024)",
+      "note": "<strong>note 1:</strong> in 2024, women comprised about 11% of the military's full-time personnel<br><br><strong>note 2:</strong> foreign nationals 18-34 years of age who speak Dutch or French and are citizens of EU countries, Iceland, Lichtenstein, Norway, and Switzerland may apply to join the military"
+    },
+    "Military deployments": {
+      "text": "has about 1,000 personnel deployed on foreign missions, including more than 300 ground forces deployed in Eastern Europe, as well as air and naval assets, supporting NATO missions for the defense of NATO's eastern flank (2024)"
+    },
+    "Military - note": {
+      "text": "the Belgian military is a small, all-volunteer force equipped with modern Western equipment; its responsibilities include territorial defense, humanitarian/disaster relief, assistance to the police if required, international peacekeeping missions, and support to its NATO and EU security commitments, which Belgium considers vital components of its national security policy; outside of the country, the military operates almost always within an international organization or a coalition, such as its ongoing deployments to Africa for the EU and UN, eastern Europe as part of NATO&rsquo;s Enhanced Forward Presence mission, and the Middle East with an international coalition to combat the Islamic State of Iraq and ash-Sham; Belgium was one of the original 12 countries to sign the North Atlantic Treaty (also known as the Washington Treaty) establishing NATO in 1949; it hosts the NATO headquarters in Brussels; Belgium also cooperates with neighboring countries, such as Luxembourg and the Netherlands, in conducting joint patrols of their respective air spaces and in a composite combined special operations command with Denmark and the Netherlands (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Royal Belgian Institute for Space Aeronomy-Interfederal Space Agency of Belgium (BIRA-IASB; established 1964; IASB added 2017); Belgium Federal Science Policy Office (BELSPO) (2024)"
+    },
+    "Space program overview": {
+      "text": "founding member of the European Space Agency (ESA), which acts as the de facto Belgian space agency as most programs are carried out under the ESA or bi-laterally with its member states; builds satellites, particularly research/science/technology and remote sensing (RS) platforms; also researches, develops, and produces a wide variety of other space technologies, including telecommunications, optics, robotics, scientific instruments, and space launch vehicle (SLV) components; supports the ESA’s SLV program with economic assistance (6% of the funding for the Ariane-5 SLV, for example), as well as legal, scientific, and technological expertise; hosts the European Space Security and Education Center (established 1968); participates in international astronomy efforts, particularly through the European Southern Observatory (ESO); participates in multiple ESA and EU space-related programs and research efforts; in addition to the ESA and EU and their individual country members, has cooperated with a variety foreign space agencies and commercial entities, including those of Argentina, China, India, Russia, South Africa, UAE, Vietnam, and the US (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic Revolutionary Guard Corps/Qods Force; Islamic State of Iraq and ash-Sham (ISIS)",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "20,086 (Syria), 7,049 (Afghanistan), 5,769 (Iraq) (mid-year 2022); 75,030 (Ukraine) (as of 29 February 2024)"
+      },
+      "stateless persons": {
+        "text": "1,190 (2022)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a transit point for precursor chemicals from China and India destined for clandestine synthetic drug laboratories in the Netherlands and to some labs in Belgium; a primary entry point for cocaine into Europe; one of the top methamphetamine producers in Europe; a major source of precursor or essential chemicals used in the production of illicit narcotics</p>"
+    }
+  }
+}

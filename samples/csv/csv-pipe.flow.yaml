@@ -1,0 +1,11 @@
+# Pipe-delimited file.
+name: Csv_Pipe
+source:
+  type: csv
+  location: ./data/pipe.csv
+  options:
+    delimiter: "|"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Pipe

@@ -1,0 +1,34 @@
+[package]
+name = "sqlflow-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Model Context Protocol server for SQLFlow: embedded reference docs plus a live control-plane proxy for catalog, lineage, runs, and schedules"
+
+[[bin]]
+name = "sqlflow-mcp"
+path = "src/main.rs"
+
+[dependencies]
+sqlflow-lang = { path = "../sqlflow-lang" }
+rmcp = { version = "1.4", features = ["server", "transport-io", "transport-streamable-http-server", "macros", "schemars"] }
+tokio = { workspace = true, features = ["net", "signal"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+dirs = "5"
+chrono = { version = "0.4", features = ["serde"] }
+# HTTP serving mode (`sqlflow-mcp http`): hyper hosts rmcp's streamable HTTP service.
+# These stay in lockstep with the hyper stack reqwest already pulls in.
+http = "1"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"
+
+[build-dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }

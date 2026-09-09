@@ -1,0 +1,1378 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>After more than three centuries under Portuguese rule, Brazil gained its independence in 1822, maintaining a monarchical system of government until the abolition of slavery in 1888 and the subsequent proclamation of a republic by the military in 1889. Brazilian coffee exporters politically dominated the country until populist leader Getúlio VARGAS rose to power in 1930. VARGAS governed through various versions of democratic and authoritarian regimes from 1930 to 1945. Democratic rule returned in 1945 -- including a democratically elected VARGAS administration from 1951 to 1954 -- and lasted until 1964, when the military overthrew President João GOULART. The military regime censored journalists and repressed and tortured dissidents in the late 1960s and early 1970s. The dictatorship lasted until 1985, when the military regime peacefully ceded power to civilian rulers, and the Brazilian Congress passed its current constitution in 1988. <br><br>By far the largest and most populous country in South America, Brazil continues to pursue industrial and agricultural growth and development of its interior. Having successfully weathered a period of global financial difficulty in the late 20th century, Brazil was soon seen as one of the world's strongest emerging markets and a contributor to global growth under President Luiz Inácio LULA da Silva (2003-2010). The awarding of the 2014 FIFA World Cup and 2016 Summer Olympic Games -- the first ever to be held in South America -- to Brazil was symbolic of the country's rise. However, from about 2013 to 2016, Brazil was plagued by a sagging economy, high unemployment, and high inflation, only emerging from recession in 2017. Congress removed then-President Dilma ROUSSEFF (2011-2016) from office in 2016 for having committed impeachable acts against Brazil's budgetary laws, and her vice president, Michel TEMER, served the remainder of her second term. A money-laundering investigation, Operation Lava Jato, uncovered a vast corruption scheme and prosecutors charged several high-profile Brazilian politicians with crimes. Former President LULA was convicted of accepting bribes and served jail time (2018-19), although his conviction was overturned in 2021. LULA's revival became complete in 2022 when he narrowly defeated incumbent Jair BOLSONARO (2019-2022) in the presidential election. Positioning Brazil as an independent global leader on climate change and promoting sustainable development, LULA took on the 2024 G20 presidency, balancing the fight against deforestation with sustainable energy and other projects designed to alleviate poverty and promote economic growth, such as expanding fossil fuel exploration. </p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Eastern South America, bordering the Atlantic Ocean"
+    },
+    "Geographic coordinates": {
+      "text": "10 00 S, 55 00 W"
+    },
+    "Map references": {
+      "text": "South America"
+    },
+    "Area": {
+      "total ": {
+        "text": "8,515,770 sq km"
+      },
+      "land": {
+        "text": "8,358,140 sq km"
+      },
+      "water": {
+        "text": "157,630 sq km"
+      },
+      "note": "<strong>note:</strong> includes Arquipelago de Fernando de Noronha, Atol das Rocas, Ilha da Trindade, Ilhas Martin Vaz, and Penedos de Sao Pedro e Sao Paulo"
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than the US"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "16,145 km"
+      },
+      "border countries": {
+        "text": "Argentina 1,263 km; Bolivia 3,403 km; Colombia 1,790 km; French Guiana 649 km; Guyana 1,308 km; Paraguay 1,371 km; Peru 2,659 km; Suriname 515 km; Uruguay 1,050 km; Venezuela 2,137 km"
+      }
+    },
+    "Coastline": {
+      "text": "7,491 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "200 nm or to edge of the continental margin"
+      }
+    },
+    "Climate": {
+      "text": "mostly tropical, but temperate in south"
+    },
+    "Terrain": {
+      "text": "mostly flat to rolling lowlands in north; some plains, hills, mountains, and narrow coastal belt"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Pico da Neblina 2,994 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "320 m"
+      }
+    },
+    "Natural resources": {
+      "text": "alumina, bauxite, beryllium, gold, iron ore, manganese, nickel, niobium, phosphates, platinum, tantalum, tin, rare earth elements, uranium, petroleum, hydropower, timber"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "32.9% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 8.6% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 23.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "61.9% (2018 est.)"
+      },
+      "other": {
+        "text": "5.2% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "69,029 sq km (2017)"
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lagoa dos Patos - 10,140 sq km"
+      },
+      "salt water lake(s)": {
+        "text": "Lagoa Mirim (shared with Uruguay) - 2,970 sq km"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Amazon river mouth (shared with Peru [s]) - 6,400 km; Río de la Plata/Paraná river source (shared with Paraguay, Argentina, and Uruguay [m]) - 4,880 km; Tocantins - 3,650 km; São Francisco - 3,180 km; Paraguay river source (shared with Argentina and Paraguay [m]) - 2,549 km; Rio Negro river mouth (shared with Colombia [s] and Venezuela) - 2,250 km; Uruguay river source (shared with Argentina and Uruguay [m]) - 1,610 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Amazon (6,145,186 sq km), Orinoco (953,675 sq km), Paran&aacute; (2,582,704 sq km), S&atilde;o Francisco (617,814 sq km), Tocantins (764,213 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Amazon Basin, Guarani Aquifer System, Maranhao Basin"
+    },
+    "Population distribution": {
+      "text": "the vast majority of people live along, or relatively near, the Atlantic coast in the east; the population core is in the southeast, anchored by the cities of S&atilde;o Paolo, Bras&iacute;lia, and Rio de Janeiro"
+    },
+    "Natural hazards": {
+      "text": "recurring droughts in northeast; floods and occasional frost in south"
+    },
+    "Geography - note": {
+      "text": "<strong>note 1:</strong> largest country in South America and in the Southern Hemisphere; shares common boundaries with every South American country except Chile and Ecuador; most of the Pantanal, the world's largest tropical wetland, extends through the west central part of the country; shares Iguaçu Falls (Iguazú Falls), the world's largest waterfalls system, with Argentina<br><br><strong>note 2:</strong> cassava (manioc) the sixth most important food crop in the world -- after maize, rice, wheat, potatoes, and soybeans -- probably originated in the west-central part of Brazil; pineapples are probably indigenous to the southern Brazil-Paraguay region<br><br><strong>note 3:</strong> Rocas Atoll, located off the northeast coast of Brazil, is the only atoll in the South Atlantic"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "220,051,512"
+      },
+      "male": {
+        "text": "108,166,491"
+      },
+      "female": {
+        "text": "111,885,021 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Brazilian(s)"
+      },
+      "adjective": {
+        "text": "Brazilian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "mixed 45.3%, White 43.5%, Black 10.2%, Indigenous 0.6%, Asian 0.4% (2022 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Portuguese (official and most widely spoken language); less common languages include Spanish (border areas and schools), German, Italian, Japanese, English, and many minor Amerindian languages"
+      },
+      "major-language sample(s)": {
+        "text": "<br>O Livro de Fatos Mundiais, a fonte indispensável para informação básica. (Brazilian Portuguese)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Roman Catholic 52.8%, Protestant 26.7% (Evangelical 25.5%, other Protestant 1.2%), African-American cultist/Umbanda 1.8%, other 3%, agnostic/atheist 0.6%, none 13.6%, unspecified 1.4% (2023 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>Brazil’s rapid fertility decline since the 1960s is the main factor behind the country's slowing population growth rate, aging population, and fast-paced demographic transition.  As of 2023, Brazil’s total fertility rate – the average number of children born per woman – was 1.75, below the 2.1 replacement rate needed to prevent a population decrease.   The 2022 national census showed that population growth had slowed more than expected.  Factors behind the decrease include fewer births as couples marry later and more women work, an increase in the mortality rate as the population ages, the Zika epidemic, the COVID-19 pandemic, as well as economic troubles and the emigration of young people. The current window of opportunity to benefit from a demographic bonus – when the working-age population exceeds the number of children and the elderly combined – is expected to close around 2035, ten years earlier than expected. </p> <p>Well-funded public pensions have nearly wiped out poverty among the elderly, and Bolsa Familia and other social programs have lifted tens of millions out of poverty. More than half of Brazil’s population is considered middle class, but poverty and income inequality levels remain high; the Northeast, North, and Center-West, women, and black, mixed race, and indigenous populations are disproportionately affected. Disparities in opportunities foster social exclusion and contribute to Brazil’s high crime rate, particularly violent crime in cities and favelas.</p> <p>Brazil has traditionally been a net recipient of immigrants, with its southeast being the prime destination. After abolishing slavery in 1888, the last country in the Americas to do so, Brazil sought Europeans (Italians, Portuguese, Spaniards, and Germans) and later Asians (Japanese) to work in agriculture, especially coffee cultivation.  Lebanese and Syrian immigrants arrived at the end of the 19th century and focused on trade and later commerce. Between 2011 and 2020, the largest immigrant groups came from Venezuela, Haiti, Bolivia, Colombia, and the US. Since Brazil’s economic downturn in the 1980s, emigration to the United States, Paraguay, Europe, and Japan has been rising but is negligible relative to Brazil’s total population. The majority of these emigrants are well-educated and middle-class. Fewer Brazilian peasants are emigrating to neighboring countries to take up agricultural work. </p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "19.6% (male 22,025,593/female 21,088,398)"
+      },
+      "15-64 years": {
+        "text": "69.5% (male 75,889,089/female 77,118,722)"
+      },
+      "65 years and over": {
+        "text": "10.9% (2024 est.) (male 10,251,809/female 13,677,901)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "43.1"
+      },
+      "youth dependency ratio": {
+        "text": "29.4"
+      },
+      "elderly dependency ratio": {
+        "text": "13.7"
+      },
+      "potential support ratio": {
+        "text": "7.3 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "35.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "34 years"
+      },
+      "female": {
+        "text": "36.1 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.61% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "13.2 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "7 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.2 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the vast majority of people live along, or relatively near, the Atlantic coast in the east; the population core is in the southeast, anchored by the cities of S&atilde;o Paolo, Bras&iacute;lia, and Rio de Janeiro"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "87.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.87% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "22.620 million S&atilde;o Paulo, 13.728 million Rio de Janeiro, 6.248 million Belo Horizonte, 4.873 million BRAS&Iacute;LIA (capital), 4.264 million Recife, 4.212 million Porto Alegre (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.98 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.75 male(s)/female"
+      },
+      "total population": {
+        "text": "0.97 male(s)/female (2024 est.)"
+      }
+    },
+    "Maternal mortality ratio": {
+      "text": "72 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "12.9 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "14.6 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "11.1 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "76.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "72.6 years"
+      },
+      "female": {
+        "text": "80.1 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.74 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.85 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "80.5% (2019)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 99.8% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 96.9% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.4% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.2% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 3.1% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.6% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "10.3% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "2.31 physicians/1,000 population (2019)"
+    },
+    "Hospital bed density": {
+      "text": "2.1 beds/1,000 population (2017)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 94.1% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 63.6% of population"
+      },
+      "improved: total": {
+        "text": "total: 90.2% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 5.9% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 36.4% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 9.8% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "22.1% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "6.12 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "3.84 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.24 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "2 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.04 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "12.8% (2020 est.)"
+      },
+      "male": {
+        "text": "16.2% (2020 est.)"
+      },
+      "female": {
+        "text": "9.4% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "55.9% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "6% of GDP (2019 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "94.7%"
+      },
+      "male": {
+        "text": "94.4%"
+      },
+      "female": {
+        "text": "94.9% (2022)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "16 years"
+      },
+      "male": {
+        "text": "15 years"
+      },
+      "female": {
+        "text": "16 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "deforestation in Amazon Basin destroys the habitat and endangers a multitude of plant and animal species indigenous to the area; illegal wildlife trade; illegal poaching; air and water pollution in Rio de Janeiro, Sao Paulo, and several other large cities; land degradation and water pollution caused by improper mining activities; wetland degradation; severe oil spills"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Antarctic-Environmental Protection, Antarctic-Marine Living Resources, Antarctic Seals, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "Marine Dumping-London Protocol"
+      }
+    },
+    "Climate": {
+      "text": "mostly tropical, but temperate in south"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "32.9% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 8.6% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 23.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "61.9% (2018 est.)"
+      },
+      "other": {
+        "text": "5.2% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "87.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.87% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.62% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.01% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "10.94 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "462.3 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "401.83 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "79,889,010 tons (2015 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "1,118,446 tons (2014 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "1.4% (2014 est.)"
+      }
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lagoa dos Patos - 10,140 sq km"
+      },
+      "salt water lake(s)": {
+        "text": "Lagoa Mirim (shared with Uruguay) - 2,970 sq km"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Amazon river mouth (shared with Peru [s]) - 6,400 km; Río de la Plata/Paraná river source (shared with Paraguay, Argentina, and Uruguay [m]) - 4,880 km; Tocantins - 3,650 km; São Francisco - 3,180 km; Paraguay river source (shared with Argentina and Paraguay [m]) - 2,549 km; Rio Negro river mouth (shared with Colombia [s] and Venezuela) - 2,250 km; Uruguay river source (shared with Argentina and Uruguay [m]) - 1,610 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Amazon (6,145,186 sq km), Orinoco (953,675 sq km), Paran&aacute; (2,582,704 sq km), S&atilde;o Francisco (617,814 sq km), Tocantins (764,213 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Amazon Basin, Guarani Aquifer System, Maranhao Basin"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "16.13 billion cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "9.51 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "41.42 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "8.65 trillion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "6"
+      },
+      "global geoparks and regional networks": {
+        "text": "Araripe; Cacapava; Quarta Colonia; Serido; Southern Canyons Pathways; Uberaba (2024)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Federative Republic of Brazil"
+      },
+      "conventional short form": {
+        "text": "Brazil"
+      },
+      "local long form": {
+        "text": "Rep&uacute;blica Federativa do Brasil"
+      },
+      "local short form": {
+        "text": "Brasil"
+      },
+      "etymology": {
+        "text": "the country name derives from the brazilwood tree that used to grow plentifully along the coast of Brazil and that was used to produce a deep red dye"
+      }
+    },
+    "Government type": {
+      "text": "federal presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Bras&iacute;lia"
+      },
+      "geographic coordinates": {
+        "text": "15 47 S, 47 55 W"
+      },
+      "time difference": {
+        "text": "UTC-3 (2 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "time zone note": {
+        "text": "Brazil has four time zones, including one for the Fernando de Noronha Islands"
+      },
+      "etymology": {
+        "text": "name bestowed on the new capital of Brazil in 1960; previous Brazilian capitals were Salvador (1549-1763) and Rio de Janeiro (1763 to 1960)"
+      }
+    },
+    "Administrative divisions": {
+      "text": "26 states (estados, singular - estado) and 1 federal district* (distrito federal); Acre, Alagoas, Amapa, Amazonas, Bahia, Ceara, Distrito Federal*, Espirito Santo, Goias, Maranhao, Mato Grosso, Mato Grosso do Sul, Minas Gerais, Para, Paraiba, Parana, Pernambuco, Piaui, Rio de Janeiro, Rio Grande do Norte, Rio Grande do Sul, Rondonia, Roraima, Santa Catarina, Sao Paulo, Sergipe, Tocantins"
+    },
+    "Independence": {
+      "text": "7 September 1822 (from Portugal)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 7 September (1822)"
+    },
+    "Legal system": {
+      "text": "civil law; note - a new civil law code was enacted in 2002 replacing the 1916 code"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest ratified 5 October 1988"
+      },
+      "amendments": {
+        "text": "proposed by at least one third of either house of the National Congress, by the president of the republic, or by simple majority vote by more than half of the state legislative assemblies; passage requires at least three-fifths majority vote by both houses in each of two readings; constitutional provisions affecting the federal form of government, separation of powers, suffrage, or individual rights and guarantees cannot be amended; amended many times, last in 2023"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "yes"
+      },
+      "citizenship by descent only": {
+        "text": "yes"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "4 years"
+      }
+    },
+    "Suffrage": {
+      "text": "voluntary between 16 to 18 years of age, over 70, and if illiterate; compulsory between 18 to 70 years of age; note - military conscripts by law cannot vote"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Luiz In&aacute;cio LULA da Silva (since 1 January 2023)"
+      },
+      "head of government": {
+        "text": "President Luiz In&aacute;cio LULA da Silva (since 1 January 2023)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president and vice president directly elected on the same ballot by absolute majority popular vote in 2 rounds if needed for a 4-year term (eligible for a single consecutive term and additional terms after at least one term has elapsed); election last held on 2 October 2022 with runoff on 30 October 2022 (next to be held on 4 October 2026)"
+      },
+      "election results": {
+        "text": "<br><em>2022: </em>Luiz Inácio LULA da Silva elected president in second round; percent of vote in first round - Luiz Inácio LULA da Silva (PT) 48.4%, Jair BOLSONARO (PSL) 43.2%, Simone Nassar TEBET (MDB) 4.2%, Ciro GOMES (PDT) 3%, other 1.2%; percent of vote in second round - Luiz Inácio LULA da Silva (PT) 50.9%, Jair BOLSONARO (PSL) 49.1%<em><br><br>2018: </em>Jair BOLSONARO elected president in second round; percent of vote in first round - Jair BOLSONARO (PSL) 46%, Fernando HADDAD (PT) 29.3%, Ciro GOMEZ (PDT) 12.5%, Geraldo ALCKMIN (PSDB) 4.8%, other 7.4%; percent of vote in second round - Jair BOLSONARO (PSL) 55.1%, Fernando HADDAD (PT) 44.9%"
+      },
+      "note": "<strong>note </strong>- the president is both chief of state and head of government"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "National Congress (Congresso nacional)"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      }
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "Chamber of Deputies (Cámara dos Deputados)"
+      },
+      "number of seats": {
+        "text": "513 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "10/2/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "Liberal Party (PL) (99); Workers' Party (PT) (69); Brazil Union (União) (59); Progressive Party (PP) (47); Brazilian Democratic Movement (MDB) (42); Social Democratic Party (PSD) (42); Republicans (Republicanos) (40); Other (115)"
+      },
+      "percentage of women in chamber": {
+        "text": "18.1%"
+      },
+      "expected date of next election": {
+        "text": "October 2026"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "Federal Senate (Senado Federal)"
+      },
+      "number of seats": {
+        "text": "81 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "partial renewal"
+      },
+      "term in office": {
+        "text": "8 years"
+      },
+      "most recent election date": {
+        "text": "10/2/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "Liberal Party (PL) (8); Brazil Union (União) (5); Workers' Party (PT) (4); Progressive Party (PP) (3); Social Democratic Party (PSD) (2); Republicans (Republicanos) (2); Other (3)"
+      },
+      "percentage of women in chamber": {
+        "text": "19.8%"
+      },
+      "expected date of next election": {
+        "text": "October 2026"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Federal Court or Supremo Tribunal Federal (consists of 11 justices)"
+      },
+      "judge selection and term of office": {
+        "text": "justices appointed by the president and approved by absolute majority by the Federal Senate; justices appointed to serve until mandatory retirement at age 75"
+      },
+      "subordinate courts": {
+        "text": "Tribunal of the Union, Federal Appeals Court, Superior Court of Justice, Superior Electoral Court, regional federal courts; state court system"
+      }
+    },
+    "Political parties": {
+      "text": "<p>Act (Agir) (formerly Christian Labor Party or PTC)<br>Avante (formerly Labor Party of Brazil or PTdoB)<br>Brazil Union (União Brasil); note - founded from a merger between the Democrats (DEM) and the Social Liberal Party (PSL)  <br>Brazilian Communist Party or PCB<br>Brazilian Democratic Movement or MDB<br>Brazilian Labor Party or PTB<br>Brazilian Renewal Labor Party or PRTB<br>Brazilian Labor Party or PTB<br>Brazilian Social Democracy Party or PSDB<br>Brazilian Socialist Party or PSB<br>Christian Democracy or DC (formerly Christian Social Democratic Party)<br>Cidadania (formerly Popular Socialist Party or PPS)<br>Communist Party of Brazil or PCdoB<br>Democratic Labor Party or PDT<br>Democratic Party or PSDC<br>Democrats or DEM (formerly Liberal Front Party or PFL); note - dissolved in February 2022<br>Green Party or PV<br>Liberal Party or PL [Valdemar Costa Neto] (formerly Party of the Republic or PR)<br>National Mobilization Party or PMN<br>New Party or NOVO<br>Patriota (formerly National Ecologic Party or PEN)<br>Podemos (formerly National Labor Party or PTN) <br>Progressive Party (Progressistas) or PP<br>Republican Social Order Party or PROS<br>Republicans (Republicanos) (formerly Brazilian Republican Party or PRB)<br>Social Christian Party or PSC<br>Social Democratic Party or PSD<br>Social Liberal Party or PSL<br>Socialism and Freedom Party or PSOL<br>Solidarity or SD<br>Sustainability Network or REDE<br>United Socialist Workers' Party or PSTU<br>Workers' Cause Party or PCO<br>Workers' Party or PT</p>"
+    },
+    "International organization participation": {
+      "text": "AfDB (nonregional member), BIS, BRICS, CAN (associate), CD, CELAC, CPLP, FAO, FATF, G-15, G-20, G-24, G-5, G-77, IADB, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), LAES, LAIA, LAS (observer), Mercosur, MIGA, MINURSO, MINUSTAH, MONUSCO, NAM (observer), NSG, OAS, OECD (enhanced engagement), OPANAL, OPCW, Paris Club (associate), PCA, PROSUR, SICA (observer), UN, UNASUR, UNCTAD, UNESCO, UNFICYP, UNHCR, UNHRC, UNIDO, UNISFA, UNIFIL, Union Latina, UNISFA, UNITAR, UNMIL, UNMISS, UNOCI, UNOOSA, UNRWA, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Maria Luiza Ribeiro VIOTTI (since 30 June 2023)"
+      },
+      "chancery": {
+        "text": "3006 Massachusetts Avenue NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 238-2700"
+      },
+      "FAX": {
+        "text": "[1] (202) 238-2827"
+      },
+      "email address and website": {
+        "text": "<br>contact.washington@itamaraty.gov.br <br><br>https://www.gov.br/mre/pt-br/embaixada-washington"
+      },
+      "consulate(s) general": {
+        "text": "Atlanta, Boston, Chicago, Hartford (CT), Houston, Los Angeles, Miami, New York, Orlando, San Francisco"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires Gabriel ESCOBAR (since 21 January 2025)"
+      },
+      "embassy": {
+        "text": "SES - Avenida das Na&ccedil;&otilde;es, Quadra 801, Lote 03, 70403-900 - Bras&iacute;lia, DF"
+      },
+      "mailing address": {
+        "text": "7500 Brasilia Place, Washington DC&nbsp; 20521-7500"
+      },
+      "telephone": {
+        "text": "[55] (61) 3312-7000"
+      },
+      "FAX": {
+        "text": "[55] (61) 3225-9136"
+      },
+      "email address and website": {
+        "text": "<br>BrasilliaACS@state.gov<br><br>https://br.usembassy.gov/"
+      },
+      "consulate(s) general": {
+        "text": "Recife, Porto Alegre, Rio de Janeiro, S&atilde;o Paulo"
+      },
+      "branch office(s)": {
+        "text": "Belo Horizonte"
+      }
+    },
+    "Flag description": {
+      "text": "green with a large yellow diamond in the center bearing a blue celestial globe with 27 white five-pointed stars; the globe has a white equatorial band with the motto ORDEM E PROGRESSO (Order and Progress); the current flag was inspired by the banner of the former Empire of Brazil (1822-1889); on the imperial flag, the green represented the House of Braganza of Pedro I, the first Emperor of Brazil, while the yellow stood for the Habsburg Family of his wife; on the modern flag the green represents the forests of the country and the yellow rhombus its mineral wealth (the diamond shape roughly mirrors that of the country); the blue circle and stars, which replaced the coat of arms of the original flag, depict the sky over Rio de Janeiro on the morning of 15 November 1889 - the day the Republic of Brazil was declared; the number of stars has changed with the creation of new states and has risen from an original 21 to the current 27 (one for each state and the Federal District)",
+      "note": "<strong>note:</strong> one of several flags where a prominent component of the design reflects the shape of the country; other such flags are those of Bosnia and Herzegovina, Eritrea, and Vanuatu"
+    },
+    "National symbol(s)": {
+      "text": "Southern Cross constellation; national colors: green, yellow, blue"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Hino Nacional Brasileiro\" (Brazilian National Anthem)"
+      },
+      "lyrics/music": {
+        "text": "Joaquim Osorio Duque ESTRADA/Francisco Manoel DA SILVA"
+      },
+      "note": "<strong>note:</strong> music adopted 1890, lyrics adopted 1922; the anthem's music, composed in 1822, was used unofficially for many years before it was adopted"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "24 (15 cultural, 8 natural, 1 mixed)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "<p>Brasilia (c); Historic Salvador de Bahia (c); Historic Ouro Preto (c); Historic Center of the Town of Olinda (c); Iguaçu National Park (n); Jesuit Missions of the Guaranis (c); Rio de Janeiro: Carioca Landscapes (c); Central Amazon Conservation Complex (n); Atlantic Forest South-East Reserves (n); Historic Center of Salvador de Bahia (c); Sanctuary of Bom Jesus do Congonhas  (c ); Brasilia (c ); Serra da Capivara National Park (c ); Historic Center of Sao Luis( c); Discovery Coast Atlantic Forest Reserves  (n); Historic Center of the Town of Diamantina (c ); Pantanal Conservation Area (n); Brazilian Atlantic Islands: Fernando de Noronha and Atol das Rocas Reserves (n); Cerrado Protected Areas: Chapada dos Veadeiros and Emas National Parks (n); Historic Centre of the Town of Goiás  (c); São Francisco Square in the Town of São Cristóvão (c ); Rio de Janeiro: Carioca Landscapes between the Mountain and the Sea (c ); Pampulha Modern Ensemble (c ); Valongo Wharf Archaeological Site (c ); Paraty and Ilha Grande – Culture and Biodiversity (m); Sítio Roberto Burle Marx (c ); Lençóis Maranhenses National Park (n)</p>"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "<p>upper-middle income, largest Latin American economy; Mercosur, BRICS, G20 member and OECD accession candidate; growth driven by strong domestic consumption; tax simplification reforms aimed at addressing business conditions and lagging productivity; high inequality in income and access to health and education</p>"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$4.016 trillion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$3.902 trillion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$3.788 trillion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "2.91% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "3.02% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "4.76% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$19,000 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$18,600 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$18,100 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$2.174 trillion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "4.59% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "9.28% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "8.3% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BB (2023)"
+      },
+      "Moody's rating": {
+        "text": "Ba2 (2016)"
+      },
+      "Standard & Poors rating": {
+        "text": "BB- (2018)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "6.2% (2023 est.)"
+      },
+      "industry": {
+        "text": "22.3% (2023 est.)"
+      },
+      "services": {
+        "text": "58.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "63.3% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "18.2% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "16.5% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "-0.5% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "18.1% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-15.7% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "sugarcane, soybeans, maize, milk, cassava, oranges, chicken, rice, beef, wheat (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "textiles, shoes, chemicals, cement, lumber, iron ore, tin, steel, aircraft, motor vehicles and parts, other machinery and equipment"
+    },
+    "Industrial production growth rate": {
+      "text": "1.59% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "106.132 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "7.95% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "9.23% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "13.16% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "17.9% (2023 est.)"
+      },
+      "male": {
+        "text": "15.6% (2023 est.)"
+      },
+      "female": {
+        "text": "20.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "4.2% (2016 est.)",
+      "note": "<strong>note:</strong> approximately 4% of the population are below the \"extreme\" poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2022": {
+        "text": "52 (2022 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "16.2% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "1.7% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "1.2% (2022 est.)"
+      },
+      "highest 10%": {
+        "text": "41% (2022 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.2% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.25% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.25% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$578.267 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$666.279 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2023": {
+        "text": "83.7% of GDP (2023 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "14.15% (of GDP) (2023 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$21.745 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$40.884 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$40.409 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$389.215 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$380.492 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$315.446 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "China 26%, US 11%, Argentina 5%, Netherlands 3%, Spain 3% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "soybeans, crude petroleum, iron ore, refined petroleum, corn (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$337.04 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$368.588 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$300.091 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 24%, US 18%, Germany 5%, Argentina 5%, India 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, fertilizers, vehicle parts/accessories, crude petroleum, pesticides (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$355.021 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$324.673 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$362.21 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$204.737 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "reals (BRL) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "4.994 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "5.164 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "5.394 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "5.155 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "3.944 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "97.3%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "220.319 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "583.184 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "4.979 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "17.887 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "103.995 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "9.9% of total installed capacity (2022 est.)"
+      },
+      "nuclear": {
+        "text": "2.2% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "4% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "12.1% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "63.3% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "8.4% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of operational nuclear reactors": {
+        "text": "2 (2023)"
+      },
+      "Number of nuclear reactors under construction": {
+        "text": "1 (2023)"
+      },
+      "Net capacity of operational nuclear reactors": {
+        "text": "1.88GW (2023 est.)"
+      },
+      "Percent of total electricity production": {
+        "text": "2.2% (2023 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "15.644 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "32.787 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "7,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "20.389 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "6.596 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "4.221 million bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "3.027 million bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "12.715 billion barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "22.67 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "31.654 billion cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "75.122 million cubic meters (2021 est.)"
+      },
+      "imports": {
+        "text": "8.812 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "363.985 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "516.752 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "54.455 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "404.548 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "57.749 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "50.037 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "25.574 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "12 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "213 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "99 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Brazil is one of the largest mobile and broadband markets in Latin America with healthy competition and pricing; 5G services was provided to all capital cities in July 2022, as well as about 35,500km of the national highway network; the country also has one of the largest fixed line broadband markets in Latin America, though broadband subscriptions is only slightly above the regional average, trailing behind Chile, Argentina, and Uruguay; amendments to the licensing regime adopted in October 2019 also require that ISPs which have switched to authorizations invest money saved from lighter regulations in the expansion of broadband services; the fixed line broadband market has seen rapid growth for a number of years, with a growing focus on fiber broadband; in 2019 the number of fiber accesses overtook DSL connections; the country is a key landing point for a number of important submarine cables connecting to the US, Central and South America, the Caribbean, Europe, and Africa; several new cable systems are due to come into service through to 2022, which will increase bandwidth and push down broadband prices for end-users; investments have also been made into terrestrial fiber cables between Brazil, Argentina, and Chile (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line connections stand at roughly 13 per 100 persons;&nbsp; mobile-cellular teledensity roughly 102 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 55; landing points for a number of submarine cables, including Malbec, ARBR, Tamnat, SAC, SAm-1, Atlantis -2, Seabras-1, Monet, EllaLink, BRUSA, GlobeNet, AMX-1, Brazilian Festoon, Bicentenario, Unisur, Junior, Americas -II,&nbsp;SAE x1, SAIL, SACS&nbsp;and&nbsp;SABR that provide direct connectivity to South and Central America, the Caribbean, the US, Africa, and Europe;&nbsp;satellite earth stations - 3 Intelsat (Atlantic Ocean), 1 Inmarsat (Atlantic Ocean region east), connected by microwave relay system to Mercosur Brazilsat B3 satellite earth station; satellites&nbsp;is a&nbsp;major communication platform, as it is almost impossible to lay fiber optic cable in the thick vegetation (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "state-run Radiobras operates a radio and a TV network; more than 1,000 radio stations and more than 100 TV channels operating - mostly privately owned; private media ownership highly concentrated (2022)"
+    },
+    "Internet country code": {
+      "text": ".br"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "84% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "48.4 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "23 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "9 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "443"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "102,109,977 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "1,845,650,000 (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "PP"
+    },
+    "Airports": {
+      "text": "4,919 (2024)"
+    },
+    "Heliports": {
+      "text": "1,768 (2024)"
+    },
+    "Pipelines": {
+      "text": "5,959 km refined petroleum product (1,165 km distribution, 4,794 km transport), 11,696 km natural gas (2,274 km distribution, 9,422 km transport), 1,985 km crude oil (distribution), 77 km ethanol/petrochemical (37 km distribution, 40 km transport) (2016)"
+    },
+    "Railways": {
+      "total": {
+        "text": "29,849.9 km (2014)"
+      },
+      "standard gauge": {
+        "text": "194 km (2014) 1.435-m gauge"
+      },
+      "narrow gauge": {
+        "text": "23,341.6 km (2014) 1.000-m gauge (24 km electrified)"
+      },
+      "broad gauge": {
+        "text": "5,822.3 km (2014) 1.600-m gauge (498.3 km electrified)"
+      },
+      "dual gauge": {
+        "text": "492 km (2014) 1.600-1.000-m gauge"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "2 million km"
+      },
+      "paved": {
+        "text": "246,000 km"
+      },
+      "unpaved": {
+        "text": "1.754 million km (2018)"
+      }
+    },
+    "Waterways": {
+      "text": "50,000 km (2012) (most in areas remote from industry and population)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "888 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 13, container ship 20, general cargo 38, oil tanker 27, other 790"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "45 (2024)"
+      },
+      "large": {
+        "text": "4"
+      },
+      "medium": {
+        "text": "7"
+      },
+      "small": {
+        "text": "19"
+      },
+      "very small": {
+        "text": "15"
+      },
+      "ports with oil terminals": {
+        "text": "31"
+      },
+      "key ports": {
+        "text": "Belem, DTSE/Gegua Oil Terminal, Itajai, Port de Salvador, Porto Alegre, Recife, Rio de Janeiro, Rio Grande, Santos, Tubarao, Vitoria"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Brazilian Armed Forces (Forças Armadas Brasileiras): Brazilian Army (Exercito Brasileiro, EB), Brazilian Navy (Marinha do Brasil, MB, includes Naval Aviation (Aviacao Naval Brasileira) and Marine Corps (Corpo de Fuzileiros Navais)), Brazilian Air Force (Forca Aerea Brasileira, FAB) (2024)",
+      "note": "<strong>note:</strong> the three national police forces – the Federal Police, Federal Highway Police, and Federal Railway Police – have domestic security responsibilities and report to the Ministry of Justice and Public Security (Ministry of Justice); there are two distinct units within the state police forces: the civil police, which performs an investigative role, and the military police, charged with maintaining law and order in the states and the Federal District; despite the name, military police forces report to the Ministry of Justice, not the Ministry of Defense; the armed forces also have some domestic security responsibilities and report to the Ministry of Defense"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "1.1% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.2% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.3% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.4% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "1.4% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 360,000 active military personnel (220,000 Army; 70,000 Navy; 70,000 Air Force); approximately 400,000 paramilitary security forces (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the Brazilian military's inventory consists of a mix of domestically produced and imported weapons, largely from Europe and the US; Brazil's defense industry designs and manufactures equipment for all three military services and for export; it also jointly produces equipment with other countries (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-45 years of age for compulsory military service for men (women exempted); only 5-10% of those inducted are required to serve; conscript service obligation is 10-12 months; 17-45 (18 for women) years of age for voluntary service (2024)",
+      "note": "<strong>note:</strong> in 2024, women were reported to comprise approximately 10% of the Brazilian military"
+    },
+    "Military - note": {
+      "text": "the Brazilian Armed Forces (BAF) are the second largest military in the Western Hemisphere behind the US; they are responsible for external security and protecting the country's sovereignty but also have a considerable internal security role; the BAF’s missions include patrolling and protecting the country’s long borders and coastline and extensive territorial waters and river network, assisting with internal security, providing domestic disaster response and humanitarian assistance, and participating in multinational peacekeeping missions<br><br>in the past decade, the BAF has mobilized thousands of troops to conduct counternarcotics operations, support the police in combating crime, assist with disease outbreaks and humanitarian missions, and provide security for major events such as the 2014 World Cup and the 2016 Summer Olympics; it has also cooperated regularly with neighboring countries such as Argentina and Paraguay on border security to combat smuggling and trafficking <br><br>Brazil has Major Non-NATO Ally (MNNA) status with the US, a designation under US law that provides foreign partners with certain benefits in the areas of defense trade and security cooperation<br><br>the origins of Brazil's military stretch back to the 1640s; Brazil provided a 25,000-man expeditionary force with air and ground units to fight with the Allies in the Mediterranean Theater during World War II; the Navy participated in the Battle of the Atlantic (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Brazilian Space Agency (Ag&ecirc;ncia Espacial Brasileira, AEB; established in 1994 when Brazil&rsquo;s space program was transferred from the military to civilian control); National Institute for Space Research (established, 1971; part of the Brazilian Ministry of Science, Technology and Innovations); Space Operations Command (Armed Forces); Department of Aerospace Science and Technology (DCTA; established in 1953 as a military space research program under the Brazilian Air Force) (2024)"
+    },
+    "Space launch site(s)": {
+      "text": "Alcantara Launch Site (Maranh&atilde;o state); Barreira do Inferno Launch Center (Rio Grande do Norte state) (2024)"
+    },
+    "Space program overview": {
+      "text": "has an active program with a long history; develops, builds, operates, and tracks satellites, including communications, remote sensing (RS), multi-mission, navigational, and scientific/testing/research; satellites are launched by foreign partners, but Brazil has a long-standing sounding (research) rocket and space launch vehicle (SLV) program and rocket launch facilities; cooperates with a variety of foreign space agencies and commercial entities, including those of Argentina, Canada, the European Space Agency and individual member states (particularly France and Germany), India, Japan, Russia, South Africa, South Korea, Ukraine, and the US; has a state-controlled communications company that operates Brazil’s communications satellites and a growing commercial space sector with expertise in satellite technology (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Hizballah",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "510,499 (Venezuela) (economic and political crisis; includes Venezuelans who have claimed asylum, are recognized as refugees, or received alternative legal stay) (2023)"
+      },
+      "IDPs": {
+        "text": "5,600 (2022)"
+      },
+      "stateless persons": {
+        "text": "12 (2022)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a significant drug transit and destination country for cocaine bound for Europe and other destinations including the United States; domestic drug use and addiction is a significant problem and it is second only to the United States in cocaine consumption; a major source of precursor or essential chemicals used in the production of illicit narcotics</p>"
+    }
+  }
+}

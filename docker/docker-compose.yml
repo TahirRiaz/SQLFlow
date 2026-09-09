@@ -1,0 +1,87 @@
+# DeltaForge local source databases: PostgreSQL, MySQL, and Oracle, each seeded with the well-known Sakila
+# sample so pipelines and the provider integration tests have real, identical-across-engines data to read.
+# The SQL Server sink is expected to run separately (a local instance or its own container); these three are
+# SOURCE systems only.
+#
+# Bring the stack up with the helper scripts (they fetch the sample SQL first, then start the containers):
+#   pwsh docker/up.ps1          # Windows / PowerShell
+#   ./docker/up.sh              # Linux / macOS / Git Bash
+#
+# Credentials default to the values below and can be overridden through a docker/.env file (see .env.example).
+# Connection strings for each engine are listed in docker/README.md.
+
+name: deltaforge-sources
+
+services:
+  postgres:
+    image: postgres:17
+    container_name: deltaforge-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-deltaforge}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # Files here run once, in filename order, the first time the data directory is initialized.
+      - ./postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-deltaforge}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    container_name: deltaforge-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-devpassword}
+      # The Sakila schema script creates and populates its own `sakila` database; this just pre-creates it.
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sakila}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      # Files here run once, in filename order, the first time the data directory is initialized.
+      - ./mysql/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD:-devpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  oracle:
+    # Gerald Venzl's Oracle Database 23ai Free image: creates the FREEPDB1 pluggable database and runs the
+    # scripts mounted below once, on first startup. The slim tag drops the components a source database does
+    # not need to keep the image small.
+    image: gvenzl/oracle-free:23-slim
+    container_name: deltaforge-oracle
+    environment:
+      # Sets the password for SYS and SYSTEM. Connect as system/<this>@localhost:1521/FREEPDB1.
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:-devpassword}
+    ports:
+      - "${ORACLE_PORT:-1521}:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      # Only the wrapper here is auto-run on first creation (the image recurses subfolders, so nothing else
+      # lives under this path).
+      - ./oracle/initdb:/container-entrypoint-initdb.d:ro
+      # The raw jOOQ Sakila scripts, mounted OUTSIDE the init directory so the image does not auto-run them;
+      # the wrapper includes them by this absolute path.
+      - ./oracle/sakila-sql:/opt/sakila:ro
+    healthcheck:
+      # The image ships a healthcheck helper that reports ready only once the database is open.
+      test: ["CMD", "healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  mysql-data:
+  oracle-data:

@@ -1,0 +1,12 @@
+# Quoted fields: the text qualifier (default ") lets a value contain the delimiter or a
+# line break. Set 'qualifier' to change it.
+name: Csv_Quoted
+source:
+  type: csv
+  location: ./data/quoted.csv
+  options:
+    qualifier: "\""
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Quoted

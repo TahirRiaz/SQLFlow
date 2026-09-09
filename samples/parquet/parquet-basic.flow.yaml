@@ -1,0 +1,16 @@
+# Basic Parquet: the file's own schema becomes the columns. Parquet is columnar and self-describing, so there
+# is nothing to flatten and no header/delimiter options. Native types (int, bigint, double, decimal(p,s),
+# timestamp, ...) map straight to their SQL Server types and the typed values load as-is - no infer step.
+# Point `location` at a .parquet file, or at a folder plus options.srcFile to load many (schema evolves across
+# them: the column set is the additive union, missing columns null-fill, and a type that disagrees across files
+# widens to nvarchar(max)).
+name: Parquet_Basic
+source:
+  type: parquet
+  location: ./data/orders.parquet
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Parquet_Basic
+load:
+  mode: truncate-load

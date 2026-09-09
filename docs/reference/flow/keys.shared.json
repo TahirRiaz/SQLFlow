@@ -1,0 +1,323 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": null,
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 33,
+  "keys": [
+    {
+      "path": "connections",
+      "type": "map<string,object>",
+      "required": false,
+      "default": "{} (empty; the document declares no named connections, so every endpoint must use a direct connection:/${...} reference or fall back to the bare SQLFLOW_CONN convention)",
+      "description": "Named connection registry mapped by YamlDocumentParts.MapConnections: for each entry, the key becomes a DataSource.Alias and the value (string | blank | map) becomes its ConnectionRef/Kind via BuildDataSource. The resulting list closes into a single-document, no-control-database runtime, but not by DocumentExecutor calling the resolver builder directly: DocumentExecutor (src/SqlFlow.Execution/DocumentExecutor.cs) only forwards doc.Document.Connections into that flow kind's OWN without-database composition root (WithoutDatabaseIngestion.BuildRunner for ing at DocumentExecutor.cs:224-233, WithoutDatabaseExport.BuildRunner for exp, WithoutDatabaseStoredProcedure.BuildRunner for sp, WithoutDatabaseHealthCheck.BuildRunner for hc, WithoutDatabaseSourceControl.BuildService for scm), and it is THAT composition root - one level removed from DocumentExecutor - that calls WithoutDatabaseResolver.Build(connections, secrets, registry) => new ConnectionResolver(new InMemoryDataSourceStore(connections), secretResolver, canonicalizers) (src/SqlFlow.SqlServer/WithoutDatabaseResolver.cs:15-22; the call site for ing is src/SqlFlow.SqlServer/Ingestion/WithoutDatabaseIngestion.cs:38, and symmetrically WithoutDatabaseExport.cs:29, WithoutDatabaseStoredProcedure.cs:29, WithoutDatabaseHealthCheck.cs:42, WithoutDatabaseSourceControl.cs:27). So every endpoint's resolved connection NAME (e.g. IngestionSource.Server) is later turned into an '@name' alias by that flow model's own ConnectionReference computed property (e.g. src/SqlFlow.Core/Ingestion/IngestionFlow.cs:19,37; src/SqlFlow.Core/Export/ExportFlow.cs:96; src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:49; src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:127; src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:30) and resolved through IConnectionResolver.ResolveAsync (ConnectionRef.Parse classifies the leading '@', src/SqlFlow.Core/Connections/ConnectionRef.cs:41-66) against the SAME in-memory dictionary the document declared, keyed case-insensitively (InMemoryDataSourceStore, src/SqlFlow.Core/Connections/InMemoryDataSourceStore.cs:12-53). This is the 'alias resolution' mechanism: a document never has a control-database flw.DataSource row, yet '@alias' still resolves because the YAML connections: block IS the registry for that single run.",
+      "appliesWhen": "flowType: ing, exp, sp, hc, scm - each loader calls the identical YamlDocumentParts.MapConnections(y.Connections, source) (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:85; YamlExportFlowLoader.cs:83; YamlStoredProcedureFlowLoader.cs:81; YamlHealthCheckFlowLoader.cs:77; YamlSourceControlFlowLoader.cs:74) over the identical `Dictionary<string, object>? Connections` DTO field (IngestionYaml.cs:15; ExportYaml.cs:14; StoredProcedureYaml.cs:16; HealthCheckYaml.cs:16; private SourceControlYaml at YamlSourceControlFlowLoader.cs:285). NOT bound by the standalone flowType: inv document (InvokeDocumentYaml has no Connections field at all - src/SqlFlow.Yaml/InvokeYaml.cs:7-15 - because an invoke authenticates only through servicePrincipals:, never a SQL Server connection). NOT bound by flowType: batch ('a batch owns no connections; its members carry their own', doc comment at src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:9-10; BatchYaml has no such field, YamlBatchFlowLoader.cs:115-125). NOT bound by the file flow (no flowType key): TargetYaml carries only a single scalar `Connection` string (src/SqlFlow.Yaml/FlowYaml.cs:60-65), never a connections: registry.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:45-70 (MapConnections)",
+      "validation": "Per-entry key: '<source>: connection name '<rawName>' is invalid. Use letters, digits, '_', '.', or '-'.' (IsValidConnectionName, YamlDocumentParts.cs:242-243, checked at :31-35). Duplicate key: '<source>: connection '<connectionName>' is declared more than once.' (:38-41, the dictionary is built with TryAdd). A later endpoint's own `connection:` value can also collide with a declared name; that cross-check ('<source>: '<section>.connection' is set, but 'connections:' already declares '<syntheticName>'...') lives in ResolveEndpointConnection (YamlDocumentParts.cs:169-174) and belongs to each flowType's own endpoint fields (source/target/procedure), not to this block directly."
+    },
+    {
+      "path": "connections.<name>",
+      "type": "string|object",
+      "required": false,
+      "default": "when the node is null or a blank/whitespace-only string: the bare-alias convention reference '${env:SQLFLOW_CONN_<NAME>}' (ConnectionConvention.Reference), DataSourceKind.MSSQL",
+      "description": "One declared connection's node, parsed by ParseConnectionNode (src/SqlFlow.Yaml/YamlDocumentParts.cs:72-115) into three shapes: (1) null or a blank string - resolves to the canonical convention reference `${env:SQLFLOW_CONN_<NAME>}`, where <NAME> is the connection name uppercased with every non-alphanumeric character folded to '_' (ConnectionConvention.EnvironmentVariable, src/SqlFlow.Core/Connections/ConnectionConvention.cs:13-19) - the whole point being a document can declare WHICH connections it needs (just the name) with zero literal reference in the file; (2) a non-blank plain string - used verbatim (trimmed) as the ConnectionRef, DataSourceKind.MSSQL assumed unconditionally, even if the string is itself a MySQL/Postgres/Oracle connection string or reference (this is the legacy back-compatible form: a raw connection string OR a ${scheme:locator} reference, either is accepted here and only classified/expanded later by ConnectionResolver; selecting a non-MSSQL provider requires the map form below); (3) a map with optional 'provider'/'connection' keys (see the two child entries) - if the map omits 'connection' (or leaves it blank), the value STILL falls back to the bare convention reference while keeping the map's own 'provider'. Because this map is bound as a raw `IDictionary<object, object?>` node (not a typed DTO), the 'provider'/'connection' keys are matched by application code doing its own `.Trim().ToLowerInvariant()` comparison (YamlDocumentParts.cs:91-99), not by YamlDotNet's CamelCase convention (which never touches dictionary keys at all) - any other key in the map is silently ignored, and a non-string value under 'provider'/'connection' is silently treated as absent (`value as string` yields null) rather than erroring. Every resulting DataSource defaults to Credential.Mode = CredentialMode.InlineConnectionString (BuildDataSource, YamlDocumentParts.cs:181-188), the trust level appropriate for a reference the document author placed there themselves.",
+      "appliesWhen": "wherever 'connections:' is bound (ing, exp, sp, hc, scm)",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:72-115 (ParseConnectionNode); convention at src/SqlFlow.Core/Connections/ConnectionConvention.cs:10-24; assembly at YamlDocumentParts.cs:181-188 (BuildDataSource)",
+      "validation": "Any node shape other than null/string/map throws: '<source>: connection '<connectionName>' must be a connection string, a ${...} reference, a map with 'provider' and 'connection', or bare (which resolves '<env:SQLFLOW_CONN_NAME>' by convention).' (YamlDocumentParts.cs:109-113)."
+    },
+    {
+      "path": "connections.<name>.connection",
+      "type": "string",
+      "required": false,
+      "default": "when absent or blank: the bare-alias convention reference '${env:SQLFLOW_CONN_<NAME>}' (the map's own 'provider', if set, is still honored)",
+      "description": "The map form's connection string or ${scheme:locator} reference, read from the raw map node's 'connection' key (case-insensitively matched by application code, not the YamlDotNet convention - see the parent entry). Used verbatim (trimmed) as ConnectionRef when non-blank; a non-string node (e.g. authoring a nested map/sequence here by mistake) is silently read as null and falls back to the convention reference rather than erroring.",
+      "appliesWhen": "connections.<name> is authored as a map (not a bare/blank/plain-string value)",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:85-107 (ParseConnectionNode's map branch)"
+    },
+    {
+      "path": "connections.<name>.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql (also the result for a blank/absent value, and for the synonym 'sqlserver')",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "description": "The relational kind of a map-form connection, parsed by ParseProvider (src/SqlFlow.Yaml/YamlDocumentParts.cs:122-132) into a DataSourceKind, matched case-insensitively with NO '-'/'_' stripping (unlike load.mode/schema.evolve in the file-flow census - confirmed by reading the switch expression directly, which only lowercases). Two tokens are accepted synonyms for the listed canonical spellings: 'sqlserver' also maps to mssql, and 'postgresql' also maps to postgres. The resolved DataSourceKind matters downstream: RequireSqlServerConnection (YamlDocumentParts.cs:193-202) rejects anything other than MSSQL/AZDB wherever a flowType's endpoint must be SQL Server - and every one of the five relational loaders calls it on its own primary endpoint: every ing target (YamlIngestionFlowLoader.cs:95), every exp source (YamlExportFlowLoader.cs:94), every sp procedure (YamlStoredProcedureFlowLoader.cs:91), every hc target (YamlHealthCheckFlowLoader.cs:87), and every scm source (YamlSourceControlFlowLoader.cs:81). Because ingestion's loader is the only one of the five that never calls RequireSqlServerConnection on its OWN source (only on its target, at YamlIngestionFlowLoader.cs:95), ingestion's source is in practice the ONLY endpoint anywhere in V3 where a MySQL/PostgreSQL/Oracle connection actually survives validation; an export flow's source, despite sharing the word 'source', is exactly as SQL-Server-locked as every target/procedure endpoint.",
+      "appliesWhen": "connections.<name> is authored as a map (not a bare/blank/plain-string value)",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:122-132 (ParseProvider), read at :87-95 (ParseConnectionNode's map branch)",
+      "validation": "'<source>: 'connections.<name>.provider' has unknown provider '<provider>'. Allowed: mssql, azdb, mysql, postgres, oracle.' (YamlDocumentParts.cs:130-131; the field name passed in is literally `connections.<name>.provider`, YamlDocumentParts.cs:106)."
+    },
+    {
+      "path": "invokes",
+      "type": "map<string,object>",
+      "required": false,
+      "default": "{} (empty; then preInvoke/postInvoke must be left unset, since they can only reference a name declared here)",
+      "description": "Named invoke registry mapped by YamlInvokeParts.MapInvokes/MapInvoke (src/SqlFlow.Yaml/YamlInvokeParts.cs:93-197): each entry becomes an InvokeDefinition, checked against the document's OWN already-mapped servicePrincipals dictionary. At run time the whole list closes into WithoutDatabaseInvokeRunner.Build(invokes, executors) (src/SqlFlow.SqlServer/Invoke/WithoutDatabaseInvoke.cs:14-22): with at least one declared invoke it wires a DefaultInvokeRunner over an InMemoryInvokeFlowStore (src/SqlFlow.Core/Invoke/InMemoryInvokeFlowStore.cs) keyed case-insensitively by InvokeAlias, so preInvoke/postInvoke resolve without any control database; with zero declared invokes it wires NullInvokeRunner.Instance instead, so a stray preInvoke/postInvoke would already have failed YAML-time validation before this point is ever reached. The standalone flowType: inv document does NOT have this plural dictionary at all: it declares exactly one invoke via a singular 'invoke:' key at its document root (InvokeDocumentYaml.Invoke, src/SqlFlow.Yaml/InvokeYaml.cs:13), mapped through the IDENTICAL YamlInvokeParts.MapInvoke function (YamlInvokeFlowLoader.cs:75) - every per-field entry documented below (type/pipeline/runbook/servicePrincipal/parameters/onErrorResume) describes that same shape and validation, just at the document root ('invoke.type' etc.) instead of 'invokes.<name>.*'; that root key's own census is treated as belonging to a separate flowType:inv document unit, not this shared one (the same carve-out style docs/reference/flow/keys.json used for ing's differently-shaped 'schema' key).",
+      "appliesWhen": "flowType: ing, exp, sp - identical `Dictionary<string, InvokeBlockYaml>? Invokes` field (src/SqlFlow.Yaml/IngestionYaml.cs:35; ExportYaml.cs:19; StoredProcedureYaml.cs:19) and identical MapInvokes call (YamlIngestionFlowLoader.cs:99; YamlExportFlowLoader.cs:100; YamlStoredProcedureFlowLoader.cs:98). NOT the standalone flowType: inv document (see description). NOT hc, scm, batch, or the file flow.",
+      "definedIn": "src/SqlFlow.Yaml/YamlInvokeParts.cs:93-126 (MapInvokes)",
+      "validation": "Invalid key: '<source>: invoke name '<rawName>' is invalid. Use letters, digits, '_', '.', or '-'.' (:106-111). Declared-but-empty entry: '<source>: 'invokes.<name>' must be a map of invoke fields.' (:113-116). Duplicate key: '<source>: invoke '<name>' is declared more than once.' (:119-122)."
+    },
+    {
+      "path": "invokes.<name>.onErrorResume",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Governs whether THIS invoke's own failure is tolerated by the flow that triggers it via preInvoke/postInvoke. DefaultInvokeRunner.RunByAliasAsync (src/SqlFlow.Core/Invoke/IInvokeRunner.cs:51-67) re-raises - as `SqlFlowException \"Invoke '<alias>' (flow <id>, type <type>) failed: <error>\"`, which fails the calling ing/exp/sp run - ONLY when the dispatched InvokeResult.Success is false AND this flag is false (:60-63). When true (the default), a failed invoke is silently swallowed at the call site: IngestionFlowRunner/ExportFlowRunner/StoredProcedureFlowRunner all `await _invoke.RunByAliasAsync(...)` without inspecting the return value, so the calling flow still reports overall Success even though the hook itself failed. This is a DIFFERENT flag from the enclosing sp/exp document's own top-level `onErrorResume` (e.g. StoredProcedureYaml.OnErrorResume, ExportYaml.OnErrorResume): that one is consumed only by the full-mode/control-plane batch host (src/SqlFlow.SqlServer/FullMode/FullModeIngestionHost.cs:187,211,235,266), never by this without-database hook path - the two must not be conflated. For the standalone flowType: inv document, the identical field at its document root ('invoke.onErrorResume') is NOT simply final as mapped: YamlInvokeFlowLoader layers the document's OWN root-level `onErrorResume` on top - `y.OnErrorResume ?? invokeYaml.OnErrorResume ?? true` (src/SqlFlow.Yaml/YamlInvokeFlowLoader.cs:79-84) - so the document-level flag overrides the invoke-block's own flag there, whereas for a named invokes.<name> entry in ing/exp/sp the invoke's own onErrorResume is final with no such override. This is the one concrete per-flowType behavioral difference in an otherwise identical field.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:31; mapped at src/SqlFlow.Yaml/YamlInvokeParts.cs:194; model src/SqlFlow.Core/Invoke/InvokeDefinition.cs:39; consumed at src/SqlFlow.Core/Invoke/IInvokeRunner.cs:60-63"
+    },
+    {
+      "path": "invokes.<name>.parameters",
+      "type": "map<string,object>",
+      "required": false,
+      "default": "null/absent -> no parameters; dispatched as an empty parameter set to ADF/Automation, never an error",
+      "description": "Parameter name/value pairs passed to the triggered pipeline or runbook. ParametersToJson (src/SqlFlow.Yaml/YamlInvokeParts.cs:233-252) serializes the whole map into InvokeDefinition.ParameterJson, a JSON object string, preserving each value's YAML-inferred CLR type through the ToNode switch (bool/int-family/float-family/decimal/string/nested map/nested sequence; anything else throws). At DISPATCH time the SAME JSON is converted DIFFERENTLY depending on invokes.<name>.type - a genuine behavioral difference despite the identical authored shape: AzureDataFactoryInvokeExecutor keeps each value as raw JSON (BinaryData), so numbers/bools/objects/arrays survive unchanged into the ADF pipeline parameter (InvokeParameterJson.ToDataFactoryParameters, src/SqlFlow.Azure/Invoke/InvokeParameterJson.cs:15-31); AzureAutomationInvokeExecutor instead coerces every value to a plain STRING (a JSON string is unwrapped as-is; anything else - number/bool/object/array - is re-serialized to its JSON text) because Azure Automation's runbook-parameter contract is string-to-string (InvokeParameterJson.ToAutomationParameters, :33-52).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:27-29 (InvokeBlockYaml.Parameters); mapped at src/SqlFlow.Yaml/YamlInvokeParts.cs:233-300",
+      "validation": "'<source>: '<field>' has a parameter with an empty name.' (:243-246). Dispatch-time (should never trigger from a document that only ever went through ParametersToJson, since that path always emits well-formed JSON): 'Invoke ParameterJSON is not valid JSON: <msg>' / 'Invoke ParameterJSON must be a JSON object of parameter name/value pairs.' (InvokeParameterJson.cs:54-78)."
+    },
+    {
+      "path": "invokes.<name>.parameters.<param>",
+      "type": "any (bool, integer, float/decimal, string, nested map, or sequence)",
+      "required": false,
+      "description": "One parameter's value. The parameter NAME is a dictionary key, so - per the shared naming convention - it is never case-folded or renamed by the CamelCase deserializer convention: it is used byte-for-byte (case-sensitive, no OrdinalIgnoreCase re-wrap) as the resulting JSON object's key (ParametersToJson, YamlInvokeParts.cs:240-251), unlike connection/service-principal/invoke NAMES, which are all re-wrapped case-insensitively after mapping. The VALUE keeps its YAML-inferred scalar type into JSON via ToNode (a plain `true`/`42` stays a boolean/number, a quoted \"true\"/\"42\" stays a string) - PROVIDED the loader's deserializer enables `.WithAttemptingUnquotedStringTypeDeserialization()`, which ing/exp/sp/inv's loaders all do (see the naming-convention correction below); it is then coerced again at dispatch time depending on invokes.<name>.type (see that entry).",
+      "definedIn": "src/SqlFlow.Yaml/YamlInvokeParts.cs:254-300 (ToNode/MapToObject/ListToArray)",
+      "validation": "'<source>: '<path>' has an unsupported value of type '<TypeName>'. Use scalars, maps, or sequences.' for a CLR type outside string/bool/integer-family/float-family/decimal/dictionary/enumerable (:267-269). '<source>: '<path>' has a nested key that is empty.' for a blank key inside a nested map value (:280)."
+    },
+    {
+      "path": "invokes.<name>.output",
+      "type": "object",
+      "required": false,
+      "default": "null (absent)",
+      "description": "A single file drop the triggered compute lands, in the same shape a file source declares its selection (location + srcFile + srcPathMask). Bound from InvokeBlockYaml.Output (src/SqlFlow.Yaml/InvokeYaml.cs) and mapped by YamlInvokeParts.MapOutputs into InvokeDefinition.Outputs (src/SqlFlow.Core/Invoke/InvokeOutput.cs). It is ACCEPTED on a named invokes.<name> hook, but contributes lineage only for a standalone flowType: inv document: FlowSetCollector records the standalone invoke as a file producer and connects it, via the shared engine-parity matcher (src/SqlFlow.Core/Files/FileSelection.cs), to the file ingestion that reads the same file(s) (invoke -> file -> landing table -> view -> downstream). On an inline hook the hook already orders the run and the inline invoke is not itself a lineage node, so the drop is not matched.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs; mapped at src/SqlFlow.Yaml/YamlInvokeParts.cs (MapOutputs)",
+      "validation": "A present block with no location: '<source>: '<section>.output.location' is required when an invoke declares an output.' An invalid srcPathMask: '<source>: '<section>.output.srcPathMask' is not a valid regular expression.'"
+    },
+    {
+      "path": "invokes.<name>.output.location",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "an invokes.<name>.output block is present",
+      "default": "none",
+      "description": "The folder, full file path, or cloud URL the run lands data at. A local path is normalized against the estate root for the file node's lineage identity; a cloud URL (contains '://') is kept verbatim. With srcFile omitted, a location whose last segment looks like a file name (a wildcard or extension dot) splits into folder + pattern; a bare folder takes the type's default pattern; a trailing slash forces a folder.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "Blank/absent (with the block present): '<source>: '<section>.output.location' is required when an invoke declares an output.'"
+    },
+    {
+      "path": "invokes.<name>.output.srcFile",
+      "type": "string",
+      "required": false,
+      "default": "inferred from location, else match any file in the folder",
+      "description": "The file-name glob within location (e.g. orders_*.csv), mirroring a file source's srcFile and matched with the same System.IO.Enumeration.FileSystemName matcher; two wildcard patterns are tested for overlap (FileSelection.GlobsOverlap). Quote a glob beginning with '*' ('*.csv' is a YAML alias otherwise).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs"
+    },
+    {
+      "path": "invokes.<name>.output.srcPathMask",
+      "type": "string",
+      "required": false,
+      "default": "null (absent)",
+      "description": "An optional regex over the full landing path, mirroring a file source's srcPathMask; when set it is the authoritative path constraint in the match (over the folder-prefix check).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "An invalid regex: '<source>: '<section>.output.srcPathMask' is not a valid regular expression.'"
+    },
+    {
+      "path": "invokes.<name>.outputs",
+      "type": "list<object>",
+      "required": false,
+      "default": "[] (absent)",
+      "description": "Several file drops the triggered compute lands (an SFTP download of many file sets, or a pipeline writing several folders): one entry per (folder, pattern), each the same shape as invokes.<name>.output. Combines with the singular output (singular prepended). Each drop binds independently; only meaningful for a standalone flowType: inv document (see invokes.<name>.output).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs; mapped at src/SqlFlow.Yaml/YamlInvokeParts.cs (MapOutputs)",
+      "validation": "An entry that is not a map: '<source>: '<section>.outputs[<i>]' must be a map of output fields.' Each entry is validated like output (location required, srcPathMask a valid regex), with the path '<section>.outputs[<i>].*'."
+    },
+    {
+      "path": "invokes.<name>.outputs[].location",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "an invokes.<name>.outputs entry is present",
+      "default": "none",
+      "description": "The folder, full file path, or cloud URL this drop lands at; same normalization and folder/pattern splitting as invokes.<name>.output.location.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "Blank/absent: '<source>: '<section>.outputs[<i>].location' is required when an invoke declares an output.'"
+    },
+    {
+      "path": "invokes.<name>.outputs[].srcFile",
+      "type": "string",
+      "required": false,
+      "default": "inferred from location, else match any file in the folder",
+      "description": "The file-name glob within this drop's location; same semantics as invokes.<name>.output.srcFile.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs"
+    },
+    {
+      "path": "invokes.<name>.outputs[].srcPathMask",
+      "type": "string",
+      "required": false,
+      "default": "null (absent)",
+      "description": "An optional regex over this drop's full landing path; same semantics as invokes.<name>.output.srcPathMask.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "An invalid regex: '<source>: '<section>.outputs[<i>].srcPathMask' is not a valid regular expression.'"
+    },
+    {
+      "path": "invokes.<name>.pipeline",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "invokes.<name>.type is adf; must be omitted when type is aut (the default when type is unset)",
+      "description": "The Azure Data Factory pipeline NAME (not its definition) to trigger. AzureDataFactoryInvokeExecutor looks it up via the ARM SDK (DataFactoryResource.GetDataFactoryPipelineAsync), starts a run with the invoke's JSON parameters (CreateRunAsync), and polls the run to a terminal status every 15 seconds by default; a non-Succeeded terminal status throws (src/SqlFlow.Azure/Invoke/AzureDataFactoryInvokeExecutor.cs:36-75).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:23; consumed at src/SqlFlow.Azure/Invoke/AzureDataFactoryInvokeExecutor.cs:36-49",
+      "validation": "'<source>: '<section>.pipeline' is required when type is adf.' / '<source>: '<section>.pipeline' is set, but type aut runs a runbook; remove it or use type adf.' (YamlInvokeParts.cs:140-149,159-162). Defensive run-time guard if ever reached blank: 'Invoke '<alias>' (adf) has no PipelineName to run.' (AzureDataFactoryInvokeExecutor.cs:36-37)."
+    },
+    {
+      "path": "invokes.<name>.runbook",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "invokes.<name>.type is aut (including when type is left unset, since aut is the default); must be omitted when type is adf",
+      "description": "The Azure Automation runbook NAME to start. AzureAutomationInvokeExecutor creates an Automation job (AutomationJobCreateOrUpdateContent with a generated job name '<runbook>_SQLFLW_<guid>'), passes the invoke's parameters (coerced to string-to-string, see invokes.<name>.parameters), and polls to a terminal status every 10 seconds by default; a non-Completed terminal status throws with the job's exception/status detail (src/SqlFlow.Azure/Invoke/AzureAutomationInvokeExecutor.cs:33-91).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:24; consumed at src/SqlFlow.Azure/Invoke/AzureAutomationInvokeExecutor.cs:37-58",
+      "validation": "'<source>: '<section>.runbook' is required when type is aut.' / '<source>: '<section>.runbook' is set, but type adf runs a pipeline; remove it or use type aut.' (YamlInvokeParts.cs:144-149,153-156). Defensive run-time guard: 'Invoke '<alias>' (aut) has no RunbookName to run.' (AzureAutomationInvokeExecutor.cs:37-38)."
+    },
+    {
+      "path": "invokes.<name>.servicePrincipal",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "any declared invokes.<name> entry, unconditionally",
+      "description": "The name of a servicePrincipals: entry in the SAME document (not a global/control-database registry) that authenticates this invoke. Resolved eagerly at load time; the profile becomes InvokeDefinition.TargetServicePrincipalReference as '@' + name (YamlInvokeParts.cs:195), later resolved by AzureServicePrincipalResolver through IServicePrincipalStore exactly the way a connection alias resolves through IDataSourceStore.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:25; resolved at src/SqlFlow.Yaml/YamlInvokeParts.cs:165-184",
+      "validation": "'<source>: '<section>.servicePrincipal' is required (a name declared under 'servicePrincipals:').' (:165-167). '<source>: '<section>.servicePrincipal' references '<spName>', which is not declared under 'servicePrincipals:'.' (:168-172). Plus the type-conditioned dataFactoryName/automationAccountName checks on the resolved profile (see invokes.<name>.type)."
+    },
+    {
+      "path": "invokes.<name>.type",
+      "type": "enum(adf|aut)",
+      "required": false,
+      "default": "aut (AzureAutomation) - also the result for a blank/absent value",
+      "enumValues": [
+        "adf",
+        "aut"
+      ],
+      "description": "Selects which Azure resource the invoke triggers: adf = an Azure Data Factory pipeline run (AzureDataFactoryInvokeExecutor), aut = an Azure Automation runbook job (AzureAutomationInvokeExecutor); parsed case-insensitively by InvokeTypeCodes.Parse (src/SqlFlow.Core/Invoke/InvokeType.cs:29-46) with NO '-'/'_' stripping. The value drives three cross-field checks performed in the SAME MapInvoke call: which of pipeline/runbook is required vs. forbidden, and which of the referenced service principal's dataFactoryName/automationAccountName must be set (src/SqlFlow.Yaml/YamlInvokeParts.cs:138-184). The legacy host-execution codes 'ps'/'cs' (PowerShell / dynamic C#) are explicitly rejected as a removed code-injection risk rather than silently mapped to anything.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:22 (InvokeBlockYaml.Type); parsed at YamlInvokeParts.cs:218-228 -> src/SqlFlow.Core/Invoke/InvokeType.cs:29-46",
+      "validation": "Removed legacy code: '<source>: '<section>.type': InvokeType '<code>' (host script/code execution) has been removed as a code-injection risk. Invoke now only triggers Azure Data Factory pipelines ('adf') and Azure Automation runbooks ('aut').' Any other unrecognized value: '<source>: '<section>.type': Unknown InvokeType '<code>'. Expected one of: adf, aut.' (both rewrapped by ParseInvokeType, YamlInvokeParts.cs:218-228). Cross-field (type == adf): '<source>: '<section>.pipeline' is required when type is adf.'; '<source>: '<section>.runbook' is set, but type adf runs a pipeline; remove it or use type aut.'; '<source>: '<section>' is an adf invoke, but service principal '<spName>' has no dataFactoryName.' Cross-field (type == aut, the default): '<source>: '<section>.runbook' is required when type is aut.'; '<source>: '<section>.pipeline' is set, but type aut runs a runbook; remove it or use type adf.'; '<source>: '<section>' is an aut invoke, but service principal '<spName>' has no automationAccountName.'"
+    },
+    {
+      "path": "postInvoke",
+      "type": "string",
+      "required": false,
+      "default": "null (no post-invoke hook runs)",
+      "description": "The name of an invokes: entry to run after the flow's primary work completes. Resolved identically to preInvoke (same ResolveHookAlias call), but the execution POINT differs per flowType even though the YAML key and mapping are identical: for ing it is stage '7d' - after the load commits, after surrogate-key generation, the match-key delete pass, desired-index application, and assertions, but BEFORE the canonical staging table is dropped, so a failed post-invoke still leaves staging in place for debugging (IngestionFlowRunner.cs:511-518); for sp it runs immediately after the single EXEC of the target procedure (StoredProcedureFlowRunner.cs:62-68); for exp it runs after every chunk file has been written to the destination (ExportFlowRunner.cs:124-131). In all three, a failure the invoke does not tolerate raises and marks THAT flow's own run Failed even though its primary work (the load / the procedure call / the file export) already committed/completed - the flow's own top-level onErrorResume (present on sp/exp, a full-mode-only batch-continuation flag) plays no part in this decision.",
+      "appliesWhen": "flowType: ing, exp, sp (present on all three: IngestionYaml.cs:34, ExportYaml.cs:18, StoredProcedureYaml.cs:18). Not on the standalone flowType: inv document - it has no plural invokes: dictionary or hook field to reference; it IS the invoke.",
+      "definedIn": "IngestionYaml.cs:36 / ExportYaml.cs:19 / StoredProcedureYaml.cs:19; ResolveHookAlias at YamlInvokeParts.cs:200-216; executed at IngestionFlowRunner.cs:511-518, StoredProcedureFlowRunner.cs:62-68, ExportFlowRunner.cs:124-131; model field IngestionPolicies.cs:296 (ProcessPolicy.PostInvokeAlias) plus the sp/exp flow models' own PostInvokeAlias field (StoredProcedureFlow.cs:32, ExportFlow.cs:81)",
+      "validation": "'<source>: 'postInvoke' references '<trimmed>', which is not declared under 'invokes:'.' (YamlInvokeParts.cs:209-213, field name 'postInvoke')."
+    },
+    {
+      "path": "postProcess",
+      "type": "string",
+      "required": false,
+      "default": "null; also inert for any value whose trimmed length is 2 characters or fewer",
+      "description": "The legacy PostProcessOnTrg hook (ProcessPolicy.PostProcessOnTarget), the post-load mirror of preProcess: same single-command, no-transaction execution via TargetProcessHooks.RunAsync. IngestionFlowRunner runs it as stage '7a', after the keyed upsert (or insert-all) commits and OUTSIDE the load transaction - so a hook failure never rolls back the already-committed load - and before surrogate-key generation, the match-key delete pass, desired-index application, and assertions (IngestionFlowRunner.cs:432-440).",
+      "appliesWhen": "flowType: ing only. Like preProcess, this shares its YAML key name with the file flow's own 'postProcess' (list<string>, one shared DDL transaction) but is a distinct, single-string attribute executed through TargetProcessHooks instead.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:34; model IngestionPolicies.cs:294 (ProcessPolicy.PostProcessOnTarget); mapped at YamlIngestionFlowLoader.cs:215; gate+execution at TargetProcessHooks.cs:15-23; invoked at IngestionFlowRunner.cs:435-440",
+      "validation": "None at YAML-load time (same NullIfBlank normalization as preProcess). A malformed statement fails at run time with the raw SqlException; because the load already committed, the run is reported Failed but the loaded data stands."
+    },
+    {
+      "path": "preInvoke",
+      "type": "string",
+      "required": false,
+      "default": "null (no pre-invoke hook runs)",
+      "description": "The name of an invokes: entry (in the SAME document) to run before any data work. Resolved via YamlInvokeParts.ResolveHookAlias against the document's own invokes dictionary, built moments earlier in the same Map() call. IngestionFlowRunner runs it as stage '0' - before source-column introspection, before preProcess, before the staging table is created - via IInvokeRunner.RunByAliasAsync (src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:210-218). A failure the invoke itself does not tolerate (its own onErrorResume: false) raises and fails the ingestion run before any target-affecting work has happened. Without any invokes: declared at all, WithoutDatabaseInvokeRunner.Build wires NullInvokeRunner.Instance, whose RunByAliasAsync always throws - but that path is unreachable via a validly-loaded YAML document, because preInvoke's own load-time validation already requires the named alias to exist under invokes: (which, if satisfied, guarantees at least one declared invoke and therefore a DefaultInvokeRunner, not the null one).",
+      "appliesWhen": "flowType: ing only. Not present on exp, sp, or the standalone flowType: inv document - none of their DTOs declare a PreInvoke field (confirmed absent from ExportYaml.cs, StoredProcedureYaml.cs, and InvokeDocumentYaml at InvokeYaml.cs:7-15).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:35; mapped at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:216 via YamlInvokeParts.ResolveHookAlias (YamlInvokeParts.cs:200-216); executed at src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:210-218; model field src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:295 (ProcessPolicy.PreInvokeAlias)",
+      "validation": "'<source>: 'preInvoke' references '<trimmed>', which is not declared under 'invokes:'.' (YamlInvokeParts.cs:209-213). No charset restriction on the alias text itself beyond trimming."
+    },
+    {
+      "path": "preProcess",
+      "type": "string",
+      "required": false,
+      "default": "null; also inert (a documented no-op) for any value whose trimmed length is 2 characters or fewer",
+      "description": "The legacy PreProcessOnTrg hook (ProcessPolicy.PreProcessOnTarget): ONE raw T-SQL command, run by TargetProcessHooks.RunAsync (src/SqlFlow.SqlServer/Ingestion/TargetProcessHooks.cs:17-23) as a single verbatim SqlCommand with CommandType.Text and CommandTimeout=0, on its OWN dedicated SqlConnection to the target - no parameters bound, no enclosing transaction. IngestionFlowRunner executes it as stage '2b', after source-column introspection but before the canonical staging table is rebuilt (IngestionFlowRunner.cs:255-263). On a flow's very first-ever run the target table does not exist yet, so an authored statement that touches the target must guard itself with `IF OBJECT_ID(...) IS NOT NULL` (a carried-over legacy contract, not enforced by the engine). TargetProcessHooks.ShouldRun gates execution on `hook.Trim().Length > 2` (TargetProcessHooks.cs:15) - a legacy activation threshold mirroring the old `ExecNonQuery(...)` call's guard - so a trimmed value of two characters or fewer (e.g. a stray '--' comment placeholder) is silently skipped rather than executed or flagged.",
+      "appliesWhen": "flowType: ing only. This is a DIFFERENT attribute from the already-documented file-flow 'preProcess' (docs/reference/flow/keys.json: type list<string>, every statement executed inside ONE shared transaction by SqlServerSchemaProvider.ExecuteDdlAsync, which rolls back the whole batch on any failure) despite sharing the identical YAML key name and camelCase binding rule: here the type is a single string (not a list) and the runtime mechanism (TargetProcessHooks: one bare command, no transaction) is entirely different code.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:33; model src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:291 (ProcessPolicy.PreProcessOnTarget); mapped at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:214; gate+execution at src/SqlFlow.SqlServer/Ingestion/TargetProcessHooks.cs:15-23; invoked at src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:258-263",
+      "validation": "None at YAML-load time: any string, or none, is accepted verbatim (only NullIfBlank normalizes a blank/whitespace value to null, matching the file flow's own convention). A malformed statement fails only at run time with the raw SqlException from ExecuteNonQueryAsync, failing the whole ingestion run (nothing else has touched the target yet at this stage, so there is no batch to roll back)."
+    },
+    {
+      "path": "servicePrincipals",
+      "type": "map<string,object>",
+      "required": false,
+      "default": "{} (empty)",
+      "description": "Named Azure service-principal registry mapped by YamlInvokeParts.MapServicePrincipals (src/SqlFlow.Yaml/YamlInvokeParts.cs:21-87). Each entry becomes an in-memory ServicePrincipalProfile; the whole list closes into the runtime exactly like connections does: InvokeExecutorFactory.Create (src/SqlFlow.Execution/InvokeExecutorFactory.cs:17-26) wraps it in a fresh InMemoryServicePrincipalStore (src/SqlFlow.Core/Connections/InMemoryServicePrincipalStore.cs:14-48, which RE-CHECKS the clientSecret secretless gate defensively at construction, throwing SecretlessViolationException if it were ever violated) which AzureInvokeExecutors.Create (src/SqlFlow.Azure/Invoke/AzureInvokeExecutors.cs:18) wraps behind a shared AzureServicePrincipalResolver (src/SqlFlow.Azure/Invoke/AzureServicePrincipalResolver.cs), so an '@alias' service-principal reference on an invoke resolves without any control database. This is the SAME DTO (Dictionary<string, ServicePrincipalYaml>) and the SAME mapping function in every binding flowType, so there is no per-flowType behavioral difference within this block itself (only in what consumes the resulting profiles).",
+      "appliesWhen": "flowType: ing, exp, sp, and the standalone flowType: inv document - all four declare the identical `Dictionary<string, ServicePrincipalYaml>? ServicePrincipals` field (src/SqlFlow.Yaml/IngestionYaml.cs:36; ExportYaml.cs:20; StoredProcedureYaml.cs:20; InvokeYaml.cs:12) and call YamlInvokeParts.MapServicePrincipals identically (YamlIngestionFlowLoader.cs:98; YamlExportFlowLoader.cs:99; YamlStoredProcedureFlowLoader.cs:97; YamlInvokeFlowLoader.cs:72). NOT bound by hc, scm, batch, or the file flow (none of their DTOs declare a ServicePrincipals field).",
+      "definedIn": "src/SqlFlow.Yaml/YamlInvokeParts.cs:21-87 (MapServicePrincipals)",
+      "validation": "Invalid key: '<source>: service-principal name '<rawName>' is invalid. Use letters, digits, '_', '.', or '-'.' (:33-37). Declared-but-empty entry: '<source>: 'servicePrincipals.<name>' must be a map of service-principal fields.' (:39-43, fires only for an explicit null/'~' value; a scalar in place of a map instead fails earlier as a YAML-grammar FlowValidationException). Duplicate key: '<source>: service principal '<name>' is declared more than once.' (:80-83)."
+    },
+    {
+      "path": "servicePrincipals.<name>.automationAccountName",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "effectively required once any invokes.<name> entry (or the standalone inv document's invoke:) of type aut references this service principal",
+      "description": "The Azure Automation account name. Consumed by AzureAutomationInvokeExecutor to build the AutomationAccountResource ARM id (src/SqlFlow.Azure/Invoke/AzureAutomationInvokeExecutor.cs:41-46). Mirrors dataFactoryName's optional-until-referenced treatment.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:46; model ServicePrincipalProfile.cs:34",
+      "validation": "Load time: '<source>: '<section>' is an aut invoke, but service principal '<spName>' has no automationAccountName.' (YamlInvokeParts.cs:180-184). Defensive run-time re-check: 'Invoke '<alias>' (aut): the service principal has no AutomationAccountName.' (AzureAutomationInvokeExecutor.cs:41-42)."
+    },
+    {
+      "path": "servicePrincipals.<name>.clientId",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "servicePrincipals.<name>.clientSecret is set; otherwise omit it along with tenantId for the ambient-credential path",
+      "description": "The application (client) id, a coordinate rather than a secret (legacy ApplicationId). Consumed the same way as tenantId to build the ClientSecretCredential.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:37; model src/SqlFlow.Core/Connections/ServicePrincipalProfile.cs:20; consumed at src/SqlFlow.Azure/Invoke/AzureServicePrincipalResolver.cs:91",
+      "validation": "Same paired requirement as tenantId ('...so tenantId and clientId are required.'); defensive run-time re-check: 'Service principal '<alias>' is missing the required 'ClientId'.' (AzureServicePrincipalResolver.cs:91, 102-105)."
+    },
+    {
+      "path": "servicePrincipals.<name>.clientSecret",
+      "type": "string",
+      "required": false,
+      "default": "null - authenticate with the deployment's ambient Azure credential (IAzureCredentialFactory.Create()) instead of a client secret",
+      "description": "MUST be a whole ${env:NAME} or ${keyvault:vault/secret} reference; the secret value itself never rests in the document (the secretless gate). Expanded transiently at run time through ISecretResolver.ResolveAsync just before building a ClientSecretCredential (AzureServicePrincipalResolver.BuildCredentialAsync, src/SqlFlow.Azure/Invoke/AzureServicePrincipalResolver.cs:84-99); the gate is re-checked defensively a second time when the without-database run composes InMemoryServicePrincipalStore (src/SqlFlow.Core/Connections/InMemoryServicePrincipalStore.cs:24-27), throwing SecretlessViolationException on a hypothetical bypass.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:39-41; model ServicePrincipalProfile.cs:24 (ClientSecretRef)",
+      "validation": "'<source>: 'servicePrincipals.<name>.clientSecret' must be a whole ${env:NAME} or ${keyvault:vault/secret} reference; the secret value itself never rests in the document. Omit it to authenticate with the ambient Azure credential.' (YamlInvokeParts.cs:46-52; regex `^\\$\\{[a-zA-Z]+:[^}]+\\}$`, :305-306). Run time, after expansion: 'Service principal '<alias>' resolved an empty client secret from '<ref>'.' (AzureServicePrincipalResolver.cs:93-97)."
+    },
+    {
+      "path": "servicePrincipals.<name>.dataFactoryName",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "effectively required (checked at invoke-mapping time, not on the service principal itself) once any invokes.<name> entry (or, for the standalone inv document, its own invoke:) of type adf references this service principal",
+      "description": "The Azure Data Factory instance name. Consumed by AzureDataFactoryInvokeExecutor to build the DataFactoryResource ARM id (src/SqlFlow.Azure/Invoke/AzureDataFactoryInvokeExecutor.cs:40-44). Optional on the profile in isolation - a service principal with no invoke of type adf never needs it - but cross-validated the moment an adf-type invoke names this profile.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:45; model ServicePrincipalProfile.cs:31",
+      "validation": "Load time, at the referencing invoke: '<source>: '<section>' is an adf invoke, but service principal '<spName>' has no dataFactoryName.' (YamlInvokeParts.cs:174-178). Defensive run-time re-check (matters mainly for full mode, where profiles and invokes can be edited independently of each other): 'Invoke '<alias>' (adf): the service principal has no DataFactoryName.' (AzureDataFactoryInvokeExecutor.cs:40-41)."
+    },
+    {
+      "path": "servicePrincipals.<name>.keyVaultName",
+      "type": "string",
+      "required": false,
+      "description": "Carried on the profile (ServicePrincipalProfile.KeyVaultName) and, in full mode, persisted to and read back from the control-plane schema (src/SqlFlow.SqlServer/FullMode/SqlServicePrincipalStore.cs:60,77) purely for fidelity/display - it is NEVER consumed to pick which vault a ${keyvault:vault/secret} reference resolves against: AzureKeyVaultSecretProvider.ParseLocator splits the vault name directly out of the locator string itself (the text before the first '/'), independent of any service-principal profile (src/SqlFlow.Azure/AzureKeyVaultSecretProvider.cs:44-55). In the without-database YAML path this field is effectively write-only metadata.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:47; model ServicePrincipalProfile.cs:37"
+    },
+    {
+      "path": "servicePrincipals.<name>.resourceGroup",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "any declared servicePrincipals.<name> entry, unconditionally (same reasoning as subscriptionId: an ARM coordinate, not an auth secret)",
+      "description": "The Azure resource group containing the Data Factory or Automation Account, used identically to subscriptionId when constructing the ARM resource id (also read via AzureServicePrincipalResolver.cs:69,77).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:44; model ServicePrincipalProfile.cs:28",
+      "validation": "'<source>: 'servicePrincipals.<name>.resourceGroup' is required.' (YamlInvokeParts.cs:64-65, unconditional)."
+    },
+    {
+      "path": "servicePrincipals.<name>.subscriptionId",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "any declared servicePrincipals.<name> entry, unconditionally - even on the ambient-credential path with no clientSecret, since this is an ARM resource coordinate (which subscription the Data Factory/Automation Account lives in), unrelated to how the caller authenticates",
+      "description": "The Azure subscription id used to build the ARM resource identifier for the Data Factory or Automation Account the profile's invokes target (AzureDataFactoryInvokeExecutor.cs:44; AzureAutomationInvokeExecutor.cs:45-46).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:43; model ServicePrincipalProfile.cs:26; consumed via AzureServicePrincipalResolver.cs:68,76",
+      "validation": "'<source>: 'servicePrincipals.<name>.subscriptionId' is required.' (YamlInvokeParts.cs:62-63, thrown unconditionally regardless of clientSecret)."
+    },
+    {
+      "path": "servicePrincipals.<name>.tenantId",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "servicePrincipals.<name>.clientSecret is set (a real Azure AD app registration authenticates); omitting both tenantId and clientId keeps the ambient Azure credential path (managed identity / az login / environment default) instead",
+      "description": "Azure AD tenant id, an authentication coordinate (not a secret). Consumed with clientId and the resolved clientSecret to build a `ClientSecretCredential` (AzureServicePrincipalResolver.BuildCredentialAsync, src/SqlFlow.Azure/Invoke/AzureServicePrincipalResolver.cs:82-100); never read at all on the ambient-credential path.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:36 (ServicePrincipalYaml.TenantId); model src/SqlFlow.Core/Connections/ServicePrincipalProfile.cs:17",
+      "validation": "Load time (only when clientSecret is set): '<source>: 'servicePrincipals.<name>' sets clientSecret, so tenantId and clientId are required.' (YamlInvokeParts.cs:56-60). Defensive run-time re-check if ever reached blank anyway: 'Service principal '<alias>' is missing the required 'TenantId'.' (AzureServicePrincipalResolver.cs:90, 102-105)."
+    }
+  ]
+}

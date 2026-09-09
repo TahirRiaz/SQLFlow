@@ -1,0 +1,70 @@
+# SQLFlow pipeline - CSV into SQL Server with dynamic schema evolution.
+#
+#   sqlflow validate orders.flow.yaml   # check the definition
+#   sqlflow plan     orders.flow.yaml   # preview the exact SQL (changes nothing)
+#   sqlflow run      orders.flow.yaml   # create/evolve the table and load
+
+name: orders
+
+# ---- SOURCE -----------------------------------------------------------------
+# 'type' selects the reader (the FlowType). 'location' is a file OR a folder -
+# a folder consolidates every matching file, unioning their columns and
+# NULL-filling where a file lacks one. 'options' map onto the parser config.
+source:
+  type: csv
+  location: ./orders.csv
+  options:
+    delimiter: ","
+    header: true                 # FirstRowHasHeader
+    textQualifier: "\""          # quote character around values
+    encoding: UTF8               # ASCII | UTF8 | Unicode | UTF32
+    skipStartingDataRows: 0
+    # srcFile: "orders_*.csv"    # glob applied when 'location' is a folder
+    # maxRows: 0                 # 0 = all
+    # --- file lifecycle (applied after a successful load) ---
+    # copyToPath: ./archive            # copy each ingested file here
+    # zipToPath: ./archive             # zip each ingested file here
+    # srcDeleteIngested: false         # delete source file after ingest
+    # --- system (provenance) fields: which DW columns to inject (default: true) ---
+    # includeFileName: true            # FileName_DW
+    # includeFileDate: true            # FileDate_DW (file modified date)
+    # includeFileRowDate: true         # FileRowDate_DW (ingest timestamp)
+    # includeFileSize: true            # FileSize_DW
+    # includeDataSet: true             # DataSet_DW (dataset/partition date)
+    # includeRowNumber: true           # RowNumber_DW (row count within the file)
+    # includeFileLineNumber: false     # FileLineNumber (physical file line)
+    # showPathWithFileName: false      # FileName_DW shows full path vs file name
+
+# ---- TARGET -----------------------------------------------------------------
+# Secrets are never stored in the file - reference them; resolved at runtime.
+target:
+  connection: ${env:SQLFLOW_DW}
+  schema: dbo
+  table: Orders
+
+# ---- SCHEMA -----------------------------------------------------------------
+# evolve:  create = create table if missing (never alter)
+#          widen  = create if missing, and ADD newly-seen columns
+#          strict = fail if the source has columns the target lacks
+# defaultColumnType: type for raw (untyped) columns. SQLFlow default: varchar(255).
+# overrides: pin individual columns to concrete types.
+schema:
+  evolve: widen
+  defaultColumnType: varchar(255)
+  overrides:
+    OrderId:
+      type: BIGINT
+      nullable: false
+
+# ---- LOAD -------------------------------------------------------------------
+load:
+  mode: append                   # append | truncate-load
+  batchSize: 50000
+  tableLock: true
+
+# ---- HOOKS ------------------------------------------------------------------
+# SQL run on the target before/after the load - inline statements or EXEC a procedure.
+preProcess:
+  - "PRINT 'sqlflow: pre-process orders'"
+postProcess:
+  - "UPDATE STATISTICS dbo.Orders"

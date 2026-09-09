@@ -1,0 +1,52 @@
+# SQLFlow pipeline - file export (flowType: exp).
+#
+# Reads a SQL Server table or view and writes it to CSV or Parquet files: one full file by
+# default, or chunked into one file per day/month window or integer-key range. Empty chunks
+# leave no file. Every generated SELECT is captured in the run's trace.sql.
+#
+#   sqlflow validate orders-export.flow.yaml   # check the definition
+#   sqlflow run      orders-export.flow.yaml   # probe, plan the chunks, write the files
+#
+# No control database, no registration: the file is the whole pipeline.
+
+flowType: exp
+name: orders-export
+
+# ---- CONNECTIONS --------------------------------------------------------------
+# Named here, referenced below by 'server:'. Secrets never rest in this file -
+# use a whole ${env:NAME} or ${keyvault:vault/secret} reference (it may expand to
+# a SQL-auth string), or a passwordless string (Integrated Security / AD Default).
+connections:
+  dwh: ${env:SQLFLOW_DW}
+
+# ---- SOURCE -------------------------------------------------------------------
+# 'connection:' inline is also accepted instead of 'server:'. The source is always
+# SQL Server (the read is T-SQL).
+source:
+  server: dwh
+  object: DW.raw.Orders                 # three-part: Database.Schema.Table (or view)
+  # filter: "Status = 'open'"           # predicate ANDed to every chunk's read
+
+# ---- CHUNKING (omit the whole block for one full file) --------------------------
+# export:
+#   by: month                           # full (default) | day | month | key
+#   size: 1                             # windows per file (days/months/rows)
+#   dateColumn: OrderDate               # required for day/month
+#   # keyColumn: OrderID                # required for key (integer ranges from 0 to MAX)
+#   # fromDate: 2024-01-01              # window bounds; defaults: 3 years back .. today
+#   # toDate: 2024-12-31
+#   # threads: 4                        # concurrent chunk writers
+
+# ---- TARGET FILES ----------------------------------------------------------------
+target:
+  path: ./out                           # folder for the files (relative to this file)
+  fileName: orders                      # file prefix; defaults to the source table name
+  # fileType: csv                       # csv (default) | parquet
+  # addTimestamp: true                  # append _yyyyMMddHHmmss to the prefix
+  # subfolderPattern: YYYY/MM           # date-token folders for day/month chunks
+  # --- csv options ---
+  # delimiter: ";"
+  # textQualifier: '"'
+  # encoding: utf8                      # utf8 (default) | utf16 | utf32 | ascii
+  # --- parquet options ---
+  # compression: gzip                   # gzip (default) | snappy | none

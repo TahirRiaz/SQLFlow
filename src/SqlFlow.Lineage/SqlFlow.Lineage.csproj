@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>SQLFlow lineage: AST-based dependency extraction (ScriptDom), tiered collection, and execution-wave planning.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\SqlFlow.SqlServer\SqlFlow.SqlServer.csproj" />
+    <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
+  </ItemGroup>
+
+</Project>

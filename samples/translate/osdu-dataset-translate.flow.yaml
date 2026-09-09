@@ -1,0 +1,120 @@
+# SQLFlow pipeline - JSON translation (flowType: trl).
+#
+# Reads a SQL query and maps every row through a declared JSON template into a shaped document,
+# writes the documents to a destination (local folder or Azure storage), then optionally delivers
+# exactly what was saved to a remote API. The template mirrors the target JSON: plain keys are
+# object properties, sequences are arrays, "{Column}" substitutes a row value, and $-prefixed
+# directives cover typing, null handling, and data-driven arrays from bound child datasets.
+#
+# This example produces OSDU dataset--File.Generic records (see Examples/dataset in the OSDU
+# data-definitions repository) from warehouse rows and PUTs them to the OSDU Storage API in the
+# {"records": [...]} envelope.
+#
+#   sqlflow validate osdu-dataset-translate.flow.yaml   # check definition + template
+#   sqlflow run      osdu-dataset-translate.flow.yaml   # query, render, save, deliver
+#
+# No control database, no registration: the file is the whole pipeline.
+
+flowType: trl
+name: osdu-dataset-translate
+
+# ---- CONNECTIONS --------------------------------------------------------------
+connections:
+  dwh: ${env:SQLFLOW_DW}
+
+# ---- SOURCE -------------------------------------------------------------------
+# The primary query: one document per row (documents.per: row, the default). The source is
+# always SQL Server (the read is T-SQL).
+source:
+  server: dwh
+  query: |
+    SELECT DatasetGuid, DatasetId, FileName, Description, FileSizeBytes,
+           FileSource, EncodingFormat, Checksum, CreatedUtc
+    FROM   DW.edw.DatasetFile
+
+# ---- CHILD DATASETS -----------------------------------------------------------
+# Named result sets the template's $forEach arrays draw from. 'bind' joins a dataset row to the
+# enclosing scope by same-named columns, so each document only sees its own children.
+datasets:
+  - name: owners
+    query: SELECT DatasetId, Principal FROM DW.edw.DatasetAcl WHERE AclRole = 'owner'
+    bind: [DatasetId]
+  - name: viewers
+    query: SELECT DatasetId, Principal FROM DW.edw.DatasetAcl WHERE AclRole = 'viewer'
+    bind: [DatasetId]
+
+# ---- DOCUMENTS ----------------------------------------------------------------
+documents:
+  per: row          # row (default) = one document per primary row | resultSet = one document total
+  nulls: omit       # omit (default) = NULL leaves disappear | include = explicit JSON nulls
+
+# ---- TEMPLATE -----------------------------------------------------------------
+# The declared JSON shape. Directives: $column (typed column value), $value (verbatim constant),
+# $template (string with {Column} tokens), $type (string|int|long|double|decimal|bool|date|
+# dateTime|json), $format (date/dateTime), $whenNull (omit|null|default) + $default, and
+# $forEach + $item (one array element per matching dataset row; 'rows' = the primary rows at
+# documents.per: resultSet). A "{Column}" scalar that is exactly one token keeps the column's
+# native JSON type; anything else renders as a string.
+template:
+  id: "kolumbus:dataset--File.Generic:{DatasetGuid}"
+  kind: osdu:wks:dataset--File.Generic:1.1.0
+  acl:
+    owners:
+      $forEach: owners
+      $item: "{Principal}"
+    viewers:
+      $forEach: viewers
+      $item: "{Principal}"
+  legal:
+    legaltags: [ "kolumbus-public" ]
+    otherRelevantDataCountries: [ "NO" ]
+    status: compliant
+  data:
+    Source: Kolumbus DWH
+    Name: "{FileName}"
+    Description: { $column: Description, $whenNull: omit }
+    TotalSize: { $column: FileSizeBytes, $type: string }        # OSDU carries sizes as strings
+    EncodingFormatTypeID: { $column: EncodingFormat, $whenNull: omit }
+    DatasetProperties:
+      FileSourceInfo:
+        FileSource: "{FileSource}"
+        Name: "{FileName}"
+        FileSize: { $column: FileSizeBytes, $type: string }
+        PreloadFileCreateDate: { $column: CreatedUtc, $type: dateTime, $format: "yyyy-MM-dd'T'HH:mm:ss.fff'Z'" }
+        Checksum: "{Checksum}"
+    Checksum: "{Checksum}"
+    ExtensionProperties: {}
+
+# ---- OUTPUT (always written first) --------------------------------------------
+# The saved files are the durable record: deterministic names, overwritten every run, so the
+# folder mirrors the latest translation and the delivery step posts exactly these bytes.
+output:
+  path: ./out/osdu/dataset
+  mode: filePerDocument      # filePerDocument | jsonLines (default) | array
+  fileName: "dataset_{DatasetId}"
+  # addTimestamp: true       # single-file modes only: land runs side by side instead of overwriting
+  # indent: true             # pretty-print (filePerDocument/array; JSON Lines is always compact)
+
+# ---- DELIVERY (optional, strictly after the files are saved) -------------------
+# Reads the saved files back and posts their content through the shared HTTP stack (retry with
+# backoff, rate limiting, SSRF guard). Auth and reliability take the exact same YAML surface as
+# an api flow's source.auth / source.reliability.
+invoke:
+  url: https://osdu.example.com/api/storage/v2/records
+  method: PUT
+  headers:
+    data-partition-id: kolumbus
+  envelopeKey: records       # wrap each request's documents as {"records": [...]}
+  # batchSize: 25            # documents per request (filePerDocument/jsonLines)
+  auth:
+    type: bearer
+    secretRef: ${env:OSDU_TOKEN}
+  reliability:
+    skipStatusCodes: [409]   # tolerate per-request conflicts without failing the run
+    # rateLimitRps: 5
+    # concurrency: 1         # in-order delivery by default
+
+schedule:
+  cron: "0 5 * * *"
+  timezone: Europe/Oslo
+  enabled: false

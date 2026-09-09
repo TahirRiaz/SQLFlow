@@ -1,0 +1,794 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The Genoese built a fortress on the site of present-day Monaco in 1215. The current ruling GRIMALDI family first seized control in 1297 but was not able to permanently secure its holding until 1419. Economic development was spurred in the late 19th century with a railroad linkup to France and the opening of a casino. Since then, the principality's mild climate, coastal Mediterranean scenery, and gambling facilities have made Monaco world-famous as a tourist and recreation center."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Western Europe, bordering the Mediterranean Sea on the southern coast of France, near the border with Italy"
+    },
+    "Geographic coordinates": {
+      "text": "43 44 N, 7 24 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "2 sq km"
+      },
+      "land": {
+        "text": "2 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about three times the size of the National Mall in Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "6 km"
+      },
+      "border countries": {
+        "text": "France 6 km"
+      }
+    },
+    "Coastline": {
+      "text": "4.1 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "12 nm"
+      }
+    },
+    "Climate": {
+      "text": "Mediterranean with mild, wet winters and hot, dry summers"
+    },
+    "Terrain": {
+      "text": "hilly, rugged, rocky"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Chemin des Revoires on Mont Agel 162 m"
+      },
+      "lowest point": {
+        "text": "Mediterranean Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "none"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "99% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Population distribution": {
+      "text": "the second most densely populated country in the world (after Macau); its entire population living on 2 square km"
+    },
+    "Natural hazards": {
+      "text": "none"
+    },
+    "Geography - note": {
+      "text": "second-smallest independent state in the world (after the Holy See); smallest country with a coastline; almost entirely urban"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "31,813"
+      },
+      "male": {
+        "text": "15,366"
+      },
+      "female": {
+        "text": "16,447 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Monegasque(s) or Monacan(s)"
+      },
+      "adjective": {
+        "text": "Monegasque or Monacan"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Monegasque 32.1%, French 19.9%, Italian 15.3%, British 5%, Belgian 2.3%, Swiss 2%, German 1.9%, Russian 1.8%, American 1.1%, Dutch 1.1%, Moroccan 1%, other 16.6% (2016 est.)",
+      "note": "<strong>note:</strong> data represent population by country of birth"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "French (official), English, Italian, Monegasque"
+      },
+      "major-language sample(s)": {
+        "text": "<br>The World Factbook, une source indispensable d'informations de base. (French)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Roman Catholic 90% (official), other 10%"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "9.1% (male 1,485/female 1,408)"
+      },
+      "15-64 years": {
+        "text": "53.8% (male 8,620/female 8,490)"
+      },
+      "65 years and over": {
+        "text": "37.1% (2024 est.) (male 5,261/female 6,549)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "95.2"
+      },
+      "youth dependency ratio": {
+        "text": "25"
+      },
+      "elderly dependency ratio": {
+        "text": "70.2"
+      },
+      "potential support ratio": {
+        "text": "1.4 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "56.9 years (2024 est.)"
+      },
+      "male": {
+        "text": "55 years"
+      },
+      "female": {
+        "text": "58.4 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.71% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "6.5 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "11.1 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "11.7 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the second most densely populated country in the world (after Macau); its entire population living on 2 square km"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.5% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "39,000 MONACO (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.04 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.8 male(s)/female"
+      },
+      "total population": {
+        "text": "0.93 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "1.7 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "2 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "1.4 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "89.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "86 years"
+      },
+      "female": {
+        "text": "93.7 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.54 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.76 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "1.7% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "7.51 physicians/1,000 population (2014)"
+    },
+    "Hospital bed density": {
+      "text": "13.8 beds/1,000 population (2012)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Education expenditures": {
+      "text": "1.2% of GDP (2019 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "no serious issues; actively monitors pollution levels in air and water"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Air Pollution-Heavy Metals, Air Pollution-Sulphur 94, Air Pollution-Volatile Organic Compounds, Antarctic-Environmental Protection, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Ozone Layer Protection, Ship Pollution, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "Mediterranean with mild, wet winters and hot, dry summers"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "99% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.5% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "9.21 micrograms per cubic meter (2019 est.)"
+      },
+      "methane emissions": {
+        "text": "0.05 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "46,000 tons (2012 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "2,484 tons (2012 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "5.4% (2012 est.)"
+      }
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "10 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "0 cubic meters (2017 est.)"
+      },
+      "agricultural": {
+        "text": "0 cubic meters (2017 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Principality of Monaco"
+      },
+      "conventional short form": {
+        "text": "Monaco"
+      },
+      "local long form": {
+        "text": "Principaut&eacute; de Monaco"
+      },
+      "local short form": {
+        "text": "Monaco"
+      },
+      "etymology": {
+        "text": "founded as a Greek colony in the 6th century B.C., the name derives from two Greek words \"monos\" (single, alone) and \"oikos\" (house) to convey the sense of a people \"living apart\" or in a \"single habitation\""
+      }
+    },
+    "Government type": {
+      "text": "constitutional monarchy"
+    },
+    "Capital": {
+      "name": {
+        "text": "Monaco"
+      },
+      "geographic coordinates": {
+        "text": "43 44 N, 7 25 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "founded as a Greek colony in the 6th century B.C., the name derives from two Greek words <em>monos</em> (single, alone) and <em>oikos</em> (house) to convey the sense of a people \"living apart\" or in a \"single habitation\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "none; there are no first-order administrative divisions as defined by the US Government, but there are 4 quarters (quartiers, singular - quartier); Fontvieille, La Condamine, Monaco-Ville, Monte-Carlo; note - Moneghetti, a part of La Condamine, is sometimes called the 5th quarter of Monaco"
+    },
+    "Independence": {
+      "text": "1419 (beginning of permanent rule by the House of GRIMALDI)"
+    },
+    "National holiday": {
+      "text": "National Day (Saint Rainier's Day), 19 November (1857)"
+    },
+    "Legal system": {
+      "text": "civil law system influenced by French legal tradition"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1911 (suspended 1959); latest adopted 17 December 1962"
+      },
+      "amendments": {
+        "text": "proposed by joint agreement of the chief of state (the prince) and the National Council; passage requires two-thirds majority vote of National Council members; amended 2002"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; non-party state to the ICCt"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "the father must be a citizen of Monaco; in the case of a child born out of wedlock, the mother must be a citizen and father unknown"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "10 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "Prince ALBERT II (since 6 April 2005)"
+      },
+      "head of government": {
+        "text": "Acting Minister of State Isabelle BERRO-AMADEI (since 10 January 2025)"
+      },
+      "cabinet": {
+        "text": "Council of Government under the authority of the monarch"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; minister of state appointed by the monarch from a list of three French national candidates presented by the French Government"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "National Council (Conseil national)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "24 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "2/5/2023"
+      },
+      "parties elected and seats per party": {
+        "text": "Monegasque National Union - l’Union (24)"
+      },
+      "percentage of women in chamber": {
+        "text": "45.8%"
+      },
+      "expected date of next election": {
+        "text": "February 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of 5 permanent members and 2 substitutes)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court members appointed by the monarch upon the proposals of the National Council, State Council, Crown Council, Court of Appeal, and Trial Court"
+      },
+      "subordinate courts": {
+        "text": "Court of Appeal; Civil Court of First Instance"
+      }
+    },
+    "Political parties": {
+      "text": "Monegasque National Union (includes Horizon Monaco, Primo!, Union Monegasque)<br>Horizon Monaco <br>Priorite Monaco or Primo! <br>Union Monegasque "
+    },
+    "International organization participation": {
+      "text": "CD, CE, FAO, IAEA, ICAO, ICC (national committees), ICRM, IFRCS, IHO, IMO, IMSO, Interpol, IOC, IPU, ITSO, ITU, OAS (observer), OIF, OPCW, OSCE, Schengen Convention (de facto member), UN, UNCTAD, UNESCO, UNIDO, Union Latina, UNWTO, UPU, WHO, WIPO, WMO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Maguy MACCARIO&nbsp;DOYLE (since 3 December 2013)"
+      },
+      "chancery": {
+        "text": "888 17th Street NW, Suite 500, Washington, DC 20006"
+      },
+      "telephone": {
+        "text": "[1] (202) 234-1530"
+      },
+      "FAX": {
+        "text": "[1] (202) 244-7656"
+      },
+      "email address and website": {
+        "text": "<br>info@monacodc.org<br><br>https://monacodc.org/index.html"
+      },
+      "consulate(s) general": {
+        "text": "New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "US does not have an embassy in Monaco; the US Ambassador to France is accredited to Monaco; the US Consul General in Marseille (France), under the authority of the US Ambassador to France, handles diplomatic and consular matters concerning Monaco; +(33)(1) 43-12-22-22, enter zero \"0\" after the automated greeting; US Embassy Paris, 2 Avenue Gabriel, 75008 Paris, France"
+      }
+    },
+    "Flag description": {
+      "text": "two equal horizontal bands of red (top) and white; the colors are those of the ruling House of Grimaldi and have been in use since 1339, making the flag one of the world's oldest national banners",
+      "note": "<strong>note:</strong> similar to the flag of Indonesia which is longer and the flag of Poland which is white (top) and red"
+    },
+    "National symbol(s)": {
+      "text": "red and white lozenges (diamond shapes); national colors: red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"A Marcia de Muneghu\" (The March of Monaco)"
+      },
+      "lyrics/music": {
+        "text": "Louis NOTARI/Charles ALBRECHT"
+      },
+      "note": "<strong>note:</strong> music adopted 1867, lyrics adopted 1931; although French is commonly spoken, only the Monegasque lyrics are official; the French version is known as \"Hymne Monegasque\" (Monegasque Anthem); the words are generally only sung on official occasions"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income European economy; non-EU euro user; considered a tax haven; tourism and banking are largest sectors; negatively impacted by COVID-19; major oceanographic museum; among most expensive real estate; major state-owned enterprises"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2015": {
+        "text": "$7.672 billion (2015 est.)"
+      },
+      "note": "<strong>note:</strong> data are in 2015 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "5.04% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "11.05% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "21.87% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2015": {
+        "text": "$115,700 (2015 est.)"
+      },
+      "Real GDP per capita 2014": {
+        "text": "$109,200 (2014 est.)"
+      }
+    },
+    "GDP (official exchange rate)": {
+      "text": "$9.995 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "GDP - composition, by sector of origin": {
+      "industry": {
+        "text": "11.5% (2023 est.)"
+      },
+      "services": {
+        "text": "88.5% (2023 est.)"
+      },
+      "note": "<strong>note:</strong> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "Agricultural products": {
+      "text": "none"
+    },
+    "Industries": {
+      "text": "banking, insurance, tourism, construction, small-scale industrial and consumer products"
+    },
+    "Industrial production growth rate": {
+      "text": "-3.16% (2014 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "52,000 (2014 est.)",
+      "note": "<strong>note:</strong> includes all foreign workers"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "26.6% (2016 est.)"
+      },
+      "male": {
+        "text": "25.7%"
+      },
+      "female": {
+        "text": "27.9%"
+      }
+    },
+    "Exports": {
+      "Exports 2017": {
+        "text": "$964.6 million (2017 est.)"
+      },
+      "note": "<strong>note:</strong> full customs integration with France, which collects and rebates Monegasque trade duties; also participates in EU market system through customs union with France"
+    },
+    "Exports - partners": {
+      "text": "<p>Italy, Switzerland, Germany, Belgium, Spain</p> (2021)"
+    },
+    "Exports - commodities": {
+      "text": "jewelry, perfumes, watches, packaged medicines, cars (2021)"
+    },
+    "Imports": {
+      "Imports 2017": {
+        "text": "$1.371 billion (2017 est.)"
+      },
+      "note": "<strong>note:</strong> full customs integration with France, which collects and rebates Monegasque trade duties; also participates in EU market system through customs union with France"
+    },
+    "Imports - partners": {
+      "text": "Italy, Switzerland, United Kingdom, Germany, China&nbsp; (2021)"
+    },
+    "Imports - commodities": {
+      "text": "jewelry, cars and vehicle parts, recreational boats, plastic products, artwork (2021)"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.95 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.876 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      },
+      "note": "<strong>note: </strong>while not an EU member state, Monaco, due to its preexisting monetary and banking agreements with France, has a 1998 monetary agreement with the EU to produce limited euro coinage—but not banknotes—that began enforcement in January 2002 and superseded by a new EU agreement in 2012"
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "43,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "111 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "41,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "107 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "modern automatic telephone system: the country's sole fixed-line operator offers a full range of services to residential and business customers; competitive mobile telephony market; 4G LTE widely available (2020)"
+      },
+      "domestic": {
+        "text": "fixed-line a little over 117 per 100 and mobile-cellular teledensity is 99 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 377; landing points for the EIG and Italy-Monaco submarine cables connecting Monaco to Europe, Africa, the Middle East and Asia; no satellite earth stations; connected by cable into the French communications system (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "TV Monte-Carlo operates a TV network; cable TV available; Radio Monte-Carlo has extensive radio networks in France and Italy with French-language broadcasts to France beginning in the 1960s and Italian-language broadcasts to Italy beginning in the 1970s; other radio stations include Riviera Radio and Radio Monaco"
+    },
+    "Internet country code": {
+      "text": ".mc"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "98% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "22,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "56 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "Civil aircraft registration country code prefix": {
+      "text": "3A"
+    },
+    "Heliports": {
+      "text": "3 (2024)"
+    },
+    "Railways": {
+      "text": "<strong>note:</strong> Monaco has a single railway station but does not operate its own train service;  the French operator SNCF operates rail services in Monaco"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "1"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "1 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "0"
+      },
+      "key ports": {
+        "text": "Monaco"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular military forces; Ministry of Interior: Compagnie des Carabiniers du Prince (Prince’s Company of Carabiniers), Corps des Sapeurs-pompiers de Monaco (Fire and Emergency), Police Department (2024)",
+      "note": "<strong>note:</strong> the primary responsibility for the Compagnie des Carabiniers du Prince is guarding the palace; the Police maintain public order"
+    },
+    "Military service age and obligation": {
+      "text": "the Compagnie des Carabiniers du Prince is staffed by French nationals (2024)"
+    },
+    "Military - note": {
+      "text": "by treaty, France is responsible for defending the independence and sovereignty of Monaco"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

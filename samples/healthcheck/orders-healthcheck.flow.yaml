@@ -1,0 +1,88 @@
+# SQLFlow pipeline - ML health check (flowType: hc).
+#
+# Learns the expected per-date behavior of one or more metrics on a monitored table and reports
+# what deviates. The detection stack is the published canon:
+#   Theil-Sen robust trend         a growing table's growth is expectation, not anomaly
+#   AutoML calendar model          weekday/holiday/month-end rhythm, learned per metric
+#   Generalized ESD (robust)       statistically significant point anomalies, masking-proof
+#   PELT level shifts              backfills, purges, new sources: reported once, not daily
+#   Missing-data + trailing gaps   silent days, and the pipeline that simply stopped
+#   Data-quality probes            future-dated, sentinel-dated (1900-01-01), NULL-dated rows
+#
+#   sqlflow validate orders-healthcheck.flow.yaml             # check the definition
+#   sqlflow run      orders-healthcheck.flow.yaml             # score (trains on first run)
+#   sqlflow run      orders-healthcheck.flow.yaml --retrain   # force fresh models
+#   sqlflow run      orders-healthcheck.flow.yaml --fail-on-anomaly   # exit 2 on findings (CI)
+#
+# No pipeline file at all also works, against ANY table (the same engine):
+#   sqlflow healthcheck --source ${env:SQLFLOW_DW} --object DW.dbo.Orders
+#
+# Trained models persist in .sqlflow/state/<flow>/<metric>/ next to this file; every run writes
+# the canonical artifacts to .sqlflow/runs/<flow>/: run.json (the summary), run.log (the
+# timeline), trace.sql (the two queries), healthcheck.json (the full scored series).
+#
+# No control database, no registration: the file is the whole pipeline.
+
+flowType: hc
+name: orders-watch
+description: Watches order volume and revenue for missing or abnormal loads.
+
+# ---- CONNECTIONS --------------------------------------------------------------
+# Named here, referenced below by 'server:'. Secrets never rest in this file.
+# The canonical enterprise form is the BARE name, which resolves the well-known
+# variable ${env:SQLFLOW_CONN_DWH} (see docs/environment-variables.md); local
+# values go in the git-ignored .sqlflow/env file, CI injects real variables.
+#   dwh:
+# An explicit ${env:NAME} reference and passwordless literals also work:
+connections:
+  dwh: ${env:SQLFLOW_DW}
+
+# ---- TARGET -------------------------------------------------------------------
+# The monitored object is a strict three-part name: Database.Schema.Table.
+# 'connection:' inline is also accepted instead of 'server:'.
+target:
+  server: dwh
+  object: DW.dbo.Orders
+
+# ---- SERIES -------------------------------------------------------------------
+# All metrics are computed in ONE scan, grouped by dateColumn. Each baseValue is
+# any aggregate T-SQL expression; a metric-specific condition goes inside the
+# aggregate (SUM(CASE WHEN ... THEN ... END)). For a single metric, a top-level
+# 'baseValue: COUNT(*)' shorthand replaces the list.
+dateColumn: OrderDate
+metrics:
+  - name: orders
+    baseValue: COUNT(*)
+  - name: revenue
+    baseValue: SUM(Amount)
+  - name: buyers
+    baseValue: COUNT(DISTINCT CustomerID)
+# filter: OrderStatus <> 'Cancelled'      # optional, ANDed in, shared by all metrics
+
+# ---- ARRIVAL ------------------------------------------------------------------
+# maturityDays: trailing days whose data may still be arriving: scored and shown,
+# never counted as anomalies (today's partial load stops crying wolf). 0 disables.
+maturityDays: 1
+# sentinelDateFloor: rows dated before this are data-quality findings, not series
+# points (default 1990-01-01).
+# sentinelDateFloor: 2000-01-01
+
+# ---- MODEL --------------------------------------------------------------------
+# training: auto    trains when a metric has no stored model, the model is older
+#                   than retrainAfterDays, or the detection engine was upgraded
+#           always  trains every run
+#           never   requires stored models and only scores
+ml:
+  maxExperimentSeconds: 120               # AutoML budget per metric (default 120)
+  anomalyThreshold: 2.0                   # severity floor in robust sigmas (default 2.0)
+  esdAlpha: 0.025                         # ESD significance level (default 0.025)
+  maxAnomalyFraction: 0.10                # at most this share of points flagged (default 0.10)
+  training: auto
+  retrainAfterDays: 30                    # auto-retrain a model older than this
+
+# ---- CALENDAR -----------------------------------------------------------------
+# Dates the model should treat as holidays (low volume is expected, not anomalous).
+holidays:
+  - 2026-01-01
+  - 2026-12-25
+  - 2026-12-26

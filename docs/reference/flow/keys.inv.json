@@ -1,0 +1,205 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "inv",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 20,
+  "keys": [
+    {
+      "path": "batch",
+      "type": "string",
+      "required": false,
+      "default": "null (unset)",
+      "appliesWhen": "flowType: inv document (a distinct binding from the file flow's 'batch', already documented in keys.json)",
+      "description": "Optional grouping label, bound to InvokeDocumentYaml.Batch (src/SqlFlow.Yaml/InvokeYaml.cs:11) and mapped with YamlDocumentParts.NullIfBlank(y.Batch) onto InvokeDefinition.Batch (YamlInvokeFlowLoader.cs:82; model at src/SqlFlow.Core/Invoke/InvokeDefinition.cs:18). For a run through the without-database CLI (sqlflow run/validate), it is a reporting/lineage label only, handled identically to the generic file-flow 'batch': FlowSetCollector stamps it on the flow's LineageFlowNode for this document kind (Kind \"inv\"; src/SqlFlow.Lineage/Collection/FlowSetCollector.cs:228-236), from where catalog sync and the control-plane run list/detail endpoints treat it exactly as documented under the file flow's 'batch' entry in this census (CatalogPipeline row, DefaultBatch coalescing to \"default\", substring filtering). It also doubles, in the separate legacy full-mode SQL-Server-backed execution engine (a different code path that reads real flw.Invoke database rows rather than these YAML files, via SqlInvokeFlowLoader), as an actual execution grouping: FullModeIngestionHost.RunInvokeBatchAsync(batch) loads and runs every invoke flow sharing this Batch value in sequence, stopping at the first failure unless that flow's own OnErrorResume is true (src/SqlFlow.SqlServer/FullMode/FullModeIngestionHost.cs:256-273). That full-mode grouping mechanism is not reachable from a YAML-authored flowType: inv document in the current without-database architecture (nothing loads this InvokeDefinition into the legacy flw.Invoke table); it is noted here only because it shares the same field and the same InvokeDefinition.Batch property.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:11"
+    },
+    {
+      "path": "mode",
+      "type": "enum(auto|manual|disabled)",
+      "required": false,
+      "default": "auto",
+      "enumValues": ["auto", "manual", "disabled"],
+      "description": "The flow's execution mode, read at the document envelope (YamlDocumentLoader's probe, FlowDocument.Mode) and projected to the catalog pipeline row. 'auto' (the default) runs on schedule fires and in batch/node group runs; 'manual' reserves a working flow for direct triggers; 'disabled' deactivates a retired one (a retired source, a run-once replay) with the same exclusions and a visible 'disabled' badge. A node-scoped run can opt into includeAll ('find all') to replay non-auto descendants deliberately, and naming a flow directly always runs it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs (FlowDocument.Mode, parsed by YamlDocumentParts.ParseExecutionMode)",
+      "validation": "Unknown value fails to load: \"<source>: 'mode' has unknown value '<value>'. Allowed: auto, manual, disabled.\""
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow executes, schedules, and records run history exactly like a production one, but it never generates notification events, so a pipeline under active development cannot alert email/Slack subscribers. Parsed case-insensitively by YamlDocumentParts.ParseLifecycle (src/SqlFlow.Yaml/YamlDocumentParts.cs) and projected to CatalogPipeline.Lifecycle on every catalog sync.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:12 (mapped by YamlInvokeFlowLoader, src/SqlFlow.Yaml/YamlInvokeFlowLoader.cs)",
+      "validation": "Unknown value fails to load: \"<source>: 'lifecycle' has unknown value '<value>'. Allowed: production, development.\" (YamlDocumentParts.ParseLifecycle, src/SqlFlow.Yaml/YamlDocumentParts.cs)"
+    },
+    {
+      "path": "invoke",
+      "type": "object",
+      "required": true,
+      "description": "The invoke flow's single action: an Azure Data Factory pipeline trigger or an Azure Automation runbook trigger, plus its parameters. Binds InvokeDocumentYaml.Invoke (src/SqlFlow.Yaml/InvokeYaml.cs:14) to InvokeBlockYaml and is mapped by YamlInvokeParts.MapInvoke, the same helper the 'invokes:' plural map uses for the preInvoke/postInvoke hook targets that ing/exp/sp documents declare (src/SqlFlow.Yaml/YamlInvokeParts.cs:130-197), into the document's one InvokeDefinition (YamlInvokeFlowLoader.Map, src/SqlFlow.Yaml/YamlInvokeFlowLoader.cs:75), aliased to the document's own 'name' rather than to a dictionary key. Its sub-fields (type, pipeline, runbook, servicePrincipal, parameters, onErrorResume) are documented individually under invoke.* below; that same shape is reused verbatim as invokes.<alias>.* in the ing/exp/sp census, not repeated here.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:14",
+      "validation": "A missing/absent block throws FlowValidationException \"<source>: 'invoke' is required.\" (YamlInvokeFlowLoader.cs:74; confirmed by tests/SqlFlow.Core.Tests/YamlInvokeFlowLoaderTests.cs MissingInvokeBlock_Fails). Note: tests/SqlFlow.Core.Tests/InvokeEdgeCaseTests.cs contains no test of this message (verified by search); the original census's co-citation of that file for this specific validation was incorrect and has been removed."
+    },
+    {
+      "path": "invoke.onErrorResume",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "appliesWhen": "overridden by the document's top-level onErrorResume when that key is set; see that entry for the exact precedence",
+      "description": "The invoke-level resume-on-error flag. Bound from InvokeBlockYaml.OnErrorResume (src/SqlFlow.Yaml/InvokeYaml.cs:31) and defaulted with node.OnErrorResume ?? true while building the InvokeDefinition (YamlInvokeParts.cs:194); this is the same field the invokes: plural map uses for a pre/post-invoke hook's own resume behavior elsewhere. For the standalone document, YamlInvokeFlowLoader.Map re-derives the definition's final OnErrorResume from the raw invokeYaml.OnErrorResume (not from the already-defaulted value) combined with the top-level key (YamlInvokeFlowLoader.cs:84); functionally this key applies whenever the top-level onErrorResume is omitted, and is itself defaulted to true when both are omitted. See the top-level onErrorResume entry for the full precedence rule and for where InvokeDefinition.OnErrorResume is actually consulted at run time (it is not consulted by a direct sqlflow run/validate of this document).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:31"
+    },
+    {
+      "path": "invoke.output",
+      "type": "object",
+      "required": false,
+      "default": "null (absent)",
+      "description": "The file(s) the triggered external compute (ADF pipeline / Automation runbook) lands, declared purely for lineage: an invoke moves no catalog data of its own, so this is what connects it to a downstream flowType: file ingestion that reads the same file(s). Binds InvokeBlockYaml.Output (src/SqlFlow.Yaml/InvokeYaml.cs) to InvokeOutputYaml, mapped by FileOutputMapping.Map into InvokeDefinition.Output (src/SqlFlow.Core/Invoke/InvokeOutput.cs). At declared-tier collection FlowSetCollector records the invoke as a file producer and, once the whole estate is scanned, reconciles it against every file ingestion's source spec with the shared engine-parity matcher (src/SqlFlow.Core/Files/FileSelection.cs): on a match the invoke is attributed a Writes of the SAME file node the ingestion Reads, so the merged graph chains invoke -> file -> landing table -> view -> downstream and the execution waves order the fetch before the load. The match is path-first then file (a wildcard always searches within a folder) and conservative (an unconfirmable link yields no edge). Only a standalone flowType: inv document contributes this lineage; on an invokes: entry used as a pre/post hook the hook already orders the run and the inline invoke is not itself a lineage node.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "A present block with no location throws FlowValidationException \"<source>: 'invoke.output.location' is required when a flow declares an output.\" (FileOutputMapping.Map)."
+    },
+    {
+      "path": "invoke.output.location",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "an invoke.output block is present",
+      "default": "none",
+      "description": "The folder, full file path, or cloud URL the run lands data at. A local path is normalized against the estate root for the file node's lineage identity (relative when inside it, so ./data/x.csv and data/x.csv are one node); a cloud URL (contains '://') is kept verbatim. When invoke.output.srcFile is omitted, a location whose last segment looks like a file name (a wildcard or an extension dot) is split into folder + file-name pattern; a bare folder takes the default pattern. Add a trailing slash to force a folder reading.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "Blank/absent (with the block present) throws FlowValidationException \"<source>: 'invoke.output.location' is required when a flow declares an output.\" (FileOutputMapping.Map)."
+    },
+    {
+      "path": "invoke.output.srcFile",
+      "type": "string",
+      "required": false,
+      "default": "inferred from location, else match any file in the folder",
+      "description": "The file-name glob the run produces within location (e.g. orders_*.csv), mirroring a file source's source.options.srcFile. Used only for matching, with the same BCL matcher (System.IO.Enumeration.FileSystemName) the engine's file readers use; when both the invoke's and the ingestion's file patterns carry wildcards they are tested for a non-empty overlap (FileSelection.GlobsOverlap), so a timestamped drop still links to a '*' watcher.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs"
+    },
+    {
+      "path": "invoke.output.srcPathMask",
+      "type": "string",
+      "required": false,
+      "default": "null (absent)",
+      "description": "An optional regex over the full landing path, mirroring a file source's source.options.srcPathMask, for cases a folder prefix cannot express. When set it is the authoritative path constraint in the match (taking priority over the folder-prefix check), evaluated the way the engine evaluates srcPathMask (case-insensitive, culture invariant, bounded by a short timeout).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "An invalid regex throws FlowValidationException \"<source>: 'invoke.output.srcPathMask' is not a valid regular expression.\" at parse (FileOutputMapping.Map)."
+    },
+    {
+      "path": "invoke.outputs",
+      "type": "list<object>",
+      "required": false,
+      "default": "[] (absent)",
+      "description": "Several file drops the triggered compute lands (an SFTP download of many file sets, or a pipeline writing several folders): one entry per (folder, pattern), each the same shape as invoke.output. Bound from InvokeBlockYaml.Outputs (src/SqlFlow.Yaml/InvokeYaml.cs) and combined with the singular invoke.output (singular prepended) by FileOutputMapping.Map into InvokeDefinition.Outputs. FlowSetCollector reconciles each drop independently against every file ingestion with the shared engine-parity matcher (src/SqlFlow.Core/Files/FileSelection.cs), so a fan-out invoke feeding several ingestions connects to each; a drop nothing consumes still records its own file node. Many files landing in ONE folder need only a single drop with a glob (srcFile), since the file node is the folder.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs; mapped at src/SqlFlow.Yaml/YamlInvokeParts.cs (MapOutputs)",
+      "validation": "An entry that is not a map throws FlowValidationException \"<source>: 'invoke.outputs[<i>]' must be a map of output fields.\"; each entry is validated like invoke.output (location required, srcPathMask a valid regex) with the path 'invoke.outputs[<i>].*'."
+    },
+    {
+      "path": "invoke.outputs[].location",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "an invoke.outputs entry is present",
+      "default": "none",
+      "description": "The folder, full file path, or cloud URL this drop lands at. Same normalization (local paths against the estate root, cloud URLs verbatim) and folder/pattern splitting as invoke.output.location.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "Blank/absent throws FlowValidationException \"<source>: 'invoke.outputs[<i>].location' is required when a flow declares an output.\""
+    },
+    {
+      "path": "invoke.outputs[].srcFile",
+      "type": "string",
+      "required": false,
+      "default": "inferred from location, else match any file in the folder",
+      "description": "The file-name glob within this drop's location; same semantics as invoke.output.srcFile (matched with FileSystemName; two wildcard patterns tested for overlap via FileSelection.GlobsOverlap). Quote a glob beginning with '*'.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs"
+    },
+    {
+      "path": "invoke.outputs[].srcPathMask",
+      "type": "string",
+      "required": false,
+      "default": "null (absent)",
+      "description": "An optional regex over this drop's full landing path; same semantics as invoke.output.srcPathMask.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs",
+      "validation": "An invalid regex throws FlowValidationException \"<source>: 'invoke.outputs[<i>].srcPathMask' is not a valid regular expression.\" at parse."
+    },
+    {
+      "path": "invoke.parameters",
+      "type": "map<string,any>",
+      "required": false,
+      "default": "null (absent); an explicitly empty map ({}) also yields null",
+      "description": "Pipeline/runbook parameters to pass with the trigger, as a name-to-value map. Bound from InvokeBlockYaml.Parameters (Dictionary<string, object?>; src/SqlFlow.Yaml/InvokeYaml.cs:29) and converted by YamlInvokeParts.ParametersToJson (src/SqlFlow.Yaml/YamlInvokeParts.cs:233-252) into a single JSON object string stored as InvokeDefinition.ParameterJson (src/SqlFlow.Core/Invoke/InvokeDefinition.cs:37); a null or zero-entry map yields ParameterJson = null (YamlInvokeParts.cs:235). Dictionary keys bind verbatim (the camelCase convention never renames map keys) and stay case-sensitive all the way through (no re-wrapping into a case-insensitive dictionary here, unlike schema.overrides); a name that is null, empty, or whitespace-only fails at conversion (see validation). This loader's deserializer adds .WithAttemptingUnquotedStringTypeDeserialization() on top of the two-call pattern used elsewhere (src/SqlFlow.Yaml/YamlInvokeFlowLoader.cs:32-36; also present in the ing/exp/sp/hc loaders but not in the plain file flow's YamlFlowLoader, the YamlDocumentLoader probe pass, YamlBatchFlowLoader, or YamlSourceControlFlowLoader; see corrections), which is what lets an unquoted plain scalar deserialize into this Dictionary<string, object?> as a native bool/integer/floating-point CLR value rather than always as a string; a quoted scalar is always a string regardless. YamlInvokeParts.ToNode (YamlInvokeParts.cs:254-270) then converts each CLR value to the matching System.Text.Json node: null, string, bool, any of sbyte/byte/short/ushort/int/uint/long as a JSON number (via Int64), ulong, float/double as a JSON number, decimal, a nested IDictionary<object,object?> as a JSON object (recursing with the same rules), or a nested IEnumerable<object?> as a JSON array (recursing, path suffixed '[index]'). Confirmed by test (YamlInvokeFlowLoaderTests.cs Parameters_KeepTheirYamlTypes_IntoTheJson): an unquoted true/5000/0.25 become a JSON boolean/number/number, a quoted \"true\" stays a JSON string, and an unquoted plain date-like scalar (2024-01-01) also stays a JSON string rather than resolving to any date/timestamp type; this loader's deserializer never hands ToNode anything beyond null/string/bool/the-listed-numeric-types/map/list for a YAML-authored value. At execute time the same ParameterJson is interpreted differently per target: AzureDataFactoryInvokeExecutor (via InvokeParameterJson.ToDataFactoryParameters; src/SqlFlow.Azure/Invoke/InvokeParameterJson.cs:15-31) passes each value through to the Data Factory SDK as raw JSON text (BinaryData), preserving numbers/bools/objects/arrays as-is; AzureAutomationInvokeExecutor (via ToAutomationParameters; InvokeParameterJson.cs:33-52) instead builds a string-to-string map, unwrapping a JSON string value to its bare text and rendering anything structured (number/bool/object/array) as its JSON text for the runbook to parse itself.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:29",
+      "validation": "A parameter with a null, empty, or whitespace-only name throws FlowValidationException \"<source>: 'invoke.parameters' has a parameter with an empty name.\" (YamlInvokeParts.cs:243-246). A value of a CLR type outside the ones ToNode recognizes (null/string/bool/the listed numeric types/IDictionary<object,object?>/IEnumerable<object?>) throws \"<source>: '<path>' has an unsupported value of type '<TypeName>'. Use scalars, maps, or sequences.\" (YamlInvokeParts.cs:254,267-269); in practice not reachable via ordinary plain or quoted YAML scalars, maps, or sequences given this loader's configuration, since only an explicitly tagged exotic YAML scalar (e.g. !!binary) is expected to produce a CLR type this switch does not cover, a case not empirically exercised in this review."
+    },
+    {
+      "path": "invoke.parameters.<name>",
+      "type": "any",
+      "required": false,
+      "description": "One parameter's value. A plain (unquoted) YAML scalar keeps its inferred CLR type into the resulting JSON (a boolean/number stays a JSON boolean/number); a quoted scalar always becomes a JSON string; a nested YAML map becomes a nested JSON object, each of its entries following these same rules recursively with the same empty-key and unsupported-type guards and the error path extended as '<parent>.<key>' (YamlInvokeParts.MapToObject; src/SqlFlow.Yaml/YamlInvokeParts.cs:272-287); a nested YAML sequence becomes a JSON array, each element following these same rules recursively with the error path extended as '<parent>[<index>]' (YamlInvokeParts.ListToArray; YamlInvokeParts.cs:289-300); a blank/null scalar becomes JSON null. See invoke.parameters for the exact type-preservation mechanics and the per-target (adf vs aut) interpretation of the resulting JSON.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:29",
+      "validation": "See invoke.parameters; the empty-nested-key and unsupported-value-type errors apply identically at any nesting depth, with the path adjusted to the failing entry."
+    },
+    {
+      "path": "invoke.pipeline",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "invoke.type == adf (required then; must be absent when type is aut, whether aut is explicit or the omitted-type default)",
+      "description": "The name of the pre-existing Azure Data Factory pipeline to run. Bound from InvokeBlockYaml.Pipeline (src/SqlFlow.Yaml/InvokeYaml.cs:23), blank-normalized and trimmed (YamlDocumentParts.NullIfBlank(node.Pipeline)?.Trim(); YamlInvokeParts.cs:135), and carried onto InvokeDefinition.PipelineName (src/SqlFlow.Core/Invoke/InvokeDefinition.cs:32). At execute time, AzureDataFactoryInvokeExecutor looks the pipeline up by this exact name under the resolved service principal's Data Factory (dataFactory.GetDataFactoryPipelineAsync(pipelineName, ...); src/SqlFlow.Azure/Invoke/AzureDataFactoryInvokeExecutor.cs:36-47) and starts a run with the JSON-converted invoke.parameters.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:23",
+      "validation": "Load time (YamlInvokeParts.cs:138-150): when invoke.type is (or defaults to) adf, a blank/absent value throws FlowValidationException \"<source>: 'invoke.pipeline' is required when type is adf.\"; when type is aut, a non-blank value throws \"<source>: 'invoke.pipeline' is set, but type aut runs a runbook; remove it or use type adf.\" (confirmed by tests/SqlFlow.Core.Tests/InvokeEdgeCaseTests.cs Yaml_AutWithPipelineSet_IsRejected). Run time: a name the Data Factory does not have surfaces as the Azure SDK's own RequestFailedException, uncaught by the executor and turned into a generic failed InvokeResult by InvokeDispatcher's catch-all (Error = ex.Message; src/SqlFlow.SqlServer/Invoke/InvokeDispatcher.cs:61-65), not a SqlFlow-specific message."
+    },
+    {
+      "path": "invoke.runbook",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "invoke.type == aut (required then, including when type is simply omitted since aut is the default; must be absent when type is adf)",
+      "description": "The name of the pre-existing Azure Automation runbook to start as a job. Bound from InvokeBlockYaml.Runbook (src/SqlFlow.Yaml/InvokeYaml.cs:24), blank-normalized and trimmed (YamlInvokeParts.cs:136), carried onto InvokeDefinition.RunbookName (src/SqlFlow.Core/Invoke/InvokeDefinition.cs:34). At execute time, AzureAutomationInvokeExecutor creates an Automation job named '<runbook>_SQLFLW_<new guid>' for this runbook under the resolved service principal's Automation account, with the JSON-converted invoke.parameters (src/SqlFlow.Azure/Invoke/AzureAutomationInvokeExecutor.cs:37-58).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:24",
+      "validation": "Load time (YamlInvokeParts.cs:151-163): when invoke.type is aut (explicit or via the omitted-type default), a blank/absent value throws FlowValidationException \"<source>: 'invoke.runbook' is required when type is aut.\" (confirmed by tests/SqlFlow.Core.Tests/YamlInvokeFlowLoaderTests.cs TypeOmitted_DefaultsToAutomation_MirroringTheLegacyColumnDefault); when type is adf, a non-blank value throws \"<source>: 'invoke.runbook' is set, but type adf runs a pipeline; remove it or use type aut.\" (confirmed by InvokeEdgeCaseTests.cs Yaml_AdfWithRunbookSet_IsRejected). Run time: a runbook name the Automation account does not have surfaces as the Azure SDK's own RequestFailedException from the job-creation call, turned into a generic failed InvokeResult by InvokeDispatcher's catch-all rather than a SqlFlow-specific message."
+    },
+    {
+      "path": "invoke.servicePrincipal",
+      "type": "string",
+      "required": true,
+      "description": "The name of the service principal (declared under this same document's servicePrincipals: block, covered in the shared unit) whose credentials and Data Factory/Automation coordinates this invoke authenticates and runs with. Bound from InvokeBlockYaml.ServicePrincipal (src/SqlFlow.Yaml/InvokeYaml.cs:25), blank-normalized and trimmed, then resolved against the document's parsed service-principal map, which is keyed case-insensitively (Dictionary<string, ServicePrincipalProfile>(StringComparer.OrdinalIgnoreCase); YamlInvokeParts.cs:24,168). The authored casing of this value (not the declaration's casing) is what ends up in InvokeDefinition.TargetServicePrincipalReference as \"@\" + spName (YamlInvokeParts.cs:195), consumed by AzureServicePrincipalResolver.ResolveAsync in both executors. Cross-checked against the resolved invoke.type: an adf invoke requires the referenced principal to carry a dataFactoryName, an aut invoke an automationAccountName (both fields belong to the shared servicePrincipals unit).",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:25",
+      "validation": "A blank/absent value throws FlowValidationException \"<source>: 'invoke.servicePrincipal' is required (a name declared under 'servicePrincipals:').\" (YamlInvokeParts.cs:165-167). A value that does not match any declared service-principal name (case-insensitively) throws \"<source>: 'invoke.servicePrincipal' references '<name>', which is not declared under 'servicePrincipals:'.\" (YamlInvokeParts.cs:168-172). If invoke.type is adf and the resolved principal has no dataFactoryName: \"<source>: 'invoke' is an adf invoke, but service principal '<name>' has no dataFactoryName.\" (YamlInvokeParts.cs:174-178); if type is aut and the principal has no automationAccountName: \"<source>: 'invoke' is an aut invoke, but service principal '<name>' has no automationAccountName.\" (YamlInvokeParts.cs:180-184). The first three of these (blank/absent, unknown reference, adf-missing-dataFactoryName) are confirmed by tests/SqlFlow.Core.Tests/YamlInvokeFlowLoaderTests.cs Requirements_FailWithThePath; that Theory has no InlineData row for the fourth (aut-missing-automationAccountName), which is instead confirmed separately by tests/SqlFlow.Core.Tests/InvokeEdgeCaseTests.cs Yaml_AutWithoutAutomationAccountName_IsRejected."
+    },
+    {
+      "path": "invoke.type",
+      "type": "enum(adf|aut)",
+      "required": false,
+      "default": "aut (InvokeType.AzureAutomation) when omitted, null, empty, or whitespace-only",
+      "enumValues": [
+        "adf",
+        "aut"
+      ],
+      "description": "Which external target this invoke triggers: adf for an Azure Data Factory pipeline run, aut for an Azure Automation runbook job. Bound from InvokeBlockYaml.Type (src/SqlFlow.Yaml/InvokeYaml.cs:22) and parsed by InvokeTypeCodes.Parse (src/SqlFlow.Core/Invoke/InvokeType.cs:29-46) via YamlInvokeParts.ParseInvokeType (src/SqlFlow.Yaml/YamlInvokeParts.cs:134,218-228) into the InvokeType enum (AzureDataFactory/AzureAutomation; src/SqlFlow.Core/Invoke/InvokeType.cs:12-19). Matching is case-insensitive via a plain ToLowerInvariant() with no '-'/'_' stripping (unlike load.mode's NormalizeToken in the file-flow census); this is moot in practice since 'adf'/'aut' contain no separator characters to strip, but was verified rather than assumed, per instructions. The parsed type gates which of invoke.pipeline/invoke.runbook is required (see those entries) and which of the referenced service principal's dataFactoryName/automationAccountName fields must be set (shared servicePrincipals unit). It also determines InvokeDefinition.FlowType (the legacy SysLog FlowType code; InvokeType.cs:49-54), read back verbatim as 'adf'/'aut'.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:22",
+      "validation": "Blank/absent maps to aut (InvokeType.AzureAutomation), not an error (InvokeType.cs:32-35; confirmed by YamlInvokeFlowLoaderTests.cs TypeOmitted_DefaultsToAutomation_MirroringTheLegacyColumnDefault, where the omission then fails downstream because 'invoke.runbook' becomes required). The two removed legacy host-execution codes fail with a specific reason: FlowValidationException \"<source>: 'invoke.type': InvokeType '<code>' (host script/code execution) has been removed as a code-injection risk. Invoke now only triggers Azure Data Factory pipelines ('adf') and Azure Automation runbooks ('aut').\" for ps or cs (case-insensitive). Any other unrecognized value throws FlowValidationException \"<source>: 'invoke.type': Unknown InvokeType '<code>'. Expected one of: adf, aut.\" (both wrapped by YamlInvokeParts.ParseInvokeType, src/SqlFlow.Yaml/YamlInvokeParts.cs:218-228, from SqlFlowExceptions thrown at src/SqlFlow.Core/Invoke/InvokeType.cs:41-44; confirmed by InvokeEdgeCaseTests.cs Codec_RemovedHostCodes_ThrowInjectionRegardlessOfCasing and Codec_UnknownCode_NamesTheAllowedSet)."
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "appliesWhen": "flowType: inv document (the standalone invoke document root; a distinct binding from the file flow's 'name', already documented in keys.json)",
+      "description": "The invoke flow's unique identifier, bound to InvokeDocumentYaml.Name (src/SqlFlow.Yaml/InvokeYaml.cs:10) and required via the shared YamlDocumentParts.RequireFlowName(y.Name, \"an invoke flow\", source) (src/SqlFlow.Yaml/YamlDocumentParts.cs:231-233), called from YamlInvokeFlowLoader.Map (src/SqlFlow.Yaml/YamlInvokeFlowLoader.cs:71). Unlike the file flow's untrimmed 'name', this document kind's name IS trimmed (NullIfBlank(name)?.Trim()). The trimmed value becomes three things at once: the InvokeDefinition's InvokeAlias (YamlInvokeFlowLoader.cs:75 passes it as MapInvoke's 'alias' parameter; YamlInvokeParts.cs:189 assigns InvokeAlias = alias verbatim, with no further character-class check; contrast with an alias declared under an ing/exp/sp document's 'invokes:' map, which IS validated by IsValidName (letters, digits, '_', '.', '-' only; YamlInvokeParts.cs:302-303,107-111) before reaching MapInvoke, a gate the standalone document's name never passes through because YamlInvokeFlowLoader calls MapInvoke directly rather than through the MapInvokes dictionary loop), the InvokeDefinition's SysAlias (YamlInvokeFlowLoader.cs:81), and, via YamlDocumentParts.StableFlowId (a SHA-1-based deterministic v5-GUID-derived positive int; src/SqlFlow.Yaml/YamlDocumentParts.cs:237-238), the InvokeDefinition's FlowId (YamlInvokeParts.cs:188), so the same name always yields the same FlowId across runs and renaming yields a different one (pinned by tests/SqlFlow.Core.Tests/InvokeEdgeCaseTests.cs Yaml_FlowId_IsDeterministicPositive_AndNameDependent). It also becomes the lineage node's display Name for this flow (Kind \"inv\") via src/SqlFlow.Lineage/Collection/FlowSetCollector.cs:228-236.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:10",
+      "validation": "A missing, null, empty, or all-whitespace value throws FlowValidationException \"<source>: 'name' is required for an invoke flow.\" (YamlDocumentParts.RequireFlowName, src/SqlFlow.Yaml/YamlDocumentParts.cs:231-233; confirmed by tests/SqlFlow.Core.Tests/YamlInvokeFlowLoaderTests.cs Requirements_FailWithThePath case \"'name' is required for an invoke flow.\"). No other constraint: any non-blank string (after trim) is accepted, including one that would fail IsValidName's character class."
+    },
+    {
+      "path": "onErrorResume",
+      "type": "bool",
+      "required": false,
+      "default": "true (see precedence in description)",
+      "appliesWhen": "flowType: inv document (top-level; distinct from, and takes precedence over, invoke.onErrorResume)",
+      "description": "Document-level override of the invoke's resume-on-error behavior. Bound from InvokeDocumentYaml.OnErrorResume (src/SqlFlow.Yaml/InvokeYaml.cs:15) and combined with the invoke block's own value in YamlInvokeFlowLoader.Map: OnErrorResume = y.OnErrorResume ?? invokeYaml.OnErrorResume ?? true (YamlInvokeFlowLoader.cs:84). Precedence, confirmed by tests/SqlFlow.Core.Tests/InvokeEdgeCaseTests.cs (Yaml_DocumentLevelOnErrorResume_OverridesInvokeLevel and Yaml_InvokeLevelOnErrorResume_AppliesWhenDocumentLevelOmitted): if this top-level key is set, it wins outright, even overriding an explicit invoke.onErrorResume: true alongside a top-level onErrorResume: false; if this key is absent, invoke.onErrorResume (or true if that too is absent) applies. The resulting InvokeDefinition.OnErrorResume (src/SqlFlow.Core/Invoke/InvokeDefinition.cs:39) is consulted in two reachable seams, neither of which is a direct sqlflow run/validate of this same document: (1) DefaultInvokeRunner.RunByAliasAsync, when this InvokeDefinition is dispatched as another flow's preInvokeAlias/postInvokeAlias hook; a failed dispatch raises and fails the parent flow unless OnErrorResume is true, in which case the failed InvokeResult is returned and the parent continues (src/SqlFlow.Core/Invoke/IInvokeRunner.cs:60-64); and (2) the legacy full-mode FullModeIngestionHost.RunInvokeBatchAsync Batch-grouped run, which stops iterating on the first failure unless OnErrorResume is true (src/SqlFlow.SqlServer/FullMode/FullModeIngestionHost.cs:265-266). A direct CLI run of this standalone document (DocumentExecutor.ExecuteInvokeAsync; src/SqlFlow.Execution/DocumentExecutor.cs:382-412) does not consult it at all: the single dispatch's own success/failure is reported and exit-coded regardless, since there is nothing else in a one-flow run to resume past. A YAML flowType: batch document that includes this file as a member likewise does not consult it: whether a failing member is fatal to that batch is governed entirely by the batch document's own ignoreErrors glob list matched against the member's file path (BatchOrchestrator.ResolveMembers; src/SqlFlow.Orchestration/BatchOrchestrator.cs:238-247), independent of the member's own onErrorResume value.",
+      "definedIn": "src/SqlFlow.Yaml/InvokeYaml.cs:15 (mapped at src/SqlFlow.Yaml/YamlInvokeFlowLoader.cs:84; model src/SqlFlow.Core/Invoke/InvokeDefinition.cs:39)"
+    }
+  ]
+}

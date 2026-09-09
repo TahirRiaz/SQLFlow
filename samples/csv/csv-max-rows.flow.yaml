@@ -1,0 +1,11 @@
+# Max rows: cap how many data rows are loaded (handy for sampling a large file).
+name: Csv_MaxRows
+source:
+  type: csv
+  location: ./data/orders.csv
+  options:
+    maxRows: "2"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_MaxRows

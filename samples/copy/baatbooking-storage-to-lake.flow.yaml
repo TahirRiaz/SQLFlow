@@ -1,0 +1,23 @@
+# Ports baatbooking.ps1: a lake-to-lake copy. Copies the vendor's raw files from the Baatbooking
+# drop-zone storage account into the DW data lake, verbatim, keeping only files modified in the last
+# 14 days. No transform - the downstream json file-flows ingest the landed files. Storage is read and
+# written with the ambient managed identity (SQLFLOW_AZURE_AUTH); set accountKeyRef only if the drop
+# zone issues a key instead of granting the identity access.
+flowType: cpy
+name: BB_Baatbooking_00_cpy
+batch: BB
+operation: copy
+source:
+  location: abfss://baatbooking@dwstoragebaatbookingprod.dfs.core.windows.net
+  pattern: "*"
+  recursive: true
+  modifiedWithinDays: 14
+  # accountKeyRef: ${keyvault:sqlflow-v3-secrets/baatbooking-storage-key}
+target:
+  location: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/baatbooking/history
+options:
+  overwrite: true
+  preserveStructure: true
+
+schedule:
+  cron: "0 5 * * *"

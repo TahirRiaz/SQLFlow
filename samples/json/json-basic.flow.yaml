@@ -1,0 +1,15 @@
+# Basic JSON: an array of objects with a nested object and an array.
+# Nested keys flatten with the separator (customer.name -> customer_name); the items array, being
+# unconfigured, becomes a JSON-string column (arrayHandling defaults to to_json).
+name: Json_Basic
+source:
+  type: json
+  location: ./data/orders.json
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_Basic
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

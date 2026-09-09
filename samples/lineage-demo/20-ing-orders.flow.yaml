@@ -1,0 +1,18 @@
+# Typed hop: the transformation view demo.vOrders_Pre -> demo.Orders through the standard
+# staging + keyed upsert. Reading the VIEW (not the pre table) is what carries the inferred /
+# declared types into the target and what lineage orders this flow after the landing flow.
+flowType: ing
+name: demo-ing-orders
+connections:
+  src: ${env:SQLFLOW_DEMO_DB}
+  dwh: ${env:SQLFLOW_DEMO_DB}
+# Objects are three-part: a two-part name is read as database.table (the MySQL convention),
+# so SQL Server objects must carry the database explicitly.
+source:
+  server: src
+  object: SqlFlowCatalogTests.demo.vOrders_Pre
+target:
+  server: dwh
+  object: SqlFlowCatalogTests.demo.Orders
+load:
+  keyColumns: [order_id]

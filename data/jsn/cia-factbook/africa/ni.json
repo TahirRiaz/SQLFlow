@@ -1,0 +1,1303 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>In ancient and pre-colonial times, the area of present-day Nigeria was occupied by a variety of ethnic groups with different languages and traditions. These included large Islamic kingdoms such as Borno, Kano, and the Sokoto Caliphate dominating the north, the Benin and Oyo Empires that controlled much of modern western Nigeria, and more decentralized political entities and city states in the south and southeast. In 1914, the British amalgamated their separately administered northern and southern territories into a Colony and Protectorate of Nigeria. <br><br>Nigeria achieved independence from Britain in 1960 and transitioned to a federal republic with three constituent states in 1963 under President Nnamdi AZIKIWE. This structure served to enflame regional and ethnic tension, contributing to a bloody coup led by predominately southeastern military officers in 1966 and a countercoup later that year masterminded by northern officers. In the aftermath of this tension, the governor of Nigeria’s Eastern Region, centered on the southeast, declared the region independent as the Republic of Biafra. The ensuring civil war (1967-1970), resulted in more than a million deaths, many from starvation. While the war forged a stronger Nigerian state and national identity, it contributed to long-lasting mistrust of the southeast’s predominantly Igbo population. Wartime military leader Yakubu GOWON ruled until a bloodless coup by frustrated junior officers in 1975. This generation of officers, including Olusegun OBASANJO, Ibrahim BABANGIDA, and Muhammadu BUHARI, who would all later serve as president, continue to exert significant influence in Nigeria to the present day. <br><br>Military rule predominated until the first durable transition to civilian government and adoption of a new constitution in 1999. The elections of 2007 marked the first civilian-to-civilian transfer of power in the country's history. National and state elections in 2011 and 2015 were generally regarded as credible. The 2015 election was also heralded for the fact that the then-umbrella opposition party, the All Progressives Congress, defeated the long-ruling (since 1999) People's Democratic Party and assumed the presidency, marking the first peaceful transfer of power from one party to another. Presidential and legislative elections in 2019 and 2023 were deemed broadly free and fair despite voting irregularities, intimidation, and violence. The government of Africa's most populous nation continues to face the daunting task of institutionalizing democracy and reforming a petroleum-based economy whose revenues have been squandered through decades of corruption and mismanagement. In addition, Nigeria faces increasing violence from Islamic terrorism, largely in the northeast, large scale criminal banditry, secessionist violence in the southeast, and competition over land and resources nationwide.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Western Africa, bordering the Gulf of Guinea, between Benin and Cameroon"
+    },
+    "Geographic coordinates": {
+      "text": "10 00 N, 8 00 E"
+    },
+    "Map references": {
+      "text": "Africa"
+    },
+    "Area": {
+      "total ": {
+        "text": "923,768 sq km"
+      },
+      "land": {
+        "text": "910,768 sq km"
+      },
+      "water": {
+        "text": "13,000 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about six times the size of Georgia; slightly more than twice the size of California"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "4,477 km"
+      },
+      "border countries": {
+        "text": "Benin 809 km; Cameroon 1,975 km; Chad 85 km; Niger 1,608 km"
+      }
+    },
+    "Coastline": {
+      "text": "853 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "200-m depth or to the depth of exploitation"
+      }
+    },
+    "Climate": {
+      "text": "varies; equatorial in south, tropical in center, arid in north"
+    },
+    "Terrain": {
+      "text": "southern lowlands merge into central hills and plateaus; mountains in southeast, plains in north"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Chappal Waddi 2,419 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "380 m"
+      }
+    },
+    "Natural resources": {
+      "text": "natural gas, petroleum, tin, iron ore, coal, limestone, niobium, lead, zinc, arable land"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "78% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 37.3% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 7.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 33.3% (2018 est.)"
+      },
+      "forest": {
+        "text": "9.5% (2018 est.)"
+      },
+      "other": {
+        "text": "12.5% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "2,930 sq km (2012)"
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lake Chad (endorheic lake shared with Niger, Chad, and Cameroon) - 10,360-25,900 sq km<br>note - area varies by season and year to year"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Niger river mouth (shared with Guinea [s], Mali, Benin, and Niger) - 4,200 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Niger (2,261,741 sq km)<br>Internal <em>(endorheic basin) </em>drainage: Lake Chad (2,497,738 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Lake Chad Basin, Lullemeden-Irhazer Aquifer System"
+    },
+    "Population distribution": {
+      "text": "largest population of any African nation; significant population clusters are scattered throughout the country, with the highest density areas being in the south and southwest as shown in this population distribution map"
+    },
+    "Natural hazards": {
+      "text": "periodic droughts; flooding"
+    },
+    "Geography - note": {
+      "text": "the Niger River enters the country in the northwest and flows southward through tropical rain forests and swamps to its delta in the Gulf of Guinea"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "236,747,130"
+      },
+      "male": {
+        "text": "119,514,449"
+      },
+      "female": {
+        "text": "117,232,681 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Nigerian(s)"
+      },
+      "adjective": {
+        "text": "Nigerian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Hausa 30%, Yoruba 15.5%, Igbo (Ibo) 15.2%, Fulani 6%, Tiv 2.4%, Kanuri/Beriberi 2.4%, Ibibio 1.8%, Ijaw/Izon 1.8%, other 24.9% (2018 est.)",
+      "note": "<strong>note:</strong> Nigeria, Africa's most populous country, is composed of more than 250 ethnic groups"
+    },
+    "Languages": {
+      "text": "English (official), Hausa, Yoruba, Igbo (Ibo), Fulani, over 500 additional indigenous languages"
+    },
+    "Religions": {
+      "text": "Muslim 53.5%, Roman Catholic 10.6%, other Christian 35.3%, other 0.6% (2018 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>Nigeria’s population is projected to grow from more than 186 million people in 2016 to 392 million in 2050, becoming the world’s fourth most populous country. Nigeria’s sustained high population growth rate will continue for the foreseeable future because of population momentum and its high birth rate. Abuja has not successfully implemented family planning programs to reduce and space births because of a lack of political will, government financing, and the availability and affordability of services and products, as well as a cultural preference for large families. Increased educational attainment, especially among women, and improvements in health care are needed to encourage and to better enable parents to opt for smaller families.</p><p>Nigeria needs to harness the potential of its burgeoning youth population in order to boost economic development, reduce widespread poverty, and channel large numbers of unemployed youth into productive activities and away from ongoing religious and ethnic violence. While most movement of Nigerians is internal, significant emigration regionally and to the West provides an outlet for Nigerians looking for economic opportunities, seeking asylum, and increasingly pursuing higher education. Immigration largely of West Africans continues to be insufficient to offset emigration and the loss of highly skilled workers. Nigeria also is a major source, transit, and destination country for forced labor and sex trafficking.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "40.4% (male 48,856,606/female 46,770,810)"
+      },
+      "15-64 years": {
+        "text": "56.2% (male 66,897,900/female 66,187,584)"
+      },
+      "65 years and over": {
+        "text": "3.4% (2024 est.) (male 3,759,943/female 4,274,287)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "86"
+      },
+      "youth dependency ratio": {
+        "text": "80.6"
+      },
+      "elderly dependency ratio": {
+        "text": "5.5"
+      },
+      "potential support ratio": {
+        "text": "18 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "19.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "19.1 years"
+      },
+      "female": {
+        "text": "19.6 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "2.52% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "33.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "8.4 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.2 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "largest population of any African nation; significant population clusters are scattered throughout the country, with the highest density areas being in the south and southwest as shown in this population distribution map"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "54.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "3.92% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "15.946 million Lagos, 4.348 million Kano, 3.875 million Ibadan, 3.840 million ABUJA (capital), 3.480 million Port Harcourt, 1.905 million Benin City (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.06 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.01 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.88 male(s)/female"
+      },
+      "total population": {
+        "text": "1.02 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "20.4 years (2018 est.)",
+      "note": "<strong>note:</strong> data represents median age at first birth among women 25-49"
+    },
+    "Maternal mortality ratio": {
+      "text": "1,047 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "53.7 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "58.9 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "48.2 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "62.2 years (2024 est.)"
+      },
+      "male": {
+        "text": "60.4 years"
+      },
+      "female": {
+        "text": "64.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "4.52 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "2.19 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "16.6% (2018)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 95.3% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 68.8% of population"
+      },
+      "improved: total": {
+        "text": "total: 82.6% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 4.7% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 31.2% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 17.4% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "3.4% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.38 physicians/1,000 population (2018)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 81.6% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 41.4% of population"
+      },
+      "improved: total": {
+        "text": "total: 62.3% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 18.4% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 58.6% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 37.7% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "8.9% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "4.49 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "0.73 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.09 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.4 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "3.27 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "3.7% (2020 est.)"
+      },
+      "male": {
+        "text": "6.9% (2020 est.)"
+      },
+      "female": {
+        "text": "0.5% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "18.4% (2019/20)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "66.2% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "12.3%"
+      },
+      "women married by age 18": {
+        "text": "30.3%"
+      },
+      "men married by age 18": {
+        "text": "1.6% (2021 est.)"
+      },
+      "note": "<strong>note:</strong> due to prolonged insecurity concerns, some parts of states, including Borno state, were not sampled"
+    },
+    "Education expenditures": {
+      "text": "0.5% of GDP (2013)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "62%"
+      },
+      "male": {
+        "text": "71.3%"
+      },
+      "female": {
+        "text": "52.7% (2018)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "serious overpopulation and rapid urbanization have led to numerous environmental problems; urban air and water pollution; rapid deforestation; soil degradation; loss of arable land; oil pollution - water, air, and soil have suffered serious damage from oil spills"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Marine Dumping-London Protocol, Marine Life Conservation, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "Tropical Timber 2006"
+      }
+    },
+    "Climate": {
+      "text": "varies; equatorial in south, tropical in center, arid in north"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "78% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 37.3% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 7.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 33.3% (2018 est.)"
+      },
+      "forest": {
+        "text": "9.5% (2018 est.)"
+      },
+      "other": {
+        "text": "12.5% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "54.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "3.92% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Food insecurity": {
+      "widespread lack of access": {
+        "text": "<em><em>due to persistent civil conflict in the northern areas, </em></em><em>floods, high food prices, and an economic slowdown </em><em>- </em>about 24.86 million people are projected to face acute food insecurity during the June to August 2023 lean season, which is more than the 19.45 million people estimated to be acutely food insecure in 2022; acute food insecurity is mostly the result of worsening insecurity and conflicts in northern states, which, as well as impeding farmers’ physical access to their lands and disrupting agricultural activities, led to the displacement of about 3.57 million people as of April 2023; macroeconomic challenges, marked by persistent high inflation, depreciation of the naira on the informal market, high fuel prices and the lingering impacts of cash shortages following the introduction of new banknotes at the start of 2023, have aggravated the food security conditions of vulnerable households (2023)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "1.02% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "55.64 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "120.37 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "143.99 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "27,614,830 tons (2009 est.)"
+      }
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lake Chad (endorheic lake shared with Niger, Chad, and Cameroon) - 10,360-25,900 sq km<br>note - area varies by season and year to year"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Niger river mouth (shared with Guinea [s], Mali, Benin, and Niger) - 4,200 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Niger (2,261,741 sq km)<br>Internal <em>(endorheic basin) </em>drainage: Lake Chad (2,497,738 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Lake Chad Basin, Lullemeden-Irhazer Aquifer System"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "5 billion cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "1.97 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "5.51 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "286.2 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Federal Republic of Nigeria"
+      },
+      "conventional short form": {
+        "text": "Nigeria"
+      },
+      "etymology": {
+        "text": "named for the Niger River that flows through the west of the country to the Atlantic Ocean; from a native term \"Ni Gir\" meaning \"River Gir\""
+      }
+    },
+    "Government type": {
+      "text": "federal presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Abuja"
+      },
+      "geographic coordinates": {
+        "text": "9 05 N, 7 32 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "Abuja is a planned capital city, it replaced Lagos in 1991; situated in the center of the country, Abuja takes its name from a nearby town, now renamed Suleja"
+      }
+    },
+    "Administrative divisions": {
+      "text": "36 states and 1 territory*; Abia, Adamawa, Akwa Ibom, Anambra, Bauchi, Bayelsa, Benue, Borno, Cross River, Delta, Ebonyi, Edo, Ekiti, Enugu, Federal Capital Territory*, Gombe, Imo, Jigawa, Kaduna, Kano, Katsina, Kebbi, Kogi, Kwara, Lagos, Nasarawa, Niger, Ogun, Ondo, Osun, Oyo, Plateau, Rivers, Sokoto, Taraba, Yobe, Zamfara"
+    },
+    "Independence": {
+      "text": "1 October 1960 (from the UK)"
+    },
+    "National holiday": {
+      "text": "Independence Day (National Day), 1 October (1960)"
+    },
+    "Legal system": {
+      "text": "mixed legal system of English common law, Islamic law (in 12 northern states), and traditional law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest adopted 5 May 1999, effective 29 May 1999"
+      },
+      "amendments": {
+        "text": "proposed by the National Assembly; passage requires at least two-thirds majority vote of both houses and approval by the Houses of Assembly of at least two thirds of the states; amendments to constitutional articles on the creation of a new state, fundamental constitutional rights, or constitution-amending procedures requires at least four-fifths majority vote by both houses of the National Assembly and approval by the Houses of Assembly in at least two thirds of the states; passage of amendments limited to the creation of a new state require at least two-thirds majority vote by the proposing National Assembly house and approval by the Houses of Assembly in two thirds of the states; amended several times, last in 2018"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction with reservations; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Nigeria"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "15 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Bola Ahmed Adekunle TINUBU (since 29 May 2023)"
+      },
+      "head of government": {
+        "text": "President Bola Ahmed Adekunle TINUBU (since 29 May 2023)"
+      },
+      "cabinet": {
+        "text": "Federal Executive Council appointed by the president but constrained constitutionally to include at least one member from each of the 36 states"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by qualified majority popular vote and at least 25% of the votes cast in 24 of Nigeria's 36 states; president elected for a 4-year term (eligible for a second term); election last held on 25 February 2023 (next to be held on 27 February 2027)"
+      },
+      "election results": {
+        "text": "<br><em>2023:</em> Bola Ahmed Adekunle TINUBU elected president; percent of vote - Bola Ahmed Adekunle TINUBU (APC) 36.6%, Atiku ABUBAKAR (PDP) 29.1%, Peter OBI (LP) 25.4%, Rabiu KWANKWASO (NNPP) 6.4%, other 2.5%<br><br><em>2019: </em>Muhammadu BUHARI elected president; percent of vote - Muhammadu BUHARI (APC) 53%, Atiku ABUBAKAR (PDP) 39%, other 8% <p> </p>"
+      },
+      "note": "<strong>Note </strong>- the president is chief of state, head of government, and commander-in-chief of the armed forces"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "National Assembly"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      }
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "House of Representatives"
+      },
+      "number of seats": {
+        "text": "360 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "2/25/2023"
+      },
+      "parties elected and seats per party": {
+        "text": "All Progressives Congress (APC) (180); People's Democratic Party (PDP) (116); Labour Party (LP) (35); New Nigeria Peoples Party (NNPP) (19); Other (10)"
+      },
+      "percentage of women in chamber": {
+        "text": "3.9%"
+      },
+      "expected date of next election": {
+        "text": "February 2027"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "Senate"
+      },
+      "number of seats": {
+        "text": "109 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "2/25/2023"
+      },
+      "parties elected and seats per party": {
+        "text": "All Progressives Congress (APC) (59); People's Democratic Party (PDP) (36); Labour Party (LP) (8); Other (6)"
+      },
+      "percentage of women in chamber": {
+        "text": "2.8%"
+      },
+      "expected date of next election": {
+        "text": "February 2027"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of the chief justice and 15 justices)"
+      },
+      "judge selection and term of office": {
+        "text": "judges appointed by the president upon the recommendation of the National Judicial Council, a 23-member independent body of federal and state judicial officials; judge appointments confirmed by the Senate; judges serve until age 70"
+      },
+      "subordinate courts": {
+        "text": "Court of Appeal; Federal High Court; High Court of the Federal Capital Territory; Sharia Court of Appeal of the Federal Capital Territory; Customary Court of Appeal of the Federal Capital Territory; state court system similar in structure to federal system"
+      }
+    },
+    "Political parties": {
+      "text": "Accord Party or ACC <br>Africa Democratic Congress or ADC  <br>All Progressives Congress or APC <br>All Progressives Grand Alliance or APGA <br>Labor Party or LP <br>New Nigeria People’s Party or NNPP <br>Peoples Democratic Party or PDP <br>Young Progressive Party or YPP "
+    },
+    "International organization participation": {
+      "text": "ACP, AfDB, ATMIS, AU, C, CD, D-8, ECOWAS, EITI (compliant country), FAO, G-15, G-24, G-77, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IDB, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), LCBC, MIGA, MINURSO, MNJTF, MONUSCO, NAM, OAS (observer), OIC, OPCW, OPEC, PCA, UN, UNAMID, UNCTAD, UNESCO, UNHCR, UNIDO, UNIFIL, UNISFA, UNITAR, UNMIL, UNMISS, UNOCI, UNOOSA, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires Samson Sunday ITEGBOJE (since 22 October 2024)"
+      },
+      "chancery": {
+        "text": "3519 International Court NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 800-7201 (ext. 100)"
+      },
+      "FAX": {
+        "text": "[1] (202) 362-6541"
+      },
+      "email address and website": {
+        "text": "<br>info@nigeriaembassyusa.org<br><br>https://www.nigeriaembassyusa.org/"
+      },
+      "consulate(s) general": {
+        "text": "Atlanta, New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Richard MILLS, Jr. (since 25 July 2024)"
+      },
+      "embassy": {
+        "text": "Plot 1075 Diplomatic Drive, Central District Area, Abuja"
+      },
+      "mailing address": {
+        "text": "8320 Abuja Place, Washington DC&nbsp; 20521-8320"
+      },
+      "telephone": {
+        "text": "[234] (9) 461-4000"
+      },
+      "FAX": {
+        "text": "[234] (9) 461-4036"
+      },
+      "email address and website": {
+        "text": "<br>AbujaACS@state.gov<br><br>https://ng.usembassy.gov/"
+      },
+      "consulate(s) general": {
+        "text": "Lagos"
+      }
+    },
+    "Flag description": {
+      "text": "three equal vertical bands of green (hoist side), white, and green; the color green represents the forests and abundant natural wealth of the country, white stands for peace and unity"
+    },
+    "National symbol(s)": {
+      "text": "eagle; national colors: green, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Nigeria, We Hail Thee\""
+      },
+      "lyrics/music": {
+        "text": "Lillie Jean WILLIAMS/Frances BERDA"
+      },
+      "note": "<strong>note:</strong> May 2024 Parliament voted to revert back to the former national anthem used from 1960-1078  "
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "2 (both cultural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Sukur Cultural Landscape; Osun-Osogbo Sacred Grove"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "largest African market economy; enormous but mostly lower middle income labor force; major oil exporter; key telecommunications and finance industries; susceptible to global energy price shocks; regional leader in critical infrastructure; primarily agrarian employment"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$1.275 trillion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$1.239 trillion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$1.2 trillion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "2.86% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "3.25% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "3.65% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$5,600 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$5,600 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$5,500 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$363.846 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "24.66% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "18.85% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "16.95% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "B (2020)"
+      },
+      "Moody's rating": {
+        "text": "B2 (2017)"
+      },
+      "Standard & Poors rating": {
+        "text": "B- (2020)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "22.7% (2023 est.)"
+      },
+      "industry": {
+        "text": "32.6% (2023 est.)"
+      },
+      "services": {
+        "text": "42.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "80% (2017 est.)"
+      },
+      "government consumption": {
+        "text": "5.8% (2017 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "14.8% (2017 est.)"
+      },
+      "investment in inventories": {
+        "text": "0.7% (2017 est.)"
+      },
+      "exports of goods and services": {
+        "text": "11.9% (2017 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-13.2% (2017 est.)"
+      }
+    },
+    "Agricultural products": {
+      "text": "yams, cassava, maize, oil palm fruit, rice, taro, bananas, vegetables, sorghum, groundnuts (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "crude oil, coal, tin, columbite; rubber products, wood; hides and skins, textiles, cement and other construction materials, food products, footwear, chemicals, fertilizer, printing, ceramics, steel"
+    },
+    "Industrial production growth rate": {
+      "text": "0.72% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "78.812 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "3.07% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "3.83% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "5.39% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "5.8% (2023 est.)"
+      },
+      "male": {
+        "text": "4.8% (2023 est.)"
+      },
+      "female": {
+        "text": "7.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "40.1% (2018 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2018": {
+        "text": "35.1 (2018 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "59.3% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "0.9% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2.9% (2018 est.)"
+      },
+      "highest 10%": {
+        "text": "26.7% (2018 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "5.37% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "4.22% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "4.42% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$37.298 billion (2019 est.)"
+      },
+      "expenditures": {
+        "text": "$59.868 billion (2019 est.)"
+      }
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "21.8% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "3.4% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$6.023 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "$1.019 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$3.254 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$60.261 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$69.091 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$50.856 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Spain 13%, India 12%, France 7%, US 7%, Netherlands 6% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "crude petroleum, natural gas, fertilizers, refined petroleum, gold (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$65.423 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$77.049 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$67.478 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 32%, Belgium 11%, Netherlands 10%, India 8%, US 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, wheat, garments, plastics, cars (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$35.564 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$40.476 billion (2021 est.)"
+      },
+      "Reserves of foreign exchange and gold 2020": {
+        "text": "$36.73 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$47.022 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "nairas (NGN) per US dollar -"
+      },
+      "Exchange rates 2022": {
+        "text": "425.979 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "401.152 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "358.811 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "306.921 (2019 est.)"
+      },
+      "Exchange rates 2018": {
+        "text": "306.084 (2018 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "60.5% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "89%"
+      },
+      "electrification - rural areas": {
+        "text": "27%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "11.697 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "31.57 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "5.41 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "78.3% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "21.5% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "3.043 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "3.044 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "(2022 est.) less than 1 metric ton"
+      },
+      "imports": {
+        "text": "1,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "2.144 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "1.514 million bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "515,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "36.89 billion barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "39.951 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "20.719 billion cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "19.722 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "5.761 trillion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "118.699 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "6.8 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "71.255 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "40.645 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "8.564 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "112,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "(2023 est.) less than 1"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "224 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "102 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "one of the larger telecom markets in Africa subject to sporadic access to electricity and vandalism of infrastructure; most Internet connections are via mobile networks; market competition with affordable access; LTE technologies available but GSM is dominant; mobile penetration high due to use of multiple SIM cards and phones; government committed to expanding broadband penetration; operators to deploy fiber optic cable in six geopolitical zones and Lagos; operators invested in base stations to deplete network congestion; submarine cable break in 2020 slowed speeds and interrupted connectivity; Nigeria concluded its first 5G spectrum auction in 2021 and granted licenses to two firms; construction of 5G infrastructure has not yet been completed (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line subscribership remains less than 1 per 100 persons; mobile-cellular subscribership is 91 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 234; landing point for the SAT-3/WASC, NCSCS,&nbsp; MainOne, Glo-1 &amp; 2, ACE, and Equiano&nbsp;fiber-optic submarine cable that provides connectivity to Europe and South and West Africa; satellite earth stations - 3 Intelsat (2 Atlantic Ocean and 1 Indian Ocean) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "nearly 70 federal government-controlled national and regional TV stations; all 36 states operate TV stations; several private TV stations operational; cable and satellite TV subscription services are available; network of federal government-controlled national, regional, and state radio stations; roughly 40 state government-owned radio stations typically carry their own programs except for news broadcasts; about 20 private radio stations; transmissions of international broadcasters are available; digital broadcasting migration process completed in three states in 2018 (2019)"
+    },
+    "Internet country code": {
+      "text": ".ng"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "35% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "117,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "(2023 est.) less than 1"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "13 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "104"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "8,169,192 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "19.42 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "5N"
+    },
+    "Airports": {
+      "text": "47 (2024)"
+    },
+    "Heliports": {
+      "text": "15 (2024)"
+    },
+    "Pipelines": {
+      "text": "124 km condensate, 4,045 km gas, 164 km liquid petroleum gas, 4,441 km oil, 3,940 km refined products (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "3,798 km (2014)"
+      },
+      "standard gauge": {
+        "text": "293 km (2014) 1.435-m gauge"
+      },
+      "narrow gauge": {
+        "text": "3,505 km (2014) 1.067-m gauge"
+      },
+      "note": "<strong>note:</strong> as of the end of 2018, there were only six operational locomotives in Nigeria primarily used for passenger service; the majority of the rail lines are in a severe state of disrepair and need to be replaced"
+    },
+    "Roadways": {
+      "total": {
+        "text": "195,000 km"
+      },
+      "paved": {
+        "text": "60,000 km"
+      },
+      "unpaved": {
+        "text": "135,000 km (2019)"
+      }
+    },
+    "Waterways": {
+      "text": "8,600 km (2011) (Niger and Benue Rivers and smaller rivers and creeks)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "928 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 23, oil tanker 128, other 777"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "28 (2024)"
+      },
+      "large": {
+        "text": "2"
+      },
+      "medium": {
+        "text": "1"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "24"
+      },
+      "ports with oil terminals": {
+        "text": "23"
+      },
+      "key ports": {
+        "text": "Antan Oil Terminal, Bonny, Lagos, Pennington Oil Terminal"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Armed Forces of Nigeria (AFN): Army, Navy (includes Coast Guard), Air Force<br><br>Ministry of Interior: Nigeria Security and Civil Defense Corps (NSCDC); Ministry of Police Affairs: Nigeria Police Force (NPF) (2024)",
+      "note": "<strong>note 1: </strong>the NSCDC is a paramilitary agency commissioned to assist the military in the management of threats to internal security, including attacks and natural disasters<br><br><strong>note 2:</strong> the Office of the National Security Advisor is responsible for coordinating all security and enforcement agencies, including the Department of State Security (DSS), the NSCDC, the Ministry of Justice, and the Police; border security responsibilities are shared among the NPF, the DSS, the NSCDC, Nigeria Customs Service, Immigration Service, and the AFN<br><br><strong>note 3: </strong>some states have created local security forces akin to neighborhood watches in response to increased violence, insecurity, and criminality that have exceeded the response capacity of federal government security forces, but official security forces remained the constitutional prerogative of the federal government; in 2023, the federal government began deploying thousands of \"agro rangers\" across 19 states and the Federal Capital Territory to help safeguard farmland and mediate conflicts, especially in areas hit by farmer-herder clashes "
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "0.7% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "0.6% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "0.7% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "0.6% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "0.5% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "information varies; approximately 135,000 active-duty armed forces personnel (100,000 Army; 20,000 Navy/Coast Guard; 15,000 Air Force); approximately 80,000 Security and Civil Defense Corps; approximately 370,000 police (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory consists of a wide variety of imported weapons systems of Chinese, European, Middle Eastern, Russian (including Soviet-era), and US origin; the military is undergoing a modernization program, and in recent years has received equipment from a range of suppliers, including Brazil, China, France, Italy, Russia, Turkey, and the US; Nigeria is also developing a defense-industry capacity, including small arms, armored personnel vehicles, and small-scale naval production (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-26 years of age for voluntary military service for men and women; no conscription (2023)"
+    },
+    "Military deployments": {
+      "text": "190 Sudan/South Sudan (UNISFA) (2024)",
+      "note": "<strong>note:</strong> Nigeria has committed an Army combat brigade (approximately 3,000 troops) to the Multinational Joint Task Force (MNJTF), a regional counter-terrorism force comprised of troops from Benin, Cameroon, Chad, and Niger; MNJTF conducts operations against Boko Haram and other terrorist groups operating in the general area of the Lake Chad Basin and along Nigeria's northeast border; national MNJTF troop contingents are deployed within their own country territories, although cross‐border operations are conducted periodically"
+    },
+    "Military - note": {
+      "text": "the Nigerian military is sub-Saharan Africa’s largest and regarded as one of its most capable forces; the military's primary concerns are internal and maritime security, and it faces a number of challenges; the Army is deployed in all 36 of the country's states; in the northeast, it is conducting counterinsurgency/counterterrorist operations against the Boko Haram (BH) and Islamic State of Iraq and ash-Sham in West Africa (ISIS-WA) terrorist groups, where it has deployed as many as 70,000 troops at times and jihadist-related violence has killed an estimated 35-40,000 people, mostly civilians, since 2009; in the northwest, it faces threats from criminal gangs--locally referred to as bandits--and violence associated with long-standing farmer-herder conflicts, as well as BH and ISIS-WA terrorists; bandits in northwestern Nigeria are estimated to number as many as 30,000 and violence there has killed approximately 14,000 people since the mid-2010s; the military also continues to protect the oil industry in the Niger Delta region against militants and criminal activity; since 2021, additional troops and security forces have been deployed to eastern Nigeria to quell renewed agitation for a state of Biafra (Biafra seceded from Nigeria in the late 1960s, sparking a civil war that caused more than 1 million deaths)<br><br>the Navy is focused on maritime security in the Gulf of Guinea; since 2016, it has developed a maritime strategy, boosted naval training and its naval presence in the Gulf, increased participation in regional maritime security efforts, and acquired a number of new naval platforms, including offshore and coastal patrol craft, fast attack boats, and air assets<br><br>the Nigerian military traces its origins to the Nigeria Regiment of the West African Frontier Force (WAFF), a multi-regiment force formed by the British colonial office in 1900 to garrison Great Britain's West African colonies; the WAFF (the honorary title \"Royal\" was added later) served in both World Wars; in 1956, the Nigeria Regiment of the Royal WAFF was renamed the Nigerian Military Forces (NMF) and in 1958, the colonial government of Nigeria took over control of the NMF from the British War Office; the Nigerian Armed Forces were established following independence in 1960 (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "National Space Research and Development Agency (NARSDA; established 1999); NARSDA originated from the National Centre for Remote Sensing and National Committee on Space Applications (both established in 1987), and the Directorate of Science (established 1993); Defense Space Administration (DSA; established 2014) (2024)"
+    },
+    "Space program overview": {
+      "text": "has a formal national space program, which is one of the largest in Africa; focused on acquiring satellites for agricultural, environmental, meteorology, mining and disaster monitoring, socio-economic development, and security purposes; designs, builds (mostly with foreign assistance), and operates satellites; processes overhead imagery data for analysis and sharing; developing additional capabilities in satellite and satellite payload production, including remote sensing (RS) technologies; has a sounding rocket program for researching rockets and rocket propulsion systems with goal of launching domestically produced satellites into space from a Nigerian spaceport by 2030; has relations and/or cooperation agreements with a variety of foreign space agencies and industries, including those of Algeria, Bangladesh, Belarus, China, Ghana, India, Japan, Kenya, Mongolia, South Africa, Thailand, Turkey, the UK, the US, and Vietnam; has a government-owned satellite company and a small commercial aerospace sector (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Boko Haram; Islamic State of Iraq and ash-Sham – West Africa; Jama’atu Ansarul Muslimina Fi Biladis-Sudan (Ansaru)",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "89,045 (Cameroon) (2023)"
+      },
+      "IDPs": {
+        "text": "3.09 million (northeast Nigeria; Boko Haram attacks and counterinsurgency efforts in northern Nigeria; communal violence between Christians and Muslims in the middle belt region, political violence; flooding; forced evictions; cattle rustling; competition for resources) (2024)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>Nigeria is a major hub for transnational drug trafficking networks entrenched throughout the world and supplying cocaine to Asia and Europe, heroin to Europe and North America, and methamphetamine to South Africa, Southeast Asia, Australia, and New Zealand; also exporting massive quantities of opioids such as tramadol and captagon along with crack cocaine; a major source of precursor or essential chemicals used in the production of illicit narcotics</p> <p> </p>"
+    }
+  }
+}

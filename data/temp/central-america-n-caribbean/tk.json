@@ -1,0 +1,837 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The islands were part of the UK's Jamaican colony until 1962, when they assumed the status of a separate Crown colony upon Jamaica's independence. The governor of The Bahamas oversaw affairs from 1965 to 1973. With Bahamian independence, the islands received a separate governor in 1973. Although independence was agreed upon for 1982, the policy was reversed, and the islands remain a British overseas territory. Grand Turk Island suffered extensive damage from Hurricane Maria in 2017."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "two island groups in the North Atlantic Ocean, southeast of The Bahamas, north of Haiti; note - although the Turks and Caicos Islands do not border the Caribbean Sea, geopolitically they are often designated as being Caribbean"
+    },
+    "Geographic coordinates": {
+      "text": "21 45 N, 71 35 W"
+    },
+    "Map references": {
+      "text": "Central America and the Caribbean"
+    },
+    "Area": {
+      "total ": {
+        "text": "948 sq km"
+      },
+      "land": {
+        "text": "948 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "2.5 times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "389 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive fishing zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical; marine; moderated by trade winds; sunny and relatively dry"
+    },
+    "Terrain": {
+      "text": "low, flat limestone; extensive marshes and mangrove swamps"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Blue Hill on Providenciales and Flamingo Hill on East Caicos 48 m"
+      },
+      "lowest point": {
+        "text": "Caribbean Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "spiny lobster, conch"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "1.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 1.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "36.2% (2018 est.)"
+      },
+      "other": {
+        "text": "62.7% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Population distribution": {
+      "text": "eight of the thirty islands are inhabited; the island of Providenciales is the most populated, but the most densely populated is Grand Turk"
+    },
+    "Natural hazards": {
+      "text": "frequent hurricanes"
+    },
+    "Geography - note": {
+      "text": "include eight large islands and numerous smaller cays, islets, and reefs; only two of the Caicos Islands and six of the Turks group are inhabited"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "60,439"
+      },
+      "male": {
+        "text": "30,389"
+      },
+      "female": {
+        "text": "30,050 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "none"
+      },
+      "adjective": {
+        "text": "none"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Black 87.6%, White 7.9%, mixed 2.5%, East Indian 1.3%, other 0.7% (2006 est.)"
+    },
+    "Languages": {
+      "text": "English (official)"
+    },
+    "Religions": {
+      "text": "Protestant 72.8% (Baptist 35.8%, Church of God 11.7%, Anglican 10%, Methodist 9.3%, Seventh Day Adventist 6%), Roman Catholic 11.4%, Jehovah's Witness 1.8%, other 14% (2006 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "20.4% (male 6,288/female 6,056)"
+      },
+      "15-64 years": {
+        "text": "73.2% (male 22,232/female 22,011)"
+      },
+      "65 years and over": {
+        "text": "6.4% (2024 est.) (male 1,869/female 1,983)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "36.8"
+      },
+      "youth dependency ratio": {
+        "text": "22.9"
+      },
+      "elderly dependency ratio": {
+        "text": "13.9"
+      },
+      "potential support ratio": {
+        "text": "7.2 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "36.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "36.5 years"
+      },
+      "female": {
+        "text": "36.1 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "1.77% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "13 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "3.6 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "8.3 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "eight of the thirty islands are inhabited; the island of Providenciales is the most populated, but the most densely populated is Grand Turk"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "94.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.46% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "5,000 GRAND TURK (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.01 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.94 male(s)/female"
+      },
+      "total population": {
+        "text": "1.01 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "11.1 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "13.9 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "8.1 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "81.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "78.5 years"
+      },
+      "female": {
+        "text": "84.1 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.7 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.83 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "34.4% (2019/20)"
+    },
+    "Drinking water source": {
+      "improved: total": {
+        "text": "total: 94.3% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 5.7% of population (2017)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 88% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 12% of population (2017)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "0.4% (2019/20) NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "59.1% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 18": {
+        "text": "23.3%"
+      },
+      "men married by age 18": {
+        "text": "5.1% (2020 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "4.5% of GDP (2021 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "9 years"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "(2015) NA"
+      }
+    },
+    "People - note": {
+      "text": "destination and transit point for illegal Haitian immigrants bound for the Bahamas and the US"
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "limited natural freshwater resources, private cisterns collect rainwater"
+    },
+    "Climate": {
+      "text": "tropical; marine; moderated by trade winds; sunny and relatively dry"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "1.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 1.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "36.2% (2018 est.)"
+      },
+      "other": {
+        "text": "62.7% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "94.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.46% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "carbon dioxide emissions": {
+        "text": "0.22 megatons (2016 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Turks and Caicos Islands"
+      },
+      "abbreviation": {
+        "text": "TCI"
+      },
+      "etymology": {
+        "text": "the Turks Islands are named after the Turk's cap cactus (native to the islands and appearing on the flag and coat of arms), while the Caicos Islands derive from the native term \"caya hico\" meaning \"string of islands\""
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy"
+    },
+    "Dependency status": {
+      "text": "overseas territory of the UK"
+    },
+    "Capital": {
+      "name": {
+        "text": "Grand Turk (Cockburn Town)"
+      },
+      "geographic coordinates": {
+        "text": "21 28 N, 71 08 W"
+      },
+      "time difference": {
+        "text": "UTC-5 (same time as Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins second Sunday in March; ends first Sunday in November"
+      },
+      "etymology": {
+        "text": "named after Sir Francis COCKBURN, who served as governor of the Bahamas from 1837 to 1844"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "Independence": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "National holiday": {
+      "text": "Birthday of Queen ELIZABETH II, usually celebrated the Monday after the second Saturday in June"
+    },
+    "Legal system": {
+      "text": "mixed legal system of English common law and civil law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest signed 7 August 2012, effective 15 October 2012 (The Turks and Caicos Constitution Order 2011)"
+      },
+      "amendments": {
+        "text": "NA"
+      }
+    },
+    "Citizenship": {
+      "text": "see United Kingdom"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King CHARLES III (since 8 September 2022); represented by Governor Dileeni Daniel-SELVARATNAM (since 29 June 2023)"
+      },
+      "head of government": {
+        "text": "Premier Washington MISICK (since 19 February 2021)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the governor from among members of the House of Assembly"
+      },
+      "elections/appointments": {
+        "text": "the monarch is hereditary; governor appointed by the monarch; following legislative elections, the leader of the majority party is appointed premier by the governor"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "House of Assembly"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "21 (directly elected or appointed)"
+      },
+      "electoral system": {
+        "text": "mixed"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "2/19/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "PNP (14); PDM (1)"
+      },
+      "percentage of women in chamber": {
+        "text": "27.3%"
+      },
+      "expected date of next election": {
+        "text": "2025"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of the chief justice and other judges, as determined by the governor); Court of Appeal (consists of the court president and 2 justices); note - appeals beyond the Supreme Court are referred to the Judicial Committee of the Privy Council (in London)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court and Appeals Court judges appointed by the governor in accordance with the Judicial Service Commission, a 3-member body of high-level judicial officials; Supreme Court judges serve until mandatory retirement at age 65, but terms can be extended to age 70; Appeals Court judge tenure determined by individual terms of appointment"
+      },
+      "subordinate courts": {
+        "text": "magistrates' courts"
+      }
+    },
+    "Political parties": {
+      "text": "People's Democratic Movement or PDM<br>Progressive National Party or PNP"
+    },
+    "International organization participation": {
+      "text": "Caricom (associate), CDB, Interpol (subbureau), UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (overseas territory of the UK)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (overseas territory of the UK)"
+      }
+    },
+    "Flag description": {
+      "text": "blue with the flag of the UK in the upper hoist-side quadrant and the colonial shield centered on the outer half of the flag; the shield is yellow and displays a conch shell, a spiny lobster, and Turk's cap cactus - three common elements of the islands' biota"
+    },
+    "National symbol(s)": {
+      "text": "conch shell, Turk's cap cactus"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"This Land of Ours\""
+      },
+      "lyrics/music": {
+        "text": "Conrad HOWELL"
+      },
+      "note": "<strong>note:</strong> serves as a local anthem; as an overseas territory of the UK, \"God Save the King\" is the official anthem (see United Kingdom)"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "British Caribbean island territorial economy; GDP and its tourism industry hit hard by COVID-19 disruptions; major biodiversity locale; US dollar user; fossil fuel dependent; negative trade balance; increasing unemployment"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$1.03 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$1.018 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$958.811 million (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "1.2% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "6.2% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "9.03% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$22,300 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$22,200 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$21,200 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$1.402 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2017": {
+        "text": "4% (2017 est.)"
+      },
+      "Inflation rate (consumer prices) 2016": {
+        "text": "0.7% (2016 est.)"
+      }
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0.4% (2016 est.)"
+      },
+      "industry": {
+        "text": "9.5% (2016 est.)"
+      },
+      "services": {
+        "text": "77.9% (2016 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "49% (2017 est.)"
+      },
+      "government consumption": {
+        "text": "21.5% (2017 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "16.5% (2017 est.)"
+      },
+      "investment in inventories": {
+        "text": "-0.1% (2017 est.)"
+      },
+      "exports of goods and services": {
+        "text": "69.5% (2017 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-56.4% (2017 est.)"
+      }
+    },
+    "Agricultural products": {
+      "text": "corn, beans, cassava (manioc, tapioca), citrus fruits; fish"
+    },
+    "Industries": {
+      "text": "tourism, offshore financial services"
+    },
+    "Industrial production growth rate": {
+      "text": "5.84% (2016 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$247.3 million (2017 est.)"
+      },
+      "expenditures": {
+        "text": "$224.3 million (2017 est.)"
+      }
+    },
+    "Current account balance": {
+      "Current account balance 2018": {
+        "text": "$172.709 million (2018 est.)"
+      },
+      "Current account balance 2017": {
+        "text": "$35.016 million (2017 est.)"
+      },
+      "Current account balance 2016": {
+        "text": "$247.081 million (2016 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2018": {
+        "text": "$826.824 million (2018 est.)"
+      },
+      "Exports 2017": {
+        "text": "$602.581 million (2017 est.)"
+      },
+      "Exports 2016": {
+        "text": "$741.173 million (2016 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Togo 61%, US 13%, Zimbabwe 6%, Democratic Republic of the Congo 3%, Central African Republic 2% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "fertilizers, shellfish, plastics, sulfur, soybean oil (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2018": {
+        "text": "$544.219 million (2018 est.)"
+      },
+      "Imports 2017": {
+        "text": "$484.842 million (2017 est.)"
+      },
+      "Imports 2016": {
+        "text": "$438.041 million (2016 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "US 75%, Dominican Republic 6%, Italy 3%, Switzerland 2%, China 2% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, cars, plastic products, furniture, aluminum structures (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Exchange rates": {
+      "text": "<p>the US dollar is used</p>"
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "99.9% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "100%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "91,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "249.998 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "13 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "99.5% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.5% of total installed capacity (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "2,000 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "244,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "244,000 metric tonnes of CO2 (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "4,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "9 (2021 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "25,085 (2004 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "110 (2004 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "is connected to the internet via a single submarine fiber-optic cable (Arcos-1), which links the US and several Caribbean countries (2023)"
+      },
+      "domestic": {
+        "text": "fixed-line teledensity is 9 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 1-649;&nbsp;landing point for the&nbsp;ARCOS fiber-optic telecommunications submarine cable providing connectivity to South and Central America, parts of the Caribbean, and the US; satellite earth station - 1 Intelsat (Atlantic Ocean) (2020)"
+      }
+    },
+    "Broadcast media": {
+      "text": "no local terrestrial TV stations, broadcasts from the Bahamas can be received and multi-channel cable and satellite TV services are available; government-run radio network operates alongside private broadcasters with a total of about 15 stations"
+    },
+    "Internet country code": {
+      "text": ".tc"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "93.5% (2022)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "3 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "22"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "VQ-T"
+    },
+    "Airports": {
+      "text": "9 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "121 km"
+      },
+      "paved": {
+        "text": "24 km"
+      },
+      "unpaved": {
+        "text": "97 km (2003)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "3 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 1, other 2"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "3 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "2"
+      },
+      "size unknown": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Cockburn Harbor, Grand Turk, Providenciales"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of the UK"
+    }
+  },
+  "Transnational Issues": {
+    "Illicit drugs": {
+      "text": "transshipment point for South American narcotics destined for the US and Europe"
+    }
+  }
+}

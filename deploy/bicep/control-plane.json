@@ -1,0 +1,317 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "9992240872878985180"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region. Defaults to the resource group location."
+      }
+    },
+    "name": {
+      "type": "string",
+      "defaultValue": "sqlflow-control-plane",
+      "metadata": {
+        "description": "Name of the Container App (and the prefix for its managed identity)."
+      }
+    },
+    "managedEnvironmentId": {
+      "type": "string",
+      "metadata": {
+        "description": "Resource id of an existing Container Apps managed environment to host the app."
+      }
+    },
+    "image": {
+      "type": "string",
+      "metadata": {
+        "description": "Container image reference, e.g. myregistry.azurecr.io/sqlflow-control-plane:latest"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "metadata": {
+        "description": "Name of an existing Key Vault holding the catalog connection and JWT signing key secrets."
+      }
+    },
+    "catalogConnectionSecretName": {
+      "type": "string",
+      "defaultValue": "sqlflow-catalog-db",
+      "metadata": {
+        "description": "Key Vault secret name for the catalog ADO.NET connection string."
+      }
+    },
+    "jwtSigningKeySecretName": {
+      "type": "string",
+      "defaultValue": "sqlflow-jwt-signing-key",
+      "metadata": {
+        "description": "Key Vault secret name for the JWT signing key (must decode to at least 32 bytes)."
+      }
+    },
+    "jwtIssuer": {
+      "type": "string",
+      "defaultValue": "sqlflow-control-plane",
+      "metadata": {
+        "description": "JWT issuer the control plane validates."
+      }
+    },
+    "jwtAudience": {
+      "type": "string",
+      "defaultValue": "sqlflow",
+      "metadata": {
+        "description": "JWT audience the control plane validates."
+      }
+    },
+    "workerEnabled": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Run the in-process worker inside the control plane (single-app mode). Set false when dedicated workers (worker.bicep) drain the run queue, so API replicas do API work only."
+      }
+    },
+    "corsAllowedOrigins": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Browser origins allowed to call the API, e.g. the gui.bicep app URL. Leave empty when the GUI is same-origin behind a path-splitting front, or when only non-browser clients call the API."
+      }
+    },
+    "bootstrapAdminPasswordSecretName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Key Vault secret name for the initial admin password (at least 12 characters). When set, bootstrap provisioning creates that admin on first start; leave empty to skip user bootstrap."
+      }
+    },
+    "bootstrapAdminUsername": {
+      "type": "string",
+      "defaultValue": "admin",
+      "metadata": {
+        "description": "Username for the bootstrap admin. Only used when bootstrapAdminPasswordSecretName is set."
+      }
+    },
+    "gitTokenSecretName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Key Vault secret name for a git token used by managed sync to fetch private remotes. Leave empty when every registered repo is public."
+      }
+    },
+    "gitUsername": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone."
+      }
+    },
+    "proxyKnownNetworks": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "CIDRs of the ingress hops to trust for X-Forwarded-* headers. Leave empty to keep proxy trust off; per-client rate limiting then keys on the ingress hop address instead of the real client."
+      }
+    },
+    "acrName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name of a container registry in THIS resource group: the template grants the app identity AcrPull on it and configures the pull. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+      }
+    },
+    "acrLoginServer": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
+      }
+    },
+    "minReplicas": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "Minimum replicas. Keep at 1 so the API is warm (a trigger never waits on a cold start)."
+      }
+    },
+    "maxReplicas": {
+      "type": "int",
+      "defaultValue": 3,
+      "metadata": {
+        "description": "Maximum replicas for ingress autoscale."
+      }
+    }
+  },
+  "variables": {
+    "copy": [
+      {
+        "name": "corsEnv",
+        "count": "[length(parameters('corsAllowedOrigins'))]",
+        "input": {
+          "name": "[format('ControlPlane__Cors__AllowedOrigins__{0}', copyIndex('corsEnv'))]",
+          "value": "[parameters('corsAllowedOrigins')[copyIndex('corsEnv')]]"
+        }
+      },
+      {
+        "name": "proxyNetworkEnv",
+        "count": "[length(parameters('proxyKnownNetworks'))]",
+        "input": {
+          "name": "[format('ControlPlane__Proxy__KnownNetworks__{0}', copyIndex('proxyNetworkEnv'))]",
+          "value": "[parameters('proxyKnownNetworks')[copyIndex('proxyNetworkEnv')]]"
+        }
+      }
+    ],
+    "keyVaultSecretsUserRoleId": "4633458b-17de-408a-b874-0445c86b69e6",
+    "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
+    "vaultUri": "[format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+    "baseSecrets": [
+      {
+        "name": "catalog-db",
+        "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('catalogConnectionSecretName'))]",
+        "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+      },
+      {
+        "name": "jwt-signing-key",
+        "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('jwtSigningKeySecretName'))]",
+        "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+      }
+    ],
+    "bootstrapSecrets": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'bootstrap-admin-password', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('bootstrapAdminPasswordSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+    "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+    "bootstrapEnv": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'ControlPlane__Bootstrap__AdminUsername', 'value', parameters('bootstrapAdminUsername')), createObject('name', 'ControlPlane__Bootstrap__AdminPasswordReference', 'secretRef', 'bootstrap-admin-password')))]",
+    "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
+    "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
+    "proxyEnv": "[if(empty(parameters('proxyKnownNetworks')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Proxy__Enabled', 'value', 'true')), variables('proxyNetworkEnv')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+      "apiVersion": "2023-01-31",
+      "name": "[format('{0}-id', parameters('name'))]",
+      "location": "[parameters('location')]"
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+      "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUserRoleId'))]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('acrName')))]",
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName')))]",
+      "name": "[guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId'))]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]",
+        "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('name')]",
+      "location": "[parameters('location')]",
+      "identity": {
+        "type": "UserAssigned",
+        "userAssignedIdentities": {
+          "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))]": {}
+        }
+      },
+      "properties": {
+        "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": true,
+            "targetPort": 8080,
+            "transport": "auto"
+          },
+          "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+          "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'))]"
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "control-plane",
+              "image": "[parameters('image')]",
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1.0Gi"
+              },
+              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'))]",
+              "probes": [
+                {
+                  "type": "Liveness",
+                  "httpGet": {
+                    "path": "/health/live",
+                    "port": 8080
+                  },
+                  "periodSeconds": 30
+                },
+                {
+                  "type": "Readiness",
+                  "httpGet": {
+                    "path": "/health/ready",
+                    "port": 8080
+                  },
+                  "periodSeconds": 30
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": "[parameters('minReplicas')]",
+            "maxReplicas": "[parameters('maxReplicas')]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId')))]",
+        "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]",
+        "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "controlPlaneBaseUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "The control plane base URL to give the ADF pipeline as controlPlaneBaseUrl."
+      },
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
+    },
+    "identityClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "The client id of the app identity (grant it db_datareader/writer on the catalog + access to flow secrets)."
+      },
+      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId]"
+    },
+    "identityPrincipalId": {
+      "type": "string",
+      "metadata": {
+        "description": "The principal (object) id of the app identity, for role assignments made outside this template."
+      },
+      "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]"
+    }
+  }
+}

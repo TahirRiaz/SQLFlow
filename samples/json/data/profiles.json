@@ -1,0 +1,4 @@
+[
+  { "id": 1, "keep": { "email": "ann@example.io" }, "drop": { "secret": "s1" } },
+  { "id": 2, "keep": { "email": "bob@example.io" }, "drop": { "secret": "s2" } }
+]

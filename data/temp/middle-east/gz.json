@@ -1,0 +1,789 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>The Gaza Strip has been under the de facto governing authority of the Islamic Resistance Movement (HAMAS) since 2007 and has faced years of conflict, poverty, and humanitarian crises. Inhabited since at least the 15th century B.C., the Gaza Strip area has been dominated by many different peoples and empires throughout its history; it was incorporated into the Ottoman Empire in the early 16th century. The Gaza Strip fell to British forces during World War I, becoming a part of the British Mandate of Palestine. Following the 1948 Arab-Israeli War, Egypt administered the newly formed Gaza Strip; Israel captured it in the Six-Day War in 1967. Under a series of agreements known as the Oslo Accords signed between 1993 and 1999, Israel transferred to the newly-created Palestinian Authority (PA) security and civilian responsibility for many Palestinian-populated areas of the Gaza Strip, as well as the West Bank.</p> <p>In 2000, a violent intifada or uprising began in response to perceived Israeli provocations, and in 2001, negotiations to determine the permanent status of the West Bank, East Jerusalem, and Gaza Strip stalled. Subsequent attempts to re-start negotiations have not resulted in progress toward determining final status and resolving the Israeli-Palestinian conflict. Israel in 2005 unilaterally withdrew all of its settlers and soldiers and dismantled its military facilities in the Gaza Strip, but it continues to control the Gaza Strip’s land borders, maritime territorial waters, cyberspace, telecommunications, and airspace. In 2006, HAMAS won a majority in the Palestinian Legislative Council election. Fatah, the dominant Palestinian political faction in the West Bank, and HAMAS failed to maintain a unity government, leading to violent clashes between their respective supporters and HAMAS's violent seizure of all PA military and governmental institutions in the Gaza Strip in 2007. Since HAMAS's takeover, Israel and Egypt have enforced tight restrictions on movement and access of goods and individuals into and out of the territory. Fatah and HAMAS have since negotiated a series of agreements aimed at restoring political unity between the Gaza Strip and the West Bank but have struggled to enact them.</p> Palestinian militants in the Gaza Strip and the Israel Defense Forces periodically exchange projectiles and air strikes, respectively, threatening broader conflict. In 2021, HAMAS launched rockets into Israel, sparking an 11-day conflict that also involved other Gaza-based militant groups. Egypt, Qatar, and the UN Special Coordinator for the Middle East Peace Process negotiated ceasefires, averting a broader conflict. Since 2018, HAMAS has coordinated demonstrations along the Gaza-Israel security fence. HAMAS has also stood by while other militant groups, such as Palestinian Islamic Jihad, fought brief conflicts with Israel, most recently in August 2022 and May 2023.<br><br>On 7 October 2023, HAMAS militants inside the Gaza Strip launched a combined unguided rocket and ground attack into Israel. The attack began with a barrage of more than 3,000 rockets fired toward Israel from Gaza, and included thousands of terrorists infiltrating Israel by land, sea, and air via paragliders. Militants attacked military bases, clashed with security forces mostly in southern Israel, and simultaneously infiltrated civilian communities. During the attack, terrorists carried out massacres and murdered civilians, including torture, acts of abuse and rape, a massacre at the Supernova music festival near Kibbutz Re'im, as well as kidnapping approximately 240 civilians, including men, women, children, and soldiers. These attacks were followed soon after by Israeli Defense Forces (IDF) air strikes inside Gaza. The next day, Israeli Prime Minister NETANYAHU formally declared war on Gaza. The IDF on 28 October launched a large-scale ground assault inside Gaza that is ongoing as of April 2024.  "
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Middle East, bordering the Mediterranean Sea, between Egypt and Israel"
+    },
+    "Geographic coordinates": {
+      "text": "31 25 N, 34 20 E"
+    },
+    "Map references": {
+      "text": "Middle East"
+    },
+    "Area": {
+      "total ": {
+        "text": "360 sq km"
+      },
+      "land": {
+        "text": "360 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly more than twice the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "72 km"
+      },
+      "border countries": {
+        "text": "Egypt 13 km; Israel 59 km"
+      }
+    },
+    "Coastline": {
+      "text": "40 km"
+    },
+    "Maritime claims": {
+      "text": "see entry for Israel <p><strong>note:</strong> effective 3 January 2009, the Gaza maritime area is closed to all maritime traffic and is under blockade imposed by Israeli Navy until further notice</p>"
+    },
+    "Climate": {
+      "text": "temperate, mild winters, dry and warm to hot summers"
+    },
+    "Terrain": {
+      "text": "flat to rolling, sand- and dune-covered coastal plain"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Abu 'Awdah (Joz Abu 'Awdah) 105 m"
+      },
+      "lowest point": {
+        "text": "Mediterranean Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "arable land, natural gas"
+    },
+    "Irrigated land": {
+      "text": "(2013) 151 sq km; note - includes the West Bank"
+    },
+    "Population distribution": {
+      "text": "population concentrated in major cities, particularly Gaza City in the north"
+    },
+    "Natural hazards": {
+      "text": "droughts"
+    },
+    "Geography - note": {
+      "text": "once a strategic strip of land along Mideast-North African trade routes that has experienced an incredibly turbulent history"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "2,141,643"
+      },
+      "male": {
+        "text": "1,086,340"
+      },
+      "female": {
+        "text": "1,055,303 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "NA"
+      },
+      "adjective": {
+        "text": "NA"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Palestinian Arab"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Arabic, Hebrew (spoken by many Palestinians), English (widely understood)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>كتاب حقائق العالم، المصدر الذي لا يمكن الاستغناء عنه للمعلومات الأساسية (Arabic)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Muslim 98.0 - 99.0% (predominantly Sunni), Christian &lt;1.0%, other, unaffiliated, unspecified &lt;1.0% (2012 est.)",
+      "note": "<strong>note:</strong>  Israel dismantled its settlements in September 2005; Gaza has had no Jewish population since then"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "38.8% (male 427,450/female 404,288)"
+      },
+      "15-64 years": {
+        "text": "58.3% (male 627,235/female 620,903)"
+      },
+      "65 years and over": {
+        "text": "2.9% (2024 est.) (male 31,655/female 30,112)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "74.3"
+      },
+      "youth dependency ratio": {
+        "text": "68.2"
+      },
+      "elderly dependency ratio": {
+        "text": "6.1"
+      },
+      "potential support ratio": {
+        "text": "16.5 (2021 est.)"
+      },
+      "note": "<strong>note:</strong> data represent Gaza Strip and the West Bank"
+    },
+    "Median age": {
+      "total": {
+        "text": "19.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "19.3 years"
+      },
+      "female": {
+        "text": "19.8 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "2.02% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "26.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "2.9 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-3.7 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "population concentrated in major cities, particularly Gaza City in the north"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "77.6% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.85% annual rate of change (2020-25 est.)"
+      },
+      "note": "<strong>note:</strong> data represent Gaza Strip and the West Bank"
+    },
+    "Major urban areas - population": {
+      "text": "778,000 Gaza (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.06 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.01 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "1.05 male(s)/female"
+      },
+      "total population": {
+        "text": "1.03 male(s)/female (2024 est.)"
+      }
+    },
+    "Maternal mortality ratio": {
+      "text": "20 deaths/100,000 live births (2020 est.)",
+      "note": "<strong>note:</strong> data represent Gaza Strip and the West Bank"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "15.1 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "16.3 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "13.8 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "75.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "73.7 years"
+      },
+      "female": {
+        "text": "77.4 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "3.26 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.58 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "57.3% (2019/20)",
+      "note": "<strong>note:</strong>  includes Gaza Strip and West Bank"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 98.9% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 99% of population"
+      },
+      "improved: total": {
+        "text": "total: 98.9% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 1.1% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 1% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 1.1% of population (2020 est.)"
+      },
+      "note": "<strong>note:</strong> includes Gaza Strip and the West Bank"
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "2.71 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "1.3 beds/1,000 population (2019)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 99.9% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 98.6% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.6% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.1% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 1.4% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.4% of population (2020 est.)"
+      },
+      "note": "<strong>note:</strong> note includes Gaza Strip and the West Bank"
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "2.1% (2019/20)",
+      "note": "<strong>note:</strong> estimate is for Gaza Strip and the West Bank"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "62.4% (2023 est.)",
+      "note": "<strong>note:</strong> data includes Gaza and the West Bank"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "0.7%"
+      },
+      "women married by age 18": {
+        "text": "13.4% (2020 est.)"
+      },
+      "note": "<strong>note:</strong> includes both the Gaza Strip and the West Bank"
+    },
+    "Education expenditures": {
+      "text": "5.3% of GDP (2018 est.)",
+      "note": "<strong>note:</strong> includes Gaza Strip and the West Bank"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "97.5%"
+      },
+      "male": {
+        "text": "98.8%"
+      },
+      "female": {
+        "text": "96.2% (2020)"
+      },
+      "note": "<strong>note:</strong> estimates are for Gaza Strip and the West Bank"
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "13 years"
+      },
+      "male": {
+        "text": "12 years"
+      },
+      "female": {
+        "text": "14 years (2021)"
+      },
+      "note": "<strong>note:</strong> data represent Gaza Strip and the West Bank"
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "soil degradation; desertification; water pollution from chemicals and pesticides; salination of fresh water; improper sewage treatment; water-borne disease; depletion and contamination of underground water resources"
+    },
+    "Climate": {
+      "text": "temperate, mild winters, dry and warm to hot summers"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "77.6% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.85% annual rate of change (2020-25 est.)"
+      },
+      "note": "<strong>note:</strong> data represent Gaza Strip and the West Bank"
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "30.82 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "3.23 megatons (2016 est.)"
+      },
+      "note": "<strong>note:</strong> data represent combined total from the Gaza Strip and the West Bank."
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "1.387 million tons (2016 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "6,935 tons (2013 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "0.5% (2013 est.)"
+      },
+      "note": "<strong>note:</strong> data represent combined total from the Gaza Strip and the West Bank."
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "181.2 million cubic meters (2017 est.)"
+      },
+      "industrial": {
+        "text": "32 million cubic meters (2017 est.)"
+      },
+      "agricultural": {
+        "text": "162 million cubic meters (2017 est.)"
+      },
+      "note": "<strong>note:</strong> data represent combined total from the Gaza Strip and the West Bank."
+    },
+    "Total renewable water resources": {
+      "text": "840 million cubic meters (2020 est.)",
+      "note": "<strong>note:</strong> data represent combined total from the Gaza Strip and the West Bank."
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Gaza, Gaza Strip"
+      },
+      "local long form": {
+        "text": "none"
+      },
+      "local short form": {
+        "text": "Qita' Ghazzah"
+      },
+      "etymology": {
+        "text": "named for the largest city in the enclave, Gaza, whose settlement can be traced back to at least the 15th century B.C. (as \"Ghazzat\")"
+      }
+    }
+  },
+  "Economy": {
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$27.446 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$29.016 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$27.878 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars; entry includes West Bank and Gaza Strip"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "-5.41% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "4.08% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "7.01% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency; entry includes West Bank and Gaza Strip"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$5,300 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$5,800 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$5,700 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars; entry includes West Bank and Gaza Strip"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$17.421 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate; entry includes West Bank and Gaza Strip"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "5.87% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "3.74% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "1.24% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices; entry includes West Bank and Gaza Strip"
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "5.7% (2022 est.)"
+      },
+      "industry": {
+        "text": "17.4% (2022 est.)"
+      },
+      "services": {
+        "text": "58.3% (2022 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "101.5% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "20.3% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "24.7% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "1.5% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "19.6% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-66.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "tomatoes, milk, cucumbers/gherkins, olives, potatoes, sheep milk, eggplants, pumpkins/squash, grapes, chicken (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "textiles, food processing, furniture"
+    },
+    "Industrial production growth rate": {
+      "text": "-8.57% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency; entry includes West Bank and Gaza Strip"
+    },
+    "Labor force": {
+      "text": "1.391 million (2022 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work; entry includes West Bank and Gaza Strip"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2022": {
+        "text": "24.42% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "26.39% (2021 est.)"
+      },
+      "Unemployment rate 2020": {
+        "text": "25.9% (2020 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment; entry includes West Bank and Gaza Strip"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "36% (2022 est.)"
+      },
+      "male": {
+        "text": "31.6% (2022 est.)"
+      },
+      "female": {
+        "text": "56.7% (2022 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "29.2% (2016 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line; entry includes West Bank and Gaza Strip"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2016": {
+        "text": "33.7 (2016 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality; entry includes West Bank and Gaza Strip"
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2.9% (2016 est.)"
+      },
+      "highest 10%": {
+        "text": "25.2% (2016 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population; entry includes West Bank and Gaza Strip"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "18.62% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "23.98% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "20.77% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities; entry includes West Bank and Gaza Strip"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$3.803 billion (2020 est.)"
+      },
+      "expenditures": {
+        "text": "$5.002 billion (2020 est.)"
+      },
+      "note": "see entry for the West Bank"
+    },
+    "Taxes and other revenues": {
+      "text": "21.47% (of GDP) (2021 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP; entry includes West Bank and Gaza Strip"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$2.895 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$2.037 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$1.778 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars; entry includes West Bank and Gaza Strip"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$3.413 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$3.533 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$3.14 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars; entry includes West Bank and Gaza Strip"
+    },
+    "Exports - partners": {
+      "text": "Israel 81%, Jordan 10%, UAE 2%, US 1%, Turkey 1% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports; entry includes the West Bank and the Gaza Strip"
+    },
+    "Exports - commodities": {
+      "text": "building stone, scrap iron, plastic products, furniture, seats (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars; entry includes the West Bank and the Gaza Strip"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$11.637 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$12.257 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$10.094 billion (2021 est.)"
+      },
+      "note": "<strong>note:</strong> balance of payments - imports of goods and services in current dollars; entry includes West Bank and Gaza Strip"
+    },
+    "Imports - partners": {
+      "text": "Israel 57%, Turkey 6%, Egypt 6%, Jordan 4%, China 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports; entry includes the West Bank and the Gaza Strip"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, electricity, animal food, cars, cement (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars; entry includes the West Bank and the Gaza Strip"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$1.323 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$896.9 million (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$872.541 million (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars; entry includes West Bank and Gaza Strip"
+    },
+    "Exchange rates": {
+      "text": "<p>see entry for the West Bank</p>"
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank and the Gaza Strip"
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "352,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "6.746 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "6.7 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "880.312 million kWh (2022 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank and the Gaza Strip"
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "77.5% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "22.4% of total installed capacity (2022 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank and the Gaza Strip"
+    },
+    "Coal": {
+      "exports": {
+        "text": "(2022 est.) less than 1 metric ton"
+      },
+      "note": "<strong>note:</strong> includes the West Bank and the Gaza Strip"
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "29,000 bbl/day (2022 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank and the Gaza Strip"
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "3.942 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "3.942 million metric tonnes of CO2 (2022 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank and the Gaza Strip"
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "15.201 million Btu/person (2022 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank and the Gaza Strip"
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "384,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "7 (2023 est.)"
+      },
+      "note": "<b>note:</b> entry includes the West Bank and the Gaza Strip"
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "4.15 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "78 (2021 est.)"
+      },
+      "note": "<b>note:</b> entry includes the West Bank and the Gaza Strip"
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "<p class=\"paywall\">Israel, which controls Palestinian frequencies and telecom infrastructure, limits mobile internet speeds in the Palestinian territories to levels that are significantly lower than in Israel and Jewish West Bank settlements; the World Bank urged Israel to let Palestinian cellular companies set up more advanced networks, and to ease restrictions on the import of equipment needed to build and operate them; Israel is rolling out fifth generation technology for its citizens, while the West Bank operates on 3G and Gaza, 2G; Israeli mobile operators don’t officially service Palestinian areas, but many Palestinians use the faster Israeli networks with SIM cards; the Times of Israel reported in November that Israel tentatively agreed to let Palestinian operators launch 4G services</p> (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line 9 per 100 and mobile-cellular 28 per 100 (includes West Bank) (2021)"
+      },
+      "international": {
+        "text": "country code 970 or 972 (2018)"
+      }
+    },
+    "Broadcast media": {
+      "text": "1 TV station and about 10 radio stations; satellite TV accessible"
+    },
+    "Internet country code": {
+      "text": ".ps; <strong>note</strong> - IANA has designated .ps for the Gaza Strip, same as the West Bank"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "87% (2023 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank"
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "431,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "8 (2023 est.)"
+      },
+      "note": "<strong>note:</strong> includes the West Bank"
+    }
+  },
+  "Transportation": {
+    "Roadways": {
+      "text": "<p><strong>note:</strong> see entry for the West Bank</p>"
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "HAMAS maintains security forces inside Gaza in addition to its military wing, the 'Izz al-Din al-Qassam Brigades; the military wing ostensibly reports to the HAMAS Political Bureau but operates with considerable autonomy; there are several other militant groups operating in the Gaza Strip, most notably the Al-Quds Brigades of Palestinian Islamic Jihad, which are usually but not always beholden to HAMAS's authority (2024)"
+    },
+    "Military expenditures": {
+      "text": "not available"
+    },
+    "Military and security service personnel strengths": {
+      "text": "prior to the start of the 2023-2024 conflict with Israel, the military wing of HAMAS had an estimated 20-25,000 fighters (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military wing is armed with light weapons, including an inventory of rocket, anti-tank, anti-aircraft, indirect fire (typically mortars), and armed UAV capabilities; HAMAS acquires its weapons through smuggling or local construction and receives significant military support from Iran (2024)"
+    },
+    "Military - note": {
+      "text": "since seizing control of the Gaza Strip in 2007, the terrorist group HAMAS has had repeated clashes with Israel, including armed conflicts in 2008-09, 2012, 2014, 2021, and 2023-24; the Palestine Islamic Jihad (PIJ) terrorist group also operates in the Gaza Strip and has cooperated with HAMAS (2024)"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Army of Islam; Abdallah Azzam Brigades; al-Aqsa Martyrs Brigade; HAMAS; Islamic Revolutionary Guard Corps/Qods Force; Islamic State of Iraq and ash-Sham - Sinai Province (ISIS-SP); Mujahidin Shura Council in the Environs of Jerusalem; Palestine Islamic Jihad (PIJ); Palestine Liberation Front; Popular Front for the Liberation of Palestine (PFLP); PFLP-General Command",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "1.6 million (Palestinian refugees) (2022)"
+      },
+      "IDPs": {
+        "text": "1.7 million or approximately 75% of the population (as of 26 January 2024, since HAMAS's attack on Israel on 7 October 2023)<br><br>1.6 million (includes persons displaced within the Gaza Strip due to the intensification of the Israeli-Palestinian conflict between June 2014 and 7 October 2023 and other Palestinian IDPs in the Gaza Strip and West Bank who fled as long ago as 1967, although confirmed cumulative data do not go back beyond 2006) (2022)"
+      }
+    }
+  }
+}

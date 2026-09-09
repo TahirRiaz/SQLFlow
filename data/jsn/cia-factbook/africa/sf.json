@@ -1,0 +1,1329 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>Some of the earliest human remains in the fossil record were found in South Africa. By about A.D. 500, Bantu-speaking groups began settling into what is now northeastern South Africa, displacing Khoisan-speaking groups to the southwest. Dutch traders landed at the southern tip of present-day South Africa in 1652 and established a stopover point on the spice route between the Netherlands and the Far East, founding the city of Cape Town. After the British seized the Cape of Good Hope area in 1806, many settlers of Dutch descent -- known then as \"Boers,\" or farmers, but later called Afrikaners -- trekked north to found their own republics, Transvaal and Orange Free State. In the 1820s, several decades of wars began as the Zulus expanded their territory, moving out of what is today southeastern South Africa and clashing with other indigenous peoples and the growing European settlements. The discovery of diamonds (1867) and gold (1886) spurred mass immigration, predominantly from Europe.<br><br>The Zulu kingdom's territory was incorporated into the British Empire after the Anglo-Zulu War in 1879, and the Afrikaner republics were incorporated after their defeat in the Second South African War (1899-1902). Beginning in 1910, the British and the Afrikaners ruled together under the Union of South Africa, which left the British Commonwealth to become a fully self-governing republic in 1961 after a Whites-only referendum. In 1948, the National Party was voted into power and instituted a policy of apartheid -– billed as \"separate development\" of the races -- which favored the White minority and suppressed the Black majority and other non-White groups. The African National Congress (ANC) led the resistance to apartheid, and many top ANC leaders such as Nelson MANDELA spent decades in South Africa's prisons. Internal protests and insurgency, as well as boycotts from some Western nations and institutions, led to the regime's eventual willingness to unban the ANC and negotiate a peaceful transition to majority rule.</p> <p>The first multi-racial elections in 1994 ushered in majority rule under an ANC-led government. South Africa has since struggled to address apartheid-era imbalances in wealth, housing, education, and health care under successive administrations. President Cyril RAMAPHOSA, who was reelected as the ANC leader in 2022, has made some progress in reigning in corruption. </p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southern Africa, at the southern tip of the continent of Africa"
+    },
+    "Geographic coordinates": {
+      "text": "29 00 S, 24 00 E"
+    },
+    "Map references": {
+      "text": "Africa"
+    },
+    "Area": {
+      "total ": {
+        "text": "1,219,090 sq km"
+      },
+      "land": {
+        "text": "1,214,470 sq km"
+      },
+      "water": {
+        "text": "4,620 sq km"
+      },
+      "note": "<strong>note:</strong> includes Prince Edward Islands (Marion Island and Prince Edward Island)"
+    },
+    "Area - comparative": {
+      "text": "slightly less than twice the size of Texas"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "5,244 km"
+      },
+      "border countries": {
+        "text": "Botswana 1,969 km; Lesotho 1,106 km; Mozambique 496 km; Namibia 1,005 km; Eswatini 438 km; Zimbabwe 230 km"
+      }
+    },
+    "Coastline": {
+      "text": "2,798 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "200 nm or to edge of the continental margin"
+      }
+    },
+    "Climate": {
+      "text": "mostly semiarid; subtropical along east coast; sunny days, cool nights"
+    },
+    "Terrain": {
+      "text": "vast interior plateau rimmed by rugged hills and narrow coastal plain"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Ntheledi (Mafadi) 3,450 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "1,034 m"
+      }
+    },
+    "Natural resources": {
+      "text": "gold, chromium, antimony, coal, iron ore, manganese, nickel, phosphates, tin, rare earth elements, uranium, gem diamonds, platinum, copper, vanadium, salt, natural gas",
+      "note": "<strong>note: </strong>South Africa was the World's leading chromite ore producer in 2022 with an output of 18,000 mt"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "79.4% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 9.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 69.2% (2018 est.)"
+      },
+      "forest": {
+        "text": "7.6% (2018 est.)"
+      },
+      "other": {
+        "text": "13% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "16,700 sq km (2012)"
+    },
+    "Major rivers (by length in km)": {
+      "text": "Orange (shared with Lesotho [s], and Namibia [m]) - 2,092 km; Limpoporivier (Limpopo) river source (shared with Botswana, Zimbabwe, and Mozambique [m]) - 1,800 km; Vaal [s] - 1,210 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Orange (941,351 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Karoo Basin, Lower Kalahari-Stampriet Basin"
+    },
+    "Population distribution": {
+      "text": "the population concentrated along the southern and southeastern coast, and inland around Pretoria; the eastern half of the country is more densely populated than the west as shown in this population distribution map"
+    },
+    "Natural hazards": {
+      "text": "<p>prolonged droughts</p><p><strong>volcanism:</strong> the volcano forming Marion Island in the Prince Edward Islands, which last erupted in 2004, is South Africa's only active volcano</p>"
+    },
+    "Geography - note": {
+      "text": "<strong>note 1:</strong> South Africa completely surrounds Lesotho and almost completely surrounds Eswatini<br><br><strong>note 2:</strong> though sometimes mistaken for the southernmost point of Africa, the Cape of Good Hope is more accurately described as the southwestern-most point of the African continent; Cape Agulhas, the meeting point of the Atlantic and Indian Oceans, is the southernmost point of the African continent"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "60,442,647"
+      },
+      "male": {
+        "text": "29,664,388"
+      },
+      "female": {
+        "text": "30,778,259 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "South African(s)"
+      },
+      "adjective": {
+        "text": "South African"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Black African 80.9%, Colored 8.8%, White 7.8%, Indian/Asian 2.6%  (2021 est.)",
+      "note": "<strong>note:</strong> Colored is a term used in South Africa, including on the national census, for persons of mixed race ancestry who developed a distinct cultural identity over several hundred years"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "isiZulu or Zulu (official) 25.3%, isiXhosa or Xhosa (official) 14.8%, Afrikaans (official) 12.2%, Sepedi or Pedi (official) 10.1%, Setswana or Tswana (official) 9.1%, English (official) 8.1%, Sesotho or Sotho (official) 7.9%, Xitsonga or Tsonga (official) 3.6%, siSwati or Swati (official) 2.8%, Tshivenda or Venda (official) 2.5%, isiNdebele or Ndebele (official) 1.6%, other (includes South African sign language (official) and Khoi or Khoisan or Khoe languages) 2% (2018 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Die Wereld Feite Boek, n’ onontbeerlike bron vir basiese informasie. (Afrikaans)<br><br>The World Factbook, the indispensable source for basic information. (English)"
+      },
+      "note": "<strong>note:</strong> data represent language spoken most often at home"
+    },
+    "Religions": {
+      "text": "Christian 86%, ancestral, tribal, animist, or other traditional African religions 5.4%, Muslim 1.9%, other 1.5%, nothing in particular 5.2% (2015 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>South Africa’s youthful population is gradually aging, as the country’s total fertility rate (TFR) has declined dramatically from about 6 children per woman in the 1960s to roughly 2.2 in 2014, and has remained at this level as of 2022. This pattern is similar to fertility trends in South Asia, the Middle East, and North Africa, and sets South Africa apart from the rest of Sub-Saharan Africa, where the average TFR remains higher than other regions of the world. Today, South Africa’s decreasing number of reproductive age women is having fewer children, as women increase their educational attainment, workforce participation, and use of family planning methods; delay marriage; and opt for smaller families.</p> <p>As the proportion of working-age South Africans has grown relative to children and the elderly, South Africa has been unable to achieve a demographic dividend because persistent high unemployment and the prevalence of HIV/AIDs have created a larger-than-normal dependent population. HIV/AIDS was also responsible for South Africa’s average life expectancy plunging to less than 43 years in 2008; it has rebounded to 65 years as of 2022. HIV/AIDS continues to be a serious public health threat, although awareness-raising campaigns and the wider availability of anti-retroviral drugs is stabilizing the number of new cases, enabling infected individuals to live longer, healthier lives, and reducing mother-child transmissions.</p> <p>Migration to South Africa began in the second half of the 17th century when traders from the Dutch East India Company settled in the Cape and started using slaves from South and southeast Asia (mainly from India but also from present-day Indonesia, Bangladesh, Sri Lanka, and Malaysia) and southeast Africa (Madagascar and Mozambique) as farm laborers and, to a lesser extent, as domestic servants. The Indian subcontinent remained the Cape Colony’s main source of slaves in the early 18th century, while slaves were increasingly obtained from southeast Africa in the latter part of the 18th century and into the 19th century under British rule.</p> <p>After slavery was completely abolished in the British Empire in 1838, South Africa’s colonists turned to temporary African migrants and indentured labor through agreements with India and later China, countries that were anxious to export workers to alleviate domestic poverty and overpopulation. Of the more than 150,000 indentured Indian laborers hired to work in Natal’s sugar plantations between 1860 and 1911, most exercised the right as British subjects to remain permanently (a small number of Indian immigrants came freely as merchants). Because of growing resentment toward Indian workers, the 63,000 indentured Chinese workers who mined gold in Transvaal between 1904 and 1911 were under more restrictive contracts and generally were forced to return to their homeland.</p> <p>In the late 19th century and nearly the entire 20th century, South Africa’s then British colonies’ and Dutch states’ enforced selective immigration policies that welcomed \"assimilable\" white Europeans as permanent residents but excluded or restricted other immigrants. Following the Union of South Africa’s passage of a law in 1913 prohibiting Asian and other non-white immigrants and its elimination of the indenture system in 1917, temporary African contract laborers from neighboring countries became the dominant source of labor in the burgeoning mining industries. Others worked in agriculture and smaller numbers in manufacturing, domestic service, transportation, and construction. Throughout the 20th century, at least 40% of South Africa’s miners were foreigners; the numbers peaked at over 80% in the late 1960s. Mozambique, Lesotho, Botswana, and Eswatini were the primary sources of miners, and Malawi and Zimbabwe were periodic suppliers.</p> <p>Under apartheid, a \"two gates\" migration policy focused on policing and deporting illegal migrants rather than on managing migration to meet South Africa’s development needs. The exclusionary 1991 Aliens Control Act limited labor recruitment to the highly skilled as defined by the ruling white minority, while bilateral labor agreements provided exemptions that enabled the influential mining industry and, to a lesser extent, commercial farms, to hire temporary, low-paid workers from neighboring states. Illegal African migrants were often tacitly allowed to work for low pay in other sectors but were always under threat of deportation.</p> <p>The abolishment of apartheid in 1994 led to the development of a new inclusive national identity and the strengthening of the country’s restrictive immigration policy. Despite South Africa’s protectionist approach to immigration, the downsizing and closing of mines, and rising unemployment, migrants from across the continent believed that the country held work opportunities. Fewer African labor migrants were issued temporary work permits and, instead, increasingly entered South Africa with visitors’ permits or came illegally, which drove growth in cross-border trade and the informal job market. A new wave of Asian immigrants has also arrived over the last two decades, many operating small retail businesses.</p> <p>In the post-apartheid period, increasing numbers of highly skilled white workers emigrated, citing dissatisfaction with the political situation, crime, poor services, and a reduced quality of life. The 2002 Immigration Act and later amendments were intended to facilitate the temporary migration of skilled foreign labor to fill labor shortages, but instead the legislation continues to create regulatory obstacles. Although the education system has improved and brain drain has slowed in the wake of the 2008 global financial crisis, South Africa continues to face skills shortages in several key sectors, such as health care and technology.</p> <p>South Africa’s stability and economic growth has acted as a magnet for refugees and asylum seekers from nearby countries, despite the prevalence of discrimination and xenophobic violence. Refugees have included an estimated 350,000 Mozambicans during its 1980s civil war and, more recently, several thousand Somalis, Congolese, and Ethiopians. Nearly all of the tens of thousands of Zimbabweans who have applied for asylum in South Africa have been categorized as economic migrants and denied refuge.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "27.2% (male 8,227,690/female 8,194,392)"
+      },
+      "15-64 years": {
+        "text": "65.3% (male 19,524,873/female 19,947,839)"
+      },
+      "65 years and over": {
+        "text": "7.5% (2024 est.) (male 1,911,825/female 2,636,028)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "52.2"
+      },
+      "youth dependency ratio": {
+        "text": "43.9"
+      },
+      "elderly dependency ratio": {
+        "text": "8.4"
+      },
+      "potential support ratio": {
+        "text": "10.9 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "30.4 years (2024 est.)"
+      },
+      "male": {
+        "text": "30.1 years"
+      },
+      "female": {
+        "text": "30.6 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "1.07% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "17.7 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6.9 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.2 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the population concentrated along the southern and southeastern coast, and inland around Pretoria; the eastern half of the country is more densely populated than the west as shown in this population distribution map"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "68.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.72% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "10.316 million Johannesburg (includes Ekurhuleni), 4.890 million Cape Town (legislative capital), 3.228 million Durban, 2.818 million PRETORIA (administrative capital), 1.296 million Port Elizabeth, 934,000 West Rand (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.02 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.98 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.73 male(s)/female"
+      },
+      "total population": {
+        "text": "0.96 male(s)/female (2024 est.)"
+      }
+    },
+    "Maternal mortality ratio": {
+      "text": "127 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "21.9 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "23.9 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "20 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "71.9 years (2024 est.)"
+      },
+      "male": {
+        "text": "70.3 years"
+      },
+      "female": {
+        "text": "73.5 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "2.27 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.12 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "54.6% (2016)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 99.7% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 90.3% of population"
+      },
+      "improved: total": {
+        "text": "total: 96.7% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.3% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 9.7% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 3.3% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "8.6% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.79 physicians/1,000 population (2019)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 96.6% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 86.4% of population"
+      },
+      "improved: total": {
+        "text": "total: 93.2% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 3.4% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 13.6% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 6.8% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "28.3% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "7.21 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "3.99 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "1.21 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "1.31 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.7 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "20.3% (2020 est.)"
+      },
+      "male": {
+        "text": "34% (2020 est.)"
+      },
+      "female": {
+        "text": "6.5% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "5.5% (2017)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "36.9% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "0.9%"
+      },
+      "women married by age 18": {
+        "text": "3.6%"
+      },
+      "men married by age 18": {
+        "text": "0.6% (2016 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "6.6% of GDP (2021 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "95%"
+      },
+      "male": {
+        "text": "95.5%"
+      },
+      "female": {
+        "text": "94.5% (2019)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "13 years"
+      },
+      "male": {
+        "text": "13 years"
+      },
+      "female": {
+        "text": "14 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "lack of important arterial rivers or lakes requires extensive water conservation and control measures; growth in water usage outpacing supply; pollution of rivers from agricultural runoff and urban discharge; air pollution resulting in acid rain; deforestation; soil erosion; land degradation; desertification; solid waste pollution; disruption of fragile ecosystem has resulted in significant floral extinctions"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Antarctic-Environmental Protection, Antarctic-Marine Living Resources, Antarctic Seals, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Marine Dumping-London Protocol, Marine Life Conservation, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "mostly semiarid; subtropical along east coast; sunny days, cool nights"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "79.4% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 9.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 69.2% (2018 est.)"
+      },
+      "forest": {
+        "text": "7.6% (2018 est.)"
+      },
+      "other": {
+        "text": "13% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "68.8% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.72% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from coal": {
+      "text": "2.4% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "19.75 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "476.64 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "55.89 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "18,457,232 tons (2011 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "5,168,025 tons (2011 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "28% (2011 est.)"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Orange (shared with Lesotho [s], and Namibia [m]) - 2,092 km; Limpoporivier (Limpopo) river source (shared with Botswana, Zimbabwe, and Mozambique [m]) - 1,800 km; Vaal [s] - 1,210 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: Orange (941,351 sq km)"
+    },
+    "Major aquifers": {
+      "text": "Karoo Basin, Lower Kalahari-Stampriet Basin"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "3.11 billion cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "4.09 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "11.99 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "51.35 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of South Africa"
+      },
+      "conventional short form": {
+        "text": "South Africa"
+      },
+      "former": {
+        "text": "Union of South Africa"
+      },
+      "abbreviation": {
+        "text": "RSA"
+      },
+      "etymology": {
+        "text": "self-descriptive name from the country's location on the continent; \"Africa\" is derived from the Roman designation of the area corresponding to present-day Tunisia \"Africa terra,\" which meant \"Land of the Afri\" (the tribe resident in that area), but which eventually came to mean the entire continent"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Pretoria (administrative capital); Cape Town (legislative capital); Bloemfontein (judicial capital)"
+      },
+      "geographic coordinates": {
+        "text": "25 42 S, 28 13 E"
+      },
+      "time difference": {
+        "text": "UTC+2 (7 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "Pretoria is named in honor of Andries PRETORIUS, the father of voortrekker (pioneer) leader Marthinus PRETORIUS; Cape Town reflects its location on the Cape of Good Hope; Bloemfontein is a combination of the Dutch words <em>bloem</em> (flower) and <em>fontein</em> (fountain) meaning \"fountain of flowers\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "9 provinces; Eastern Cape, Free State, Gauteng, KwaZulu-Natal, Limpopo, Mpumalanga, Northern Cape, North West, Western Cape"
+    },
+    "Independence": {
+      "text": "31 May 1910 (Union of South Africa formed from four British colonies: Cape Colony, Natal, Transvaal, and Orange Free State); 22 August 1934 (Status of the Union Act); 31 May 1961 (republic declared); 27 April 1994 (majority rule)"
+    },
+    "National holiday": {
+      "text": "Freedom Day, 27 April (1994)"
+    },
+    "Legal system": {
+      "text": "mixed legal system of Roman-Dutch civil law, English common law, and customary law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest drafted 8 May 1996, approved by the Constitutional Court 4 December 1996, effective 4 February 1997"
+      },
+      "amendments": {
+        "text": "proposed by the National Assembly of Parliament; passage of amendments affecting constitutional sections on human rights and freedoms, non-racism and non-sexism, supremacy of the constitution, suffrage, the multi-party system of democratic government, and amendment procedures requires at least 75% majority vote of the Assembly, approval by at least six of the nine provinces represented in the National Council of Provinces, and assent of the president of the republic; passage of amendments affecting the Bill of Rights, and those related to provincial boundaries, powers, and authorities requires at least two-thirds majority vote of the Assembly, approval by at least six of the nine provinces represented in the National Council, and assent of the president; amended many times, last in 2020"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of South Africa"
+      },
+      "dual citizenship recognized": {
+        "text": "yes, but requires prior permission of the government"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 year"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Matamela Cyril RAMAPHOSA (since 19 June 2024)"
+      },
+      "head of government": {
+        "text": "President Matamela Cyril RAMAPHOSA (since 19 June 2024)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president indirectly elected by the National Assembly for a 5-year term (eligible for a second term); election last held on 29 May 2024 (next to be held in May 2029) note - the president is both chief of state and head of government"
+      },
+      "election results": {
+        "text": "<br><em>2024: </em>Matamela Cyril RAMAPHOSA (ANC) elected president by the National Assembly unopposed<em><br><br>2019: </em>Matamela Cyril RAMAPHOSA (ANC) elected president by the National Assembly unopposed<br><br>  <p> </p>"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Parliament"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      }
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "National Assembly"
+      },
+      "number of seats": {
+        "text": "400 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "5/29/2024"
+      },
+      "percentage of women in chamber": {
+        "text": "44.7%"
+      },
+      "expected date of next election": {
+        "text": "May 2029"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "National Council of Provinces"
+      },
+      "number of seats": {
+        "text": "90 (all appointed)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "6/15/2024"
+      },
+      "percentage of women in chamber": {
+        "text": "44.4%"
+      },
+      "expected date of next election": {
+        "text": "June 2029"
+      },
+      "note": "<strong>note:</strong> the Council has special powers to protect regional interests, including safeguarding cultural and linguistic traditions among ethnic minorities"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court of Appeals (consists of the court president, deputy president, and 21 judges); Constitutional Court (consists of the chief and deputy chief justices and 9 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court of Appeals president and vice president appointed by the national president after consultation with the Judicial Services Commission (JSC), a 23-member body chaired by the chief justice and includes other judges and judicial executives, members of parliament, practicing lawyers and advocates, a teacher of law, and several members designated by the president of South Africa; other Supreme Court judges appointed by the national president on the advice of the JSC and hold office until discharged from active service by an Act of Parliament; Constitutional Court chief and deputy chief justices appointed by the president of South Africa after consultation with the JSC and with heads of the National Assembly; other Constitutional Court judges appointed by the national president after consultation with the chief justice and leaders of the National Assembly; Constitutional Court judges serve 12-year nonrenewable terms or until age 70"
+      },
+      "subordinate courts": {
+        "text": "High Courts; Magistrates' Courts; labor courts; land claims courts"
+      }
+    },
+    "Political parties": {
+      "text": "African Christian Democratic Party or ACDP <br>African Independent Congress or AIC <br>African National Congress or ANC <br>African People's Convention or APC <br>Agang SA <br>Congress of the People or COPE <br>Democratic Alliance or DA <br>Economic Freedom Fighters or EFF <br>Freedom Front Plus or FF+ <br>GOOD <br>Inkatha Freedom Party or IFP <br>National Freedom Party or NFP <br>Pan-Africanist Congress of Azania or PAC <br>United Christian Democratic Party or UCDP <br>United Democratic Movement or UDM "
+    },
+    "International organization participation": {
+      "text": "ACP, AfDB, AIIB, AU, BIS, BRICS, C, CD, FAO, FATF, G-20, G-24, G-5, G-77, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, MONUSCO, NAM, NSG, OECD (enhanced engagement), OPCW, Paris Club (associate), PCA, SACU, SADC, UN, UNAMID, UNCTAD, UNESCO, UNHCR, UNIDO, UNISFA, UNITAR, UNOOSA, UNWTO, UPU, Wassenaar Arrangement, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO, ZC"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Ebrahim RASOOL (since 13 January 2025)"
+      },
+      "chancery": {
+        "text": "3051 Massachusetts Avenue NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (240) 937-5760"
+      },
+      "FAX": {
+        "text": "[1] (202) 265-1607"
+      },
+      "email address and website": {
+        "text": "<br>Info.saembassyDC@dirco.gov.za<br><br>https://www.saembassy.org/"
+      },
+      "consulate(s) general": {
+        "text": "Los Angeles, New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador&nbsp;(vacant); Charg&eacute; d&rsquo;Affaires Dana M. BROWN (since January 2025)"
+      },
+      "embassy": {
+        "text": "877 Pretorius Street, Arcadia, Pretoria"
+      },
+      "mailing address": {
+        "text": "9300 Pretoria Place, Washington DC&nbsp; 20521-9300"
+      },
+      "telephone": {
+        "text": "[27] (12) 431-4000"
+      },
+      "FAX": {
+        "text": "[27] (12) 342-2299"
+      },
+      "email address and website": {
+        "text": "<br>ACSJohannesburg@state.gov<br><br>https://za.usembassy.gov/"
+      },
+      "consulate(s) general": {
+        "text": "Cape Town, Durban, Johannesburg"
+      }
+    },
+    "Flag description": {
+      "text": "two equal width horizontal bands of red (top) and blue separated by a central green band that splits into a horizontal Y, the arms of which end at the corners of the hoist side; the Y embraces a black isosceles triangle from which the arms are separated by narrow yellow bands; the red and blue bands are separated from the green band and its arms by narrow white stripes; the flag colors do not have any official symbolism, but the Y stands for the \"convergence of diverse elements within South African society, taking the road ahead in unity\"; black, yellow, and green are found on the flag of the African National Congress, while red, white, and blue are the colors in the flags of the Netherlands and the UK, whose settlers ruled South Africa during the colonial era",
+      "note": "<strong>note:</strong> the South African flag is one of only two national flags to display six colors as part of its primary design, the other is South Sudan's"
+    },
+    "National symbol(s)": {
+      "text": "springbok (antelope), king protea flower; national colors: red, green, blue, yellow, black, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"National Anthem of South Africa\""
+      },
+      "lyrics/music": {
+        "text": "Enoch SONTONGA and Cornelius Jacob LANGENHOVEN/Enoch SONTONGA and Marthinus LOURENS de Villiers"
+      },
+      "note": "<strong>note:</strong> adopted 1994; a combination of \"N'kosi Sikelel' iAfrica\" (God Bless Africa) and \"Die Stem van Suid Afrika\" (The Call of South Africa), which were respectively the anthems of the non-white and white communities under apartheid; official lyrics contain a mixture of Xhosa, Zulu, Sesotho, Afrikaans, and English (i.e., the five most widely spoken of South Africa's 11 official languages); music incorporates the melody used in the Tanzanian and Zambian anthems"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "12 (7 cultural, 4 natural, 1 mixed)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "<p>Fossil Hominid Sites of South Africa (c); iSimangaliso Wetland Park (n); Robben Island (c); Maloti-Drakensberg Park (m); Mapungubwe Cultural Landscape (c); Cape Floral Region Protected Areas (n); Vredefort Dome (n); Richtersveld Cultural and Botanical Landscape (c); Khomani Cultural Landscape (c); Barberton Makhonjwa Mountains (n); Human Rights, Liberation and Reconciliation: Nelson Mandela Legacy Sites (c); The Emergence of Modern Human Behaviour: The Pleistocene Occupation Sites of South Africa (c)</p>"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "upper middle-income South African economy; hard hit by COVID-19; poor utilities management; key rare earth goods exporter; high income inequality; hosts Africa&rsquo;s largest stock exchange; rising unemployment, especially youth; land rights changes"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$865.402 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$859.399 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$843.28 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "0.7% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "1.91% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "4.7% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$13,700 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$13,800 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$13,700 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$380.699 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "6.07% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "7.04% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "4.61% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BB- (2020)"
+      },
+      "Moody's rating": {
+        "text": "Ba2 (2020)"
+      },
+      "Standard & Poors rating": {
+        "text": "BB- (2020)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "2.6% (2023 est.)"
+      },
+      "industry": {
+        "text": "24.6% (2023 est.)"
+      },
+      "services": {
+        "text": "62.6% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "64.4% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "19.3% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "14.9% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0.6% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "32.8% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-32.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "sugarcane, maize, milk, potatoes, wheat, grapes, chicken, oranges, apples, soybeans (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "mining (world's largest producer of platinum, gold, chromium), automobile assembly, metalworking, machinery, textiles, iron and steel, chemicals, fertilizer, foodstuffs, commercial ship repair"
+    },
+    "Industrial production growth rate": {
+      "text": "-0.4% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "27.137 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "27.99% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "28.84% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "28.77% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "49.1% (2023 est.)"
+      },
+      "male": {
+        "text": "45.8% (2023 est.)"
+      },
+      "female": {
+        "text": "53.2% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "55.5% (2014 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2014": {
+        "text": "63 (2014 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "16.1% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "4.1% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "0.9% (2014 est.)"
+      },
+      "highest 10%": {
+        "text": "50.5% (2014 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.21% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.21% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.22% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$123.264 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$136.236 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "76.24% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "26.01% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$6.143 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$1.878 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$15.701 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$124.671 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$136.01 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$131.09 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "China 16%, US 7%, Germany 7%, India 6%, Japan 6% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "gold, platinum, coal, cars, diamonds (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$123.454 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$127.669 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$104.881 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 21%, Germany 9%, India 7%, US 5%, Saudi Arabia 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, cars, crude petroleum, vehicle parts/accessories, broadcasting equipment (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$62.492 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$60.553 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$57.597 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$95.555 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "rand (ZAR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "18.45 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "16.356 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "14.779 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "16.459 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "14.448 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "86.5% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "87.1%"
+      },
+      "electrification - rural areas": {
+        "text": "93.4%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "63.411 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "200.565 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "13.967 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "10.331 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "25.285 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "87.8% of total installed capacity (2022 est.)"
+      },
+      "nuclear": {
+        "text": "4.4% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "2.7% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "4.2% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "0.7% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "0.2% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of operational nuclear reactors": {
+        "text": "2 (2023)"
+      },
+      "Net capacity of operational nuclear reactors": {
+        "text": "1.85GW (2023 est.)"
+      },
+      "Percent of total electricity production": {
+        "text": "4.4% (2023 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "245.467 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "176.148 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "75.512 million metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "3.026 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "9.893 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "95,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "601,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "15 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "59.128 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "4.487 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "4.428 billion cubic meters (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "476.987 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "392.305 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "75.88 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "8.803 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "95.511 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "1.353 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "2 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "108 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "167 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "South Africa&rsquo;s telecom sector boasts one of the most advanced infrastructures on the continent; the focus in recent years has been on back haul capacity and on fiber and LTE networks to extend and improve internet service connectivity; several satellite solutions also appeared in 2023, aimed at providing additional backhaul and improving connectivity in rural areas; the mobile sector has developed strongly in recent years, partly due to the poor availability and level of service of fixed-line networks, which meant that many people had no alternative to mobile networks for voice and data services (2024)"
+      },
+      "domestic": {
+        "text": "fixed-line is 2 per 100 persons and mobile-cellular is 167 telephones per 100 persons (2022)"
+      },
+      "international": {
+        "text": "country code - 27; landing points for the WACS, ACE, SAFE, SAT-3, Equiano, SABR, SAEx1, SAEx2, IOX Cable System, METISS, EASSy, and SEACOM/ Tata TGN-Eurasia&nbsp;fiber-optic submarine cable systems connecting South Africa, East Africa, West Africa, Europe,&nbsp;Southeast Asia, Asia, South America, Indian Ocean Islands,&nbsp;and the&nbsp;US;&nbsp;satellite earth stations - 3 Intelsat (1 Indian Ocean and 2 Atlantic Ocean) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "the South African Broadcasting Corporation (SABC) operates 6 free-to-air TV stations; e.tv, a private station, is accessible to more than half the population; multiple subscription TV services provide a mix of local and international channels; well-developed mix of public and private radio stations at the national, regional, and local levels; the SABC radio network, state-owned and controlled but nominally independent, operates 18 stations, one for each of the 11 official languages, 4 community stations, and 3 commercial stations; more than 100 community-based stations extend coverage to rural areas"
+    },
+    "Internet country code": {
+      "text": ".za"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "75% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "2.15 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "3 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "17 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "243"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "23,921,748 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "716.25 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "ZS"
+    },
+    "Airports": {
+      "text": "575 (2024)"
+    },
+    "Heliports": {
+      "text": "49 (2024)"
+    },
+    "Pipelines": {
+      "text": "94 km condensate, 1,293 km gas, 992 km oil, 1,460 km refined products (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "30,400 km (2021)"
+      },
+      "standard gauge": {
+        "text": "80 km (2021) 1.435-m gauge (80 km electrified)"
+      },
+      "narrow gauge": {
+        "text": "19,756 km (2014) 1.065-m gauge (8,271 km electrified)"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "750,000 km"
+      },
+      "paved": {
+        "text": "158,124 km"
+      },
+      "unpaved": {
+        "text": "591,876 km (2016)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "110 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 3, general cargo 1, oil tanker 7, other 99"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "8 (2024)"
+      },
+      "large": {
+        "text": "2"
+      },
+      "medium": {
+        "text": "4"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "7"
+      },
+      "key ports": {
+        "text": "Cape Town, Durban, Mossel Bay, Port Elizabeth, Richards Bay, Saldanha Bay"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "South African National Defense Force (SANDF): South African Army (includes Reserve Force), South African Navy (SAN), South African Air Force (SAAF), South African Military Health Services<br><br>Ministry of Police: South African Police Service (2024)",
+      "note": "<strong>note:</strong> the South African Police Service includes a Special Task Force for counterterrorism, counterinsurgency, and hostage rescue operations"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "0.7% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "0.8% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "0.9% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.1% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "1% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 73,000 active-duty personnel (40,000 Army; 7,000 Navy; 10,000 Air Force; 8,000 Military Health Service; 8,000 other, including administrative, logistics, military police); 180,000 South African Police Service (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the SANDF's inventory consists of a mix of domestically produced and foreign-supplied equipment; South Africa's domestic defense industry produced most of the Army's major weapons systems (some were jointly produced with foreign companies), while the Air Force and Navy inventories include a mix of aging European-, Israeli-, and US-origin weapons and equipment; South Africa has one of Africa's leading defense industries (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-22 (18-26 for college graduates) years of age for voluntary military service for men and women; 2-year service obligation (2023)",
+      "note": "<strong>note:</strong> in 2023, women comprised nearly 30% of the military"
+    },
+    "Military deployments": {
+      "text": "1,150 Democratic Republic of the Congo (MONUSCO) (2024)"
+    },
+    "Military - note": {
+      "text": "the SANDF’s primary responsibilities include territorial and maritime defense, supporting the Police Service, protecting key infrastructure, and participating in international peacekeeping missions; the SANDF historically has been one of Africa’s most capable militaries, but in recent years its operational readiness and modernization programs have been widely viewed as hampered by funding shortfalls<br><br>the SANDF participates regularly in African and UN peacekeeping missions and is a member of the Southern Africa Development Community (SADC) Standby Force; in 2021, it sent about 1,500 troops to Mozambique as part of a multinational SADC force to help combat an insurgency, and South African forces have been a key component of the UN’s Force Intervention Brigade in the Democratic Republic of the Congo; in recent years, the SANDF has been deployed internally to assist the Police Service with quelling unrest and assisting with border security<br><br>the SANDF was created in 1994 to replace the South African Defense Force (SADF); the SANDF was opened to all South Africans who met military requirements, while the SADF was a mostly white force (only whites were subject to conscription) with non-whites only allowed to join in a voluntary capacity; the SANDF also absorbed members of the guerrilla and militia forces of the various anti-apartheid opposition groups, including the African National Congress, the Pan Africanist Congress, and the Inkatha Freedom Party, as well as the security forces of the formerly independent Bantustan homelands (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "South African National Space Agency (SANSA; established 2010); South Africa Council for Space Affairs (SACSA; statutory body established 1995); South African Radio Telescope Observatory (SARAO) (2024)"
+    },
+    "Space launch site(s)": {
+      "text": "Arniston launch facility (Western Cape) used to support space launch vehicle and ballistic missile program (1980s-1990s); it is now a weapons testing facility called the Denel Overberg Test Range (2024)"
+    },
+    "Space program overview": {
+      "text": "the largest producer of satellites (particularly nanosatellites) in Africa; areas of focus for development include remote sensing (RS) capabilities, such as optical instruments and synthetic aperture radar systems, space engineering, ground support to space operations (tracking, telemetry, etc.), and space science, particularly astronomy; SANSA is responsible for aggregating RS data for southern African countries; has a sounding rocket program for carrying experimental payloads for research purposes; cooperates with foreign space agencies and industries, including those of China, France, India, Russia, and the US; participates in international programs such as the Square Kilometer Array (SKA) Project, an international effort to build the world’s largest radio telescope by 2030; has a substantial number of state- and privately-owned aerospace companies, as well as academic and research institutions involved in space-related activities (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic State of Iraq and ash-Sham (ISIS)",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "22,388 (Somalia), 15,240 (Ethiopia) (mid-year 2022); 42,132 (Democratic Republic of the Congo) (refugees and asylum seekers) (2024)"
+      },
+      "IDPs": {
+        "text": "5,000 (2020)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>leading regional importer of chemicals used in the production of illicit drugs especially synthetic drugs;</p>"
+    }
+  }
+}

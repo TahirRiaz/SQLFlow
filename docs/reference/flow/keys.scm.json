@@ -1,0 +1,360 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "scm",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 33,
+  "keys": [
+    {
+      "path": "batch",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Optional grouping label (the legacy flw.SysSourceControl.Batch column), carried onto SourceControlFlow.Batch (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs) and projected to CatalogPipeline.Batch by the shared header projection (FlowDocumentHeaders.Project, src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs). Grouping and filtering only: it carries no ordering, and scheduling is by schedule membership, never by batch. Blank/whitespace-only values normalize to null.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs (string? Batch, mapped in Map)"
+    },
+    {
+      "path": "connections",
+      "type": "map<string,object>",
+      "required": false,
+      "default": "{} (no document-local connections declared; a bare source.connection can still synthesize one named \"source\")",
+      "description": "The document's named connection registry, identical vocabulary to every other non-file flow kind: mapped by YamlDocumentParts.MapConnections (src/SqlFlow.Yaml/YamlDocumentParts.cs:20-45) into a case-insensitive Dictionary<string, DataSource>, invoked from YamlSourceControlFlowLoader.Map (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:74). Each declared connection is later addressed by name from source.server; the resolved set becomes SourceControlDocument.Connections (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:21), an in-memory data-source store so the database resolves through the same secretless connection-resolution pipeline as every other flow, with no control database anywhere (type doc comment, YamlSourceControlFlowLoader.cs:11-14). DocumentLoader also scans every resolved reference for an embedded credential and emits a non-fatal 'WARN' line naming the canonical alternative when one looks like a literal secret (SecretHygiene.LooksLikeEmbeddedSecret, src/SqlFlow.Core/Secrets/SecretHygiene.cs:21-35; wired at src/SqlFlow.Execution/DocumentLoader.cs:43-60, the scm case at line 49).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:287 (Dictionary<string,object>? Connections)"
+    },
+    {
+      "path": "connections.<name>",
+      "type": "string|object",
+      "required": false,
+      "default": "when null or blank: resolves ${env:SQLFLOW_CONN_<NAME>} (name uppercased, non-alphanumeric folded to '_') with kind mssql",
+      "description": "One declared connection, keyed by its alias; the dictionary key is never renamed by the camelCase convention and its casing is preserved verbatim in error text. ParseConnectionNode (src/SqlFlow.Yaml/YamlDocumentParts.cs:47-90) accepts three node shapes: (1) null or a blank/whitespace string - resolves the conventional reference ${env:SQLFLOW_CONN_<NAME>} (ConnectionConvention.Reference, src/SqlFlow.Core/Connections/ConnectionConvention.cs:13-23) so a versioned document can declare which connections it needs without carrying any reference at all; (2) a non-blank plain string - used verbatim (trimmed) as the connection reference, e.g. a ${env:...}/${keyvault:...} token or a raw ADO.NET connection string; (3) a mapping with optional 'provider' and 'connection' keys (see the two child entries), matched on the raw key trimmed and lowercased, independent of the document's camelCase convention. Every other node shape (a list, a number, a bare boolean) is rejected. The connection name itself must be a valid identifier (ASCII letters/digits, '_', '.', or '-' only, length > 0 - non-ASCII letters are rejected) and, once trimmed, unique case-insensitively across the block; both checks run in MapConnections before the node is parsed (src/SqlFlow.Yaml/YamlDocumentParts.cs:28-42).",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:47-90 (ParseConnectionNode)",
+      "validation": "Invalid name: IsValidConnectionName is checked against the TRIMMED key (connectionName = rawName?.Trim(), src/SqlFlow.Yaml/YamlDocumentParts.cs:30), not the untrimmed key; only the thrown message quotes the untrimmed '<rawName>' as authored, so a name that would be invalid solely because of surrounding whitespace actually PASSES (whitespace is stripped before the check runs): FlowValidationException \"{source}: connection name '<rawName>' is invalid. Use letters, digits, '_', '.', or '-'.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:31-35, IsValidConnectionName at 217-218). A trimmed name colliding case-insensitively with another entry in the same block (e.g. 'DW:' and 'dw:'): \"{source}: connection '<name>' is declared more than once.\" (YamlDocumentParts.cs:38-41). A node that is neither null, a string, nor a mapping: \"{source}: connection '<name>' must be a connection string, a ${...} reference, a map with 'provider' and 'connection', or bare (which resolves '<conventional reference>' by convention).\" (YamlDocumentParts.cs:84-89)."
+    },
+    {
+      "path": "connections.<name>.connection",
+      "type": "string",
+      "required": false,
+      "default": "${env:SQLFLOW_CONN_<NAME>} (the conventional reference) when absent or blank, even if 'provider' is set alongside it",
+      "appliesWhen": "connections.<name> is authored as a mapping (not left bare and not a plain string)",
+      "description": "The map form's explicit connection reference or literal connection string, read alongside an optional 'provider' (src/SqlFlow.Yaml/YamlDocumentParts.cs:60-80). A blank or absent value under the map form still falls back to the conventional ${env:SQLFLOW_CONN_<NAME>} reference exactly like a fully bare entry - a document can declare just 'provider: azdb' with no 'connection:' at all and still get the conventional reference, now tagged with that provider's kind. A non-blank value is trimmed and used verbatim.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:71-80"
+    },
+    {
+      "path": "connections.<name>.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "connections.<name> is authored as a mapping (not left bare and not a plain string)",
+      "description": "The declared connection's provider kind, resolved by ParseProvider (src/SqlFlow.Yaml/YamlDocumentParts.cs:97-107) into a SqlFlow.Core.Connections.DataSourceKind. Matched by trimming and lower-casing only, with NO '-'/'_' stripping (unlike the file flow's load.mode/transform.onConvertError, whose NormalizeToken helper is private to YamlFlowLoader.cs and not reused here): 'sqlserver' is accepted as an un-advertised synonym of 'mssql', and 'postgresql' of 'postgres'. Null/blank also resolves to mssql. This value only governs what the connection IS; whether it is ACCEPTABLE for this document is enforced separately and only for the connection actually resolved as source's endpoint - see source.server's RequireSqlServerConnection validation. A connections.<name> entry never referenced by source is left completely unchecked past this parse, since nothing else in an scm document consumes it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:97-107 (ParseProvider), invoked at YamlDocumentParts.cs:81",
+      "validation": "Unrecognized token: FlowValidationException \"{source}: 'connections.<name>.provider' has unknown provider '<value>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:105-106, field built as $\"connections.{connectionName}.provider\" at YamlDocumentParts.cs:81)."
+    },
+    {
+      "path": "description",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Free-text description of the source-control flow; blank/whitespace-only values normalize to null (YamlDocumentParts.NullIfBlank) and the value is otherwise carried verbatim onto SourceControlFlow.Description (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:19). Nothing else in the scm pipeline reads it: not the commit message, the run-history folder name, or any scripted artifact (confirmed: no other reference to SourceControlFlow.Description exists anywhere in src/).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:285 (mapped at line 90)"
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "description": "The flow's unique identifier (legacy SysAlias): the snapshot's identity, its run-history folder (RunHistory.Write(flowFile, flow.SysAlias, ...) inside DocumentExecutor.ExecuteSourceControlAsync, src/SqlFlow.Execution/DocumentExecutor.cs:420-421), and the prefix of the generated commit message '<name>: snapshot <database> (N added, N changed, N deleted)' (SourceControlService.BuildCommitMessage, src/SqlFlow.SourceControl/SourceControlService.cs:138-140). It is also the CLI's 'validate' output label (Console.WriteLine using flow.SysAlias, src/SqlFlow.Cli/Program.cs:146) - but NOT 'run's: the 'run' verb's console summary (PrintSourceControlResult, src/SqlFlow.Cli/Program.cs:2265-2287) labels its line with the scripted database name (result.DatabaseName) instead and never prints the flow's name at all, in either plain or --json mode (--json prints the raw SourceControlResult, which carries no flow-name field). The name still reaches disk as RunArtifact.FlowName inside the (unprinted) run.json artifact file (DocumentExecutor.cs:442-452, FlowName assigned at line 446). It is also the sole seed of SourceControlFlow.FlowId, a stable positive 31-bit int (BitConverter.ToInt32(FlowIdentity.FromName(name).ToByteArray(), 0) & 0x7FFFFFFF, YamlDocumentParts.StableFlowId, src/SqlFlow.Yaml/YamlDocumentParts.cs:212-213) - the same deterministic name-derived identity every other flow kind uses, truncated to a positive int here because SourceControlFlow.FlowId is an int rather than a Guid. Unlike the file flow's own 'name' handling (YamlFlowLoader's Required() helper, which does not trim), this value IS trimmed by the shared YamlDocumentParts.RequireFlowName helper before use (src/SqlFlow.Yaml/YamlDocumentParts.cs:206-208), so leading/trailing whitespace does not change the derived FlowId the way it can for a file flow.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:284 (mapped at line 72; model: src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:16-17)",
+      "validation": "Missing, null, empty, or all-whitespace: FlowValidationException \"{source}: 'name' is required for a source-control flow (flowType: scm).\" (YamlDocumentParts.RequireFlowName, src/SqlFlow.Yaml/YamlDocumentParts.cs:206-208, kindLabel supplied at YamlSourceControlFlowLoader.cs:72)."
+    },
+    {
+      "path": "mode",
+      "type": "enum(auto|manual|disabled)",
+      "required": false,
+      "default": "auto",
+      "enumValues": ["auto", "manual", "disabled"],
+      "description": "The flow's execution mode, read at the document envelope (YamlDocumentLoader's probe, FlowDocument.Mode) and projected to the catalog pipeline row. 'auto' (the default) runs on schedule fires and in batch/node group runs; 'manual' reserves a working flow for direct triggers; 'disabled' deactivates a retired one (a retired source, a run-once replay) with the same exclusions and a visible 'disabled' badge. A node-scoped run can opt into includeAll ('find all') to replay non-auto descendants deliberately, and naming a flow directly always runs it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs (FlowDocument.Mode, parsed by YamlDocumentParts.ParseExecutionMode)",
+      "validation": "Unknown value fails to load: \"<source>: 'mode' has unknown value '<value>'. Allowed: auto, manual, disabled.\""
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow executes, schedules, and records run history exactly like a production one, but it never generates notification events, so a pipeline under active development cannot alert email/Slack subscribers. Parsed case-insensitively by YamlDocumentParts.ParseLifecycle (src/SqlFlow.Yaml/YamlDocumentParts.cs) and projected to CatalogPipeline.Lifecycle on every catalog sync. Accepted on this orchestration document for vocabulary consistency: scm/batch documents never project as catalog pipelines, so the value has no gating effect here today.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:286 (mapped by YamlSourceControlFlowLoader.Map, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs)",
+      "validation": "Unknown value fails to load: \"<source>: 'lifecycle' has unknown value '<value>'. Allowed: production, development.\" (YamlDocumentParts.ParseLifecycle, src/SqlFlow.Yaml/YamlDocumentParts.cs)"
+    },
+    {
+      "path": "repository",
+      "type": "object",
+      "required": true,
+      "description": "Required block declaring where and how the snapshot is committed: the local git working directory, its optional remote and branch, the git credential references, and the commit author/committer identity. Mapped by MapRepository (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:105-145) into SqlFlow.Core.SourceControl.SourceControlRepository (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:43-69).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:289 (mapped at line 83)",
+      "validation": "Missing/null block: FlowValidationException \"{source}: 'repository' is required (at least 'repository.path').\" (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:107-110)."
+    },
+    {
+      "path": "repository.author",
+      "type": "object",
+      "required": false,
+      "default": "absent (both child fields fall back to their own defaults, as if author.name and author.email were both omitted)",
+      "description": "Optional container for the commit author/committer display name and email. The whole node may be null, in which case both children default independently (var author = y.Author; each of AuthorName/AuthorEmail then null-coalesces its own default). Binds to SourceControlAuthorYaml { Name, Email } (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:311-315).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:308 (mapped at line 133)"
+    },
+    {
+      "path": "repository.author.email",
+      "type": "string",
+      "required": false,
+      "default": "sqlflow@localhost",
+      "description": "The commit author's and committer's email. Blank/whitespace normalizes to the default via YamlDocumentParts.NullIfBlank (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:143). Consumed as GitWorkspaceConfig.AuthorEmail (src/SqlFlow.SourceControl/SourceControlService.cs:62) and passed to LibGit2Sharp as both the author and committer identity of the commit (new Signature(_config.AuthorName, _config.AuthorEmail, DateTimeOffset.Now), used twice in repo.Commit(message, signature, signature, ...), src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs:84-85).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:314 (mapped at line 143; model default: src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:68)"
+    },
+    {
+      "path": "repository.author.name",
+      "type": "string",
+      "required": false,
+      "default": "SQLFlow",
+      "description": "The commit author's and committer's display name, defaulted and consumed identically to repository.author.email (see that entry); YamlDocumentParts.NullIfBlank normalizes a blank value to the default (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:142).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:313 (mapped at line 142; model default: src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:65)"
+    },
+    {
+      "path": "repository.branch",
+      "type": "string",
+      "required": false,
+      "default": "main",
+      "description": "The branch the snapshot's commits land on. Blank/whitespace normalizes to the default (YamlDocumentParts.NullIfBlank, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:132). Before any snapshot file is written, LibGit2GitWorkspace.EnsureBranch lands the working tree on this branch: an existing branch is checked out, a branch that does not yet exist is created from HEAD when the repository already has commits, and in a brand-new or empty repository the unborn HEAD is pointed at it so the first commit creates the branch (src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs:125-148). A push uses the explicit refspec 'refs/heads/<branch>:refs/heads/<branch>' with no leading '+' (fast-forward only; a non-fast-forward push is rejected by the remote instead of rewriting history) (LibGit2GitWorkspace.cs:157-161).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:305 (mapped at line 132; model default: src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:54)"
+    },
+    {
+      "path": "repository.path",
+      "type": "string",
+      "required": true,
+      "description": "The local git working directory the scripted objects are written into and committed from; maps to SourceControlRepository.WorkingDirectory (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:45-47). A relative value (not rooted, and not containing '://') is resolved against the directory containing the flow file when the document is loaded for a 'run': DocumentExecutor.ResolveRelativeRepositoryPath (src/SqlFlow.Execution/DocumentExecutor.cs:454-465), invoked from ExecuteSourceControlAsync (DocumentExecutor.cs:416) - the same relative-path convention the file flow's source.location and the export flow's target path use. This resolution happens only on the 'run' code path through DocumentExecutor: plain 'validate' loads through DocumentLoader.Load, which passes an scm document through unresolved (src/SqlFlow.Execution/DocumentLoader.cs:24-29, confirmed the CLI's 'validate' case calls exactly this at Program.cs:101), so 'validate' reports the path as authored. On first use, LibGit2GitWorkspace.EnsureReady creates the directory if missing, then either clones repository.remote into it (when set) or initializes a fresh local repository (src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs:30-46).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:303 (mapped at lines 112-113)",
+      "validation": "Missing, null, empty, or all-whitespace: FlowValidationException \"{source}: 'repository.path' is required (the local git working directory).\" (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:112-113). A LibGit2Sharp failure while preparing the repository at run time is wrapped as SqlFlowException \"Could not prepare the repository at '<path>': <message>\" (src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs:53-56, 176-177)."
+    },
+    {
+      "path": "repository.remote",
+      "type": "string",
+      "required": false,
+      "default": "null (history stays purely local - still a real git repository, just never cloned from or pushed to anywhere)",
+      "description": "The git remote to clone from on first use and push commits to: an HTTPS BitBucket or GitHub repository URL per the type's own doc comment (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:38-42), though no URL-format validation is actually performed by the loader - any non-blank string is accepted (YamlDocumentParts.NullIfBlank only). Maps to SourceControlRepository.Remote (SourceControlFlow.cs:49-51). When set, LibGit2GitWorkspace clones it if the working directory is not already a valid repository (src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs:35-42), otherwise registers it as the 'origin' remote if one is not already configured (EnsureRemote, LibGit2GitWorkspace.cs:108-120). A commit is pushed to it only when a remote is set AND the run's push option is enabled (GitWorkspaceConfig.Push, default true, flipped by the CLI's '--no-push' flag - a run option, not a YAML key), using credentials built from repository.username/repository.secret.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:304 (mapped at line 115)",
+      "validation": "Set without repository.secret: FlowValidationException \"{source}: 'repository.remote' is set but 'repository.secret' is not. Pushing needs a credential; set 'repository.secret' to a ${env:...} reference (a BitBucket app password or a GitHub token), or remove 'repository.remote' to keep the history local.\" (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:124-130)."
+    },
+    {
+      "path": "repository.secret",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "appliesWhen": "repository.remote is set (BuildCredentialsAsync only resolves it when a remote is configured; local-only history never resolves any credential)",
+      "description": "A whole ${...} reference to the git credential (a BitBucket app password or a GitHub personal access token); maps to SourceControlRepository.Secret (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:60-62). This is the secretless contract for git push credentials: a literal value is rejected at parse time (see validation), the same rule connection strings follow elsewhere. At run time SourceControlService.BuildCredentialsAsync resolves it through ISecretResolver only when repository.Remote is also set (src/SqlFlow.SourceControl/SourceControlService.cs:117-135) and hands it to LibGit2GitWorkspace as the HTTPS Basic-auth password for both clone and push (UsernamePasswordCredentials, src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs:163-174).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:307 (mapped at line 117; checked at line 121)",
+      "validation": "Required whenever repository.remote is set (see repository.remote's validation, whose message names this field). A non-null value that is not a whole ${...} token (must start with '${' and end with '}' after trimming - the scheme inside, e.g. env: vs keyvault:, is not further checked at parse time): FlowValidationException \"{source}: 'repository.secret' must be a ${env:NAME} or ${keyvault:vault/secret} reference, never a literal. Put the value in the git-ignored .sqlflow/env file or your secret store.\" (RequireReferenceNotLiteral, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:263-279, called at line 121)."
+    },
+    {
+      "path": "repository.username",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "appliesWhen": "repository.remote is set (only resolved when a remote is configured; ignored for local-only history)",
+      "description": "A whole ${...} reference to the git username; maps to SourceControlRepository.Username (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:56-58). Optional even when pushing: a token-only credential is valid, since BuildCredentialsAsync resolves username only if it is non-null (src/SqlFlow.SourceControl/SourceControlService.cs:127-129). GitHub accepts any non-empty username alongside a personal-access-token secret; when this resolves to null or blank, LibGit2GitWorkspace substitutes the placeholder 'x-access-token' at push/clone time (CredentialsProvider, src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs:163-174); BitBucket needs the real account username.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:306 (mapped at line 116; checked at line 122)",
+      "validation": "A non-null value that is not a whole ${...} token: FlowValidationException \"{source}: 'repository.username' must be a ${env:NAME} or ${keyvault:vault/secret} reference, never a literal. Put the value in the git-ignored .sqlflow/env file or your secret store.\" (RequireReferenceNotLiteral, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:263-279, called at line 122)."
+    },
+    {
+      "path": "schedule",
+      "type": "object|string|array",
+      "required": false,
+      "default": "none",
+      "description": "The document-envelope schedule, identical to every other flow kind: parsed by YamlDocumentLoader before the flowType dispatch (src/SqlFlow.Yaml/YamlDocumentLoader.cs), carried on the projected pipeline header, mirrored into the catalog by the estate sync, and fired by the control plane's SchedulerService onto the normal run queue. This is how a snapshot runs unattended: a nightly cron on the flow, or a reference joining a named schedule. A source-control flow is deliberately excluded from the lineage graph, so it never joins a wave; a schedule that names it fires it directly.",
+      "definedIn": "src/SqlFlow.Core/ScheduleSpec.cs"
+    },
+    {
+      "path": "scripting",
+      "type": "object",
+      "required": false,
+      "default": "new SourceControlScripting() - every category in SourceControlObjectTypes.All scripted schema-only, no include/exclude filter, no table row data, and the engine staging schema excluded (SourceControlObjectTypes.DefaultExcludedSchemas)",
+      "description": "Optional block controlling what the SMO scripter captures: the object-category allowlist/denylist, the schemas skipped whole, and which tables' row data to include. Binds to SourceControlScriptingYaml { Data, Include, Exclude, ExcludeSchemas } and is mapped, with validation, to SqlFlow.Core.SourceControl.SourceControlScripting by MapScripting; an absent block still produces the all-categories, schema-only default (with the staging schema excluded) rather than skipping scripting entirely (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:148-172).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:290 (mapped at line 84)"
+    },
+    {
+      "path": "scripting.data",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty; no table's row data is scripted, only schema)",
+      "description": "Tables whose row data is scripted as INSERT statements in addition to their schema (the legacy ScriptDataForTables), intended for small reference/seed tables worth versioning. Normalized by NormalizeDataTables (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:168-201) into a de-duplicated list of canonical 'schema.table' strings before reaching SourceControlScripting.DataTables (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:79-81). At run time SmoDatabaseScripter.ScriptData only runs at all when this list is non-empty (src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:115-118); it matches each canonical name against '{table.Schema}.{table.Name}' case-insensitively, scripts matching tables' rows as sorted INSERT statements (wrapped in SET IDENTITY_INSERT ON/OFF when the table has an identity column, SmoDatabaseScripter.cs:205-219), and writes them to the distinct 'Data' folder (SourceControlObjectTypes.DataFolder) rather than the schema-only 'Table' folder for the same object. This list is independent of scripting.include/scripting.exclude: 'Data' is not one of the 19 recognized categories those two keys validate against, so row-data capture can only be toggled per table here.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:319 (mapped at line 154; NormalizeDataTables at lines 168-201)",
+      "validation": "Blank entries are silently skipped (YamlDocumentParts.NullIfBlank returns null, loop continues, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:179-183). An entry that, after splitting on dots outside '[...]' brackets and trimming each part, has no non-empty part left - e.g. '.', '..', or '[]' - throws FlowValidationException \"{source}: 'scripting.data' has an empty table name.\" (YamlSourceControlFlowLoader.cs:186-189). A normalized name matching no user table in the database produces a run-time warning rather than a failure: \"scripting.data names '<name>', which is not a user table in <database>; skipped.\" (src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:199-201)."
+    },
+    {
+      "path": "scripting.data[]",
+      "type": "string",
+      "required": false,
+      "description": "One data-table entry, in any of the tolerated qualified-name spellings: unqualified ('Config' - schema defaults to 'dbo'), two-part ('ref.Calendar'), three-part with the leading database name ignored ('Warehouse.ref.Calendar' keeps only the rightmost two parts), and bracketed variants of all three ('[ref].[Calendar]', including bracketed parts containing spaces). Splitting is bracket-aware (a dot inside '[...]' does not split) and each resulting part is trimmed, so surrounding whitespace around an unqualified or qualified name is tolerated (SplitQualifiedName, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:234-261). Entries are de-duplicated case-insensitively after normalization, so 'dbo.Config', '[DBO].[CONFIG]', and 'Config' all collapse to one entry and only the first survives.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:319"
+    },
+    {
+      "path": "scripting.exclude",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (nothing excluded)",
+      "description": "Object categories to skip, applied after scripting.include (an allowlist is computed first, then this denylist removes categories from it): SelectedCategories keeps a category when '(include.Count == 0 || include.Contains(folder)) && !exclude.Contains(folder)' (src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:237-246). Maps to SourceControlScripting.ExcludeTypes (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:87-88) via ValidateTypes (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:203-229), shared with scripting.include.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:321 (mapped at line 156)",
+      "validation": "Blank entries are silently skipped (YamlDocumentParts.NullIfBlank, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:213-217). Any entry that is not (case-insensitively) one of the 19 names in SourceControlObjectTypes.All: FlowValidationException \"{source}: 'scripting.exclude' has unknown object type '<value>'. Allowed: Schema, UserDefinedDataType, UserDefinedType, XmlSchemaCollection, Sequence, PartitionFunction, PartitionScheme, Table, View, StoredProcedure, UserDefinedFunction, UserDefinedAggregate, UserDefinedTableType, Synonym, Rule, Default, DatabaseDdlTrigger, FullTextCatalog, SecurityPolicy.\" (YamlSourceControlFlowLoader.cs:219-223). Unlike scripting.data's name parts, an entry here is matched WITHOUT trimming (SourceControlObjectTypes.IsKnown is a plain HashSet.Contains with OrdinalIgnoreCase and no whitespace normalization, src/SqlFlow.Core/SourceControl/SourceControlObjectTypes.cs:40-43), so a padded value like ' Table ' fails as unknown even though 'Table' alone is valid."
+    },
+    {
+      "path": "scripting.exclude[]",
+      "type": "string",
+      "required": false,
+      "enumValues": [
+        "Schema",
+        "UserDefinedDataType",
+        "UserDefinedType",
+        "XmlSchemaCollection",
+        "Sequence",
+        "PartitionFunction",
+        "PartitionScheme",
+        "Table",
+        "View",
+        "StoredProcedure",
+        "UserDefinedFunction",
+        "UserDefinedAggregate",
+        "UserDefinedTableType",
+        "Synonym",
+        "Rule",
+        "Default",
+        "DatabaseDdlTrigger",
+        "FullTextCatalog",
+        "SecurityPolicy"
+      ],
+      "description": "One object category to exclude, compared case-insensitively (but not trimmed) against SourceControlObjectTypes.All; the entry's original casing is preserved when it round-trips onto SourceControlScripting.ExcludeTypes (only the membership check is case-insensitive) - only 'membership' is folded, matching how the scripter itself re-wraps the list case-insensitively (SmoDatabaseScripter.SelectedCategories, src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:239-240). The 'Schema' category additionally excludes well-known system schemas at scripting time regardless of this filter (dbo, sys, INFORMATION_SCHEMA, guest, and the fixed database roles: SmoDatabaseScripter.cs:250, 271-276, 278), and 'Table'/'View'/'StoredProcedure'/'UserDefinedFunction' each exclude system objects of their own kind (SmoDatabaseScripter.cs:257-260).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:321; enum source: src/SqlFlow.Core/SourceControl/SourceControlObjectTypes.cs:17-37"
+    },
+    {
+      "path": "scripting.excludeSchemas",
+      "type": "list<string>",
+      "required": false,
+      "default": "[\"raw\"] - SourceControlObjectTypes.DefaultExcludedSchemas, the engine staging schema (StagingConventions.SchemaName, src/SqlFlow.Core/Ingestion/StagingConventions.cs)",
+      "description": "Schemas skipped whole: the CREATE SCHEMA script itself and every schema-qualified object in them, applied before the category walk and independently of scripting.include/exclude (SmoDatabaseScripter.IsInExcludedSchema, src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:321-336, applied at line 156). Maps to SourceControlScripting.ExcludeSchemas (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:100-108). The default exists because the staging schema holds each flow's canonical work tables ([raw].[<targetSchema>_<targetTable>_<flowId>], IngestionFlowRunner.StagingSchemaName), which every run rebuilds and drops: versioning them is churn over objects that are not part of the database's definition, and one dropped between SMO enumerating it and scripting it fails the run with \"Invalid object name 'raw.<table>'\". An authored list REPLACES the default rather than adding to it; an explicitly empty list (excludeSchemas: []) scripts every schema, including staging (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:167-171). A table named by scripting.data that sits in an excluded schema is skipped with the warning \"scripting.data names '<schema>.<table>', which is in the excluded schema '<schema>'; skipped.\" (SmoDatabaseScripter.ScriptData).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:356 (List<string>? ExcludeSchemas, mapped at 167-171)",
+      "validation": "No membership check: any name is accepted, since a schema is whatever the target database calls it. Blank entries are dropped, each remaining entry is trimmed and stripped of a single surrounding bracket pair (SplitQualifiedName, so [raw] equals raw), and duplicates are removed case-insensitively with the first spelling kept (NormalizeSchemas, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:176-197). The scripter compares schema names with StringComparer.OrdinalIgnoreCase and trims again defensively (SmoDatabaseScripter.cs:107-109)."
+    },
+    {
+      "path": "scripting.excludeSchemas[]",
+      "type": "string",
+      "required": false,
+      "description": "One schema name to skip, matched case-insensitively against the object's schema (and, for the Schema category, against the schema's own name, so excluding a schema also keeps its CREATE SCHEMA out of the snapshot). An object that belongs to no schema (a database DDL trigger) is never excluded this way. System schemas are already excluded from the Schema category regardless of this list (dbo, sys, INFORMATION_SCHEMA, guest, and the fixed database roles), so naming one here only affects that schema's objects.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:356; default value: src/SqlFlow.Core/SourceControl/SourceControlObjectTypes.cs:40-43"
+    },
+    {
+      "path": "scripting.parallelism",
+      "type": "integer",
+      "required": false,
+      "default": "8 (SourceControlScripting.DefaultParallelism, src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:93)",
+      "description": "How many connections script objects at the same time. Maps to SourceControlScripting.Parallelism (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:120-124) and is handed to the scripter's connection pool (SmoDatabaseScripter.ScripterPool, src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:80). It exists because scripting one object with full DRI, indexes, triggers, and extended properties costs SMO dozens of small round trips: the cost is round-trip latency, not server work, so against a remote instance a single table takes about a second of wall-clock while the server sits idle, and a few hundred objects walked on one connection take many minutes with the trace apparently frozen. Each lane is an independent connection with its own SMO Server and Scripter (SmoDatabaseScripter.ScriptingLane) because SMO objects are not thread-safe, though separate instances on separate connections are; enumeration stays on the single lead connection and each lane scripts by Urn, which resolves against whichever server it is handed. The snapshot is therefore byte-identical whatever this is set to (objects are re-sorted by relative path and warnings ordinally, so nothing depends on which lane finished first) and only the wall-clock and the connection count on the scripted server change. A category with fewer objects than lanes uses only as many lanes as it has objects, and a lane opens its connection on the first object it is handed, so a narrow scripting.include never opens connections it does not use. Lanes are reused across categories, so a snapshot pays the connect cost once per lane rather than once per category. Set it to 1 to walk the database on a single connection.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:378 (mapped at line 164 via ValidateParallelism, lines 178-192)",
+      "validation": "An absent value takes the default. An authored value below 1 or above SourceControlScripting.MaximumParallelism (32, src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:97) fails at parse time: FlowValidationException \"{source}: 'scripting.parallelism' must be between 1 and 32, but was <value>.\" (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:185-190). A non-integer scalar fails in YamlDotNet's deserializer and surfaces as \"{source}: invalid YAML - ...\"."
+    },
+    {
+      "path": "scripting.include",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (no allowlist restriction: every category is a candidate, subject only to scripting.exclude)",
+      "description": "If non-empty, only the named object categories are scripted (an allowlist); otherwise every supported category is (SmoDatabaseScripter.SelectedCategories, src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:237-246). Maps to SourceControlScripting.IncludeTypes (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:83-85) via the same ValidateTypes helper as scripting.exclude (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:203-229).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:320 (mapped at line 155)",
+      "validation": "Same rules as scripting.exclude: blank entries are dropped silently; an entry that is not one of the 19 SourceControlObjectTypes.All names (compared case-insensitively, without trimming) throws FlowValidationException \"{source}: 'scripting.include' has unknown object type '<value>'. Allowed: Schema, UserDefinedDataType, UserDefinedType, XmlSchemaCollection, Sequence, PartitionFunction, PartitionScheme, Table, View, StoredProcedure, UserDefinedFunction, UserDefinedAggregate, UserDefinedTableType, Synonym, Rule, Default, DatabaseDdlTrigger, FullTextCatalog, SecurityPolicy.\" (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:219-223). The plural 'Tables' is not a valid entry; categories are singular."
+    },
+    {
+      "path": "scripting.include[]",
+      "type": "string",
+      "required": false,
+      "enumValues": [
+        "Schema",
+        "UserDefinedDataType",
+        "UserDefinedType",
+        "XmlSchemaCollection",
+        "Sequence",
+        "PartitionFunction",
+        "PartitionScheme",
+        "Table",
+        "View",
+        "StoredProcedure",
+        "UserDefinedFunction",
+        "UserDefinedAggregate",
+        "UserDefinedTableType",
+        "Synonym",
+        "Rule",
+        "Default",
+        "DatabaseDdlTrigger",
+        "FullTextCatalog",
+        "SecurityPolicy"
+      ],
+      "description": "One object category to include, with the same case-insensitive-but-not-trimmed matching and casing preservation as scripting.exclude[] (see that entry for the system-schema/system-object caveats on 'Schema'/'Table'/'View'/'StoredProcedure'/'UserDefinedFunction').",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:320; enum source: src/SqlFlow.Core/SourceControl/SourceControlObjectTypes.cs:17-37"
+    },
+    {
+      "path": "source",
+      "type": "object",
+      "required": true,
+      "description": "Required descriptor of the SQL Server database to script: exactly one of source.server (a name declared under connections:) or source.connection (an inline reference, which synthesizes a connection named 'source'), plus optional source.provider and source.database. Binds to the private SourceControlSourceYaml and is consumed only inside YamlSourceControlFlowLoader.Map (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:76-81); there is no separate public model type for it, its fields land directly on SourceControlFlow.Server/Database (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:21-30).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:288 (required check at line 76)",
+      "validation": "Missing/null block: FlowValidationException \"{source}: 'source' is required.\" (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:76)."
+    },
+    {
+      "path": "source.connection",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.server is not set (exactly one of source.server or source.connection is required)",
+      "description": "An inline connection string or a ${env:...}/${keyvault:...} reference for the database to script, used when the connection is not already declared under connections:. ResolveEndpointConnection (src/SqlFlow.Yaml/YamlDocumentParts.cs:112-154) registers it as a new connection under the fixed synthetic name 'source' (YamlSourceControlFlowLoader.SourceConnectionName, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:32, used at line 78), so the flow addresses it as '@source' (SourceControlFlow.ConnectionReference, src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:24-26) exactly as if it had been declared 'connections: { source: <value> }'. The trimmed value is resolved at run time by SourceControlService through the same ISecretResolver every connection reference goes through (src/SqlFlow.SourceControl/SourceControlService.cs:49-51); a literal that looks like it embeds a credential (password=, pwd=, secret=, etc.) only produces a non-fatal validate/run warning (SecretHygiene), unlike repository.username/repository.secret it is never rejected at parse time for being a literal.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:296 (resolved at lines 77-78 via YamlDocumentParts.ResolveEndpointConnection)",
+      "validation": "Both source.server and source.connection set: FlowValidationException \"{source}: 'source' sets both 'server' and 'connection'; use exactly one.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:121-122). Neither set: \"{source}: 'source' needs a connection. Set 'source.connection' to a connection string or a ${...} reference, or 'source.server' to a name declared under 'connections:'.\" (YamlDocumentParts.cs:139-141). If connections: already declares an entry named 'source': \"{source}: 'source.connection' is set, but 'connections:' already declares 'source'. Either rename that connection or use 'source.server: source'.\" (YamlDocumentParts.cs:146-148). The resulting synthesized connection is still subject to RequireSqlServerConnection (see source.server)."
+    },
+    {
+      "path": "source.database",
+      "type": "string",
+      "required": false,
+      "default": "null (the connection's default catalog, resolved at run time)",
+      "description": "The database to script; maps to SourceControlFlow.Database (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:28-30). Blank/whitespace normalizes to null (YamlDocumentParts.NullIfBlank, src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:93). When null, SmoDatabaseScripter.Script resolves the database from the connection string's 'Initial Catalog' if present, else the opened ServerConnection's own database name (src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:91-96). Scripted objects land under a folder named for whichever database name is resolved (SmoDatabaseScripter.cs:221-225; src/SqlFlow.SourceControl/SnapshotWriter.cs:32-33), so one repository can hold side-by-side snapshots of several databases as long as each scm flow's PathScope (the resolved database name) differs (src/SqlFlow.SourceControl/SourceControlService.cs:65).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:298 (mapped at line 93)",
+      "validation": "Run time only, not checked at parse time: if neither this value nor a resolvable connection-string/server default database exists, SqlFlowException \"The source-control connection has no default database; set 'source.database' to the database to script.\" (src/SqlFlow.SourceControl/SmoDatabaseScripter.cs:95-96). A named database the login cannot reach: SqlFlowException \"Database '<name>' was not found on the server, or the login cannot access it.\" (SmoDatabaseScripter.cs:98-100)."
+    },
+    {
+      "path": "source.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "source.connection is set (ignored entirely when source.server is used instead - this key is then simply never read)",
+      "description": "The provider of an inline source.connection, parsed by the same ParseProvider used for connections.<name>.provider (see that entry for the exact matching rules and accepted synonyms, e.g. 'sqlserver' for 'mssql'). In practice this must resolve to mssql or azdb: whatever it produces, the connection ends up subject to the same RequireSqlServerConnection guard as source.server, so authoring 'mysql'/'postgres'/'oracle' here parses fine but the flow still fails immediately afterward for not being SQL Server.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:297 (passed to YamlDocumentParts.ResolveEndpointConnection at line 78; consumed only at YamlDocumentParts.cs:151)",
+      "validation": "Unrecognized token: FlowValidationException \"{source}: 'source.provider' has unknown provider '<value>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:105-106, field built as $\"{section}.provider\" with section=\"source\" at YamlDocumentParts.cs:151). See source.server's validation for the SQL-Server-only requirement enforced on the resulting connection afterward."
+    },
+    {
+      "path": "source.server",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.connection is not set (exactly one of source.server or source.connection is required)",
+      "description": "The name of a connection declared under connections: to use as the database to script; resolved by ResolveEndpointConnection (src/SqlFlow.Yaml/YamlDocumentParts.cs:112-154) into SourceControlFlow.Server (src/SqlFlow.Core/SourceControl/SourceControlFlow.cs:21-22), which the flow then addresses as '@<server>' via the computed ConnectionReference property (SourceControlFlow.cs:24-26) when SourceControlService resolves it with ConnectionRole.Source (src/SqlFlow.SourceControl/SourceControlService.cs:49-51). SMO scripts SQL Server only, so whichever connection this (or a synthesized source.connection) resolves to must come back MSSQL or AZDB; a foreign provider (mysql/postgres/oracle) is rejected at parse time via RequireSqlServerConnection rather than failing deep inside a run (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:81).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs:295 (resolved at lines 77-78)",
+      "validation": "Both source.server and source.connection set, or neither set: see source.connection's validation for the exact messages. A name not declared under connections:: FlowValidationException \"{source}: 'source.server' references '<name>', which is not declared under 'connections:'.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:130-131). Once resolved (via either source.server or source.connection), a non-SQL-Server connection: FlowValidationException \"{source}: the source connection '<name>' is '<kind>'; a source-control flow's source must be SQL Server (mssql or azdb).\" where <kind> is one of MSSQL, AZDB, MySQL, PostgreSQL, Oracle (RequireSqlServerConnection, src/SqlFlow.Yaml/YamlDocumentParts.cs:168-177, called at YamlSourceControlFlowLoader.cs:81)."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+# Landing flow: orders.csv -> raw string pre table + typed transformation view.
+# The transform post-process refreshes demo.vOrders_Pre; the downstream ingestion flow
+# (20-ing-orders) reads THE VIEW, which is what connects the two flows in lineage.
+name: demo-land-orders
+source:
+  type: csv
+  location: data/orders.csv
+target:
+  connection: ${env:SQLFLOW_DEMO_DB}
+  schema: demo
+  table: Orders_Pre
+transform:
+  inferTypes: true
+  columns:
+    - name: vehicle_type
+      expr: "UPPER(CAST(@ColName AS varchar(50)))"
+      as: vehicle_type_clean
+      type: varchar(50)

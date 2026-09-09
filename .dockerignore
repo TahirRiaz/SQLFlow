@@ -1,0 +1,32 @@
+# Keep the build context small and reproducible: never copy build outputs, the git history, or IDE state into the
+# image build (the publish rebuilds from source inside the SDK stage).
+**/bin/
+**/obj/
+**/.vs/
+.git/
+.github/
+**/*.user
+artifacts/
+TestResults/
+**/.sqlflow/
+# The Rust workspace's build output (gigabytes once built locally); images rebuild from source.
+tools/target/
+**/node_modules/
+docs/
+# The MCP image embeds the indexed corpora (manifest, reference pages, key census, and the internals
+# wiki) at compile time; they are the parts of docs/ that belong in the context (see Dockerfile.mcp).
+!docs/reference/
+!docs/wiki/
+*.md
+# The GUI builds in its own image (gui/Dockerfile with the gui/ context); keep its trees out of the .NET context.
+gui/node_modules/
+gui/dist/
+gui/e2e/
+gui/playwright-report/
+gui/test-results/
+gui/.tsbuild/
+
+# Trees no image needs, kept out of the context because EVERY root-context build (control plane, worker, MCP)
+# tars the whole repository before the daemon applies these rules: 534 MB of upload and scan per build, for
+# files no Dockerfile reads. Excluding them is what keeps a build submitting in seconds rather than minutes.
+data/

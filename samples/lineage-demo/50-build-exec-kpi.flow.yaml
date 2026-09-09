@@ -1,0 +1,10 @@
+# Downstream fact build 2: demo.usp_BuildExecKpi reads demo.Fact_CountryRollup (the output of the
+# previous sp) and writes demo.Kpi_Executive. This is the sp -> sp link: it binds after
+# demo-build-country-rollup, which itself binds after demo-build-order-fact.
+flowType: sp
+name: demo-build-exec-kpi
+connections:
+  dwh: ${env:SQLFLOW_DEMO_DB}
+procedure:
+  server: dwh
+  object: SqlFlowCatalogTests.demo.usp_BuildExecKpi

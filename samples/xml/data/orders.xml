@@ -1,0 +1,12 @@
+<orders>
+  <order id="1">
+    <customer><name>Ann</name><city>Oslo</city></customer>
+    <total>19.90</total>
+    <paid>true</paid>
+  </order>
+  <order id="2">
+    <customer><name>Bob</name><city>Bergen</city></customer>
+    <total>42.00</total>
+    <paid>false</paid>
+  </order>
+</orders>

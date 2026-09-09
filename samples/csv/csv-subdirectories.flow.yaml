@@ -1,0 +1,13 @@
+# Recurse into sub-directories: with searchSubDirectories the file pattern is matched in
+# the location and all folders beneath it.
+name: Csv_SubDirectories
+source:
+  type: csv
+  location: ./data/regions
+  options:
+    srcFile: "*.csv"
+    searchSubDirectories: "true"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_SubDirectories

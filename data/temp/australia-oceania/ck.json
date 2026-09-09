@@ -1,0 +1,378 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>British sea captain William KEELING discovered the Cocos (Keeling) Islands in 1609, and they were named for their coconut trees in 1622. Some maps began referring to them as the Keeling Islands in 1703. In 1825, Scottish trader John CLUNIES-ROSS was trying to get to Christmas Island but was blown off course and landed on Cocos (Keeling) Islands. The next year, a British trader hired CLUNIES-ROSS's brother to bring slaves and a harem of Malay women to create the first permanent settlement on the island. By the 1830s, the Clunies-Ross family had firmly established themselves as the leaders of the islands, and they ruled Cocos (Keeling) Islands in a feudal style until 1978.<br><br>The UK annexed the islands in 1857 and administered them from Ceylon after 1878 and from Singapore after 1886. The Cocos (Keeling) Islands hosted a cable relaying station and was attacked by the Germans in World War I. The Japanese similarly attacked the islands in World War II. The UK transferred the islands to Australia in 1955, when they were officially named the Cocos (Keeling) Islands, and in 1978, Australia bought all the land held by the Clunies-Ross family, ending their control of the islands. In a referendum in 1984, most islanders voted to integrate with Australia, and Western Australian laws have applied on the islands since 1992.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southeastern Asia, group of islands in the Indian Ocean, southwest of Indonesia, about halfway between Australia and Sri Lanka"
+    },
+    "Geographic coordinates": {
+      "text": "12 30 S, 96 50 E"
+    },
+    "Map references": {
+      "text": "Southeast Asia"
+    },
+    "Area": {
+      "total ": {
+        "text": "14 sq km"
+      },
+      "land": {
+        "text": "14 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      },
+      "note": "<strong>note:</strong> includes the two main islands of West Island and Home Island"
+    },
+    "Area - comparative": {
+      "text": "about 24 times the size of The Mall in Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "26 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive fishing zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical with high humidity, moderated by the southeast trade winds for about nine months of the year"
+    },
+    "Terrain": {
+      "text": "flat, low-lying coral atolls"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "South Point on South Island 9 m"
+      },
+      "lowest point": {
+        "text": "Indian Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "fish"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "100% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "NA"
+    },
+    "Population distribution": {
+      "text": "only Home Island and West Island are populated"
+    },
+    "Natural hazards": {
+      "text": "cyclone season is October to April"
+    },
+    "Geography - note": {
+      "text": "<strong>note: </strong>there are 27 coral islands in the group; apart from North Keeling Island, which lies 30 km north of the main group, the islands form a horseshoe-shaped atoll surrounding a lagoon; North Keeling Island was declared a national park in 1995 and is administered by Parks Australia; the population on the two inhabited islands generally is split between the ethnic Europeans on West Island and the ethnic Malays on Home Island; the islands are thickly covered with coconut palms and other vegetation"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "593"
+      },
+      "male": {
+        "text": "301"
+      },
+      "female": {
+        "text": "292 (2021 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Cocos Islander(s)"
+      },
+      "adjective": {
+        "text": "Cocos Islander"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Europeans, Cocos Malays"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Malay (Cocos dialect) 68.8%, English 22.3%, unspecified 8.9%; note - data represent language spoken at home (2016 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Buku Fakta Dunia, sumber yang diperlukan untuk maklumat asas. (Malay)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Muslim (predominantly Sunni) 75%, Anglican 3.5%, Roman Catholic 2.2%, none 12.9%, unspecified 6.3% (2016 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "21.2%"
+      },
+      "15-64 years": {
+        "text": "61.5%"
+      },
+      "65 years and over": {
+        "text": "17.3% (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "40 years (2021 est.)"
+      }
+    },
+    "Death rate": {
+      "text": "8.89 deaths/1,000 population (2021 est.)"
+    },
+    "Population distribution": {
+      "text": "only Home Island and West Island are populated"
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "freshwater resources are limited to rainwater accumulations in natural underground reservoirs; illegal fishing a concern"
+    },
+    "Climate": {
+      "text": "tropical with high humidity, moderated by the southeast trade winds for about nine months of the year"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "100% (2018 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Territory of Cocos (Keeling) Islands"
+      },
+      "conventional short form": {
+        "text": "Cocos (Keeling) Islands"
+      },
+      "etymology": {
+        "text": "the name refers to the abundant coconut trees on the islands and to English Captain William KEELING, the first European to sight the islands in 1609"
+      }
+    },
+    "Government type": {
+      "text": "non-self-governing overseas territory of Australia"
+    },
+    "Dependency status": {
+      "text": "non-self-governing territory of Australia; administered from Canberra by the Department of Infrastructure, Transport, Cities &amp; Regional Development"
+    },
+    "Capital": {
+      "name": {
+        "text": "West Island"
+      },
+      "geographic coordinates": {
+        "text": "12 10 S, 96 50 E"
+      },
+      "time difference": {
+        "text": "UTC+6.5 (11.5 hours ahead of Washington, DC, during Standard Time)"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none (territory of Australia)"
+    },
+    "Independence": {
+      "text": "none (territory of Australia)"
+    },
+    "National holiday": {
+      "text": "Australia Day (commemorates the arrival of the First Fleet of Australian settlers), 26 January (1788)"
+    },
+    "Legal system": {
+      "text": "common law based on the Australian model"
+    },
+    "Constitution": {
+      "history": {
+        "text": "23 November 1955 (Cocos (Keeling) Islands Act 1955)"
+      },
+      "amendments": {
+        "text": "amended many times, last in 2020"
+      }
+    },
+    "Citizenship": {
+      "text": "see Australia"
+    },
+    "Suffrage": {
+      "text": "18 years of age"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King CHARLES III (since 8 September 2022); represented by Governor-General of the Commonwealth of Australia General David HURLEY (since 1 July 2019)"
+      },
+      "head of government": {
+        "text": "Administrator Farzian ZAINAL (since 11 May 2023)"
+      },
+      "cabinet": {
+        "text": "NA"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; governor general appointed by the monarch on the recommendation of the Australian prime minister; administrator appointed by the governor-general for a 2-year term and represents the monarch and Australia"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Cocos (Keeling) Islands Shire Council"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "7 (directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "partial renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "10/21/2023"
+      },
+      "percentage of women in chamber": {
+        "text": "16.7%"
+      },
+      "expected date of next election": {
+        "text": "October 2025"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "under the terms of the Territorial Law Reform Act 1992, Western Australia provides court services as needed for the island including the Supreme Court and subordinate courts (District Court, Magistrate Court, Family Court, Children's Court, and Coroners' Court)"
+      }
+    },
+    "Political parties": {
+      "text": "none"
+    },
+    "International organization participation": {
+      "text": "none"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (territory of Australia)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (territory of Australia)"
+      }
+    },
+    "Flag description": {
+      "text": "the flag of Australia is used"
+    },
+    "National anthem": {
+      "text": "<p><strong>note:</strong> as a territory of Australia, \"Advance Australia Fair\" remains official as the national anthem, while \"God Save the King\" serves as the royal anthem (see Australia)</p>"
+    }
+  },
+  "Economy": {
+    "Agricultural products": {
+      "text": "vegetables, bananas, pawpaws, coconuts"
+    },
+    "Industries": {
+      "text": "copra products, tourism"
+    },
+    "Exports - partners": {
+      "text": "US 45%, UK 12%, France 7%, Canada 6%, Poland 5% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "integrated circuits, vaccines and cultures, furniture, carbon batteries, rubber gloves (2021)"
+    },
+    "Imports - partners": {
+      "text": "Australia 75%, US 18%, Netherlands 2%, UK 2%, Turkey 1% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "gold, x-ray equipment, cars, prefabricated buildings, packaged medicines (2019)"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Australian dollars (AUD) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "1.505 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "1.442 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "1.331 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "1.453 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "1.439 (2019 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "telephone service is part of the Australian network; an operational local mobile-cellular network available; wireless Internet connectivity available"
+      },
+      "domestic": {
+        "text": "local area code - 08"
+      },
+      "international": {
+        "text": "international code - 61 8; telephone, telex, and facsimile communications with Australia and elsewhere via satellite; satellite earth station - 1 (Intelsat)"
+      }
+    },
+    "Broadcast media": {
+      "text": "1 local radio station staffed by community volunteers; satellite broadcasts of several Australian radio and TV stations available (2017)"
+    },
+    "Internet country code": {
+      "text": ".cc"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "13.4% (2021 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "Airports": {
+      "text": "1 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "22 km"
+      },
+      "paved": {
+        "text": "10 km"
+      },
+      "unpaved": {
+        "text": "12 km (2007)"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of Australia"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

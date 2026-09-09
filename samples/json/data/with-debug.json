@@ -1,0 +1,4 @@
+[
+  { "id": 1, "name": "Ann", "debug": { "trace": "abc-123", "ms": 12 } },
+  { "id": 2, "name": "Bob", "debug": { "trace": "def-456", "ms": 7 } }
+]

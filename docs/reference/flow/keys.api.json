@@ -1,0 +1,1054 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "api",
+  "generatedFrom": "source code: src/SqlFlow.Yaml/YamlAcquireFlowLoader.cs, src/SqlFlow.Core/Acquire/AcquireFlow.cs, and src/SqlFlow.Acquire (the engine)",
+  "naming": "The loader builds its IDeserializer with CamelCaseNamingConvention and IgnoreUnmatchedProperties, so a C# PascalCase property binds to the camelCase YAML key. Dictionary keys (headers, query, bodyFields, params, options) bind verbatim. Enum-like values (transport, auth.type, bodyKind, pagination.strategy, iterate kind/granularity, landing.compression, incremental.source) are parsed case-insensitively with '-' and '_' stripped before matching (YamlAcquireFlowLoader.ParseEnum), so snake_case, kebab-case, and PascalCase spellings are all accepted.",
+  "forms": "An api flow declares either ONE endpoint (the single form: source.request + a top-level landing) or SEVERAL endpoints (the multi-item form: an items[] list, each entry carrying its own request/pagination/iterate/landing over the shared source connection envelope). Exactly one form is allowed. In the multi-item form, source holds only the shared envelope (transport/baseUrl/auth/reliability/options): putting request/pagination/iterate on source, or a top-level landing, alongside items is a validation error, as is combining items with incremental (the run watermark is one value per run, so multi-item flows express incrementality through each item's date-window iterate). One multi-item flow is one pipeline row that lands each item to its own raw path, so a single acquisition can feed several downstream file/pre flows and lineage stays intact.",
+  "keyCount": 121,
+  "keys": [
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "description": "The flow's name and stable identity: FlowIdentity.FromName(name) derives the FlowId every run, log, and catalog row joins on, so renaming a flow yields a new identity by design. Also the run-history folder name under .sqlflow/runs/, where the incremental watermark is read back from.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "mode",
+      "type": "enum(auto|manual|disabled)",
+      "required": false,
+      "default": "auto",
+      "enumValues": ["auto", "manual", "disabled"],
+      "description": "The flow's execution mode, read at the document envelope (YamlDocumentLoader's probe, FlowDocument.Mode) and projected to the catalog pipeline row. 'auto' (the default) runs on schedule fires and in batch/node group runs; 'manual' reserves a working flow for direct triggers; 'disabled' deactivates a retired one (a retired source, a run-once replay) with the same exclusions and a visible 'disabled' badge. A node-scoped run can opt into includeAll ('find all') to replay non-auto descendants deliberately, and naming a flow directly always runs it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs (FlowDocument.Mode, parsed by YamlDocumentParts.ParseExecutionMode)",
+      "validation": "Unknown value fails to load: \"<source>: 'mode' has unknown value '<value>'. Allowed: auto, manual, disabled.\""
+    },
+    {
+      "path": "batch",
+      "type": "string",
+      "required": false,
+      "default": "null (unset)",
+      "description": "Optional grouping label (the source system). The catalog groups the flow's runs under it; absent, grouping surfaces coalesce to the default batch.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "params",
+      "type": "map<string,string|null>",
+      "required": false,
+      "default": "{} (no declared parameters)",
+      "description": "Declared runtime parameters: name to default value. Each becomes a template variable {name} usable anywhere templates render (request path/query/headers/body, iteration from/to, landing pathTemplate). A caller (the CLI, the control-plane trigger, or the debugger's auto-generated parameter form) can override any declared parameter per run; supplying an UNDECLARED name fails the run before the first request (typo safety).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (Params); binding in src/SqlFlow.Acquire/Engine/AcquireEngine.cs (BindParams)"
+    },
+    {
+      "path": "params.<name>",
+      "type": "string|null",
+      "required": false,
+      "description": "One declared parameter's default value. An empty or null default means the parameter is REQUIRED: a run that supplies no value for it fails before any request is sent. The name must be a valid template identifier (no braces or colons).",
+      "validation": "YamlAcquireFlowLoader.MapParams rejects blank names and names containing '{', '}' or ':'; AcquireEngine.BindParams fails the run when a no-default parameter receives no runtime value.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAcquireFlowLoader.cs (MapParams)"
+    },
+    {
+      "path": "source",
+      "type": "object",
+      "required": true,
+      "description": "The source side of the acquisition: which transport, where, how to authenticate, what to request, how to paginate, how to fan out, and the reliability envelope. In the single-endpoint form this holds everything including request/pagination/iterate. In the multi-item form (items[] present) it holds ONLY the shared connection envelope (transport/baseUrl/auth/reliability/options), and each item carries its own request/pagination/iterate/landing; see 'forms' above.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireSource); shared envelope exposed as AcquireFlow.Source = Items[0].Source"
+    },
+    {
+      "path": "source.transport",
+      "type": "string (enum)",
+      "required": false,
+      "default": "http",
+      "enumValues": [
+        "http",
+        "sftp",
+        "azuretable"
+      ],
+      "description": "The transport the source speaks. http covers REST, GraphQL, and SOAP-over-POST (auth/request/pagination apply); sftp lists and downloads remote files; azuretable queries an Azure Storage Table. The non-HTTP transports carry their credentials and locators in source.options. Matching strips '-'/'_' and is case-insensitive, so azure_table and AzureTable also parse. (S3 object copy is a cpy flow, not an api transport.)",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireTransport)"
+    },
+    {
+      "path": "source.baseUrl",
+      "type": "string",
+      "required": true,
+      "description": "The base endpoint, interpreted per transport: an http(s) origin (https://api.acme.com), an sftp://host[:port] URL, or the Azure Table account URL. For HTTP, request.path is joined under it (base treated as a directory).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.auth",
+      "type": "object",
+      "required": false,
+      "default": "type: none",
+      "description": "HTTP authentication. Secret material is always a ${env:...} or ${keyvault:vault/secret} reference resolved at run time, never an inline value. Ignored by the non-HTTP transports (their credentials live in source.options).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireAuth)"
+    },
+    {
+      "path": "source.auth.type",
+      "type": "string (enum)",
+      "required": false,
+      "default": "none",
+      "enumValues": [
+        "none",
+        "api_key_header",
+        "api_key_query",
+        "bearer",
+        "basic",
+        "oauth2_client_credentials",
+        "oauth2_refresh_token",
+        "token_exchange"
+      ],
+      "description": "The authentication strategy. none: anonymous. api_key_header: secretRef sent in the header named headerName. api_key_query: secretRef sent as the query parameter named paramName. bearer: Authorization: Bearer <secretRef>. basic: HTTP Basic from secondarySecretRef (username) + secretRef (password). The three token-based types perform a token request described by the token block and apply the returned access token to every data request: oauth2_client_credentials (grant_type client_credentials), oauth2_refresh_token (refresh-token exchange), token_exchange (any bespoke POST-and-extract-token endpoint, including a pre-formed body held whole in Key Vault via token.rawBody).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireAuthType); applied in src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.secretRef",
+      "type": "string (secret reference)",
+      "required": false,
+      "description": "Primary secret reference: the token (bearer / api-key types) or the password (basic). Resolved through the shared secret chain (${env:...} / ${keyvault:vault/secret}) at run time.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.secondarySecretRef",
+      "type": "string (secret reference)",
+      "required": false,
+      "description": "Secondary secret reference: the username for basic auth.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.headerName",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "auth.type: api_key_header (required there)",
+      "description": "The request header carrying the api key, e.g. X-Api-Key or a non-standard X-Authorization.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.paramName",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "auth.type: api_key_query (required there)",
+      "description": "The query parameter carrying the api key, e.g. token.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.valuePrefix",
+      "type": "string",
+      "required": false,
+      "default": "\"Bearer \" for bearer, empty otherwise",
+      "description": "Prefix prepended to the header value (bearer / api_key_header).",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.token",
+      "type": "object",
+      "required": false,
+      "appliesWhen": "auth.type is oauth2_client_credentials, oauth2_refresh_token, or token_exchange (required there)",
+      "description": "How to obtain and apply the access token: the token endpoint (or an OIDC discovery URL that resolves it), the request body, and how the returned token is applied to data requests.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireTokenEndpoint)"
+    },
+    {
+      "path": "source.auth.token.url",
+      "type": "string",
+      "required": false,
+      "description": "The token endpoint URL. Required unless discoveryUrl supplies it. May contain ${...} secret references.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (ResolveTokenUrlAsync)"
+    },
+    {
+      "path": "source.auth.token.discoveryUrl",
+      "type": "string",
+      "required": false,
+      "description": "An OIDC .well-known/openid-configuration URL; its token_endpoint field supplies the token URL (the frida/Nordicport pattern). Takes precedence over url when set.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (ResolveTokenUrlAsync)"
+    },
+    {
+      "path": "source.auth.token.method",
+      "type": "string",
+      "required": false,
+      "default": "POST",
+      "description": "HTTP method for the token request.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.auth.token.bodyKind",
+      "type": "string (enum)",
+      "required": false,
+      "default": "form",
+      "enumValues": [
+        "form",
+        "json"
+      ],
+      "description": "How the token request body is encoded: form (application/x-www-form-urlencoded, the OAuth2 default) or json (e.g. Entur's {client_id, client_secret, audience} body or easypark's {refreshToken}).",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (BuildTokenRequest)"
+    },
+    {
+      "path": "source.auth.token.body",
+      "type": "map<string,string>",
+      "required": false,
+      "default": "{}",
+      "description": "The token-request body fields (grant_type, client_id, client_secret, scope, audience, refreshToken, ...). Values may be ${...} secret references and {param} templates. With basicAuthClient: true, client_id/client_secret are lifted out of the body into an HTTP Basic header.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (AcquireTokenAsync)"
+    },
+    {
+      "path": "source.auth.token.body.<field>",
+      "type": "string",
+      "required": false,
+      "description": "One token-request body field. Secret references and {param} templates are resolved before sending.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.token.rawBody",
+      "type": "string (secret reference allowed)",
+      "required": false,
+      "description": "A pre-formed body sent verbatim, e.g. a Key Vault secret already holding the full urlencoded form (the Kolumbus citybike token pattern). When set, body is ignored. Content type follows bodyKind.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (BuildTokenRequest)"
+    },
+    {
+      "path": "source.auth.token.headers",
+      "type": "map<string,string>",
+      "required": false,
+      "default": "{}",
+      "description": "Extra headers on the token request (e.g. an explicit Content-Type).",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.token.basicAuthClient",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Authenticate the OAuth client with an HTTP Basic header (base64 of client_id:client_secret, both taken and removed from body) instead of sending them in the body (the Voi pattern). Requires client_id and client_secret in body.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.token.tokenPath",
+      "type": "string (JSON path)",
+      "required": false,
+      "default": "access_token",
+      "description": "Where in the token response JSON the access token lives (e.g. access_token, idToken). Dotted paths and [index] are supported.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/JsonPathReader.cs"
+    },
+    {
+      "path": "source.auth.token.applyHeaderName",
+      "type": "string",
+      "required": false,
+      "default": "Authorization",
+      "description": "The data-request header the resolved token is applied to. easypark uses the non-standard X-Authorization.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.token.applyPrefix",
+      "type": "string",
+      "required": false,
+      "default": "\"Bearer \"",
+      "description": "Prefix on the applied token header value.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs"
+    },
+    {
+      "path": "source.auth.token.refreshPerIteration",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Re-acquire the token for every fan-out iteration rather than once per run (issuers that scope tokens per window, the Voi pattern).",
+      "definedIn": "src/SqlFlow.Acquire/Engine/AcquireEngine.cs"
+    },
+    {
+      "path": "source.request",
+      "type": "object",
+      "required": false,
+      "appliesWhen": "required for the http transport; ignored by sftp/s3/azuretable",
+      "description": "The HTTP request template. Path, query values, headers, and body all support {token} substitution from the run's template context: declared params, iteration variables (window.from/window.to or a list/idsFrom variable), the incremental watermark's bindVariable, and bare date tokens ({yyyy}, {yyyyMMdd}, {window.from:yyyy-MM-dd}).",
+      "validation": "An http source without a request block fails loading: \"an http source requires a 'source.request' block.\"",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireRequest)"
+    },
+    {
+      "path": "source.request.method",
+      "type": "string",
+      "required": false,
+      "default": "GET",
+      "description": "The HTTP method (GET, POST, ...).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.request.path",
+      "type": "string (template)",
+      "required": false,
+      "default": "\"\" (the base url itself)",
+      "description": "The path (and optional inline ?query) appended to source.baseUrl. Supports {placeholder} tokens; a referenced variable that is not bound fails the run with a message naming the token (never a silent blank). Escape a literal brace as {{ or }}.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/TemplateEngine.cs"
+    },
+    {
+      "path": "source.request.headers",
+      "type": "map<string,string>",
+      "required": false,
+      "default": "{}",
+      "description": "Request headers (Accept, Content-Type, vendor headers). Values are templated.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs"
+    },
+    {
+      "path": "source.request.headers.<name>",
+      "type": "string (template)",
+      "required": false,
+      "description": "One request header value; {token} substitution applies.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs"
+    },
+    {
+      "path": "source.request.query",
+      "type": "map<string,string>",
+      "required": false,
+      "default": "{}",
+      "description": "Query parameters sent on every page (pagination parameters are merged on top; auth query params last). Keys sort deterministically in the final URL. Values are templated.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs (ComposeUri)"
+    },
+    {
+      "path": "source.request.query.<name>",
+      "type": "string (template)",
+      "required": false,
+      "description": "One query parameter value; {token} substitution applies, then URL-encoding.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs"
+    },
+    {
+      "path": "source.request.bodyKind",
+      "type": "string (enum)",
+      "required": false,
+      "default": "none",
+      "enumValues": [
+        "none",
+        "json",
+        "form",
+        "graphql",
+        "soap",
+        "raw"
+      ],
+      "description": "How the request body is encoded. none: no body. json: body sent as application/json. form: bodyFields urlencoded. graphql: body is the query text, wrapped as {\"query\": ..., \"variables\": null} and sent as JSON (the SVV pattern). soap: body is the envelope, sent as text/xml (or contentType). raw: body sent verbatim with contentType.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs (BuildContent)"
+    },
+    {
+      "path": "source.request.body",
+      "type": "string (template)",
+      "required": false,
+      "appliesWhen": "bodyKind json/graphql/soap/raw (required for graphql and soap)",
+      "description": "The literal/templated body: the JSON object text, the GraphQL query, the SOAP envelope, or the raw payload.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs"
+    },
+    {
+      "path": "source.request.bodyFields",
+      "type": "map<string,string>",
+      "required": false,
+      "default": "{}",
+      "appliesWhen": "bodyKind: form",
+      "description": "Form fields for a urlencoded body; values templated.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs"
+    },
+    {
+      "path": "source.request.bodyFields.<name>",
+      "type": "string (template)",
+      "required": false,
+      "description": "One form field value.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs"
+    },
+    {
+      "path": "source.request.contentType",
+      "type": "string",
+      "required": false,
+      "default": "text/xml for soap, application/octet-stream for raw",
+      "description": "Explicit Content-Type for soap/raw bodies.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpRequestBuilder.cs"
+    },
+    {
+      "path": "source.pagination",
+      "type": "object",
+      "required": false,
+      "default": "strategy: none (a single request)",
+      "description": "The HTTP pagination state machine. Each fetched page lands as its own raw file.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquirePagination); loop in src/SqlFlow.Acquire/Engine/HttpTransport.cs"
+    },
+    {
+      "path": "source.pagination.strategy",
+      "type": "string (enum)",
+      "required": false,
+      "default": "none",
+      "enumValues": [
+        "none",
+        "page",
+        "offset",
+        "cursor_body",
+        "link_header",
+        "keyset"
+      ],
+      "description": "none: one request. page: increments pageParam from startPage until an empty page. offset: advances offsetParam by limit until an empty page. cursor_body: follows a cursor read from the response at cursorPath until absent. link_header: follows the RFC 5988 Link rel=\"next\" header until absent. keyset: sends keysetParam starting from the stored watermark (or empty), advancing to the max id observed per page (keysetIdPath) or an explicit cursorPath; stops on an empty page, an unchanged id, or stopOnStatus. Every strategy is additionally capped by maxPages.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpTransport.cs (Advance)"
+    },
+    {
+      "path": "source.pagination.maxPages",
+      "type": "int",
+      "required": false,
+      "default": "50",
+      "description": "Runaway-loop guard: the maximum pages fetched per request pipeline (per iteration). The debugger's Test invoke caps this further.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.pageParam",
+      "type": "string",
+      "required": false,
+      "default": "page",
+      "appliesWhen": "strategy: page",
+      "description": "The page-number query parameter.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.startPage",
+      "type": "int",
+      "required": false,
+      "default": "1",
+      "appliesWhen": "strategy: page",
+      "description": "The first page number sent.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.offsetParam",
+      "type": "string",
+      "required": false,
+      "default": "offset",
+      "appliesWhen": "strategy: offset",
+      "description": "The offset query parameter.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.limitParam",
+      "type": "string",
+      "required": false,
+      "default": "limit",
+      "appliesWhen": "strategy: offset",
+      "description": "The page-size query parameter.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.limit",
+      "type": "int",
+      "required": false,
+      "default": "100",
+      "appliesWhen": "strategy: offset",
+      "description": "The page size; the offset advances by this amount.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.cursorParam",
+      "type": "string",
+      "required": false,
+      "default": "cursor",
+      "appliesWhen": "strategy: cursor_body",
+      "description": "The query parameter the next cursor is sent as.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.cursorPath",
+      "type": "string (JSON path)",
+      "required": false,
+      "appliesWhen": "strategy: cursor_body (required there); optional explicit next-id for keyset",
+      "description": "Where in the response body the next cursor / next id lives (e.g. $.next, $.meta.nextToken). Pagination ends when the path yields nothing.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/JsonPathReader.cs"
+    },
+    {
+      "path": "source.pagination.keysetParam",
+      "type": "string",
+      "required": false,
+      "default": "idAfter",
+      "appliesWhen": "strategy: keyset",
+      "description": "The query parameter the resume id is sent as (the Entur idAfter pattern).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.pagination.keysetIdPath",
+      "type": "string (JSON path, relative to each record)",
+      "required": false,
+      "appliesWhen": "strategy: keyset",
+      "description": "The record field whose max across a page becomes the next resume id (e.g. id, reportId). Alternative to cursorPath.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpTransport.cs"
+    },
+    {
+      "path": "source.pagination.stopOnStatus",
+      "type": "int (HTTP status)",
+      "required": false,
+      "description": "A non-2xx status that terminates pagination cleanly instead of erroring (Entur's 202 = \"no more reports\"). The sentinel page is not landed.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/HttpTransport.cs"
+    },
+    {
+      "path": "source.pagination.recordsPath",
+      "type": "string (JSON path)",
+      "required": false,
+      "default": "auto: the whole body if it is an array, else the first of data/items/results/records/value",
+      "description": "The record array used for empty-page detection, the skip-empty landing policy, keyset max-id scanning, and the response watermark (e.g. $.Items).",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/JsonPathReader.cs (LocateRecordArray)"
+    },
+    {
+      "path": "source.iterate",
+      "type": "list",
+      "required": false,
+      "default": "[] (a single request pipeline)",
+      "description": "Fan-out iterations applied outer-to-inner: the cartesian product of all iterations produces one request pipeline per combination (each of which may itself paginate). Covers date windows (day-by-day backfills, hourly sub-windows, monthly re-reads), static lists (operator ids, routes, lines), and id lists discovered from a prior request (bikes -> per-bike sessions), optionally batched N-per-request.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/AcquireEngine.cs (ExpandAsync)"
+    },
+    {
+      "path": "source.iterate[].kind",
+      "type": "string (enum)",
+      "required": true,
+      "enumValues": [
+        "date_window",
+        "list",
+        "ids_from"
+      ],
+      "description": "date_window: walk from->to in granularity steps, binding fromVariable/toVariable per step (a per-run backfill window from the typed run parameters replaces from/to). list: iterate values, binding variable per element. ids_from: run idRequest, select ids with idPath, iterate them (batchSize groups ids into joined batches).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireIterationKind)"
+    },
+    {
+      "path": "source.iterate[].variable",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "required for list and ids_from",
+      "description": "The template variable this iteration binds (e.g. operatorId, bikeId), referenced as {operatorId} in the request/landing templates.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.iterate[].granularity",
+      "type": "string (enum)",
+      "required": false,
+      "default": "day",
+      "enumValues": [
+        "hour",
+        "day",
+        "month"
+      ],
+      "appliesWhen": "kind: date_window",
+      "description": "The step size: hourly sub-windows (Voi/Ryde), daily windows (most sources), or monthly re-reads (svv index corrections).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireWindowGranularity)"
+    },
+    {
+      "path": "source.iterate[].from",
+      "type": "string (time expression)",
+      "required": false,
+      "default": "the incremental watermark when parseable as a date, else now-1d",
+      "appliesWhen": "kind: date_window",
+      "description": "Inclusive window start: now, today, yesterday, startOfMonth, an offset (now-3d, now-2h, startOfMonth-1mo; units y|mo|w|d|h|mi), or an ISO date. A per-run backfill window (--from) replaces it for that run.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RelativeTime.cs"
+    },
+    {
+      "path": "source.iterate[].to",
+      "type": "string (time expression)",
+      "required": false,
+      "default": "now",
+      "appliesWhen": "kind: date_window",
+      "description": "Exclusive window end; same expression grammar as from. A per-run backfill window (--to) replaces it for that run.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RelativeTime.cs"
+    },
+    {
+      "path": "source.iterate[].fromVariable",
+      "type": "string",
+      "required": false,
+      "default": "window.from",
+      "appliesWhen": "kind: date_window",
+      "description": "The variable bound to each step's lower bound; format it in templates as {window.from:yyyy-MM-dd}. Also becomes the reference date for bare date tokens ({yyyy}) within the step.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.iterate[].toVariable",
+      "type": "string",
+      "required": false,
+      "default": "window.to",
+      "appliesWhen": "kind: date_window",
+      "description": "The variable bound to each step's upper bound.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.iterate[].values",
+      "type": "list<string>",
+      "required": false,
+      "appliesWhen": "kind: list (required, non-empty)",
+      "description": "The static values to iterate (operator ids, route numbers, lines).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.iterate[].idRequest",
+      "type": "object (a request template)",
+      "required": false,
+      "appliesWhen": "kind: ids_from (required)",
+      "description": "The discovery request producing the id list (same shape as source.request: method/path/headers/query/body*). Runs once per outer-iteration combination, with the same auth.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/AcquireEngine.cs (IdsFromBindersAsync)"
+    },
+    {
+      "path": "source.iterate[].idPath",
+      "type": "string (JSON path)",
+      "required": false,
+      "appliesWhen": "kind: ids_from (required)",
+      "description": "Selects the ids from the discovery response, e.g. $[*].BikeId or $.data[*].id.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/JsonPathReader.cs"
+    },
+    {
+      "path": "source.iterate[].batchSize",
+      "type": "int",
+      "required": false,
+      "default": "1",
+      "appliesWhen": "kind: ids_from",
+      "description": "When > 1, ids are grouped into batches of this size and the variable binds to the joined batch (the svv 50-ids-per-request pattern).",
+      "definedIn": "src/SqlFlow.Acquire/Engine/AcquireEngine.cs"
+    },
+    {
+      "path": "source.iterate[].batchSeparator",
+      "type": "string",
+      "required": false,
+      "default": "\",\"",
+      "appliesWhen": "kind: ids_from",
+      "description": "The separator joining a batch of ids into the bound variable.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+    },
+    {
+      "path": "source.reliability",
+      "type": "object",
+      "required": false,
+      "description": "The reliability envelope every request runs under: timeout, retry with backoff, outbound rate limiting, a response-size cap, TLS verification, and the SSRF host allowlist.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireReliability)"
+    },
+    {
+      "path": "source.reliability.timeoutSeconds",
+      "type": "int",
+      "required": false,
+      "default": "100",
+      "description": "Per-request timeout. A timeout counts as a transient transport failure for retry purposes.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/HttpClientBuilder.cs"
+    },
+    {
+      "path": "source.reliability.rateLimitRps",
+      "type": "double",
+      "required": false,
+      "default": "0 (unlimited)",
+      "description": "Outbound request cap in requests/second via a token bucket (fractional refill, burst capped at max(rps,1)). Applied to every request including token and discovery calls.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RateLimiter.cs"
+    },
+    {
+      "path": "source.reliability.maxResponseBytes",
+      "type": "long",
+      "required": false,
+      "default": "524288000 (500 MB)",
+      "description": "Hard cap on a single response held in memory before landing; exceeding it fails the run with a message naming the limit.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/HttpExecutor.cs (ReadCappedAsync)"
+    },
+    {
+      "path": "source.reliability.verifyTls",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "TLS certificate verification. Disable only for a source with a broken chain you explicitly trust.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/HttpClientBuilder.cs"
+    },
+    {
+      "path": "source.reliability.urlAllowlist",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (any public host)",
+      "description": "SSRF host allowlist for data requests: *.suffix matches the bare domain and any subdomain; anything else is an exact host. Private, loopback, link-local (including the 169.254.169.254 cloud metadata address), multicast, and unique-local addresses are ALWAYS blocked regardless of this list. Token/discovery calls keep the IP guard but skip the host allowlist (they are trusted config).",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/UrlGuard.cs"
+    },
+    {
+      "path": "source.reliability.skipStatusCodes",
+      "type": "list<int>",
+      "required": false,
+      "default": "[] (every non-2xx fails the run)",
+      "description": "Non-retryable HTTP statuses that mark a single fan-out request as a tolerated SKIP instead of failing the run. A wide date x id sweep routinely carries ids the endpoint no longer accepts (a decommissioned route, a closed account), and one stale id must not cost the whole sweep; each skipped request is logged as 'acquire.skip' with the endpoint's own error body and counted in the run's skippedRequests, so a newly-broken id stays visible. Only non-2xx codes in 100-599 are accepted (a 2xx is landed, never skipped) and the retry policy still runs first, so a transient 429/5xx retries before it can be skipped.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/AcquireEngine.cs"
+    },
+    {
+      "path": "source.reliability.retry",
+      "type": "object",
+      "required": false,
+      "description": "Retry policy: exponential backoff (baseDelayMs * 2^attempt, capped at maxDelayMs) on transport failures and the transient statuses 408/425/429/500/502/503/504; any other status is permanent. A server Retry-After header (delta-seconds or HTTP-date) is honored as a floor raised to (never below) the computed backoff.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RetryPolicy.cs"
+    },
+    {
+      "path": "source.reliability.retry.maxAttempts",
+      "type": "int",
+      "required": false,
+      "default": "4",
+      "description": "Total attempts per request (each page retries independently).",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RetryPolicy.cs"
+    },
+    {
+      "path": "source.reliability.retry.baseDelayMs",
+      "type": "int",
+      "required": false,
+      "default": "500",
+      "description": "First backoff delay; doubles per attempt.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RetryPolicy.cs"
+    },
+    {
+      "path": "source.reliability.retry.maxDelayMs",
+      "type": "int",
+      "required": false,
+      "default": "30000",
+      "description": "Backoff ceiling, also bounding an honored Retry-After.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RetryPolicy.cs"
+    },
+    {
+      "path": "source.reliability.retry.honorRetryAfter",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Honor the server's Retry-After as a floor on the backoff (a Retry-After: 0 from a CDN edge cannot busy-loop; a huge value is capped by maxDelayMs).",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/RetryPolicy.cs"
+    },
+    {
+      "path": "source.options",
+      "type": "map<string,string>",
+      "required": false,
+      "default": "{}",
+      "description": "Transport-specific options for the non-HTTP transports; values may be ${...} secret references. sftp: username (required), password OR privateKey (+passphrase), remotePath (default .), pattern (glob, default *), modifiedWithinDays, take (most-recent N). s3: bucket (or the s3://bucket base url), prefix, region (default eu-west-1), accessKey + secretKey (required), pattern, modifiedWithinDays, take. azuretable: tableName (required), connectionString OR accountUrl+sasToken, filter (OData, templated with iteration variables), select (comma-separated columns).",
+      "definedIn": "src/SqlFlow.Acquire/Engine/SftpTransport.cs, S3Transport.cs, AzureTableTransport.cs"
+    },
+    {
+      "path": "source.options.<name>",
+      "type": "string",
+      "required": false,
+      "description": "One transport option; see source.options for the per-transport keys. Secret-bearing options (password, privateKey, accessKey, secretKey, sasToken, connectionString) must be ${...} references, never inline values.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/SftpTransport.cs, S3Transport.cs, AzureTableTransport.cs"
+    },
+    {
+      "path": "items",
+      "type": "list",
+      "required": false,
+      "default": "absent (the single-endpoint form: source.request + a top-level landing)",
+      "description": "The multi-endpoint form: one entry per endpoint, each with its own request/pagination/iterate/landing over the shared source connection envelope (mirrors a cpy flow's steps). One flow fetches every listed endpoint and lands each to its own raw path. Mutually exclusive with a top-level landing, with request/pagination/iterate on source, and with incremental; see 'forms' above.",
+      "validation": "YamlAcquireFlowLoader.MapItems: items + top-level landing, items + source.request/pagination/iterate, and items + incremental each fail loading; every item requires a landing and (for http) a request.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireFlow.Items, AcquireItem)"
+    },
+    {
+      "path": "items[].name",
+      "type": "string",
+      "required": false,
+      "default": "the landing's leaf folder",
+      "description": "An optional stable label for the endpoint (e.g. bikes, alert), surfaced in run logs. Distinct across the flow's items.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireItem.Name)"
+    },
+    {
+      "path": "items[].request",
+      "type": "object",
+      "required": true,
+      "appliesWhen": "required for the http transport",
+      "description": "This endpoint's HTTP request template. Same shape and fields as source.request (method/path/headers/query/bodyKind/body/bodyFields/contentType).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireRequest)"
+    },
+    {
+      "path": "items[].pagination",
+      "type": "object",
+      "required": false,
+      "default": "strategy: none",
+      "description": "This endpoint's pagination. Same shape and fields as source.pagination.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquirePagination)"
+    },
+    {
+      "path": "items[].iterate",
+      "type": "list",
+      "required": false,
+      "default": "[] (a single request pipeline)",
+      "description": "This endpoint's fan-out iterations. Same shape and fields as source.iterate (date_window/list/ids_from).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireIteration)"
+    },
+    {
+      "path": "items[].landing",
+      "type": "object",
+      "required": true,
+      "description": "Where this endpoint's raw payloads land. Same shape and fields as the top-level landing (target/pathTemplate/format/compression/overwrite/persistHeaders/skipEmpty/skipUnchanged/protect). Each item's landing target is the raw path a downstream file/pre flow reads, so it is the lineage join point for that endpoint.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireLanding)"
+    },
+    {
+      "path": "landing",
+      "type": "object",
+      "required": "single-endpoint form only (required there; replaced by items[].landing in the multi-item form)",
+      "description": "How fetched payloads are written to the raw zone. The payload is landed VERBATIM (raw bytes, original format): no CSV conversion, no flattening (one exception: declared landing.protect rules scrub/pseudonymise the matched fields before the bytes are written); downstream json/csv/xml file flows ingest the landed files into SQL. In the multi-item form this is declared per item under items[].landing instead.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireLanding); pipeline in src/SqlFlow.Acquire/Engine/LandingPipeline.cs"
+    },
+    {
+      "path": "landing.target",
+      "type": "string (template; secret references allowed)",
+      "required": true,
+      "description": "The raw-zone base location: an ADLS Gen2 / Blob URI (abfss://fs@account.dfs.core.windows.net/base or https://account.dfs.core.windows.net/fs/base, written through the shared Azure credential with no per-flow storage secret) or a local/UNC path (dev/test). Templated, then secret-resolved once per run.",
+      "definedIn": "src/SqlFlow.Acquire/Landing/AzureRawLandingStore.cs, LocalRawLandingStore.cs"
+    },
+    {
+      "path": "landing.pathTemplate",
+      "type": "string (template)",
+      "required": true,
+      "description": "The relative path under target for each payload, minus extension. Binds date tokens ({yyyy}, {MM}, {yyyyMMdd}), iteration variables ({operatorId}, {window.from:yyyy}), declared params, {page} (the page index / file name / object key), and {runId}. When two payloads render the same path in one run, the later is disambiguated with its page/item discriminator so pages never collide.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/LandingPipeline.cs (LandAsync)"
+    },
+    {
+      "path": "landing.format",
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "description": "The landed file extension: auto derives it from the response Content-Type (json/xml/csv/jsonl/txt, +json/+xml suffixes honored, unknown -> bin); or set an explicit extension (json, xml, csv, txt, bin).",
+      "definedIn": "src/SqlFlow.Acquire/Engine/LandingPipeline.cs (Extension)"
+    },
+    {
+      "path": "landing.compression",
+      "type": "string (enum)",
+      "required": false,
+      "default": "none",
+      "enumValues": [
+        "none",
+        "gzip"
+      ],
+      "description": "Optional gzip on landing (a .gz suffix is appended after the format extension).",
+      "definedIn": "src/SqlFlow.Acquire/Engine/LandingPipeline.cs"
+    },
+    {
+      "path": "landing.overwrite",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Overwrite an existing landed file. When false, a colliding write fails the run rather than clobbering (blob ETag-guarded on Azure).",
+      "definedIn": "src/SqlFlow.Acquire/Landing/AzureRawLandingStore.cs (PutAsync)"
+    },
+    {
+      "path": "landing.persistHeaders",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Also write a <file>.headers.json sidecar of the response headers per page, with sensitive headers (authorization, cookie, x-api-*, ...) redacted.",
+      "definedIn": "src/SqlFlow.Acquire/Runtime/HeaderRedaction.cs"
+    },
+    {
+      "path": "landing.skipEmpty",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Skip landing a payload whose record array is empty (or whose body is empty for non-JSON), rather than writing a zero-row file. Skips are counted separately in the run result.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/LandingPipeline.cs"
+    },
+    {
+      "path": "landing.skipUnchanged",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Skip rewriting a landed file whose target already holds byte-identical content (compared by content hash), so a fetch that returned the same file does not bump its modified time and re-trigger downstream ingestion. Set false to write every fetched payload unconditionally. No effect when overwrite is false.",
+      "definedIn": "src/SqlFlow.Acquire/Landing/LocalRawLandingStore.cs (PutAsync)"
+    },
+    {
+      "path": "landing.protect",
+      "type": "array",
+      "required": false,
+      "description": "Data-protection rules applied to the raw payload BEFORE it is written, in declaration order, so PII/sensitive fields are scrubbed, pseudonymised, or generalised at the acquisition boundary and never persisted raw. Format-aware: json, jsonl, xml, and csv payloads are protectable; any other landed format (or a payload that fails to parse) fails the run rather than landing unprotected. This is the ONE deliberate exception to the land-verbatim rule.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].path",
+      "type": "string",
+      "required": true,
+      "description": "The field selector, interpreted per the landed format. JSON/JSONL: a JSON path (optional leading $, dotted properties, [*] array wildcard, [n] index), e.g. $.data[*].rider. XML: an element path starting at the document root (requests.request.rider; repeated elements match all occurrences), with an optional trailing @name selecting an attribute. CSV: the header column name. A path matching nothing is a no-op for JSON/XML; a CSV column the header lacks is an error.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].action",
+      "type": "string",
+      "required": true,
+      "enumValues": [
+        "remove",
+        "redact",
+        "mask",
+        "hash",
+        "hmac",
+        "tokenize",
+        "encrypt",
+        "generalize"
+      ],
+      "description": "The protection transform: remove (delete the field; CSV blanks it to keep the schema), redact (constant or pattern suppression), mask (partial visibility), hash (unkeyed SHA-256 hex), hmac (keyed one-way pseudonym; requires secret), tokenize (token substitution; deterministic when secret is set), encrypt (reversible deterministic AES-256-GCM-SIV; requires secret), generalize (precision reduction: dates, age buckets, zip prefixes, numeric rounding).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].secret",
+      "type": "string (secret reference)",
+      "required": false,
+      "description": "A ${...} reference to the key material for the keyed transforms. REQUIRED for hmac and encrypt; optional for tokenize (a keyed token is deterministic across runs, an unkeyed one is random per run). Resolved once per run through the secret resolver; the raw key never appears in YAML.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].scope",
+      "type": "string",
+      "required": false,
+      "default": "relationship",
+      "enumValues": [
+        "transaction",
+        "relationship",
+        "person"
+      ],
+      "description": "Linkability of the keyed transforms: transaction (run-scoped salt, same value maps differently across runs), relationship (salted by flow name and the optional relationship param; consistent within this source), person (no extra salt; globally consistent wherever the same key is used).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].mode",
+      "type": "string",
+      "required": false,
+      "description": "Transform mode. redact: full (default) | partial | email | phone | card. generalize: year (default) | month | quarter | decade | age_range | zip3 | zip2 | round.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].replacement",
+      "type": "string",
+      "required": false,
+      "default": "[REDACTED]",
+      "description": "redact mode=full: the constant that replaces the value.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].maskChar",
+      "type": "string (one char)",
+      "required": false,
+      "default": "*",
+      "description": "The masking character for mask and the partial/email/phone/card redact modes.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].keepFirst",
+      "type": "integer",
+      "required": false,
+      "default": "0",
+      "description": "redact mode=partial: leading characters kept visible.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].keepLast",
+      "type": "integer",
+      "required": false,
+      "default": "0",
+      "description": "redact mode=partial: trailing characters kept visible.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].show",
+      "type": "integer",
+      "required": false,
+      "default": "4",
+      "description": "mask: leading characters kept visible.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].showLast",
+      "type": "integer",
+      "required": false,
+      "default": "0",
+      "description": "mask: trailing characters kept visible.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].algorithm",
+      "type": "string",
+      "required": false,
+      "default": "hmac_sha256",
+      "enumValues": [
+        "hmac_sha256",
+        "pbkdf2"
+      ],
+      "description": "hmac: hmac_sha256 (fast) or pbkdf2 (KDF-hardened for low-entropy values; iteration count via iterations).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].iterations",
+      "type": "integer",
+      "required": false,
+      "default": "100000",
+      "description": "hmac algorithm=pbkdf2: the PBKDF2 iteration count.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].outputLength",
+      "type": "integer",
+      "required": false,
+      "description": "hmac: truncate the hex output to this many characters (full digest when omitted).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].format",
+      "type": "string",
+      "required": false,
+      "default": "tok_{short}",
+      "description": "tokenize: the token template; {uuid} and {short} expand from the token core, any other text is a literal prefix.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].relationship",
+      "type": "string",
+      "required": false,
+      "description": "scope=relationship: an extra salt label narrowing consistency to a named relationship within the flow.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].bucket",
+      "type": "integer",
+      "required": false,
+      "default": "5",
+      "description": "generalize mode=age_range: the bucket size in years.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].step",
+      "type": "number",
+      "required": false,
+      "default": "1",
+      "description": "generalize mode=round: round to the nearest multiple of this step.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].delimiter",
+      "type": "string (one char, or \\t)",
+      "required": false,
+      "description": "CSV payloads: the field delimiter; auto-detected from the header among ; , tab | when omitted.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "landing.protect[].params.<name>",
+      "type": "string",
+      "required": false,
+      "description": "Escape hatch for transform parameters not covered by the flat knobs; merged with them (flat knobs win).",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireProtect.cs; engine in src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs"
+    },
+    {
+      "path": "incremental",
+      "type": "object",
+      "required": false,
+      "default": "absent (the flow fetches its full declared window every run)",
+      "description": "Incremental resume (single-endpoint form only): the watermark is read from the flow's own run history (.sqlflow/runs, successful runs only, so a failed run never advances the mark) and advanced to the max observed this run. A full-load run (--full) ignores the stored watermark. Not valid with items[] (one watermark per run cannot serve several endpoints); a multi-item flow expresses incrementality through each item's date-window iterate.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/AcquireWatermarkHistory.cs, WatermarkState.cs"
+    },
+    {
+      "path": "incremental.source",
+      "type": "string (enum)",
+      "required": false,
+      "default": "response",
+      "enumValues": [
+        "response",
+        "lake"
+      ],
+      "description": "Where the watermark is derived from. response: track the max of a response column across the run (persisted in run.json as watermarkAfter). lake: reserved for deriving the resume point from what is already landed.",
+      "definedIn": "src/SqlFlow.Core/Acquire/AcquireFlow.cs (AcquireWatermarkSource)"
+    },
+    {
+      "path": "incremental.column",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source: response",
+      "description": "The record field whose lexicographic max is the watermark (e.g. updated_at in RFC3339, where lexicographic order equals chronological, or a numeric id). Read across the records located by pagination.recordsPath.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/WatermarkState.cs"
+    },
+    {
+      "path": "incremental.bindVariable",
+      "type": "string",
+      "required": false,
+      "description": "The template variable the resolved watermark is bound to at run start, so a request can send it (e.g. since: \"{lastUpdated}\"). Keyset pagination reads the watermark directly and needs no binding.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/AcquireEngine.cs"
+    },
+    {
+      "path": "incremental.seed",
+      "type": "string",
+      "required": false,
+      "description": "The watermark used on the first run, when no prior successful run exists.",
+      "definedIn": "src/SqlFlow.Acquire/Engine/WatermarkState.cs"
+    }
+  ]
+}

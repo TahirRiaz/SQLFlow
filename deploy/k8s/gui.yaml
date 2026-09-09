@@ -1,0 +1,48 @@
+# The GUI: static SPA behind the same ingress host as the API (path split), so it runs same-origin with the
+# control plane and needs zero CORS configuration. SQLFLOW_API_BASE_URL stays empty for that layout.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlflow-gui
+  namespace: sqlflow
+  labels:
+    app: sqlflow-gui
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sqlflow-gui
+  template:
+    metadata:
+      labels:
+        app: sqlflow-gui
+    spec:
+      containers:
+        - name: gui
+          image: sqlflow-gui:latest # replace with your registry tag
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SQLFLOW_API_BASE_URL
+              value: "" # same-origin via the ingress path split
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+          livenessProbe:
+            httpGet: { path: /, port: 8080 }
+            periodSeconds: 30
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlflow-gui
+  namespace: sqlflow
+spec:
+  selector:
+    app: sqlflow-gui
+  ports:
+    - port: 80
+      targetPort: 8080

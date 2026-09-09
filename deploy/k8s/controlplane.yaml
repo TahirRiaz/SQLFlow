@@ -1,0 +1,111 @@
+# The control plane HTTP tier: stateless API replicas behind the ingress, scaled on load by the HPA. These
+# replicas are API + scheduler + managed-sync ONLY (Worker__Enabled=false): compute scales separately on queue
+# depth (worker-pool.yaml). Multi-replica is safe by construction: token validation is stateless (shared signing
+# key), and the scheduler/sync/queue all claim work atomically in the catalog.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlflow-controlplane
+  namespace: sqlflow
+  labels:
+    app: sqlflow-controlplane
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sqlflow-controlplane
+  template:
+    metadata:
+      labels:
+        app: sqlflow-controlplane
+    spec:
+      containers:
+        - name: controlplane
+          image: sqlflow-control-plane:latest # replace with your registry tag
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ControlPlane__Catalog__ConnectionReference
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: catalog-connection }
+            - name: ControlPlane__Jwt__SigningKey
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: jwt-signing-key }
+            - name: ControlPlane__Jwt__BootstrapSecret
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: bootstrap-secret }
+            - name: ControlPlane__Bootstrap__AdminUsername
+              value: admin
+            - name: ControlPlane__Bootstrap__AdminPasswordReference
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: admin-password }
+            # API-only replicas: compute is the worker deployments' job.
+            - name: ControlPlane__Worker__Enabled
+              value: "false"
+            # Honor X-Forwarded-For/Proto from the ingress ONLY. Set this to your cluster's pod/ingress CIDR;
+            # without it every client shares the ingress IP for rate limiting and login throttling.
+            - name: ControlPlane__Proxy__Enabled
+              value: "true"
+            - name: ControlPlane__Proxy__KnownNetworks__0
+              value: "10.0.0.0/8"
+            # Same-host ingress path-split means the GUI is same-origin: no CORS entries needed. Add
+            # ControlPlane__Cors__AllowedOrigins__0 only if the GUI is served from another host.
+            # Entra SSO: put entra-tenant-id and entra-client-id in the sqlflow-secrets secret and the login page
+            # offers "Sign in with Microsoft" alongside local username/password. Both keys are optional here, so an
+            # estate that leaves them out of the secret simply runs local sign-in only (no restart-time failure).
+            # The SPA app registration's redirect URI must be the GUI origin, and must itself be a multi-tenant
+            # registration if more than one tenant is ever allowed. To trust more than one tenant, add further
+            # ControlPlane__AzureAd__AllowedTenantIds__1, __2, ... entries alongside this one.
+            - name: ControlPlane__AzureAd__AllowedTenantIds__0
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: entra-tenant-id, optional: true }
+            - name: ControlPlane__AzureAd__ClientId
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: entra-client-id, optional: true }
+            - name: ControlPlane__AzureAd__DefaultRole
+              value: viewer
+          resources:
+            requests: { cpu: 250m, memory: 384Mi }
+            limits: { cpu: "1", memory: 1Gi }
+          livenessProbe:
+            httpGet: { path: /health/live, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /health/ready, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sqlflow-controlplane
+  namespace: sqlflow
+spec:
+  selector:
+    app: sqlflow-controlplane
+  ports:
+    - port: 80
+      targetPort: 8080
+---
+# HTTP tier autoscaling: request load translates to CPU on a stateless API; scale between 2 and 10.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: sqlflow-controlplane
+  namespace: sqlflow
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: sqlflow-controlplane
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70

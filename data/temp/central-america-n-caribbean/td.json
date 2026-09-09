@@ -1,0 +1,1113 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "First colonized by the Spanish, Trinidad and Tobago came under British control in the early 19th century. The emancipation of enslaved people in 1834 disrupted the twin islands' sugar industry. Contract workers arriving from India between 1845 and 1917 augmented the labor force, which boosted sugar production as well as the cocoa industry. The discovery of oil on Trinidad in 1910 added another important export that remains the country's dominant industry. Trinidad and Tobago attained independence in 1962. The country is one of the most prosperous in the Caribbean, thanks largely to petroleum and natural gas production and processing. The government is struggling to reverse a surge in violent crime."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Caribbean, islands between the Caribbean Sea and the North Atlantic Ocean, northeast of Venezuela"
+    },
+    "Geographic coordinates": {
+      "text": "11 00 N, 61 00 W"
+    },
+    "Map references": {
+      "text": "Central America and the Caribbean"
+    },
+    "Area": {
+      "total ": {
+        "text": "5,128 sq km"
+      },
+      "land": {
+        "text": "5,128 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than Delaware"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "362 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "200 nm or to the outer edge of the continental margin"
+      },
+      "note": "measured from claimed archipelagic baselines"
+    },
+    "Climate": {
+      "text": "tropical; rainy season (June to December)"
+    },
+    "Terrain": {
+      "text": "mostly plains with some hills and low mountains"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "El Cerro del Aripo 940 m"
+      },
+      "lowest point": {
+        "text": "Caribbean Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "83 m"
+      }
+    },
+    "Natural resources": {
+      "text": "petroleum, natural gas, asphalt"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "10.6% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 4.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 4.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 1.4% (2018 est.)"
+      },
+      "forest": {
+        "text": "44% (2018 est.)"
+      },
+      "other": {
+        "text": "45.4% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "70 sq km (2012)"
+    },
+    "Population distribution": {
+      "text": "population on Trinidad is concentrated in the western half of the island, on Tobago in the southern half"
+    },
+    "Natural hazards": {
+      "text": "outside usual path of hurricanes and other tropical storms"
+    },
+    "Geography - note": {
+      "text": "Pitch Lake, on Trinidad's southwestern coast, is the world's largest natural reservoir of asphalt"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "1,408,966"
+      },
+      "male": {
+        "text": "708,260"
+      },
+      "female": {
+        "text": "700,706 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Trinidadian(s), Tobagonian(s)"
+      },
+      "adjective": {
+        "text": "Trinidadian, Tobagonian"
+      },
+      "note": "<strong>note:</strong> Trinbagonian is used on occasion to describe a citizen of the country without specifying the island of origin"
+    },
+    "Ethnic groups": {
+      "text": "East Indian 35.4%, African descent 34.2%, mixed - other 15.3%, mixed - African/East Indian 7.7%, other 1.3%, unspecified 6.2% (2011 est.)"
+    },
+    "Languages": {
+      "text": "English (official), Trinidadian Creole English, Tobagonian Creole English, Caribbean Hindustani (a dialect of Hindi), Trinidadian Creole French, Spanish, Chinese"
+    },
+    "Religions": {
+      "text": "Protestant 32.1% (Pentecostal/Evangelical/Full Gospel 12%, Baptist 6.9%, Anglican 5.7%, Seventh Day Adventist 4.1%, Presbyterian/Congregational 2.5%, other Protestant 0.9%), Roman Catholic 21.6%, Hindu 18.2%, Muslim 5%, Jehovah's Witness 1.5%, other 8.4%, none 2.2%, unspecified 11.1% (2011 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "18.7% (male 134,508/female 129,180)"
+      },
+      "15-64 years": {
+        "text": "67.2% (male 481,606/female 465,150)"
+      },
+      "65 years and over": {
+        "text": "14.1% (2024 est.) (male 92,146/female 106,376)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "43.7"
+      },
+      "youth dependency ratio": {
+        "text": "29.3"
+      },
+      "elderly dependency ratio": {
+        "text": "16.8"
+      },
+      "potential support ratio": {
+        "text": "7.4 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "38.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "38 years"
+      },
+      "female": {
+        "text": "39 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.1% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "10.5 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "8.6 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.9 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "population on Trinidad is concentrated in the western half of the island, on Tobago in the southern half"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "53.4% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.23% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "545,000 PORT-OF-SPAIN (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.04 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.87 male(s)/female"
+      },
+      "total population": {
+        "text": "1.01 male(s)/female (2024 est.)"
+      }
+    },
+    "Maternal mortality ratio": {
+      "text": "27 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "15.1 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "17.1 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "13 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "76.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "74.6 years"
+      },
+      "female": {
+        "text": "78.4 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.63 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.8 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "7.3% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "4.48 physicians/1,000 population (2019)"
+    },
+    "Hospital bed density": {
+      "text": "3 beds/1,000 population (2017)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 99.9% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0.1% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "18.6% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "5.81 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "2.92 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.16 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "2.65 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.09 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "48.6% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "4.1% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "99%"
+      },
+      "male": {
+        "text": "99.2%"
+      },
+      "female": {
+        "text": "98.7% (2015)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "water pollution from agricultural chemicals, industrial wastes, and raw sewage; widespread pollution of waterways and coastal areas; illegal dumping; deforestation; soil erosion; fisheries and wildlife depletion"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Protocol, Marine Life Conservation, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "tropical; rainy season (June to December)"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "10.6% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 4.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 4.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 1.4% (2018 est.)"
+      },
+      "forest": {
+        "text": "44% (2018 est.)"
+      },
+      "other": {
+        "text": "45.4% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "53.4% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.23% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.05% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "10.26 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "43.87 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "1.35 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "727,874 tons (2010 est.)"
+      }
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "240 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "130 million cubic meters (202 est.)"
+      },
+      "agricultural": {
+        "text": "20 million cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "3.84 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Trinidad and Tobago"
+      },
+      "conventional short form": {
+        "text": "Trinidad and Tobago"
+      },
+      "etymology": {
+        "text": "explorer Christopher COLUMBUS named the larger island \"La Isla de la Trinidad\" (The Island of the Trinity) on 31 July 1498 on his third voyage; the tobacco grown and smoked by the natives of the smaller island or its elongated cigar shape may account for the \"tobago\" name, which is spelled \"tobaco\" in Spanish"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Port of Spain"
+      },
+      "geographic coordinates": {
+        "text": "10 39 N, 61 31 W"
+      },
+      "time difference": {
+        "text": "UTC-4 (1 hour ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "the name dates to the period of Spanish colonial rule (16th to late 18th centuries) when the city was referred to as \"Puerto de Espana\"; the name was anglicized following the British capture of Trinidad in 1797"
+      }
+    },
+    "Administrative divisions": {
+      "text": "<p>9 regions, 3 boroughs, 2 cities, 1 ward</p> <p><strong>regions:</strong> Couva/Tabaquite/Talparo, Diego Martin, Mayaro/Rio Claro, Penal/Debe, Princes Town, Sangre Grande, San Juan/Laventille, Siparia, Tunapuna/Piarco</p> <p><strong>borough:</strong> Arima, Chaguanas, Point Fortin</p> <p><strong>cities:</strong> Port of Spain, San Fernando</p> <p><strong>ward:</strong> Tobago</p>"
+    },
+    "Independence": {
+      "text": "31 August 1962 (from the UK)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 31 August (1962)"
+    },
+    "Legal system": {
+      "text": "English common law; judicial review of legislative acts in the Supreme Court"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1962; latest 1976"
+      },
+      "amendments": {
+        "text": "proposed by Parliament; passage of amendments affecting constitutional provisions, such as human rights and freedoms or citizenship, requires at least two-thirds majority vote by the membership of both houses and assent of the president; passage of amendments, such as the powers and authorities of the executive, legislative, and judicial branches of government, and the procedure for amending the constitution, requires at least three-quarters majority vote by the House membership, two-thirds majority vote by the Senate membership, and assent of the president; amended many times, last in 2007"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "yes"
+      },
+      "citizenship by descent only": {
+        "text": "yes"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "8 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Christine KANGALOO (since 20 March 2023)"
+      },
+      "head of government": {
+        "text": "Prime Minister Keith ROWLEY (since 9 September 2015)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed from among members of Parliament"
+      },
+      "elections/appointments": {
+        "text": "president indirectly elected by an electoral college of selected Senate and House of Representatives members for a 5-year term (eligible for a second term); election last held on 20 January 2023 (next to be held by February 2028); the president usually appoints the leader of the majority party in the House of Representatives as prime minister"
+      },
+      "election results": {
+        "text": "<em>2023: </em>Christine KANGALOO elected president by the electoral college on 20 January 2023; electoral college vote  Christine KANGALOO (PNM) 48, Israel KHAN (UNC) 22<br><br><em>2018: </em>Paula-Mae WEEKES (independent) elected president; ran unopposed and was elected without a vote; she was Trinidad and Tabago's first female head of state"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Parliament"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      },
+      "note": "<strong>note:</strong> Tobago has a unicameral House of Assembly (19 seats; 15 assemblymen directly elected by simple majority vote and 4 appointed councilors - 3 on the advice of the chief secretary and 1 on the advice of the minority leader; members serve 4-year terms)"
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "House of Representatives"
+      },
+      "number of seats": {
+        "text": "42 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "8/10/2020"
+      },
+      "parties elected and seats per party": {
+        "text": "People's National Movement (PNM) (22); United National Congress (UNC) (19)"
+      },
+      "percentage of women in chamber": {
+        "text": "26.8%"
+      },
+      "expected date of next election": {
+        "text": "August 2025"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "Senate"
+      },
+      "number of seats": {
+        "text": "32 (all appointed)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "8/28/2020"
+      },
+      "percentage of women in chamber": {
+        "text": "32.3%"
+      },
+      "expected date of next election": {
+        "text": "August 2025"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court of the Judicature (consists of a chief justice for both the Court of Appeal with 12 judges and the High Court with 24 judges); note - Trinidad and Tobago can file appeals beyond its Supreme Court to the Caribbean Court of Justice, with final appeal to the Judicial Committee of the Privy Council (in London)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court chief justice appointed by the president after consultation with the prime minister and the parliamentary leader of the opposition; other judges appointed by the Judicial Legal Services Commission, headed by the chief justice and 5 members with judicial experience; all judges serve for life with mandatory retirement normally at age 65"
+      },
+      "subordinate courts": {
+        "text": "Courts of Summary Criminal Jurisdiction; Petty Civil Courts; Family Court"
+      }
+    },
+    "Political parties": {
+      "text": "People's National Movement or PNM<br>United National Congress or UNC<br>Tobago People’s Party or Tobago"
+    },
+    "International organization participation": {
+      "text": "ACP, ACS, AOSIS, C, Caricom, CDB, CELAC, EITI (compliant country), FAO, G-24, G-77, IADB, IAEA, IBRD, ICAO, ICC (NGOs), ICCt, ICRM, IDA, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), LAES, MIGA, NAM, OAS, OPANAL, OPCW, Pacific Alliance (observer), Paris Club (associate), UN, UNCTAD, UNESCO, UNIDO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires Venessa RAMHIT-RAMROOP (since 3 March 2024)"
+      },
+      "chancery": {
+        "text": "1708 Massachusetts Avenue NW, Washington, DC 20036-1975"
+      },
+      "telephone": {
+        "text": "[1] (202) 467-6490"
+      },
+      "FAX": {
+        "text": "[1] (202) 785-3130"
+      },
+      "email address and website": {
+        "text": "<br>embdcinfo@foreign.gov.tt<br><br>https://foreign.gov.tt/missions-consuls/tt-missions-abroad/diplomatic-missions/embassy-washington-dc-us/"
+      },
+      "consulate(s) general": {
+        "text": "Miami, New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador&nbsp;(vacant); Charg&eacute; d&rsquo;Affaires Jenifer NEIDHART de ORTIZ (since January 2025)"
+      },
+      "embassy": {
+        "text": "15 Queen's Park West, Port of Spain"
+      },
+      "mailing address": {
+        "text": "3410 Port of Spain Place, Washington DC&nbsp; 20521-3410"
+      },
+      "telephone": {
+        "text": "(868) 622-6371"
+      },
+      "FAX": {
+        "text": "(868) 822-5905"
+      },
+      "email address and website": {
+        "text": "<br>ptspas@state.gov<br><br>https://tt.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "red with a white-edged black diagonal band from the upper hoist side to the lower fly side; the colors represent the elements of earth, water, and fire; black stands for the wealth of the land and the dedication of the people; white symbolizes the sea surrounding the islands, the purity of the country's aspirations, and equality; red symbolizes the warmth and energy of the sun, the vitality of the land, and the courage and friendliness of its people"
+    },
+    "National symbol(s)": {
+      "text": "scarlet ibis (bird of Trinidad), cocrico (bird of Tobago), Chaconia flower; national colors: red, white, black"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Forged From the Love of Liberty\""
+      },
+      "lyrics/music": {
+        "text": "Patrick Stanislaus CASTAGNE"
+      },
+      "note": "<strong>note:</strong> adopted 1962; song originally created to serve as an anthem for the West Indies Federation; adopted by Trinidad and Tobago following the Federation's dissolution in 1962"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income Caribbean economy; major hydrocarbon exporter; key tourism and finance sectors; high inflation and growing public debt; long foreign currency access delays; large foreign reserves and sovereign wealth fund"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$43.358 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$42.781 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$42.157 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "1.35% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "1.48% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "-1.04% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$31,700 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$31,300 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$30,800 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$27.372 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "4.63% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "5.83% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "2.06% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Moody's rating": {
+        "text": "Ba1 (2017)"
+      },
+      "Standard & Poors rating": {
+        "text": "BBB- (2020)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "1.1% (2022 est.)"
+      },
+      "industry": {
+        "text": "48.9% (2022 est.)"
+      },
+      "services": {
+        "text": "47.8% (2022 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "78.9% (2017 est.)"
+      },
+      "government consumption": {
+        "text": "16.4% (2017 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "19.8% (2021 est.)"
+      },
+      "investment in inventories": {
+        "text": "0% (2021 est.)"
+      },
+      "exports of goods and services": {
+        "text": "45.4% (2017 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-48.7% (2017 est.)"
+      }
+    },
+    "Agricultural products": {
+      "text": "chicken, fruits, coconuts, citrus fruits, plantains, maize, eggs, oranges, tomatoes, bananas (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "petroleum and petroleum products, liquefied natural gas, methanol, ammonia, urea, steel products, beverages, food processing, cement, cotton textiles"
+    },
+    "Industrial production growth rate": {
+      "text": "3.18% (2022 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "612,000 (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "4.21% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "4.38% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "4.45% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "10.1% (2023 est.)"
+      },
+      "male": {
+        "text": "9.4% (2023 est.)"
+      },
+      "female": {
+        "text": "11.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "20% (2014 est.)"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.74% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.68% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.96% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$5.698 billion (2019 est.)"
+      },
+      "expenditures": {
+        "text": "$7.822 billion (2019 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "41.8% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "16.55% (of GDP) (2019 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$3.397 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "$5.244 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$2.629 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$11.544 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$17.584 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$11.542 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "US 35%, Belgium 6%, Morocco 5%, Spain 4%, Brazil 4% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "ammonia, natural gas, crude petroleum, acyclic alcohols, fertilizers (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$8.773 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$10.694 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$8.636 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "US 40%, China 9%, Italy 7%, Brazil 4%, Canada 3% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, iron ore, cars, plastic products, excavation machinery (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$6.256 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$6.832 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$6.88 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Trinidad and Tobago dollars (TTD) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "6.75 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "6.754 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "6.759 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "6.751 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "6.754 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "2.522 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "8.981 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "427.688 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "99.9% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "consumption": {
+        "text": "100 metric tons (2021 est.)"
+      },
+      "imports": {
+        "text": "200 metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "73,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "32,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "242.982 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "26.772 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "15.913 billion cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "10.878 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "298.063 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "35.415 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "4.257 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "31.158 million metric tonnes of CO2 (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "311,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "21 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "2.02 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "131 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "excellent international service; good local service; broadband access; expanded FttP (Fiber to the Home) markets; LTE launch; regulatory development; major growth in mobile telephony and data segments which attacks operation investment in fiber infrastructure; moves to end roaming charges (2020)"
+      },
+      "domestic": {
+        "text": "fixed-line is 21 per 100 persons and mobile-cellular teledensity 131 per 100 persons (2022)"
+      },
+      "international": {
+        "text": "country code - 1-868; landing points for the EC Link, ECFS, Southern Caribbean Fiber, SG-SCS and Americas II submarine cable systems provide connectivity to US, parts of the Caribbean and South America; satellite earth station - 1 Intelsat (Atlantic Ocean); tropospheric scatter to Barbados and Guyana (2020)"
+      }
+    },
+    "Broadcast media": {
+      "text": "6 free-to-air TV networks, 2 of which are state-owned; 24 subscription providers (cable and satellite); over 36 radio frequencies (2019)"
+    },
+    "Internet country code": {
+      "text": ".tt"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "80% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "404,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "27 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "1 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "19"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "2,525,130 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "41.14 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "9Y"
+    },
+    "Airports": {
+      "text": "3 (2024)"
+    },
+    "Pipelines": {
+      "text": "257 km condensate, 11 km condensate/gas, 1,567 km gas, 587 km oil (2013)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "102 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 1, other 101"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "10 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "1"
+      },
+      "small": {
+        "text": "4"
+      },
+      "very small": {
+        "text": "5"
+      },
+      "ports with oil terminals": {
+        "text": "8"
+      },
+      "key ports": {
+        "text": "Galeota Point Terminal, Point Lisas Industrial Port, Point Lisas Port, Pointe-a-Pierre, Port of Spain"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Trinidad and Tobago Defense Force (TTDF): Trinidad and Tobago Regiment (Army/Land Forces), Trinidad and Tobago Coast Guard, Trinidad and Tobago Air Guard, Trinidad and Tobago Defense Force Reserves<br><br>Trinidad and Tobago Police Service (TTPS) (2024)",
+      "note": "<strong>note:</strong> the Ministry of National Security oversees both the TTDF and the TTPS"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "1% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.1% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "1% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 5,000 TTDF personnel (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the TTDF's ground force inventory consists of light weapons, while the Coast Guard and Air Guard field mostly secondhand equipment from a mix of countries, including Australia, China, Italy, the Netherlands, the UK, and the US (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-25 years of age for voluntary military service for men and women (some age variations between services, reserves); no conscription (2024)"
+    },
+    "Military - note": {
+      "text": "the TTDF's primary responsibilities are conducting border and maritime security, including air and maritime surveillance, assisting civil authorities in times of crisis or disaster, providing search and rescue services, port security, and supporting civil law enforcement, particularly in countering gang-related crime and trafficking of narcotics and other illicit goods; the Police Service maintains internal security (2024)"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "36,218 (Venezuela) (economic and political crisis; includes Venezuelans who have claimed asylum, are recognized as refugees, or have received alternative legal stay) (2023)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a transit point for drugs destined for Europe, North America, and the rest of the Caribbean;  drug trafficking organizations use  the country’s proximity to Venezuela, its porous borders, vulnerabilities at ports of entry, a limited law enforcement capacity and resources, and corruption</p> <p> </p>"
+    }
+  }
+}

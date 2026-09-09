@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "sp",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 11,
+  "keys": [
+    {
+      "path": "batch",
+      "type": "string",
+      "required": false,
+      "default": "null (unset); coalesces to \"default\" (CatalogPipeline.DefaultBatch) at query time via the same generic catalog/run-list path used by every other flow kind, while the stored catalog row and the run record keep null",
+      "description": "Optional grouping label, consumed the same way as the file flow's batch but sourced from a different DTO (StoredProcedureYaml.Batch, not FlowYaml.Batch). Normalized to null via YamlDocumentParts.NullIfBlank and bound onto StoredProcedureFlow.Batch (src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:104). Consumed in three places: (1) the lineage collector stamps it on the flow's LineageFlowNode for kind 'sp' (src/SqlFlow.Lineage/Collection/FlowSetCollector.cs:148), which catalog sync projects onto the CatalogPipeline row exactly as for every other document kind (src/SqlFlow.Catalog/CatalogSync.cs:234-242); (2) StoredProcedureFlowRunner.BuildRecord copies it onto the run-history IngestionRunRecord.Batch field for every run (src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs:131); (3) the legacy full-mode host's RunStoredProcedureBatchAsync loads every stored-procedure flow sharing a Batch value from the legacy flw.StoredProcedure control-database table and runs them as one ordered sequence gated by onErrorResume (src/SqlFlow.SqlServer/FullMode/FullModeIngestionHost.cs:202-218); that path reads the legacy table rather than the YAML file, but is the same grouping concept.",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:12 (model: src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:16)"
+    },
+    {
+      "path": "mode",
+      "type": "enum(auto|manual|disabled)",
+      "required": false,
+      "default": "auto",
+      "enumValues": ["auto", "manual", "disabled"],
+      "description": "The flow's execution mode, read at the document envelope (YamlDocumentLoader's probe, FlowDocument.Mode) and projected to the catalog pipeline row. 'auto' (the default) runs on schedule fires and in batch/node group runs; 'manual' reserves a working flow for direct triggers; 'disabled' deactivates a retired one (a retired source, a run-once replay) with the same exclusions and a visible 'disabled' badge. A node-scoped run can opt into includeAll ('find all') to replay non-auto descendants deliberately, and naming a flow directly always runs it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs (FlowDocument.Mode, parsed by YamlDocumentParts.ParseExecutionMode)",
+      "validation": "Unknown value fails to load: \"<source>: 'mode' has unknown value '<value>'. Allowed: auto, manual, disabled.\""
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow executes, schedules, and records run history exactly like a production one, but it never generates notification events, so a pipeline under active development cannot alert email/Slack subscribers. Parsed case-insensitively by YamlDocumentParts.ParseLifecycle (src/SqlFlow.Yaml/YamlDocumentParts.cs) and projected to CatalogPipeline.Lifecycle on every catalog sync.",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:13 (mapped by YamlStoredProcedureFlowLoader, src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs)",
+      "validation": "Unknown value fails to load: \"<source>: 'lifecycle' has unknown value '<value>'. Allowed: production, development.\" (YamlDocumentParts.ParseLifecycle, src/SqlFlow.Yaml/YamlDocumentParts.cs)"
+    },
+    {
+      "path": "description",
+      "type": "string",
+      "required": false,
+      "default": "null (no description)",
+      "description": "Free-text documentation of the flow's purpose, e.g. 'Rebuilds the reporting marts after the nightly loads.' in samples/sp/refresh-marts.flow.yaml. Normalized to null via YamlDocumentParts.NullIfBlank and bound onto StoredProcedureFlow.Description (src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:110). No consumer reads it back: it is not carried onto the LineageFlowNode the lineage collector builds for kind 'sp' (src/SqlFlow.Lineage/Collection/FlowSetCollector.cs:139-158), and StoredProcedureFlowRunner never references it; it is retained on the model purely for round-tripping and inspection of the flow definition.",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:11 (model: src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:34)"
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "description": "Unique, human-readable identifier of the stored-procedure flow. Validated and trimmed by the shared YamlDocumentParts.RequireFlowName(y.Name, \"a stored-procedure flow\", source) (src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:80; helper at src/SqlFlow.Yaml/YamlDocumentParts.cs:231-233): unlike the file flow's own 'name' (FlowYaml.Name), whose loader does not trim it, every non-file document trims this value. The trimmed name becomes StoredProcedureFlow.SysAlias verbatim, the legacy mandatory SysAlias (src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:22), and seeds the flow's positive 31-bit int FlowId through YamlDocumentParts.StableFlowId: BitConverter.ToInt32(FlowIdentity.FromName(name).ToByteArray(), 0) & 0x7FFFFFFF (src/SqlFlow.Yaml/YamlDocumentParts.cs:237-238), so renaming the flow changes its identity. Consumers use SysAlias/FlowId verbatim: the run.start log text \"stored procedure '<SysAlias>' (flow <FlowId>): EXEC <Procedure.QualifiedName> on '<Server>'\" and the run-history record's SysAlias field (src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs:56-57,132), DocumentExecutionResult.FlowName and the run-history folder name (src/SqlFlow.Execution/DocumentExecutor.cs:324-330), and the lineage collector's LineageFlowNode.Name for kind 'sp' (src/SqlFlow.Lineage/Collection/FlowSetCollector.cs:148), which catalog sync keys the pipeline row on the same way as every other document kind.",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:10 (model: src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:14,22)",
+      "validation": "\"<source>: 'name' is required for a stored-procedure flow.\" (YamlDocumentParts.RequireFlowName, called with kindLabel \"a stored-procedure flow\" from src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:80); a missing, null, empty, or all-whitespace value throws. Confirmed by tests/SqlFlow.Core.Tests/YamlStoredProcedureFlowLoaderTests.cs:89 (MissingRequirements_FailWithThePath)."
+    },
+    {
+      "path": "onErrorResume",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Legacy batch-continuation flag (flw.StoredProcedure.OnErrorResume), bound as y.OnErrorResume ?? true onto StoredProcedureFlow.OnErrorResume (src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:108; model default also true, src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:30). Documented in samples/sp/refresh-marts.flow.yaml's commented example as \"batch behavior when this flow fails\". In the YAML/without-database execution path traced here it is currently not consulted by anything: StoredProcedureFlowRunner.RunAsync always executes its one EXEC unconditionally and never branches on flow.OnErrorResume (src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs), and a flowType: batch document running this flow as a member gates wave continuation on the BATCH document's own onError/ignoreErrors settings instead of a member's onErrorResume (src/SqlFlow.Orchestration/BatchOrchestrator.cs:127-134). Its one confirmed live consumer is the legacy full-mode host, which loads stored-procedure flows from the legacy flw.StoredProcedure control-database table (a separate schema from the YAML/catalog path) and runs a same-Batch set sequentially, breaking out of the loop as soon as one flow's result is unsuccessful and OnErrorResume is false (src/SqlFlow.SqlServer/FullMode/FullModeIngestionHost.cs:202-218).",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:22 (model: src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:30)"
+    },
+    {
+      "path": "postInvoke",
+      "type": "string",
+      "required": false,
+      "default": "null (no post-run hook)",
+      "appliesWhen": "the document also declares a matching entry under invokes: (validated at parse time; the invokes/servicePrincipals block internals are out of scope for this census)",
+      "description": "Alias of an invoke declared under the document's own invokes: block, run after the procedure EXECs successfully. Resolved and validated at parse time by YamlInvokeParts.ResolveHookAlias(y.PostInvoke, \"postInvoke\", invokes, source) (src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:109; helper at src/SqlFlow.Yaml/YamlInvokeParts.cs:200-216), which trims the value and requires it to already be a key of the invokes dictionary parsed from the SAME document; there is no separate flw.Invoke registry lookup on the without-database path. The resolved alias becomes StoredProcedureFlow.PostInvokeAlias (src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:32). At run time StoredProcedureFlowRunner runs the hook only after the procedure's EXEC has already succeeded, immediately before the run is reported successful: it logs an 'invoke.post' event and calls IInvokeRunner.RunByAliasAsync(flow.PostInvokeAlias.Trim(), ct) (src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs:64-68); a failed EXEC never reaches this step, so postInvoke never fires for a failing procedure run. If the hook itself throws, for instance because the referenced invoke ran and failed without its own onErrorResume (src/SqlFlow.Core/Invoke/IInvokeRunner.cs:60-64), that exception is caught by the SAME outer try/catch as the EXEC, so a procedure call that already committed is retroactively reported as a FAILED stored-procedure run, Success false with Error set to the invoke's failure message (src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs:54-111). The without-database composition (WithoutDatabaseStoredProcedure.BuildRunner via WithoutDatabaseInvokeRunner.Build) wires a real DefaultInvokeRunner whenever the document declares at least one invoke, which postInvoke's own parse-time check guarantees whenever postInvoke is set; it falls back to NullInvokeRunner, which raises a clear configuration error instead of silently skipping, only in the case, unreachable for a valid postInvoke, of a document with no invokes at all (src/SqlFlow.SqlServer/Invoke/WithoutDatabaseInvoke.cs:14-22; src/SqlFlow.Core/Invoke/IInvokeRunner.cs:20-31).",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:19 (model: src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:32)",
+      "validation": "\"<source>: 'postInvoke' references '<alias>', which is not declared under 'invokes:'.\" (YamlInvokeParts.ResolveHookAlias, src/SqlFlow.Yaml/YamlInvokeParts.cs:211-212)"
+    },
+    {
+      "path": "procedure",
+      "type": "object",
+      "required": true,
+      "description": "Required block naming the one existing stored procedure this flow executes, a parameter-less EXEC, and the server it runs on. Binds to StoredProcedureTargetYaml: server, connection, provider, object (src/SqlFlow.Yaml/StoredProcedureYaml.cs:25-35). The whole block must be present; a document that omits procedure: entirely fails before any of its four fields are inspected.",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:18",
+      "validation": "\"<source>: 'procedure' is required.\" (src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:83); confirmed by tests/SqlFlow.Core.Tests/YamlStoredProcedureFlowLoaderTests.cs:101-105 (MissingProcedureBlock_Fails)."
+    },
+    {
+      "path": "procedure.connection",
+      "type": "string",
+      "required": false,
+      "description": "A direct connection string, or a whole ${env:NAME}/${keyvault:vault/secret} reference, for the server the procedure runs on: the alternative to procedure.server, which instead names a connection already declared under the document's connections: block (out of scope for this census). Resolved by YamlDocumentParts.ResolveEndpointConnection(\"procedure\", ..., syntheticName: \"target\", ...) (src/SqlFlow.Yaml/YamlDocumentParts.cs:137-179, called from src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:85-87), which registers a new connection entry named 'target' (the loader's TargetConnectionName constant, src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:37) built from this string and procedure.provider, and makes 'target' the flow's resolved Server. Mutually exclusive with procedure.server; the procedure block needs exactly one of the two. Confirmed by tests/SqlFlow.Core.Tests/YamlStoredProcedureFlowLoaderTests.cs:72-86 (InlineConnection_SynthesizesTheTargetName).",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:28",
+      "validation": "Both server and connection set: \"<source>: 'procedure' sets both 'server' and 'connection'; use exactly one.\" (YamlDocumentParts.cs:146-147). Neither set: \"<source>: 'procedure' needs a connection. Set 'procedure.connection' to a connection string or a ${...} reference, or 'procedure.server' to a name declared under 'connections:'.\" (YamlDocumentParts.cs:164-166). connections: already declaring a 'target' entry: \"<source>: 'procedure.connection' is set, but 'connections:' already declares 'target'. Either rename that connection or use 'procedure.server: target'.\" (YamlDocumentParts.cs:171-173). The resulting connection's kind is then required to be SQL Server, the same check as procedure.server (see that entry)."
+    },
+    {
+      "path": "procedure.object",
+      "type": "string",
+      "required": true,
+      "description": "The three-part [Database].[Schema].[Procedure] name to EXEC, e.g. DW.dbo.usp_RefreshMarts (samples/sp/refresh-marts.flow.yaml) or SqlFlowCatalogTests.demo.usp_BuildOrderFact (samples/lineage-demo/30-build-order-fact.flow.yaml). Parsed by RelationalObject.Parse via YamlDocumentParts.ParseQualifiedObject(raw, \"procedure.object\", source) (src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:93-95,107; parser at src/SqlFlow.Core/Ingestion/RelationalObject.cs:20-48): the string is split on '.' respecting bracket-quoting (an inner ']' escaped as ']]'), and the rightmost three parts become Database/Schema/Name, so a stray leading fourth part such as a server prefix is silently dropped rather than rejected. The parsed object becomes StoredProcedureFlow.Procedure, a RelationalObject (src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:28), whose QualifiedName re-brackets and re-escapes each part as [Database].[Schema].[Name] (RelationalObject.cs:18). At run time StoredProcedureFlowRunner builds a SqlCommand whose CommandText is exactly this QualifiedName, with CommandType.StoredProcedure and no SqlParameters ever added, the parameter-less EXEC (src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs:114-119); the same QualifiedName is captured verbatim in the run's SQL trace as 'EXEC <QualifiedName>;' (StoredProcedureFlowRunner.cs:59) and in the run.start log line (StoredProcedureFlowRunner.cs:56-57). Because the grammar has no field for arguments, a procedure requiring mandatory parameters fails at the database with SQL Server's own missing-parameter error, not a SQLFlow-level one. For lineage, the parsed object is recorded as a 'Requires' fact, not Reads/Writes, on the resolved server: the flow only declares that it needs the procedure, not what the procedure itself reads or writes, unless a connected sync (db sync --connect) derives that separately (src/SqlFlow.Lineage/Collection/FlowSetCollector.cs:154-156; samples/lineage-demo/30-build-order-fact.flow.yaml).",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:34",
+      "validation": "Blank or absent: \"<source>: 'procedure.object' is required (a three-part name like Database.Schema.Procedure).\" (YamlStoredProcedureFlowLoader.cs:93-95). Fewer than three dotted parts: \"<source>: 'procedure.object': Object name '<name>' must be a three-part [Database].[Schema].[Object] name; found <n> part(s).\" (RelationalObject.cs:32-36, wrapped by YamlDocumentParts.ParseQualifiedObject, YamlDocumentParts.cs:214). Any part empty, e.g. 'DW..usp_X': \"<source>: 'procedure.object': Object name '<name>' has an empty database, schema, or object part.\" (RelationalObject.cs:42-45). Confirmed by tests/SqlFlow.Core.Tests/YamlStoredProcedureFlowLoaderTests.cs:90-91."
+    },
+    {
+      "path": "procedure.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "procedure.connection is set (a direct inline connection); never read when procedure.server is used instead, since that connection's kind was already fixed when it was declared under connections: (out of scope for this census)",
+      "description": "The provider of a direct procedure.connection, parsed case-insensitively by YamlDocumentParts.ParseProvider(provider, \"procedure.provider\", source) inside ResolveEndpointConnection's connection branch (src/SqlFlow.Yaml/YamlDocumentParts.cs:122-132,176, called from src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:85-87). 'sqlserver' is accepted as a case-insensitive synonym for 'mssql' and 'postgresql' for 'postgres' (unlike load.mode there is no '-'/'_' stripping here); a blank or absent value also resolves to mssql. Regardless of the spelling accepted here, a stored-procedure flow's resolved connection is then hard-required to be SQL Server: YamlDocumentParts.RequireSqlServerConnection (called from YamlStoredProcedureFlowLoader.cs:91) rejects any kind other than MSSQL or AZDB immediately at parse time, so authoring provider: mysql, postgres, postgresql, or oracle on a direct connection: parses successfully here but always fails the document one step later with a 'must be SQL Server' error; only mssql, sqlserver, azdb, or omitting the key can ever succeed for a stored-procedure flow.",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:32",
+      "validation": "Unknown provider string: \"<source>: 'procedure.provider' has unknown provider '<provider>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" (YamlDocumentParts.cs:130-131). Any recognized-but-non-SQL-Server kind: \"<source>: the procedure connection '<name>' is '<kind>'; a stored-procedure flow's server must be SQL Server (mssql or azdb).\" (YamlDocumentParts.cs:199-201, RequireSqlServerConnection); this exact check, reached via procedure.server rather than procedure.connection, is exercised by tests/SqlFlow.Core.Tests/YamlStoredProcedureFlowLoaderTests.cs:107-124 (ForeignProviderServer_IsRejectedAtParseTime)."
+    },
+    {
+      "path": "procedure.server",
+      "type": "string",
+      "required": false,
+      "description": "Name of a connection already declared under the document's connections: block (out of scope for this census) that the procedure runs on; the alternative to a direct procedure.connection. Resolved by YamlDocumentParts.ResolveEndpointConnection (src/SqlFlow.Yaml/YamlDocumentParts.cs:137-179, called from src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs:85-87): the trimmed name is looked up verbatim in the connections dictionary already mapped from the document's own connections: block and becomes StoredProcedureFlow.Server as-is (src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs:25), consumed as the connection reference '@' + Server (StoredProcedureFlow.ConnectionReference, StoredProcedureFlow.cs:49) that IConnectionResolver.ResolveAsync resolves to an actual SQL connection string at run time with ConnectionRole.Target (src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs:58). Mutually exclusive with procedure.connection; the procedure block needs exactly one of the two.",
+      "definedIn": "src/SqlFlow.Yaml/StoredProcedureYaml.cs:27",
+      "validation": "Both server and connection set: \"<source>: 'procedure' sets both 'server' and 'connection'; use exactly one.\" (YamlDocumentParts.cs:146-147). A name not declared under connections:: \"<source>: 'procedure.server' references '<name>', which is not declared under 'connections:'.\" (YamlDocumentParts.cs:155-156). Neither server nor connection set: \"<source>: 'procedure' needs a connection. Set 'procedure.connection' to a connection string or a ${...} reference, or 'procedure.server' to a name declared under 'connections:'.\" (YamlDocumentParts.cs:164-166). The resolved connection's kind must be SQL Server: \"<source>: the procedure connection '<name>' is '<kind>'; a stored-procedure flow's server must be SQL Server (mssql or azdb).\" (YamlDocumentParts.cs:199-201, via RequireSqlServerConnection at YamlStoredProcedureFlowLoader.cs:91); confirmed by tests/SqlFlow.Core.Tests/YamlStoredProcedureFlowLoaderTests.cs:107-124 (ForeignProviderServer_IsRejectedAtParseTime)."
+    }
+  ]
+}

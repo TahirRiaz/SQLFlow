@@ -1,0 +1,12 @@
+# Loads the real sales-data-2014.xls into a persistent table for inspection.
+# truncate-load so re-running refreshes the table instead of duplicating rows.
+name: Xls_SalesData_2014
+source:
+  type: xls
+  location: C:/Projects/SQLFlowV3/data/xls/sales-data-2014.xls
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Xls_SalesData_2014
+load:
+  mode: truncate-load

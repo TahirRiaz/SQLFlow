@@ -1,0 +1,12 @@
+# Headerless file: the first line is data, not column names. Columns are auto-named
+# Column1, Column2, ... (matching the original SQLFlow behaviour).
+name: Csv_NoHeader
+source:
+  type: csv
+  location: ./data/no-header.csv
+  options:
+    header: "false"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_NoHeader

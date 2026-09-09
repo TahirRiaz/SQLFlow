@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "batch",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 15,
+  "keys": [
+    {
+      "path": "connect",
+      "type": "enum(auto|always|never)",
+      "required": false,
+      "default": "auto",
+      "enumValues": [
+        "auto",
+        "always",
+        "never"
+      ],
+      "description": "Selects BatchConnectMode, which governs whether BatchOrchestrator's lineage computation additionally connects to the members' live SQL Server databases to expand view/procedure module bodies into their real reads and writes (the lineage 'derived' tier), on top of the declared (YAML) and observed (prior run.json SqlTrace) tiers that are always included regardless of this key (LineageOptions.IncludeObserved = true is hard-coded in BatchOrchestrator.ComputeLineageAsync, BatchOrchestrator.cs:226-233). 'never': IncludeDerived is always false; wave order comes only from what the flow documents declare plus what past runs observed, so a stored-procedure member is ordered only by the fact that it Requires its procedure object (FlowSetCollector.cs:139-158), never by what that procedure's body actually reads or writes. 'always': IncludeDerived is true on the batch's one and only lineage pass, so every module body reachable from a declared connection is expanded up front (also catching view-on-view source chains). 'auto' (the default): the first lineage pass runs with IncludeDerived=false; if the resolved membership then includes at least one stored-procedure member (Kind 'sp', case-insensitive), BatchOrchestrator recomputes the whole lineage report a second time with IncludeDerived=true and re-resolves membership from it, specifically because a stored-procedure flow's real reads/writes live in the module body, not the document (BatchOrchestrator.cs:47-55; doc comment at BatchFlow.cs:20-22); with no sp member present, auto never connects and behaves exactly like never. Connecting needs to reach the referenced SQL Server(s) through the supplied ISecretResolver and can add latency, fail, or surface catalog warnings that never/auto-without-sp would not.",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:126 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:69; enum BatchConnectMode: src/SqlFlow.Core/Batch/BatchFlow.cs:18-29; parsed by ParseConnect, YamlBatchFlowLoader.cs:102-109)",
+      "validation": "Parsed case-insensitively after trimming (NullIfBlank(value)?.Trim().ToLowerInvariant(), YamlBatchFlowLoader.cs:102-109); unlike load.mode there is no '-'/'_' stripping. 'AUTO', 'Always', 'never', and '  Never  ' all parse to their enum value (confirmed by BatchEdgeCaseTests.Loader_Connect_IsCaseAndWhitespaceInsensitive, verified passing by direct test run). Absent or blank defaults to Auto. Any other value throws FlowValidationException \"<source>: 'connect' must be 'auto', 'always', or 'never', got '<value>'.\" with the original untrimmed value echoed (confirmed by BatchEdgeCaseTests.Loader_UnknownConnect_IsRejected using 'sometimes'/'offline'/'yes', verified passing)."
+    },
+    {
+      "path": "description",
+      "type": "string",
+      "required": false,
+      "description": "Free-text documentation of the batch, bound to BatchFlow.Description via YamlDocumentParts.NullIfBlank(y.Description) (YamlBatchFlowLoader.cs:80), so a missing, empty, or whitespace-only value becomes null (confirmed by BatchEdgeCaseTests.Loader_BlankDescription_BecomesNull, verified passing). It is not read anywhere in BatchOrchestrator, is not part of BatchRunResult, and is not printed by the CLI's batch 'validate' output (which prints only SysAlias, Include, OnError, and MaxParallel, src/SqlFlow.Cli/Program.cs:150-157) or its run summary (Program.cs:2230-2263); as far as the reviewed code goes it exists purely for the author's own documentation.",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:120 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:46)"
+    },
+    {
+      "path": "ignoreErrors",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Glob patterns, relative to the batch document's directory (top-level, not nested under members), naming members whose failure is tolerated. Matched independently of members.include/exclude with no exclude list of its own (Match(flow.IgnoreErrors, [], files), BatchOrchestrator.cs:243); only ever consequential for a file that is already a resolved member. A matching member that fails is still run and still recorded, but as BatchMemberStatus.FailedIgnored instead of Failed, which changes three things: (1) it never sets stopRequested, since only a true Failed status does (BatchOrchestrator.cs:127-134), so onError: stop still lets the rest of that wave and every later wave proceed; (2) it never blocks dependents, since only Failed and Skipped names enter the 'blocked' set consulted when deciding whether to skip a later member (BatchOrchestrator.cs:90,104,129), so a dependent of an ignored failure runs normally; (3) it is excluded from BatchRunResult.Failed and does not flip BatchRunResult.Success to false (Success = failed == 0 && skipped == 0, and 'failed' only counts Status == Failed, BatchOrchestrator.cs:157,163,171). This holds under both onError: stop and onError: continue (BatchEdgeCaseTests.IgnoreErrors_* and BatchOrchestratorTests.IgnoreErrors_FailureIsNonFatal_AndDoesNotBlockDependents, all verified passing), and it also downgrades an unexpected exception from the document runner: RunMemberAsync first catches any throw into a failed outcome (BatchOrchestrator.cs:190-201), then applies the same Ignorable downgrade to it (BatchOrchestrator.cs:203-205; BatchEdgeCaseTests.RunnerThatThrows_ForAnIgnorableMember_IsFailedIgnored, verified passing).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:124 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:59-62; mapped at YamlBatchFlowLoader.cs:85)"
+    },
+    {
+      "path": "ignoreErrors[]",
+      "type": "string",
+      "required": false,
+      "description": "One glob pattern naming members whose failure is non-fatal; see ignoreErrors. Blank or whitespace-only entries are silently dropped by Clean() rather than erroring (YamlBatchFlowLoader.cs:111-114).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:124"
+    },
+    {
+      "path": "maxParallel",
+      "type": "int",
+      "required": false,
+      "default": "0",
+      "description": "Caps how many members run concurrently within one wave; it never changes how many waves exist or their order, only the concurrency inside each wave's Task.WhenAll. Consumed as a single SemaphoreSlim created once for the whole batch run and awaited by every member task before it invokes the document runner (BatchOrchestrator.cs:86-87,121,181-183). 0, the default, means unbounded: flow.MaxParallel <= 0 ? int.MaxValue : flow.MaxParallel (BatchOrchestrator.cs:86), so every member in a wave starts at once; the CLI's 'validate' output prints this as 'maxParallel unbounded' (Program.cs:155). A value larger than a given wave's member count simply never saturates the semaphore for that wave, so it behaves as unbounded there too (BatchEdgeCaseTests.MaxParallelLargerThanWave_BehavesAsUnbounded). Concurrency tests confirm the observed peak concurrency matches the configured cap exactly for 1, 2, and unbounded (BatchEdgeCaseTests.MaxParallelOne_SerializesMembersWithinAWave / MaxParallelTwo_CapsConcurrencyAtTwo / MaxParallelUnbounded_RunsTheWholeWaveConcurrently, all verified passing).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:125 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:66-67)",
+      "validation": "A negative value throws FlowValidationException \"<source>: 'maxParallel' must be 0 (unbounded) or a positive number, got <value>.\" at load time (YamlBatchFlowLoader.cs:70-74; confirmed by BatchLoaderTests.NegativeMaxParallel_IsRejected using -1). 0 and any positive integer are accepted (BatchEdgeCaseTests.Loader_AcceptsZeroAndPositiveMaxParallel covers 0, 1, 8, 1024). Because a negative value cannot survive loading, BatchOrchestrator's own '<= 0 means unbounded' check (BatchOrchestrator.cs:86) only ever observes 0 or a positive number in practice."
+    },
+    {
+      "path": "members",
+      "type": "object",
+      "required": true,
+      "description": "Parent block naming which flow documents belong to the batch: which are candidates (include), which are removed entirely (exclude), and which stay declared but are skipped this run (inactive). Binds to the BatchMembersYaml DTO (YamlBatchFlowLoader.cs:129-134); it carries no keys of its own besides those three lists, and IgnoreUnmatchedProperties silently drops anything else nested under it. Candidates are drawn only from files named '*.flow.yaml' found recursively under the batch document's own directory (flowDirectory = Path.GetDirectoryName(Path.GetFullPath(batchFile)), falling back to the current directory, BatchOrchestrator.cs:44; scanned by Directory.EnumerateFiles(root, \"*.flow.yaml\", SearchOption.AllDirectories), FlowSetCollector.cs:32), using the same lineage collector (FlowSetCollector) that computes wave order. A sibling flowType: batch or flowType: scm document is never itself a candidate, regardless of how broad a glob is, because FlowSetCollector.Collect explicitly refuses to turn either kind into a lineage flow node ('Orchestration/utility documents: they move no catalog data, so they are not lineage nodes and contribute no facts.', FlowSetCollector.cs:239-243, confirmed by the passing BatchEdgeCaseTests.BatchDocumentSibling_IsNeverSelectedAsAMember); DocumentExecutor, the IDocumentRunner every resolved member actually runs through, additionally carries a second, currently unreachable safeguard that would fail a member run with 'a batch cannot be a member of another batch.' if a BatchFlowDocument ever reached it (src/SqlFlow.Execution/DocumentExecutor.cs:93-101). Every glob in include/exclude/inactive is matched against the candidate's path relative to the batch's own directory, forward-slash-normalized regardless of OS (FlowSetCollector.cs:37), using Microsoft.Extensions.FileSystemGlobbing.Matcher with case-insensitive comparison (BatchOrchestrator.cs:259).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:122,129-134 (model fields: src/SqlFlow.Core/Batch/BatchFlow.cs:50,53,57)",
+      "validation": "A missing 'members:' block behaves exactly like an empty 'members.include' list; see members.include for the exact validation message."
+    },
+    {
+      "path": "members.exclude",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Glob patterns (same matcher and relative-path convention as members.include) removing files from the included set entirely, applied via Matcher.AddExcludePatterns after the include patterns (BatchOrchestrator.cs:259-263). Exclude wins over everything else: a file matching both members.include and members.exclude is dropped outright (BatchEdgeCaseTests.ExcludeTakesPrecedence_WhenAFileMatchesBothIncludeAndExclude, verified passing), and a file matching both members.exclude and members.inactive is also dropped outright rather than being reported as an inactive member, because members.inactive is only ever assigned to files that already survived into the included set (BatchOrchestrator.ResolveMembers, BatchOrchestrator.cs:238-250; confirmed by BatchEdgeCaseTests.ExcludeWins_EvenWhenTheFileIsAlsoListedInactive, verified passing).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:132 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:52-53; mapped at YamlBatchFlowLoader.cs:83)"
+    },
+    {
+      "path": "members.exclude[]",
+      "type": "string",
+      "required": false,
+      "description": "One glob pattern removing matching candidate files from the included set; see members.exclude. Blank or whitespace-only entries are silently dropped by Clean() (YamlBatchFlowLoader.cs:111-114).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:132"
+    },
+    {
+      "path": "members.inactive",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Glob patterns marking included members that stay declared but are not run this invocation (the 'deactivate from batch' switch). Matched independently, with no exclude list of its own (Match(flow.Inactive, [], files), BatchOrchestrator.cs:242); a match only matters for a file that is also in the included set, since an excluded or never-included file is never reported at all. BatchOrchestrator computes waves only over the active (non-inactive) subset (active = members.Where(m => !m.Inactive), BatchOrchestrator.cs:76-77), so an inactive producer's consumer is treated as having no unmet member dependency and still runs, typically collapsing the wave count (BatchOrchestratorTests.InactiveMember_IsDeclaredButSkipped_AndDoesNotBlockDependents; BatchEdgeCaseTests.InactiveProducer_ShrinksTheWaveCount_AndDependentStillRuns, both verified passing); per the model's own doc comment, an inactive member is assumed handled outside the batch, not failed (BatchFlow.cs:55-56). After every real wave has run, each inactive member is appended to BatchRunResult.Members with Wave 0, BatchMemberStatus.Inactive, and a null RunId; it never reaches the document runner at all (BatchOrchestrator.cs:139-149).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:133 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:55-57; mapped at YamlBatchFlowLoader.cs:84)"
+    },
+    {
+      "path": "members.inactive[]",
+      "type": "string",
+      "required": false,
+      "description": "One glob pattern marking a matching included member inactive for this run; see members.inactive. Blank or whitespace-only entries are silently dropped by Clean() (YamlBatchFlowLoader.cs:111-114).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:133"
+    },
+    {
+      "path": "members.include",
+      "type": "list<string>",
+      "required": true,
+      "description": "One or more glob patterns selecting candidate member flow documents, relative to the batch document's own directory (BatchFlow.cs:48-49). Bound from BatchMembersYaml.Include, trimmed and blank-filtered by Clean() (YamlBatchFlowLoader.cs:63,111-114), then matched with Microsoft.Extensions.FileSystemGlobbing.Matcher, case-insensitive, against every candidate ('*.flow.yaml' file found recursively under the batch's directory: see members for the scan). Multiple patterns are unioned: any file matching any one of them is a candidate (BatchEdgeCaseTests.IncludeUnionsMultiplePatterns, verified passing). A plain file name (the seed sample samples/seed/seed-batch.flow.yaml uses exactly this: include: [orders-export.flow.yaml], confirmed present in the repo) matches only that one file; a directory-qualified glob ('raw/*.flow.yaml') or a recursive one ('**/*.flow.yaml') reaches into subdirectories. members.exclude, if present, is then applied to remove matches from this set (see members.exclude); what remains is what BatchOrchestrator.ResolveMembers turns into BatchMemberResult rows and orders into waves.",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:131 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:48-50; mapped and validated at YamlBatchFlowLoader.cs:63-68,82)",
+      "validation": "Empty after trimming/blank-filtering (key absent, list empty, or every entry blank/whitespace) throws FlowValidationException \"<source>: a batch needs at least one 'members.include' glob (relative to the batch file's directory).\" at load time (YamlBatchFlowLoader.cs:64-68; confirmed by BatchLoaderTests.MissingInclude_IsRejected and, in BatchEdgeCaseTests, Loader_EmptyIncludeList_IsRejected and Loader_WhitespaceOnlyIncludeEntries_AreDroppedAndRejectedAsEmpty -- all three verified passing by direct test run). At run time, if the resolved candidate set is still empty after applying members.exclude (e.g. nothing under the directory matched, or every match was excluded), BatchOrchestrator.RunAsync returns a failed BatchRunResult (Success=false, empty Waves and Members) with Error \"no member flows matched include [<patterns, comma-joined>] under '<batch-file-directory>'.\" (BatchOrchestrator.cs:57-60,386-400,402; confirmed by BatchEdgeCaseTests.AllMembersExcluded_FailsWithEmptyMembership and NoMembersMatched_ErrorNamesTheIncludeGlob, verified passing). Separately, if a resolved member's name is also reported in the lineage report's DuplicateFlowNames (more than one file under the scan declared the same flow name), BatchOrchestrator.RunAsync likewise returns a failed BatchRunResult with Error \"member flow name '<name>' is declared by <N> files (<file1>, <file2>, ...); names must be unique within a batch.\" (BatchOrchestrator.cs:63-74). BatchEdgeCaseTests.DuplicateMemberNames_AcrossTwoFiles_FailWithAClearError asserts exactly this and was confirmed passing by running it directly (dotnet test --filter). That test's own inline comment calls the guard 'currently unreachable', reasoning that lineage's first-wins collapse hides the collision from the batch; tracing the code shows this reasoning is itself wrong: LineageGraphBuilder.Build computes report.DuplicateFlowNames from the full collected.Flows grouping independently of the report.Flows first-wins dedup (src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs:216-232), so the surviving member's name still matches an entry in DuplicateFlowNames and the guard fires as coded; the inline comment is the stale artifact, not the guard."
+    },
+    {
+      "path": "members.include[]",
+      "type": "string",
+      "required": false,
+      "description": "One glob pattern naming candidate member files; see members.include for matching semantics. A blank or whitespace-only entry is silently dropped by Clean() rather than erroring (YamlBatchFlowLoader.cs:111-114); duplicate entries and authoring order are preserved (Clean() neither de-duplicates nor sorts).",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:131"
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "description": "The batch's unique identifier. Bound from BatchYaml.Name through YamlDocumentParts.RequireFlowName(y.Name, \"a batch flow (flowType: batch)\", source) (YamlBatchFlowLoader.cs:61), which trims the value and rejects a null or blank name; this differs from the file flow's 'name', which is required but never trimmed (confirmed independently against docs/reference/flow/keys.json's own 'name' entry, which states the .flow.yaml loader does not trim while every other document kind's shared RequireFlowName does). The trimmed value becomes BatchFlow.SysAlias: the name BatchOrchestrator matches lineage members and dependencies by (case-insensitively), the BatchRunResult.BatchName echoed to callers, the name RunHistory.Write folders and the CLI's batch summary/validate output use, and the seed for BatchFlow.FlowId via YamlDocumentParts.StableFlowId(name) = BitConverter.ToInt32(FlowIdentity.FromName(name).ToByteArray(), 0) & 0x7FFFFFFF (YamlDocumentParts.cs:212-213), a stable positive 32-bit integer derived from the same name-seeded version-5 GUID the other flow kinds use for their FlowId (masked non-negative). Renaming the batch therefore changes its FlowId, exactly as renaming any other flow kind changes its FlowId. Unlike SysAlias, FlowId itself was not observed being read anywhere in BatchOrchestrator, DocumentExecutor, or the CLI's batch code paths; it appears to exist only for structural parity with the other flow kinds' models.",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:119 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:44; required/trimmed via YamlDocumentParts.RequireFlowName, YamlDocumentParts.cs:206-208, called at YamlBatchFlowLoader.cs:61; FlowId derivation via YamlDocumentParts.StableFlowId, YamlDocumentParts.cs:212-213)",
+      "validation": "Null, empty, or whitespace-only throws FlowValidationException \"<source>: 'name' is required for a batch flow (flowType: batch).\" (YamlDocumentParts.RequireFlowName, YamlDocumentParts.cs:206-208, invoked at YamlBatchFlowLoader.cs:61)."
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow executes, schedules, and records run history exactly like a production one, but it never generates notification events, so a pipeline under active development cannot alert email/Slack subscribers. Parsed case-insensitively by YamlDocumentParts.ParseLifecycle (src/SqlFlow.Yaml/YamlDocumentParts.cs) and projected to CatalogPipeline.Lifecycle on every catalog sync. Accepted on this orchestration document for vocabulary consistency: scm/batch documents never project as catalog pipelines, so the value has no gating effect here today.",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:121 (mapped by YamlBatchFlowLoader.Map, src/SqlFlow.Yaml/YamlBatchFlowLoader.cs)",
+      "validation": "Unknown value fails to load: \"<source>: 'lifecycle' has unknown value '<value>'. Allowed: production, development.\" (YamlDocumentParts.ParseLifecycle, src/SqlFlow.Yaml/YamlDocumentParts.cs)"
+    },
+    {
+      "path": "onError",
+      "type": "enum(stop|continue)",
+      "required": false,
+      "default": "stop",
+      "enumValues": [
+        "stop",
+        "continue"
+      ],
+      "description": "Selects BatchErrorMode, consumed by BatchOrchestrator's wave loop to decide what happens after a member genuinely fails (BatchMemberStatus.Failed; a FailedIgnored member, see ignoreErrors, never triggers either behavior below). stop (the default): the wave containing the failure is still allowed to finish as a hard barrier, so every other member already running in that same wave completes on its own merits regardless of mode (BatchEdgeCaseTests.IndependentFailure_NeverBlocksAnUnrelatedMemberInTheSameWave; BatchOrchestratorTests.Stop_LetsTheCurrentWaveFinish_BeforeStopping, both verified passing), but no further wave starts: every member in every later wave is recorded Skipped with Error 'batch stopped before this wave' (BatchOrchestrator.cs:105-109,130-134). continue: later waves still run, but a member is skipped, with Error \"depends on '<name>', which did not succeed\", if it (transitively, across any number of waves) depends on a member that Failed; this propagates correctly across multiple hops because both Failed and Skipped member names accumulate into the same running 'blocked' set that every later wave consults (BatchOrchestrator.cs:90,104,107,129; BatchEdgeCaseTests.Continue_TransitiveDependentsAreSkippedAcrossWaves, verified passing). Independent members, with no dependency path to any failure, always run to completion under either mode. The chosen mode is echoed verbatim as BatchRunResult.OnError via flow.OnError.ToString() (BatchOrchestrator.cs:165,395; the CLI lowercases it for its printed summary, Program.cs:2241), i.e. the C# enum's PascalCase spelling ('Stop'/'Continue') regardless of how it was cased in the YAML.",
+      "definedIn": "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs:123 (model: src/SqlFlow.Core/Batch/BatchFlow.cs:64; enum BatchErrorMode: src/SqlFlow.Core/Batch/BatchFlow.cs:5-15; parsed by ParseErrorMode, YamlBatchFlowLoader.cs:94-100)",
+      "validation": "Parsed case-insensitively after trimming (NullIfBlank(value)?.Trim().ToLowerInvariant(), YamlBatchFlowLoader.cs:94-100); unlike load.mode there is no '-'/'_' stripping. 'STOP', 'Continue', and '  continue  ' all parse to their enum value (confirmed by BatchEdgeCaseTests.Loader_OnError_IsCaseAndWhitespaceInsensitive, verified passing). Absent or blank defaults to Stop. Any other value throws FlowValidationException \"<source>: 'onError' must be 'stop' or 'continue', got '<value>'.\" with the original untrimmed value echoed (confirmed by BatchLoaderTests.UnknownOnError_IsRejected using 'halt')."
+    }
+  ]
+}

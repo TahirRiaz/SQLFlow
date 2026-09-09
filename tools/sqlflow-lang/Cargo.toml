@@ -1,0 +1,17 @@
+[package]
+name = "sqlflow-lang"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Analysis engine for SQLFlow .flow.yaml: completion, hover, diagnostics, document symbols, and code actions driven by the reference key census"
+
+[lib]
+name = "sqlflow_lang"
+path = "src/lib.rs"
+
+[dependencies]
+# Position-aware YAML parser: nodes carry source Spans (byte offset + line +
+# column) so cursor/offset resolution and diagnostic ranges are exact.
+marked-yaml = "0.8"
+serde = { workspace = true }
+serde_json = { workspace = true }

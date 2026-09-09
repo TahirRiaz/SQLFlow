@@ -1,0 +1,879 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The Faroe Islands were already populated by about A.D. 500, but whether the original settlers were Celtic or early Norse (or someone else) has yet to be determined. Viking settlers arrived on the islands in the 9th century, and the islands served as an important stepping stone for medieval Viking exploration of the North Atlantic. The islands have been connected politically to Denmark since the 14th century, and today the Faroe Islands are a self-governing dependency of Denmark. The Home Rule Act of 1948 granted a high degree of self-government to the Faroese, who have autonomy over most internal affairs and external trade, while Denmark is responsible for justice, defense, and some foreign affairs. The Faroe Islands are not part of the European Union."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Northern Europe, island group between the Norwegian Sea and the North Atlantic Ocean, about halfway between Iceland and Norway"
+    },
+    "Geographic coordinates": {
+      "text": "62 00 N, 7 00 W"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "1,393 sq km"
+      },
+      "land": {
+        "text": "1,393 sq km"
+      },
+      "water": {
+        "text": "0 sq km (some lakes and streams)"
+      }
+    },
+    "Area - comparative": {
+      "text": "eight times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "1,117 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "continental shelf": {
+        "text": "200 nm or agreed boundaries or median line"
+      },
+      "exclusive fishing zone": {
+        "text": "200 nm or agreed boundaries or median line"
+      }
+    },
+    "Climate": {
+      "text": "mild winters, cool summers; usually overcast; foggy, windy"
+    },
+    "Terrain": {
+      "text": "rugged, rocky, some low peaks; cliffs along most of coast"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Slaettaratindur 882 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "fish, whales, hydropower, possible oil and gas"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "2.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 2.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0.1% (2018 est.)"
+      },
+      "other": {
+        "text": "97.8% (2018 est.)"
+      }
+    },
+    "Population distribution": {
+      "text": "the island of Streymoy is by far the most populous with over 40% of the population; it has approximately twice as many inhabitants as Eysturoy, the second most populous island; seven of the inhabited islands have fewer than 100 people"
+    },
+    "Natural hazards": {
+      "text": "strong winds and heavy rains can occur throughout the year"
+    },
+    "Geography - note": {
+      "text": "archipelago of 17 inhabited islands and one uninhabited island, and a few uninhabited islets; strategically located along important sea lanes in northeastern Atlantic; precipitous terrain limits habitation to small coastal lowlands"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "52,933"
+      },
+      "male": {
+        "text": "27,400"
+      },
+      "female": {
+        "text": "25,533 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Faroese (singular and plural)"
+      },
+      "adjective": {
+        "text": "Faroese"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Faroese 83.8% (Scandinavian and Anglo-Saxon descent), Danish 8.3%, Filipino 1.2%, other Nordic 0.9%, other 4.5% (includes Polish and Romanian) (2024 est.)",
+      "note": "<strong>note:</strong> data represent respondents by country of birth"
+    },
+    "Languages": {
+      "text": "Faroese 93.8% (derived from Old Norse), Danish 3.2%, other 3% (2011 est.)",
+      "note": "<strong>note:</strong>  data represent population by primary language"
+    },
+    "Religions": {
+      "text": "Christian 87% (predominantly Evangelical Lutheran), other 0.9%, none 3.7%, unspecified 8.9% (2011 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "20% (male 5,489/female 5,122)"
+      },
+      "15-64 years": {
+        "text": "61.5% (male 17,188/female 15,346)"
+      },
+      "65 years and over": {
+        "text": "18.5% (2024 est.) (male 4,723/female 5,065)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "62.8"
+      },
+      "youth dependency ratio": {
+        "text": "33.6"
+      },
+      "elderly dependency ratio": {
+        "text": "29.1"
+      },
+      "potential support ratio": {
+        "text": "3.4 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "36.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "36.9 years"
+      },
+      "female": {
+        "text": "36.8 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.63% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "14.9 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "8.6 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "0 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the island of Streymoy is by far the most populous with over 40% of the population; it has approximately twice as many inhabitants as Eysturoy, the second most populous island; seven of the inhabited islands have fewer than 100 people"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "43% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.89% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "21,000 TORSHAVN (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.07 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.07 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.12 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.93 male(s)/female"
+      },
+      "total population": {
+        "text": "1.07 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "5.7 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "6.3 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "5.1 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "81.7 years (2024 est.)"
+      },
+      "male": {
+        "text": "79.2 years"
+      },
+      "female": {
+        "text": "84.4 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "2.27 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.09 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "2.62 physicians/1,000 population (2016)"
+    },
+    "Hospital bed density": {
+      "text": "4.2 beds/1,000 population (2016)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: NA"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: NA"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "34.8% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "7.6% of GDP (2019 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "coastal erosion, landslides and rockfalls, flash flooding, wind storms; oil spills"
+    },
+    "Climate": {
+      "text": "mild winters, cool summers; usually overcast; foggy, windy"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "2.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 2.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0.1% (2018 est.)"
+      },
+      "other": {
+        "text": "97.8% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "43% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.89% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2017 est.)"
+    },
+    "Air pollutants": {
+      "carbon dioxide emissions": {
+        "text": "0.63 megatons (2016 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "61,000 tons (2014 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "40,870 tons (2012 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "67% (2012 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "0 cubic meters (2017 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Faroe Islands"
+      },
+      "local long form": {
+        "text": "none"
+      },
+      "local short form": {
+        "text": "Foroyar"
+      },
+      "etymology": {
+        "text": "the archipelago's name may derive from the Old Norse word \"faer,\" meaning sheep"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy (Faroese Parliament); part of the Kingdom of Denmark"
+    },
+    "Dependency status": {
+      "text": "part of the Kingdom of Denmark; self-governing overseas administrative division of Denmark since 1948"
+    },
+    "Capital": {
+      "name": {
+        "text": "Torshavn"
+      },
+      "geographic coordinates": {
+        "text": "62 00 N, 6 46 W"
+      },
+      "time difference": {
+        "text": "UTC 0 (5 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "the meaning in Danish is \"Thor's harbor\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "part of the Kingdom of Denmark; self-governing overseas administrative division of Denmark; there are 29 first-order municipalities (kommunur, singular - kommuna) Eidhi, Eystur, Famjin, Fuglafjordhur, Fugloy, Hov, Husavik, Hvalba, Hvannasund, Klaksvik, Kunoy, Kvivik, Nes, Porkeri, Runavik, Sandur, Sjovar, Skalavik, Skopun, Skuvoy, Sorvagur, Sumba, Sunda, Torshavn, Tvoroyri, Vagar, Vagur, Vestmanna, Vidhareidhi"
+    },
+    "Independence": {
+      "text": "none (part of the Kingdom of Denmark; self-governing overseas administrative division of Denmark)"
+    },
+    "National holiday": {
+      "text": "Olaifest (Olavsoka) (commemorates the death in battle of King OLAF II of Norway, later St. OLAF), 29 July (1030)"
+    },
+    "Legal system": {
+      "text": "the laws of Denmark apply where applicable"
+    },
+    "Constitution": {
+      "history": {
+        "text": "5 June 1953 (Danish Constitution), 23 March 1948 (Home Rule Act), and 24 June 2005 (Takeover Act) serve as the Faroe Islands' constitutional position in the Unity of the Realm"
+      },
+      "amendments": {
+        "text": "see entry for Denmark"
+      }
+    },
+    "Citizenship": {
+      "text": "see Denmark"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King FREDERIK X of Denmark (since 14 January 2024), represented by High Commissioner Lene Moyell JOHANSEN, chief administrative officer (since 15 May 2017) (2024)"
+      },
+      "head of government": {
+        "text": "Prime Minister Aksel V. JOHANNESEN (since 22 December 2022)"
+      },
+      "cabinet": {
+        "text": "Landsstyri appointed by the prime minister"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; high commissioner appointed by the monarch; following legislative elections, the leader of the majority party or majority coalition usually elected prime minister by the Faroese Parliament; election last held on 8 December 2022 (next to be held in 2026)"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Faroese Parliament (Logting)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "33 (directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "12/8/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "JF (9); B (7); A (6); E (6); F (3); H (2)"
+      },
+      "percentage of women in chamber": {
+        "text": "27.3%"
+      },
+      "expected date of next election": {
+        "text": "2026"
+      },
+      "note": "<strong>note:</strong> the Faroe Islands elect 2 members to the Danish Parliament to serve 4-year terms"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Faroese Court or Raett (Rett - Danish) decides both civil and criminal cases; the Court is part of the Danish legal system"
+      },
+      "subordinate courts": {
+        "text": "Court of the First Instance or Tribunal de Premiere Instance; Court of Administrative Law or Tribunal Administratif; Mixed Commercial Court; Land Court"
+      }
+    },
+    "Political parties": {
+      "text": "Center Party or H (Midflokkurin) <br>People's Party or A (Folkaflokkurin) <br>Progress Party or F (Framsokn) <br>Republic or E (Tjodveldi)  (formerly the Republican Party)<br>Self-Government Party or D (Sjalvstyri or Sjalvstyrisflokkurin) <br>Social Democratic Party or JF (Javnadarflokkurin) or JF <br>Union Party or B (Sambandsflokkurin) "
+    },
+    "International organization participation": {
+      "text": "Arctic Council, IMO (associate), NC, NIB, UNESCO (associate), UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (self-governing overseas administrative division of Denmark)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (self-governing overseas administrative division of Denmark)"
+      }
+    },
+    "Flag description": {
+      "text": "white with a red cross outlined in blue extending to the edges of the flag; the vertical part of the cross is shifted toward the hoist side in the style of the Dannebrog (Danish flag); referred to as Merkid, meaning \"the banner\" or \"the mark,\" the flag resembles those of neighboring Iceland and Norway, and uses the same three colors - but in a different sequence; white represents the clear Faroese sky, as well as the foam of the waves; red and blue are traditional Faroese colors",
+      "note": "<strong>note:</strong> the blue on the flag is a lighter blue (azure) than that found on the flags of Iceland or Norway"
+    },
+    "National symbol(s)": {
+      "text": "ram; national colors: red, white, blue"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Mitt alfagra land\" (My Fairest Land)"
+      },
+      "lyrics/music": {
+        "text": "Simun av SKAROI/Peter ALBERG"
+      },
+      "note": "<strong>note:</strong> adopted 1948; the anthem is also known as \"Tu alfagra land mitt\" (Thou Fairest Land of Mine); as a self-governing overseas administrative division of Denmark, the Faroe Islands are permitted their own national anthem"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income Danish territorial economy; party neither to the EU nor the Schengen Area; associate Nordic Council member; very low unemployment; unique foreign ownership allowance in fishing industry; known salmon exporter; growing IT industries"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$3.834 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$3.741 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$3.613 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "2.49% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "3.56% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "5.76% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$70,400 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$69,300 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$67,800 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$3.907 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2016": {
+        "text": "-0.3% (2016)"
+      },
+      "Inflation rate (consumer prices) 2015": {
+        "text": "-1.7% (2015)"
+      }
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "18.2% (2023 est.)"
+      },
+      "industry": {
+        "text": "19.7% (2023 est.)"
+      },
+      "services": {
+        "text": "52% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "40.6% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "27.3% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "31% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "57.7% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-56.6% (2023 est.)"
+      },
+      "note": "<strong>note:</strong> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "milk, potatoes, lamb/mutton, sheepskins, sheep offal, beef, sheep fat, beef offal, cattle hides, beef suet (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "fishing, fish processing, tourism, small ship repair and refurbishment, handicrafts"
+    },
+    "Industrial production growth rate": {
+      "text": "4.3% (2014 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "27,540 (2017 est.)"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2017": {
+        "text": "2.2% (2017 est.)"
+      },
+      "Unemployment rate 2016": {
+        "text": "3.4% (2016 est.)"
+      }
+    },
+    "Population below poverty line": {
+      "text": "10% (2015 est.)"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "4.05% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "4.44% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "4.32% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Public debt": {
+      "Public debt 2014": {
+        "text": "35% of GDP (2014 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "30.2% (of GDP) (2014 est.)"
+    },
+    "Exports": {
+      "Exports 2022": {
+        "text": "$2.219 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$1.923 billion (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$1.552 billion (2020 est.)"
+      },
+      "note": "<strong>note: </strong>GDP expenditure basis - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Russia 26.4%, UK 14.1%, Germany 8.4%, China 7.9%, Spain 6.8%, Denmark 6.2%, US 4.7%, Poland 4.4%, Norway 4.1% (2017)"
+    },
+    "Exports - commodities": {
+      "text": "fish and fish products (2021)"
+    },
+    "Imports": {
+      "Imports 2022": {
+        "text": "$2.223 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$1.906 billion (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$1.597 billion (2020 est.)"
+      },
+      "note": "<strong>note: </strong>GDP expenditure basis - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Denmark 33%, China 10.7%, Germany 7.6%, Poland 6.8%, Norway 6.7%, Ireland 5%, Chile 4.3% (2017)"
+    },
+    "Imports - commodities": {
+      "text": "goods for household consumption, machinery and transport equipment, fuels, raw materials and semi-manufactures, cars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Danish kroner (DKK) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "6.89 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "7.076 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "6.287 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "6.542 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "6.669 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "99.9%"
+      },
+      "electrification - rural areas": {
+        "text": "100%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "178,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "394.337 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "25.063 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "62.6% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "11.2% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "26.2% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "imports": {
+        "text": "(2022 est.) less than 1 metric ton"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "5,000 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "825,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "825,000 metric tonnes of CO2 (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "15,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "28 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "59,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "112 (2021 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the Faroe Islands have a highly developed communication network, which covers the whole country; from telecommunication and mobile phones to the internet and media, the Faroe Islands are at the forefront of modern communications technology; working within the special geographic circumstances of the Faroe Islands; companies have become world experts in providing digital communication solutions to remote and sparsely populated areas (2022)"
+      },
+      "domestic": {
+        "text": "29 per 100 teledensity for fixed-line and nearly 110 per 100 for mobile-cellular (2021)"
+      },
+      "international": {
+        "text": "country code - 298; landing points for the SHEFA-2, FARICE-1, and CANTAT-3 fiber-optic submarine cables from the Faroe Islands, to Denmark, Germany, UK and Iceland; satellite earth stations - 1 Orion; (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "1 publicly owned TV station; the Faroese telecommunications company distributes local and international channels through its digital terrestrial network; publicly owned radio station supplemented by 3 privately owned stations broadcasting over multiple frequencies"
+    },
+    "Internet country code": {
+      "text": ".fo"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "98% (2017 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "19,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "35 (2022 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "1 (2020) (registered in Denmark)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "3 (registered in Denmark)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "OY-H"
+    },
+    "Airports": {
+      "text": "1 (2024)"
+    },
+    "Heliports": {
+      "text": "12 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "960 km"
+      },
+      "paved": {
+        "text": "500 km"
+      },
+      "unpaved": {
+        "text": "460 km (2017)"
+      },
+      "note": "<strong>note:</strong> those islands not connected by roads (bridges or tunnels) are connected by seven different ferry links operated by the nationally owned company SSL; 28 km of tunnels"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "91 (2023)"
+      },
+      "by type": {
+        "text": "container ships 6, general cargo 45, other 40"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "9 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "9"
+      },
+      "ports with oil terminals": {
+        "text": "5"
+      },
+      "key ports": {
+        "text": "Fuglafjordur, Klaksvik, Kongshavn, Runavik, Sorvagur, Torshavn, Tvoroyri, Vagur, Vestmanna"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular military forces or conscription"
+    },
+    "Military - note": {
+      "text": "the Government of Denmark has responsibility for defense; as such, the Danish military&rsquo;s Joint Arctic Command in Nuuk, Greenland is responsible for coordinating the defense of the Faroe Islands; the Joint Arctic Command has a contact element in the capital of Torshavn"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

@@ -1,0 +1,13 @@
+# Newline-delimited JSON (one object per line). The 'ndjson' type reads each line as a record.
+name: Json_Ndjson
+source:
+  type: ndjson
+  location: ./data/events.ndjson
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_Ndjson
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

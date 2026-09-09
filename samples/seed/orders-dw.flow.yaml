@@ -1,0 +1,38 @@
+# SQLFlow seed pipeline - table-to-table ingestion used to populate the shadow
+# catalog with genuine run history (Run + RunAssertion) for GUI development.
+# It reads the dbo.Orders table created by samples/quickstart/orders.flow.yaml
+# and upserts it into dbo.Orders_DW, with two log-only data-quality assertions.
+#
+#   sqlflow run samples/seed/orders-dw.flow.yaml
+
+flowType: ing
+name: orders-dw
+
+connections:
+  erp: ${env:SQLFLOW_SRC}
+  dwh: ${env:SQLFLOW_DW}
+
+source:
+  server: erp
+  object: TestDB.dbo.Orders
+
+target:
+  server: dwh
+  object: TestDB.dbo.Orders_DW
+
+load:
+  keyColumns: [OrderId]
+
+# Log-only assertions, evaluated after the load (@TableName expands to the target).
+assertions:
+  - name: NotEmpty
+    expression: SELECT COUNT(*) FROM @TableName
+  - name: NoNullOrderId
+    expression: SELECT COUNT(*) FROM @TableName WHERE OrderId IS NULL
+
+# Surrogate keys: an IDENTITY-backed lookup that assigns OrderKey for each OrderId and writes it
+# back onto the target. Demonstrates the surrogate-key engine and populates the run's surrogate detail.
+surrogateKeys:
+  - table: TestDB.dbo.OrderKeyMap
+    column: OrderKey
+    keyColumns: [OrderId]

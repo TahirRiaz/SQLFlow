@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.Yaml</RootNamespace>
+    <Description>YAML pipeline loader: maps and validates YAML into the metadata model.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+  </ItemGroup>
+
+</Project>

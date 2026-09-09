@@ -1,0 +1,344 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "exp",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 33,
+  "keys": [
+    {
+      "path": "batch",
+      "type": "string",
+      "required": false,
+      "default": "null (unset)",
+      "description": "Optional grouping label bound to ExportFlow.Batch via YamlDocumentParts.NullIfBlank(y.Batch) (blank/whitespace normalizes to null; otherwise the original string is kept verbatim, no trim). Two live consumers: ExportFlowRunner.BuildRecord stamps it onto the written IngestionRunRecord.Batch for every run's run-log entry (ExportFlowRunner.cs:379), and FullModeIngestionHost.RunExportBatchAsync uses it as the legacy control-database grouping key - SqlExportFlowLoader.LoadBatchAsync(batch) selects every control-database export row sharing this label and runs them in FlowID order as one batch, gated by onErrorResume (FullModeIngestionHost.cs:226-242). This is unrelated to a flowType: batch document: BatchOrchestrator selects its members by file-glob include/exclude patterns over the repository (via lineage) and never reads ExportFlow.Batch at all.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:10; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:106; model src/SqlFlow.Core/Export/ExportFlow.cs:16"
+    },
+    {
+      "path": "export",
+      "type": "object",
+      "required": false,
+      "default": "{ by: full, size: 1, dateColumn: null, keyColumn: null, fromDate: null, toDate: null, threads: 0 } - one file covering the whole source, written with a single (non-concurrent) writer",
+      "description": "Optional chunk policy: how the export is split into files by day, month, or an integer key range, or left as one full file. MapChunkPolicy runs even when the whole block (or an explicitly empty 'export: {}') is absent, producing these defaults (YamlExportFlowLoader.cs:152-191); every nested access uses the null-conditional operator, so a missing block and an empty block behave identically. The YAML default (full, one file) intentionally differs from the legacy model's own property initializer (ExportFlow.ExportBy defaults to 'D', day) because that initializer only backstops the legacy control-database mapper and a YAML-authored flow never observes it (YamlExportFlowLoader.cs:33-35, doc comment).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:18 (DTO SqlFlow.Yaml.ExportChunkYaml at src/SqlFlow.Yaml/ExportYaml.cs:54-63); mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:97,152-191"
+    },
+    {
+      "path": "export.by",
+      "type": "enum(full|day|month|key)",
+      "required": false,
+      "default": "full",
+      "enumValues": [
+        "full",
+        "day",
+        "month",
+        "key"
+      ],
+      "description": "Chunk unit read by ExportSegmentPlanner.Plan's switch on the model's stored letter (F/D/M/K): 'full' emits exactly one segment covering the whole source with no date/key predicate; 'day'/'month' bucket rows by export.dateColumn into calendar windows via ChunkRanges.ByDay/ByMonth over [export.fromDate, export.toDate], each window producing one dated file plus one trailing '_NullRows' segment selecting rows where the date column is NULL; 'key' buckets rows by export.keyColumn into inclusive integer ranges from 0 to a probed MAX(keyColumn) via ChunkRanges.ByKey, likewise with a trailing NULL-rows segment (ExportSegmentPlanner.cs:101-168). ParseExportBy matches case-insensitively on '.Trim().ToLowerInvariant()' and also accepts the single-letter shorthands f/d/m/k; unlike load.mode, '-'/'_' are never stripped (confirmed per-case: none of this unit's enum-like values use that helper).",
+      "validation": "\"{source}: 'export.by' must be full, day, month, or key; got '<value>'.\" for any other token (YamlExportFlowLoader.cs:193-202, ParseExportBy).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:55; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:154,193-202; consumed at src/SqlFlow.SqlServer/Export/ExportSegmentPlanner.cs:101-168"
+    },
+    {
+      "path": "export.dateColumn",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "export.by is day or month",
+      "description": "Source date/datetime column ExportSegmentPlanner filters and buckets by: each day/month segment's predicate is a half-open '[col] >= start AND [col] < end+1day' range, and one extra segment per run selects '[col] IS NULL' so NULL-dated rows are always captured in a dedicated file rather than silently dropped (ExportSegmentPlanner.cs:115-122). The identifier is bracket-escaped (']' doubled to ']]') before being spliced into the generated SQL (ExportSegmentPlanner.cs:111,433).",
+      "validation": "\"{source}: 'export.dateColumn' is required when 'export.by' is day.\" or \"...is month.\" (the word matches whichever export.by resolved to) when export.by is day/month and dateColumn is blank (YamlExportFlowLoader.cs:165-169). A duplicate run-time guard exists in the planner, SqlFlowException \"Export flow {id} uses ExportBy '<D|M>' but has no DateColumn.\" (ExportSegmentPlanner.cs:106-109), but it is unreachable via the YAML loader (which already enforces the same rule at parse time); it only fires for a flow loaded through the legacy control-database path.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:57; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:163-169; model src/SqlFlow.Core/Export/ExportFlow.cs:38"
+    },
+    {
+      "path": "export.fromDate",
+      "type": "string",
+      "required": false,
+      "default": "the source's MIN(dateColumn); 3 years before the run's start when the source has no dated row",
+      "appliesWhen": "export.by is day or month",
+      "description": "Inclusive lower bound of the day/month chunking window, parsed with DateOnly.TryParse(value, InvariantCulture) (accepts more than just the ISO form shown in the error text). Consulted only by ExportSegmentPlanner's D/M branch (ExportSegmentPlanner.cs:112); ignored when export.by is key or full. A CLI backfill window overrides it for a single run regardless of export.by: DocumentExecutor.ExecuteExportAsync rewrites the in-memory flow's FromDate (and ToDate, only if a backfill 'to' is also supplied, else the flow's own ToDate is kept) from RunParameters.BackfillFrom before invoking the runner, logging an explicit 'export window overridden by run parameters' notice; the override is a no-op on a key- or full-chunked flow since the planner never reads FromDate/ToDate there (DocumentExecutor.cs:313-321). When omitted, the runner probes the source before planning - SELECT MIN([dateColumn]), MAX([dateColumn]) under the same source.withHint and source.filter the chunk SELECTs use - and fills only the bound left open, matching what the legacy engine did before it planned its batches. The resolved window is logged as an 'export.window' event and the probe appears in trace.sql as 'source.datebounds'. Only when the source has no row with a non-NULL date does the planner fall back to its fixed window (three years before the run's start through today), which is what previously caused a history export to silently skip everything older than three years. The --from/--to run parameters set the bound for a single run, and a bound given either way is used as written rather than probed.",
+      "validation": "\"{source}: 'export.fromDate' must be a date like 2024-01-31, got '<value>'.\" when unparseable (YamlDocumentParts.ParseDate, YamlDocumentParts.cs:218-228, field name 'export.fromDate' supplied at YamlExportFlowLoader.cs:176). \"{source}: 'export.fromDate' (<fromDate:yyyy-MM-dd>) is after 'export.toDate' (<toDate:yyyy-MM-dd>).\" when both are set and fromDate > toDate (YamlExportFlowLoader.cs:178-182).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:60; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:176-182; model src/SqlFlow.Core/Export/ExportFlow.cs:42; run-parameter override at src/SqlFlow.Execution/DocumentExecutor.cs:313-319"
+    },
+    {
+      "path": "export.keyColumn",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "export.by is key",
+      "description": "Source integer key column ExportSegmentPlanner buckets by. At run time ExportFlowRunner first probes 'SELECT MAX([keyColumn])' over the source under the same table hint as the data reads (ExportFlowRunner.cs:84-91); ExportSegmentPlanner then slices the inclusive range [0, max] into fixed-size buckets of export.size rows via ChunkRanges.ByKey, plus one trailing segment selecting '[keyColumn] IS NULL' (ExportSegmentPlanner.cs:133-142). Bucket file-name suffixes are zero-padded to the digit width of the probed maximum. The identifier is bracket-escaped the same way as export.dateColumn.",
+      "validation": "\"{source}: 'export.keyColumn' is required when 'export.by' is key.\" when export.by is key and keyColumn is blank (YamlExportFlowLoader.cs:171-174). Duplicate run-time guard (legacy control-database path only, unreachable via YAML): SqlFlowException \"Export flow {id} uses ExportBy 'K' but has no IncrementalColumn.\" (ExportSegmentPlanner.cs:128-131).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:58; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:171-174; model src/SqlFlow.Core/Export/ExportFlow.cs:36 (IncrementalColumn)"
+    },
+    {
+      "path": "export.size",
+      "type": "int",
+      "required": false,
+      "default": "1",
+      "description": "Chunk units per file; meaning depends on export.by: days per file under ChunkRanges.ByDay's rolling fixed-width window (the last window clamped to export.toDate); calendar months per file under ChunkRanges.ByMonth, which snaps to month boundaries rather than rolling 30-day windows (a size greater than 1 anchors size-1 months ahead of the window start before snapping to that month's end); or rows per bucket under ChunkRanges.ByKey's inclusive [lo, hi] integer buckets (ChunkRanges.cs:13-69). Has no effect when export.by is full.",
+      "validation": "\"{source}: 'export.size' must be at least 1, got {size}.\" when less than 1 (YamlExportFlowLoader.cs:156-160).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:56; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:156-160; consumed at src/SqlFlow.SqlServer/Ingestion/ChunkRanges.cs:13-69"
+    },
+    {
+      "path": "export.threads",
+      "type": "int",
+      "required": false,
+      "default": "0",
+      "description": "Caps concurrent chunk writers. ExportFlowRunner computes 'Math.Min(segments.Count, Math.Max(1, flow.NoOfThreads))' as the size of a SemaphoreSlim every per-segment write task must acquire before opening its own SqlConnection and streaming that segment's rows to its file (ExportFlowRunner.cs:118-135). The default, 0, still floors to 1 concurrent writer via the Max(1, ...) term - it means strictly sequential chunk processing, NOT 'unbounded' or 'framework default', despite the model's own doc comment reading '(0 => default)' (ExportFlow.cs:73). It has no practical effect when export.by is full, since the planner always produces exactly one segment in that mode.",
+      "validation": "\"{source}: 'export.threads' must be 0 (default) or more, got {threads}.\" when negative (YamlExportFlowLoader.cs:184-188).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:62; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:184-188; consumed at src/SqlFlow.SqlServer/Export/ExportFlowRunner.cs:118-135; recorded (only when >0) as IngestionRunRecord.Threads at ExportFlowRunner.cs:387"
+    },
+    {
+      "path": "export.toDate",
+      "type": "string",
+      "required": false,
+      "default": "the source's MAX(dateColumn); today when the source has no dated row",
+      "appliesWhen": "export.by is day or month",
+      "description": "Inclusive upper bound of the day/month chunking window (ExportSegmentPlanner.cs:113); ignored when export.by is key or full. See export.fromDate for the shared parsing, ordering validation, and CLI backfill-window override (DocumentExecutor.cs:313-319: only overridden when a backfill 'to' is supplied together with a backfill 'from'; a 'from'-only backfill leaves this value, YAML-authored or defaulted, untouched). When omitted, the runner probes the source before planning - SELECT MIN([dateColumn]), MAX([dateColumn]) under the same source.withHint and source.filter the chunk SELECTs use - and fills only the bound left open, matching what the legacy engine did before it planned its batches. The resolved window is logged as an 'export.window' event and the probe appears in trace.sql as 'source.datebounds'. Only when the source has no row with a non-NULL date does the planner fall back to its fixed window (three years before the run's start through today), which is what previously caused a history export to silently skip everything older than three years. The --from/--to run parameters set the bound for a single run, and a bound given either way is used as written rather than probed.",
+      "validation": "Same date-parse error as export.fromDate with field name 'export.toDate' (YamlDocumentParts.cs:218-228, called at YamlExportFlowLoader.cs:177); same fromDate > toDate ordering check (YamlExportFlowLoader.cs:178-182).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:61; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:177-182; model src/SqlFlow.Core/Export/ExportFlow.cs:44"
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow executes, schedules, and records run history exactly like a production one, but it never generates notification events, so a pipeline under active development cannot alert email/Slack subscribers. Parsed case-insensitively by YamlDocumentParts.ParseLifecycle (src/SqlFlow.Yaml/YamlDocumentParts.cs) and projected to CatalogPipeline.Lifecycle on every catalog sync.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:11 (mapped by YamlExportFlowLoader, src/SqlFlow.Yaml/YamlExportFlowLoader.cs)",
+      "validation": "Unknown value fails to load: \"<source>: 'lifecycle' has unknown value '<value>'. Allowed: production, development.\" (YamlDocumentParts.ParseLifecycle, src/SqlFlow.Yaml/YamlDocumentParts.cs)"
+    },
+    {
+      "path": "mode",
+      "type": "enum(auto|manual|disabled)",
+      "required": false,
+      "default": "auto",
+      "enumValues": [
+        "auto",
+        "manual",
+        "disabled"
+      ],
+      "description": "The flow's execution mode, read at the document envelope (YamlDocumentLoader's probe, FlowDocument.Mode) and projected to the catalog pipeline row. 'auto' (the default) runs on schedule fires and in batch/node group runs; 'manual' reserves a working flow for direct triggers; 'disabled' deactivates a retired one (a retired source, a run-once replay) with the same exclusions and a visible 'disabled' badge. A node-scoped run can opt into includeAll ('find all') to replay non-auto descendants deliberately, and naming a flow directly always runs it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs (FlowDocument.Mode, parsed by YamlDocumentParts.ParseExecutionMode)",
+      "validation": "Unknown value fails to load: \"<source>: 'mode' has unknown value '<value>'. Allowed: auto, manual, disabled.\""
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "description": "The flow's unique identifier, trimmed and required by the shared YamlDocumentParts.RequireFlowName(y.Name, \"an export flow\", source) (unlike the file flow's own Name binding, which preserves surrounding whitespace and does not trim). Becomes ExportFlow.SysAlias verbatim (post-trim) and, via YamlDocumentParts.StableFlowId(name), a 31-bit non-negative int FlowId - BitConverter.ToInt32(FlowIdentity.FromName(name).ToByteArray(), 0) & 0x7FFFFFFF, i.e. the low 4 bytes of the same deterministic SHA-1-derived v5 GUID the file flow uses, masked positive and truncated to Int32: a materially different identity mechanism from the file flow's own Guid-typed id. FlowId/SysAlias key the run's log lines, the run record (IngestionRunRecord), the run-history JSON/log artifacts (DocumentExecutor.ExecuteExportAsync uses SysAlias as the flow name for RunHistory.Write), and BatchOrchestrator's member results.",
+      "validation": "\"{source}: 'name' is required for an export flow.\" when missing, null, empty, or all-whitespace (YamlDocumentParts.cs:231-233, kindLabel 'an export flow' supplied at YamlExportFlowLoader.cs:82).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:9; required+trim at src/SqlFlow.Yaml/YamlDocumentParts.cs:230-233 (called from src/SqlFlow.Yaml/YamlExportFlowLoader.cs:82); FlowId derivation at src/SqlFlow.Yaml/YamlDocumentParts.cs:237-238"
+    },
+    {
+      "path": "onErrorResume",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "appliesWhen": "a full-mode (control-database) batch run of every export flow sharing the same 'batch' label; inert for a direct YAML run or a flowType: batch document",
+      "description": "Bound straight through (y.OnErrorResume ?? true) to ExportFlow.OnErrorResume with no further processing. Its only live consumer in the codebase is the legacy control-database batch loop, FullModeIngestionHost.RunExportBatchAsync: it runs every export flow sharing the same 'batch' label in FlowID order and stops (breaks the loop) the first time a run fails while that flow's OnErrorResume is false; true (the default) lets the loop continue past a failed member (FullModeIngestionHost.cs:226-242). Neither modern YAML/without-database execution path consults it: a direct 'sqlflow run x.flow.yaml' (DocumentExecutor.ExecuteExportAsync) runs the one document and never reads OnErrorResume, and a flowType: batch document's member-level failure handling (BatchOrchestrator) is governed entirely by that document's own onError/ignoreErrors/inactive settings, never by a member's OnErrorResume. In effect this attribute currently matters only for a flow imported into (or run from) the legacy control database, not for a YAML-authored export flow run through the CLI.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:22; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:127; model src/SqlFlow.Core/Export/ExportFlow.cs:79; consumed at src/SqlFlow.SqlServer/FullMode/FullModeIngestionHost.cs:235-238"
+    },
+    {
+      "path": "source",
+      "type": "object",
+      "required": true,
+      "description": "Required source descriptor: the SQL Server table/view the flow reads plus an optional static filter. Binds ExportSourceYaml, which also carries the connection-resolution fields (server/connection/provider - out of this unit's scope) but, unlike an ingestion or file-flow source, has no free-form 'options' map at all: export flows expose no source.options.* surface.",
+      "validation": "\"{source}: 'source' is required.\" when the key is absent (YamlExportFlowLoader.cs:85).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:16 (DTO SqlFlow.Yaml.ExportSourceYaml at src/SqlFlow.Yaml/ExportYaml.cs:25-39); required-check at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:85"
+    },
+    {
+      "path": "source.connection",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.server is not set (exactly one of source.server or source.connection is required)",
+      "description": "An inline connection string or a ${env:...}/${keyvault:...} reference for the database the export reads from, used when the connection is not already declared under connections:. Resolved the same way as source.server, registering a new connection under the synthetic name 'source' (YamlDocumentParts.ResolveEndpointConnection, src/SqlFlow.Yaml/YamlDocumentParts.cs:137-179).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:27",
+      "validation": "Same messages as source.server for the mutually-exclusive and SQL-Server-only checks (see that entry); a literal embedding a credential produces a non-fatal secret-hygiene warning rather than a parse failure."
+    },
+    {
+      "path": "source.filter",
+      "type": "string",
+      "required": false,
+      "default": "null (no predicate appended)",
+      "description": "A static SQL predicate ANDed onto every generated chunk SELECT (legacy srcFilter, which the legacy engine dropped in its batched/chunked path - V3 applies it in every mode). NormalizeFilter trims the value, and if it starts with the standalone keyword 'and'/'AND' (matched case-insensitively, and only when followed by end-of-string or a non-alphanumeric/non-underscore character, so 'AndroidVersion > 2' is correctly NOT treated as starting with the keyword) strips that leading word, leaving the rest with exactly one leading ' AND ' so ExportSegmentPlanner.Select can splice it straight after 'WHERE 1=1' (YamlExportFlowLoader.cs:263-281; ExportSegmentPlanner.cs:96,98). Applied to every segment of every chunk mode, including each day/month/key window and the trailing NULL-rows segment - but NOT to the key-max probe ('SELECT MAX([keyColumn]) FROM ...') that export.by: key uses to size its buckets (ExportFlowRunner.cs:88), so a filtered key export may still plan buckets sized against the full, unfiltered key range.",
+      "validation": "\"{source}: 'source.filter' has no predicate after the AND.\" when the value is only the word 'and'/'AND' with nothing meaningful after it (YamlExportFlowLoader.cs:275-278).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:38; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:110,261-281; model src/SqlFlow.Core/Export/ExportFlow.cs:34"
+    },
+    {
+      "path": "source.object",
+      "type": "string",
+      "required": false,
+      "description": "Three-part 'Database.Schema.Table' (or view) SQL Server object the flow reads (legacy srcDBSchTbl), parsed by RelationalObject.Parse into ExportFlow.Source. The parser splits on '.' outside [bracketed] identifiers (so a bracket-quoted part may itself contain '.', and an inner ']' is escaped as ']]'), then takes the RIGHTMOST three parts - a stray leading fourth part (e.g. a server name prefixed onto a 4-part reference) is silently dropped rather than rejected (RelationalObject.cs:20-48; IngestionText.cs:15-72). The parsed object is rendered back out fully bracket-escaped ('[Database].[Schema].[Name]') everywhere it is used: the segment planner's FROM clause, the column probe, and the key-max probe (ExportSegmentPlanner.cs:94; ExportFlowRunner.cs:77,79,88). Takes precedence over source.table when both are authored; no error if both are set.",
+      "validation": "\"{source}: 'source.object' is required (a three-part name like Database.Schema.Table).\" when both source.object and source.table are blank (YamlExportFlowLoader.cs:140-144). The resolved string is then parsed by RelationalObject.Parse and any failure is rewrapped as \"{source}: 'source.object': <message>\" (YamlDocumentParts.cs:206-215), where <message> is one of: \"Object name '<name>' must be a three-part [Database].[Schema].[Object] name; found {n} part(s).\" (fewer than 3 dot-separated parts) or \"Object name '<name>' has an empty database, schema, or object part.\" (an empty part among the last three); \"A source or target object name must not be empty.\" is also part of RelationalObject.Parse's own checks but is unreachable here since the loader has already excluded blank values.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:34; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:140-147; parser src/SqlFlow.Core/Ingestion/RelationalObject.cs:20-48; model src/SqlFlow.Core/Export/ExportFlow.cs:28"
+    },
+    {
+      "path": "source.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "source.connection is set (ignored entirely when source.server is used instead)",
+      "description": "The provider of a direct source.connection, parsed case-insensitively (YamlDocumentParts.ParseProvider). Whatever it resolves to, the export's source connection is then hard-required to be SQL Server (mssql or azdb); any other recognized provider parses successfully here but fails one step later with the 'must be SQL Server' error, since the export read is generated T-SQL, not a provider-neutral read.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:32",
+      "validation": "Unrecognized token: \"<source>: 'source.provider' has unknown provider '<value>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" (YamlDocumentParts.cs:130-131). A recognized non-SQL-Server kind fails via source.server's SQL-Server-only check."
+    },
+    {
+      "path": "source.server",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.connection is not set (exactly one of source.server or source.connection is required)",
+      "description": "Name of a connection declared under the document's connections: block that the export reads from; the alternative to a direct source.connection. Resolved by YamlDocumentParts.ResolveEndpointConnection (src/SqlFlow.Yaml/YamlDocumentParts.cs:137-179, called from src/SqlFlow.Yaml/YamlExportFlowLoader.cs:88-90), which registers the resolved connection under the synthetic name 'source' (YamlExportFlowLoader.SourceConnectionName) and becomes the export's resolved source connection, addressed as '@source' at run time with ConnectionRole.Source.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:26",
+      "validation": "Both server and connection set: \"<source>: 'source' sets both 'server' and 'connection'; use exactly one.\" (YamlDocumentParts.cs:146-147). A name not declared under connections:: \"<source>: 'source.server' references '<name>', which is not declared under 'connections:'.\" (YamlDocumentParts.cs:155-156). Neither set: \"<source>: 'source' needs a connection. Set 'source.connection' to a connection string or a ${...} reference, or 'source.server' to a name declared under 'connections:'.\" (YamlDocumentParts.cs:164-166). The resolved connection's kind must be SQL Server: \"<source>: the source connection '<name>' is '<kind>'; an export flow's source must be SQL Server (mssql or azdb).\" (YamlDocumentParts.cs:199-201, RequireSqlServerConnection, called from YamlExportFlowLoader.cs:94), since the export read is generated T-SQL."
+    },
+    {
+      "path": "source.table",
+      "type": "string",
+      "required": false,
+      "description": "Legacy alias for source.object; consulted only when source.object is absent or blank (YamlExportFlowLoader.cs:142). Goes through the identical RelationalObject.Parse three-part validation once selected.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:35; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:142"
+    },
+    {
+      "path": "source.withHint",
+      "type": "string",
+      "required": false,
+      "default": "null (no hint)",
+      "description": "A table hint spliced into every generated SELECT immediately after the source object, written verbatim as it appears in the query (legacy srcWithHint): 'WITH (NOLOCK)', 'WITH (INDEX([NCI_CalendarID]))'. ExportSegmentPlanner.TableHint applies it to every segment of every chunk mode, and the runner uses the same hint for its key-max, full-export key-range and date-bounds probes, so a hint chosen to keep a large export off the clustered index is honored by the planning reads too. Exposed in YAML from this change; the model field and the planner's use of it already existed, so a ported hint was previously dropped in silence.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs (ExportSourceYaml.WithHint); mapped in YamlExportFlowLoader.Map; model SqlFlow.Core/Export/ExportFlow.cs (SrcWithHint)"
+    },
+    {
+      "path": "target",
+      "type": "object",
+      "required": true,
+      "description": "Required destination descriptor: the folder, file naming, file type, and format-specific write options for the exported files. Binds ExportTargetYaml, which - like ExportSourceYaml - has no free-form 'options' map; every destination knob is a fixed, named property.",
+      "validation": "\"{source}: 'target' is required.\" when the key is absent (YamlExportFlowLoader.cs:86).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:17 (DTO SqlFlow.Yaml.ExportTargetYaml at src/SqlFlow.Yaml/ExportYaml.cs:41-52); required-check at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:86"
+    },
+    {
+      "path": "target.addTimestamp",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "When true, ExportSegmentPlanner inserts '_yyyyMMddHHmmss' (the run's own start timestamp, invariant culture) between the file-name prefix and the chunk suffix of every segment's file name; when false the timestamp is omitted and the file name is just the prefix plus the chunk suffix (ExportSegmentPlanner.cs:88,119,139,153).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:49; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:258 (y.AddTimestamp ?? true); model src/SqlFlow.Core/Export/ExportFlow.cs:69"
+    },
+    {
+      "path": "target.compression",
+      "type": "enum(gzip|snappy|none)",
+      "required": false,
+      "default": "gzip",
+      "enumValues": [
+        "gzip",
+        "snappy",
+        "none"
+      ],
+      "appliesWhen": "target.fileType is parquet; CsvExportFileWriter never reads this value",
+      "description": "Parquet codec: ParquetExportFileWriter.ResolveCompression maps the (trimmed, lowercased) token to Parquet.CompressionMethod and assigns it to the ParquetWriter before any row group is written (ExportFileWriters.cs:198,217,394-399).",
+      "validation": "\"{source}: 'target.compression' must be gzip, snappy, or none; got '<value>'.\" for anything else (YamlExportFlowLoader.cs:234-241).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:46; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:234-241; model src/SqlFlow.Core/Export/ExportFlow.cs:63 (CompressionType)"
+    },
+    {
+      "path": "target.delimiter",
+      "type": "string",
+      "required": false,
+      "default": "the semicolon character (;)",
+      "appliesWhen": "target.fileType is csv",
+      "description": "Column delimiter CsvExportFileWriter.WriteAsync joins between fields on the header row and every data row, and the exact substring a field's Escape check looks for when deciding whether the field must be quoted (ExportFileWriters.cs:99,115,138). Any non-empty string is accepted, including a multi-character delimiter.",
+      "validation": "\"{source}: 'target.delimiter' must not be empty.\" when authored as an explicit empty string (omitting the key entirely defaults to ';' instead; only an authored \"\" throws) (YamlExportFlowLoader.cs:243-247).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:47; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:243-247; model src/SqlFlow.Core/Export/ExportFlow.cs:65 (ColumnDelimiter)"
+    },
+    {
+      "path": "target.encoding",
+      "type": "enum(utf8|utf8bom|utf16|utf32|ascii)",
+      "required": false,
+      "default": "null (the CSV writer then defaults to UTF-8 without a byte-order mark)",
+      "enumValues": [
+        "utf8",
+        "utf8bom",
+        "utf16",
+        "utf32",
+        "ascii"
+      ],
+      "appliesWhen": "target.fileType is csv (the default); ParquetExportFileWriter never reads this value",
+      "description": "Text encoding for a CSV file. ExportFileWriterFactory.ResolveEncoding maps the (trimmed, uppercased) token to a .NET Encoding used by the StreamWriter that writes the header and every row. Matching is case-insensitive but never strips '-'/'_' (unlike load.mode): the loader instead explicitly enumerates both spellings of each synonym as separate switch cases - 'utf-8'/'unicode' alongside 'utf8', 'utf-8bom' alongside 'utf8bom', 'utf-16' alongside 'utf16', 'utf-32' alongside 'utf32'. UTF-16 and UTF-32 carry a byte-order mark by definition; UTF-8 is the only one that has to ask, which is what 'utf8bom' is for. The legacy engine's cloud writer emitted a UTF-8 BOM unconditionally (new StreamWriter(stream, Encoding.UTF8)) and ignored its own trgEncoding column, so an export whose consumer still parses the old files wants 'utf8bom'; a flow mapped from a legacy flw.Export row defaults to it.",
+      "validation": "\"{source}: 'target.encoding' must be utf8, utf8bom, utf16, utf32, or ascii; got '<value>'.\" for any other token. ExportFileWriterFactory.ResolveEncoding has its own independent fallback to UTF-8 for a value it does not recognize, but that branch is unreachable via the YAML path because the loader rejects anything it does not recognize first.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:45; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:222-231; model src/SqlFlow.Core/Export/ExportFlow.cs:61 (TrgEncoding); writer src/SqlFlow.SqlServer/Export/ExportFileWriters.cs:35-41"
+    },
+    {
+      "path": "target.fileName",
+      "type": "string",
+      "required": false,
+      "default": "null at load time; ExportSegmentPlanner.Plan substitutes flow.Source.Name (the bare table/view name, e.g. 'Orders' from 'DW.raw.Orders' - not the schema-qualified form) whenever TrgFileName is blank (ExportSegmentPlanner.cs:87)",
+      "description": "File-name prefix for every written segment (legacy trgFileName), trimmed at load. The final per-segment name is '{prefix}{timestamp}{suffix}.{target.fileType}': timestamp is '_yyyyMMddHHmmss' or empty per target.addTimestamp, and suffix depends on export.by - a single date or a 'start-end' date range for day/month, a zero-padded 'lo-hi' key range for key, '_NullRows' for each mode's trailing NULL-value segment, or nothing at all for a full export (ExportSegmentPlanner.cs:117-165). ExportFlowRunner.ComposePath then joins target.path, the segment's subfolder, this composed name, and the extension (ExportFlowRunner.cs:232-236).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:43; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:257; model src/SqlFlow.Core/Export/ExportFlow.cs:57 (TrgFileName); default fallback src/SqlFlow.SqlServer/Export/ExportSegmentPlanner.cs:87"
+    },
+    {
+      "path": "target.fileType",
+      "type": "enum(csv|parquet)",
+      "required": false,
+      "default": "csv",
+      "enumValues": [
+        "csv",
+        "parquet"
+      ],
+      "description": "Selects the file format. ExportFileWriterFactory.Create picks CsvExportFileWriter or ParquetExportFileWriter from the (trimmed, lowercased) value, and ExportFlowRunner.ComposePath separately uses the SAME normalized string verbatim as the written file's extension (ExportFileWriters.cs:18-32; ExportFlowRunner.cs:235). 'prq' is accepted as a synonym for 'parquet' and normalized to 'parquet' before either use, so a 'prq'-authored flow writes files named '....parquet', not '....prq'.",
+      "validation": "\"{source}: 'target.fileType' must be csv or parquet; got '<value>'.\" for anything else (YamlExportFlowLoader.cs:212-218).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:44; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:212-218; model src/SqlFlow.Core/Export/ExportFlow.cs:59 (TrgFiletype)"
+    },
+    {
+      "path": "target.path",
+      "type": "string",
+      "required": true,
+      "description": "Destination for the exported files (legacy trgPath). Two destinations are registered and the runner selects one by CanHandle: LocalExportDestination handles a local/UNC filesystem path or a file:// URI (a location starting with 'file://' case-insensitively, or containing no '://' scheme at all), and AzureBlobExportDestination handles Azure object storage (abfss://, wasbs://, and the https://<account>.blob|dfs.core.windows.net URL forms), landing CSV/Parquet in the lake authenticated by the shared Azure credential (SQLFLOW_AZURE_AUTH) with no per-flow secret. DocumentExecutor.ExecuteExportAsync passes both into the runner (destinations: [new LocalExportDestination(), new AzureBlobExportDestination(...)], src/SqlFlow.Execution/DocumentExecutor.cs:304-307), and WithoutDatabaseExport.BuildRunner forwards a caller-supplied destinations list (src/SqlFlow.SqlServer/Export/WithoutDatabaseExport.cs:22-35). A local path stays local; an abfss/wasbs/https storage path writes to the lake. Trimmed at load. A relative, non-URI value is resolved against the flow file's own directory before the run (so the sample's './out' means 'next to this YAML file', confirmed against samples/export/orders-export.flow.yaml), by DocumentLoader.ResolveRelativeExportPath, which leaves file:// URIs and Path.IsPathRooted absolute paths untouched (Execution/DocumentLoader.cs:63-75). At write time ExportFlowRunner.ComposePath trims a trailing slash or backslash and joins target.path, the segment's subfolder (from target.subfolderPattern), the composed file name, and '.' + target.fileType (ExportFlowRunner.cs:232-236).",
+      "validation": "\"{source}: 'target.path' is required (the folder for the exported files; a local path or file:// URI).\" when blank at load time (YamlExportFlowLoader.cs:208-210). Defensive run-time recheck (legacy control-database path only, unreachable via YAML): SqlFlowException \"Export flow {id} has no trgPath.\" (ExportFlowRunner.cs:67-70). A scheme no registered destination recognizes fails every run with SqlFlowException \"No export destination handles the path '<path>'.\" (ExportFlowRunner.cs:115-116).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:42; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:208-210,257; model src/SqlFlow.Core/Export/ExportFlow.cs:55 (TrgPath); relative-path fixup src/SqlFlow.Execution/DocumentLoader.cs:63-75; destination src/SqlFlow.SqlServer/Export/LocalExportDestination.cs:11-20"
+    },
+    {
+      "path": "target.subfolderPattern",
+      "type": "string",
+      "required": false,
+      "default": "null (no subfolder; every file lands directly under target.path)",
+      "appliesWhen": "export.by is day or month; ExportSegmentPlanner passes an empty subfolder unconditionally for key-chunked, full, and every mode's trailing NULL-rows segment, silently ignoring this setting there",
+      "description": "Token pattern controlling which date levels become subfolders under target.path for a day/month-chunked segment. ExportSegmentPlanner.SubFolder upper-cases the pattern and tests it for the literal SUBSTRINGS 'YYYY', 'MM', and 'DD' (a Contains check, not a tokenizer - so an unrelated word that happens to contain one of these substrings, e.g. 'SUMMARY' containing 'MM', would also trigger that level); whichever are present each contribute one path segment, and the segments are ALWAYS emitted in the fixed order year, then month, then day, joined by '/' with a trailing '/' - the pattern only controls which levels appear, never their order (so a pattern like 'DD/MM/YYYY' still produces a '<year>/<month>/<day>/' folder, not day-first) (ExportSegmentPlanner.cs:347-372). Applied per segment using that segment's own chunk-start date.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:50; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:258; model src/SqlFlow.Core/Export/ExportFlow.cs:71 (Subfolderpattern); consumed at src/SqlFlow.SqlServer/Export/ExportSegmentPlanner.cs:119,347-372"
+    },
+    {
+      "path": "target.textQualifier",
+      "type": "string",
+      "required": false,
+      "default": "the double-quote character (U+0022)",
+      "appliesWhen": "target.fileType is csv",
+      "description": "The single quoting character CsvExportFileWriter wraps a field in when required: by default (QuoteStringColumnsOnly = true) every string-typed reader column is quoted regardless of content, and any column (string or not) whose formatted value contains the delimiter, the qualifier itself, CR, or LF is quoted too; an embedded qualifier inside a quoted field is doubled (ExportFileWriters.cs:56-57,137-162). Only the value's single character is used (CsvWriteOptions.Qualifier is a char).",
+      "validation": "\"{source}: 'target.textQualifier' must be a single character (omit it for the default double quote); got '<value>'.\" when the authored string's length is not exactly 1 - omitting the key entirely defaults to a double quote (length 1, passes); only an authored value of some OTHER length (including an explicit empty string) throws (YamlExportFlowLoader.cs:250-255).",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs:48; mapped at src/SqlFlow.Yaml/YamlExportFlowLoader.cs:250-255; model src/SqlFlow.Core/Export/ExportFlow.cs:67 (TextQualifier); writer src/SqlFlow.SqlServer/Export/ExportFileWriters.cs:137-162"
+    },
+    {
+      "path": "target.valueFormat",
+      "type": "enum(iso|legacy)",
+      "required": false,
+      "default": "iso",
+      "enumValues": [
+        "iso",
+        "legacy"
+      ],
+      "appliesWhen": "target.fileType is csv (the default); ParquetExportFileWriter is typed and never reads this value",
+      "description": "How non-string values are rendered as CSV text. 'iso' (default) writes ISO-8601, 'yyyy-MM-dd HH:mm:ss.fffffff' for a DateTime. 'legacy' writes the invariant culture's own default formats, byte-for-byte as the legacy CsvHelper writer produced them (CsvConfiguration(CultureInfo.InvariantCulture) called each value's ToString(IFormatProvider) with no explicit format), so a DateTime becomes 'MM/dd/yyyy HH:mm:ss' and a SQL date, read back as a midnight DateTime, 'MM/dd/yyyy 00:00:00'. Select 'legacy' when a consumer is already parsing files the old engine wrote and the port must not change what it sees; a flow mapped from a legacy flw.Export row defaults to it. The one deliberate difference in 'legacy' mode is byte[], which stays base64 rather than reproducing legacy's literal 'System.Byte[]' text that discarded the value.",
+      "validation": "\"{source}: 'target.valueFormat' must be iso or legacy; got '<value>'.\" for any other token.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs (ExportTargetYaml.ValueFormat); mapped in YamlExportFlowLoader.MapTarget; model SqlFlow.Core/Export/ExportFlow.cs (TrgValueFormat); writer SqlFlow.SqlServer/Export/ExportFileWriters.cs (FormatLegacyValue)"
+    },
+    {
+      "path": "target.zip",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Compresses each written file into a single-entry .zip in place after it is written (legacy ZipTrg), replacing the file at its location. A destination that cannot compress fails the run with 'This export destination does not support zipTrg (compression) for '<location>'.' rather than silently skipping it; both the local filesystem and the Azure Blob / ADLS Gen2 destinations implement it. Exposed in YAML from this change; the model field and the runner's use of it already existed.",
+      "definedIn": "src/SqlFlow.Yaml/ExportYaml.cs (ExportTargetYaml.Zip); mapped in YamlExportFlowLoader.MapTarget; model SqlFlow.Core/Export/ExportFlow.cs (ZipTrg); runner SqlFlow.SqlServer/Export/ExportFlowRunner.cs"
+    }
+  ]
+}

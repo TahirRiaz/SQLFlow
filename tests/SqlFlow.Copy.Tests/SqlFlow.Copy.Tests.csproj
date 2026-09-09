@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1707;CA2007;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SqlFlow.Copy\SqlFlow.Copy.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
+  </ItemGroup>
+
+</Project>

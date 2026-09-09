@@ -1,0 +1,618 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p style=\"margin: 0in; margin-bottom: .0001pt; line-height: 18.0pt; background: white;\">Around 800 B.C., the first settlers arrived on the islands of Wallis and Futuna, which are a natural midpoint between Fiji and Samoa. Around A.D. 1500, Tongans invaded Wallis, and a chiefdom system resembling Tonga’s formal hierarchy developed on the island. Tongans attempted to settle Futuna but were repeatedly rebuffed. Samoans settled Futuna in the 1600s, and a slightly less centralized chiefdom system formed. Dutch explorers were the first Europeans to see the islands in 1616, followed intermittently by other Europeans, including British explorer Samuel WALLIS in 1767. French Catholic missionaries were the first Europeans to permanently settle Wallis and Futuna in 1837, and they converted most of the population of both islands by 1846. The missionaries and newly converted King LAVELUA of Uvea on Wallis asked France for a protectorate in 1842 following a local rebellion. France agreed, although the protectorate status would not be ratified until 1887. In 1888, King MUSULAMU of Alo and King TAMOLE of Sigave, both on Futuna, signed a treaty establishing a French protectorate; the Wallis and Futuna protectorate was integrated into the territory of New Caledonia the same year. France renegotiated the terms of the protectorate with the territory’s three kings in 1910, expanding French authority.<br><br>Wallis and Futuna was the only French colony to side with the Vichy regime during World War II, until the arrival of Free French and US troops in 1942. In 1959, inhabitants of the islands voted to separate from New Caledonia, becoming a French overseas territory in 1961. Despite the split, a significant Wallisian and Futunan community still lives in New Caledonia. In 2003, Wallis and Futuna became a French overseas collectivity. The islands joined the Pacific Islands Forum as an associate member in 2018, two years after France’s other Pacific territories became full members of the organization.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Oceania, islands in the South Pacific Ocean, about two-thirds of the way from Hawaii to New Zealand"
+    },
+    "Geographic coordinates": {
+      "text": "13 18 S, 176 12 W"
+    },
+    "Map references": {
+      "text": "Oceania"
+    },
+    "Area": {
+      "total ": {
+        "text": "142 sq km"
+      },
+      "land": {
+        "text": "142 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      },
+      "note": "<strong>note:</strong> includes Ile Uvea (Wallis Island), Ile Futuna (Futuna Island), Ile Alofi, and 20 islets"
+    },
+    "Area - comparative": {
+      "text": "1.5 times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "129 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical; hot, rainy season (November to April); cool, dry season (May to October); rains 250-300 cm per year (80% humidity); average temperature 26.6 degrees Celsius"
+    },
+    "Terrain": {
+      "text": "volcanic origin; low hills"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mont Singavi (on Futuna) 522 m"
+      },
+      "lowest point": {
+        "text": "Pacific Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "NEGL"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "42.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 7.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 35.7% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "41.9% (2018 est.)"
+      },
+      "other": {
+        "text": "15.3% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0.6 sq km (2020)"
+    },
+    "Natural hazards": {
+      "text": "cyclones; tsunamis"
+    },
+    "Geography - note": {
+      "text": "both island groups have fringing reefs; Wallis contains several prominent crater lakes"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "15,964"
+      },
+      "male": {
+        "text": "8,201"
+      },
+      "female": {
+        "text": "7,763 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Wallisian(s), Futunan(s), or Wallis and Futuna Islanders"
+      },
+      "adjective": {
+        "text": "Wallisian, Futunan, or Wallis and Futuna Islander"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Polynesian"
+    },
+    "Languages": {
+      "text": "Wallisian (indigenous Polynesian language) 58.9%, Futunian 30.1%, French (official) 10.8%, other 0.2% (2003 est.)"
+    },
+    "Religions": {
+      "text": "Roman Catholic 99%, other 1%"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "19.8% (male 1,643/female 1,511)"
+      },
+      "15-64 years": {
+        "text": "67.5% (male 5,535/female 5,247)"
+      },
+      "65 years and over": {
+        "text": "12.7% (2024 est.) (male 1,023/female 1,005)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "57"
+      },
+      "youth dependency ratio": {
+        "text": "36.6"
+      },
+      "elderly dependency ratio": {
+        "text": "20.4"
+      },
+      "potential support ratio": {
+        "text": "4.9 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "36.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "35.5 years"
+      },
+      "female": {
+        "text": "37.3 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.22% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "11.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-3.6 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "0% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "1,000 MATA-UTU (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.09 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "1.02 male(s)/female"
+      },
+      "total population": {
+        "text": "1.06 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "3.9 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "3.8 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "3.9 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "81.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "78.2 years"
+      },
+      "female": {
+        "text": "84.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.71 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.83 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: 99.1% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.1% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0.9% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.9% of population (2020)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: 92.9% of population"
+      },
+      "improved: total": {
+        "text": "total: 92.9% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: 7.1% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 7.1% of population (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "56% (2023)"
+    },
+    "Education expenditures": {
+      "text": "NA"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "deforestation (only small portions of the original forests remain) largely as a result of the continued use of wood as the main fuel source; as a consequence of cutting down the forests, the mountainous terrain of Futuna is particularly prone to erosion; there are no permanent settlements on Alofi because of the lack of natural freshwater resources; lack of soil fertility on the islands of Uvea and Futuna negatively impacts agricultural productivity"
+    },
+    "Climate": {
+      "text": "tropical; hot, rainy season (November to April); cool, dry season (May to October); rains 250-300 cm per year (80% humidity); average temperature 26.6 degrees Celsius"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "42.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 7.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 35.7% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "41.9% (2018 est.)"
+      },
+      "other": {
+        "text": "15.3% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "0% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0% annual rate of change (2020-25 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Territory of the Wallis and Futuna Islands"
+      },
+      "conventional short form": {
+        "text": "Wallis and Futuna"
+      },
+      "local long form": {
+        "text": "Territoire des Iles Wallis et Futuna"
+      },
+      "local short form": {
+        "text": "Wallis et Futuna"
+      },
+      "former": {
+        "text": "Hoorn Islands is the former name of the Futuna Islands"
+      },
+      "etymology": {
+        "text": "Wallis Island is named after British Captain Samuel WALLIS, who discovered it in 1767; Futuna is derived from the native word \"futu,\" which is the name of the fish-poison tree found on the island"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy (Territorial Assembly); overseas collectivity of France"
+    },
+    "Dependency status": {
+      "text": "overseas collectivity of France"
+    },
+    "Capital": {
+      "name": {
+        "text": "Mata-Utu (on Ile Uvea)"
+      },
+      "geographic coordinates": {
+        "text": "13 57 S, 171 56 W"
+      },
+      "time difference": {
+        "text": "UTC+12 (17 hours ahead of Washington, DC, during Standard Time)"
+      }
+    },
+    "Administrative divisions": {
+      "text": "3 administrative precincts (circonscriptions, singular - circonscription) Alo, Sigave, Uvea"
+    },
+    "Independence": {
+      "text": "none (overseas collectivity of France)"
+    },
+    "National holiday": {
+      "text": "Bastille Day, 14 July (1789)"
+    },
+    "Legal system": {
+      "text": "French civil law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "4 October 1958 (French Constitution)"
+      },
+      "amendments": {
+        "text": "French constitution amendment procedures apply"
+      }
+    },
+    "Citizenship": {
+      "text": "see France"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Emmanuel MACRON (since 14 May 2017); represented by Administrator Superior Blaise GOURTAY (since 1 August 2023)"
+      },
+      "head of government": {
+        "text": "President of the Territorial Assembly Munipoese MULI'AKA'AKA (since 20 March 2022)"
+      },
+      "cabinet": {
+        "text": "Council of the Territory appointed by the administrator superior on the advice of the Territorial Assembly"
+      },
+      "elections/appointments": {
+        "text": "French president elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); administrator superior appointed by the French president on the advice of the French Ministry of the Interior; the presidents of the Territorial Government and the Territorial Assembly elected by assembly members"
+      },
+      "note": "<strong>note:</strong> there are 3 traditional kings with limited powers"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Territorial Assembly (Assembl&eacute;e territoriale)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "20 (directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "3/20/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "Ofa mo'oni ki tou fenua (2); Mauli fetokoniaki (2); 1 seat each from 16 other lists"
+      },
+      "note": "<strong>note:</strong> 1 senator is indirectly elected to the French Senate by an electoral college for a 6-year term, and 1 deputy is directly elected to the French National Assembly for a 5-year term"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Court of Assizes or Cour d'Assizes (consists of 1 judge; court hears primarily serious criminal cases); note - appeals beyond the Court of Assizes are heard before the Court of Appeal or Cour d'Appel (in Noumea, New Caledonia)"
+      },
+      "judge selection and term of office": {
+        "text": "NA"
+      },
+      "subordinate courts": {
+        "text": "courts of first instance; labor court; note - justice generally administered under French law by the high administrator, but the 3 traditional kings administer customary law, and there is a magistrate in Mata-Utu"
+      }
+    },
+    "Political parties": {
+      "text": "Left Radical Party or PRG (formerly Radical Socialist Party or PRS and the Left Radical Movement or MRG)<br>Lua Kae Tahi (Giscardians)<br>Rally for Wallis and Futuna-The Republicans (Rassemblement pour Wallis and Futuna) or RPWF-LR <br>Socialist Party or PS<br>Taumu'a Lelei <br>Union Pour la Democratie Francaise or UDF"
+    },
+    "International organization participation": {
+      "text": "PIF (observer), SPC, UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (overseas territory of France)"
+    },
+    "Diplomatic representation from the US": {
+      "text": "none (overseas collectivity of France)"
+    },
+    "Flag description": {
+      "text": "unofficial, local flag has a red field with four white isosceles triangles in the middle, representing the three native kings of the islands and the French administrator; the apexes of the triangles are oriented inward and at right angles to each other; the flag of France, outlined in white on two sides, is in the upper hoist quadrant",
+      "note": "<strong>note:</strong> the design is derived from an original red banner with a white cross pattee that was introduced in the 19th century by French missionaries; the flag of France is used for official occasions"
+    },
+    "National symbol(s)": {
+      "text": "red saltire (Saint Andrew's Cross) on a white square on a red field; national colors: red, white"
+    },
+    "National anthem": {
+      "text": "<p><strong>note:</strong> as a territory of France, \"La Marseillaise\" is official (see France)</p>"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "lower-middle-income, agrarian French dependency economy; heavily reliant on French subsidies; licenses fishing rights to Japan and South Korea; major remittances from New Caledonia; aging workforce; import-dependent; deforestation-fueled fragility"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2015": {
+        "text": "0.9% (2015)"
+      }
+    },
+    "Agricultural products": {
+      "text": "coconuts, breadfruit, yams, taro, bananas; pigs, goats; fish"
+    },
+    "Industries": {
+      "text": "copra, handicrafts, fishing, lumber"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$32.54 million (2015 est.)"
+      },
+      "expenditures": {
+        "text": "$34.18 million (2015 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "16.7% (of GDP) (2015 est.)"
+    },
+    "Exports - partners": {
+      "text": "France 48%, Singapore 12%, US 10%, Guatemala 9%, UK 4% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "integrated circuits, jewelry, cars, aircraft parts, polyacetals (2019)"
+    },
+    "Imports - partners": {
+      "text": "Fiji 38%, France 31%, NZ 8%, Iceland 6%, Australia 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, beef products, poultry meats, engine parts, packaged medicines (2019)"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Comptoirs Francais du Pacifique francs (XPF) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "110.347 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "113.474 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "100.88 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "104.711 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "110.347 (2019 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "3,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "26 (2021 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "0 (2018)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "0 (2019)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "2G widespread; bandwidth is limited; mobile subscriber numbers are higher than fixed-line and better suited for islands; good mobile coverage in the capital cities and also reasonable coverage across more remote atolls; recent international interest in infrastructure development; increase in demand for mobile broadband as mobile services serve as primary source for Internet access; broadband satellite launched in 2019 to improve costs and capability (2020)"
+      },
+      "domestic": {
+        "text": "fixed-line teledensity 26 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 681; landing point for the Tui-Samoa submarine cable network connecting Wallis &amp; Futuna, Samoa and Fiji (2020)"
+      }
+    },
+    "Broadcast media": {
+      "text": "the publicly owned French Overseas Network (RFO), which broadcasts to France's overseas departments, collectivities, and territories, is carried on the RFO Wallis and Fortuna TV and radio stations (2019)"
+    },
+    "Internet country code": {
+      "text": ".wf"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "45.8% (2021 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "Airports": {
+      "text": "2 (2024)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "1 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 1"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "1 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "0"
+      },
+      "key ports": {
+        "text": "Mata-Utu"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of France"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

@@ -1,0 +1,19 @@
+# File-date window: bound which files are ingested by their modified date. A scheduled or
+# incremental run uses this to process only a slice of a folder instead of every file.
+#
+# initFromFileDate / initToFileDate accept yyyy-MM-dd or a full timestamp. Either bound may be
+# omitted (open-ended). The window here is deliberately wide so this example always loads the
+# sample file; narrow it (e.g. initFromFileDate: "2024-02-01", initToFileDate: "2024-03-01") to
+# restrict ingestion. The actual date filtering is proven by the simulated unit test
+# Open_InitFromToFileDate_FiltersFilesByModifiedDate, which stamps file dates and checks exclusion.
+name: Csv_FileDateWindow
+source:
+  type: csv
+  location: ./data/orders.csv
+  options:
+    initFromFileDate: "2000-01-01"
+    initToFileDate: "2999-12-31"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_FileDateWindow

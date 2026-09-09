@@ -1,0 +1,11 @@
+# Semicolon-delimited CSV (common in European locales where comma is the decimal separator).
+name: Csv_Semicolon
+source:
+  type: csv
+  location: ./data/semicolon.csv
+  options:
+    delimiter: ";"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Semicolon

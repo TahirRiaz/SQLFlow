@@ -1,0 +1,1250 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>A global maritime power during the 15th and 16th centuries, Portugal lost much of its wealth and status with the destruction of Lisbon in a 1755 earthquake, occupation during the Napoleonic Wars, and the independence of Brazil, its wealthiest colony, in 1822. A revolution deposed the monarchy in 1910, and for most of the next six decades, repressive governments ran the country. In 1974, a left-wing military coup ushered in broad democratic reforms. The following year, Portugal granted independence to all its African colonies. Portugal is a founding member of NATO and entered the EC (now the EU) in 1986.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southwestern Europe, bordering the North Atlantic Ocean, west of Spain"
+    },
+    "Geographic coordinates": {
+      "text": "39 30 N, 8 00 W"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "92,090 sq km"
+      },
+      "land": {
+        "text": "91,470 sq km"
+      },
+      "water": {
+        "text": "620 sq km"
+      },
+      "note": "<strong>note:</strong> includes Azores and Madeira Islands"
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than Virginia"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "1,224 km"
+      },
+      "border countries": {
+        "text": "Spain 1,224 km"
+      }
+    },
+    "Coastline": {
+      "text": "1,793 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "200-m depth or to the depth of exploitation"
+      }
+    },
+    "Climate": {
+      "text": "maritime temperate; cool and rainy in north, warmer and drier in south"
+    },
+    "Terrain": {
+      "text": "the west-flowing Tagus River divides the country: the north is mountainous toward the interior, while the south is characterized by rolling plains"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Ponta do Pico (Pico or Pico Alto) on Ilha do Pico in the Azores 2,351 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "372 m"
+      }
+    },
+    "Natural resources": {
+      "text": "fish, forests (cork), iron ore, copper, zinc, tin, tungsten, silver, gold, uranium, marble, clay, gypsum, salt, arable land, hydropower"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "39.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 11.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 7.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 20% (2018 est.)"
+      },
+      "forest": {
+        "text": "37.8% (2018 est.)"
+      },
+      "other": {
+        "text": "22.5% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "5,662 sq km (2019)"
+    },
+    "Population distribution": {
+      "text": "concentrations are primarily along or near the Atlantic coast; both Lisbon and the second largest city, Porto, are coastal cities"
+    },
+    "Natural hazards": {
+      "text": "<p>Azores subject to severe earthquakes</p><p><strong>volcanism:</strong> limited volcanic activity in the Azores Islands; Fayal or Faial (1,043 m) last erupted in 1958; most volcanoes have not erupted in centuries; historically active volcanoes include Agua de Pau, Furnas, Pico, Picos Volcanic System, San Jorge, Sete Cidades, and Terceira</p>"
+    },
+    "Geography - note": {
+      "text": "Azores and Madeira Islands occupy strategic locations along western sea approaches to Strait of Gibraltar; they are two of the four North Atlantic archipelagos that make up Macaronesia; the others are the Canary Islands (Spain) and Cabo Verde"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "10,207,177"
+      },
+      "male": {
+        "text": "4,835,763"
+      },
+      "female": {
+        "text": "5,371,414 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Portuguese (singular and plural)"
+      },
+      "adjective": {
+        "text": "Portuguese"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Portuguese 95%; citizens from Portugal&rsquo;s former colonies in Africa, Asia (Han Chinese), and South America (Brazilian) and other foreign born 5%"
+    },
+    "Languages": {
+      "text": "Portuguese (official), Mirandese (official, but locally used)"
+    },
+    "Religions": {
+      "text": "Roman Catholic 79.7%, Protestant 2.2%, other Christian 2.5%, other non-Christian, 1.1%, none 14.5% (2021 est.)",
+      "note": "<strong>note:</strong> data represent population 15 years of age and older"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "12.7% (male 662,419/female 631,284)"
+      },
+      "15-64 years": {
+        "text": "65% (male 3,264,766/female 3,371,087)"
+      },
+      "65 years and over": {
+        "text": "22.3% (2024 est.) (male 908,578/female 1,369,043)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "56"
+      },
+      "youth dependency ratio": {
+        "text": "20.8"
+      },
+      "elderly dependency ratio": {
+        "text": "35.2"
+      },
+      "potential support ratio": {
+        "text": "2.8 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "46.4 years (2024 est.)"
+      },
+      "male": {
+        "text": "44.3 years"
+      },
+      "female": {
+        "text": "48.3 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "-0.14% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "10.9 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "1.5 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "concentrations are primarily along or near the Atlantic coast; both Lisbon and the second largest city, Porto, are coastal cities"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "67.9% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.44% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "3.001 million LISBON (capital), 1.325 million Porto (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.97 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.66 male(s)/female"
+      },
+      "total population": {
+        "text": "0.9 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "29.9 years (2020 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "12 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "2.4 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "2.8 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "2.1 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "81.9 years (2024 est.)"
+      },
+      "male": {
+        "text": "78.8 years"
+      },
+      "female": {
+        "text": "85.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.45 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.71 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "73.9% (2014)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 99.7% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.9% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0.3% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.1% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "10.6% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "5.48 physicians/1,000 population (2019)"
+    },
+    "Hospital bed density": {
+      "text": "3.5 beds/1,000 population (2018)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 99.9% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.9% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.1% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.1% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "20.8% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "10.37 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "2.62 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "6.04 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "1.34 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.37 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "25.4% (2020 est.)"
+      },
+      "male": {
+        "text": "30.5% (2020 est.)"
+      },
+      "female": {
+        "text": "20.2% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "0.4% (2015/16)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "52.6% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "5% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "95.9%"
+      },
+      "male": {
+        "text": "97.8%"
+      },
+      "female": {
+        "text": "95.9% (2021)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "17 years"
+      },
+      "male": {
+        "text": "17 years"
+      },
+      "female": {
+        "text": "17 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "soil erosion; air pollution caused by industrial and vehicle emissions; water pollution, especially in urban centers and coastal areas"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Air Pollution-Heavy Metals, Air Pollution-Multi-effect Protocol, Antarctic-Environmental Protection, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Marine Life Conservation, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "Air Pollution-Persistent Organic Pollutants, Air Pollution-Volatile Organic Compounds, Environmental Modification, Nuclear Test Ban"
+      }
+    },
+    "Climate": {
+      "text": "maritime temperate; cool and rainy in north, warmer and drier in south"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "39.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 11.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 7.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 20% (2018 est.)"
+      },
+      "forest": {
+        "text": "37.8% (2018 est.)"
+      },
+      "other": {
+        "text": "22.5% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "67.9% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.44% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.13% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "7.34 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "48.74 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "10.93 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "4.71 million tons (2014 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "764,433 tons (2014 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "16.2% (2014 est.)"
+      }
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "880 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "1.83 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "3.42 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "77.4 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "6 (2024)"
+      },
+      "global geoparks and regional networks": {
+        "text": "A&ccedil;ores; Arouca; Estrela; Naturtejo da Meseta Meridional; Oeste; Terras de Cavaleiros (2024)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Portuguese Republic"
+      },
+      "conventional short form": {
+        "text": "Portugal"
+      },
+      "local long form": {
+        "text": "Republica Portuguesa"
+      },
+      "local short form": {
+        "text": "Portugal"
+      },
+      "etymology": {
+        "text": "name derives from the Roman designation \"Portus Cale\" meaning \"Port of Cale\"; Cale was an ancient Celtic town and port in present-day northern Portugal"
+      }
+    },
+    "Government type": {
+      "text": "semi-presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Lisbon"
+      },
+      "geographic coordinates": {
+        "text": "38 43 N, 9 08 W"
+      },
+      "time difference": {
+        "text": "UTC 0 (5 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "time zone note": {
+        "text": "Portugal has two time zones, including the Azores (UTC-1)"
+      },
+      "etymology": {
+        "text": "Lisbon is one of Europe's oldest cities (the second oldest capital city after Athens) and the origin of the name is lost in time; it may have been founded as an ancient Celtic settlement that subsequently maintained close commercial relations with the Phoenicians (beginning about 1200 B.C.); the name of the settlement may have been derived from the pre-Roman appellation for the Tagus River that runs through the city, Lisso or Lucio; the Romans named the city \"Olisippo\" when they took it from the Carthaginians in 205 B.C.; under the Visigoths the city name became \"Ulixbona,\" under the Arabs it was \"al-Ushbuna\"; the medieval version of \"Lissabona\" became today's Lisboa"
+      }
+    },
+    "Administrative divisions": {
+      "text": "18 districts (distritos, singular - distrito) and 2 autonomous regions* (regioes autonomas, singular - regiao autonoma); Aveiro, Acores (Azores)*, Beja, Braga, Braganca, Castelo Branco, Coimbra, Evora, Faro, Guarda, Leiria, Lisboa (Lisbon), Madeira*, Portalegre, Porto, Santarem, Setubal, Viana do Castelo, Vila Real, Viseu"
+    },
+    "Independence": {
+      "text": "1143 (Kingdom of Portugal recognized); 1 December 1640 (independence reestablished following 60 years of Spanish rule); 5 October 1910 (republic proclaimed)"
+    },
+    "National holiday": {
+      "text": "Portugal Day (Dia de Portugal), 10 June (1580); note - also called Camoes Day, the day that revered national poet Luis DE CAMOES (1524-80) died"
+    },
+    "Legal system": {
+      "text": "civil law system; Constitutional Court review of legislative acts"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest adopted 2 April 1976, effective 25 April 1976"
+      },
+      "amendments": {
+        "text": "proposed by the Assembly of the Republic; adoption requires two-thirds majority vote of Assembly members; amended several times, last in 2005"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction with reservations; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Portugal"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "10 years; 6 years if from a Portuguese-speaking country"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Marcelo REBELO DE SOUSA (since 9 March 2016)"
+      },
+      "head of government": {
+        "text": "Prime Minister Antonio Luis MONTENEGRO (since 2 April 2024)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers appointed by the president on the recommendation of the prime minister"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); election last held on 24 January 2021 (next to be held in January 2026); following legislative elections the leader of the majority party or majority coalition is usually appointed prime minister by the president"
+      },
+      "election results": {
+        "text": "<br><em>2021:</em> Marcelo REBELO DE SOUSA reelected president in the first round; percent of vote - Marcelo REBELO DE SOUSA (PSD) 60.7%, Ana GOMES (ran as an independent but is a member of PS) 13%, Andre VENTURA (CH) 11.9%, João FERREIRA (PCP-PEV) 4.3%, other 10.1%<br><br><em>2016:</em> Marcelo REBELO DE SOUSA elected president in the first round; percent of vote - Marcelo REBELO DE SOUSA (PSD) 52%, António SAMPAIO DA NOVOA (independent) 22.9%, Marisa MATIAS (BE) 10.1%, Maria DE BELEM ROSEIRA (PS) 4.2%, other 10.8% <p> </p>"
+      },
+      "note": "<strong>note:</strong> there is also a Council of State that acts as a consultative body to the president"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Assembly of the Republic (Assembleia da Republica)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "230 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "3/10/2024"
+      },
+      "parties elected and seats per party": {
+        "text": "Socialist Party (PS) (78); Social Democratic Party (PPD/PSD) - Democratic and Social Centre - People's Party (CDS-PP) - People's Monarchist Party (PPM) (77); Chega (CH) (50); Other (25)"
+      },
+      "percentage of women in chamber": {
+        "text": "34.8%"
+      },
+      "expected date of next election": {
+        "text": "September 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court or Supremo Tribunal de Justica (consists of 12 justices); Constitutional Court or Tribunal Constitucional (consists of 13 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court justices nominated by the president and appointed by the Assembly of the Republic; judges can serve for life; Constitutional Court judges - 10 elected by the Assembly and 3 elected by the other Constitutional Court judges; judges elected for 6-year nonrenewable terms"
+      },
+      "subordinate courts": {
+        "text": "Supreme Administrative Court (Supremo Tribunal Administrativo); Audit Court (Tribunal de Contas); appellate, district, and municipal courts"
+      }
+    },
+    "Political parties": {
+      "text": "Democratic Alliance or AD (2024 electoral alliance in the Azores, includes PSD, CDS-PP, PPM)<br>Democratic and Social Center/People's Party (Partido do Centro Democratico Social-Partido Popular) or CDS-PP<br>Ecologist Party \"The Greens\" or \"Os Verdes\" (Partido Ecologista-Os Verdes) or PEV<br>Enough (Chega)<br>Liberal Initiative (Iniciativa Liberal) or IL<br>LIVRE or L<br>People-Animals-Nature Party (Pessoas-Animais-Natureza) or PAN<br>People's Monarchist Party or PPM<br>Portuguese Communist Party (Partido Comunista Portugues) or PCP<br>Social Democratic Party (Partido Social Democrata) or PSD (formerly the Partido Popular Democratico or PPD)<br>Socialist Party (Partido Socialista) or PS<br>The Left Bloc (Bloco de Esquerda) or BE or O Bloco<br>Unitary Democratic Coalition (Coligacao Democratica Unitaria) or CDU (includes PCP and PEV) (2024)"
+    },
+    "International organization participation": {
+      "text": "ADB (nonregional member), AfDB (nonregional member), Australia Group, BIS, CD, CE, CERN, CPLP, EAPC, EBRD, ECB, EIB, EMU, ESA, EU, FAO, FATF, IADB, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IEA, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), LAIA (observer), MIGA, NATO, NEA, NSG, OAS (observer), OECD, OPCW, OSCE, Pacific Alliance (observer), Paris Club (associate), PCA, Schengen Convention, SELEC (observer), UN, UNCTAD, UNESCO, UNHCR, UNIDO, Union Latina, UNOOSA, UNWTO, UPU, Wassenaar Arrangement, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO, ZC"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Francisco Antonio DUARTE LOPES (since 7 June 2022)"
+      },
+      "chancery": {
+        "text": "2012 Massachusetts Avenue NW, Washington, DC 20036"
+      },
+      "telephone": {
+        "text": "[1] (202) 350-5400"
+      },
+      "FAX": {
+        "text": "[1] (202) 462-3726"
+      },
+      "email address and website": {
+        "text": "<br>info.washington@mne.pt<br><br>https://washingtondc.embaixadaportugal.mne.gov.pt/en/"
+      },
+      "consulate(s) general": {
+        "text": "Boston, Newark (NJ), New York, San Francisco"
+      },
+      "consulate(s)": {
+        "text": "New Bedford (MA), Providence (RI)"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador&nbsp;(vacant); Charg&eacute; d&rsquo;Affaires Douglas A. KONEFF (since January 2025)"
+      },
+      "embassy": {
+        "text": "Avenida das Forcas Armadas, 1600-081 Lisboa"
+      },
+      "mailing address": {
+        "text": "5320 Lisbon Place, Washington DC&nbsp; 20521-5320"
+      },
+      "telephone": {
+        "text": "[351] (21) 727-3300"
+      },
+      "FAX": {
+        "text": "[351] (21) 726-9109"
+      },
+      "email address and website": {
+        "text": "<br>conslisbon@state.gov<br><br>https://pt.usembassy.gov/"
+      },
+      "consulate(s)": {
+        "text": "Ponta Delgada (Azores)"
+      }
+    },
+    "Flag description": {
+      "text": "two vertical bands of green (hoist side, two-fifths) and red (three-fifths) with the national coat of arms (armillary sphere and Portuguese shield) centered on the dividing line; explanations for the color meanings are ambiguous, but a popular interpretation has green symbolizing hope and red the blood of those defending the nation"
+    },
+    "National symbol(s)": {
+      "text": "armillary sphere (a spherical astrolabe modeling objects in the sky and representing the Republic); national colors: red, green"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"A Portugesa\" (The Song of the Portuguese)"
+      },
+      "lyrics/music": {
+        "text": "Henrique LOPES DE MENDOCA/Alfredo KEIL"
+      },
+      "note": "<strong>note:</strong> adopted 1910; \"A Portuguesa\" was originally written to protest the Portuguese monarchy's acquiescence to the 1890 British ultimatum forcing Portugal to give up areas of Africa; the lyrics refer to the \"insult\" that resulted from the event"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "17 (16 cultural, 1 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Historic Évora (c); Central Zone of the Town of Angra do Heroismo in the Azores (c); Cultural Landscape of Sintra (c); Laurisilva of Madeira (n); Historic Guimarães (c); Monastery of the Hieronymites and Tower of Belém in Lisbon (c); Convent of Christ in Tomar (c); Prehistoric Rock Art Sites in the Côa Valley and Siega Verde (c); University of Coimbra – Alta and Sofia (c); Sanctuary of Bom Jesus do Monte in Braga (c)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income EU and eurozone economy; strong services sector led by tourism and banking; tight labor market; private consumption and export recovery driving post-inflation rebound; EU Recovery and Resilience Plan (RRP) funds a key driver of public investment; high public debt but improving fiscal position"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$441.697 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$430.813 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$402.682 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "2.53% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "6.99% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "5.74% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$41,800 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$41,300 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$38,900 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$289.114 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "4.31% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "7.83% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "1.27% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BBB (2007)"
+      },
+      "Moody's rating": {
+        "text": "Baa3 (2018)"
+      },
+      "Standard & Poors rating": {
+        "text": "BBB (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "2.1% (2023 est.)"
+      },
+      "industry": {
+        "text": "18.1% (2023 est.)"
+      },
+      "services": {
+        "text": "66.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "62.1% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "16.9% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "20.1% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0.4% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "47.3% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-46.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "milk, tomatoes, grapes, olives, maize, oranges, pork, potatoes, chicken, apples (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "textiles, clothing, footwear, wood and cork, paper and pulp, chemicals, fuels and lubricants, automobiles and auto parts, base metals, minerals, porcelain and ceramics, glassware, technology, telecommunications; dairy products, wine, other foodstuffs; ship construction and refurbishment; tourism, plastics, financial services, optics"
+    },
+    "Industrial production growth rate": {
+      "text": "0.9% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "5.454 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "6.49% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "6.01% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "6.58% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "20.2% (2023 est.)"
+      },
+      "male": {
+        "text": "20.6% (2023 est.)"
+      },
+      "female": {
+        "text": "19.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "16.4% (2021 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "34.6 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "17.3% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "3.1% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2.8% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "27.5% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.46% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.38% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.3% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$99.473 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$100.796 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "125.7% of GDP (2017 est.)"
+      },
+      "note": "<strong>note:</strong> data cover general government debt and include debt instruments issued (or owned) by government entities other than the treasury; the data include treasury debt held by foreign entities; the data include debt issued by subnational entities, as well as intragovernmental debt; intragovernmental debt consists of treasury borrowings from surpluses in the social funds, such as for retirement, medical care, and unemployment; debt instruments for the social funds are not sold at public auctions"
+    },
+    "Taxes and other revenues": {
+      "text": "22.89% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$3.974 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$3.108 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$2.987 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$136.589 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$126.541 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$105.648 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Spain 25%, France 12%, Germany 11%, US 7%, UK 5% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "cars, garments, refined petroleum, vehicle parts/accessories, plastic products (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$133.006 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$131.627 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$112.413 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Spain 31%, Germany 11%, France 6%, China 5%, Italy 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "crude petroleum, cars, refined petroleum, natural gas, vehicle parts/accessories (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$35.243 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$32.232 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$32.535 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.95 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.876 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "23.316 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "50.255 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "3.062 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "12.314 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "4.54 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "42.1% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "7.4% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "28.8% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "12.8% of total installed capacity (2022 est.)"
+      },
+      "geothermal": {
+        "text": "0.4% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "8.6% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "consumption": {
+        "text": "9,000 metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "200 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "23,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "3 million metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "8,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "212,000 bbl/day (2023 est.)"
+      }
+    },
+    "Natural gas": {
+      "consumption": {
+        "text": "5.515 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "5.97 billion cubic meters (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "42.562 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "40,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "31.394 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "11.128 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "80.316 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "5.505 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "53 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "12.8 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "125 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Portugal has a medium-sized telecom market with a strong mobile sector and a growing broadband customer base; before the pandemic, the country had seen improving economic growth, following several years of austerity measures; revenue among some operators remains under pressure, though investments in network upgrades are continuing in an effort to attract customers to high-end services; Portugal&rsquo;s broadband services have grown steadily in recent years, largely the result of joint efforts between the regulator and the key market operators which have invested in significant infrastructure upgrades; these operators are focused on fiber-based services, resulting in a migration of subscribers from digital subscriber line DSL infrastructure; the government has also supported open-access wholesale networks; the mobile virtual network operator (MVNO) market remains largely undeveloped, partly because network operators have their own low-cost brands; collectively, MVNOs have about 2.9% share of the market; population coverage by 3G infrastructure is universal, and most investment in the sector is being directed to LTE and 5G technologies; the MNOs have trialed 5G and are looking to launch commercial services (2021)"
+      },
+      "domestic": {
+        "text": "fixed-lineis 52 per 100 persons and mobile-cellular is 121 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 351;&nbsp;landing points for the Ella Link, BUGIO, EIG, SAT-3/WASC, SeaMeWe-3, Equino, MainOne, Tat TGN-Western Europe, WACS, ACE, Atlantis2 and Columbus-III&nbsp;submarine cables provide connectivity to Europe, Africa, the Middle East, Asia, Southeast Asia, Australia, South America&nbsp;and the US; satellite earth stations - 3 Intelsat (2 Atlantic Ocean and 1 Indian Ocean), NA Eutelsat; tropospheric scatter to Azores (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "Radio e Televisao de Portugal, the publicly owned TV broadcaster, operates 4 domestic channels and external service channels to Africa; overall, roughly 40 domestic TV stations; viewers have widespread access to international broadcasters with more than half of all households connected to multi-channel cable or satellite TV systems; publicly owned radio operates 3 national networks and provides regional and external services; several privately owned national radio stations and some 300 regional and local commercial radio stations"
+    },
+    "Internet country code": {
+      "text": ".pt"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "86% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "4.6 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "44 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "10 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "168"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "17,367,956 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "454.21 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "CR, CS"
+    },
+    "Airports": {
+      "text": "130 (2024)"
+    },
+    "Heliports": {
+      "text": "63 (2024)"
+    },
+    "Pipelines": {
+      "text": "1,344 km gas, 11 km oil, 188 km refined products (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "2,526 km (2020) 1,696 km electrified"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "11,217 km (2022)"
+      }
+    },
+    "Waterways": {
+      "text": "210 km (2011) (on Douro River from Porto)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "888 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 110, container ship 299, general cargo 191, oil tanker 29, other 259"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "18 (2024)"
+      },
+      "large": {
+        "text": "3"
+      },
+      "medium": {
+        "text": "2"
+      },
+      "small": {
+        "text": "4"
+      },
+      "very small": {
+        "text": "9"
+      },
+      "ports with oil terminals": {
+        "text": "5"
+      },
+      "key ports": {
+        "text": "Aveiro, Funchal, Lagos, Lisboa, Sines"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Portuguese Armed Forces (Forças Armadas Portuguesa): Portuguese Army (Exercito Portuguesa), Portuguese Navy (Marinha Portuguesa; includes Marine Corps, aka Corpo de Fuzileiros or Corps of Fusiliers), Portuguese Air Force (Forca Aerea Portuguesa, FAP)<br><br>Ministry of Internal Administration: Foreigners and Borders Service, Public Security Service, National Republican Guard (Guarda Nacional Republicana, GNR) (2024)",
+      "note": "<strong>note:</strong> the Foreigners and Borders Service has jurisdiction over immigration and border matters, the Public Security Police has jurisdiction in cities, and the GNR has jurisdiction in rural areas; the GNR is a national gendarmerie force comprised of military personnel with law enforcement, internal security, civil defense, disaster response, and coast guard duties; it is responsible to both the Ministry of Internal Administration and to the Ministry of National Defense; it is not part of the Armed Forces, but may be placed under the operational command of the Chief of the General Staff of the Armed Forces in the event of a national emergency; the GNR describes itself as a hinge between the Armed Forces and the police forces and other security services"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2024": {
+        "text": "1.6% of GDP (2024 est.)"
+      },
+      "Military Expenditures 2023": {
+        "text": "1.5% of GDP (2023)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.4% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.5% of GDP (2021)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.4% of GDP (2020)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 28,000 active-duty personnel (15,000 Army; 7,000 Navy, including about 1,000 marines; 6,000 Air Force); 24,500 National Republican Guard (military personnel) (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory includes mostly European- and US-origin weapons systems along with a smaller mix of domestically produced equipment; in recent years, leading foreign suppliers have included Germany and the US; Portugal's defense industry is noted for its shipbuilding (2024)",
+      "note": "<strong>note: </strong>in 2023, Portugal announced a modernization program that included the acquisition of land, naval, air, cyber security, and space capabilities, as well as emerging disruptive technologies"
+    },
+    "Military service age and obligation": {
+      "text": "18-30 years of age for voluntary or contract military service; no compulsory military service (abolished 2004) but conscription possible if insufficient volunteers available; women serve in the armed forces but are prohibited from serving in some combatant specialties; contract service lasts for an initial period of 2-6 years, and can be extended to a maximum of 20 years of service; initial voluntary military service lasts 12 months; reserve obligation to age 35 (2023)",
+      "note": "<strong>note: </strong>as of 2023, women made up about 14% of the military's full-time personnel"
+    },
+    "Military deployments": {
+      "text": "the Portuguese Armed Forces have more than 1,100 military personnel deployed around the world engaged in missions supporting the EU, NATO, the UN, and partner nations; key deployments include 225 troops in the Central African Republic (MINUSCA), approximately 220 in Lithuania (NATO), and approximately 150 in Romania (NATO); it also participates in NATO air policing and maritime patrolling operations (2024)"
+    },
+    "Military - note": {
+      "text": "the Portuguese military is an all-volunteer force with the primary responsibilities of external defense, humanitarian operations, and fulfilling Portugal’s commitments to European and international security; maritime security has long been a key component of the military's portfolio, and Portugal has one of the world's oldest navies<br><br>Portugal was one of the original signers of the North Atlantic Treaty (also known as the Washington Treaty) in 1949 establishing NATO, and the Alliance forms a key pillar of Portugal’s defense policy; Portugal is also a signatory of the EU’s Common Security and Defense Policy, and it regularly participates in a variety of EU, NATO, and UN deployments around the world; the military’s largest commitments include air, ground, and naval forces under NATO-led missions and standing task forces in the Baltics, Eastern Europe, and the Mediterranean Sea; the military also participates regularly in exercises with NATO partners (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Portuguese Space Agency (Ag&ecirc;ncia Espacial Portuguesa; aka Portugal Space; established 2019); Foundation for Science and Technology (FCT; government agency that funds space research established in 2009) (2024)"
+    },
+    "Space launch site(s)": {
+      "text": "developing a commercial space port on Santa Maria Island in the Azores (first anticipated launch, 2025) (2024)"
+    },
+    "Space program overview": {
+      "text": "has a national space program which is is integrated within the framework of the European Space Agency (ESA); builds and operates satellites; researches and develops a range of space-related technologies with an emphasis on small/micro/nano satellites for remote sensing (RS), navigational, science/technology, and telecommunications, as well as satellite launch services; in addition to the ESA/EU and their member states, cooperates with the space agencies and industries of a variety of countries, including those of Algeria, Angola, Brazil, China, India, Japan, Morocco, South Korea, and the US, as well as such international organizations and projects as the Europe South Observatory (ESO) and the Square Kilometer Array (SKA) Observatory project; one of the objectives of the country's national space strategy (Portugal Space 2030) is to increase the annual outcome of space related activities in the country to about $500 million by 2030 (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic State of Iraq and ash-Sham (ISIS)",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "59,920 (Ukraine) (as of 31 January 2024)"
+      },
+      "stateless persons": {
+        "text": "55 (2022)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a European gateway for Southwest Asian heroin; transshipment point for hashish from North Africa to Europe; consumer of Southwest Asian heroin</p> <p> </p>"
+    }
+  }
+}

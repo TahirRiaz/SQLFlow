@@ -1,0 +1,12 @@
+# Skip leading data rows: drop a fixed number of rows after the header (e.g. a junk
+# preamble some exporters emit before the real data).
+name: Csv_SkipStart
+source:
+  type: csv
+  location: ./data/preamble.csv
+  options:
+    skipStartingDataRows: "2"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_SkipStart

@@ -1,0 +1,40 @@
+# The SQLFlow MCP server in HTTP mode as a container: `sqlflow-mcp http`, the streamable HTTP endpoint remote
+# MCP clients connect to (Azure AI Foundry's MCP tool, or any client that can send an Authorization header).
+# The server is a thin authenticated proxy over the control plane's /api/v1 plus the embedded docs corpus: it
+# holds NO credentials, forwarding each request's bearer token to the control plane, which enforces scopes.
+#
+# Configuration is environment-only:
+#   SQLFLOW_CONTROL_PLANE_URL        base URL of the control plane the tools proxy (required)
+#   SQLFLOW_GUI_URL                  public base URL of the SQLFlow GUI; tool results carry deep links into it
+#                                    (an object's catalog page, its lineage graph, a run) so an assistant can hand
+#                                    the reader something to open. Unset emits root-relative links, which resolve
+#                                    only for a client rendering inside the GUI itself
+#   SQLFLOW_MCP_HTTP_BIND            listen address (the image defaults it to 0.0.0.0:8080)
+#   SQLFLOW_MCP_HTTP_ALLOWED_HOSTS   optional Host-header allowlist; unset disables the check, which is safe
+#                                    here because every /mcp request must carry a bearer token
+#   SQLFLOW_MCP_LOG                  tracing filter (optional; default info)
+#
+# Build from the repository root:
+#   docker build -f Dockerfile.mcp -t sqlflow-mcp:latest .
+
+FROM rust:1.88-slim AS build
+WORKDIR /src
+# sqlflow-lang's key census and the MCP build script embed docs/reference and docs/wiki at compile time
+# through repo-relative paths (tools/... -> ../../docs/...), so the build keeps the repo shape: tools/ beside
+# docs/. The root .dockerignore re-includes both trees under its docs/ exclusion for this.
+COPY tools/ tools/
+COPY docs/reference/ docs/reference/
+COPY docs/wiki/ docs/wiki/
+RUN cargo build --release --manifest-path tools/Cargo.toml -p sqlflow-mcp
+
+FROM debian:bookworm-slim AS runtime
+# TLS trust roots for the outbound rustls connection to the control plane.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --uid 10001 --create-home sqlflow
+COPY --from=build /src/tools/target/release/sqlflow-mcp /usr/local/bin/sqlflow-mcp
+ENV SQLFLOW_MCP_HTTP_BIND=0.0.0.0:8080
+EXPOSE 8080
+USER sqlflow
+ENTRYPOINT ["/usr/local/bin/sqlflow-mcp", "http"]

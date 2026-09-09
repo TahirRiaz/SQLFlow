@@ -1,0 +1,5 @@
+OrderId,Customer,Amount,OrderDate,IsPaid
+1001,Acme Corp,1499.95,2026-01-15,true
+1002,Globex,250.00,2026-01-16,false
+1003,Initech,9999.49,2026-01-17,true
+1004,Umbrella,42.10,2026-01-18,false

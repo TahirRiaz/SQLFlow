@@ -1,0 +1,24 @@
+# Ports fjord1.ps1: an Azure Storage Table query with a day-by-day window. The matched entities are landed as a
+# single raw JSON array per day (the downstream json flow explodes the embedded Payload field).
+flowType: api
+name: Fjord1_Apc
+batch: fjord1
+
+source:
+  transport: azuretable
+  baseUrl: https://rthubstorageprod.table.core.windows.net
+  options:
+    accountUrl: https://rthubstorageprod.table.core.windows.net
+    sasToken: ${keyvault:dw-keyvault-prod/rthub-table-sas}
+    tableName: fjord1apcrawdata
+    filter: "PartitionKey eq 'Fjord1Raw-{window.from:yyyy}' and RowKey ge '{window.from:yyyy-MM-dd}' and RowKey lt '{window.to:yyyy-MM-dd}'"
+  iterate:
+    - kind: date_window
+      granularity: day
+      from: yesterday
+      to: today
+
+landing:
+  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/fjord1
+  pathTemplate: "history/{window.from:yyyy}/fjord1_{window.from:yyyyMMdd}"
+  format: json

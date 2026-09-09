@@ -1,0 +1,152 @@
+{
+  "name": "sqlflow",
+  "displayName": "SQLFlow",
+  "description": "Language support, catalog/run browsing, and AI tooling for SQLFlow .flow.yaml projects.",
+  "version": "0.1.0",
+  "publisher": "business-iq",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Other"],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onLanguage:sqlflow-flow",
+    "workspaceContains:**/*.flow.yaml"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "sqlflow-flow",
+        "aliases": ["SQLFlow Flow", "flow.yaml"],
+        "extensions": [".flow.yaml"],
+        "filenamePatterns": ["*.flow.yaml"],
+        "configuration": "./language-configuration.json",
+        "icon": { "light": "./resources/flow.svg", "dark": "./resources/flow.svg" }
+      }
+    ],
+    "grammars": [
+      {
+        "language": "sqlflow-flow",
+        "scopeName": "source.sqlflow-flow",
+        "path": "./syntaxes/sqlflow-flow.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "SQLFlow",
+      "properties": {
+        "sqlflow.controlPlaneUrl": {
+          "type": "string",
+          "default": "http://localhost:8080",
+          "description": "Base URL of the SQLFlow control plane."
+        },
+        "sqlflow.lspBinaryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override path to the sqlflow-lsp binary. Empty uses the bundled binary."
+        },
+        "sqlflow.mcpBinaryPath": {
+          "type": "string",
+          "default": "",
+          "description": "Override path to the sqlflow-mcp binary. Empty uses the bundled binary."
+        },
+        "sqlflow.runResultLimit": {
+          "type": "number",
+          "default": 50,
+          "description": "How many runs to show in the Runs view."
+        },
+        "sqlflow.dataStreamWindowDays": {
+          "type": "number",
+          "default": 60,
+          "description": "How many days of write history the Data Streams view analyses (1-180). A longer window gives the detectors a baseline behind the recent slice they judge."
+        },
+        "sqlflow.dataStreamShowHealthy": {
+          "type": "boolean",
+          "default": false,
+          "description": "List every analysed stream in the Data Streams view, including the ones loading on pattern. Off by default: the view shows what needs attention and reports the rest as a count."
+        }
+      }
+    },
+    "commands": [
+      { "command": "sqlflow.signIn", "title": "Sign In", "category": "SQLFlow" },
+      { "command": "sqlflow.signOut", "title": "Sign Out", "category": "SQLFlow" },
+      { "command": "sqlflow.setControlPlaneUrl", "title": "Set Control Plane URL", "category": "SQLFlow" },
+      { "command": "sqlflow.newFlow", "title": "New Flow File", "category": "SQLFlow" },
+      { "command": "sqlflow.validateFlow", "title": "Validate Flow", "category": "SQLFlow", "icon": "$(check)" },
+      { "command": "sqlflow.searchDocs", "title": "Search Docs", "category": "SQLFlow", "icon": "$(book)" },
+      { "command": "sqlflow.openDocsForKey", "title": "Open Docs for Key Under Cursor", "category": "SQLFlow" },
+      { "command": "sqlflow.refreshCatalog", "title": "Refresh Catalog", "category": "SQLFlow", "icon": "$(refresh)" },
+      { "command": "sqlflow.refreshRuns", "title": "Refresh Runs", "category": "SQLFlow", "icon": "$(refresh)" },
+      { "command": "sqlflow.runFlow", "title": "Run Flow", "category": "SQLFlow", "icon": "$(play)" },
+      { "command": "sqlflow.openPipeline", "title": "Open Pipeline Definition", "category": "SQLFlow" },
+      { "command": "sqlflow.openRun", "title": "Open Run Detail", "category": "SQLFlow" },
+      { "command": "sqlflow.cancelRun", "title": "Cancel Run", "category": "SQLFlow", "icon": "$(stop)" },
+      { "command": "sqlflow.runSchedule", "title": "Run Schedule Now", "category": "SQLFlow", "icon": "$(play)" },
+      { "command": "sqlflow.showLineage", "title": "Show Repository Lineage", "category": "SQLFlow" },
+      { "command": "sqlflow.refreshDataStreams", "title": "Refresh Data Streams", "category": "SQLFlow", "icon": "$(refresh)" },
+      { "command": "sqlflow.openDataStream", "title": "Open Data Stream Analysis", "category": "SQLFlow" },
+      { "command": "sqlflow.setupMcp", "title": "Set Up MCP Server", "category": "SQLFlow", "icon": "$(server)" }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "sqlflow",
+          "title": "SQLFlow",
+          "icon": "./resources/flow.svg"
+        }
+      ]
+    },
+    "views": {
+      "sqlflow": [
+        { "id": "sqlflowCatalog", "name": "Catalog" },
+        { "id": "sqlflowRuns", "name": "Runs" },
+        { "id": "sqlflowSchedules", "name": "Schedules" },
+        { "id": "sqlflowDataStreams", "name": "Data Streams" }
+      ]
+    },
+    "menus": {
+      "commandPalette": [
+        { "command": "sqlflow.openPipeline", "when": "false" },
+        { "command": "sqlflow.openRun", "when": "false" },
+        { "command": "sqlflow.cancelRun", "when": "false" },
+        { "command": "sqlflow.runSchedule", "when": "false" },
+        { "command": "sqlflow.openDataStream", "when": "false" }
+      ],
+      "view/title": [
+        { "command": "sqlflow.refreshCatalog", "when": "view == sqlflowCatalog", "group": "navigation" },
+        { "command": "sqlflow.searchDocs", "when": "view == sqlflowCatalog", "group": "navigation" },
+        { "command": "sqlflow.refreshRuns", "when": "view == sqlflowRuns", "group": "navigation" },
+        { "command": "sqlflow.refreshDataStreams", "when": "view == sqlflowDataStreams", "group": "navigation" }
+      ],
+      "view/item/context": [
+        { "command": "sqlflow.runFlow", "when": "view == sqlflowCatalog && viewItem == pipeline", "group": "inline" },
+        { "command": "sqlflow.openPipeline", "when": "view == sqlflowCatalog && viewItem == pipeline" },
+        { "command": "sqlflow.showLineage", "when": "view == sqlflowCatalog && viewItem == repo" },
+        { "command": "sqlflow.cancelRun", "when": "view == sqlflowRuns && viewItem == run-active", "group": "inline" },
+        { "command": "sqlflow.openRun", "when": "view == sqlflowRuns && viewItem =~ /^run/" },
+        { "command": "sqlflow.runSchedule", "when": "view == sqlflowSchedules && viewItem == schedule", "group": "inline" },
+        { "command": "sqlflow.openDataStream", "when": "view == sqlflowDataStreams && viewItem == datastream" }
+      ],
+      "editor/title": [
+        { "command": "sqlflow.validateFlow", "when": "resourceLangId == sqlflow-flow", "group": "navigation" },
+        { "command": "sqlflow.runFlow", "when": "resourceLangId == sqlflow-flow", "group": "navigation" }
+      ],
+      "editor/context": [
+        { "command": "sqlflow.openDocsForKey", "when": "resourceLangId == sqlflow-flow", "group": "sqlflow" }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./ --noEmit",
+    "bundle": "node esbuild.mjs",
+    "bundle:watch": "node esbuild.mjs --watch",
+    "vscode:prepublish": "node esbuild.mjs --production",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.4.0"
+  }
+}

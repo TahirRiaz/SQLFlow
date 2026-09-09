@@ -1,0 +1,14 @@
+# Basic CSV: comma-delimited with a header row (the defaults).
+# This is the minimal pipeline: read a file, create/evolve the table, load it.
+name: Csv_Basic
+source:
+  type: csv
+  location: ./data/orders.csv
+target:
+  connection: ${env:SQLFlowSinkConStr}   # a reference to a connection string, never a secret in the file
+  schema: dbo
+  table: Csv_Basic
+schema:
+  evolve: widen                           # create | widen | strict
+load:
+  mode: append                            # append | truncate-load

@@ -1,0 +1,12 @@
+# Escape character: a backslash escapes a qualifier inside a quoted field, so \" is a
+# literal double quote rather than the end of the field.
+name: Csv_Escaped
+source:
+  type: csv
+  location: ./data/escaped.csv
+  options:
+    escapeCharacter: "\\"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Escaped

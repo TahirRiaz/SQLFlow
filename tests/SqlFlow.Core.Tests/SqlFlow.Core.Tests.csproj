@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1707;CA2007;CA1861</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.SqlServer.TransactSql.ScriptDom" />
+    <PackageReference Include="Xunit.SkippableFact" />
+    <PackageReference Include="ClosedXML" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Any *.xls / *.xlsx dropped here is copied next to the test binary for the fixture tests. -->
+    <None Include="fixtures\**\*.xls" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="fixtures\**\*.xlsx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.SqlServer\SqlFlow.SqlServer.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Sources\SqlFlow.Sources.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Azure\SqlFlow.Azure.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.HealthCheck\SqlFlow.HealthCheck.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Lineage\SqlFlow.Lineage.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Providers\SqlFlow.Providers.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.SourceControl\SqlFlow.SourceControl.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Orchestration\SqlFlow.Orchestration.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.DuckDb\SqlFlow.DuckDb.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Catalog\SqlFlow.Catalog.csproj" />
+    <ProjectReference Include="..\..\src\SqlFlow.Cli\SqlFlow.Cli.csproj" />
+    <!-- The assistant's MCP tool allowlist is asserted against the MCP server's shipped tool list. -->
+    <ProjectReference Include="..\..\src\SqlFlow.Assistant\SqlFlow.Assistant.csproj" />
+  </ItemGroup>
+
+</Project>

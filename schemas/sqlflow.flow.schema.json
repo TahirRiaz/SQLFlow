@@ -1,0 +1,974 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://sqlflow.io/schemas/flow.schema.json",
+  "title": "SQLFlow pipeline",
+  "description": "A SQLFlow data pipeline: read a source, evolve the target schema, and load it.",
+  "type": "object",
+  "required": [
+    "name",
+    "source",
+    "target"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Unique pipeline name. Also the stable flow identity (a deterministic GUID is derived from it)."
+    },
+    "flowType": {
+      "enum": [
+        "ing",
+        "exp",
+        "sp",
+        "inv",
+        "hc",
+        "scm",
+        "batch",
+        "api",
+        "cpy",
+        "sftp",
+        "cal",
+        "trl"
+      ],
+      "description": "Document-kind discriminator. Omit for a file flow (source/target/schema/load, as in this schema). Each value parses as a different document shape not covered by this schema file: ing a table-to-table ingestion, exp a file export, sp a stored procedure, inv an ADF/Automation trigger, hc an ML health check, scm a database source-control snapshot, batch an ordered multi-flow batch, api a generic acquisition (HTTP/SFTP/Azure Table), cpy a file copy, sftp an SFTP transfer, cal a generated calendar dimension, trl a JSON translation (query result to template-shaped documents, saved to a destination and optionally delivered to an API). Matched case-insensitively; an unrecognized value fails to load."
+    },
+    "batch": {
+      "type": "string",
+      "description": "Optional grouping label (source system) this flow reports under in the catalog and run history. Reporting only; never an execution input for a file flow. Blank/whitespace normalizes to unset."
+    },
+    "mode": {
+      "enum": ["auto", "manual", "disabled"],
+      "description": "Execution mode. auto (default): runs on schedule fires and in batch/node group runs. manual: reserved for direct triggers. disabled: deactivated (a retired source or run-once replay); excluded from automatic execution and from descendant selection unless the run opts into find-all, still runnable directly."
+    },
+    "schedule": {
+      "type": "object",
+      "description": "When the catalog scheduler should run this flow. Mirrored into the catalog on sync; the engine itself never schedules anything. A block with neither cron nor intervalSeconds is treated as absent.",
+      "additionalProperties": false,
+      "properties": {
+        "cron": {
+          "type": "string",
+          "description": "Cron expression (5-field standard, or 6+ fields with a leading seconds field), evaluated in timezone via the Cronos library. Mutually exclusive with intervalSeconds."
+        },
+        "intervalSeconds": {
+          "type": "integer",
+          "description": "Fixed interval in seconds between runs, as an alternative to cron. Must be positive. Mutually exclusive with cron."
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "Whether the schedule is active. Default true. A disabled schedule still syncs to the catalog but never fires."
+        },
+        "timezone": {
+          "type": "string",
+          "description": "IANA time zone identifier the cron expression evaluates in, for example Europe/Oslo. Default UTC. Not consulted for intervalSeconds schedules."
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "description": "Where the data is read from.",
+      "required": [
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Source kind. Selects the reader: csv, xls/xlsx, json/jsonl/ndjson, xml, parquet/prq (native readers), or duckdb/delta (DuckDB-backed scan over parquet, CSV, JSON, or a Delta table; delta always resolves to the Delta format regardless of the format option).",
+          "examples": [
+            "csv",
+            "xls",
+            "xlsx",
+            "json",
+            "jsonl",
+            "ndjson",
+            "xml",
+            "parquet",
+            "prq",
+            "duckdb",
+            "delta"
+          ]
+        },
+        "location": {
+          "type": "string",
+          "description": "Path, folder, or URI to read. For CSV/JSON: a file or a folder (with options.srcFile)."
+        },
+        "options": {
+          "type": "object",
+          "description": "Reader-specific options. The CSV, XLS, JSON, XML, and Parquet keys are listed below; values are strings. Parquet is columnar and self-describing, so it uses only the shared file-selection, provenance, key, and schema options (plus partitionList/expectedColumnCount).",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "properties": {
+            "srcFile": {
+              "type": "string",
+              "description": "File-name glob to enumerate (default *.csv / *.xlsx / *.json)."
+            },
+            "sheetName": {
+              "type": "string",
+              "description": "XLS: worksheet to read. Empty = first sheet; with useSheetIndex it is a 0-based index."
+            },
+            "sheetRange": {
+              "type": "string",
+              "description": "XLS: cell range to read, e.g. A1:D100. Empty = whole used sheet."
+            },
+            "useSheetIndex": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "XLS: treat sheetName as a 0-based sheet index instead of a name."
+            },
+            "rootPath": {
+              "type": "string",
+              "description": "JSON: JSONPath the records live under, e.g. $.data.records. $ = document root. An array there fans out to one record per element."
+            },
+            "includePaths": {
+              "type": "string",
+              "description": "JSON: comma-separated whitelist of paths to flatten. Empty = flatten everything."
+            },
+            "excludePaths": {
+              "type": "string",
+              "description": "JSON: comma-separated paths whose subtree is dropped (no column)."
+            },
+            "jsonPaths": {
+              "type": "string",
+              "description": "JSON: comma-separated paths kept verbatim as a single JSON-string column instead of being flattened."
+            },
+            "explodePaths": {
+              "type": "string",
+              "description": "JSON: comma-separated array paths to explode - each element becomes its own output row. Several exploded arrays cross-product."
+            },
+            "pathAliases": {
+              "type": "string",
+              "description": "JSON schema-evolution aliases: map version-specific paths to one column, e.g. person_name=$.user.name|$.user.firstName; id=$.id|$.userId. A missing source path is filled by another (never nulled)."
+            },
+            "columnMappings": {
+              "type": "string",
+              "description": "JSON: semicolon-separated jsonPath=columnName overrides, e.g. $.user.id=user_id;$.ts=event_time."
+            },
+            "separator": {
+              "type": "string",
+              "description": "JSON: separator joining nested keys into a column name (default _), e.g. address_city."
+            },
+            "maxDepth": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "JSON: maximum nesting depth flattened into columns; deeper values become JSON strings. Default 10."
+            },
+            "arrayHandling": {
+              "enum": [
+                "to_json",
+                "first_element",
+                "join",
+                "count",
+                "skip",
+                "explode"
+              ],
+              "description": "JSON: how an unconfigured array becomes a column. to_json (default) keeps it as a JSON string; explode makes every array emit one row per element."
+            },
+            "joinSeparator": {
+              "type": "string",
+              "description": "JSON/XML: separator used when array/repeat handling is join (default comma)."
+            },
+            "rowXPath": {
+              "type": "string",
+              "description": "XML: XPath selecting the row (record) elements (carries the original hierarchyIdentifier). Empty = each direct child of the root; . = the root element itself."
+            },
+            "xmlPaths": {
+              "type": "string",
+              "description": "XML: comma-separated paths kept verbatim as a single XML-fragment column (the XML analog of jsonPaths). Paths use / syntax, e.g. /meta, /vendor."
+            },
+            "repeatHandling": {
+              "enum": [
+                "to_xml",
+                "first_element",
+                "last_element",
+                "join",
+                "count",
+                "skip",
+                "explode"
+              ],
+              "description": "XML: how repeating sibling elements become a column. to_xml (default) keeps them as one XML fragment; explode makes each element its own row."
+            },
+            "includeAttributes": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "XML: whether attributes become columns (default true). An attribute is addressed as /@name."
+            },
+            "attributePrefix": {
+              "type": "string",
+              "description": "XML: prefix applied to an attribute's column name (default @). Set e.g. attr_ to keep an attribute distinct from a same-named element."
+            },
+            "stripNamespacePrefixes": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "XML: strip namespace prefixes from element/attribute names so paths and columns use local names (default true)."
+            },
+            "hierarchyIdentifier": {
+              "type": "string",
+              "description": "XML: legacy alias for rowXPath (the original PreIngestionXML column name)."
+            },
+            "partitionList": {
+              "type": "string",
+              "description": "Parquet: partition column list carried for metadata fidelity (Hive-style datasets). Recorded, not used to drive reads."
+            },
+            "srcPathMask": {
+              "type": "string",
+              "description": "Regex over the full path (name and/or folder) to further filter files."
+            },
+            "searchSubDirectories": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Recurse into sub-folders of the location."
+            },
+            "delimiter": {
+              "type": "string",
+              "description": "Column delimiter. Use \\t for tab. Default comma."
+            },
+            "qualifier": {
+              "type": "string",
+              "description": "Text qualifier that lets a field contain the delimiter or a newline. Default double quote."
+            },
+            "escapeCharacter": {
+              "type": "string",
+              "description": "Escapes a qualifier inside a quoted field."
+            },
+            "commentCharacter": {
+              "type": "string",
+              "description": "Lines beginning with this character are skipped."
+            },
+            "columnWidths": {
+              "type": "string",
+              "description": "Comma-separated fixed column widths for fixed-width files (no delimiter)."
+            },
+            "header": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "First row holds column names. Default true. False generates Column1..N."
+            },
+            "firstRowSetsExpectedColumnCount": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Use the first row's column count as the expected count."
+            },
+            "expectedColumnCount": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Expected number of columns; rows that differ raise an error. 0 disables."
+            },
+            "srcEncoding": {
+              "type": "string",
+              "description": "Source encoding: UTF8 (default), Unicode (UTF-16), UTF32, ASCII."
+            },
+            "skipStartingDataRows": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Number of leading data rows to drop (a preamble)."
+            },
+            "skipEndingDataRows": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Number of trailing data rows to drop (a footer)."
+            },
+            "skipEmptyRows": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Skip blank rows."
+            },
+            "trim": {
+              "description": "Trim surrounding whitespace from every value (true/false).",
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ]
+            },
+            "stripControlChars": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Remove non-printable control characters from values."
+            },
+            "maxRows": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Cap how many rows are loaded; 0 = all."
+            },
+            "readAhead": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "How many source files to keep open at once (1 to 32). Files are still read one at a time in file order; a higher value only opens and downloads the next ones ahead of their turn, which pays off for many small remote files. Defaults to 4 for the streaming formats (csv, json) and 1 for formats that hold a whole file in memory (xls, xml, parquet), where each extra open file multiplies the peak."
+            },
+            "maxBufferSize": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Parser read buffer size in bytes."
+            },
+            "showPathWithFileName": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Store the full path (not just the name) in FileName_DW."
+            },
+            "includeFileName": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject the FileName_DW provenance column (default true)."
+            },
+            "includeFileDate": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject the FileDate_DW provenance column (default true)."
+            },
+            "includeFileRowDate": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject the FileRowDate_DW provenance column (default true)."
+            },
+            "includeFileSize": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject the FileSize_DW provenance column (default true)."
+            },
+            "includeDataSet": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject the DataSet_DW provenance column (default true)."
+            },
+            "includeRowNumber": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject the RowNumber_DW provenance column (default true)."
+            },
+            "includeFileLineNumber": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject the FileLineNumber column."
+            },
+            "includeHashKey": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject HashKey_DW: a per-row hash (varbinary) for dedup when there is no business key."
+            },
+            "hashKeyColumns": {
+              "type": "string",
+              "description": "Comma-separated columns to hash. Empty = all source columns (system columns excluded)."
+            },
+            "hashKeyType": {
+              "type": "string",
+              "description": "Hash algorithm: SHA2_512 (default), SHA2_256, SHA1, MD5."
+            },
+            "includeConcatKey": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Inject ConcatKey_DW: a readable composite key built from the chosen columns."
+            },
+            "concatKeyColumns": {
+              "type": "string",
+              "description": "Comma-separated columns to concatenate. Empty = all source columns."
+            },
+            "concatKeySeparator": {
+              "type": "string",
+              "description": "Separator between concatenated values (default |)."
+            },
+            "initFromFileDate": {
+              "type": "string",
+              "description": "Earliest file date to include (inclusive). Read from the file's modified time by default, or from the path/name when fileDate.from is set. yyyy-MM-dd or a timestamp."
+            },
+            "initToFileDate": {
+              "type": "string",
+              "description": "Latest file date to include (inclusive). Read from the same source as initFromFileDate."
+            },
+            "fileDate.from": {
+              "enum": [
+                "modified",
+                "path",
+                "name"
+              ],
+              "description": "Where the date window reads each file's business date: modified (file timestamp, the default), path (Hive partitions or a pattern in the folder path), or name (a pattern in the file name). A path date lets discovery prune whole out-of-window partition folders."
+            },
+            "fileDate.hive": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "With fileDate.from: path, read the date from Hive key=value partition tokens (year=2025/month=03/day=05). Mutually exclusive with fileDate.pattern."
+            },
+            "fileDate.pattern": {
+              "type": "string",
+              "description": "Regex yielding the date, for fileDate.from path or name. Named groups year/month/day/hour, or unnamed groups in that order. Missing finer parts widen the window (a year-only match spans the whole year). Mutually exclusive with fileDate.hive."
+            },
+            "fileDate.partitions": {
+              "type": "string",
+              "description": "For a duckdb source with a Hive fileDate: the ordered partition columns to push the window down onto (default year,month,day). Only year, month, and day are recognized."
+            },
+            "copyToPath": {
+              "type": "string",
+              "description": "After a successful load, copy each ingested file here."
+            },
+            "zipToPath": {
+              "type": "string",
+              "description": "After a successful load, compress each ingested file to here."
+            },
+            "srcDeleteIngested": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Delete each file after it is ingested."
+            },
+            "srcDeleteAtPath": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Delete the file at the source path after ingestion."
+            },
+            "defaultColDataType": {
+              "type": "string",
+              "description": "SQL type for raw columns when creating the target (overrides the global default)."
+            },
+            "sysAlias": {
+              "type": "string",
+              "description": "Alias identifying the source system."
+            },
+            "columnDelimiter": {
+              "type": "string",
+              "description": "CSV: alias for delimiter (legacy column name). Consulted only when delimiter is absent or blank."
+            },
+            "textQualifier": {
+              "type": "string",
+              "description": "CSV: alias for qualifier (legacy column name). Only the first character is used. delimiter/qualifier take precedence when both are set."
+            },
+            "firstRowHasHeader": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "CSV/XLS: alias for header (legacy column name). Consulted only when header is absent or unparseable."
+            },
+            "trimResults": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "CSV: alias for trim (legacy column name). trim takes precedence when both are set."
+            },
+            "encoding": {
+              "type": "string",
+              "enum": [
+                "UTF8",
+                "UTF-8",
+                "ASCII",
+                "UNICODE",
+                "UTF16",
+                "UTF-16",
+                "UTF32",
+                "UTF-32"
+              ],
+              "description": "CSV: source text encoding, matched case-insensitively; unrecognized or absent falls back to UTF-8. Takes precedence over the srcEncoding alias."
+            },
+            "srcPath": {
+              "type": "string",
+              "description": "Fallback file-search root used only when source.location is absent (location wins when both are set)."
+            },
+            "format": {
+              "enum": [
+                "parquet",
+                "prq",
+                "csv",
+                "json",
+                "ndjson",
+                "jsonl",
+                "delta"
+              ],
+              "description": "DuckDB: explicit scan format selecting read_parquet / read_csv_auto / read_json_auto / delta_scan over the location. Default is inferred from the location's extension. Ignored when source.type is delta, which always resolves to delta."
+            },
+            "query": {
+              "type": "string",
+              "description": "DuckDB: verbatim SQL wrapped as the FROM relation '(<query>) AS _src'; when set it takes precedence over the location scan. The flow author is the trust boundary, like any other authored SQL in this file."
+            },
+            "filter": {
+              "type": "string",
+              "description": "DuckDB: verbatim WHERE expression pushed into the query for predicate pushdown; AND-combined with any fileDate partition predicate and the injected incremental watermark predicate."
+            },
+            "columns": {
+              "type": "string",
+              "description": "DuckDB: comma-separated projection of column names to select from the relation, in the given order; matching is case-insensitive. Default is every column."
+            },
+            "hivePartitioning": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "DuckDB (parquet/prq format only; a delta-typed source never reaches this branch): adds hive_partitioning to the scan so Hive key=value path partitions surface as columns. Auto-enabled when fileDate.from is path with fileDate.hive true."
+            },
+            "unionByName": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "DuckDB (parquet/prq format only; a delta-typed source never reaches this branch): reconciles files whose columns differ in order or presence (schema drift across parts) by name instead of position."
+            },
+            "deltaVersion": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "DuckDB Delta time travel: pins delta_scan to this snapshot version instead of the latest. Takes precedence over deltaTimestamp when both are set."
+            },
+            "deltaTimestamp": {
+              "type": "string",
+              "description": "DuckDB Delta time travel: an ISO timestamp pinning delta_scan to the snapshot current at that time. Consulted only when deltaVersion is absent."
+            },
+            "extensions": {
+              "type": "string",
+              "description": "DuckDB: comma-separated extensions to INSTALL/LOAD before the scan, on top of the auto-implied ones (delta for a Delta table; azure for abfss/abfs/az/azure locations; httpfs for s3/gs/gcs/r2/http(s))."
+            },
+            "cloudAuth": {
+              "type": "string",
+              "description": "DuckDB: opt-out switch for the auto-generated Azure CREATE SECRET. off/false/none/no/0 (case-insensitive) disables auto-generation, leaving auth to init. Any other value or absence keeps the default auto-detection."
+            },
+            "init": {
+              "type": "string",
+              "description": "DuckDB: semicolon-separated verbatim setup statements (SET / CREATE SECRET and similar) run on the connection before the query. A CREATE SECRET here suppresses the auto-generated Azure secret."
+            },
+            "flowId": {
+              "type": "string",
+              "description": "Reserved, engine-injected: overwritten after parsing with the flow's deterministic GUID. An authored value never survives; do not set this."
+            },
+            "incrementalAfterDate": {
+              "type": "string",
+              "description": "Reserved, engine-injected: the file-date incremental watermark's exclusive lower bound, written by the engine before file listing. Do not author this directly."
+            },
+            "incrementalColumn": {
+              "type": "string",
+              "description": "Reserved, engine-injected: the row-level watermark column name for incremental.watermarkColumn mode, written by the engine. Do not author this directly."
+            },
+            "incrementalValue": {
+              "type": "string",
+              "description": "Reserved, engine-injected: the canonical serialized row-level watermark bound compared with strict greater-than. Do not author this directly."
+            },
+            "incrementalKind": {
+              "enum": [
+                "Whole",
+                "Fixed",
+                "Floating",
+                "DateTime",
+                "DateTimeOffset",
+                "Text"
+              ],
+              "description": "Reserved, engine-injected: the watermark value kind governing how incrementalValue is parsed and compared. Do not author this directly."
+            },
+            "fullLoad": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "CSV only. Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. Use the flow's incremental.fullLoad instead."
+            },
+            "deactivateFromBatch": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load."
+            },
+            "enableEventExecution": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load."
+            },
+            "fetchDataTypes": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. V3 type inference is driven by transform.inferTypes."
+            },
+            "syncSchema": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. V3 schema evolution is governed by schema.evolve."
+            },
+            "noOfThreads": {
+              "type": [
+                "string",
+                "integer"
+              ],
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. V3 file readers stream sequentially."
+            },
+            "onErrorResume": {
+              "enum": [
+                true,
+                false,
+                "true",
+                "false"
+              ],
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. Batch-level error policy lives in the batch document instead."
+            },
+            "preFilter": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load."
+            },
+            "preProcessOnTrg": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. Use the flow's top-level preProcess list instead."
+            },
+            "postProcessOnTrg": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. Use the flow's top-level postProcess list instead."
+            },
+            "preInvokeAlias": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load."
+            },
+            "servicePrincipalAlias": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. Cloud auth flows through the file stores / SQLFLOW_AZURE_AUTH instead."
+            },
+            "trgServer": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. The real target comes from the flow's target section."
+            },
+            "trgDBSchTbl": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. The real target comes from the flow's target section."
+            },
+            "trgDesiredIndex": {
+              "type": "string",
+              "description": "Legacy field carried over from the old per-format metadata table for compatibility; bound into the flow's metadata record but not consumed by any V3 file-pipeline code path. Setting it has no effect on the load. Use the flow's top-level desiredIndexes key instead."
+            }
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "description": "The SQL Server table to load into.",
+      "required": [
+        "connection",
+        "schema",
+        "table"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "connection": {
+          "type": "string",
+          "description": "Connection string, or a reference like ${env:SQLFLOW_DW}. Never a raw secret committed to the file."
+        },
+        "schema": {
+          "type": "string",
+          "description": "Target schema (e.g. dbo)."
+        },
+        "table": {
+          "type": "string",
+          "description": "Target table name."
+        }
+      }
+    },
+    "schema": {
+      "type": "object",
+      "description": "Schema evolution policy and column typing.",
+      "additionalProperties": false,
+      "properties": {
+        "evolve": {
+          "enum": [
+            "create",
+            "widen",
+            "strict"
+          ],
+          "description": "create: create if missing, never alter. widen: add new source columns. strict: fail if the source has columns the target lacks."
+        },
+        "defaultColumnType": {
+          "type": "string",
+          "description": "SQL type for raw (untyped) columns when creating the table. Default varchar(255)."
+        },
+        "overrides": {
+          "type": "object",
+          "description": "Per-column type/nullability overrides keyed by column name.",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Explicit SQL type for this column."
+              },
+              "nullable": {
+                "type": "boolean",
+                "description": "Whether the column is nullable."
+              }
+            }
+          }
+        }
+      }
+    },
+    "load": {
+      "type": "object",
+      "description": "How rows are written to the target.",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "enum": [
+            "append",
+            "truncate-load"
+          ],
+          "description": "append: add rows. truncate-load: empty the target first (full refresh)."
+        },
+        "batchSize": {
+          "type": "integer",
+          "description": "SqlBulkCopy batch size. Default 50000."
+        },
+        "tableLock": {
+          "type": "boolean",
+          "description": "Take a table lock during the bulk load. Default true."
+        },
+        "manageIndexes": {
+          "type": "boolean",
+          "description": "On an existing table, disable non-clustered indexes before the load and rebuild them after."
+        },
+        "resetWhenConsolidated": {
+          "type": "boolean",
+          "description": "Reset (truncate) a chained landing target at the start of the next run once every flow that directly reads its typed view has completed a successful run after this flow's last successful load, so the staging table stops growing without bound. Default true; applies only to an append-mode flow that generates the typed view and only to control-plane runs (the node proves delivery from lineage and the run ledger; a direct CLI run never resets). A backfill bounded to a window or filter never resets (the whole staged dataset must reach the downstream merge); a plain forced full load keeps the gate and becomes a clean staging rebuild. Set false to keep the landing rows across runs."
+        }
+      }
+    },
+    "incremental": {
+      "type": "object",
+      "description": "Incremental load: probe the target for a watermark and read only newer files. The target table is the state; no control database is needed.",
+      "additionalProperties": false,
+      "properties": {
+        "table": {
+          "type": "string",
+          "description": "Fully qualified table to probe for the watermark. Defaults to this flow's target."
+        },
+        "dateColumn": {
+          "type": "string",
+          "description": "Date/datetime column whose MAX is the watermark. Default FileDate_DW."
+        },
+        "overlapDays": {
+          "type": "integer",
+          "description": "Days subtracted from the watermark to re-read a safety window. Default 0."
+        },
+        "fullLoad": {
+          "type": "boolean",
+          "description": "Ignore the watermark and reload everything."
+        },
+        "watermarkColumn": {
+          "type": "string",
+          "description": "Row-level watermark mode (alternative to the file-date mode above): column whose MAX the engine probes on the target; only rows past it (minus watermarkOverlap) are read, filtered identically across every source kind."
+        },
+        "watermarkOverlap": {
+          "type": "number",
+          "description": "Amount subtracted from the probed watermarkColumn bound to re-read a safety window, in the column's own unit (days for a date, seconds for a datetime, or a plain numeric step). Default 0."
+        }
+      }
+    },
+    "transform": {
+      "type": "object",
+      "description": "Pre-ingestion transform: type inference and authored per-column transforms over the raw landing table, projected into a typed view the target is loaded through.",
+      "additionalProperties": false,
+      "properties": {
+        "inferTypes": {
+          "type": "boolean",
+          "description": "Infer optimal SQL types for the raw string columns."
+        },
+        "onConvertError": {
+          "enum": [
+            "silent-null",
+            "fail",
+            "keep-string"
+          ],
+          "description": "When a value cannot convert: produce NULL, or fail loudly."
+        },
+        "threshold": {
+          "type": "number",
+          "description": "Fraction of values that must convert for a type to be chosen (0..1)."
+        },
+        "sample": {
+          "type": "integer",
+          "description": "Rows to sample for inference; 0 = all."
+        },
+        "preserveLeadingZeros": {
+          "type": "boolean",
+          "description": "Keep values with leading zeros as strings rather than numbers."
+        },
+        "generateView": {
+          "type": "boolean",
+          "description": "Generate the typed transformation view [schema].[v<Table>] over the flow's loaded table as a post-process (default true); downstream flows read the view for correct types. Set false to skip it."
+        },
+        "columns": {
+          "type": "array",
+          "description": "Authored per-column transforms (the source of truth), one entry per column that is cast, renamed, computed, or dropped. An authored transform overrides inference for that column; inference fills the rest.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The raw source column the transform applies to (for a virtual column, the name of the computed column)."
+              },
+              "expr": {
+                "type": "string",
+                "description": "SQL expression producing the value; @ColName is substituted with the quoted source column. Required for a virtual column."
+              },
+              "as": {
+                "type": "string",
+                "description": "Output column name (alias) in the view. Default: name."
+              },
+              "type": {
+                "type": "string",
+                "description": "Declared target SQL type, e.g. varchar(50). With no expr, the transform is CAST(@ColName AS type)."
+              },
+              "order": {
+                "type": "integer",
+                "description": "Column position in the view. Lower first; unset columns keep natural order."
+              },
+              "virtual": {
+                "type": "boolean",
+                "description": "A computed column with no raw source counterpart. Requires expr; @ColName is not valid here."
+              },
+              "excludeFromView": {
+                "type": "boolean",
+                "description": "Compute nothing into the view's final projection; drop this column from the view output."
+              }
+            }
+          }
+        }
+      }
+    },
+    "desiredIndexes": {
+      "type": "string",
+      "description": "One or more CREATE INDEX statements. Built when the table is created; an existing table's indexes are disabled/rebuilt around the load instead."
+    },
+    "preProcess": {
+      "type": "array",
+      "description": "SQL run on the target before the load (statements or EXEC a procedure).",
+      "items": {
+        "type": "string"
+      }
+    },
+    "postProcess": {
+      "type": "array",
+      "description": "SQL run on the target after the load.",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

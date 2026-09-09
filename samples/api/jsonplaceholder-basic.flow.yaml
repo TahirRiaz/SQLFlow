@@ -1,0 +1,26 @@
+# A no-auth public REST API, landed raw to a local folder. Runnable live:
+#   sqlflow run samples/acquire/jsonplaceholder-basic.flow.yaml
+# Then a downstream json file-flow ingests ./_landing/jsonplaceholder/posts.json into SQL.
+flowType: api
+name: JsonPlaceholder_Posts
+batch: demo
+
+source:
+  transport: http
+  baseUrl: https://jsonplaceholder.typicode.com
+  request:
+    method: GET
+    path: /posts
+  reliability:
+    timeoutSeconds: 30
+    rateLimitRps: 5
+    urlAllowlist: ["*.typicode.com"]
+
+landing:
+  target: ./_landing/jsonplaceholder
+  pathTemplate: posts_{yyyyMMdd}
+  format: auto        # derives .json from the response content-type
+  overwrite: true
+
+schedule:
+  cron: "0 6 * * *"

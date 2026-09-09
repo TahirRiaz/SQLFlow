@@ -1,0 +1,11 @@
+# Trim: strip leading/trailing whitespace from every value and header.
+name: Csv_Trim
+source:
+  type: csv
+  location: ./data/untrimmed.csv
+  options:
+    trim: "true"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Trim
