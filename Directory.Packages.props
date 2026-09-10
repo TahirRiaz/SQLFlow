@@ -34,7 +34,7 @@
     <PackageVersion Include="SSH.NET" Version="2024.2.0" />
     <PackageVersion Include="AWSSDK.S3" Version="3.7.416.19" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
-    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
+    <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <!-- Source control (SqlFlow.SourceControl): SMO scripts the database objects with full fidelity; LibGit2Sharp
          commits and pushes the snapshot to a git remote (BitBucket app password or GitHub PAT over HTTPS). Both
          are fully managed and run on every platform .NET supports. -->
