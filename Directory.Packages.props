@@ -10,7 +10,7 @@
     <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.191.0" />
     <PackageVersion Include="GenericParsing.Standard" Version="1.4.1" />
     <PackageVersion Include="ExcelDataReader" Version="3.9.0" />
-    <PackageVersion Include="Parquet.Net" Version="5.6.1" />
+    <PackageVersion Include="Parquet.Net" Version="6.1.0" />
     <!-- DuckDB-backed source reader (SqlFlow.DuckDb): the .Full variant bundles the native libduckdb per-RID,
          so self-contained / winget publishes carry the engine. Native dependency, isolated to this project. -->
     <PackageVersion Include="DuckDB.NET.Data.Full" Version="1.5.3" />
