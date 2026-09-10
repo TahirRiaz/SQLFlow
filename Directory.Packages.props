@@ -68,7 +68,7 @@
     <PackageVersion Include="SlackNet" Version="0.17.10" />
     <!-- The official Anthropic SDK, for the Slack bot's Anthropic provider mode (Claude Messages API
          with the MCP connector calling the same SQLFlow MCP server). -->
-    <PackageVersion Include="Anthropic" Version="12.35.1" />
+    <PackageVersion Include="Anthropic" Version="12.46.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
