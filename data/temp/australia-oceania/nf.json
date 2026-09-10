@@ -1,0 +1,424 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Polynesians lived on Norfolk Island between 1200 and 1500, but the remote island was uninhabited by the time British explorer James COOK landed on the island in 1774. Two British attempts at establishing the island as a penal colony (1788-1814 and 1825-55) were ultimately abandoned.<br><br>In 1856, almost 200 Pitcairn Islanders -- descendants of the <em>Bounty </em>mutineers and their Tahitian companions -- were relocated to Norfolk Island because of overcrowding on the Pitcairn Islands. Some returned to the Pitcairn Islands over the next few years, but most settled permanently on Norfolk Island and recreated their previous land tenure and governance structures. Norfolk Island retained a great degree of local control until 1897, when it became a dependency of New South Wales. During World War II, Norfolk Island was an airbase and an important refueling stop in the South Pacific. In 1976, an Australian judge recommended Norfolk Island be incorporated fully into Australia, which Norfolk Islanders rejected. After an appeal to the UN, Australia granted limited self-government to Norfolk Island in 1979.<br><br>With growing financial troubles during the 2000s, Australia abolished the Norfolk Island Legislative Assembly in 2015, reduced Norfolk Island’s autonomy in 2016, and suspended the local council in 2020. Most services are provided by a mix of the Australian Capital Territory and the states of New South Wales and Queensland. These moves were unpopular on Norfolk Island, which has sought to have its self-government restored and as of 2024, the Australian Government was working with Norfolk Island to establish a new local governing body."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Oceania, island in the South Pacific Ocean, east of Australia"
+    },
+    "Geographic coordinates": {
+      "text": "29 02 S, 167 57 E"
+    },
+    "Map references": {
+      "text": "Oceania"
+    },
+    "Area": {
+      "total ": {
+        "text": "36 sq km"
+      },
+      "land": {
+        "text": "36 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about 0.2 times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "32 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive fishing zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "subtropical; mild, little seasonal temperature variation"
+    },
+    "Terrain": {
+      "text": "volcanic island with mostly rolling plains"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mount Bates 319 m"
+      },
+      "lowest point": {
+        "text": "Pacific Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "fish"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "25% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 25% (2018 est.)"
+      },
+      "forest": {
+        "text": "11.5% (2018 est.)"
+      },
+      "other": {
+        "text": "63.5% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Population distribution": {
+      "text": "population concentrated around the capital of Kingston"
+    },
+    "Natural hazards": {
+      "text": "tropical cyclones (especially May to July)"
+    },
+    "Geography - note": {
+      "text": "most of the 32 km coastline consists of almost inaccessible cliffs, but the land slopes down to the sea in one small southern area on Sydney Bay, where the capital of Kingston is situated"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "1,748 (2016 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Norfolk Islander(s)"
+      },
+      "adjective": {
+        "text": "Norfolk Islander(s)"
+      }
+    },
+    "Ethnic groups": {
+      "text": "<p>Australian 22.8%, English 22.4%, Pitcairn Islander 20%, Scottish 6%, Irish 5.2%</p> (2011 est.)",
+      "note": "<strong>note:</strong> respondents were able to identify up to two ancestries; percentages represent a proportion of all responses from people in Norfolk Island, including those who did not identify an ancestry; only top responses are shown"
+    },
+    "Languages": {
+      "text": "English (official) 44.9%, Norfolk (official, a mixture of 18th century English and ancient Tahitian) 40.3%, Fijian 1.8%, other 6.8%, unspecified 6.2% (2016 est.)",
+      "note": "<strong>note:</strong> data represent language spoken at home"
+    },
+    "Religions": {
+      "text": "Protestant 46.8% (Anglican 29.2%, Uniting Church in Australia 9.8%, Presbyterian 2.9%, Seventh Day Adventist 2.7%, other 2.2%), Roman Catholic 12.6%, other Christian 2.9%, other 1.4%, none 26.7%, unspecified 9.5% (2016 est.)"
+    },
+    "Population growth rate": {
+      "text": "0.01% (2014 est.)"
+    },
+    "Population distribution": {
+      "text": "population concentrated around the capital of Kingston"
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "inadequate solid waste management; most freshwater obtained through rainwater catchment; preservation of unique ecosystem"
+    },
+    "Climate": {
+      "text": "subtropical; mild, little seasonal temperature variation"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "25% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 25% (2018 est.)"
+      },
+      "forest": {
+        "text": "11.5% (2018 est.)"
+      },
+      "other": {
+        "text": "63.5% (2018 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Territory of Norfolk Island"
+      },
+      "conventional short form": {
+        "text": "Norfolk Island"
+      },
+      "etymology": {
+        "text": "named by British explorer Captain James COOK after Mary HOWARD, Duchess of Norfolk, in 1774"
+      }
+    },
+    "Government type": {
+      "text": "non-self-governing overseas territory of Australia; note - the Norfolk Island Regional Council, which began operations 1 July 2016, is responsible for planning and managing a variety of public services, including those funded by the Government of Australia"
+    },
+    "Dependency status": {
+      "text": "self-governing territory of Australia; administered from Canberra by the Department of Infrastructure, Transport, Cities &amp; Regional Development"
+    },
+    "Capital": {
+      "name": {
+        "text": "Kingston"
+      },
+      "geographic coordinates": {
+        "text": "29 03 S, 167 58 E"
+      },
+      "time difference": {
+        "text": "UTC+11 (16 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins first Sunday in October; ends first Sunday in April"
+      },
+      "etymology": {
+        "text": "the name is a blending of the words \"king's\" and \"town\"; the British king at the time of the town's settlement in the late 18th century was GEORGE III"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none (territory of Australia)"
+    },
+    "Independence": {
+      "text": "none (territory of Australia)"
+    },
+    "National holiday": {
+      "text": "Bounty Day (commemorates the arrival of Pitcairn Islanders), 8 June (1856)"
+    },
+    "Legal system": {
+      "text": "English common law and the laws of Australia"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1913, 1957; latest effective 7 August 1979"
+      },
+      "amendments": {
+        "text": "amended many times, last in 2020"
+      }
+    },
+    "Citizenship": {
+      "text": "see Australia"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King CHARLES III (since 8 September 2022); represented by Governor General of the Commonwealth of Australia General David HURLEY (since 1 July 2019)"
+      },
+      "head of government": {
+        "text": "Administrator Eric HUTCHINSON (since 1 April 2017)"
+      },
+      "cabinet": {
+        "text": "Executive Council consists of 4 Legislative Assembly members"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; governor general appointed by the monarch; administrator appointed by the governor general of Australia for a 2-year term and represents the monarch and Australia"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Norfolk Island Regional Council"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "5 (directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "5/28/2016"
+      },
+      "parties elected and seats per party": {
+        "text": "independent (5)"
+      },
+      "percentage of women in chamber": {
+        "text": "20%"
+      },
+      "expected date of next election": {
+        "text": "March 2021 (postponed)"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court of Norfolk Island (consists of the chief justice and several justices); note - appeals beyond the Supreme Court of Norfolk Island are heard by the Federal Court and the High Court of Australia"
+      },
+      "judge selection and term of office": {
+        "text": "justices appointed by the governor general of Australia from among justices of the Federal Court of Australia; justices serve until mandatory retirement at age 70"
+      },
+      "subordinate courts": {
+        "text": "Petty Court of Sessions; specialized courts, including a Coroner's Court and the Employment Tribunal"
+      }
+    },
+    "Political parties": {
+      "text": "Norfolk Island Labor Party <br>Norfolk Liberals "
+    },
+    "International organization participation": {
+      "text": "UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (territory of Australia)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (territory of Australia)"
+      }
+    },
+    "Flag description": {
+      "text": "three vertical bands of green (hoist side), white, and green with a large green Norfolk Island pine tree centered in the slightly wider white band; green stands for the rich vegetation on the island, and the pine tree - endemic to the island - is a symbol of Norfolk Island",
+      "note": "<strong>note:</strong> somewhat reminiscent of the flag of Canada with its use of only two colors and depiction of a prominent local floral symbol in the central white band; also resembles the green and white triband of Nigeria"
+    },
+    "National symbol(s)": {
+      "text": "Norfolk Island pine"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Come Ye Blessed\""
+      },
+      "lyrics/music": {
+        "text": "New Testament/John Prindle SCOTT"
+      },
+      "note": "<strong>note:</strong> the local anthem, whose lyrics consist of the words from Matthew 25:34-36, 40, is also known as \"The Pitcairn Anthem;\" the island does not recognize \"Advance Australia Fair\" (which other Australian territories use); instead \"God Save the King\" is official (see United Kingdom)"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income Australian territorial economy; key tourism and re-exportation industries; small labor force and declining participation creating more part-time jobs; former tax haven; increasing medical cannabis exporter; little transportation infrastructure"
+    },
+    "Agricultural products": {
+      "text": "Norfolk Island pine seed, Kentia palm seed, cereals, vegetables, fruit; cattle, poultry"
+    },
+    "Industries": {
+      "text": "tourism, light industry, ready mixed concrete"
+    },
+    "Exports - partners": {
+      "text": "India 16%, Belgium 14%, US 14%, Malaysia 13%, Singapore 10% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "pine seeds, lumber, cars and vehicle parts, soybeans, lactose syrup, cleaning products, scrap aluminum (2021)"
+    },
+    "Imports - partners": {
+      "text": "Australia 34%, Philippines 19%, NZ 17%, Fiji 9%, Brazil 7% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "clothing and apparel, chemical analysis instruments, refined petroleum, cars, kitchen machinery (2019)"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Australian dollars (AUD) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "1.505 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "1.442 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "1.331 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "1.453 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "1.439 (2019 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the current infrastructure consists of fixed line telephone utilizing copper twisted pair cable and optic fiber, two Satellite Earth Station, GSM Mobile switch with five remote base stations and 2 micro cells, central public exchange which switches international as well as national calls, ADSL Broadband internet connection (Asynchronous Digital Subscriber Line), and an ISP (Internet Service Provider); 3G/4G telecommunications network went live on Tuesday 12 January, 2021 (2021)"
+      },
+      "domestic": {
+        "text": "free local calls"
+      },
+      "international": {
+        "text": "country code - 672; submarine cable links with Australia and New Zealand; satellite earth station - 1"
+      }
+    },
+    "Broadcast media": {
+      "text": "1 local radio station; broadcasts of several Australian radio and TV stations available via satellite (2009)"
+    },
+    "Internet country code": {
+      "text": ".nf"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "46.1% (2021 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "Airports": {
+      "text": "1 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "80 km"
+      },
+      "paved": {
+        "text": "53 km"
+      },
+      "unpaved": {
+        "text": "27 km (2008)"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "1 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Kingston"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of Australia"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

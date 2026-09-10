@@ -1,0 +1,1262 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The Slovene lands were part of the Austro-Hungarian Empire until the latter's dissolution at the end of World War I. In 1918, Slovenia became part of the Kingdom of Serbs, Croats, and Slovenes, which was renamed Yugoslavia in 1929. After World War II, Slovenia joined Bosnia and Herzegovina, Croatia, Macedonia, Montenegro, and Serbia as one of the constituent republics in the new Socialist Federal Republic of Yugoslavia (SFRY). In 1990, Slovenia held its first multiparty elections, as well as a referendum on independence. Serbia responded with an economic blockade and military action, but after a short 10-day war, Slovenia declared independence in 1991. Slovenia acceded to both NATO and the EU in the spring of 2004; it joined the euro zone and the Schengen Area in 2007."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "south Central Europe, Julian Alps between Austria and Croatia"
+    },
+    "Geographic coordinates": {
+      "text": "46 07 N, 14 49 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "20,273 sq km"
+      },
+      "land": {
+        "text": "20,151 sq km"
+      },
+      "water": {
+        "text": "122 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than New Jersey"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "1,211 km"
+      },
+      "border countries": {
+        "text": "Austria 299 km; Croatia 600 km; Hungary 94 km; Italy 218 km"
+      }
+    },
+    "Coastline": {
+      "text": "46.6 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      }
+    },
+    "Climate": {
+      "text": "Mediterranean climate on the coast, continental climate with mild to hot summers and cold winters in the plateaus and valleys to the east"
+    },
+    "Terrain": {
+      "text": "a short southwestern coastal strip of Karst topography on the Adriatic; an alpine mountain region lies adjacent to Italy and Austria in the north; mixed mountains and valleys with numerous rivers to the east"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Triglav 2,864 m"
+      },
+      "lowest point": {
+        "text": "Adriatic Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "492 m"
+      }
+    },
+    "Natural resources": {
+      "text": "lignite, lead, zinc, building stone, hydropower, forests"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "22.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 8.4% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 13.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "62.3% (2018 est.)"
+      },
+      "other": {
+        "text": "14.9% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "39 sq km (2020)"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country, with urban areas attracting larger and denser populations; pockets in the mountainous northwest exhibit less density than elsewhere"
+    },
+    "Natural hazards": {
+      "text": "flooding; earthquakes"
+    },
+    "Geography - note": {
+      "text": "despite its small size, this eastern Alpine country controls some of Europe's major transit routes"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "2,097,893"
+      },
+      "male": {
+        "text": "1,051,044"
+      },
+      "female": {
+        "text": "1,046,849 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Slovene(s)"
+      },
+      "adjective": {
+        "text": "Slovenian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Slovene 83.1%, Serb 2%, Croat 1.8%, Bosniak 1.1%, other or unspecified 12% (2002 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Slovene (official) 87.7%, Croatian 2.8%, Serbo-Croatian 1.8%, Bosnian 1.6%, Serbian 1.6%, Hungarian 0.4% (official, only in municipalities where Hungarian nationals reside), Italian 0.2% (official, only in municipalities where Italian nationals reside), other or unspecified 3.9% (2002 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Svetovni informativni zvezek - neobhoden vir osnovnih informacij. (Slovene)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Catholic 69%, Orthodox 4%, Muslim 3%, Christian 1%, other 3%, atheist 14%, non-believer/agnostic 4%, refused to answer 2% (2019 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "14.3% (male 153,852/female 146,628)"
+      },
+      "15-64 years": {
+        "text": "62.5% (male 683,573/female 627,788)"
+      },
+      "65 years and over": {
+        "text": "23.2% (2024 est.) (male 213,619/female 272,433)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "55.5"
+      },
+      "youth dependency ratio": {
+        "text": "23.6"
+      },
+      "elderly dependency ratio": {
+        "text": "31.9"
+      },
+      "potential support ratio": {
+        "text": "3.1 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "46.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "45 years"
+      },
+      "female": {
+        "text": "47.9 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "-0.1% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "10.5 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "1.5 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country, with urban areas attracting larger and denser populations; pockets in the mountainous northwest exhibit less density than elsewhere"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "56.1% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.54% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "286,000 LJUBLJANA (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.04 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.09 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.78 male(s)/female"
+      },
+      "total population": {
+        "text": "1 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "29 years (2020 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "5 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "1.5 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "1.6 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "1.4 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "82.2 years (2024 est.)"
+      },
+      "male": {
+        "text": "79.4 years"
+      },
+      "female": {
+        "text": "85.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.6 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.79 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: total": {
+        "text": "total: 99.5% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0.5% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "9.5% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "3.28 physicians/1,000 population (2019)"
+    },
+    "Hospital bed density": {
+      "text": "4.4 beds/1,000 population (2018)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 99% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 1% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "20.2% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "11.05 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "4.54 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "5.26 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "1.26 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "22% (2020 est.)"
+      },
+      "male": {
+        "text": "24.4% (2020 est.)"
+      },
+      "female": {
+        "text": "19.6% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "46.4% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "5.8% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "NA"
+      },
+      "total population": {
+        "text": "99.7%"
+      },
+      "male": {
+        "text": "99.7%"
+      },
+      "female": {
+        "text": "99.7% (2015)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "18 years"
+      },
+      "male": {
+        "text": "17 years"
+      },
+      "female": {
+        "text": "18 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air pollution from road traffic, domestic heating (wood buring), power generation, and industry; water pollution; biodiversity protection"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Air Pollution-Heavy Metals, Air Pollution-Multi-effect Protocol, Air Pollution-Nitrogen Oxides, Air Pollution-Persistent Organic Pollutants, Air Pollution-Sulphur 94, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Marine Dumping-London Protocol, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "Mediterranean climate on the coast, continental climate with mild to hot summers and cold winters in the plateaus and valleys to the east"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "22.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 8.4% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 13.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "62.3% (2018 est.)"
+      },
+      "other": {
+        "text": "14.9% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "56.1% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.54% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.2% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.03% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "14.08 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "12.63 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "2.1 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "926,000 tons (2015 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "430,034 tons (2015 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "46.4% (2015 est.)"
+      }
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "170 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "830 million cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "3.9 million cubic meters (2017 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "31.87 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "2"
+      },
+      "global geoparks and regional networks": {
+        "text": "Idrija; Karawanken / Karavanke (includes Austria) (2023)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Slovenia"
+      },
+      "conventional short form": {
+        "text": "Slovenia"
+      },
+      "local long form": {
+        "text": "Republika Slovenija"
+      },
+      "local short form": {
+        "text": "Slovenija"
+      },
+      "former": {
+        "text": "People's Republic of Slovenia, Socialist Republic of Slovenia"
+      },
+      "etymology": {
+        "text": "the country's name means \"Land of the Slavs\" in Slovene"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Ljubljana"
+      },
+      "geographic coordinates": {
+        "text": "46 03 N, 14 31 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "likely related to the Slavic root \"ljub\", meaning \"to like\" or \"to love\"; by tradition, the name is related to the Slovene word \"ljubljena\" meaning \"beloved\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "<p>200 municipalities (obcine, singular - obcina) and 12 urban municipalities (mestne obcine, singular - mestna obcina)</p> <p><strong>municipalities:</strong> Ajdovscina, Ankaran, Apace, Beltinci, Benedikt, Bistrica ob Sotli, Bled, Bloke, Bohinj, Borovnica, Bovec, Braslovce, Brda, Brezice, Brezovica, Cankova, Cerklje na Gorenjskem, Cerknica, Cerkno, Cerkvenjak, Cirkulane, Crensovci, Crna na Koroskem, Crnomelj, Destrnik, Divaca, Dobje, Dobrepolje, Dobrna, Dobrova-Polhov Gradec, Dobrovnik/Dobronak, Dolenjske Toplice, Dol pri Ljubljani, Domzale, Dornava, Dravograd, Duplek, Gorenja Vas-Poljane, Gorisnica, Gorje, Gornja Radgona, Gornji Grad, Gornji Petrovci, Grad, Grosuplje, Hajdina, Hoce-Slivnica, Hodos, Horjul, Hrastnik, Hrpelje-Kozina, Idrija, Ig, Ilirska Bistrica, Ivancna Gorica, Izola/Isola, Jesenice, Jezersko, Jursinci, Kamnik, Kanal ob Soci, Kidricevo, Kobarid, Kobilje, Kocevje, Komen, Komenda, Kosanjevica na Krki, Kostel, Kozje, Kranjska Gora, Krizevci, Kungota, Kuzma, Lasko, Lenart, Lendava/Lendva, Litija, Ljubno, Ljutomer, Log-Dragomer, Logatec, Loska Dolina, Loski Potok, Lovrenc na Pohorju, Luce, Lukovica, Majsperk, Makole, Markovci, Medvode, Menges, Metlika, Mezica, Miklavz na Dravskem Polju, Miren-Kostanjevica, Mirna, Mirna Pec, Mislinja, Mokronog-Trebelno, Moravce, Moravske Toplice, Mozirje, Muta, Naklo, Nazarje, Odranci, Oplotnica, Ormoz, Osilnica, Pesnica, Piran/Pirano, Pivka, Podcetrtek, Podlehnik, Podvelka, Poljcane, Polzela, Postojna, Prebold, Preddvor, Prevalje, Puconci, Race-Fram, Radece, Radenci, Radlje ob Dravi, Radovljica, Ravne na Koroskem, Razkrizje, Recica ob Savinji, Rence-Vogrsko, Ribnica, Ribnica na Pohorju, Rogaska Slatina, Rogasovci, Rogatec, Ruse, Salovci, Selnica ob Dravi, Semic, Sempeter-Vrtojba, Sencur, Sentilj, Sentjernej, Sentjur, Sentrupert, Sevnica, Sezana, Skocjan, Skofja Loka, Skofljica, Slovenska Bistrica, Slovenske Konjice, Smarje pri Jelsah, Smarjeske Toplice, Smartno ob Paki, Smartno pri Litiji, Sodrazica, Solcava, Sostanj, Sredisce ob Dravi, Starse, Store, Straza, Sveta Ana, Sveta Trojica v Slovenskih Goricah, Sveti Andraz v Slovenskih Goricah, Sveti Jurij ob Scavnici, Sveti Jurij v Slovenskih Goricah, Sveti Tomaz, Tabor, Tisina, Tolmin, Trbovlje, Trebnje, Trnovska Vas, Trzic, Trzin, Turnisce, Velika Polana, Velike Lasce, Verzej, Videm, Vipava, Vitanje, Vodice, Vojnik, Vransko, Vrhnika, Vuzenica, Zagorje ob Savi, Zalec, Zavrc, Zelezniki, Zetale, Ziri, Zirovnica, Zrece, Zuzemberk</p> <p><strong>urban municipalities:</strong> Celje, Koper, Kranj, Krsko, Ljubljana, Maribor, Murska Sobota, Nova Gorica, Novo Mesto, Ptuj, Slovenj Gradec, Velenje</p>"
+    },
+    "Independence": {
+      "text": "25 June 1991 (from Yugoslavia)"
+    },
+    "National holiday": {
+      "text": "Independence Day/Statehood Day, 25 June (1991)"
+    },
+    "Legal system": {
+      "text": "civil law system"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1974 (preindependence); latest passed by Parliament 23 December 1991"
+      },
+      "amendments": {
+        "text": "proposed by at least 20 National Assembly members, by the government, or by petition of at least 30,000 voters; passage requires at least two-thirds majority vote by the Assembly; referendum required if agreed upon by at least 30 Assembly members; passage in a referendum requires participation of a majority of eligible voters and a simple majority of votes cast; amended several times, last in 2016"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Slovenia; both parents if the child is born outside of Slovenia"
+      },
+      "dual citizenship recognized": {
+        "text": "yes, for select cases"
+      },
+      "residency requirement for naturalization": {
+        "text": "10 years, the last 5 of which have been continuous"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Natasa PIRC MUSAR (since 23 December 2022)"
+      },
+      "head of government": {
+        "text": "Prime Minister Robert GOLOB (since 1 June 2022)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers nominated by the prime minister, elected by the National Assembly"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second consecutive term); election last held on 23 October 2022 with a runoff on 13 November 2022 (next to be held in 2027); following National Assembly elections, the leader of the majority party or majority coalition usually nominated prime minister by the president and elected by the National Assembly"
+      },
+      "election results": {
+        "text": "<em><br>2022:</em> Natasa PIRC MUSAR elected president in second round: percent of vote in first round - Anze LOGAR (SDS) 34%, Natasa PIRC MUSAR (independent) 26.9%, Milan BRGLEZ (SD) 15.5%, Vladimir PREBILIC (independent) 10.6%, Sabina SENCAR (Resni.ca) 5.9%, Janez CIGLER KRALJ (NSi) 4.4%, other 2.7%; percent of vote in second round - Natasa PIRC MUSAR 53.9%, Anze LOGAR 46.1%; Robert GOLOB (GS) elected prime minister on 25 May 2022, National Assembly vote - 54-30<br><em><br>2017:</em> Borut PAHOR reelected president in second round; percent of vote in first round - Borut PAHOR (independent) 47.1%, Marjan SAREC (Marjan Sarec List) 25%, Romana TOMC (SDS) 13.7%, Ljudmila NOVAK (NSi) 7.2%, other 7%; percent of vote in second round - Borut PAHOR 52.9%, Marjan SAREC 47.1%"
+      }
+    },
+    "Legislative branch": {
+      "legislative structure": {
+        "text": "bicameral"
+      }
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "National Assembly (Drzavni Zbor)"
+      },
+      "number of seats": {
+        "text": "90 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "4/24/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "Freedom Movement (SVOBODA) (41); Slovenian Democratic Party (SDS) (27); New Slovenia - Christian Democrats (NSi) (8); Social Democrats (SD) (7); Left (LEVICA) (5); Other (2)"
+      },
+      "percentage of women in chamber": {
+        "text": "35.6%"
+      },
+      "expected date of next election": {
+        "text": "April 2026"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "National Council (Drzavni Svet)"
+      },
+      "number of seats": {
+        "text": "40 (all indirectly elected)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "11/23/2022 to 11/24/2022"
+      },
+      "percentage of women in chamber": {
+        "text": "17.5%"
+      },
+      "expected date of next election": {
+        "text": "November 2027"
+      },
+      "note": "<strong>note:</strong> the National Council is primarily an advisory body with limited legislative powers"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of the court president and 37 judges organized into civil, criminal, commercial, labor and social security, administrative, and registry departments); Constitutional Court (consists of the court president, vice president, and 7 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court president and vice president appointed by the National Assembly upon the proposal of the Minister of Justice based on the opinions of the Judicial Council, an 11-member independent body elected by the National Assembly from proposals submitted by the president, attorneys, law universities, and sitting judges; other Supreme Court judges elected by the National Assembly from candidates proposed by the Judicial Council; Supreme Court judges serve for life; Constitutional Court judges appointed by the National Assembly from nominations by the president of the republic; Constitutional Court president selected from among its own membership for a 3-year term; other judges elected for single 9-year terms"
+      },
+      "subordinate courts": {
+        "text": "county, district, regional, and high courts; specialized labor-related and social courts; Court of Audit; Administrative Court"
+      }
+    },
+    "Political parties": {
+      "text": "Democratic Party of Pensioners of Slovenia or DeSUS <br>Freedom Movement or GS (formerly Greens Actions Party or Z.DEJ)<br>List of Marjan Sarec or LMS <br>New Slovenia - Christian Democrats or NSi <br>Party of Alenka Bratusek or SAB (formerly Alliance of Social Liberal Democrats or ZSD and before that Alliance of Alenka Bratusek or ZaAB)<br>Resni.ca <br>Slovenian Democratic Party or SDS (formerly the Social Democratic Party of Slovenia or SDSS)<br>Slovenian National Party or SNS <br>Social Democrats or SD<br>The Left or Levica (successor to United Left or ZL)"
+    },
+    "International organization participation": {
+      "text": "Australia Group, BIS, CD, CE, CEI, EAPC, EBRD, ECB, EIB, EMU, ESA (cooperating state), EU, FAO, IADB, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IFC, IFRCS, IHO, ILO, IMF, IMO, Interpol, IOC, IOM, IPU, ISO, ITU, MIGA, NATO, NEA, NSG, OAS (observer), OECD, OIF (observer), OPCW, OSCE, PCA, Schengen Convention, SELEC, UN, UNCTAD, UNESCO, UNHCR, UNIDO, UNIFIL, UNOOSA, UNTSO, UNWTO, UPU, Wassenaar Arrangement, WCO, WHO, WIPO, WMO, WTO, ZC"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Iztok MIRO&Scaron;IČ (since 15 September 2023)"
+      },
+      "chancery": {
+        "text": "2410 California Street NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 386-6611"
+      },
+      "FAX": {
+        "text": "[1] (202) 386-6633"
+      },
+      "email address and website": {
+        "text": "<br>sloembassy.washington@gov.si<br><br>http://www.washington.embassy.si/"
+      },
+      "consulate(s) general": {
+        "text": "Cleveland (OH)"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador&nbsp;(vacant); Charg&eacute; d&rsquo;Affaires Melania ARREAGA (since 31 July 2024)"
+      },
+      "embassy": {
+        "text": "Presernova 31, 1000 Ljubljana"
+      },
+      "mailing address": {
+        "text": "7140 Ljubljana Place, Washington, DC 20521-7140"
+      },
+      "telephone": {
+        "text": "[386] (1) 200-5500"
+      },
+      "FAX": {
+        "text": "[386] (1) 200-5555"
+      },
+      "email address and website": {
+        "text": "<br>LjubljanaACS@state.gov<br><br>https://si.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "three equal horizontal bands of white (top), blue, and red, derive from the medieval coat of arms of the Duchy of Carniola; the Slovenian seal (a shield with the image of Triglav, Slovenia's highest peak, in white against a blue background at the center; beneath it are two wavy blue lines depicting seas and rivers, and above it are three six-pointed stars arranged in an inverted triangle, which are taken from the coat of arms of the Counts of Celje, the prominent Slovene dynastic house of the late 14th and early 15th centuries) appears in the upper hoist side of the flag centered on the white and blue bands"
+    },
+    "National symbol(s)": {
+      "text": "Mount Triglav; national colors: white, blue, red"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Zdravljica\" (A Toast)"
+      },
+      "lyrics/music": {
+        "text": "France PRESEREN/Stanko PREMRL"
+      },
+      "note": "<strong>note:</strong> adopted in 1989 while still part of Yugoslavia; originally written in 1848; the full poem, whose seventh verse is used as the anthem, speaks of pan-Slavic nationalism"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "5 (3 cultural, 2 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "&Scaron;kocjan Caves (n); Ancient and Primeval Beech Forests of the Carpathians and Other Regions of Europe (n); Prehistoric Pile Dwellings around the Alps (c); Heritage of Mercury: Almad&eacute;n and Idrija (c); The works of Jože Plečnik in Ljubljana (c)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income, EU and eurozone member economy; high per-capita income and low inequality; key exports in automotive and pharmaceuticals; tight labor market with low unemployment; growth supported by EU funds and reconstruction from 2023 floods; pressures over public sector wage demands"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$102.299 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$100.183 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$97.55 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "2.11% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "2.7% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "8.23% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$48,200 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$47,400 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$46,300 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$69.148 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "7.45% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "8.83% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "1.92% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "A (2019)"
+      },
+      "Moody's rating": {
+        "text": "A3 (2020)"
+      },
+      "Standard & Poors rating": {
+        "text": "AA- (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "1.5% (2023 est.)"
+      },
+      "industry": {
+        "text": "29.7% (2023 est.)"
+      },
+      "services": {
+        "text": "57.7% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "52.3% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "19.2% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "21.3% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0.9% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "83.3% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-76.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "milk, maize, wheat, barley, grapes, chicken, potatoes, apples, beef, pork (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "ferrous metallurgy and aluminum products, lead and zinc smelting; electronics (including military electronics), trucks, automobiles, electric power equipment, wood products, textiles, chemicals, machine tools"
+    },
+    "Industrial production growth rate": {
+      "text": "5.58% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "1.056 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "3.63% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "4.01% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "4.75% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "9.9% (2023 est.)"
+      },
+      "male": {
+        "text": "9.9% (2023 est.)"
+      },
+      "female": {
+        "text": "9.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "12.7% (2022 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "24.3 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "13.9% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "4.5% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "4.2% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "20.6% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "1.34% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "1.3% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "1.34% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$23.529 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$24.369 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "73.6% of GDP (2017 est.)"
+      },
+      "note": "<strong>note:</strong> defined by the EU's Maastricht Treaty as consolidated general government gross debt at nominal value, outstanding at the end of the year in the following categories of government liabilities: currency and deposits, securities other than shares excluding financial derivatives, and loans; general government sector comprises the central, state, local government, and social security funds"
+    },
+    "Taxes and other revenues": {
+      "text": "18.18% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$3.093 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$617.374 million (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$2.073 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$57.66 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$56.51 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$51.662 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Switzerland 18%, Germany 14%, Italy 11%, Croatia 8%, Austria 7% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "packaged medicine, cars, refined petroleum, electricity, vehicle parts/accessories (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$53.309 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$55.158 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$47.997 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Switzerland 17%, China 11%, Italy 10%, Germany 10%, Austria 7% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "packaged medicine, nitrogen compounds, refined petroleum, cars, electricity (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$2.37 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$2.268 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$2.267 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.95 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.876 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "4.322 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "13.081 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "8.752 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "10.198 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "834.794 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "26.7% of total installed capacity (2022 est.)"
+      },
+      "nuclear": {
+        "text": "42.6% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "4.3% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "24.1% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "2.2% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of operational nuclear reactors": {
+        "text": "1 (2023)"
+      },
+      "Net capacity of operational nuclear reactors": {
+        "text": "0.69GW (2023 est.)"
+      },
+      "Percent of total electricity production": {
+        "text": "36.8% (2023 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "2.358 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "2.553 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "5,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "486,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "95 million metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "45,000 bbl/day (2023 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "3.863 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "840.902 million cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "11.387 million cubic meters (2018 est.)"
+      },
+      "imports": {
+        "text": "840.606 million cubic meters (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "12.26 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "2.97 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "7.689 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "1.601 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "114.991 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "647,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "30 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "2.73 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "126 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Slovenia&rsquo;s telecom sector is dominated by four operators; the mobile market has four MNOs and a small number of MVNOs, operating in a country with a potential market of just over two million people; the regulator in recent years has addressed the need for mobile operators to have more spectrum, so enabling them to improve the quality and range of services; a multi-spectrum auction was concluded in mid-2021, aimed at supporting 5G services; the broadband market continues to be dominated by a small number of players; DSL lost its dominance some years ago, being taken over by fiber as subscribers are migrated to new fiber-based networks; fiber accounted for almost half of all fixed broadband connections by March 2022 (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line is 32 per 100 and mobile-cellular is 126 per 100 teledensity (2022)"
+      },
+      "international": {
+        "text": "country code - 386 (2016)"
+      }
+    },
+    "Broadcast media": {
+      "text": "public TV broadcaster, Radiotelevizija Slovenija (RTV), operates a system of national and regional TV stations; 35 domestic commercial TV stations operating nationally, regionally, and locally; about 60% of households are connected to multi-channel cable TV; public radio broadcaster operates 3 national and 4 regional stations; more than 75 regional and local commercial and non-commercial radio stations"
+    },
+    "Internet country code": {
+      "text": ".si"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "90% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "683,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "32 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "2 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "21"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "1,094,762 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "540,000 (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "S5"
+    },
+    "Airports": {
+      "text": "42 (2024)"
+    },
+    "Heliports": {
+      "text": "4 (2024)"
+    },
+    "Pipelines": {
+      "text": "1,155 km gas, 5 km oil (2018)"
+    },
+    "Railways": {
+      "total": {
+        "text": "1,207 km (2020) 609 km electrified"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "38,125 km (2022)"
+      }
+    },
+    "Waterways": {
+      "text": "710 km (2022) (some transport on the Drava River)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "8 (2023)"
+      },
+      "by type": {
+        "text": "other 8"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "2 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "0"
+      },
+      "key ports": {
+        "text": "Koper, Piran"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Slovenian Armed Forces (Slovenska Vojska, SV): structured as a combined force with air, land, maritime, special operations, combat support, and combat service support elements<br><br>Ministry of Interior: National Police (2024)"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2024": {
+        "text": "1.3% of GDP (2024 est.)"
+      },
+      "Military Expenditures 2023": {
+        "text": "1.3% of GDP (2023)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.3% of GDP (2022)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.2% of GDP (2021)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1% of GDP (2020)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 6,000 active-duty troops (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory is a mix of Soviet-era and smaller quantities of more modern, mostly Western equipment; in recent years, Slovenia has begun a modernization program and imported growing amounts of NATO-standard European and US equipment (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-30 years of age for voluntary military service for men and women; must be a citizen of the Republic of Slovenia; recruits sign up for 3-, 5-, or 10-year service contracts; conscription abolished in 2003 (2023)",
+      "note": "<strong>note:</strong> as of 2023, women comprised about 16% of the military's full-time personnel"
+    },
+    "Military deployments": {
+      "text": "100 Kosovo (NATO); 100 Slovakia (NATO) (2024)",
+      "note": "<strong>note:</strong> in response to Russia’s 2022 invasion of Ukraine, some NATO countries, including Slovenia, have sent additional troops and equipment to the battlegroups deployed in NATO territory in eastern Europe"
+    },
+    "Military - note": {
+      "text": "the Slovenian Armed Forces (Slovenska Vojska or SV) are responsible for the defense of the country’s sovereignty and territory, deterring external threats, and contributing to European security and other international peacekeeping missions; the SV is also active in civil-military cooperation, such as the maintenance of local infrastructure; Slovenia has been a member of the EU and NATO since 2004, and one of the SV’s key missions is fulfilling the country’s commitments to NATO, including equipment modernization, participating in training exercises, and contributing to NATO operations; the SV provides troops to NATO’s efforts to enhance its presence in the Baltics (Latvia) and Eastern Europe (Slovakia); it has also participated in other international security missions with small numbers of personnel in such places as Africa, southern Europe, the Mediterranean Sea, and the Middle East; because the SV air component has no fighter aircraft, NATO allies Hungary and Italy provide air policing for Slovenia<br><br>the SV was formally established in 1993 as a reorganization of the Slovenia Defense Force; the Defense Force, along with the Slovenian police, comprised the majority of the forces that engaged with the Yugoslav People’s Army during the 10-Day War after Slovenia declared its independence in 1991 (2024)"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "11,035 (Ukraine) (as of 1 March 2024)"
+      },
+      "stateless persons": {
+        "text": "10 (2020)"
+      },
+      "note": "<strong>note: </strong> 634,128 estimated refugee and migrant arrivals (January 2015-February 2024)"
+    },
+    "Illicit drugs": {
+      "text": "minor transit point for cocaine and Southwest Asian heroin bound for Western Europe, and for precursor chemicals"
+    }
+  }
+}

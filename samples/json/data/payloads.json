@@ -1,0 +1,4 @@
+[
+  { "id": 1, "note": "first",  "payload": { "a": 1, "b": [2, 3], "nested": { "deep": true } } },
+  { "id": 2, "note": "second", "payload": { "a": 9, "b": [] } }
+]

@@ -1,0 +1,16 @@
+# The records are nested under an envelope. rootPath selects the array to flatten; everything above it
+# (meta, the data wrapper) is ignored. Each array element becomes one row.
+name: Json_RootPath
+source:
+  type: json
+  location: ./data/envelope.json
+  options:
+    rootPath: "$.data.records"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_RootPath
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

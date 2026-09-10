@@ -1,0 +1,16 @@
+# Explode: repeating <line> elements become one row each (SQL UNNEST). The order fields (id) repeat on
+# every line; the line fields (line_sku, line_qty) vary. Two orders with 2 + 1 lines produce 3 rows.
+name: Xml_Explode
+source:
+  type: xml
+  location: ./data/purchase-orders.xml
+  options:
+    explodePaths: "/line"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Xml_Explode
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

@@ -1,0 +1,91 @@
+<Project>
+
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.3" />
+    <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="170.191.0" />
+    <PackageVersion Include="GenericParsing.Standard" Version="1.4.1" />
+    <PackageVersion Include="ExcelDataReader" Version="3.9.0" />
+    <PackageVersion Include="Parquet.Net" Version="5.6.1" />
+    <!-- DuckDB-backed source reader (SqlFlow.DuckDb): the .Full variant bundles the native libduckdb per-RID,
+         so self-contained / winget publishes carry the engine. Native dependency, isolated to this project. -->
+    <PackageVersion Include="DuckDB.NET.Data.Full" Version="1.5.3" />
+    <PackageVersion Include="MySqlConnector" Version="2.6.0" />
+    <PackageVersion Include="Npgsql" Version="10.0.3" />
+    <!-- Oracle's official cross-platform managed ADO.NET driver (SqlFlow.Providers): pure-managed, no native
+         client install, targets modern .NET. Oracle is a SOURCE-only provider like MySQL and PostgreSQL. -->
+    <PackageVersion Include="Oracle.ManagedDataAccess.Core" Version="23.26.200" />
+    <!-- The ML health check (SqlFlow.HealthCheck): the same proven pair the legacy engine trained with. -->
+    <PackageVersion Include="Microsoft.ML" Version="4.0.2" />
+    <PackageVersion Include="Microsoft.ML.AutoML" Version="0.22.2" />
+    <PackageVersion Include="System.Text.Encoding.CodePages" Version="9.0.8" />
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
+    <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.0" />
+    <PackageVersion Include="Azure.ResourceManager" Version="1.14.0" />
+    <PackageVersion Include="Azure.ResourceManager.DataFactory" Version="1.11.1" />
+    <PackageVersion Include="Azure.ResourceManager.Automation" Version="1.1.2" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.24.0" />
+    <!-- Generic API acquisition (SqlFlow.Acquire): the non-HTTP transports. SSH.NET for SFTP, the AWS S3 SDK for
+         S3 object download, and Azure.Data.Tables for Azure Storage Table queries. HTTP uses the BCL HttpClient. -->
+    <PackageVersion Include="SSH.NET" Version="2024.2.0" />
+    <PackageVersion Include="AWSSDK.S3" Version="3.7.416.19" />
+    <PackageVersion Include="Azure.Data.Tables" Version="12.11.0" />
+    <PackageVersion Include="YamlDotNet" Version="16.3.0" />
+    <!-- Source control (SqlFlow.SourceControl): SMO scripts the database objects with full fidelity; LibGit2Sharp
+         commits and pushes the snapshot to a git remote (BitBucket app password or GitHub PAT over HTTPS). Both
+         are fully managed and run on every platform .NET supports. -->
+    <PackageVersion Include="Microsoft.SqlServer.SqlManagementObjects" Version="181.25.0" />
+    <PackageVersion Include="LibGit2Sharp" Version="0.31.0" />
+    <!-- The EF-managed shadow catalog (SqlFlow.Catalog): a read-model of the git/YAML estate + on-disk run logs,
+         the backing store for the GUI/API tier. EF lives ONLY here, never in the engine. -->
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.17" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.17" />
+    <!-- The control plane (SqlFlow.ControlPlane): the enterprise API + coordination host over the shadow catalog.
+         JWT bearer auth, the built-in .NET 9 OpenAPI document, and EF health-check probe for readiness. -->
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.17" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.17" />
+    <!-- Identity for the control plane's user store: PasswordHasher (PBKDF2) for local SQLFlow users, and the
+         OpenID Connect protocol stack for validating Microsoft Entra ID tokens on the /auth/exchange endpoint.
+         The OpenIdConnect version matches what JwtBearer already resolves transitively. -->
+    <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="9.0.8" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.0.1" />
+    <!-- Cronos: standard-cron parsing with correct time-zone / DST handling, for the control-plane scheduler. -->
+    <PackageVersion Include="Cronos" Version="0.13.0" />
+    <!-- The control plane's notification email channel: MailKit is the maintained, fully-async SMTP client the
+         .NET team recommends over the legacy System.Net.Mail.SmtpClient (which lacks implicit TLS and modern
+         auth). Only the SMTP provider uses it; the Graph provider is plain HTTP against Microsoft Graph. -->
+    <PackageVersion Include="MailKit" Version="4.17.0" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.17" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.17" />
+    <!-- The Slack bot (SqlFlow.SlackBot): SlackNet is the Socket Mode + Web API client (no public inbound
+         endpoint needed); the Azure AI Foundry agent is driven directly over the OpenAI Responses API
+         (System.Net.Http + Azure.Identity for the managed-identity token), the surface current model
+         deployments support the MCP tool through; Hosting provides the worker-service host. -->
+    <PackageVersion Include="SlackNet" Version="0.17.10" />
+    <!-- The official Anthropic SDK, for the Slack bot's Anthropic provider mode (Claude Messages API
+         with the MCP connector calling the same SQLFlow MCP server). -->
+    <PackageVersion Include="Anthropic" Version="12.35.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.9" />
+  </ItemGroup>
+
+  <!-- Test stack -->
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="xunit" Version="2.9.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.8.2" />
+    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.23" />
+    <PackageVersion Include="ClosedXML" Version="0.105.0" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,899 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "French Polynesia consists of five archipelagos -- the Austral Islands, the Gambier Islands, the Marquesas Islands, the Society Islands, and the Tuamotu Archipelago. The Marquesas were first settled around 200 B.C. and the Society Islands around A.D. 300. Raiatea in the Society Islands became a center for religion and culture. Exploration of the other islands emanated from Raiatea, and by 1000, there were small permanent settlements in all the island groups. Ferdinand MAGELLAN was the first European to see the islands of French Polynesia in 1520. In 1767, British explorer Samuel WALLIS was the first European to visit Tahiti, followed by French navigator Louis Antoine de BOUGAINVILLE in 1768 and British explorer James COOK in 1769. King POMARE I united Tahiti and surrounding islands into the Kingdom of Tahiti in 1788. Protestant missionaries arrived in 1797, and POMARE I’s successor converted in the 1810s, along with most Tahitians. In the 1830s, Queen POMARE IV refused to allow French Catholic missionaries to operate, leading France to declare a protectorate over Tahiti and fight the French-Tahitian War of the 1840s in an attempt to annex the islands. <br><br>In 1880, King POMARE V ceded Tahiti and its possessions to France, changing its status into a colony. France then claimed the Gambier Islands and Tuamotu Archipelago and by 1901 had incorporated all five island groups into its establishments in Oceania. A Tahitian nationalist movement formed in 1940, leading France to grant French citizenship to the islanders in 1946 and change it to an overseas territory. In 1957, the islands’ name was changed to French Polynesia, and the following year, 64% of voters chose to stay part of France when they approved a new constitution. Uninhabited Mururoa Atoll was established as a French nuclear test site in 1962, and tests were conducted between 1966 and 1992 (underground beginning in 1975). France also conducted tests at Fangataufa Atoll, including its last nuclear test in 1996.<br><br>France granted French Polynesia partial internal autonomy in 1977 and expanded autonomy in 1984. French Polynesia was converted into an overseas collectivity in 2003 and renamed an overseas territory in 2004. Pro-independence politicians won a surprise majority in local elections that same year, but in subsequent elections, they have been relegated to a vocal minority. In 2013, French Polynesia was relisted on the UN List of Non-Self-Governing Territories."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Oceania, five archipelagoes (Archipel des Tuamotu, Iles Gambier, Iles Marquises, Iles Tubuai, Society Islands) in the South Pacific Ocean about halfway between South America and Australia"
+    },
+    "Geographic coordinates": {
+      "text": "15 00 S, 140 00 W"
+    },
+    "Map references": {
+      "text": "Oceania"
+    },
+    "Area": {
+      "total ": {
+        "text": "4,167 sq km (118 islands and atolls; 67 are inhabited)"
+      },
+      "land": {
+        "text": "3,827 sq km"
+      },
+      "water": {
+        "text": "340 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly less than one-third the size of Connecticut"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "2,525 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical, but moderate"
+    },
+    "Terrain": {
+      "text": "mixture of rugged high islands and low islands with reefs"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mont Orohena 2,241 m"
+      },
+      "lowest point": {
+        "text": "Pacific Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "timber, fish, cobalt, hydropower"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "12.5% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 6.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 5.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "43.7% (2018 est.)"
+      },
+      "other": {
+        "text": "43.8% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "10 sq km (2012)"
+    },
+    "Population distribution": {
+      "text": "the majority of the population lives in the Society Islands, one of five archipelagos that includes the most populous island - Tahiti - with approximately 70% of the nation's population"
+    },
+    "Natural hazards": {
+      "text": "occasional cyclonic storms in January"
+    },
+    "Geography - note": {
+      "text": "includes five archipelagoes: four volcanic (Iles Gambier, Iles Marquises, Iles Tubuai, Society Islands) and one coral (Archipel des Tuamotu); the Tuamotu Archipelago forms the largest group of atolls in the world -- 78 in total, 48 inhabited; Makatea in the Tuamotu Archipelago is one of the three great phosphate rock islands in the Pacific Ocean -- the others are Banaba (Ocean Island) in Kiribati and Nauru"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "303,540"
+      },
+      "male": {
+        "text": "155,138"
+      },
+      "female": {
+        "text": "148,402 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "French Polynesian(s)"
+      },
+      "adjective": {
+        "text": "French Polynesian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Polynesian 78%, Chinese 12%, local French 6%, metropolitan French 4%"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "French (official) 73.5%, Tahitian 20.1%, Marquesan 2.6%, Austral languages 1.2%, Paumotu 1%, other 1.6% (2017 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>The World Factbook, une source indispensable d'informations de base. (French)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Protestant 54%, Roman Catholic 30%, other 10%, no religion 6%"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "20.3% (male 31,659/female 30,006)"
+      },
+      "15-64 years": {
+        "text": "68.7% (male 107,162/female 101,228)"
+      },
+      "65 years and over": {
+        "text": "11% (2024 est.) (male 16,317/female 17,168)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "45.6"
+      },
+      "youth dependency ratio": {
+        "text": "31.6"
+      },
+      "elderly dependency ratio": {
+        "text": "14"
+      },
+      "potential support ratio": {
+        "text": "7.1 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "35.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "35 years"
+      },
+      "female": {
+        "text": "35.6 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.66% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "13 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "5.8 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.6 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the majority of the population lives in the Society Islands, one of five archipelagos that includes the most populous island - Tahiti - with approximately 70% of the nation's population"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "62.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.65% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "136,000 PAPEETE (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.95 male(s)/female"
+      },
+      "total population": {
+        "text": "1.05 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "4.3 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "5.2 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "3.4 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "78.9 years (2024 est.)"
+      },
+      "male": {
+        "text": "76.6 years"
+      },
+      "female": {
+        "text": "81.3 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.79 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.87 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 97% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 3% of population (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "27.2% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "NA"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "sea level rise; extreme weather events (cyclones, storms, and tsunamis producing floods, landslides, erosion, and reef damage); droughts; fresh water scarcity"
+    },
+    "Climate": {
+      "text": "tropical, but moderate"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "12.5% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 6.3% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 5.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "43.7% (2018 est.)"
+      },
+      "other": {
+        "text": "43.8% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "62.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.65% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Air pollutants": {
+      "carbon dioxide emissions": {
+        "text": "0.77 megatons (2016 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "147,000 tons (2013 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "57,330 tons (2013 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "39% (2013 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Overseas Lands of French Polynesia"
+      },
+      "conventional short form": {
+        "text": "French Polynesia"
+      },
+      "local long form": {
+        "text": "Pays d'outre-mer de la Polyn&eacute;sie fran&ccedil;aise"
+      },
+      "local short form": {
+        "text": "Polynesie Francaise"
+      },
+      "former": {
+        "text": "Establishments in Oceania, French Establishments in Oceania"
+      },
+      "etymology": {
+        "text": "the term \"Polynesia\" is an 18th-century construct composed of two Greek words, \"poly\" (many) and \"nesoi\" (islands), and refers to the more than 1,000 islands scattered over the central and southern Pacific Ocean"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy (Assembly of French Polynesia); an overseas collectivity of France"
+    },
+    "Dependency status": {
+      "text": "overseas country of France; note - overseas territory of France from 1946-2003; overseas collectivity of France since 2003, though it is often referred to as an overseas country due to its degree of autonomy"
+    },
+    "Capital": {
+      "name": {
+        "text": "Papeete (located on Tahiti)"
+      },
+      "geographic coordinates": {
+        "text": "17 32 S, 149 34 W"
+      },
+      "time difference": {
+        "text": "UTC-10 (5 hours behind Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "the name means \"water basket\" and refers to the fact that the islanders originally used calabashes enclosed in baskets to fetch water at a spring in the area"
+      }
+    },
+    "Administrative divisions": {
+      "text": "5 administrative subdivisions (subdivisions administratives, singular - subdivision administrative): Iles Australes (Austral Islands), Iles du Vent (Windward Islands), Iles Marquises (Marquesas Islands), Iles Sous-le-Vent (Leeward Islands), Iles Tuamotu-Gambier; note - the Leeward Islands and the Windward Islands together make up the Society Islands (Iles de la Societe)"
+    },
+    "Independence": {
+      "text": "none (overseas land of France)"
+    },
+    "National holiday": {
+      "text": "F&ecirc;te de la F&eacute;d&eacute;ration, 14 July (1790); note - the local holiday is Internal Autonomy Day, 29 June (1880)"
+    },
+    "Legal system": {
+      "text": "the laws of France, where applicable, apply"
+    },
+    "Constitution": {
+      "history": {
+        "text": "4 October 1958 (French Constitution)"
+      },
+      "amendments": {
+        "text": "French constitution amendment procedures apply"
+      }
+    },
+    "Citizenship": {
+      "text": "see France"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Emmanuel MACRON (since 14 May 2017), represented by High Commissioner of the Republic Eric SPITZ (since 23 September 2022)"
+      },
+      "head of government": {
+        "text": "President of French Polynesia Moetai BROTHERSON (since 12 May 2023)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers approved by the Assembly from a list of its members submitted by the president"
+      },
+      "elections/appointments": {
+        "text": "French president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); high commissioner appointed by the French president on the advice of the French Ministry of Interior; French Polynesia president indirectly elected by Assembly of French Polynesia for a 5-year term (no term limits)"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Assembly of French Polynesia (Assembl&eacute;e de la Polyn&eacute;sie fran&ccedil;aise)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "57 (directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "4/30/2023"
+      },
+      "parties elected and seats per party": {
+        "text": "People's Servant People (38); List of the People (15); I Love Polynesia (3); Rally of the Mahoi People (1)"
+      },
+      "percentage of women in chamber": {
+        "text": "49.1%"
+      },
+      "expected date of next election": {
+        "text": "2028"
+      },
+      "note": "<strong>note 1:</strong> elections held in two rounds; in the second round, 38 members are directly elected in multi-seat constituencies by a closed-list proportional representation vote; the party receiving the most votes gets an additional 19 seats<br><br><strong>note 2:</strong> French Polynesia indirectly elects 2 senators to the French Senate for 6-year terms with one-half the membership renewed every 3 years and directly elects 3 deputies to the French National Assembly for 5-year terms"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Court of Appeal or Cour d'Appel (composition NA); note - appeals beyond the French Polynesia Court of Appeal are heard by the Court of Cassation (in Paris)"
+      },
+      "judge selection and term of office": {
+        "text": "judges assigned from France normally for 3 years"
+      },
+      "subordinate courts": {
+        "text": "Court of the First Instance or Tribunal de Premiere Instance; Court of Administrative Law or Tribunal Administratif"
+      }
+    },
+    "Political parties": {
+      "text": "I Love Polynesia (A here la Porinetia) <br>List of the People (Tapura Huiraatira) <br>People's Servant Party (Tavini Huiraatira) <br>Rally of the Maohi People (Amuitahiraʻa o te Nunaʻa Maohi) (formerly known as Popular Rally (Tahoeraa Huiraatira))"
+    },
+    "International organization participation": {
+      "text": "ITUC (NGOs), PIF, SPC, UPU, WMO"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (overseas lands of France)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (overseas lands of France)"
+      }
+    },
+    "Flag description": {
+      "text": "two red horizontal bands encase a wide white band in a 1:2:1 ratio; centered on the white band is a disk with a blue and white wave pattern depicting the sea on the lower half and a gold and white ray pattern depicting the sun on the upper half; a Polynesian canoe rides on the wave pattern; the canoe has a crew of five represented by five stars that symbolize the five island groups; red and white are traditional Polynesian colors",
+      "note": "<strong>note:</strong> identical to the red-white-red flag of Tahiti, the largest and most populous of the islands in French Polynesia, but which has no emblem in the white band; the flag of France is used for official occasions"
+    },
+    "National symbol(s)": {
+      "text": "outrigger canoe, Tahitian gardenia (Gardenia taitensis) flower; national colors: red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Ia Ora 'O Tahiti Nui\" (Long Live Tahiti Nui)"
+      },
+      "lyrics/music": {
+        "text": "Maeva BOUGES, Irmine TEHEI, Angele TEROROTUA, Johanna NOUVEAU, Patrick AMARU, Louis MAMATUI, and Jean-Pierre CELESTIN (the compositional group created both the lyrics and music)"
+      },
+      "note": "<strong>note:</strong> adopted 1993; serves as a local anthem; as a territory of France, \"La Marseillaise\" is official (see France)"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "2 (1 cultural, 1 mixed); note - excerpted from the France entry"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Taputapuātea (c); Te Henua Enata &ndash; The Marquesas Islands (m)"
+      }
+    },
+    "Government - note": {
+      "text": "under certain acts of France, French Polynesia has acquired autonomy in all areas except those relating to police, monetary policy, tertiary education, immigration, and defense and foreign affairs; the duties of its president are fashioned after those of the French prime minister"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "small, territorial-island tourism-based economy; large French financing; lower EU import duties; Pacific Islands Forum member; fairly resilient from COVID-19; oil-dependent infrastructure"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$5.65 billion (2021 est.)"
+      },
+      "Real GDP (purchasing power parity) 2020": {
+        "text": "$5.52 billion (2020 est.)"
+      },
+      "Real GDP (purchasing power parity) 2019": {
+        "text": "$5.94 billion (2019 est.)"
+      },
+      "note": "<strong>note:</strong> data are in 2015 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2022": {
+        "text": "4.47% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "2.09% (2021 est.)"
+      },
+      "Real GDP growth rate 2020": {
+        "text": "-7.05% (2020 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2021": {
+        "text": "$18,600 (2021 est.)"
+      },
+      "Real GDP per capita 2020": {
+        "text": "$18,300 (2020 est.)"
+      },
+      "Real GDP per capita 2019": {
+        "text": "$19,800 (2019 est.)"
+      },
+      "note": "<strong>note:</strong> data are in 2015 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$5.815 billion (2022 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2015": {
+        "text": "0% (2015 est.)"
+      },
+      "Inflation rate (consumer prices) 2014": {
+        "text": "0.3% (2014 est.)"
+      }
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "2.3% (2019 est.)"
+      },
+      "industry": {
+        "text": "10.7% (2019 est.)"
+      },
+      "services": {
+        "text": "76.2% (2019 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "71.5% (2022 est.)"
+      },
+      "government consumption": {
+        "text": "31.7% (2022 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "21.8% (2022 est.)"
+      },
+      "investment in inventories": {
+        "text": "0% (2022 est.)"
+      },
+      "exports of goods and services": {
+        "text": "21.1% (2022 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-46.1% (2022 est.)"
+      },
+      "note": "<strong>note:</strong> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "coconuts, fruits, root vegetables, pineapples, eggs, cassava, sugarcane, tropical fruits, watermelons, tomatoes (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "tourism, pearls, agricultural processing, handicrafts, phosphates"
+    },
+    "Industrial production growth rate": {
+      "text": "4.3% (2014 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "127,000 (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "11.72% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "11.91% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "12.49% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "37.3% (2023 est.)"
+      },
+      "male": {
+        "text": "33.8% (2023 est.)"
+      },
+      "female": {
+        "text": "42% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Remittances": {
+      "Remittances 2022": {
+        "text": "10% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "9.46% of GDP (2021 est.)"
+      },
+      "Remittances 2020": {
+        "text": "10.04% of GDP (2020 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Current account balance": {
+      "Current account balance 2016": {
+        "text": "$411.963 million (2016 est.)"
+      },
+      "Current account balance 2015": {
+        "text": "$291.182 million (2015 est.)"
+      },
+      "Current account balance 2014": {
+        "text": "$264.32 million (2014 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2021": {
+        "text": "$162 million (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$94.4 million (2020 est.)"
+      },
+      "Exports 2019": {
+        "text": "$184 million (2019 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "France 18%, US 18%, Hong Kong 18%, Japan 13%, Netherlands 9% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "pearls, fish, aircraft parts, coconut oil, electrical power accessories (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2021": {
+        "text": "$1.66 billion (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$1.75 billion (2020 est.)"
+      },
+      "Imports 2019": {
+        "text": "$2.24 billion (2019 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "France 30%, China 13%, US 9%, South Korea 6%, NZ 6% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, cars, packaged medicine, beef, plastic products (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Comptoirs Francais du Pacifique francs (XPF) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "110.347 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "113.474 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "100.88 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "104.711 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "106.589 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "280,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "653.978 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "42.663 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "67.5% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "6.7% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "25.8% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "imports": {
+        "text": "(2022 est.) less than 1 metric ton"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "6,000 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "929,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "929,000 metric tonnes of CO2 (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "139,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "50 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "328,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "107 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "French Polynesia has one of the most advanced telecoms infrastructures in the Pacific Islands region; the remoteness of the territory with its scattering of 130 islands and atolls has made connectivity vital for its inhabitants; the first submarine cable was deployed in 2010 and since then additional cables have been connected to the islands, vastly improving French Polynesia&rsquo;s international connectivity; an additional domestic submarine cable, the Natitua Sud, will connect more remote islands by the end of 2022; French Polynesia is also a hub for satellite communications in the region; a considerable number of consumers access FttP-based services; with the first data center in French Polynesia on the cards, the quality and price of broadband services is expected to improve as content will be able to be cached locally, reducing costs for consumers; for 2022, fixed broadband subscriptions reached an estimated 22%; about 43% of the territory&rsquo;s mobile connections are on 3G networks, while LTE accounts for 12%; by 2025, LTE is expected to account for more than half of all connections; it is also estimated that 77% of mobile subscribers will have smart phones by 2025 (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line subscriptions nearly 36 per 100 persons and mobile-cellular density is roughly 106 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 689; landing points for the NATITUA, Manatua, and Honotua submarine cables to other French Polynesian Islands, Cook Islands, Niue, Samoa and US; satellite earth station - 1 Intelsat (Pacific Ocean) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "French public overseas broadcaster Reseau Outre-Mer provides 2 TV channels and 1 radio station; 1 government-owned TV station; a small number of privately owned radio stations (2019)"
+    },
+    "Internet country code": {
+      "text": ".pf"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "73% (2017 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "78,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "28 (2022 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "2 (2020) (registered in France)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "19 (registered in France)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "F-OH"
+    },
+    "Airports": {
+      "text": "54 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "2,590 km"
+      },
+      "paved": {
+        "text": "1,735 km"
+      },
+      "unpaved": {
+        "text": "855 km (1999)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "24 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 14"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "6 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "5"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Atuona, Baie Taiohae, Papeete, Port Rikitea, Uturoa, Vaitape"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular military forces"
+    },
+    "Military - note": {
+      "text": "defense is the responsibility of France; France maintains forces (about 900 troops) in French Polynesia"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

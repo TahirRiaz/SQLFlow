@@ -1,0 +1,15 @@
+# Load a whole folder: point location at a directory and match files with srcFile. The
+# columns of all matched files are unioned and each row is NULL-filled for columns its file
+# lacks, so different versions of a feed land in one table.
+name: Csv_FolderUnion
+source:
+  type: csv
+  location: ./data/union
+  options:
+    srcFile: "*.csv"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_FolderUnion
+schema:
+  evolve: widen

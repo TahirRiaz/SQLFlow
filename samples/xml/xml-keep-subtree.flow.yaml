@@ -1,0 +1,16 @@
+# xmlPaths keeps a whole subtree as a single XML-fragment column instead of flattening its children.
+# Here /spec stays as one 'spec' column holding the raw XML.
+name: Xml_KeepSubtree
+source:
+  type: xml
+  location: ./data/catalog.xml
+  options:
+    xmlPaths: "/spec"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Xml_KeepSubtree
+schema:
+  defaultColumnType: nvarchar(max)
+load:
+  mode: truncate-load

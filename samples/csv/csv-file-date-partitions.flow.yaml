@@ -1,0 +1,28 @@
+# File-date discovery by Hive path partitions. The business date lives in the folder path
+# (year=YYYY/month=MM), not the file's modified time, so a re-upload that rewrites the timestamp
+# does not change which window a file falls in. Discovery reads the date from the path and prunes
+# whole out-of-window partition folders before listing them, so a lake with years of partitions is
+# never fully enumerated.
+#
+# fileDate.from: path      -> read the date from the folder path
+# fileDate.hive: "true"    -> parse Hive key=value tokens (year=2025/month=03)
+# initFromFileDate/To      -> the [from, to] window, now applied to the path date
+#
+# This window keeps only the 2025 partition; the 2024 and 2026 folders are pruned during discovery.
+# For a name-derived date instead, drop fileDate.hive and set fileDate.pattern to a regex whose
+# named groups year/month/day (or unnamed groups in that order) capture the date from the file name.
+name: Csv_FileDatePartitions
+source:
+  type: csv
+  location: ./data/partitioned
+  options:
+    srcFile: "*.csv"
+    searchSubDirectories: "true"
+    fileDate.from: path
+    fileDate.hive: "true"
+    initFromFileDate: "2025-01-01"
+    initToFileDate: "2025-12-31"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_FileDatePartitions

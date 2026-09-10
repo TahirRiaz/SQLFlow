@@ -1,0 +1,13 @@
+# Standalone datatype-inference job (its own structure, separate from a pipeline flow).
+# Reads a loaded table, finds the optimal type per column, and outputs JSON.
+#
+#   sqlflow infer orders.infer.yaml                 # print JSON
+#   sqlflow infer orders.infer.yaml --out types.json
+
+connection: ${env:SQLFLOW_DW}
+table: dbo.Orders              # or: schema: dbo  +  table: Orders
+
+onConvertError: silentNull     # silentNull | fail | keepString
+threshold: 1.0                 # fraction of non-null values that must convert
+sample: 0                      # 0 = full scan
+preserveLeadingZeros: true

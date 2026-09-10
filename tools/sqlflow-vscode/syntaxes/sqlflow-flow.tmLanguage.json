@@ -1,0 +1,19 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "SQLFlow Flow",
+  "scopeName": "source.sqlflow-flow",
+  "patterns": [
+    { "include": "#flowtype" },
+    { "include": "source.yaml" }
+  ],
+  "repository": {
+    "flowtype": {
+      "match": "^(flowType)\\s*(:)\\s*(ing|exp|sp|inv|hc|scm|batch)\\b",
+      "captures": {
+        "1": { "name": "keyword.control.flowtype.sqlflow" },
+        "2": { "name": "punctuation.separator.key-value.sqlflow" },
+        "3": { "name": "constant.language.flowtype.sqlflow" }
+      }
+    }
+  }
+}

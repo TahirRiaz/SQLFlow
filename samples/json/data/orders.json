@@ -1,0 +1,5 @@
+[
+  { "id": 1, "customer": { "name": "Ann", "city": "Oslo" },   "items": ["pen", "pad"], "amount": 19.90, "paid": true },
+  { "id": 2, "customer": { "name": "Bob", "city": "Bergen" }, "items": ["lamp"],       "amount": 42.00, "paid": false },
+  { "id": 3, "customer": { "name": "Cy",  "city": "Tromso" }, "items": [],             "amount": 7.25,  "paid": true }
+]

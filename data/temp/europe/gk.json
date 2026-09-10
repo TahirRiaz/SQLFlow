@@ -1,0 +1,678 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Guernsey and the other Channel Islands represent the last remnants of the medieval Duchy of Normandy, which held sway in both France and England. The islands were the only British soil that Germany occupied in World War II. The Bailiwick of Guernsey consists of the main island of Guernsey and a number of smaller islands, including Alderney, Sark, Herm, Jethou, Brecqhou, and Lihou. The Bailiwick is a self-governing British Crown dependency that is not part of the UK. However, the UK Government is constitutionally responsible for its defense and international representation."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Western Europe, islands in the English Channel, northwest of France"
+    },
+    "Geographic coordinates": {
+      "text": "49 28 N, 2 35 W"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "78 sq km"
+      },
+      "land": {
+        "text": "78 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      },
+      "note": "<strong>note:</strong> includes Alderney, Guernsey, Herm, Sark, and some other smaller islands"
+    },
+    "Area - comparative": {
+      "text": "about one-half the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "50 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive fishing zone": {
+        "text": "12 nm"
+      }
+    },
+    "Climate": {
+      "text": "temperate with mild winters and cool summers; about 50% of days are overcast"
+    },
+    "Terrain": {
+      "text": "mostly flat with low hills in southwest"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Le Moulin on Sark 114 m"
+      },
+      "lowest point": {
+        "text": "English Channel 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "cropland"
+    },
+    "Irrigated land": {
+      "text": "NA"
+    },
+    "Natural hazards": {
+      "text": "very large tidal variation and fast currents can make local waters dangerous"
+    },
+    "Geography - note": {
+      "text": "large, deepwater harbor at Saint Peter Port"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "67,787"
+      },
+      "male": {
+        "text": "33,712"
+      },
+      "female": {
+        "text": "34,075 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Channel Islander(s)"
+      },
+      "adjective": {
+        "text": "Channel Islander"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Guernsey 53.5%, UK and Ireland 23.8%, Portugal 2.1%, Latvia 1.4%, other Europe 2.7%, other Crown Dependencies 0.7%, other 5.3%, unspecified 10.5% (2022 est.)",
+      "note": "<strong>note:</strong> data represent population by country of birth; the native population is of British and Norman-French descent"
+    },
+    "Languages": {
+      "text": "English, French, Norman-French dialect spoken in country districts"
+    },
+    "Religions": {
+      "text": "Protestant (Anglican, Presbyterian, Baptist, Congregational, Methodist), Roman Catholic"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "14.3% (male 4,999/female 4,717)"
+      },
+      "15-64 years": {
+        "text": "64.1% (male 21,937/female 21,547)"
+      },
+      "65 years and over": {
+        "text": "21.5% (2024 est.) (male 6,776/female 7,811)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "48.6"
+      },
+      "youth dependency ratio": {
+        "text": "23.9"
+      },
+      "elderly dependency ratio": {
+        "text": "24.6"
+      },
+      "potential support ratio": {
+        "text": "4.1 (2021 est.)"
+      },
+      "note": "<strong>note:</strong> data represent Guernsey and Jersey"
+    },
+    "Median age": {
+      "total": {
+        "text": "45 years (2024 est.)"
+      },
+      "male": {
+        "text": "43.8 years"
+      },
+      "female": {
+        "text": "46.2 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.21% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "9.7 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "9.2 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "1.6 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "31.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.68% annual rate of change (2020-25 est.)"
+      },
+      "note": "<strong>note:</strong> data include Guernsey and Jersey"
+    },
+    "Major urban areas - population": {
+      "text": "16,000 SAINT PETER PORT (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.87 male(s)/female"
+      },
+      "total population": {
+        "text": "0.99 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "3.3 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "3.7 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "2.7 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "83.6 years (2024 est.)"
+      },
+      "male": {
+        "text": "80.9 years"
+      },
+      "female": {
+        "text": "86.4 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.59 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.77 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: total": {
+        "text": "total: 94.2% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 5.9% of population (2017 est.)"
+      },
+      "note": "<strong>note</strong>: includes data for Jersey"
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 98% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 1.2% of population (2017)"
+      },
+      "note": "<strong>note:</strong> data represent Guernsey and Jersey"
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Education expenditures": {
+      "text": "NA"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "coastal erosion, coastal flooding; declining biodiversity due to land abandonment and succession to scrub or woodland"
+    },
+    "Climate": {
+      "text": "temperate with mild winters and cool summers; about 50% of days are overcast"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "31.2% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.68% annual rate of change (2020-25 est.)"
+      },
+      "note": "<strong>note:</strong> data include Guernsey and Jersey"
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "178,933 tons (2016 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "50,871 tons (2016 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "28.4% (2016 est.)"
+      },
+      "note": "<strong>note:</strong> data include combined totals for Guernsey and Jersey."
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Bailiwick of Guernsey"
+      },
+      "conventional short form": {
+        "text": "Guernsey"
+      },
+      "former": {
+        "text": "Norman Isles"
+      },
+      "etymology": {
+        "text": "the name is of Old Norse origin, but the meaning of the root \"Guern(s)\" is uncertain; the \"-ey\" ending means \"island\""
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy (States of Deliberation)"
+    },
+    "Dependency status": {
+      "text": "British crown dependency"
+    },
+    "Capital": {
+      "name": {
+        "text": "Saint Peter Port"
+      },
+      "geographic coordinates": {
+        "text": "49 27 N, 2 32 W"
+      },
+      "time difference": {
+        "text": "UTC 0 (5 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "Saint Peter Port is the name of the town and its surrounding parish; the \"port\" distinguishes this parish from that of Saint Peter on the other side of the island"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none (British Crown dependency); there are no first-order administrative divisions as defined by the US Government, but there are 10 parishes: Castel, Forest, Saint Andrew, Saint Martin, Saint Peter Port, Saint Pierre du Bois, Saint Sampson, Saint Saviour, Torteval, Vale",
+      "note": "<strong>note:</strong> two additional parishes for Guernsey are sometimes listed - Saint Anne on the island of Alderney and Saint Peter on the island of Sark - but they are generally not included in the enumeration of parishes"
+    },
+    "Independence": {
+      "text": "none (British Crown dependency)"
+    },
+    "National holiday": {
+      "text": "Liberation Day, 9 May (1945)"
+    },
+    "Legal system": {
+      "text": "customary legal system based on Norman customary law; includes elements of the French civil code and English common law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "unwritten; includes royal charters, statutes, and common law and practice"
+      },
+      "amendments": {
+        "text": "new laws or changes to existing laws are initiated by the States of Deliberation; passage requires majority vote; many laws have been passed; in 2019, 60 laws were passed"
+      }
+    },
+    "Citizenship": {
+      "text": "see United Kingdom"
+    },
+    "Suffrage": {
+      "text": "16 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King CHARLES III (since 8 September 2022); represented by Lieutenant-Governor Richard CRIPWELL (since 15 February 2022)"
+      },
+      "head of government": {
+        "text": "Chief Minister Lyndon TROTT (since 13 December 2023)"
+      },
+      "cabinet": {
+        "text": "none"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; lieutenant governor and bailiff appointed by the monarch; chief minister, who is the president of the Policy and Resources Committee indirectly elected by the States of Deliberation for a 4-year term; last held on 7 October 2020 (next to be held in 2024)"
+      },
+      "election results": {
+        "text": "<em><br>2020: </em>Peter FERBRACHE (independent) elected president of the Policy and Resources Committee and chief minister: percent of States of Guernsey vote - 57.5%<em><br><br>2016:</em> Gavin ST. PIER (independent) elected president of the Policy and Resources Committee and chief minister"
+      },
+      "note": "<strong>note:</strong> the chief minister is the president of the Policy and Resources Committee and is the de facto head of government; the Policy and Resources Committee, elected by the States of Deliberation, functions as the executive; the 5 members all have equal voting rights"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "States of Deliberation"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "40 (directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "10/7/2020"
+      },
+      "parties elected and seats per party": {
+        "text": "GPI (10); GP (6); independent (22); States of Alderney (2)"
+      },
+      "percentage of women in chamber": {
+        "text": "20%"
+      },
+      "expected date of next election": {
+        "text": "June 2025"
+      },
+      "note": "<strong>note:</strong> non-voting members include the bailiff (presiding officer), attorney-general, and solicitor-general"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Guernsey Court of Appeal (consists of the Bailiff of Guernsey, who is the ex-officio president of the Guernsey Court of Appeal, and at least 12 judges); Royal Court (organized into 3 divisions - Full Court sits with 1 judge and 7 to 12 jurats acting as judges of fact, Ordinary Court sits with 1 judge and normally 3 jurats, and Matrimonial Causes Division sits with 1 judge and 4 jurats); note - appeals beyond Guernsey courts are heard by the Judicial Committee of the Privy Council (in London)"
+      },
+      "judge selection and term of office": {
+        "text": "Royal Court Bailiff, Deputy Bailiff, and Court of Appeal justices appointed by the British Crown and hold office at Her Majesty's pleasure; jurats elected by the States of Election, a body chaired by the Bailiff and a number of jurats"
+      },
+      "subordinate courts": {
+        "text": "Court of Alderney; Court of the Seneschal of Sark; Magistrates' Court (includes Juvenile Court); Contracts Court; Ecclesiastical Court; Court of Chief Pleas"
+      }
+    },
+    "Political parties": {
+      "text": "Alliance Party Guernsey or APG <br>Guernsey Partnership of Independents or GPI <br>Guernsey Party or GP "
+    },
+    "International organization participation": {
+      "text": "UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (British crown dependency)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (British crown dependency)"
+      }
+    },
+    "Flag description": {
+      "text": "white with the red cross of Saint George (patron saint of England) extending to the edges of the flag and a yellow equal-armed cross of William the Conqueror superimposed on the Saint George cross; the red cross represents the old ties with England and the fact that Guernsey is a British Crown dependency; the gold cross is a replica of the one used by William the Conqueror at the Battle of Hastings in 1066"
+    },
+    "National symbol(s)": {
+      "text": "Guernsey cow, donkey; national colors: red, white, yellow"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Sarnia Cherie\" (Guernsey Dear)"
+      },
+      "lyrics/music": {
+        "text": "George DEIGHTON/Domencio SANTANGELO"
+      },
+      "note": "<strong>note:</strong> adopted 1911; serves as a local anthem; as a British crown dependency, \"God Save the King\" is official (see United Kingdom)"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income English Channel island economy; strong financial sector but stressed due to COVID-19 disruptions; manufacturing, tourism, and construction industries suffered but expected to recover; stable inflation; maintains independent taxation authority"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2015": {
+        "text": "$3.465 billion (2015 est.)"
+      },
+      "Real GDP (purchasing power parity) 2014": {
+        "text": "$3.451 billion (2014 est.)"
+      },
+      "note": "<strong>note:</strong> data are in 2015 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "3.72% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "5.34% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "15.46% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency; entry includes Jersey and Guernsey"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2014": {
+        "text": "$52,500 (2014 est.)"
+      }
+    },
+    "GDP (official exchange rate)": {
+      "text": "$12.508 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate; entry includes Jersey and Guernsey"
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0.6% (2023 est.)"
+      },
+      "industry": {
+        "text": "8.2% (2023 est.)"
+      },
+      "services": {
+        "text": "91.2% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "Agricultural products": {
+      "text": "tomatoes, greenhouse flowers, sweet peppers, eggplant, fruit; Guernsey cattle"
+    },
+    "Industries": {
+      "text": "tourism, banking"
+    },
+    "Industrial production growth rate": {
+      "text": "1.26% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency; entry includes Jersey and Guernsey"
+    },
+    "Labor force": {
+      "text": "83,000 (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work;entry includes Jersey and Guernsey"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "5.98% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "5.91% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "6.61% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment; entry includes Jersey and Guernsey"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "13.5% (2023 est.)"
+      },
+      "male": {
+        "text": "13.7% (2023 est.)"
+      },
+      "female": {
+        "text": "13.2% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Exports - partners": {
+      "text": "almost entirely United Kingdom (2022)"
+    },
+    "Exports - commodities": {
+      "text": "aircraft, photo lab equipment, clocks, ships, paintings, scientific instruments (2022)"
+    },
+    "Imports - partners": {
+      "text": "almost entirely United Kingdom (2022)"
+    },
+    "Imports - commodities": {
+      "text": "ships, aircraft, refined petroleum, mineral manufactures, beverages (2022)"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Guernsey pound per US dollar"
+      },
+      "Exchange rates 2023": {
+        "text": "0.805 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.811 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.727 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.78 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.783 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "note": "<strong>note:</strong> includes Guernsey and Jersey"
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "33,930 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "53 (2021 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "71,485 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "112 (2021 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "fixed network broadband services are those delivered over physical copper connections, fiber connections and fixed wireless communications links (e.g. WiMax); they do not include services delivered over 2G, 3G and 4G mobile networks (2021)"
+      },
+      "domestic": {
+        "text": "fixed-line 53 per 100 and mobile-cellular 112 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 44;&nbsp;landing points for Guernsey-Jersey, HUGO, INGRID, Channel Islands -9 Liberty&nbsp;and UK-Channel Islands-7&nbsp;submarine cable to UK and&nbsp;France (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "multiple UK terrestrial TV broadcasts are received via a transmitter in Jersey with relays in Jersey, Guernsey, and Alderney; satellite packages are available; BBC Radio Guernsey and 1 other radio station operating"
+    },
+    "Internet country code": {
+      "text": ".gg"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "86.6% (2021 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "25,336 (2020 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "40 (2020 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "1 (2020) (registered in UK)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "9 (registered in UK)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "2"
+    },
+    "Airports": {
+      "text": "2 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "260 km (2017)"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "3 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "2"
+      },
+      "ports with oil terminals": {
+        "text": "2"
+      },
+      "key ports": {
+        "text": "Alderney Harbour, Saint Peter Port, Saint Sampson"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of the UK"
+    }
+  },
+  "Transnational Issues": {
+    "Illicit drugs": {
+      "text": "NA"
+    }
+  }
+}

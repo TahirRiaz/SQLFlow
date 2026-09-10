@@ -1,0 +1,1286 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The Bulgars, a Central Asian Turkic tribe, merged with the local Slavic inhabitants in the late 7th century to form the first Bulgarian state. In succeeding centuries, Bulgaria struggled with the Byzantine Empire to assert its place in the Balkans, but by the end of the 14th century, the Ottoman Turks overran the country. Northern Bulgaria attained autonomy in 1878, and all of Bulgaria became independent from the Ottoman Empire in 1908. Having fought on the losing side in both World Wars, Bulgaria fell within the Soviet sphere of influence and became a People's Republic in 1946. Communist domination ended in 1990, when Bulgaria held its first multiparty election since World War II and began the contentious process of moving toward political democracy and a market economy while combating inflation, unemployment, corruption, and crime. The country joined NATO in 2004, the EU in 2007, and the Schengen Area for air and sea travel in 2024."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southeastern Europe, bordering the Black Sea, between Romania and Turkey"
+    },
+    "Geographic coordinates": {
+      "text": "43 00 N, 25 00 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "110,879 sq km"
+      },
+      "land": {
+        "text": "108,489 sq km"
+      },
+      "water": {
+        "text": "2,390 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "almost identical in size to Virginia; slightly larger than Tennessee"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "1,806 km"
+      },
+      "border countries": {
+        "text": "Greece 472 km; Macedonia 162 km; Romania 605 km; Serbia 344 km; Turkey 223 km"
+      }
+    },
+    "Coastline": {
+      "text": "354 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "temperate; cold, damp winters; hot, dry summers"
+    },
+    "Terrain": {
+      "text": "mostly mountains with lowlands in north and southeast"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Musala 2,925 m"
+      },
+      "lowest point": {
+        "text": "Black Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "472 m"
+      }
+    },
+    "Natural resources": {
+      "text": "bauxite, copper, lead, zinc, coal, timber, arable land"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "46.9% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 29.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.5% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 15.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "36.7% (2018 est.)"
+      },
+      "other": {
+        "text": "16.4% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "987 sq km (2013)"
+    },
+    "Major rivers (by length in km)": {
+      "text": "Dunav (Danube) (shared with Germany [s], Austria, Slovakia, Hungary, Croatia, Serbia, Ukraine, Moldova, and Romania [m]) - 2,888 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country, with urban areas attracting larger populations"
+    },
+    "Natural hazards": {
+      "text": "earthquakes; landslides"
+    },
+    "Geography - note": {
+      "text": "strategic location near Turkish Straits; controls key land routes from Europe to Middle East and Asia"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "6,782,659"
+      },
+      "male": {
+        "text": "3,303,491"
+      },
+      "female": {
+        "text": "3,479,168 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Bulgarian(s)"
+      },
+      "adjective": {
+        "text": "Bulgarian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Bulgarian 78.5%, Turkish 7.8%, Roma 4.1%, other 1.2%, unspecified 9.4% (2021 est.)",
+      "note": "<strong>note:</strong> Romani populations are usually underestimated in official statistics and may represent 9–11% of Bulgaria's population"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Bulgarian (official) 77.3%, Turkish 7.9%, Romani 3.5%, other 1%, unspecified 10.4% (2021 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Светoвен Алманах, незаменимият източник за основна информация. (Bulgarian)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Christian 64.7%, Muslim 9.8%, other 0.1%, none 4.7%, unspecified 20.7% (2021 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "13.8% (male 479,586/female 453,423)"
+      },
+      "15-64 years": {
+        "text": "65.2% (male 2,250,962/female 2,171,279)"
+      },
+      "65 years and over": {
+        "text": "21% (2024 est.) (male 572,943/female 854,466)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "57.3"
+      },
+      "youth dependency ratio": {
+        "text": "22"
+      },
+      "elderly dependency ratio": {
+        "text": "35.3"
+      },
+      "potential support ratio": {
+        "text": "2.8 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "45.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "43.3 years"
+      },
+      "female": {
+        "text": "47 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "-0.66% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "7.9 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "14.2 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.3 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country, with urban areas attracting larger populations"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "76.7% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "-0.28% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "1.288 million SOFIA (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.06 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.67 male(s)/female"
+      },
+      "total population": {
+        "text": "0.95 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "26.4 years (2020 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "7 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "7.7 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "8.7 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "6.6 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "76.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "72.9 years"
+      },
+      "female": {
+        "text": "79.4 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.51 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.73 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 99.5% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 97.4% of population"
+      },
+      "improved: total": {
+        "text": "total: 99% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.5% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 2.6% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 1% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "8.5% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "4.2 physicians/1,000 population (2018)"
+    },
+    "Hospital bed density": {
+      "text": "7.5 beds/1,000 population (2017)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "25% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "11.18 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "4.44 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "1.72 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "4.96 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.06 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "39% (2020 est.)"
+      },
+      "male": {
+        "text": "40.9% (2020 est.)"
+      },
+      "female": {
+        "text": "37.1% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "1.9% (2014)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "57.3% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "4% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "98.4%"
+      },
+      "male": {
+        "text": "98.7%"
+      },
+      "female": {
+        "text": "98.2% (2021)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "14 years"
+      },
+      "male": {
+        "text": "13 years"
+      },
+      "female": {
+        "text": "14 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air pollution from industrial emissions; rivers polluted from raw sewage, heavy metals, detergents; deforestation; forest damage from air pollution and resulting acid rain; soil contamination from heavy metals from metallurgical plants and industrial wastes"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Air Pollution-Heavy Metals, Air Pollution-Multi-effect Protocol, Air Pollution-Nitrogen Oxides, Air Pollution-Persistent Organic Pollutants, Air Pollution-Sulphur 85, Air Pollution-Sulphur 94, Air Pollution-Volatile Organic Compounds, Antarctic-Environmental Protection, Antarctic-Marine Living Resources, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Marine Dumping-London Protocol, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "temperate; cold, damp winters; hot, dry summers"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "46.9% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 29.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.5% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 15.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "36.7% (2018 est.)"
+      },
+      "other": {
+        "text": "16.4% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "76.7% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "-0.28% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.22% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.14% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "17.29 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "41.71 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "6.77 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "3.011 million tons (2015 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "572,993 tons (2015 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "19% (2015 est.)"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Dunav (Danube) (shared with Germany [s], Austria, Slovakia, Hungary, Croatia, Serbia, Ukraine, Moldova, and Romania [m]) - 2,888 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "840 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "3.48 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "760 million cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "21.3 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Bulgaria"
+      },
+      "conventional short form": {
+        "text": "Bulgaria"
+      },
+      "local long form": {
+        "text": "Republika Bulgaria"
+      },
+      "local short form": {
+        "text": "Bulgaria"
+      },
+      "former": {
+        "text": "Kingdom of Bulgaria, People's Republic of Bulgaria"
+      },
+      "etymology": {
+        "text": "named after the Bulgar tribes who settled the lower Balkan region in the 7th century A.D."
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Sofia"
+      },
+      "geographic coordinates": {
+        "text": "42 41 N, 23 19 E"
+      },
+      "time difference": {
+        "text": "UTC+2 (7 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "named after the Saint Sofia Church in the city, parts of which date back to the 4th century A.D."
+      }
+    },
+    "Administrative divisions": {
+      "text": "28 provinces (oblasti, singular - oblast); Blagoevgrad, Burgas, Dobrich, Gabrovo, Haskovo, Kardzhali, Kyustendil, Lovech, Montana, Pazardzhik, Pernik, Pleven, Plovdiv, Razgrad, Ruse, Shumen, Silistra, Sliven, Smolyan, Sofia, Sofia-Grad (Sofia City), Stara Zagora, Targovishte, Varna, Veliko Tarnovo, Vidin, Vratsa, Yambol"
+    },
+    "Independence": {
+      "text": "3 March 1878 (as an autonomous principality within the Ottoman Empire); 22 September 1908 (complete independence from the Ottoman Empire)"
+    },
+    "National holiday": {
+      "text": "Liberation Day, 3 March (1878)"
+    },
+    "Legal system": {
+      "text": "civil law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest drafted between late 1990 and early 1991, adopted 13 July 1991"
+      },
+      "amendments": {
+        "text": "proposed by the National Assembly or by the president of the republic; passage requires three-fourths majority vote of National Assembly members in three ballots; signed by the National Assembly chairperson; note - under special circumstances, a \"Grand National Assembly\" is elected with the authority to write a new constitution and amend certain articles of the constitution, including those affecting basic civil rights and national sovereignty; passage requires at least two-thirds majority vote in each of several readings; amended several times, last in 2023"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction with reservations; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Bulgaria"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Rumen RADEV (since 22 January 2017)"
+      },
+      "head of government": {
+        "text": "Caretaker Prime Minister Dimitar GLAVCHEV (since 9 April 2024)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers nominated by the prime minister, elected by the National Assembly"
+      },
+      "elections/appointments": {
+        "text": "president and vice president elected on the same ballot by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); election last held on 14 and 21 November 2021 (next to be held in fall 2026); chairman of the Council of Ministers (prime minister) elected by the National Assembly; deputy prime ministers nominated by the prime minister, elected by the National Assembly"
+      },
+      "election results": {
+        "text": "<em><br>2021</em>: Rumen RADEV reelected president in second round; percent of vote in the first round - Rumen RADEV (independent) 49.4%, Anastas GERDZHIKOV (independent) 22.8%, Mustafa KARADAYI (DPS) 11.6%, Kostadin KOSTADINOV (Revival) 3.9%, Lozan PANOV (independent) 3.7%, other 8.6%; percent of vote in the second round - Rumen RADEV 66.7%, Anastas GERDZHIKOV 31.8%, neither 1.5%<br><br><em>2016: </em>Rumen RADEV elected president in second round; percent of vote - Rumen RADEV (independent, supported by Bulgarian Socialist Party) 59.4%, Tsetska TSACHEVA (GERB) 36.2%, neither 4.5%"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "National Assembly (Narodno sabranie)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "240 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "10/27/2024"
+      },
+      "parties elected and seats per party": {
+        "text": "Citizens for European Development of Bulgaria Party (GERB) - Union of Democratic Forces (UDF) (69); We Continue the Change - Democratic Bulgaria (37); Revival (Vuzrazhdane) (35); Movement for Rights and Freedoms (DPS) - New Beginning (30); Bulgarian Socialist Party (BSP for Bulgaria) - United Left (20); Alliance for Rights and Freedoms (APS) (19); There is Such a People (PP-ITN) (18); Political Party Morality, Unity, Honour (PP MECh) (12)"
+      },
+      "percentage of women in chamber": {
+        "text": "21.3%"
+      },
+      "expected date of next election": {
+        "text": "October 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court of Cassation (consists of a chairman and approximately 72 judges organized into penal, civil, and commercial colleges); Supreme Administrative Court (organized into 2 colleges with various panels of 5 judges each); Constitutional Court (consists of 12 justices); note - Constitutional Court resides outside the judiciary"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court of Cassation and Supreme Administrative judges elected by the Supreme Judicial Council or SJC (consists of 25 members with extensive legal experience) and appointed by the president; judges can serve until mandatory retirement at age 65; Constitutional Court justices elected by the National Assembly and appointed by the president and the SJC; justices appointed for 9-year terms with renewal of 4 justices every 3 years"
+      },
+      "subordinate courts": {
+        "text": "appeals courts; regional and district courts; administrative courts; courts martial"
+      }
+    },
+    "Political parties": {
+      "text": "BSP for Bulgaria (electoral alliance of BSP, PKT, Ecoglasnost)<br>Bulgarian Rise or BV<br>Bulgarian Socialist Party or BSP<br>Citizens for the European Development of Bulgaria or GERB (alliance with SDS) <br>Democratic Bulgaria or DB (electoral alliance of Yes! Bulgaria, DSB, and The Greens) <br>Democrats for a Strong Bulgaria or DSB<br>Ecoglasnost<br>Green Movement or The Greens <br>Movement for Rights and Freedoms or DPS<br>Political Club Thrace or PKT<br>Revival<br>Stand Up.BG or IS.BG<br>There is Such a People or ITN<br>Union of Democratic Forces or SDS (alliance with GERB) <br>Yes! Bulgaria <br>We Continue the Change or PP <br>We Continue the Change and Democratic Bulgaria or PP-DB (electoral alliance of PP, DB, Yes! Bulgaria)"
+    },
+    "International organization participation": {
+      "text": "Australia Group, BIS, BSEC, CD, CE, CEI, CERN, EAPC, EBRD, ECB, EIB, EU, FAO, G- 9, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IFC, IFRCS, IHO (pending member), ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITU, ITUC (NGOs), MIGA, NATO, NSG, OAS (observer), OIF, OPCW, OSCE, PCA, SELEC, UN, UNCTAD, UNESCO, UNHCR, UNHRC, UNIDO, UNMIL, UNOOSA,&nbsp; UNWTO, UPU, Wassenaar Arrangement, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO, ZC"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Georgi Velikov PANAYOTOV (since 7 June 2022)"
+      },
+      "chancery": {
+        "text": "1621 22nd Street NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 387 5770"
+      },
+      "FAX": {
+        "text": "[1] (202) 234-7973"
+      },
+      "email address and website": {
+        "text": "<br>office@bulgaria-embassy.org<br><br>https://www.bulgaria-embassy.org/en/homepage/"
+      },
+      "consulate(s) general": {
+        "text": "Chicago, Los Angeles, New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires H. Martin McDOWELL (since January 2025)"
+      },
+      "embassy": {
+        "text": "16, Kozyak Street, Sofia 1408"
+      },
+      "mailing address": {
+        "text": "5740 Sofia Place, Washington, DC&nbsp; 20521-5740"
+      },
+      "telephone": {
+        "text": "[359] (2) 937-5100"
+      },
+      "FAX": {
+        "text": "[359] (2) 937-5209"
+      },
+      "email address and website": {
+        "text": "<br>acs_sofia@state.gov<br><br>https://bg.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "three equal horizontal bands of white (top), green, and red; the pan-Slavic white-blue-red colors were modified by substituting a green band (representing freedom) for the blue",
+      "note": "<strong>note:</strong> the national emblem, formerly on the hoist side of the white stripe, has been removed"
+    },
+    "National symbol(s)": {
+      "text": "lion; national colors: white, green, red"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Mila Rodino\" (Dear Homeland)"
+      },
+      "lyrics/music": {
+        "text": "Tsvetan Tsvetkov RADOSLAVOV"
+      },
+      "note": "<strong>note:</strong> adopted 1964; composed in 1885 by a student en route to fight in the Serbo-Bulgarian War"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "10 (7 cultural, 3 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Boyana Church (c); Madara Rider (c); Thracian Tomb of Kazanlak (c); Rock-Hewn Churches of Ivanovo (c); Rila Monastery (c); Ancient City of Nessebar (c); Thracian Tomb of Sveshtari (c); Srebarna Nature Reserve (n); Pirin National Park (n); Primeval Beech Forests of the Carpathians (n)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "upper-middle-income EU economy; currency pegged to the euro with accession pending; joined Schengen area as of March 2024; global events and internal political turmoil triggered export slump and stalled reforms; EU structural funds contributing to investment recovery; skilled labor shortage driven by emigration and aging population"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$215.338 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$211.35 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$203.146 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "1.89% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "4.04% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "7.66% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$33,400 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$31,800 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$29,500 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$102.408 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "9.44% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "15.33% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "3.3% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BBB (2017)"
+      },
+      "Moody's rating": {
+        "text": "Baa1 (2020)"
+      },
+      "Standard & Poors rating": {
+        "text": "BBB (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "2.5% (2023 est.)"
+      },
+      "industry": {
+        "text": "22.7% (2023 est.)"
+      },
+      "services": {
+        "text": "62.5% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "57.7% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "18.4% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "18.7% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "1.1% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "61.9% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-57.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "wheat, maize, sunflower seeds, milk, barley, rapeseed, potatoes, grapes, tomatoes, chicken (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "electricity, gas, water; food, beverages, tobacco; machinery and equipment, automotive parts, base metals, chemical products, coke, refined petroleum, nuclear fuel; outsourcing centers"
+    },
+    "Industrial production growth rate": {
+      "text": "-4.11% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "3.09 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "4.3% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "4.27% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "5.27% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "12% (2023 est.)"
+      },
+      "male": {
+        "text": "11.8% (2023 est.)"
+      },
+      "female": {
+        "text": "12.2% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "20.6% (2022 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "39 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "20.7% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "4.8% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "29.9% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "2.3% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "2.2% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "2.38% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$33.1 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$35.619 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "30.2% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "21.73% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$927.67 million (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$2.359 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$872.53 million (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$63.38 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$63.246 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$52.125 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Germany 13%, Romania 13%, Italy 7%, Turkey 6%, Greece 6% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "refined petroleum, natural gas, garments, wheat, refined copper (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$59.16 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$62.26 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$49.999 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Germany 10%, Russia 10%, Turkey 9%, Romania 7%, Greece 6% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "crude petroleum, natural gas, copper ore, cars, packaged medicine (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$46.334 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$40.989 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$39.188 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2022": {
+        "text": "$14.277 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "leva (BGN) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "1.809 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "1.86 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "1.654 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "1.716 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "1.747 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "99.6%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "12.031 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "35.369 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "13.665 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "1.47 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "2.616 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "48.6% of total installed capacity (2022 est.)"
+      },
+      "nuclear": {
+        "text": "32.8% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "4% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "3% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "7.2% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "4.5% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of operational nuclear reactors": {
+        "text": "2 (2023)"
+      },
+      "Net capacity of operational nuclear reactors": {
+        "text": "2.01GW (2023 est.)"
+      },
+      "Percent of total electricity production": {
+        "text": "40.3% (2023 est.)"
+      },
+      "Number of nuclear reactors permanently shut down": {
+        "text": "4 (2023)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "35.516 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "35.97 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "504,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "928,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "2.366 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "4,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "101,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "15 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "20.837 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "2.801 billion cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "2.75 million cubic meters (2020 est.)"
+      },
+      "imports": {
+        "text": "2.911 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "5.663 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "43.234 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "24.654 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "13.185 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "5.395 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "107.943 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "619,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "9 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "8.01 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "117 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "<p>Bulgaria’s telecom market was for some years affected by the difficult macroeconomic climate, as well as by relatively high unemployment and a shrinking population; these factors continue to slow investments in the sector, though revenue growth has returned since 2019; there still remains pressure on revenue growth, with consumers migrating from fixed-line voice telephony to mobile and VoIP alternatives, while the volume of SMS and MMS traffic has been affected by the growing use of alternative OTT messaging services; investing in network upgrades and its development of services based on 5G have stimulated other market players to invest in their own service provision; by the end of 2022 about 70% of the population is expected to be covered by 5G; the broadband market in Bulgaria enjoys excellent cross-platform competition; the share of the market held by DSL has fallen steadily as a result of customers being migrated to fiber networks; by early 2021 about 65% of fixed-line broadband subscribers were on fiber infrastructure; Bulgaria joins the U.S. State Department’s Clean Network initiative in a bid to protect its 5G communications networks</p> (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line over 11 per 100 persons, mobile-cellular teledensity, fostered by multiple service providers, is over 115 telephones per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 359; Caucasus Cable System via submarine cable provides connectivity to Ukraine, Georgia&nbsp;and Russia; a combination submarine cable and land fiber-optic system provides connectivity to Italy, Albania, and Macedonia; satellite earth stations - 3 (1 Intersputnik in the Atlantic Ocean region, 2 Intelsat in the Atlantic and Indian Ocean regions) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "4 national terrestrial TV stations with 1 state-owned and 3 privately owned; a vast array of TV stations are available from cable and satellite TV providers; state-owned national radio broadcasts over 3 networks; large number of private radio stations broadcasting, especially in urban areas"
+    },
+    "Internet country code": {
+      "text": ".bg"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "80% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "2.45 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "36 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "8 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "44"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "1,022,645 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "1.38 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "LZ"
+    },
+    "Airports": {
+      "text": "111 (2024)"
+    },
+    "Heliports": {
+      "text": "8 (2024)"
+    },
+    "Pipelines": {
+      "text": "2,765 km gas, 346 km oil, 378 km refined products (2017)"
+    },
+    "Railways": {
+      "total": {
+        "text": "4,029 km (2020) 2,871 km electrified"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "19,117 km (2022)"
+      },
+      "note": "<strong>note:</strong> does not include Category IV local roads"
+    },
+    "Waterways": {
+      "text": "470 km (2009)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "78 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 2, general cargo 13, oil tanker 8, other 55"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "2 (2024)"
+      },
+      "large": {
+        "text": "1"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "0"
+      },
+      "ports with oil terminals": {
+        "text": "2"
+      },
+      "key ports": {
+        "text": "Burgas, Varna"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Bulgarian Armed Forces (aka Bulgarian Army): Land Forces, Air Force, Navy<br><br>Ministry of Interior: General Directorate National Police (GDNP), General Directorate Border Police (GDBP), General Directorate for Combating Organized Crime (GDCOC), Fire Safety and Civil Protection General Directorate, Special Unit for Combating Terrorism (SOBT) (2024)",
+      "note": "<strong>note:</strong> the GDMP includes the Gendarmerie, a special police force with military status deployed to secure important facilities, buildings and infrastructure, to respond to riots, and to counter militant threats"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2024": {
+        "text": "2.2% of GDP (2024 est.)"
+      },
+      "Military Expenditures 2023": {
+        "text": "1.9% of GDP (2023)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.6% of GDP (2022)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.6% of GDP (2021)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.6% of GDP (2020)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 27,000 active-duty personnel (17,000 Army; 3,000 Navy; 7,000 Air Force) (2024)",
+      "note": "<strong>note:</strong> in 2021, Bulgaria released a 10-year defense plan which called for an active military strength of 43,000"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory consists mostly of Soviet-era equipment, although in recent years Bulgaria has procured limited amounts of more modern Western weapons systems (2023)"
+    },
+    "Military service age and obligation": {
+      "text": "18-40 years of age for voluntary military service; conscription ended in 2007; service obligation 6-9 months (2023)",
+      "note": "<strong>note 1:</strong> in 2021, women comprised about 17% of the Bulgarian military's full-time personnel<br><br><strong>note 2:</strong> in 2020, Bulgaria announced a program to allow every citizen up to the age of 40 to join the armed forces for 6 months of military service in the voluntary reserve"
+    },
+    "Military - note": {
+      "text": "the Bulgarian military is responsible for guaranteeing Bulgaria’s independence, sovereignty, and territorial integrity, providing support to international peace and security missions, and contributing to national security in peacetime, including such missions as responding to disasters or assisting with border security; the military trains regularly including in multinational exercises with regional partners and with NATO since Bulgaria joined the organization in 2004; it also participates in overseas peacekeeping and other security missions under the EU, NATO, and the UN; in 2022, Bulgaria established and began leading a NATO multinational battlegroup as part of an effort to boost NATO defenses in Eastern Europe following Russia’s invasion of Ukraine; in 2021, Bulgaria approved a 10-year defense development program, which included calls for equipment upgrades and procurements, boosts in manpower, organizational reforms, and greater focus on such areas as cyber defense, communications, logistics support, and research and development<br><br>the Bulgarian military has participated in several significant conflicts since its establishment in 1878, including the Serbo-Bulgarian War (1885), the First Balkan War (1912-13), the Second Balkan War (1913), World War I (1915-1918), and World War II (1941-45); during the Cold War it was one of the Warsaw Pact’s largest militaries with over 150,000 personnel and more than 200 Soviet-made combat aircraft (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Space Research and Technology Institute - Bulgarian Academy of Sciences (SRTI-BAS; formed in 1987 but originated from the Central Laboratory for Space Research and the Bulgarian Aerospace Agency, which was established in 1969) (2024)"
+    },
+    "Space program overview": {
+      "text": "has a long history of involvement in space-related activities going back to the 1960s; develops, produces, and operates satellites, mostly with foreign partners; researches, develops, and produces other space technologies, including those related to astrophysics, remote sensing, data exploitation, optics, and electronics; has specialized in producing scientific instruments for space research; has more than 20 research institutes; Cooperating State of the European Space Agency (ESA) since 2015; cooperates with a variety of foreign space agencies and commercial entities, including those of the ESA and EU (and bi-laterally with their member states), India, Japan, Russia, and the US (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic State of Iraq and ash-Sham (ISIS); Islamic Revolutionary Guard Corps/Qods Force",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "22,226 (Syria) (mid-year 2022); 72,775 (Ukraine) (as of 8 March 2024)"
+      },
+      "stateless persons": {
+        "text": "1,129 (2022)"
+      },
+      "note": "<strong>note:</strong> 106,227 estimated refugee and migrant arrivals (January 2015-January 2024); Bulgaria is predominantly a transit country"
+    },
+    "Illicit drugs": {
+      "text": "source country for amphetamine tablets"
+    }
+  }
+}

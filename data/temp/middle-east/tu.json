@@ -1,0 +1,1311 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>Modern Turkey was founded in 1923 from the remnants of the Ottoman Empire by reformer and national hero Mustafa KEMAL, known as Ataturk or \"Father of the Turks.\" One-party rule ended in 1950, and periods of instability and military coups have since fractured the multiparty democracy, in 1960, 1971, 1980, 1997, and 2016. </p> <p>Turkey joined the UN in 1945 and NATO in 1952. In 1963, Turkey became an associate member of the European Community; it began accession talks with the EU in 2005. Turkey intervened militarily on Cyprus in 1974 to prevent a Greek takeover of the island and has since acted as patron state to the \"Turkish Republic of Northern Cyprus,\" which only Turkey recognizes. The Kurdistan Workers' Party (PKK), a US-designated terrorist organization, began a separatist insurgency in Turkey in 1984, and the struggle has long dominated the attention of Turkish security forces. In 2013, the Turkish Government and the PKK conducted negotiations aimed at ending the violence, but intense fighting resumed in 2015. </p> <p>The Turkish Government conducted a referendum in 2017 in which voters approved constitutional amendments changing Turkey from a parliamentary to a presidential system. </p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southeastern Europe and Southwestern Asia (that portion of Turkey west of the Bosporus is geographically part of Europe), bordering the Black Sea, between Bulgaria and Georgia, and bordering the Aegean Sea and the Mediterranean Sea, between Greece and Syria"
+    },
+    "Geographic coordinates": {
+      "text": "39 00 N, 35 00 E"
+    },
+    "Map references": {
+      "text": "Middle East"
+    },
+    "Area": {
+      "total ": {
+        "text": "783,562 sq km"
+      },
+      "land": {
+        "text": "769,632 sq km"
+      },
+      "water": {
+        "text": "13,930 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly larger than Texas"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "2,816 km"
+      },
+      "border countries": {
+        "text": "Armenia 311 km; Azerbaijan 17 km; Bulgaria 223 km; Georgia 273 km; Greece 192 km; Iran 534 km; Iraq 367 km; Syria 899 km"
+      }
+    },
+    "Coastline": {
+      "text": "7,200 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "6 nm in the Aegean Sea"
+      },
+      "exclusive economic zone": {
+        "text": "in Black Sea only: to the maritime boundary agreed upon with the former USSR"
+      },
+      "note": "12 nm in Black Sea and in Mediterranean Sea"
+    },
+    "Climate": {
+      "text": "temperate; hot, dry summers with mild, wet winters; harsher in interior"
+    },
+    "Terrain": {
+      "text": "high central plateau (Anatolia); narrow coastal plain; several mountain ranges"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mount Ararat 5,137 m"
+      },
+      "lowest point": {
+        "text": "Mediterranean Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "1,132 m"
+      }
+    },
+    "Natural resources": {
+      "text": "coal, iron ore, copper, chromium, antimony, mercury, gold, barite, borate, celestite (strontium), emery, feldspar, limestone, magnesite, marble, perlite, pumice, pyrites (sulfur), clay, arable land, hydropower"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "49.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 26.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 19% (2018 est.)"
+      },
+      "forest": {
+        "text": "14.9% (2018 est.)"
+      },
+      "other": {
+        "text": "35.4% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "52,150 sq km (2020)"
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lake Beysehir - 650 sq km; Lake Egridir - 520 sq km"
+      },
+      "salt water lake(s)": {
+        "text": "Lake Van - 3,740 sq km; Lake Tuz - 1,640 sq km;"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Euphrates river source (shared with Syria, Iran, and Iraq [m]) - 3,596 km; Tigris river source (shared with Syria, Iran, and Iraq [m]) - 1,950 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Indian Ocean drainage: <em>(Persian Gulf)</em> Tigris and Euphrates (918,044 sq km)"
+    },
+    "Population distribution": {
+      "text": "the most densely populated area is found around the Bosporus in the northwest where 20% of the population lives in Istanbul; with the exception of Ankara, urban centers remain small and scattered throughout the interior of Anatolia; an overall pattern of peripheral development exists, particularly along the Aegean Sea coast in the west, and the Tigris and Euphrates River systems in the southeast"
+    },
+    "Natural hazards": {
+      "text": "<p>severe earthquakes, especially in northern Turkey, along an arc extending from the Sea of Marmara to Lake Van; landslides; flooding</p><p><strong>volcanism:</strong> limited volcanic activity; its three historically active volcanoes; Ararat, Nemrut Dagi, and Tendurek Dagi have not erupted since the 19th century or earlier</p>"
+    },
+    "Geography - note": {
+      "text": "strategic location controlling the Turkish Straits (Bosporus, Sea of Marmara, Dardanelles) that link the Black and Aegean Seas; the 3% of Turkish territory north of the Straits lies in Europe and goes by the names of European Turkey, Eastern Thrace, or Turkish Thrace; the 97% of the country in Asia is referred to as Anatolia; Istanbul, which straddles the Bosporus, is the only metropolis in the world located on two continents; Mount Ararat, the legendary landing place of Noah's ark, is in the far eastern portion of the country"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "84,119,531"
+      },
+      "male": {
+        "text": "42,247,430"
+      },
+      "female": {
+        "text": "41,872,101 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Turk(s)"
+      },
+      "adjective": {
+        "text": "Turkish"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Turkish 70-75%, Kurdish 19%, other minorities 6-11% (2016 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Turkish (official), Kurdish, other minority languages"
+      },
+      "major-language sample(s)": {
+        "text": "<br>The World Factbook, temel bilgi edinmek için vazgeçilmez bir kaynak. (Turkish)<br> <p>ڕاستییەکانی جیهان، باشترین سەرچاوەیە بۆ زانیارییە بنەڕەتییەکان (Kurdish)</p> <p>The World Factbook, the indispensable source for basic information.</p>"
+      }
+    },
+    "Religions": {
+      "text": "Muslim 99.8% (mostly Sunni), other 0.2% (mostly Christians and Jews)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "21.7% (male 9,358,711/female 8,933,673)"
+      },
+      "15-64 years": {
+        "text": "68.6% (male 29,219,389/female 28,494,315)"
+      },
+      "65 years and over": {
+        "text": "9.6% (2024 est.) (male 3,669,330/female 4,444,113)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "49.1"
+      },
+      "youth dependency ratio": {
+        "text": "34.5"
+      },
+      "elderly dependency ratio": {
+        "text": "12.3"
+      },
+      "potential support ratio": {
+        "text": "8.1 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "34 years (2024 est.)"
+      },
+      "male": {
+        "text": "33.4 years"
+      },
+      "female": {
+        "text": "34.6 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.61% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "13.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6.1 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-1.5 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the most densely populated area is found around the Bosporus in the northwest where 20% of the population lives in Istanbul; with the exception of Ankara, urban centers remain small and scattered throughout the interior of Anatolia; an overall pattern of peripheral development exists, particularly along the Aegean Sea coast in the west, and the Tigris and Euphrates River systems in the southeast"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "77.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.11% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "15.848 million Istanbul, 5.397 million ANKARA (capital), 3.088 million Izmir, 2.086 million Bursa, 1.836 million Adana, 1.805 million Gaziantep (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.03 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.83 male(s)/female"
+      },
+      "total population": {
+        "text": "1.01 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "26.6 years (2020 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "17 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "18.4 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "19.9 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "16.7 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "76.7 years (2024 est.)"
+      },
+      "male": {
+        "text": "74.4 years"
+      },
+      "female": {
+        "text": "79.2 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.9 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.92 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "69.8% (2018)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 99.1% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 98.7% of population"
+      },
+      "improved: total": {
+        "text": "total: 99% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.9% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 1.3% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 1% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "4.6% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "1.93 physicians/1,000 population (2019)"
+    },
+    "Hospital bed density": {
+      "text": "2.9 beds/1,000 population (2018)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 99.8% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 98.7% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.6% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.2% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 1.3% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.4% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "32.1% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "1.18 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "0.67 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.16 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.35 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "30.7% (2020 est.)"
+      },
+      "male": {
+        "text": "42.1% (2020 est.)"
+      },
+      "female": {
+        "text": "19.2% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "1.5% (2018/19)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "65.4% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "2%"
+      },
+      "women married by age 18": {
+        "text": "14.7% (2018 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "3.4% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "96.7%"
+      },
+      "male": {
+        "text": "99.1%"
+      },
+      "female": {
+        "text": "94.4% (2019)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "18 years"
+      },
+      "male": {
+        "text": "19 years"
+      },
+      "female": {
+        "text": "18 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "water pollution from dumping of chemicals and detergents; air pollution, particularly in urban areas; deforestation; land degradation; concern for oil spills from increasing Bosporus ship traffic; conservation of biodiversity"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Antarctic-Environmental Protection, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "Climate Change-Paris Agreement, Environmental Modification"
+      }
+    },
+    "Climate": {
+      "text": "temperate; hot, dry summers with mild, wet winters; harsher in interior"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "49.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 26.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 19% (2018 est.)"
+      },
+      "forest": {
+        "text": "14.9% (2018 est.)"
+      },
+      "other": {
+        "text": "35.4% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "77.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.11% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.08% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.05% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "23.25 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "372.72 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "57.53 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "31.283 million tons (2015 est.)"
+      }
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lake Beysehir - 650 sq km; Lake Egridir - 520 sq km"
+      },
+      "salt water lake(s)": {
+        "text": "Lake Van - 3,740 sq km; Lake Tuz - 1,640 sq km;"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Euphrates river source (shared with Syria, Iran, and Iraq [m]) - 3,596 km; Tigris river source (shared with Syria, Iran, and Iraq [m]) - 1,950 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Indian Ocean drainage: <em>(Persian Gulf)</em> Tigris and Euphrates (918,044 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "6.91 billion cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "1.03 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "54.27 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "211.6 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "1"
+      },
+      "global geoparks and regional networks": {
+        "text": "Kula-Salihli (2023)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Turkey"
+      },
+      "conventional short form": {
+        "text": "Turkey"
+      },
+      "local long form": {
+        "text": "Turkey Cumhuriyeti"
+      },
+      "local short form": {
+        "text": "Turkey"
+      },
+      "etymology": {
+        "text": "the name means \"Land of the Turks\""
+      },
+      "note": "<strong>note:</strong> Turkiye is an approved English short-form name for Turkey"
+    },
+    "Government type": {
+      "text": "presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Ankara"
+      },
+      "geographic coordinates": {
+        "text": "39 56 N, 32 52 E"
+      },
+      "time difference": {
+        "text": "UTC+3 (8 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "Ankara has been linked with a second millennium B.C. Hittite cult center of Ankuwash, although this connection is uncertain; in classical and medieval times, the city was known as Ankyra (meaning \"anchor\" in Greek and reflecting the city's position as a junction for multiple trade and military routes); by about the 13th century the city began to be referred to as Angora; following the establishment of the Republic of Turkey in 1923, the city's name became Ankara"
+      }
+    },
+    "Administrative divisions": {
+      "text": "81 provinces (iller, singular - ili); Adana, Adiyaman, Afyonkarahisar, Agri, Aksaray, Amasya, Ankara, Antalya, Ardahan, Artvin, Aydin, Balikesir, Bartin, Batman, Bayburt, Bilecik, Bingol, Bitlis, Bolu, Burdur, Bursa, Canakkale, Cankiri, Corum, Denizli, Diyarbakir, Duzce, Edirne, Elazig, Erzincan, Erzurum, Eskisehir, Gaziantep, Giresun, Gumushane, Hakkari, Hatay, Igdir, Isparta, Istanbul, Izmir (Smyrna), Kahramanmaras, Karabuk, Karaman, Kars, Kastamonu, Kayseri, Kilis, Kirikkale, Kirklareli, Kirsehir, Kocaeli, Konya, Kutahya, Malatya, Manisa, Mardin, Mersin, Mugla, Mus, Nevsehir, Nigde, Ordu, Osmaniye, Rize, Sakarya, Samsun, Sanliurfa, Siirt, Sinop, Sirnak, Sivas, Tekirdag, Tokat, Trabzon (Trebizond), Tunceli, Usak, Van, Yalova, Yozgat, Zonguldak"
+    },
+    "Independence": {
+      "text": "29 October 1923 (republic proclaimed, succeeding the Ottoman Empire)"
+    },
+    "National holiday": {
+      "text": "Republic Day, 29 October (1923)"
+    },
+    "Legal system": {
+      "text": "civil law system based on various European legal systems, notably the Swiss civil code"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest ratified 9 November 1982"
+      },
+      "amendments": {
+        "text": "proposed by written consent of at least one third of Grand National Assembly (GNA) of Turkey (TBMM) members; adoption of draft amendments requires two debates in plenary TBMM session and three-fifths majority vote of all GNA members; the president of the republic can request TBMM reconsideration of the amendment and, if readopted by two-thirds majority TBMM vote, the president may submit the amendment to a referendum; passage by referendum requires absolute majority vote; amended several times, last in 2017"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; non-party state to the ICCt"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Turkey"
+      },
+      "dual citizenship recognized": {
+        "text": "yes, but requires prior permission from the government"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Recep Tayyip ERDOGAN (since 28 August 2014)"
+      },
+      "head of government": {
+        "text": "President Recep Tayyip ERDOGAN (since 9 July 2018)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); election last held on 14 May 2023 with a runoff on 28 May 2023 (next to be held in 2028)"
+      },
+      "election results": {
+        "text": "<em><br>2023: </em>Recep Tayyip ERDOGAN reelected president in second round - Recep Tayyip ERDOGAN (AKP) 52.2%, Kemal KILICDAROGLU (CHP) 47.8%<em><br><br>2018:</em> Recep Tayyip ERDOGAN reelected president in first round - Recep Tayyip ERDOGAN (AKP) 52.6%, Muharrem INCE (CHP) 30.6%, Selahattin DEMIRTAS (HDP) 8.4%, Meral AKSENER (IYI) 7.3%, other 1.1%"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Grand National Assembly of Türkiye (Türkiye Büyük Millet Meclisi (T.B.M.M))"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "600 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "5/14/2023"
+      },
+      "parties elected and seats per party": {
+        "text": "Justice and Development Party (AKP) (267); Republican People's Party (CHP) (130); Green and the Left Party of the Future (YSGP) (57); Nationalist Action Party (MHP) (50); Good Party (İyi Party) (44); Other (52)"
+      },
+      "percentage of women in chamber": {
+        "text": "19.9%"
+      },
+      "expected date of next election": {
+        "text": "May 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Constitutional Court or Anayasa Mahkemesi (consists of the president, 2 vice presidents, and 12 judges); Court of Cassation (consists of about 390 judges and is organized into civil and penal chambers); Council of State (organized into 15 divisions - 14 judicial and 1 consultative - each with a division head and at least 5 members)"
+      },
+      "judge selection and term of office": {
+        "text": "Constitutional Court members - 3 appointed by the Grand National Assembly and 12 by the president of the republic; court president and 2 deputy court presidents appointed from among its members for 4-year terms; judges serve 12-year, nonrenewable terms with mandatory retirement at age 65; Court of Cassation judges appointed by the Board of Judges and Prosecutors, a 13-member body of judicial officials; Court of Cassation judges serve until retirement at age 65; Council of State members appointed by the Board and by the president of the republic; members serve renewable, 4-year terms"
+      },
+      "subordinate courts": {
+        "text": "regional appeals courts; basic (first instance) courts; peace courts; aggravated crime courts; specialized courts, including administrative and audit; note - a constitutional amendment in 2017 abolished military courts unless established to investigate military personnel actions during war conditions"
+      }
+    },
+    "Political parties": {
+      "text": "Democracy and Progress Party or DEVA<br>Democrat Party or DP<br>Democratic Regions Party or DBP<br>Felicity Party (Saadet Party) or SP<br>Free Cause Party or HUDA PAR<br>Future Party (Gelecek Partisi) or GP<br>Good Party or IYI<br>Grand Unity Party or BBP <br>Justice and Development Party or AKP <br>Labor and Freedom Alliance (electoral alliance includes YSGP, HDP, TIP)<br>Nationalist Movement Party or MHP <br>New Welfare Party or YRP <br>Party of Greens and the Left Future or YSGP <br>People's Alliance (electoral alliance includes AKP, BBP, MHP, YRP)<br>Peoples' Democratic Party or HDP<br>Republican People's Party or CHP <br>Workers' Party of Turkey or TIP"
+    },
+    "International organization participation": {
+      "text": "ADB (nonregional member), Australia Group, BIS, BSEC, CBSS (observer), CD, CE, CERN (observer), CICA, CPLP (associate observer), D-8, EAPC, EBRD, ECO, EU (candidate country), FAO, FATF, G-20, IAEA, IBRD, ICAO, ICC (national committees), ICRM, IDA, IDB, IEA, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, NATO, NEA, NSG, OAS (observer), OECD, OIC, OPCW, OSCE, Pacific Alliance (observer), Paris Club (associate), PCA, PIF (partner), SCO (dialogue member), SELEC, UN, UNCTAD, UNESCO, UNHCR, UNIDO, UNIFIL, UNOOSA, UNRWA, UNWTO, UPU, Wassenaar Arrangement, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO, ZC",
+      "note": "<strong>note</strong>: Turkey is an EU candidate country whose satisfactory completion of accession criteria is required before being granted full EU membership"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Sedat &Ouml;NAL (since 17 June 2024)"
+      },
+      "chancery": {
+        "text": "2525 Massachusetts Avenue NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 612-6700"
+      },
+      "FAX": {
+        "text": "[1] (202) 612-6744"
+      },
+      "email address and website": {
+        "text": "<br>embassy.washingtondc@mfa.gov.tr<br><br>T.C. Dışişleri Bakanlığı - Turkish Embassy In Washington, D.C. (mfa.gov.tr)"
+      },
+      "consulate(s) general": {
+        "text": "Boston, Chicago, Houston, Los Angeles, Miami, New York, San Francisco"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires Michael GOLDMAN (since September 2024)"
+      },
+      "embassy": {
+        "text": "1480 Sokak No. 1, Cukurambar Mahallesi, 06530 Cankaya, Ankara"
+      },
+      "mailing address": {
+        "text": "7000 Ankara Place, Washington, DC 20512-7000"
+      },
+      "telephone": {
+        "text": "[90] (312) 294-0000"
+      },
+      "FAX": {
+        "text": "[90] (312) 467-0019"
+      },
+      "email address and website": {
+        "text": "<br>Ankara-ACS@state.gov<br><br>https://tr.usembassy.gov/"
+      },
+      "consulate(s) general": {
+        "text": "Istanbul"
+      },
+      "consulate(s)": {
+        "text": "Adana"
+      }
+    },
+    "Flag description": {
+      "text": "red with a vertical white crescent moon (the closed portion is toward the hoist side) and white five-pointed star centered just outside the crescent opening; the flag colors and designs closely resemble those on the banner of the Ottoman Empire, which preceded modern-day Turkey; the crescent moon and star serve as insignia for Turkic peoples; according to one interpretation, the flag represents the reflection of the moon and a star in a pool of blood of Turkish warriors"
+    },
+    "National symbol(s)": {
+      "text": "vertical crescent moon with adjacent five-pointed star; national colors: red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Istiklal Marsi\" (Independence March)"
+      },
+      "lyrics/music": {
+        "text": "Mehmet Akif ERSOY/Zeki UNGOR"
+      },
+      "note": "<strong>note:</strong> lyrics adopted 1921, music adopted 1932; the anthem's original music was adopted in 1924; a new composition was agreed upon in 1932"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "21 (19 cultural, 2 mixed)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "<p>Archaeological Site of Troy (c); Ephesus (c); Diyarbakır Fortress and Hevsel Gardens Cultural Landscape (c); Hierapolis-Pamukkale (m); Göreme National Park and the Rock Sites of Cappadocia (m); Göbekli Tepe (c); Historic Areas of Istanbul (c); Selimiye Mosque and its Social Complex (c); Neolithic Site of Çatalhöyük (c); Bursa and Cumalıkızık: the Birth of the Ottoman Empire (c); Gordion (c); Great Mosque and Hospital of Divriği (c); Hattusha: the Hittite Capital (c); Nemrut Dağ (c);  Xanthos-Letoon (c); City of Safranbolu (c); Pergamon and its Multi-Layered Cultural Landscape (c); Ephesus (c); Archaeological Site of Ani (c); Aphrodisias (c); Arslantepe Mound (c); Wooden Hypostyle Mosques of Medieval Anatolia (c); Turkmenistan (c)</p>"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "<p>upper-middle-income, diversified Middle Eastern economy; industrializing economy that maintains large agricultural base; key energy, tourism, and construction sectors; high inflation, interest rates, and foreign debt pose risk to financial stability</p>"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$2.953 trillion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$2.81 trillion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$2.662 trillion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "5.11% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "5.53% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "11.44% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$34,600 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$33,100 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$31,600 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$1.118 trillion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "53.86% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "72.31% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "19.6% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BB- (2019)"
+      },
+      "Moody's rating": {
+        "text": "B2 (2020)"
+      },
+      "Standard & Poors rating": {
+        "text": "B+ (2018)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "6.2% (2023 est.)"
+      },
+      "industry": {
+        "text": "28.4% (2023 est.)"
+      },
+      "services": {
+        "text": "54.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "59.4% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "13.1% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "31.9% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "-1.9% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "31.9% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-34.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "milk, wheat, sugar beets, tomatoes, barley, maize, potatoes, apples, grapes, watermelons (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "textiles, food processing, automobiles, electronics, mining (coal, chromate, copper, boron), steel, petroleum, construction, lumber, paper"
+    },
+    "Industrial production growth rate": {
+      "text": "2.52% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "35.59 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "9.41% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "10.43% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "11.97% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "17.6% (2023 est.)"
+      },
+      "male": {
+        "text": "14.8% (2023 est.)"
+      },
+      "female": {
+        "text": "22.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "14.4% (2021 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "44.4 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "22.8% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "2.3% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "34.7% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.09% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.08% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.09% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$234.92 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$269.146 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "35.25% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "16.09% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$40.503 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$46.638 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$6.433 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$357.025 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$346.21 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$287.318 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Germany 8%, US 7%, Iraq 5%, UK 5%, Italy 5% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "garments, refined petroleum, cars, jewelry, plastic products (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$386.666 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$383.7 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$284.019 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 13%, Germany 9%, Russia 8%, US 5%, Italy 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "gold, refined petroleum, plastics, scrap iron, cars (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$140.858 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$123.735 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$109.535 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$151.844 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Turkish liras (TRY) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "23.739 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "16.549 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "8.85 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "7.009 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "5.674 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "103.817 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "280.458 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "3.71 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "6.423 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "30.452 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "58.2% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "4.9% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "11.3% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "21.7% of total installed capacity (2022 est.)"
+      },
+      "geothermal": {
+        "text": "2.9% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of nuclear reactors under construction": {
+        "text": "4 (2023)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "88.746 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "123.976 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "879,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "38.046 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "11.525 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "83,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "1.077 million bbl/day (2023 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "366 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "379.701 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "52.887 billion cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "581.666 million cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "54.536 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "3.794 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "391.592 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "149.781 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "139.954 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "101.858 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "70.594 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "9.926 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "11 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "92.2 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "106 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Turkey continues to develop its capabilities within its telecom sector, becoming one of the relatively few countries able to build and develop its own communications satellites; with the successful launch of the Turksat 5A and 5B satellites in 2021, the country has vastly increased its bandwidth capacity; these satellites will be joined by the Turksat 6A in 2023; the country&rsquo;s telcos have invested in fiber infrastructure; deployment of fiber-based broadband networks are well established, with fiber accounting for 26.7% of all fixed broadband connections as of early 2022; the DSL sector still dominates, accounting for about 63% of connections, but its share is steadily declining, year-on-year, while the number of fiber connections has grown strongly; improved fixed and mobile infrastructure is underpinning the country&rsquo;s initiatives relating to Smart City concepts, which have become a key area of focus for the emerging digital economy and the transformation to a knowledge-based economy; Turkey&rsquo;s National Smart Cities Strategy and Action Plan runs through to 2023 (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line nearly 14 per 100 and mobile-cellular teledensity is 106 telephones per 100 persons (2022)"
+      },
+      "international": {
+        "text": "country code - 90; landing points for the SeaMeWe-3 &amp; -5, MedNautilus Submarine System, Turcyos-1 &amp; -2 submarine cables providing connectivity to Europe, Africa, the Middle East, Asia, Southeast Asia and Australia&nbsp;; satellite earth stations - 12 Intelsat; mobile satellite terminals - 328 in the Inmarsat and Eutelsat systems (2020)"
+      }
+    },
+    "Broadcast media": {
+      "text": "<p>Turkish Radio and Television Corporation (TRT) operates multiple TV and radio networks and stations; multiple privately owned national television stations and 567 private regional and local television stations; multi-channel cable TV subscriptions available; 1,007 private radio broadcast stations</p> (2019)"
+    },
+    "Internet country code": {
+      "text": ".tr"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "86% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "19.6 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "22 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "11 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "618"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "115,595,495 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "5,949,210,000 (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "TC"
+    },
+    "Airports": {
+      "text": "115 (2024)"
+    },
+    "Heliports": {
+      "text": "213 (2024)"
+    },
+    "Pipelines": {
+      "text": "14,666 km gas, 3,293 km oil (2017)"
+    },
+    "Railways": {
+      "total": {
+        "text": "11,497 km (2018)"
+      },
+      "standard gauge": {
+        "text": "11,497 km (2018) 1.435-m gauge (1.435 km high speed train)"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "68,526 km (2023)"
+      },
+      "paved": {
+        "text": "24,082 km (2018) (includes 2,159 km of expressways)"
+      },
+      "unpaved": {
+        "text": "43,251 km (2018)"
+      }
+    },
+    "Waterways": {
+      "text": "1,200 km (2010)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "1,170 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 43, container ship 43, general cargo 223, oil tanker 134, other 727"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "54 (2024)"
+      },
+      "large": {
+        "text": "3"
+      },
+      "medium": {
+        "text": "3"
+      },
+      "small": {
+        "text": "6"
+      },
+      "very small": {
+        "text": "42"
+      },
+      "ports with oil terminals": {
+        "text": "28"
+      },
+      "key ports": {
+        "text": "Haydarpasa, Istanbul, Izmir, Mersin, Nemrut Limani Bay, Samsun"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Turkish Armed Forces (TAF; Türk Silahlı Kuvvetleri, TSK): Turkish Land Forces (Türk Kara Kuvvetleri), Turkish Naval Forces (Türk Deniz Kuvvetleri; includes naval air and naval infantry), Turkish Air Forces (Türk Hava Kuvvetleri)<br><br>Ministry of Interior: Gendarmerie of the Turkish Republic (aka Gendarmerie General Command), Turkish Coast Guard Command, National Police (2024)",
+      "note": "<strong>note:</strong> the Gendarmerie (Jandarma) is responsible for the maintenance of the public order in areas that fall outside the jurisdiction of police forces (generally in rural areas); in wartime, the Gendarmerie and Coast Guard would be placed under the operational control of the Land Forces and Naval Forces, respectively"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2024": {
+        "text": "2.1% of GDP (2024 est.)"
+      },
+      "Military Expenditures 2023": {
+        "text": "1.6% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.4% of GDP (2022)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.6% of GDP (2021)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.9% of GDP (2020)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 480,000 active-duty personnel (380,000 Army; 50,000 Navy; 50,000 Air Force); approximately 150,000 Gendarmerie (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory is comprised of domestically produced, European (particularly from Germany), and US weapons and equipment, as well as some Chinese, Russian, and South Korean acquisitions; it is a mix of older and modern weapons systems; T&uuml;rkiye has a defense industry capable of producing a range of weapons systems for both export and internal use, including armored vehicles, naval vessels, and unmanned aerial vehicles/drones; T&uuml;rkiye's defense industry also partners with other countries for defense production (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "mandatory military service for men at age 20; service can be delayed if in university or in certain professions (researchers, professionals, and athletic, or those with artistic talents have the right to postpone military service until the age of 35); 6-12 months service; women may volunteer (2023)",
+      "note": "<strong>note 1:</strong> after completing six months of service, if a conscripted soldier wants to and is suitable for extending his military service, he may do so for an additional six months in return for a monthly salary; all male Turkish citizens over the age of 20 are required to undergo a one month military training period, but they can obtain an exemption from the remaining 5 months of their mandatory service by paying a fee <br><strong><br>note 2:</strong> as of 2021, women made up about 0.4% of the military's full-time personnel"
+    },
+    "Military deployments": {
+      "text": "approximately 150 (Azerbaijan; monitoring cease-fire, clearing mines); 250 Bosnia-Herzegovina (EUFOR); approximately 30-35,000 Cyprus; 800 Kosovo (NATO/KFOR); 130 Lebanon (UNIFIL); estimated 500 Libya; up to 5,000 Qatar; approximately 200 Somalia (training mission) (2023)",
+      "note": "<strong>note:</strong> Turkey maintains significant military forces in both Iraq and Syria; size estimates vary as some forces are long-term deployments while others are deployed for specific operations; between 2016 and 2020, Turkey conducted four significant military ground campaigns in northern Syria with the stated purpose of securing its southern border; Turkey also has deployed troops into northern Iraq on numerous occasions to combat the Kurdistan Worker's Party (PKK), including large operations involving thousands of troops in 2007, 2011, and 2018, and smaller-scale operations in 2021 and 2022; Turkey has also conducted numerous air strikes in both Iraq and Syria"
+    },
+    "Military - note": {
+      "text": "the Turkish Armed Forces (TAF) have a range of responsibilities, including protecting the country's territory and sovereignty, participating in international peacekeeping operations, fulfilling Türkiye’s military commitments to NATO, providing disaster/humanitarian relief and assistance to domestic law enforcement if requested by civil authorities, and supporting the country's overall national security interests; the TAF also has overall responsibility for the security of Türkiye’s borders; Türkiye is active in international peacekeeping and other security operations under the EU, NATO, and the UN, as well as under bilateral agreements with some countries; the TAF has established expeditionary military bases in northern Cyprus, Qatar, Somalia, and Sudan<br><br>Türkiye has been a member of NATO since 1952 and hosts a considerable NATO and US military presence, including the headquarters for a NATO Land Command and a Rapid Deployment Corps, multiple airbases for NATO and US aircraft, NATO air/missile defense systems, and training centers; the TAF is the second-largest military in NATO behind the US and exercises regularly with NATO partners; Türkiye's geographic location at the southeastern flank of the Alliance give it and the TAF a critical role in regional security<br><br>the TAF is a large, well-equipped force comprised of a mix of professionals and conscripts; it has considerable operational experience; in addition to peacekeeping and military assistance operations in recent years in such places as Afghanistan (NATO), Bosnia and Herzegovina (EU), Kosovo (NATO), Lebanon (UN), and Somalia (bilateral), it has conducted combat missions of varying duration and scale in Iraq, Libya, and Syria; ; in Syria, it occupies a large swatch of territory and maintain thousands of troops; since the 1980s, the TAF has been involved in a protracted counterinsurgency campaign against the US-designated terrorist group the Kurdistan Worker’s Party or PKK, a Kurdish militant political organization and armed guerrilla movement, which historically operated throughout Kurdistan but is now primarily based in the mountainous Kurdish-majority regions of southeastern Türkiye and northern Iraq; other key areas of concern for the TAF include tensions with fellow NATO member Greece over territorial disputes and Cyprus, tensions between neighboring Armenia and Azerbaijan, conflict in the Middle East, threats from the terrorist groups al-Qa’ida and the Islamic State of Iraq and ash-Sham, and the Russia-Ukraine war; under a long-range (2033) strategic plan, the TAF continues an effort to modernize its equipment and force structure<br><br>Türkiye’s military has a rich history that it traces back to 200 B.C., although the modern TAF was formed following the collapse of the Ottoman Empire at the conclusion of the Turkish War of Independence (1919-1923); the TAF has traditionally had a significant influence in the country as the “guardian” of Turkish politics, but its political role was diminished after the failed 2016 coup attempt; the military has a substantial stake in Türkiye's economy through a holding company that is involved in the automotive, energy, finance, and logistics sectors, as well as iron and steel production (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Turkish Space Agency (TUA; established 2018); T&Uuml;BİTAK Space Technologies Research Institute (UZAY; established in 1985 as Ankara Electronics Research and Development Institute) (2024)"
+    },
+    "Space launch site(s)": {
+      "text": "rocket test launch site on the Black Sea in Sinop Province; the 2021 national space program called for the establishment of a space port; has reportedly discussed building a rocket launch site in Somalia or using a sea-launch facility for future space launch vehicles (2024)"
+    },
+    "Space program overview": {
+      "text": "has an ambitious space program with a large focus on satellites, software development, ground station technologies, and building up the country’s space industries; in recent years has also initiated a space launch program with the goal of placing domestically produced satellites into orbit independently and a probe on the Moon; manufactures and operates remote sensing and telecommunications satellites, as well as satellite components; has a space/satellite launch vehicle program; space sector is heavily import-reliant, particularly at the component level; has established relations with more than 25 foreign space agencies and corporations, including those of Azerbaijan, China, France, India, Japan, Kazakhstan, Pakistan, Russia, South Korea, Ukraine, and the US, as well as the European Space Agency; has state-owned rocket development and satellite communications companies, including some under the Ministry of Defense (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic State of Iraq and ash-Sham (ISIS); Islamic Movement of Uzbekistan (IMU); Islamic Revolutionary Guard Corps (IRGC)/Qods Force; Kurdistan Workers' Party (PKK); al-Qa'ida; Revolutionary People's Liberation Party/Front (DHKP/C)",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "10,244 (Iraq) (mid-year 2022); 41,665 (Ukraine) (as of 15 February 2024) (2023); 3,122,899 (Syria) (2024)"
+      },
+      "IDPs": {
+        "text": "1.099 million (displaced from 1984-2005 because of fighting between the Kurdish PKK and Turkish military; most IDPs are Kurds from eastern and southeastern provinces; no information available on persons displaced by development projects) (2022)"
+      },
+      "stateless persons": {
+        "text": "117 (2018)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a significant transit country for illicit drug trafficking; an increase of heroin and methamphetamine seizures along the Turkiye-Iran border; Syrian drug traffickers play a significant role in Turkiye’s drug trade; domestic Illegal drug use relatively low compared to countries in the region</p>"
+    }
+  }
+}

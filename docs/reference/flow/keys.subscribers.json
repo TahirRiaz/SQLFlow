@@ -1,0 +1,98 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "subscribers",
+  "generatedFrom": "source code: src/SqlFlow.Core/Subscribers/DataSubscriber.cs, src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs, src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+  "naming": "The loader builds its YamlDotNet IDeserializer with CamelCaseNamingConvention + IgnoreUnmatchedProperties. A C# PascalCase property binds to the camelCase YAML key. A subscriber library is NOT a flow document: it is selected by the root 'subscribers:' key rather than by a flowType, never becomes a pipeline, and never joins a schedule or an execution wave. The 'connections' block is the shared one every flow document uses and is merged in from keys.shared.json, so there is one definition of it.",
+  "keyCount": 11,
+  "keys": [
+    {
+      "path": "subscribers",
+      "type": "map<name, subscriber>",
+      "required": true,
+      "default": "none",
+      "description": "The consumers this file declares, keyed by NAME. The name is the subscriber's identity across the estate and the label on its lineage node, so the same name in two files is a collision rather than a merge: the first wins and the second is reported. A file with no entries is warned, because it registers nothing as consuming the warehouse.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs"
+    },
+    {
+      "path": "subscribers.<name>.type",
+      "type": "string",
+      "required": false,
+      "default": "Unknown",
+      "description": "What consumes the data (legacy SubscriberType): PowerBI, Tableau, Excel, Notebook, Application, or any label the estate uses. Free text on purpose, as the legacy nvarchar(250) column was. Omitting it records 'Unknown' and warns, because the catalog can then no longer group consumers by tool.",
+      "definedIn": "src/SqlFlow.Core/Subscribers/DataSubscriber.cs"
+    },
+    {
+      "path": "subscribers.<name>.owner",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "The team or person to contact before a breaking change to a table this subscriber reads (legacy CreatedBy).",
+      "definedIn": "src/SqlFlow.Core/Subscribers/DataSubscriber.cs"
+    },
+    {
+      "path": "subscribers.<name>.description",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "What the subscriber is FOR, in one line, for the catalog and the lineage node's tooltip.",
+      "definedIn": "src/SqlFlow.Core/Subscribers/DataSubscriber.cs"
+    },
+    {
+      "path": "subscribers.<name>.notes",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Remarks about the subscriber's STATE rather than its purpose: not refreshed since a given month, apparently superseded by another report, could not be opened, an open question, or an incomplete dataset naming the tables that could not be resolved. Kept apart from 'description' because the two age differently: a description holds for as long as the report exists, whereas a note is a finding from one review and is expected to be resolved and removed. Multi-line is fine; use a YAML block scalar.",
+      "definedIn": "src/SqlFlow.Core/Subscribers/DataSubscriber.cs"
+    },
+    {
+      "path": "subscribers.<name>.url",
+      "type": "string (URL or path)",
+      "required": false,
+      "default": "null",
+      "description": "Where the subscriber LIVES, as opposed to what it reads: the report URL in the BI tool, the workbook's path on a share or OneDrive, the folder, the repository. Free text, because a consumer is as often a file somewhere as it is a hosted report; only an http/https value is rendered as a clickable link, anything else is shown as plain selectable text so a path never becomes a link that silently does nothing. Searchable, so a person who knows only where a report sits (a workspace, a share, a folder) can get from that back to the tables it reads.",
+      "definedIn": "src/SqlFlow.Core/Subscribers/DataSubscriber.cs"
+    },
+    {
+      "path": "subscribers.<name>.server",
+      "type": "string (connection alias)",
+      "required": false,
+      "default": "null",
+      "description": "The default connection alias for every query that does not name its own. It must be a key of this file's 'connections:' block.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs"
+    },
+    {
+      "path": "subscribers.<name>.queries",
+      "type": "list<query>",
+      "required": false,
+      "default": "empty",
+      "description": "The queries the subscriber runs against the warehouse. Each is parsed as T-SQL and every table and view it touches becomes a Reads lineage edge attributed to this subscriber, which is what turns a list of dashboards into 'this table is consumed by these three reports'. A subscriber with no usable queries is warned: it shows in the catalog as a consumer of nothing.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs"
+    },
+    {
+      "path": "subscribers.<name>.queries[].name",
+      "type": "string",
+      "required": false,
+      "default": "query<n>",
+      "description": "A label for the query within its subscriber (legacy QueryName): the dataset name, the page, the measure group. Names the query in warnings and in the catalog. Defaults to its 1-based position.",
+      "definedIn": "src/SqlFlow.Core/Subscribers/DataSubscriber.cs"
+    },
+    {
+      "path": "subscribers.<name>.queries[].server",
+      "type": "string (connection alias)",
+      "required": false,
+      "default": "the subscriber's 'server'",
+      "description": "The connection alias this query runs against (legacy srcServer). It is what pins the query's two-part object names to the right server and database, so a subscriber reading arc.Bysykkel_Bikes lands on the same node the ingestion flow writes. A query with neither this nor a subscriber default is ignored; an alias the 'connections:' block does not declare is refused, because its objects would otherwise build a second, wrong graph.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs"
+    },
+    {
+      "path": "subscribers.<name>.queries[].sql",
+      "type": "string (T-SQL)",
+      "required": true,
+      "default": "none",
+      "description": "The query text as the subscriber runs it (legacy FullyQualifiedQuery). Any T-SQL the parser accepts: a SELECT, a set of them, or the whole dataset script a report tool emits. A query with no 'sql' can name no tables and is ignored. The text is redacted on the catalog sync path, since authored SQL can embed a literal credential.",
+      "definedIn": "src/SqlFlow.Core/Subscribers/DataSubscriber.cs"
+    }
+  ]
+}

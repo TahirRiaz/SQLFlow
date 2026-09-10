@@ -1,0 +1,13 @@
+# Fact build: demo.usp_BuildOrderFact joins demo.Orders and demo.Customers into
+# demo.Fact_OrderSummary. The declared tier records the procedure requirement; a connected
+# sync (db sync --connect) derives the proc body's reads/writes, which orders this flow
+# after both ingestion flows in the execution plan.
+flowType: sp
+name: demo-build-order-fact
+connections:
+  dwh: ${env:SQLFLOW_DEMO_DB}
+procedure:
+  server: dwh
+  # The sp document requires a three-part name; the database must match the
+  # connection's Initial Catalog (SqlFlowCatalogTests for the local demo).
+  object: SqlFlowCatalogTests.demo.usp_BuildOrderFact

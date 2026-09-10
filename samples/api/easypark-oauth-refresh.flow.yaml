@@ -1,0 +1,45 @@
+# Ports the easypark.ps1 runbook: OAuth2 refresh-token exchange (idToken applied under a NON-standard
+# X-Authorization header), a day-by-day date window, and a static operator-id fan-out. Lands raw JSON per
+# (day, operator) so the downstream json flow types it. No CSV transform, exactly as required.
+flowType: api
+name: EasyPark_Parkings
+batch: easypark
+
+source:
+  transport: http
+  baseUrl: https://external-gw.easyparksystem.net
+  auth:
+    type: oauth2_refresh_token
+    token:
+      url: https://external-gw.easyparksystem.net/api/get-jwt
+      bodyKind: json
+      body:
+        refreshToken: ${keyvault:dw-keyvault-prod/easypark-refresh-token}
+      tokenPath: idToken
+      applyHeaderName: X-Authorization
+      applyPrefix: "Bearer "
+  request:
+    method: GET
+    path: /api/export/operator-parkings-standard
+    query:
+      operatorId: "{operatorId}"
+      from: "{window.from:yyyy-MM-ddTHH:mm:ss}+0000"
+      to: "{window.to:yyyy-MM-ddTHH:mm:ss}+0000"
+  iterate:
+    - kind: date_window
+      granularity: day
+      from: yesterday
+      to: today
+    - kind: list
+      variable: operatorId
+      values: ["14", "1295", "1251", "1252"]
+  reliability:
+    timeoutSeconds: 120
+    rateLimitRps: 5
+    urlAllowlist: ["*.easyparksystem.net"]
+
+landing:
+  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/easypark/parkering
+  pathTemplate: "history/{window.from:yyyy}/parkings_{window.from:yyyyMMdd}_{operatorId}"
+  format: json
+  skipEmpty: true

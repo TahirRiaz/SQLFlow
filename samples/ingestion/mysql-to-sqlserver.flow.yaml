@@ -1,0 +1,37 @@
+# SQLFlow pipeline - MySQL (or PostgreSQL) into SQL Server with dynamic schema evolution.
+#
+# The source reads with its own SQL dialect and its types are mapped to SQL Server types
+# automatically (int unsigned -> bigint, text -> nvarchar(max), uuid -> uniqueidentifier, ...).
+# Staging, schema evolution, and the keyed upsert all happen on the SQL Server target.
+#
+#   sqlflow validate mysql-to-sqlserver.flow.yaml
+#   sqlflow run      mysql-to-sqlserver.flow.yaml
+
+flowType: ing
+name: shop-orders
+
+connections:
+  shop:                                 # a non-SQL-Server source declares its provider
+    provider: mysql                     # mysql | postgres | mssql | azdb
+    connection: ${env:SHOP_MYSQL}       # whole ${...} reference; secrets never rest in the file
+  dwh: ${env:SQLFLOW_DW}                # plain string = SQL Server (the target must be SQL Server)
+
+source:
+  server: shop
+  object: shop.orders                   # MySQL: database.table (the database is the schema)
+  # PostgreSQL example:
+  #   provider: postgres
+  #   object: erp.public.orders         # database.schema.table
+
+target:
+  server: dwh
+  object: DW.raw.ShopOrders
+
+load:
+  keyColumns: [id]
+
+# Everything else works exactly as for a SQL Server source: incremental watermarks (the MIN
+# probe uses the source's own date arithmetic), init-load chunking, assertions, surrogate keys.
+# incremental:
+#   columns: [updated_at]
+#   overlapDays: 7

@@ -1,0 +1,10 @@
+{
+  "meta": { "version": 2, "source": "crm" },
+  "data": {
+    "records": [
+      { "id": 1, "name": "Ann" },
+      { "id": 2, "name": "Bob" },
+      { "id": 3, "name": "Cy" }
+    ]
+  }
+}

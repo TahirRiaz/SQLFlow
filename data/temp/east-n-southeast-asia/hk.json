@@ -1,0 +1,1026 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The UK seized Hong Kong in 1841, and China formally ceded it the following year at the end of the First Opium War. The Kowloon Peninsula was added in 1860 at the end of the Second Opium War, and the UK obtained a 99-year lease of the New Territories in 1898. Pursuant to a UK-China agreement in 1984, Hong Kong became the Hong Kong Special Administrative Region (HKSAR) of the People's Republic of China as of 1 July 1997. In this agreement, China promised that, under its \"one country, two systems\" formula, China's socialist economic and strict political system would not be imposed on Hong Kong and that Hong Kong would enjoy a \"high degree of autonomy\" in all matters except foreign and defense affairs for the next 50 years. <br><br>After the handover, Hong Kong continued to enjoy success as an international financial center. However, growing Chinese political influence and dissatisfaction with the Hong Kong Government in the 2010s became central issues and led to considerable civil unrest, including large-scale pro-democracy demonstrations in 2019 after the HKSAR attempted to revise a local ordinance to allow extraditions to mainland China. In response to the protests, the governments of the HKSAR and China reduced the city's autonomy and placed new restrictions on the rights of Hong Kong residents, moves that were widely criticized as contravening obligations under the Hong Kong Basic Law and the Sino-British Joint Declaration. Democratic lawmakers and political figures were arrested in a widespread crackdown, while others fled abroad. At the same time, dozens of civil society groups and several independent media outlets were closed or disbanded. In 2021, Beijing imposed a more restrictive electoral system, restructuring the Legislative Council (LegCo) and allowing only government-approved candidates to run for office. The changes ensured that virtually all seats in the 2021 LegCo election went to pro-establishment candidates and effectively ended political opposition to Beijing. In 2024, the LegCo passed a new national security law (Article 23 of the Basic Law) further expanding the Hong Kong Government's power to curb dissent."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Eastern Asia, bordering the South China Sea and China"
+    },
+    "Geographic coordinates": {
+      "text": "22 15 N, 114 10 E"
+    },
+    "Map references": {
+      "text": "Southeast Asia"
+    },
+    "Area": {
+      "total ": {
+        "text": "1,108 sq km"
+      },
+      "land": {
+        "text": "1,073 sq km"
+      },
+      "water": {
+        "text": "35 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "six times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "33 km"
+      },
+      "regional borders": {
+        "text": "China 33 km"
+      }
+    },
+    "Coastline": {
+      "text": "733 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      }
+    },
+    "Climate": {
+      "text": "subtropical monsoon; cool and humid in winter, hot and rainy from spring through summer, warm and sunny in fall"
+    },
+    "Terrain": {
+      "text": "hilly to mountainous with steep slopes; lowlands in north"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Tai Mo Shan 958 m"
+      },
+      "lowest point": {
+        "text": "South China Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "outstanding deepwater harbor, feldspar"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "5% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 3.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.9% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0.9% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "95% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "10 sq km (2012)"
+    },
+    "Population distribution": {
+      "text": "population fairly evenly distributed"
+    },
+    "Natural hazards": {
+      "text": "occasional typhoons"
+    },
+    "Geography - note": {
+      "text": "consists of a mainland area (the New Territories) and more than 200 islands"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "7,297,821"
+      },
+      "male": {
+        "text": "3,367,812"
+      },
+      "female": {
+        "text": "3,930,009 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Chinese/Hong Konger"
+      },
+      "adjective": {
+        "text": "Chinese/Hong Kong"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Chinese 91.6%, Filipino 2.7%, Indonesian 1.9%, other 3.7% (2021 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Cantonese (official) 85.4%, English (official) 4.5%, Putonghua (official) 2.2%, other Chinese dialects 2.8%, other 2%, persons under 5 or mute 3.2% (2021 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br> <p>世界概况, 必須擁有的基本資料参考书 (Cantonese)</p> <br>The World Factbook, the indispensable source for basic information."
+      },
+      "note": "<strong>note:</strong> data represent population by usual spoken language"
+    },
+    "Religions": {
+      "text": "Buddhist or Taoist 27.9%, Protestant 6.7%, Roman Catholic 5.3%, Muslim 4.2%, Hindu 1.4%, Sikh 0.2%, other or none 54.3% (2016 est.)",
+      "note": "<strong>note:</strong> many people practice Confucianism, regardless of their religion or not having a religious affiliation"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "13.2% (male 505,718/female 459,956)"
+      },
+      "15-64 years": {
+        "text": "64.8% (male 2,123,216/female 2,609,102)"
+      },
+      "65 years and over": {
+        "text": "21.9% (2024 est.) (male 738,878/female 860,951)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "46.6"
+      },
+      "youth dependency ratio": {
+        "text": "17.8"
+      },
+      "elderly dependency ratio": {
+        "text": "28.7"
+      },
+      "potential support ratio": {
+        "text": "3.5 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "47.2 years (2024 est.)"
+      },
+      "male": {
+        "text": "45.3 years"
+      },
+      "female": {
+        "text": "48.6 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.12% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "7.6 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "8.1 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "1.6 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "population fairly evenly distributed"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.58% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "7.685 million Hong Kong (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.06 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.1 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.81 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.86 male(s)/female"
+      },
+      "total population": {
+        "text": "0.86 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "29.8 years (2008 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "2.5 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "2.8 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "2.2 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "84 years (2024 est.)"
+      },
+      "male": {
+        "text": "81.3 years"
+      },
+      "female": {
+        "text": "86.8 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.24 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.6 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "66.7% (2017)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "2.04 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "4.9 beds/1,000 population (2020)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 96.4% of population"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 96.4% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 3.6% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 3.6% of population (2017)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "47.7% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "4% of GDP (2021 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "17 years"
+      },
+      "male": {
+        "text": "17 years"
+      },
+      "female": {
+        "text": "17 years (2021)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air and water pollution from rapid urbanization; urban waste pollution; industrial pollution"
+    },
+    "Climate": {
+      "text": "subtropical monsoon; cool and humid in winter, hot and rainy from spring through summer, warm and sunny in fall"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "5% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 3.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.9% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0.9% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "95% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "100% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.58% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "carbon dioxide emissions": {
+        "text": "43.64 megatons (2016 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "5,679,816 tons (2015 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "1,931,138 tons (2016 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "34% (2016 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Hong Kong Special Administrative Region"
+      },
+      "conventional short form": {
+        "text": "Hong Kong"
+      },
+      "local long form": {
+        "text": "Heung Kong Takpit Hangching Ku (Eitel/Dyer-Ball)"
+      },
+      "local short form": {
+        "text": "Heung Kong (Eitel/Dyer-Ball)"
+      },
+      "abbreviation": {
+        "text": "HK"
+      },
+      "etymology": {
+        "text": "probably an imprecise phonetic rendering of the Cantonese name meaning \"fragrant harbor\""
+      }
+    },
+    "Government type": {
+      "text": "presidential limited democracy; a special administrative region of the People's Republic of China"
+    },
+    "Dependency status": {
+      "text": "special administrative region of the People's Republic of China"
+    },
+    "Administrative divisions": {
+      "text": "none (special administrative region of the People's Republic of China)"
+    },
+    "Independence": {
+      "text": "none (special administrative region of China)"
+    },
+    "National holiday": {
+      "text": "National Day (Anniversary of the Founding of the People's Republic of China), 1 October (1949); note - 1 July (1997) is celebrated as Hong Kong Special Administrative Region Establishment Day"
+    },
+    "Legal system": {
+      "text": "mixed legal system of common law based on the English model and Chinese customary law (in matters of family and land tenure); PRC imposition of National Security Law incorporates elements of Chinese civil law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous (governance documents while under British authority); latest drafted April 1988 to February 1989, approved March 1990, effective 1 July 1997 (Basic Law of the Hong Kong Special Administrative Region of the People's Republic of China serves as the constitution); note - since 1990, China's National People's Congress has interpreted specific articles of the Basic Law"
+      },
+      "amendments": {
+        "text": "proposed by the Standing Committee of the National People&rsquo;s Congress (NPC), the People&rsquo;s Republic of China State Council, or the Special Administrative Region of Hong Kong; submittal of proposals to the NPC requires two-thirds majority vote by the Legislative Council of Hong Kong, approval by two thirds of Hong Kong&rsquo;s deputies to the NPC, and approval by the Hong Kong chief executive; final passage requires approval by the NPC"
+      }
+    },
+    "Citizenship": {
+      "text": "see China"
+    },
+    "Suffrage": {
+      "text": "18 years of age in direct elections for 20 of the 90 Legislative Council seats and all of the seats in 18 district councils; universal for permanent residents living in the territory of Hong Kong for the past 7 years; note - in indirect elections, suffrage is limited to about 220,000 members of functional constituencies for the other 70 legislature seats and a 1,500-member election committee for the chief executive drawn from broad sectoral groupings, central government bodies, municipal organizations, and elected Hong Kong officials"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President of China XI Jinping (since 14 March 2013)"
+      },
+      "head of government": {
+        "text": "Chief Executive John LEE Ka-chiu (since 1 July 2022)"
+      },
+      "cabinet": {
+        "text": "Executive Council or ExCo appointed by the chief executive"
+      },
+      "elections/appointments": {
+        "text": "president indirectly elected by National People's Congress for a 5-year term (eligible for a second term); election last held on 10 March 2023 (next to be held in March 2028); chief executive indirectly elected by the Election Committee and appointed by the PRC Government for a 5-year term (eligible for a second term); election last held on 8 May 2022 (next to be held in 2027)"
+      },
+      "election results": {
+        "text": "<em><br>2022: </em>John LEE was the only candidate and won with over 99% of the vote by the Election Committee<em><br><br><em>2017</em>: </em>Carrie LAM elected; Election Committee vote - Carrie LAM (non-partisan) 777, John TSANG (non-partisan) 365, WOO Kwok-hing (non-partisan) 21, 23 ballots rejected (1,186 votes cast)"
+      },
+      "note": "<strong>note:</strong> electoral changes that Beijing imposed in March 2021 expanded the Election Committee to 1,500 members"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Legislative Council or LegCo"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "90"
+      },
+      "electoral system": {
+        "text": "20 members directly elected; 70 members indirectly elected"
+      },
+      "scope of elections": {
+        "text": "full"
+      },
+      "most recent election date": {
+        "text": "19 December 2021"
+      },
+      "parties elected and seats per party": {
+        "text": "Democratic Alliance for the Betterment and Progress of Hong Kong (DAB) 19, Federation of Hong Kong and Kowloon Labour Unions (HKFTU) 8, Business and Professionals Alliance for Hong Kong (BPA) 7, NPP 5, Liberal (LP) 4, New Territories Association of Societies (NTAS) 4, Hong Kong Federation of Education Workers (HKFEW) 2, Federation of Hong Kong and Kowloon Labour Unions (HKFLU) 2, Civil Force (CF) 2, Roundtable (RT) 1, Professional Power (PP) 1, Kowloon West New Dynamic (KWND) 1, New Prospect for Hong Kong (NPHK) 1, New Century Forum (NCF-1); other/independent 41"
+      },
+      "expected date of next election": {
+        "text": "December 2025"
+      },
+      "note": "<strong>note 1:</strong> all political candidates are evaluated by the Candidate Eligibility Review Committee (CERC), which was established in April 2022; CERC members are all appointed by the chief executive<br><br><strong>note 2:</strong> Hong Kong's leading pro-democracy political parties boycotted the 2021 election"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Court of Final Appeal (consists of the chief justice, 3 permanent judges, and 20 non-permanent judges); note - a sitting bench consists of the chief justice, 3 permanent judges, and 1 non-permanent judge"
+      },
+      "judge selection and term of office": {
+        "text": "all judges appointed by the Hong Kong Chief Executive upon the recommendation of the Judicial Officers Recommendation Commission, an independent body consisting of the Secretary for Justice, other judges, and judicial and legal professionals; permanent judges serve until normal retirement at age 65, but term can be extended; non-permanent judges appointed for renewable 3-year terms without age limit"
+      },
+      "subordinate courts": {
+        "text": "High Court (consists of the Court of Appeal and Court of First Instance); District Courts (includes Family and Land Courts); magistrates' courts; specialized tribunals"
+      }
+    },
+    "Political parties": {
+      "text": "Business and Professionals Alliance for Hong Kong or BPA <br>Civil Force or CF <br>Democratic Alliance for the Betterment and Progress of Hong Kong or DAB <br>Federation of Hong Kong and Kowloon Labour Unions or HKFLU <br>Hong Kong Federation of Education Workers or HKFEW <br>Hong Kong Federation of Trade Unions or HKFTU <br>Kowloon West New Dynamic or KWND<br>Liberal Party or LP <br>New Century Forum or NCF <br>New People's Party or NPP<br>New Prospect for Hong Kong or NPHK <br>New Territories Association of Societies or NTAS <br>Professional Power or PP <br>Roundtable or RT <br>Third Side or TS",
+      "note": "<strong>note 1:</strong> there is no political party ordinance, so there are no registered political parties; politically active groups register as societies or companies<br><br><strong>note 2:</strong> by the end of 2021, the leading pro-democracy figures in Hong Kong had been effectively removed from the political arena under the provisions of Beijing's 2021 electoral changes or via charges under the 2020 national security law; in addition, dozens of pro-democracy organizations, including political parties, unions, churches, civil rights groups, and media organizations have disbanded or closed; as of 2023, nearly all politically active groups were pro-Beijing"
+    },
+    "International organization participation": {
+      "text": "ADB, APEC, BIS, FATF, ICC (national committees), IHO, IMF, IMO (associate), Interpol (subbureau), IOC, ISO (correspondent), ITUC (NGOs), UNWTO (associate), UPU, WCO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "none (Special Administrative Region of China)"
+      },
+      "HKETO offices": {
+        "text": "New York, San Francisco, Washington DC"
+      },
+      "note": "<strong>Note</strong>:  Hong Kong is a Special Administrative Region of China and does not have a diplomatic presence; the Hong Kong Economic and Trade Office (HKETO) carries out normal liaison activities and communication with the US Government and other US entities; the position of the Hong Kong Commissioner to the US Government of the Hong Kong Special Administrative Region is vacant; address: 1520 18th Street NW, Washington, DC 20036; telephone: [1] (202) 331-8947; FAX: [1] (202) 331-8958; email:  hketo@hketowashington.gov.hk; website: https://www.hketowashington.gov.hk/"
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Consul General Gregory MAY (since September 2022); note - also accredited to Macau"
+      },
+      "embassy": {
+        "text": "26 Garden Road, Central, Hong Kong"
+      },
+      "mailing address": {
+        "text": "8000 Hong Kong Place, Washington DC&nbsp; 20521-8000"
+      },
+      "telephone": {
+        "text": "[852] 2523-9011"
+      },
+      "FAX": {
+        "text": "[852] 2845-1598"
+      },
+      "email address and website": {
+        "text": "<br>acshk@state.gov<br><br>https://hk.usconsulate.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "red with a stylized, white, five-petal Bauhinia flower in the center; each petal contains a small, red, five-pointed star in its middle; the red color is the same as that on the Chinese flag and represents the motherland; the fragrant Bauhinia - developed in Hong Kong the late 19th century - has come to symbolize the region; the five stars echo those on the flag of China"
+    },
+    "National symbol(s)": {
+      "text": "orchid tree flower; national colors: red, white"
+    },
+    "National anthem": {
+      "text": "<p><strong>note:</strong> as a Special Administrative Region of China, \"Yiyongjun Jinxingqu\" is the official anthem (see China)</p>"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income tourism- and services-based economy; global financial hub; COVID-19 and political protests fueled recent recession; ongoing recovery but lower-skilled unemployment remains high; investing in job-reskilling programs"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$485.834 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$470.421 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$488.412 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "3.28% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "-3.68% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "6.45% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$64,500 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$64,000 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$65,900 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$380.812 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "2.1% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "1.88% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "1.57% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "AA- (2020)"
+      },
+      "Moody's rating": {
+        "text": "Aa3 (2020)"
+      },
+      "Standard & Poors rating": {
+        "text": "AA+ (2017)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0% (2023 est.)"
+      },
+      "industry": {
+        "text": "6.3% (2023 est.)"
+      },
+      "services": {
+        "text": "91.5% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "70.6% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "13.3% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "16.8% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "-1.3% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "176.8% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-176% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "pork, chicken, spinach, vegetables, game meat, pork offal, fruits, onions, lettuce, pork fat (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "trading and logistics, financial services, professional services, tourism, cultural and creative, clothing and textiles, shipping, electronics, toys, clocks and watches"
+    },
+    "Industrial production growth rate": {
+      "text": "4.59% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "3.876 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "3.93% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "4.32% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "5.17% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "10.5% (2023 est.)"
+      },
+      "male": {
+        "text": "11.3% (2023 est.)"
+      },
+      "female": {
+        "text": "9.6% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "19.9% (2016 est.)"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2016": {
+        "text": "53.9 (2016 est.)"
+      }
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "11.5% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "0.7% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "1.8%"
+      },
+      "highest 10%": {
+        "text": "38.1% (2016)"
+      }
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "0.11% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.12% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.12% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$70.124 billion (2020 est.)"
+      },
+      "expenditures": {
+        "text": "$105.849 billion (2020 est.)"
+      }
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "0.1% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "23.2% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$34.901 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "$36.525 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$43.659 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$673.189 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$697.583 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$752.621 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "China 21%, India 13%, Netherlands 6%, Switzerland 4%, US 3% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "gold, integrated circuits, gas turbines, broadcasting equipment, machine parts (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$670.434 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$682.881 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$732.087 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 44%, Taiwan 11%, Singapore 8%, South Korea 5%, Japan 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "integrated circuits, broadcasting equipment, machine parts, gold, jewelry (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$425.554 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$424.03 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$496.867 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Hong Kong dollars (HKD) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "7.83 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "7.831 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "7.773 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "7.757 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "7.836 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "13.388 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "44.677 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "12.573 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "3.834 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "99.4% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.2% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "0.4% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "consumption": {
+        "text": "6.217 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "800 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "5.681 million metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "96 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "414,000 bbl/day (2022 est.)"
+      }
+    },
+    "Natural gas": {
+      "consumption": {
+        "text": "4.835 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "4.835 billion cubic meters (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "87.498 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "14.039 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "63.975 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "9.484 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "167.815 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "3.487 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "47 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "23.8 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "292 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Hong Kong&rsquo;s telecommunications sector continues to stay near the top of world rankings for the industry; it has kept its #1 spot in the Asian region in terms of the maturity of its telecom market &ndash; a reflection of the high penetration rates across mobile, mobile broadband, and fixed broadband; even fixed-line teledensity in Hong Kong is impressive at over 50%, although it too has started a gradual decline in keeping with most other telecom markets around the world, as consumers slowly transition over to the mobile platform for all of their communication needs (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line is over 51 per 100 and mobile-cellular is 319 subscriptions per 100 (2021)"
+      },
+      "international": {
+        "text": "country code - 852; landing points for the AAE-1, AAG, APCN-2, APG, ASE, FEA, FNAL, RNAL, H2HE, SeaMeWe-3, SJC and TGN-IA submarine cables that provide connections to Asia, US, Australia, the Middle East, and Europe; satellite earth stations - 3 Intelsat (1 Pacific Ocean and 2 Indian Ocean); coaxial cable to Guangzhou, China (2022)"
+      }
+    },
+    "Broadcast media": {
+      "text": "34 commercial terrestrial TV networks each with multiple stations; multi-channel satellite and cable TV systems available; 3 licensed broadcasters of terrestrial radio, one of which is government funded, operate about 12 radio stations; note - 4 digital radio broadcasters operated in Hong Kong from 2010 to 2017, but all digital radio services were terminated in September 2017 due to weak market demand (2019)"
+    },
+    "Internet country code": {
+      "text": ".hk"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "96% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "2.97 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "40 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "12 (2020) (registered in China)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "275 (registered in China)"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "47,101,822 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "12,676,720,000 (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "B-H"
+    },
+    "Airports": {
+      "text": "3 (2024)"
+    },
+    "Heliports": {
+      "text": "94 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "2,193 km"
+      },
+      "paved": {
+        "text": "2,193 km (2021)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "2,537 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 1,047, container ship 560, general cargo 144, oil tanker 394, other 392"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "1 (2024)"
+      },
+      "large": {
+        "text": "1"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "0"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Hong Kong"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular indigenous military forces; Hong Kong Police Force (specialized units include the Police Counterterrorism Response Unit, the Explosive Ordnance Disposal Bureau, the Special Duties Unit, the Airport Security Unit, and the VIP Protection Unit) (2024)",
+      "note": "<strong>note: </strong>the Hong Kong garrison of China's People's Liberation Army (PLA) includes elements of the PLA Army, PLA Navy, and PLA Air Force; these forces are under the direct leadership of the Central Military Commission in Beijing and under administrative control of the adjacent Southern Theater Command"
+    },
+    "Military - note": {
+      "text": "defense is the responsibility of China"
+    }
+  },
+  "Transnational Issues": {
+    "Trafficking in persons": {
+      "tier rating": {
+        "text": "Tier 2 Watch List — the government did not demonstrate overall increasing efforts to eliminate trafficking compared with the previous reporting period, therefore Hong Kong was downgraded to Tier 2 Watch List; for more details, go to:  https://www.state.gov/reports/2024-trafficking-in-persons-report/hong-kong/"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>modern banking system provides conduit for money laundering; groups involved in money laundering range from local street organizations to sophisticated international syndicates involved in assorted criminal activities, including drug trafficking; major source of precursor chemicals used in the production of illicit narcotics</p>"
+    }
+  }
+}

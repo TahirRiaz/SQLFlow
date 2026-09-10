@@ -1,0 +1,1056 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The first Austronesian settlers arrived in Samoa around 1000 B.C., and early Samoans traded and intermarried with Fijian and Tongan nobility. The fa’amatai system of titles and nobility developed, which dominates Samoan politics to this day; all but two seats in the legislature are reserved for matai, or heads of families. A Dutch explorer was the first European to spot the islands in 1722. Christian missionaries arrived in the 1830s and were followed by an influx of American and European settlers and influence. By the 1880s, Germany, the UK, and the US had trading posts and claimed parts of the kingdom. In 1886, an eight-year civil war broke out, with rival matai factions fighting over royal succession and the three foreign powers providing support to the factions. Germany, the UK, and the US all sent warships to Apia in 1889 and came close to conflict, but a cyclone damaged or destroyed the ships of all three navies.  <br><br>At the end of the civil war in 1894, Malietoa LAUPEPA was installed as king, but upon his death in 1898, a second civil war over succession broke out. When the war ended in 1899, the Western powers abolished the monarchy, giving the western Samoan islands to Germany and the eastern Samoan islands to the US. The UK abandoned claims in Samoa and received former German territory in the Solomon Islands. <br><br>New Zealand occupied Samoa during World War I but was accused of negligence and opposed by many Samoans, particularly an organized political movement called the Mau (“Strongly Held View”) that advocated for independence. During the 1918-1919 influenza pandemic, about 20% of the population died. In 1929, New Zealand police shot into a crowd of peaceful Mau protestors, killing 11, in an event known as Black Sunday. In 1962, Samoa became the first Polynesian nation to reestablish its independence as Western Samoa but dropped the “Western” from its name in 1997. The Human Rights Protection Party dominated politics from 1982 until Prime Minister FIAME Naomi Mata'afa's Fa'atuatua i le Atua Samoa ua Tasi (FAST) party gained a majority in elections in 2021."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Oceania, group of islands in the South Pacific Ocean, about halfway between Hawaii and New Zealand"
+    },
+    "Geographic coordinates": {
+      "text": "13 35 S, 172 20 W"
+    },
+    "Map references": {
+      "text": "Oceania"
+    },
+    "Area": {
+      "total ": {
+        "text": "2,831 sq km"
+      },
+      "land": {
+        "text": "2,821 sq km"
+      },
+      "water": {
+        "text": "10 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than Rhode Island"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "403 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical; rainy season (November to April), dry season (May to October)"
+    },
+    "Terrain": {
+      "text": "two main islands (Savaii, Upolu) and several smaller islands and uninhabited islets; narrow coastal plain with volcanic, rugged mountains in interior"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mount Silisili 1,857 m"
+      },
+      "lowest point": {
+        "text": "Pacific Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "hardwood forests, fish, hydropower"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "12.4% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 2.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 7.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 1.8% (2018 est.)"
+      },
+      "forest": {
+        "text": "60.4% (2018 est.)"
+      },
+      "other": {
+        "text": "27.2% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Population distribution": {
+      "text": "about three-quarters of the population lives on the island of Upolu"
+    },
+    "Natural hazards": {
+      "text": "<p>occasional cyclones; active volcanism</p><p><strong>volcanism:</strong> Savai'I Island (1,858 m), which last erupted in 1911, is historically active</p>"
+    },
+    "Geography - note": {
+      "text": "occupies an almost central position within Polynesia"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "208,853"
+      },
+      "male": {
+        "text": "105,920"
+      },
+      "female": {
+        "text": "102,933 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Samoan(s)"
+      },
+      "adjective": {
+        "text": "Samoan"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Samoan 96%, Samoan/New Zealander 2%, other 1.9% (2011 est.)",
+      "note": "<strong>note:</strong> data represent the population by country of citizenship"
+    },
+    "Languages": {
+      "text": "Samoan (Polynesian) (official) 91.1%, Samoan/English 6.7%, English (official) 0.5%, other 0.2%, unspecified 1.6% (2006 est.)"
+    },
+    "Religions": {
+      "text": "Protestant 54.9% (Congregationalist 29%, Methodist 12.4%, Assembly of God 6.8%, Seventh Day Adventist 4.4%, other Protestant 2.3%), Roman Catholic 18.8%, Church of Jesus Christ 16.9%, Worship Centre 2.8%, other Christian 3.6%, other 2.9% (includes Baha'i, Muslim), none 0.2% (2016 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "26.9% (male 28,952/female 27,173)"
+      },
+      "15-64 years": {
+        "text": "65.9% (male 70,225/female 67,427)"
+      },
+      "65 years and over": {
+        "text": "7.2% (2024 est.) (male 6,743/female 8,333)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "74.9"
+      },
+      "youth dependency ratio": {
+        "text": "66"
+      },
+      "elderly dependency ratio": {
+        "text": "8.9"
+      },
+      "potential support ratio": {
+        "text": "11.2 (2020 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "27.4 years (2024 est.)"
+      },
+      "male": {
+        "text": "27 years"
+      },
+      "female": {
+        "text": "27.8 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.65% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "18.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "5.4 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-6.9 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "about three-quarters of the population lives on the island of Upolu"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "17.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "-0.03% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "36,000 APIA (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.07 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.81 male(s)/female"
+      },
+      "total population": {
+        "text": "1.03 male(s)/female (2024 est.)"
+      }
+    },
+    "Maternal mortality ratio": {
+      "text": "59 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "17.3 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "20.9 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "13.6 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "75.7 years (2024 est.)"
+      },
+      "male": {
+        "text": "72.8 years"
+      },
+      "female": {
+        "text": "78.7 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "2.33 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.14 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "16.6% (2019/20)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 98% of population"
+      },
+      "improved: total": {
+        "text": "total: 98.4% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 2% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 1.6% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "5.3% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.6 physicians/1,000 population (2020)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 99.5% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 99.5% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.5% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.5% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0.5% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.5% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "47.3% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "2.18 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "2.01 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.17 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "25.3% (2020 est.)"
+      },
+      "male": {
+        "text": "36.1% (2020 est.)"
+      },
+      "female": {
+        "text": "14.5% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "3.4% (2019/20)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "61.7% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "0.9%"
+      },
+      "women married by age 18": {
+        "text": "7.4%"
+      },
+      "men married by age 18": {
+        "text": "2% (2020 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "4.8% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "99.1%"
+      },
+      "male": {
+        "text": "99%"
+      },
+      "female": {
+        "text": "99.3% (2021)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "soil erosion, deforestation, invasive species, overfishing"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "tropical; rainy season (November to April), dry season (May to October)"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "12.4% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 2.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 7.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 1.8% (2018 est.)"
+      },
+      "forest": {
+        "text": "60.4% (2018 est.)"
+      },
+      "other": {
+        "text": "27.2% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "17.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "-0.03% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.27% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "7.78 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "0.25 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "0.27 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "27,399 tons (2011 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "9,864 tons (2013 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "36% (2013 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "0 cubic meters (2017 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Independent State of Samoa"
+      },
+      "conventional short form": {
+        "text": "Samoa"
+      },
+      "local long form": {
+        "text": "Malo Sa'oloto Tuto'atasi o Samoa"
+      },
+      "local short form": {
+        "text": "Samoa"
+      },
+      "former": {
+        "text": "Western Samoa"
+      },
+      "etymology": {
+        "text": "the meaning of Samoa is disputed; some modern explanations are that the \"sa\" connotes&nbsp; \"sacred\" and \"moa\" indicates \"center,\" so the name can mean \"Holy Center\"; alternatively, some assertions state that it can mean \"place of the sacred moa bird\" of Polynesian mythology; the name, however, may go back to Proto-Polynesian (PPn) times (before 1000 B.C.); a plausible PPn reconstruction has the first syllable as \"sa'a\" meaning \"tribe or people\" and \"moa\" meaning \"deep sea or ocean\" to convey the meaning \"people of the deep sea\""
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Apia"
+      },
+      "geographic coordinates": {
+        "text": "13 49 S, 171 46 W"
+      },
+      "time difference": {
+        "text": "UTC+13 (18 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "name derives from the native village around which the capital was constructed in the 1850s; the village still exists within the larger modern capital"
+      }
+    },
+    "Administrative divisions": {
+      "text": "11 districts; A'ana, Aiga-i-le-Tai, Atua, Fa'asaleleaga, Gaga'emauga, Gagaifomauga, Palauli, Satupa'itea, Tuamasaga, Va'a-o-Fonoti, Vaisigano"
+    },
+    "Independence": {
+      "text": "1 January 1962 (from New Zealand-administered UN trusteeship)"
+    },
+    "National holiday": {
+      "text": "Independence Day Celebration, 1 June (1962); note - 1 January 1962 is the date of independence from the New Zealand-administered UN trusteeship, but it is observed in June"
+    },
+    "Legal system": {
+      "text": "mixed legal system of English common law and customary law; judicial review of legislative acts with respect to fundamental rights of the citizen"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous (preindependence); latest 1 January 1962"
+      },
+      "amendments": {
+        "text": "proposed as an act by the Legislative Assembly; passage requires at least two-thirds majority vote by the Assembly membership in the third reading - provided at least 90 days have elapsed since the second reading, and assent of the chief of state; passage of amendments affecting constitutional articles on customary land or constitutional amendment procedures also requires at least two-thirds majority approval in a referendum; amended several times, last in 2020"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Samoa"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "21 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "TUIMALEALI'IFANO Va&rsquo;aletoa Sualauvi II (since 21 July 2017)"
+      },
+      "head of government": {
+        "text": "Prime Minister FIAME Naomi Mata&rsquo;afa (since 24 May 2021)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the chief of state on the advice of the prime minister"
+      },
+      "elections/appointments": {
+        "text": "chief of state indirectly elected by the Legislative Assembly to serve a 5-year term (2-term limit); election last held on 23 August 2022 (next to be held in 2026); following legislative elections, the leader of the majority party is usually appointed prime minister by the chief of state, approved by the Legislative Assembly"
+      },
+      "election results": {
+        "text": "TUIMALEALI'IFANO Va&rsquo;aletoa Sualauvi II (independent) unanimously reelected by the Legislative Assembly"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Legislative Assembly (Fono)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "51 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "4/9/2021 to 11/26/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "Faatuatua ile Atua Samoa ua Tasi (FAST) (32); Human Rights Protection Party (HRPP) (22)"
+      },
+      "percentage of women in chamber": {
+        "text": "13%"
+      },
+      "expected date of next election": {
+        "text": "March 2026"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Court of Appeal (consists of the chief justice and 2 Supreme Court judges and meets once or twice a year); Supreme Court (consists of the chief justice and several judges)"
+      },
+      "judge selection and term of office": {
+        "text": "chief justice appointed by the chief of state upon the advice of the prime minister; other Supreme Court judges appointed by the Judicial Service Commission, a 3-member body chaired by the chief justice and includes the attorney general and an appointee of the Minister of Justice; judges normally serve until retirement at age 68"
+      },
+      "subordinate courts": {
+        "text": "District Court; Magistrates' Courts; Land and Titles Courts; village fono or village chief councils"
+      }
+    },
+    "Political parties": {
+      "text": "Fa'atuatua i le Atua Samoa ua Tasi or FAST <br>Human Rights Protection Party or HRPP <br>Tautua Samoa Party or TSP "
+    },
+    "International organization participation": {
+      "text": "ACP, ADB, AOSIS, C, FAO, G-77, IBRD, ICAO, ICCt, ICRM, IDA, IFAD, IFC, IFRCS, ILO, IMF, IMO, Interpol, IOC, IPU, ITU, ITUC (NGOs), MIGA, OPCW, PIF, Sparteca, SPC, UN, UNCTAD, UNESCO, UNIDO, UPU, WCO, WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Pa’olelei LUTERU (since 7 July 2021); note - also Permanent Representative to the UN"
+      },
+      "chancery": {
+        "text": "685 Third Avenue, 44th Street, 11th Floor, Suite 1102, New York, NY 10017"
+      },
+      "telephone": {
+        "text": "[1] (212) 599-6196"
+      },
+      "FAX": {
+        "text": "[1] (212) 599-0797"
+      },
+      "email address and website": {
+        "text": "<br>samoa@samoanymission.ws<br><br>About | Samoa Permanent Mission to the United Nations"
+      },
+      "consulate(s) general": {
+        "text": "Pago Pago (American Samoa)"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "the US Ambassador to New Zealand is accredited to Samoa"
+      },
+      "embassy": {
+        "text": "5th Floor, Accident Corporation Building, Matafele Apia"
+      },
+      "mailing address": {
+        "text": "4400 Apia Place, Washington DC 20521-4400"
+      },
+      "telephone": {
+        "text": "[685] 21-436"
+      },
+      "FAX": {
+        "text": "[685] 22-030"
+      },
+      "email address and website": {
+        "text": "<br>ApiaConsular@state.gov<br><br>https://ws.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "red with a blue rectangle in the upper hoist-side quadrant bearing five white, five-pointed stars representing the Southern Cross constellation; red stands for courage, blue represents freedom, and white signifies purity",
+      "note": "<strong>note:</strong> similar to the flag of Taiwan"
+    },
+    "National symbol(s)": {
+      "text": "Southern Cross constellation (five, five-pointed stars); national colors: red, white, blue"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"O le Fu'a o le Sa'olotoga o Samoa\" (The Banner of Freedom)"
+      },
+      "lyrics/music": {
+        "text": "Sauni Liga KURESA"
+      },
+      "note": "<strong>note:</strong> adopted 1962; also known as \"Samoa Tula'i\" (Samoa Arise)"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "ower middle-income Pacific island economy; enormous fishing and agriculture industries; significant remittances; growing offshore financial hub; recently hosted Pacific Games to drive tourism and infrastructure growth"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$1.366 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$1.258 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$1.328 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "8.58% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "-5.31% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "-7.08% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$6,300 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$5,800 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$6,200 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$938.189 million (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "8.12% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "10.96% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "3.13% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "11% (2023 est.)"
+      },
+      "industry": {
+        "text": "10.9% (2023 est.)"
+      },
+      "services": {
+        "text": "67.7% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "87.7% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "18.2% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "34.5% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "2.6% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "28.8% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-61.9% (2023 est.)"
+      },
+      "note": "<strong>note:</strong> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "coconuts, taro, bananas, tropical fruits, pineapples, mangoes/guavas, papayas, root vegetables, milk, pork (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "food processing, building materials, auto parts"
+    },
+    "Industrial production growth rate": {
+      "text": "-1.9% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "72,000 (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "9.75% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "9.92% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "10.37% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "19.8% (2023 est.)"
+      },
+      "male": {
+        "text": "13.4% (2023 est.)"
+      },
+      "female": {
+        "text": "29.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "21.9% (2018 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "28.24% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "33.61% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "29.43% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$342.18 million (2021 est.)"
+      },
+      "expenditures": {
+        "text": "$297.736 million (2021 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "49.1% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "25.02% (of GDP) (2021 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$39.968 million (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$74.107 million (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$114.446 million (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$346.189 million (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$175.377 million (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$97.774 million (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "India 23%, US 19%, NZ 12%, Hungary 8%, Poland 6% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "coconut oil, integrated circuits, insulated wire, citrus, power equipment (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$560.987 million (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$512.002 million (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$430.011 million (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 25%, Singapore 16%, NZ 14%, South Korea 7%, US 7% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, coated flat-rolled iron, fish, poultry, ships (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$447.09 million (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$321.163 million (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$294.682 million (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$289.446 million (2023 est.)"
+      },
+      "note": "<strong>note:</strong> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "tala (SAT) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "2.738 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "2.689 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "2.556 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "2.665 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "2.649 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "98.3% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "97.9%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "53,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "177.279 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "17.175 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "66.9% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "12.3% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "20.6% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "2,000 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "311,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "311,000 metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "20.949 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "5,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "2 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "134,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "60 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Samoa was one of the first Pacific Island countries to establish a regulatory infrastructure and to liberalize its telecom market; the advent of competition in the mobile market saw prices fall by around 50% and network coverage increase to more than 90% of the population; Samoa also boasts one of the highest rates of mobile phone coverage in the Pacific region; the growth of fixed-line internet has been impeded by factors including the high costs for bandwidth, under investment in fixed-line infrastructure; Samoa&rsquo;s telecoms sector has been inhibited by a lack of international connectivity; Samoa has had access to the Samoa-America-Samoa (SAS) cable laid in 2009, this cable has insufficient capacity to meet the country&rsquo;s future bandwidth needs; this issue was addressed with two new submarine cables that became available in 2018 and 2019; combined with the Samoa National Broadband Highway (SNBH), have improved internet data rates and reliability, and have helped to reduce the high costs previously associated with internet access in Samoa; in April 2022, the Samoan government announced its decision to take over control of the Samoa Submarine Cable Company, looking to the cable to generate additional revenue for the state (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line is 3 per 100 and mobile-cellular teledensity&nbsp; 32 telephones per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 685; landing points for the Tui-Samo, Manatua, SAS, and Southern Cross NEXT submarine cables providing connectivity to Samoa, Fiji,&nbsp;Wallis&nbsp;&amp; Futuna, Cook Islands, Niue, French Polynesia, American Samoa, Australia, New Zealand, Kiribati, Los Angeles (US), and Tokelau;&nbsp;satellite earth station - 1 Intelsat (Pacific Ocean) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "state-owned TV station privatized in 2008; 4 privately owned television broadcast stations; about a half-dozen privately owned radio stations and one state-owned radio station; TV and radio broadcasts of several stations from American Samoa are available (2019)"
+    },
+    "Internet country code": {
+      "text": ".ws"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "75% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "2,000 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "1 (2022 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "1 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "4"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "137,770 (2018)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "5W"
+    },
+    "Airports": {
+      "text": "3 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "1,150 km (2018)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "13 (2023)"
+      },
+      "by type": {
+        "text": "general cargo 3, oil tanker 1, other 9"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "1 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "0"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Apia"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular military forces; Ministry of Police, Prisons, and Correction Services: Samoa Police Force (2024)"
+    },
+    "Military - note": {
+      "text": "informal defense ties exist with New Zealand, which is required to consider any Samoan request for assistance under the 1962 Treaty of Friendship <br><br>Samoa has a \"shiprider\" agreement with the US, which allows local maritime law enforcement officers to embark on US Coast Guard (USCG) and US Navy (USN) vessels, including to board and search vessels suspected of violating laws or regulations within Somoa's designated exclusive economic zone (EEZ) or on the high seas; \"shiprider\" agreements also enable USCG personnel and USN vessels with embarked USCG law enforcement personnel to work with host nations to protect critical regional resources (2024)"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

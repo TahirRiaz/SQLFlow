@@ -1,0 +1,39 @@
+# Ports frida_vehicles.py: OAuth2 client-credentials with OIDC discovery (the token endpoint is resolved from
+# the .well-known document), plus page-number pagination.
+flowType: api
+name: Frida_Vehicles
+batch: frida
+
+source:
+  transport: http
+  baseUrl: https://kolumbus.frida.nordicport.se
+  auth:
+    type: oauth2_client_credentials
+    token:
+      discoveryUrl: https://login.frida.nordicport.se/realms/kolumbus/.well-known/openid-configuration
+      bodyKind: form
+      body:
+        grant_type: client_credentials
+        client_id: kolumbus-internal-datavarehus-1
+        client_secret: ${keyvault:dw-keyvault-prod/frida-client-secret}
+        scope: fridaApi
+      tokenPath: access_token
+  request:
+    method: GET
+    path: /api/vehicle/vehicles
+    query:
+      pageSize: "100"
+  pagination:
+    strategy: page
+    pageParam: page
+    startPage: 1
+    recordsPath: $.Items
+    maxPages: 200
+  reliability:
+    rateLimitRps: 10
+    urlAllowlist: ["*.nordicport.se"]
+
+landing:
+  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/kolumbus/frida
+  pathTemplate: "history/{yyyy}/vehicles_{yyyyMMdd}_{page}"
+  format: json

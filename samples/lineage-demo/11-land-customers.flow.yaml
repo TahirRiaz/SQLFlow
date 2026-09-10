@@ -1,0 +1,11 @@
+# Landing flow: customers.csv -> raw string pre table + typed transformation view (demo.vCustomers_Pre).
+name: demo-land-customers
+source:
+  type: csv
+  location: data/customers.csv
+target:
+  connection: ${env:SQLFLOW_DEMO_DB}
+  schema: demo
+  table: Customers_Pre
+transform:
+  inferTypes: true

@@ -1,0 +1,16 @@
+# arrayHandling: first_element flattens the first element of an array in place. Here the first line
+# item's fields become lines_sku and lines_qty columns.
+name: Json_ArrayFirst
+source:
+  type: json
+  location: ./data/lineitems.json
+  options:
+    arrayHandling: first_element
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_ArrayFirst
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

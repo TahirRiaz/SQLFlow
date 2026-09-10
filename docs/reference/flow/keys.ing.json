@@ -1,0 +1,1116 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "ing",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 122,
+  "keys": [
+    {
+      "path": "assertions",
+      "type": "list<object>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Inline data-quality assertion declarations for this ing document, bound to List<IngestionAssertionYaml> (src/SqlFlow.Yaml/IngestionYaml.cs:40) and mapped by YamlIngestionFlowLoader.MapAssertions (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:97,485-518) into two artifacts from the SAME list: the ordered list of names on IngestionFlow.Assertions (src/SqlFlow.Core/Ingestion/IngestionFlow.cs:82), and the full {name, expression, mode} records on IngestionDocument.AssertionDefinitions (src/SqlFlow.Core/Ingestion/AssertionDefinition.cs:7-18; assigned at YamlIngestionFlowLoader.cs:229). The document's AssertionDefinitions become an InMemoryAssertionDefinitionStore (src/SqlFlow.Core/Ingestion/InMemoryAssertionDefinitionStore.cs), which WithoutDatabaseIngestion.BuildRunner (src/SqlFlow.SqlServer/Ingestion/WithoutDatabaseIngestion.cs:61) wraps in the SAME AssertionRunner used by full (control-database) mode. Which declared assertions actually run depends on assertions[].mode: a normal ingestion run evaluates only the auto-mode assertions (step 7c calls AssertionRunner.RunAsync with includeManual:false, IngestionFlowRunner.cs:596; the manual ones are skipped by the gate at AssertionRunner.cs:51-55), while an assertions-only run (sqlflow run --assertions-only, RunParameters.AssertionsOnly) passes includeManual:true and evaluates the whole list, auto and manual alike (IngestionFlowRunner.cs:794). The engine's own IngestionFlowRunner default (NullAssertionRunner, runs nothing) applies only when a caller constructs the runner without wiring any assertion runner (IngestionFlowRunner.cs:138).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:40"
+    },
+    {
+      "path": "assertions[]",
+      "type": "object",
+      "required": false,
+      "description": "One assertion declaration; binds to IngestionAssertionYaml {name, expression, mode} (src/SqlFlow.Yaml/IngestionYaml.cs:182-190). 'mode' is optional (default auto) and is documented under assertions[].mode below.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:182-190 (mapped by YamlIngestionFlowLoader.MapAssertions, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:485-518)",
+      "validation": "An entry missing name fails with FlowValidationException \"<source>: 'assertions[<i>].name' is required.\"; an entry missing expression fails with \"<source>: 'assertions[<i>].expression' is required.\" (YamlIngestionFlowLoader.cs:499-502). A case-insensitive duplicate name across the list fails with \"<source>: assertion '<name>' is declared more than once.\" (YamlIngestionFlowLoader.cs:503-506)."
+    },
+    {
+      "path": "assertions[].expression",
+      "type": "string",
+      "required": true,
+      "description": "T-SQL query template run against the loaded TARGET after the load commits and after surrogate-key generation (IngestionFlowRunner.cs:500-509); may contain the @TableName and @FilterCriteria macros, which AssertionRunner substitutes by plain string REPLACE before executing (AssertionRunner.cs:49-51), exactly as legacy. @TableName becomes the flow's two-part, bracket-escaped target name (e.g. [dbo].[Orders_DW]); @FilterCriteria becomes the flow's source.incrementalClause, or an empty string when unset (AssertionRunner.cs:37-38). The materialized statement runs with a 3600-second command timeout; its first row's first column becomes AssertionResult.Result and, when a second column is present, its value becomes AssertionResult.AssertedValue (AssertionRunner.cs:91-112). A statement that is blank after macro substitution is skipped entirely, recording no result for it (AssertionRunner.cs:52-55).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:185",
+      "validation": "Missing, null, empty, or whitespace-only throws FlowValidationException \"<source>: 'assertions[<i>].expression' is required.\" (YamlIngestionFlowLoader.cs:501-502). At run time, an unhandled exception while executing the materialized statement (e.g. a SQL error) is caught per-assertion and surfaced as Evaluated=false, Result=\"0\", AssertedValue=\"\", with the exception message as Error; it never fails or rolls back the run, and the remaining assertions still run (AssertionRunner.cs:72-85)."
+    },
+    {
+      "path": "assertions[].name",
+      "type": "string",
+      "required": true,
+      "description": "The assertion's unique name (matched case-insensitively across the whole assertions list); becomes the string stored in IngestionFlow.Assertions and the lookup key AssertionRunner uses against the document's InMemoryAssertionDefinitionStore (itself case-insensitive, InMemoryAssertionDefinitionStore.cs:16) to fetch the matching expression at run time. A name with no matching definition is silently dropped from the run rather than erroring (AssertionRunner.cs:43-47), preserving list order (the legacy control-database INNER JOIN semantics); in the YAML path every declared name always has a matching definition, so this only surfaces if a caller constructs the store independently of this loader.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:184",
+      "validation": "Missing, null, empty, or whitespace-only throws FlowValidationException \"<source>: 'assertions[<i>].name' is required.\" (YamlIngestionFlowLoader.cs:499-500). A case-insensitive duplicate across the assertions list throws \"<source>: assertion '<name>' is declared more than once.\" (YamlIngestionFlowLoader.cs:503-506). InMemoryAssertionDefinitionStore itself separately guards against a duplicate with SqlFlowException \"Duplicate assertion name '<name>'.\" (InMemoryAssertionDefinitionStore.cs:19-22), but the loader's own check above always fires first for a document loaded through this loader."
+    },
+    {
+      "path": "assertions[].mode",
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "enumValues": [
+        "auto",
+        "manual"
+      ],
+      "description": "When this assertion evaluates. 'auto' (the default) runs it as step 7c of every normal ingestion run; 'manual' reserves it for an on-demand assertions-only run (sqlflow run --assertions-only), which evaluates the flow's whole assertion list, auto and manual alike. Parsed by YamlDocumentParts.ParseExecutionMode into AssertionDefinition.Mode (mapped at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:513), backed by the ExecutionMode enum (Auto=0, Manual=1). The normal load path passes includeManual:false so manual assertions are skipped there (AssertionRunner.cs:51-55, IngestionFlowRunner.cs:596); the assertions-only path passes includeManual:true (IngestionFlowRunner.cs:794).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:189 (mapped at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:513; model src/SqlFlow.Core/Ingestion/AssertionDefinition.cs:17, enum src/SqlFlow.Core/Runs/ExecutionMode.cs)"
+    },
+    {
+      "path": "batch",
+      "type": "string",
+      "required": false,
+      "default": "null (unset)",
+      "description": "Optional grouping label for this ingestion document, mapped to IngestionFlow.Batch via NullIfBlank(y.Batch) (blank/whitespace normalizes to null; otherwise kept verbatim, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:182). It is stamped onto the written run record for the run-log entry and used by the legacy control-database path as a grouping key; it is unrelated to a flowType: batch document, whose members are selected by file-glob patterns over the repository, not by this label.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:11 (mapped at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:182; model src/SqlFlow.Core/Ingestion/IngestionFlow.cs:51)"
+    },
+    {
+      "path": "change",
+      "type": "object",
+      "required": false,
+      "default": "{ hashColumns: [], hashType: null, ignoreColumnsInHash: [] }",
+      "description": "Optional block controlling change detection: whether a legacy-style HashKey_DW column is added to the target schema, which HASHBYTES algorithm the upsert's own per-row change checksum uses, and which columns that checksum ignores. Binds to IngestionChangeYaml and is mapped by YamlIngestionFlowLoader.MapChange to SqlFlow.Core.Ingestion.ChangePolicy (YamlIngestionFlowLoader.cs:328-341); absent and present-but-empty both produce the same all-off defaults.",
+      "definedIn": "src/SqlFlow.Core/Ingestion/IngestionFlow.cs:76"
+    },
+    {
+      "path": "change.hashColumns",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (no HashKey_DW column added)",
+      "description": "Gates whether a HashKey_DW binary column is added to the TARGET schema (never to staging, since the production runner only ever calls IngestionSchemaBuilder.Build with forStaging: false and derives the canonical staging columns directly from the introspected source columns, bypassing the builder entirely, per IngestionFlowRunner.cs:240-248; note the builder method itself does not gate this by forStaging (only identity injection is so gated), confirmed by IngestionSchemaBuilderTests.HashKey_InjectedWithAlgorithmSizedType, which calls Build with forStaging: true and still gets HashKey_DW): ChangePolicy.HasHashKey is 'HashColumns.Count > 0' (IngestionPolicies.cs:106), and IngestionSchemaBuilder.AddHashKey adds the column only when HasHashKey is true and no column of that name already exists (IngestionSchemaBuilder.cs:112-127), sized by change.hashType (or the SHA2_256 default) via HashKey.BinaryTypeFor. The listed column NAMES themselves are not otherwise consumed anywhere in the engine: they do not select which columns feed the actual per-row change-detection checksum (that is instead automatic: every non-key, non-excluded, checksum-comparable data column, via UpsertGenerator's Checksum helper, UpsertGenerator.cs:172-178,657-658; confirmed UpsertOptions has no HashColumns-shaped property at all), and they do not populate the HashKey_DW column itself (no generated INSERT or UPDATE statement in UpsertGenerator ever references 'HashKey_DW' or HashKey.ColumnName by name), so once created it stays perpetually NULL for every row the keyed upsert touches. In short, a non-empty list only adds a dormant schema column sized for the chosen algorithm; it does not otherwise change what is hashed or compared.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:89 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:98)"
+    },
+    {
+      "path": "change.hashType",
+      "type": "string",
+      "required": false,
+      "default": "null (engine default SHA2_256, HashKey.DefaultAlgorithm)",
+      "enumValues": [
+        "SHA2_512",
+        "SHA2_256",
+        "SHA1",
+        "MD5"
+      ],
+      "appliesWhen": "a keyed flow (validated unconditionally then, regardless of change.hashColumns)",
+      "description": "Selects the HASHBYTES algorithm for the upsert's per-row change-detection checksum, and, only when change.hashColumns is non-empty, sizes the injected HashKey_DW column to match. Consumed unconditionally for any keyed flow: IngestionFlowRunner sets 'UpsertOptions.HashAlgorithm = string.IsNullOrWhiteSpace(flow.Change.HashType) ? HashKey.DefaultAlgorithm : flow.Change.HashType' (IngestionFlowRunner.cs:909), and UpsertGenerator.GenerateStatements validates it via 'HashKey.BinaryTypeFor(options.HashAlgorithm)' before generating any statement (UpsertGenerator.cs:167), so an invalid value fails the run even when change.hashColumns is empty. The value is validated case-insensitively (HashKey.BinaryTypeFor upper-cases its own local copy for comparison, HashKey.cs:17) but is embedded into the generated 'HASHBYTES(''<value>'', ...)' call text exactly as authored, with no case normalization applied to the string actually used in the generated SQL (UpsertGenerator.Checksum, UpsertGenerator.cs:657-658). Unlike the sibling file flow's source.options.hashKeyType, this field's matching does NOT strip separators: only Trim + ToUpperInvariant is applied (HashKey.cs:17), so a spelling like 'SHA2-256' (dash instead of underscore) does not match 'SHA2_256' here. Two further accepted legacy synonyms map to the same byte sizes as their canonical counterparts: 'SHA' behaves like SHA1 (20 bytes) and 'MD2'/'MD4' behave like MD5 (16 bytes).",
+      "validation": "\"Unknown hash algorithm '<value>'. Valid values: SHA2_512, SHA2_256, SHA1, MD5 (also MD2, MD4, SHA).\" (HashKey.cs:24-25), raised by HashKey.BinaryTypeFor and reachable from two call sites: IngestionSchemaBuilder.AddHashKey (only when change.hashColumns is non-empty, while building the target schema) and UpsertGenerator.GenerateStatements (always, for any keyed flow, at the very start of generating the upsert).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:90 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:102)"
+    },
+    {
+      "path": "change.ignoreColumnsInHash",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (every comparable non-key column participates in the change checksum)",
+      "appliesWhen": "a keyed flow",
+      "description": "Source column names excluded from the upsert's per-row change-detection checksum; they are still copied by the UPDATE's SET list, they simply do not count toward 'did this row change'. IngestionFlowRunner.BuildLoadStatements maps each entry from its source name to its bulk-copied target name via the column-name map and adds the mapped name to the exclusion set (IngestionFlowRunner.cs:864-870); an entry that does not resolve to a bulk-copied column (a typo, or a name that is ignored/virtual) is silently dropped with no error. This set is unioned with an automatic, non-configurable exclusion of columns whose SQL type cannot participate in HASHBYTES/CONCAT: xml, geography, geometry, hierarchyid, image, text, ntext, varbinary, binary, rowversion, timestamp, sql_variant (IngestionFlowRunner.cs:638-642,872-878). If every comparable data column ends up excluded (by this list, by type, or both), the UPDATE branch drops its change predicate entirely and unconditionally rewrites every matched row on every run (legacy semantics: better to over-update than never update, UpsertGenerator.cs:196-199).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:91 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:104)"
+    },
+    {
+      "path": "description",
+      "type": "string",
+      "required": false,
+      "default": "null (unset)",
+      "description": "Free-text description of the flow, bound to IngestionFlow.Description. A blank or whitespace-only value is normalized to null; YamlIngestionFlowLoader.Map does this with its own inline check (`string.IsNullOrWhiteSpace(y.Description) ? null : y.Description`, YamlIngestionFlowLoader.cs:184) rather than routing through the shared YamlDocumentParts.NullIfBlank helper the way source.dataSetColumn and target.identityColumn do (the two are logically equivalent, NullIfBlank is itself just `string.IsNullOrWhiteSpace(value) ? null : value`, but this field does not literally call that helper). Unlike 'name', the surviving non-blank value is NOT trimmed: there is no `.Trim()` call, in contrast to name's `y.Name.Trim()`. So authored leading/trailing whitespace around real content is preserved verbatim. Purely descriptive metadata: not read anywhere else in YamlIngestionFlowLoader.cs or IngestionFlowRunner.cs beyond being carried on the model.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:13 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:184; model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:57)"
+    },
+    {
+      "path": "incremental",
+      "type": "object",
+      "required": false,
+      "default": "{ columns: [], dateColumn: null, overlapDays: 7, lookback: 0, fullLoad: false, fetchMinValuesFromSource: false } (MapIncremental produces these defaults even when the whole block is absent)",
+      "description": "Optional incremental-capture block bounding the source read to rows newer than what the target already has. Bound from IngestionYaml.Incremental and mapped by MapIncremental (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:377-392) onto IngestionFlow.Incremental (IncrementalPolicy). Consumed by IncrementalWindowResolver.ResolveAsync (src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs), which probes MAX (and optionally MIN) watermarks and builds the source WHERE fragment appended after 'WHERE 1=1'. IncrementalPolicy.IsIncremental (columns non-empty OR dateColumn set, IngestionPolicies.cs:228) decides whether any probing happens at all; when false the flow reads the whole source every run (optionally narrowed only by source.filter), and a keyless flow inserts-all while a keyed flow still upserts. This whole block, and IncrementalWindowResolver itself, is bypassed entirely on any run where initLoad.enabled is true (IngestionFlowRunner.cs:279-309 builds the window directly as an unconditional full load and never calls ResolveAsync).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:25 (model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:79, src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:194)"
+    },
+    {
+      "path": "incremental.columns",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Non-date high-water columns. Each contributes a MAX(column) probe against the target (or MIN(column) against the source when fetchMinValuesFromSource applies the wider bound); the results are combined with AND across every column plus dateColumn into the source read's predicate, using a strict '>' comparison (or '>=' when the source minimum is used) (BuildMarkList/BuildPredicates, IncrementalWindowResolver.cs:415-436,289-307). Unlike dateColumn, a plain incremental.columns mark is not shifted by overlapDays, which subtracts only from the date mark: its safety rewind is incremental.lookback, subtracted from the MAX (and the source MIN) in key units instead of days, and applied only when the column's type is one arithmetic applies to.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:114 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:198)"
+    },
+    {
+      "path": "incremental.columns[]",
+      "type": "string",
+      "required": false,
+      "description": "One non-date high-water column name. Blank entries are skipped and a name repeated case-insensitively is only added once to the mark list (BuildMarkList's seen-set, IncrementalWindowResolver.cs:417-425).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:114 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:198)",
+      "validation": "A name not found among the introspected source columns throws SqlFlowException \"Incremental column '<column>' is not among the source columns.\" when the mark list is built (IncrementalWindowResolver.cs:439-442, TypeFor)."
+    },
+    {
+      "path": "incremental.dateColumn",
+      "type": "string",
+      "required": false,
+      "description": "Date/datetime watermark column: MAX(dateColumn) is probed on the target and shifted back overlapDays days (DATEADD(day, -overlapDays, MAX(...)), IncrementalWindowResolver.cs:232-234) to bound the source read; with fetchMinValuesFromSource, MIN(dateColumn) is probed on the source with the same shift (IncrementalWindowResolver.cs:253-255) and may widen the window. When the target is created on this run and this column is set, it is also mapped to its cleaned target name and passed to CanonicalIndexPlanner as the column for the automatic NCI_DateColumn index created the first time the target exists (IngestionFlowRunner.cs:361-364; CanonicalIndexPlanner.cs:42-45). It is also the ONLY date column InitLoadPlanner can chunk by when initLoad.batchBy is 'M' or 'D': the ing document has no separate InitLoad-specific date column (InitLoadPlanner.cs:33). When both this and incremental.columns are blank, IncrementalPolicy.IsIncremental is false and the flow reads the whole source every run.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:115 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:201)",
+      "validation": "Required when initLoad.enabled is true and initLoad.batchBy is 'M' or 'D': SqlFlowException \"InitLoad by date requires Incremental.DateColumn to be set.\" (InitLoadPlanner.cs:37-40) when blank."
+    },
+    {
+      "path": "incremental.fetchMinValuesFromSource",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "When true, after a non-empty target MAX watermark is found, a second probe reads MIN(dateColumn)/MIN(columns) from the SOURCE (the date mark shifted back by the same overlapDays, so the two probes are symmetric; ProbeMinAsync, IncrementalWindowResolver.cs:240-257). If the source minimum is strictly less than the target maximum for any mark (SourceMinIsLess, comparing by the mark's runtime CLR type: byte arrays byte-by-byte, numerics via decimal/double, DateTimeOffset, DateTime, or IComparable/ordinal string as a last resort; IncrementalWindowResolver.cs:309-379), every mark's effective bound switches to the source MIN values and the comparison operator becomes inclusive '>=' instead of strict '>' (IncrementalWindowResolver.cs:146-158), reprocessing the source's full history through the keyed upsert. When false (the default), only the target MAX is used with a strict '>' comparison and no source probe runs.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:118 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:212)"
+    },
+    {
+      "path": "incremental.fullLoad",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Forces the source WHERE fragment to omit the incremental/date predicates for this run, passed as AssembleWhere's fullLoadFlag (IncrementalWindowResolver.cs:166,180-213): with it true, and unless the flow also carries a non-append source.filter (filterIsAppend: false, which wins regardless), the source is read with no incremental bound at all; an append-mode source.filter is still concatenated afterward. This flag does NOT skip the target MAX (or source MIN, with fetchMinValuesFromSource) probe when incremental.columns/dateColumn are configured: the probe still executes and is still traced/logged (TargetMaxProbeSql/SourceMinProbeSql), its computed predicates are simply discarded from the final WHERE. It also does not by itself force the run onto the insert-all apply path: IncrementalWindow.RunFullLoad (surfaced only for observability on the run result) is computed from whether the target is empty or the flow is keyless, independent of this flag, so a keyed flow with fullLoad true still resolves RunFullLoad as false and applies via the keyed upsert against a full, unfiltered source read (integration-tested by IncrementalWindowIntegrationTests.FullLoadFlag_ReadsWholeSource, which confirms the empty SourceWhere and the reconciling upsert but does not itself assert RunFullLoad).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:117 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:208)"
+    },
+    {
+      "path": "incremental.lookback",
+      "type": "int",
+      "required": false,
+      "default": "0 (applied in the loader itself, MapIncremental: y.Lookback ?? 0, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:468), which reproduces the legacy bare MAX(column) so no existing flow changes behaviour until it opts in",
+      "description": "The numeric counterpart of overlapDays: the value subtracted from a NON-DATE watermark's aggregate before it bounds the source read, so the target probe emits 'MAX([col]) - <lookback>' instead of a bare 'MAX([col])' (ProbeMaxAsync, IncrementalWindowResolver.cs:334-342) and, when fetchMinValuesFromSource widens the window, 'MIN(col) - <lookback>' on the source in the source dialect's quoting as well (ProbeMinAsync, IncrementalWindowResolver.cs:385-393), so both sides shift by the same amount and the comparison stays symmetric. Like the DATEADD it mirrors, the shift is applied to the aggregate inside the probe rather than to the predicate afterwards, so the watermark value a run reports is the value the read was actually bounded by. Applies ONLY to marks stamped IsDate false (the incremental.columns entries); the dateColumn mark keeps its overlapDays DATEADD and ignores this key entirely, and a flow that declares both gets each shift on its own mark. Why a numeric watermark needs a rewind at all: a monotonic key is monotonic in the order ids are ALLOCATED, not the order rows become VISIBLE, so a source that hands out an identity/auto-increment value at INSERT but publishes the row at COMMIT lets a reader see id N+k while N is still in flight; a bare MAX advances past N and the next run's strict '>' can never reach back down to it, so the row is skipped permanently and silently (in the estate the loss shows up as contiguous blocks of missing ids, each starting at exactly the previous run's watermark plus one). Size it in KEY UNITS, not days: comfortably above the number of ids that can be in flight at once. The re-read window it opens is reconciled by the keyed upsert, so a keyed flow re-reads rows it already holds and inserts nothing new; a KEYLESS flow (no load.keyColumns) appends the re-read rows again, which is the one configuration where a lookback duplicates data. The shift is silently SKIPPED, with no warning and no error, for a watermark column arithmetic does not apply to: only tinyint, smallint, int, bigint, decimal, numeric, money and smallmoney receive it, so a string, binary, rowversion or approximate (float/real) high-water column keeps its bare MAX rather than being fed a subtraction the source would reject (NumericLookback, IncrementalWindowResolver.cs:519-536). A value of 0 or less is inert and reproduces the bare MAX.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:153 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:218)"
+    },
+    {
+      "path": "incremental.overlapDays",
+      "type": "int",
+      "required": false,
+      "default": "7 (applied in the loader itself, MapIncremental: y.OverlapDays ?? 7; note this differs from the file-flow document's incremental.overlapDays, which defaults to 0)",
+      "description": "Days subtracted from the probed MAX(dateColumn) watermark on the target (DATEADD(day, -overlapDays, MAX(...)), IncrementalWindowResolver.cs:232-234), and, when fetchMinValuesFromSource widens the window, from the source MIN(dateColumn) probe as well via the source dialect's DateSubtractDays (IncrementalWindowResolver.cs:253-255; for SQL Server, DATEADD(day, -overlapDays, ...), src/SqlFlow.SqlServer/SqlServerSourceProvider.cs:28), so both sides shift by the same amount and the comparison stays symmetric. Applies ONLY to the dateColumn mark; a plain incremental.columns mark is rewound by incremental.lookback instead, never by this key. No load-time or probe-time validation rejects a negative value; because the SQL Server dialect renders it as a literal '-{overlapDays}' inside DATEADD and the probe SQL is generated as a single-line string, a negative number embeds as a double minus (for example 'DATEADD(day, --5, MAX(...))'), which SQL Server would parse as a line comment truncating the rest of the statement, failing as a raw T-SQL syntax error at run time rather than a validated message.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:116 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:204)"
+    },
+    {
+      "path": "initLoad",
+      "type": "object",
+      "required": false,
+      "default": "{ enabled: false } (FromDate/ToDate/BatchBy/BatchSize/KeyColumn/KeyMaxValue all null; InitLoadPlanner's own fallbacks such as batchBy 'M', batchSize 1, and keyMaxValue 10000000 are applied only when Plan() actually runs, i.e. only once enabled is true)",
+      "description": "Optional one-time chunked-backfill block (legacy InitLoad family). Bound from IngestionYaml.InitLoad and mapped by MapInitLoad (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:394-411) onto IngestionFlow.InitLoad (InitLoadPolicy). When initLoad.enabled is true, IngestionFlowRunner bypasses IncrementalWindowResolver entirely and instead chunks the source read through InitLoadPlanner.Plan (src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs), streaming each chunk's SELECT into the same canonical staging table an incremental run would use, so every downstream step (schema sync, upsert, match-keys, assertions) is unaffected by which path filled staging.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:26 (model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:80, src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:218)"
+    },
+    {
+      "path": "initLoad.batchBy",
+      "type": "string",
+      "required": false,
+      "default": "'M' (applied by InitLoadPlanner, not the loader: (flow.InitLoad.BatchBy ?? \"M\").Trim().ToUpperInvariant(), InitLoadPlanner.cs:32; the loader itself leaves the field null when blank, YamlIngestionFlowLoader.cs:406)",
+      "enumValues": [
+        "M",
+        "D",
+        "K"
+      ],
+      "description": "Selects the backfill chunking unit consumed by InitLoadPlanner.Plan (InitLoadPlanner.cs:32,50-91): 'M' chunks by calendar month, snapped to month-end and clamped to the window (ChunkRanges.ByMonth); 'D' chunks by a rolling fixed-width day window (ChunkRanges.ByDay); 'K' chunks by an inclusive integer key range (ChunkRanges.ByKey) using initLoad.keyColumn in place of a date column. The value is trimmed and upper-invariant-cased, then compared as a raw string literally against 'M', 'D', 'K' in a switch statement; it is NOT parsed through the shared NormalizeToken/Enum.TryParse convention used for other enum-like keys in this YAML dialect (for example load.mode, schema.evolve, transform.onConvertError), so there is no '-'/'_' stripping and no synonym matching.",
+      "appliesWhen": "initLoad.enabled is true (BatchBy is only read once InitLoadPlanner.Plan runs)",
+      "validation": "An unrecognized value (anything other than 'M'/'D'/'K' after trim+uppercase) is not rejected by the loader or the planner: InitLoadPlanner's switch falls to its default arm and returns an empty segment list, so the run silently stages zero backfill rows with no error or warning, deliberately reproducing legacy behavior (InitLoadPlanner.cs:88-90; pinned by tests/SqlFlow.Core.Tests/InitLoadPlannerTests.cs UnknownUnit_ProducesNoSegments). Separately: 'M' or 'D' requires incremental.dateColumn to be set, else SqlFlowException \"InitLoad by date requires Incremental.DateColumn to be set.\" (InitLoadPlanner.cs:37-40); 'K' requires initLoad.keyColumn, else SqlFlowException \"InitLoad by key requires InitLoad.KeyColumn to be set.\" (InitLoadPlanner.cs:42-45).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:126 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:223)"
+    },
+    {
+      "path": "initLoad.batchSize",
+      "type": "int",
+      "required": false,
+      "default": "1 (applied by InitLoadPlanner for every batchBy unit via '?? 1', InitLoadPlanner.cs:57,74; the loader leaves the field null when omitted, YamlIngestionFlowLoader.cs:407)",
+      "description": "Chunk width in the unit selected by batchBy: for 'M', the number of calendar months per chunk (a value >1 extends the chunk end by AddMonths(size-1) before snapping to that month's last day, ChunkRanges.ByMonth, src/SqlFlow.SqlServer/Ingestion/ChunkRanges.cs:13-28); for 'D', the number of days per rolling chunk (ChunkRanges.ByDay, cs:31-51); for 'K', the number of key values per inclusive [lo,hi] bucket (ChunkRanges.ByKey, cs:55-69).",
+      "appliesWhen": "initLoad.enabled is true (BatchSize is only read once InitLoadPlanner.Plan runs)",
+      "validation": "For 'D', a value below 1 throws SqlFlowException \"Day batch size must be at least 1.\" (ChunkRanges.cs:33-36). For 'M', a value of 0 or negative is NOT rejected: ByMonth's chunkSize>1 guard simply skips widening past the starting month, so it behaves exactly like size 1 with no error (ChunkRanges.cs:18). For 'K', a value <= 0 is NOT rejected either: ByKey yields zero key buckets when maxRowsPerBucket <= 0 (ChunkRanges.cs:57-58), so the run silently produces only the trailing '<keyColumn> IS NULL' segment and streams no keyed rows (pinned by tests/SqlFlow.Core.Tests/InitLoadPlannerTests.cs Key_BadBounds_StillAppendsNullSegment).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:127 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:224)"
+    },
+    {
+      "path": "initLoad.enabled",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "The sole gate for the entire chunked-backfill code path. When true, IngestionFlowRunner skips IncrementalWindowResolver.ResolveAsync altogether, sets the window to an unconditional full load (IncrementalWindow { SourceWhere = \"\", RunFullLoad = true }), and instead calls InitLoadPlanner.Plan to chunk the source into date- or key-bounded segments, each streamed into the same canonical staging table by its own SqlBulkCopy under a concurrency gate sized to max(1, load.threads ?? 1): segments run one at a time when load.threads is unset (the default, effectively 1), but genuinely concurrently into the same staging table when load.threads is set above 1 (IngestionFlowRunner.cs:279-309; the gate itself is BulkCopyInitLoadAsync, IngestionFlowRunner.cs:970-1005, sized at line 984). While an InitLoad run is active, the flow's incremental.* settings (columns, overlapDays, fullLoad, fetchMinValuesFromSource) are not consulted for windowing at all, though incremental.dateColumn is still read by InitLoadPlanner as the column to chunk by when batchBy is 'M' or 'D'. Also honors a per-run backfill window override (a trigger's --from/--to, surfaced as options.Parameters.BackfillFrom/BackfillTo), which replaces FromDate (and, if given, ToDate) on a cloned copy of the flow for that run only, without touching the stored YAML (IngestionFlowRunner.cs:284-297).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:123 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:220)"
+    },
+    {
+      "path": "initLoad.fromDate",
+      "type": "string",
+      "required": false,
+      "default": "null; InitLoadPlanner falls back to three years before today for batchBy 'M'/'D' (DateOnly.FromDateTime(DateTime.Today.AddYears(-3)), InitLoadPlanner.cs:55), evaluated fresh on every run; ignored entirely for batchBy 'K'",
+      "description": "Inclusive lower bound of the backfill window, a date string parsed at load time into a DateOnly (YamlDocumentParts.ParseDate). Consumed only by InitLoadPlanner when batchBy is 'M' or 'D': ChunkRanges.ByMonth/ByDay splits [fromDate, toDate] into calendar-month or fixed-size day windows against incremental.dateColumn, and a trailing '<dateColumn> IS NULL' segment is always appended afterward so NULL-dated rows are never dropped (InitLoadPlanner.cs:52-70). Overridden per-run by a backfill trigger's --from parameter, which replaces FromDate on a cloned flow for that run only (IngestionFlowRunner.cs:284-297), leaving the stored document untouched.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:124 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:221)",
+      "validation": "Unparseable value: FlowValidationException \"<source>: 'initLoad.fromDate' must be a date like 2024-01-31, got '<value>'.\" (YamlDocumentParts.ParseDate, src/SqlFlow.Yaml/YamlDocumentParts.cs:193-203, invoked as ParseDate(y.FromDate, \"initLoad.fromDate\", source) at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:404)."
+    },
+    {
+      "path": "initLoad.keyColumn",
+      "type": "string",
+      "required": false,
+      "description": "Integer key column chunked into inclusive [lo, hi] buckets by ChunkRanges.ByKey when batchBy is 'K'; not consulted for 'M'/'D' batching, which chunk by incremental.dateColumn instead. Also names the trailing catch-all segment '<keyColumn> IS NULL', appended after the keyed buckets so key-NULL rows are never dropped from a keyed backfill (InitLoadPlanner.cs:83-84).",
+      "appliesWhen": "initLoad.enabled is true and initLoad.batchBy is 'K'",
+      "validation": "Required when batchBy is 'K': SqlFlowException \"InitLoad by key requires InitLoad.KeyColumn to be set.\" (InitLoadPlanner.cs:42-45) when blank.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:128 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:225)"
+    },
+    {
+      "path": "initLoad.keyMaxValue",
+      "type": "int",
+      "required": false,
+      "default": "10000000 (InitLoadPlanner.DefaultKeyMaxValue, applied via '?? DefaultKeyMaxValue' when unset, InitLoadPlanner.cs:23,75; the loader leaves the field null when omitted)",
+      "description": "Upper (inclusive) bound of the key range chunked by ChunkRanges.ByKey when batchBy is 'K'; the range's lower bound is always the hardcoded literal 0 (InitLoadPlanner.cs:77), there is no companion keyMinValue key.",
+      "appliesWhen": "initLoad.enabled is true and initLoad.batchBy is 'K'",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:129 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:226)"
+    },
+    {
+      "path": "initLoad.toDate",
+      "type": "string",
+      "required": false,
+      "default": "null; InitLoadPlanner falls back to today for batchBy 'M'/'D' (DateOnly.FromDateTime(DateTime.Today), InitLoadPlanner.cs:56), evaluated fresh on every run, so a flow left with no toDate keeps extending its window into the present on every re-run; ignored entirely for batchBy 'K'",
+      "description": "Inclusive upper bound of the backfill window; same parsing, consumer, and batchBy scope as fromDate. Overridden per-run by a backfill trigger's --to parameter, but only when a --from override is also supplied (IngestionFlowRunner.cs:290-294); a --to override alone does not re-window the flow.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:125 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:222)",
+      "validation": "Unparseable value: FlowValidationException \"<source>: 'initLoad.toDate' must be a date like 2024-01-31, got '<value>'.\" (YamlDocumentParts.ParseDate, invoked as ParseDate(y.ToDate, \"initLoad.toDate\", source) at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:405)."
+    },
+    {
+      "path": "load",
+      "type": "object",
+      "required": false,
+      "default": "{ keyColumns: [], skipUpdateExisting: false, skipInsertNew: false, matchKeysInSourceAndTarget: false, batchUpsert: false, batchUpsertRowCount: 2000, dataSetColumn: null, reloadColumn: null, streamData: true, threads: null, keepStagingTable: false, truncateStagingOnCompletion: false }",
+      "description": "Optional block controlling the ingestion load stage: the business key for the keyed upsert, skip flags, the delete-detection toggle, batching/dataset-loop knobs, and staging-table lifecycle. Binds to IngestionLoadYaml and is mapped by YamlIngestionFlowLoader.MapLoad to SqlFlow.Core.Ingestion.IngestionLoadPolicy (YamlIngestionFlowLoader.cs:263-286); when the whole block is absent, MapLoad still runs and returns IngestionLoadPolicy's defaults verbatim, so 'load:' present-but-empty and 'load' entirely absent are identical. An empty keyColumns list (the default) routes the whole flow through the keyless append-only insert-all path instead of the keyed upsert (IngestionFlowRunner.BuildLoadStatements, IngestionFlowRunner.cs:853-857).",
+      "definedIn": "src/SqlFlow.Core/Ingestion/IngestionFlow.cs:74"
+    },
+    {
+      "path": "load.batchUpsert",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "appliesWhen": "a keyed flow; no effect on a keyless flow",
+      "description": "Applies the keyed upsert through key-windowed batches (the legacy #UpdateKeys/#InsertKeys pattern) instead of one set-based statement per branch, so each DML stays under the lock-escalation threshold, with each window committing and releasing its locks on its own. Consumed as UpsertOptions.BatchToAvoidLockEscalation (IngestionFlowRunner.cs:915), which selects UpsertGenerator's BatchedUpdateScript/BatchedInsertScript, or the dataset-partitioned loop's batched inner loop, instead of the plain UPDATE/INSERT text (UpsertGenerator.cs:201-215,238-252,428-505). It also changes the load's transaction shape at the runner level: IngestionFlowRunner.ApplyLoadAsync is called with 'useTransaction: !flow.Load.BatchUpsertToAvoidLockEscalation' (IngestionFlowRunner.cs:427), so turning this on removes the single enclosing transaction around the whole apply, trading all-or-nothing atomicity for lock friendliness on large deltas. Has no effect on a keyless flow: the insert-all statement is always a single unbatched INSERT regardless of this setting.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:76 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:24, as BatchUpsertToAvoidLockEscalation)"
+    },
+    {
+      "path": "load.batchUpsertRowCount",
+      "type": "int",
+      "required": false,
+      "default": "2000",
+      "appliesWhen": "load.batchUpsert is true",
+      "description": "Rows per key-window batch when load.batchUpsert is on. Consumed as UpsertOptions.BatchRowCount (IngestionFlowRunner.cs:916), sizing the '@Start'/'@End' window stride in UpsertGenerator's BatchedUpdateScript and BatchedInsertScript (UpsertGenerator.cs:600-611,634-645) and the '@Batch' stride in the dataset-partitioned loop's batched inner loop (UpsertGenerator.cs:507-510). Ignored when load.batchUpsert is false, and ignored on a keyless flow.",
+      "validation": "\"BatchRowCount must be at least 1, got {value}.\" (UpsertGenerator.cs:149), enforced only when load.batchUpsert is true. Since the YAML mapper only null-coalesces ('y.BatchUpsertRowCount ?? 2000', YamlIngestionFlowLoader.cs:277), an explicit 0 or negative value survives loading and fails only when the upsert is generated at run time with batching on.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:77 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:27)"
+    },
+    {
+      "path": "load.dataSetColumn",
+      "type": "string",
+      "required": false,
+      "default": "null (no dataset-partitioned loop; the plain set-based upsert runs)",
+      "appliesWhen": "a keyed flow (load.keyColumns or matchKeys.keyColumns non-empty)",
+      "description": "When set, the keyed upsert is applied one dataset at a time, partitioned by this column's distinct values in ascending order: staging is first deduplicated to one row per (dataset, key), then each dataset's UPDATE-then-INSERT runs against the target as the prior datasets left it, so a business key recurring across datasets ends at the value from the last dataset carrying it. Generated by UpsertGenerator.GenerateDataSetLoopStatement as one combined script (UpsertGenerator.cs:184-186,368-554) instead of separate UPDATE/INSERT statements, reporting its Inserts/Updates totals as one result-set row. Consumed as UpsertOptions.DataSetColumn, set from 'MapNameOrNull(nameMap, flow.Load.DataSetColumn) ?? flow.Load.DataSetColumn' (IngestionFlowRunner.cs:923-925), i.e. mapped to the cleaned target column name when column-name cleanup renamed it. Distinct from the similarly named source.dataSetColumn (IngestionEndpointYaml.DataSetColumn), which instead feeds the canonical dataset index on a newly-created target (IngestionFlowRunner.cs:365) and is unrelated to this upsert-loop behavior. Honors load.batchUpsert/load.batchUpsertRowCount within each dataset iteration. Has no effect on a keyless flow. The YAML value is trimmed and blank-normalized to null at load time ('string.IsNullOrWhiteSpace(y.DataSetColumn) ? null : y.DataSetColumn.Trim()', YamlIngestionFlowLoader.cs:278), unlike most other optional strings in this document (confirmed via YamlDocumentParts.NullIfBlank, which blank-checks but does not trim).",
+      "validation": "\"A dataset-column load (DataSetColumn) cannot be combined with SCD2 versioning.\" (UpsertGenerator.cs:156, when versioning.scd2.enabled is also true) and \"DataSetColumn '<value>' is not among the data columns.\" (UpsertGenerator.cs:161, when the possibly name-mapped value does not case-insensitively match a bulk-copied target column name). Both are run-time checks raised when the upsert is generated, not at YAML load time.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:78 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:36)"
+    },
+    {
+      "path": "load.keepStagingTable",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Keeps the flow's canonical staging table after a SUCCESSFUL run instead of dropping it (a FAILED run always keeps its staging table for debugging, regardless of this flag; the next run's rebuild resets a kept table either way). Consumed directly in IngestionFlowRunner ('if (!flow.Load.KeepStagingTable)'): when false (the default), both the staging table and, if the key-match pass ran, its canonical mkey_ key table are dropped with 'DROP TABLE IF EXISTS ...' after a successful run; when true, the staging table is left in place (optionally truncated, see load.truncateStagingOnCompletion) and the match-key table is also left undropped.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:82 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:73)"
+    },
+    {
+      "path": "load.keyColumns",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty list; makes the flow keyless)",
+      "description": "Business key column names (as they appear among the bulk-copied SOURCE columns) that identify a row for the update/insert match. Consumed as IngestionLoadPolicy.KeyColumns (IngestionPolicies.cs:12). Whenever this list is non-empty (and not overridden, see matchKeys.keyColumns), it becomes the 'effective key' (IngestionFlowRunner.EffectiveKeyColumns, IngestionFlowRunner.cs:817-820) used everywhere a business key is needed: the schema-evolution critical-mismatch gate, where a key, hash-key, identity, or primary-key column with an incompatible type change is flagged CRITICAL rather than silently widened (passed as 'KeySet(EffectiveKeyColumns(flow))' at IngestionFlowRunner.cs:340 into SchemaEvolutionPlanner.IsCritical, SchemaEvolutionPlanner.cs:112-115, independently confirmed: IsCritical returns true for a HashKey/Identity-role column, a primary-key column, or any column named in the key set); the two-step upsert's key-equality join and its per-row change-detection scope (UpsertGenerator.GenerateStatements, passed verbatim as UpsertOptions.KeyColumns, IngestionFlowRunner.cs:906); and, name-mapped to target column names via the bulk-copy column map, the canonical key index built on a newly-created target and, when versioning.scd2 is enabled, its filtered-unique SCD2 key-index variant (IngestionFlowRunner.cs:359-369,378-393). An empty list routes the flow through the keyless insert-all path instead (IngestionFlowRunner.cs:853-857), which ignores skipUpdateExisting/skipInsertNew/batchUpsert*/dataSetColumn entirely and always appends every staged row.",
+      "validation": "Load time: \"'<source>': 'versioning.scd2' requires 'load.keyColumns' (the business key the dimension versions by).\" (YamlIngestionFlowLoader.cs:123-131, when versioning.scd2.enabled is true and this list is empty). Run time: \"MatchKeysInSourceAndTarget is on, but the flow has no key columns (set load.keyColumns or matchKeys.keyColumns).\" (IngestionFlowRunner.cs:669-671, when load.matchKeysInSourceAndTarget is true and the effective key list is empty). Also run time, at upsert generation: \"An upsert requires at least one key column.\" (UpsertGenerator.cs:135, unreachable via YAML because the keyless path is taken first when this list is empty) and \"Key column '<key>' is not among the data columns.\" (UpsertGenerator.cs:143, when an entry does not case-insensitively match a bulk-copied target column name; this list is passed to the upsert as-is, never name-mapped, so it can diverge from cleaned target names).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:72 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:12)"
+    },
+    {
+      "path": "load.matchKeysInSourceAndTarget",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Turns on the post-load key-match (deleted-row detection) pass: after the upsert, the full distinct SOURCE key set is landed in the flow's canonical mkey_ work table (in the raw schema, rebuilt per run) and anti-joined against the target, so a target row whose key no longer exists in the source is tagged or deleted per matchKeys.action (IngestionFlowRunner.RunMatchKeysAsync, invoked at IngestionFlowRunner.cs:463 only when this flag is true). It also selects which key columns are 'effective' everywhere a business key is used: when true and matchKeys.keyColumns is non-empty, matchKeys.keyColumns overrides load.keyColumns for the upsert, the schema-evolution key set, and the canonical/SCD2 index planning (EffectiveKeyColumns, IngestionFlowRunner.cs:817-820); otherwise load.keyColumns is used regardless of this flag. At YAML load time, when this is true and matchKeys.action resolves to Tag (its default), the loader force-enables systemColumns.deletedDate to true even if the YAML explicitly set it to false (YamlIngestionFlowLoader.cs:173-176; pinned by test YamlIngestionMatchKeysTests.TagMode_AutoEnableOverridesExplicitFalseOnDeletedDate, confirmed to exist in tests/SqlFlow.Core.Tests/YamlIngestionMatchKeysTests.cs), because Tag mode's soft delete stamps DeletedDate_DW.",
+      "validation": "This flag itself has no load-time validation; it gates the run-time checks described under load.keyColumns and systemColumns.deletedDate (\"MatchKeysInSourceAndTarget is on, but the flow has no key columns ...\" and \"MatchKeys Tag mode soft-deletes by stamping DeletedDate_DW; enable the DeletedDate_DW system column.\", both in IngestionFlowRunner.RunMatchKeysAsync, IngestionFlowRunner.cs:669-677).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:75 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:21)"
+    },
+    {
+      "path": "load.reloadColumn",
+      "type": "string",
+      "required": false,
+      "default": "null (no per-file replace; the normal keyed upsert or keyless insert-all runs)",
+      "description": "Per-file (per-dataset) full replace: the column identifying a source file/dataset, typically FileName_DW (set the pre flow's showPathWithFileName so it carries the full path, the collision-free identity, and the provenance columns ride through the [pre].[v<Table>] view onto this ods target). When set, the load becomes a purge-then-insert scoped to the incoming batch instead of a keyed upsert: before inserting, the engine deletes every target row whose reloadColumn value is present in the staged batch (a set-based 'DELETE trg ... WHERE EXISTS (SELECT 1 FROM <staging> src WHERE src.[col] = trg.[col])', NULL-safe so rows with no file identity are never touched), then inserts the staged rows. A resent file therefore fully replaces its prior version, including records the new version dropped (which a keyed upsert would leave orphaned), while files absent from this run's batch stay untouched; combined with incremental (on FileDate_DW), only the resent file is read into staging, so only that file is purged and reloaded. Consumed at IngestionFlowRunner.BuildLoadStatements before the keyless check (works with or without load.keyColumns), name-mapped to the cleaned target column like dataSetColumn, and generated by UpsertGenerator as a Purge statement plus an insert (deduped to one row per key when load.keyColumns are declared, so a key recurring across the batch's files cannot violate the target's unique key; insert-all otherwise). The purge and insert always run in one transaction (the runner forces it, even under load.batchUpsert), so a resend is atomic. Purged rows are reported as RowsDeleted. On the run that creates the target, an NCI_ReloadColumn nonclustered index is added so the purge seeks (skipped when the column is already the leading column of the key/date/dataset index).",
+      "appliesWhen": "any flow (keyed or keyless); it supersedes the keyed upsert",
+      "validation": "Load time (YamlIngestionFlowLoader.cs): rejected when combined with load.dataSetColumn (\"'load.reloadColumn' (per-file replace) cannot be combined with 'load.dataSetColumn' ...\"), versioning.scd2.enabled (\"... cannot be combined with 'versioning.scd2' ...\"), load.matchKeysInSourceAndTarget (\"... cannot be combined with 'load.matchKeysInSourceAndTarget' ...\"), or target.truncateBeforeLoad (\"... cannot be combined with 'target.truncateBeforeLoad' ...\"). Run time (UpsertGenerator.cs): \"ReloadColumn '<value>' is not among the data columns.\" when the mapped value does not match a bulk-copied target column, plus the mirrored SCD2/DataSetColumn guards. The YAML value is trimmed and blank-normalized to null at load time.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:79 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs, IngestionLoadPolicy.ReloadColumn)"
+    },
+    {
+      "path": "load.skipInsertNew",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "appliesWhen": "a keyed flow (load.keyColumns or matchKeys.keyColumns non-empty)",
+      "description": "Omits the INSERT branch of the keyed upsert: only existing matched rows are updated, new keys are never appended. Consumed as UpsertOptions.SkipInsert (IngestionFlowRunner.cs:908), gating the INSERT statement in UpsertGenerator.GenerateStatements ('if (!options.SkipInsert)', UpsertGenerator.cs:218). Ignored entirely on a keyless flow: BuildInsertAll (IngestionFlowRunner.cs:940-952) always inserts every staged row regardless of this flag. Ignored when versioning.scd2 is enabled (its insert-new-version statement always runs; SkipInsert does not apply, per the UpsertOptions doc comment at UpsertGenerator.cs:95).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:74 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:18)"
+    },
+    {
+      "path": "load.skipUpdateExisting",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "appliesWhen": "a keyed flow (load.keyColumns or matchKeys.keyColumns non-empty)",
+      "description": "Omits the UPDATE branch of the keyed upsert: matched rows are never rewritten, only new keys are inserted. Consumed as UpsertOptions.SkipUpdate (IngestionFlowRunner.cs:907), gating the UPDATE statement in UpsertGenerator.GenerateStatements ('if (!options.SkipUpdate && nonKey.Count > 0)', UpsertGenerator.cs:192) and the equivalent branch inside the dataset-partitioned loop script. The UPDATE branch is also naturally skipped whenever every data column is a key column, independent of this flag. Ignored entirely on a keyless flow, which has no update branch at all, and ignored when versioning.scd2 is enabled, whose close/insert statements do not consult SkipUpdate (UpsertOptions doc comment, UpsertGenerator.cs:95).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:73 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:15)"
+    },
+    {
+      "path": "load.streamData",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Accepted and stored verbatim on IngestionLoadPolicy.StreamData (IngestionPolicies.cs:56-58, whose doc comment states 'When false the engine buffers in memory and writes on Threads parallel writers'), but not read anywhere in IngestionFlowRunner: every bulk-copy path (BulkCopyAsync, BulkCopyInitLoadAsync, StreamSelectToStagingAsync; IngestionFlowRunner.cs:954-1042) always streams the source SqlDataReader directly into a single SqlBulkCopy regardless of this flag's value, and the buffered/parallel-writer alternative the model's doc comment describes is not implemented in this runner (confirmed by a solution-wide search: '.StreamData' is only ever written, never read, outside the YAML DTO, the mapped policy record, and the legacy/full-mode row equivalents). Setting it to false only changes what is recorded on the mapped IngestionLoadPolicy, with no observable effect on how a YAML-loaded flow actually runs.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:80 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:58)"
+    },
+    {
+      "path": "load.threads",
+      "type": "int",
+      "required": false,
+      "default": "null (unset); the one consumer treats null the same as 1 (sequential)",
+      "appliesWhen": "initLoad.enabled is true (the InitLoad backfill's segment fan-out); unused otherwise",
+      "description": "Parallel reader/writer count. Consumed only by the InitLoad backfill path: BulkCopyInitLoadAsync computes 'var maxDegree = Math.Max(1, load.Threads ?? 1);' (IngestionFlowRunner.cs:984) and fans its per-segment bulk copies out across a SemaphoreSlim gate of that size; the normal (non-InitLoad) incremental/full read always uses a single connection with no concurrency, so this setting has no effect outside initLoad.enabled: true. Also recorded verbatim on the run-log record for observability (IngestionRunRecord.Threads, IngestionFlowRunner.cs:1219). At YAML load time only a strictly positive value survives: 'Threads = y.Threads is > 0 ? y.Threads : null' (YamlIngestionFlowLoader.cs:281), so 0 or a negative value is silently normalized to null (the same 'engine default' outcome as leaving it unset).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:81 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:62)"
+    },
+    {
+      "path": "load.truncateSourceWhenConsolidated",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "appliesWhen": "the flow declares an incremental watermark (incremental.columns or incremental.dateColumn) and the source is a SQL Server connection",
+      "description": "After a SUCCESSFUL load, truncates the upstream landing ('pre') table that feeds this flow's source, but only once the target has consolidated it: step 8c reads MAX(watermark) from the landing table on the source connection and MAX(watermark) from the target on the target connection, and issues 'TRUNCATE TABLE ...' on the landing table only when the target mark is >= the landing mark; the target-side MAX is scoped by source.incrementalClause when declared, so on a shared target another flow's fresher load cannot fake the catch-up (IngestionFlowRunner.cs, step 8c). The watermark is the first incremental.columns entry, else incremental.dateColumn (ConsolidationWatermarkColumn, IngestionFlowRunner.cs:1283-1285); it must exist under the same name on both sides (the clean, un-renamed FileDate_DW system column and its siblings do). The landing table is the source object with a leading 'v_' stripped (LandingTableOf, IngestionFlowRunner.cs:1290-1293), matching the chained landing pattern 'file -> [pre].[<Table>] -> view [pre].[v<Table>] -> target'; a source that is already a base table is truncated as-is. Designed as the safe replacement for an unconditional truncate: a FAILED run never reaches step 8c (it is on the success path, after the load commits), an empty landing table is a no-op, and a target that has not caught up leaves the landing rows in place so nothing un-consolidated is lost. Independent of the staging lifecycle (load.keepStagingTable / load.truncateStagingOnCompletion), which governs the flow's canonical staging table, not the landing table.",
+      "validation": "Run start (before any data work, so a misconfigured flow fails immediately rather than after a committed load): \"load.truncateSourceWhenConsolidated requires an incremental watermark (incremental.columns or incremental.dateColumn) ...\" (IngestionFlowRunner.cs:242-247, when the flag is set but no watermark column resolves) and \"load.truncateSourceWhenConsolidated is supported only for SQL Server sources ...\" (IngestionFlowRunner.cs:250-254, when the resolved source is not DataSourceKind.MSSQL).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:84 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:89)"
+    },
+    {
+      "path": "load.truncateStagingOnCompletion",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "appliesWhen": "load.keepStagingTable is true",
+      "description": "When the staging table is kept after a successful run (load.keepStagingTable: true), truncates it instead of leaving its rows, so the kept table carries structure without the run's data (IngestionFlowRunner.cs:542-548: 'TRUNCATE TABLE ...' when true, otherwise an info log that it was kept with its data). Has no effect when load.keepStagingTable is false: the default branch drops the table outright, which already discards the data, so this flag never fires there.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:83 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:68, as TruncatePreTableOnCompletion)"
+    },
+    {
+      "path": "matchKeys",
+      "type": "object",
+      "required": false,
+      "default": "{ action: tag, keyColumns: [], thresholdPercent: 20, ignoreDeletedRowsAfterMonths: null, dateColumn: null, sourceFilter: null, targetFilter: null }",
+      "appliesWhen": "load.matchKeysInSourceAndTarget is true (otherwise parsed and stored but the pass never runs)",
+      "description": "Optional block configuring the deleted-row detection (key-match) pass: the tag-vs-delete action, the threshold guard, the age-based ignore window, and the key/filter overrides. Binds to IngestionMatchKeysYaml and is mapped by YamlIngestionFlowLoader.MapMatchKeys to SqlFlow.Core.Ingestion.MatchKeyPolicy (YamlIngestionFlowLoader.cs:288-326); absent and present-but-empty both produce the same defaults. The block only takes runtime effect when load.matchKeysInSourceAndTarget is true (IngestionFlowRunner.cs:463); its default Tag action still influences the systemColumns.deletedDate auto-enable at load time even with no explicit matchKeys.action, whenever load.matchKeysInSourceAndTarget is set (see load.matchKeysInSourceAndTarget).",
+      "definedIn": "src/SqlFlow.Core/Ingestion/IngestionFlow.cs:75"
+    },
+    {
+      "path": "matchKeys.action",
+      "type": "enum(tag|delete)",
+      "required": false,
+      "default": "tag",
+      "enumValues": [
+        "tag",
+        "delete"
+      ],
+      "appliesWhen": "load.matchKeysInSourceAndTarget is true",
+      "description": "What to do with a target row whose key vanished from the source: 'tag' soft-deletes by stamping DeletedDate_DW (and RowStatus_DW 'D' when systemColumns.rowStatus is on), leaving the row in place; 'delete' hard-deletes the row. Consumed by MatchKeyGenerator.Generate to choose between the UPDATE-stamp statement and the DELETE statement (MatchKeyGenerator.cs:99-120). Tag mode (whether authored explicitly or left at its default) also drives two other behaviors: at YAML load time, if load.matchKeysInSourceAndTarget is also true, systemColumns.deletedDate is force-enabled to true regardless of what the YAML said (YamlIngestionFlowLoader.cs:173-176); and at run time, only Tag mode reconciles resurrections, where a previously tagged row whose key reappears in the source is un-tagged (DeletedDate_DW cleared, RowStatus_DW reset to 'U') independent of the threshold guard (MatchKeyGenerator.cs:124-141). Delete mode ignores matchKeys.ignoreDeletedRowsAfterMonths entirely: the age-window predicate is only built in the Tag branch (MatchKeyGenerator.cs:104-110).",
+      "validation": "\"'<source>': 'matchKeys.action' must be 'tag' or 'delete', got '<value>'.\" (YamlIngestionFlowLoader.cs:299-300), matched by trimming and uppercasing the raw value with no dash/underscore stripping (there being no multi-word spelling to strip); null/absent defaults to Tag without erroring.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:153 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:129, as MatchKeyPolicy.Action)"
+    },
+    {
+      "path": "matchKeys.dateColumn",
+      "type": "string",
+      "required": false,
+      "default": "null; at run time (non-YAML flows only) falls back to incremental.dateColumn",
+      "appliesWhen": "matchKeys.ignoreDeletedRowsAfterMonths is set",
+      "description": "The target date column bounding the ignore-after-months window (see matchKeys.ignoreDeletedRowsAfterMonths). Only read at run time when that setting is present: IngestionFlowRunner.RunMatchKeysAsync resolves 'policy.DateColumn ?? flow.Incremental.DateColumn' and maps the chosen name to its bulk-copied target spelling via the source-to-target column map (IngestionFlowRunner.cs:682-685); for a YAML-loaded flow the incremental.dateColumn fallback is never actually exercised, because the loader's load-time validation (see matchKeys.ignoreDeletedRowsAfterMonths) already guarantees this field is set whenever it would be needed.",
+      "validation": "The name is resolved through the same MapName helper used for key columns, so a value naming an ignored or virtual column (one not among the bulk-copied target columns) fails with \"Key column '<name>' is not a bulk-copied target column (is it in IgnoreColumns or a virtual column?).\" (IngestionFlowRunner.cs:1157-1161); the generic message text is reused here even though this is a date column, not a business key.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:165 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:142)"
+    },
+    {
+      "path": "matchKeys.ignoreDeletedRowsAfterMonths",
+      "type": "int",
+      "required": false,
+      "default": "null (no age window: the tag action applies to every candidate row regardless of age)",
+      "appliesWhen": "matchKeys.action resolves to tag; silently ignored in delete mode",
+      "description": "In Tag mode, restricts the tag action to target rows whose matchKeys.dateColumn value is within this many months of now: the generated candidate predicate adds 'AND trg.[dateColumn] >= DATEADD(MONTH, -{months}, SYSUTCDATETIME())' (MatchKeyGenerator.cs:107-110), so older rows are left untouched (neither tagged nor counted as candidates). Ignored in Delete mode: the Delete branch never builds this predicate at all (MatchKeyGenerator.cs:99-103), so setting this alongside matchKeys.action: delete has no effect and raises no error.",
+      "validation": "\"'<source>': 'matchKeys.ignoreDeletedRowsAfterMonths' requires 'matchKeys.dateColumn'.\" (YamlIngestionFlowLoader.cs:312-313, load time, whenever this is set and matchKeys.dateColumn is blank, checked before Tag/Delete mode is even known, and regardless of load.matchKeysInSourceAndTarget). Two further run-time checks exist for non-YAML-built flows, otherwise unreachable via YAML because the load-time check already guarantees a dateColumn: MatchKeyGenerator.Generate's \"IgnoreDeletedRowsAfterMonths requires a date column.\" (MatchKeyGenerator.cs:89) and IngestionFlowRunner.RunMatchKeysAsync's \"matchKeys.ignoreDeletedRowsAfterMonths requires matchKeys.dateColumn (or an incremental dateColumn).\" (IngestionFlowRunner.cs:682-684), the latter of which would otherwise fall back to flow.Incremental.DateColumn.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:162 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:138)"
+    },
+    {
+      "path": "matchKeys.keyColumns",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (inherits load.keyColumns)",
+      "appliesWhen": "load.matchKeysInSourceAndTarget is true (otherwise parsed and stored but never read: the check is 'flow.Load.MatchKeysInSourceAndTarget && flow.MatchKeys.KeyColumns.Count > 0', and C#'s && short-circuits, so the property is never even accessed when the flag is false)",
+      "description": "Overrides load.keyColumns for the whole flow, not just the delete-detection comparison, whenever load.matchKeysInSourceAndTarget is true and this list is non-empty: EffectiveKeyColumns(flow) prefers matchKeys.keyColumns over load.keyColumns in that case (IngestionFlowRunner.cs:817-820), and that effective key set is what the keyed upsert, the schema-evolution critical-mismatch gate, and the canonical/SCD2 index planning all use (see load.keyColumns for the exact consumers and citations), so setting this also changes the business key the upsert matches on, not only which rows the key-match pass considers deleted. When load.matchKeysInSourceAndTarget is false, this list is parsed and stored but has no effect anywhere.",
+      "validation": "The same downstream checks as load.keyColumns apply to the resolved effective list: \"Key column '<key>' is not among the data columns.\" (UpsertGenerator.cs:143) and \"Key column '<source>' is not a bulk-copied target column (is it in IgnoreColumns or a virtual column?).\" (IngestionFlowRunner.cs:1157-1161, for canonical/SCD2 index name-mapping).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:156 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:146)"
+    },
+    {
+      "path": "matchKeys.sourceFilter",
+      "type": "string",
+      "required": false,
+      "default": "null; falls back to source.filter",
+      "appliesWhen": "load.matchKeysInSourceAndTarget is true",
+      "description": "A predicate, raw-append contract (authored with its own leading ' AND '), bounding the SOURCE rows read to build the 'still present' key set for the delete-detection pass. IngestionFlowRunner.RunMatchKeysAsync resolves it as 'policy.SourceFilter, else flow.Source.Filter' (IngestionFlowRunner.cs:704, trimmed at the point of use), so an unset matchKeys.sourceFilter reuses the flow's own source.filter, meaning rows the load itself never reads are, by default, not wrongly treated as deleted. The key scan this bounds is a fresh 'SELECT DISTINCT ...' over the full source (IngestionFlowRunner.cs:706-710) and deliberately never applies the incremental window, so a row outside the current run's incremental read is still correctly recognized as present in the source.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:168 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:151)"
+    },
+    {
+      "path": "matchKeys.targetFilter",
+      "type": "string",
+      "required": false,
+      "default": "null (no restriction on the candidate/action/resurrect statements; the total-row count is never restricted by this field regardless of its value)",
+      "appliesWhen": "load.matchKeysInSourceAndTarget is true",
+      "description": "CORRECTED: A predicate, raw-append contract (authored with its own leading ' AND '), bounding which TARGET rows the key-match pass may count as a candidate or act on. MatchKeyGenerator.Generate appends the trimmed filter (captured once at MatchKeyGenerator.cs:95) to three places: the candidate-count query (MatchKeyGenerator.cs:148), the tag/delete action statement (MatchKeyGenerator.cs:102 for Delete mode, :119 for Tag mode), and, in Tag mode only, the resurrect statement (MatchKeyGenerator.cs:139). It is NOT applied to the target's TOTAL-row count, which is the threshold's denominator: 'SELECT @Total = COUNT_BIG(*) FROM {trg};' (MatchKeyGenerator.cs:147) counts the whole target table unconditionally, with no targetFilter, no candidatePredicates, and not even a 'trg' alias. Practical consequence: when targetFilter narrows the pass to a subset of the target, the reported/enforced breach percentage (@Candidates * 100.0 / @Total) is candidates-within-the-filtered-subset divided by the WHOLE unfiltered target's row count, not the filtered subset's size, so a targetFilter that scopes to a small slice of a large table makes even a total wipeout of that slice register as a small percentage and can silently slip under matchKeys.thresholdPercent.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:171 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:155)"
+    },
+    {
+      "path": "matchKeys.thresholdPercent",
+      "type": "int",
+      "required": false,
+      "default": "20",
+      "appliesWhen": "load.matchKeysInSourceAndTarget is true",
+      "description": "Skips the tag/delete action (and reports it) when more than this percentage of the target would be affected. MatchKeyGenerator's generated script computes '@Candidates * 100.0 / @Total > {threshold}' and, when breached, sets @Breached and skips the action statement entirely while still reporting @Total/@Candidates (MatchKeyGenerator.cs:146-158). The comparison is only evaluated when the target has at least one row (@Total > 0), so an empty target can never breach. Resurrection (un-tagging a reappeared key) is independent of this threshold and always runs when applicable. A breach is surfaced as a warning-level log line by IngestionFlowRunner.RunMatchKeysAsync, not a run failure (IngestionFlowRunner.cs:729-736).",
+      "validation": "\"'<source>': 'matchKeys.thresholdPercent' must be 0 to 100, got <value>.\" (YamlIngestionFlowLoader.cs:306-307, load time). The same range is re-checked defensively at run time by MatchKeyGenerator.Generate: \"ActionThresholdPercent must be 0 to 100, got {value}.\" (MatchKeyGenerator.cs:79), reachable only from a flow assembled outside the YAML loader.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:159 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:134)"
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": false,
+      "default": "null (unset); FlowId is then 0 and SysAlias is null",
+      "description": "The flow's display name. Unlike the file flow (where 'name' is required), it is optional for an ing document. When non-blank it is trimmed (`y.Name.Trim()`, YamlIngestionFlowLoader.cs:100) and becomes IngestionFlow.SysAlias verbatim (legacy flw.Ingestion.SysAlias), and it seeds IngestionFlow.FlowId via YamlDocumentParts.StableFlowId: the trimmed name is hashed into the same name-based RFC4122 v5 GUID the file flow uses (FlowIdentity.FromName, confirmed a SHA-1 name-based v5 UUID over a fixed namespace constant), and BitConverter.ToInt32 of the GUID's first four bytes, masked with 0x7FFFFFFF (clearing the sign bit), yields a stable non-negative int32 -- because unlike the file flow's GUID identity, the legacy flw.Ingestion.FlowID column (and this model's FlowId) is a plain int. A blank or missing name yields SysAlias = null and FlowId = 0 (YamlIngestionFlowLoader.cs:180-181). FlowId is not just informational: IngestionFlowRunner names the flow's canonical staging table `[raw].[<targetSchema>_<targetTable>_<FlowId>]` and the match-key table `[raw].[mkey_<targetSchema>_<targetTable>_<FlowId>]` (CanonicalWorkTableName, IngestionFlowRunner.cs), and stamps FlowId on the run-log record (BuildRunRecord, IngestionFlowRunner.cs:1204). SysAlias, when set, appears in the run-start log line and otherwise falls back to the target table name there (`flow.SysAlias ?? flow.Target.Table.Name`, IngestionFlowRunner.cs:208), and is also stamped on the run-log record (IngestionFlowRunner.cs:1208).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:10 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:100,180-181; model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:49,56; StableFlowId: src/SqlFlow.Yaml/YamlDocumentParts.cs:212-213)"
+    },
+    {
+      "path": "mode",
+      "type": "enum(auto|manual|disabled)",
+      "required": false,
+      "default": "auto",
+      "enumValues": ["auto", "manual", "disabled"],
+      "description": "The flow's execution mode, read at the document envelope (YamlDocumentLoader's probe, FlowDocument.Mode) and projected to the catalog pipeline row. 'auto' (the default) runs on schedule fires and in batch/node group runs; 'manual' reserves a working flow for direct triggers; 'disabled' deactivates a retired one (a retired source, a run-once replay) with the same exclusions and a visible 'disabled' badge. A node-scoped run can opt into includeAll ('find all') to replay non-auto descendants deliberately, and naming a flow directly always runs it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs (FlowDocument.Mode, parsed by YamlDocumentParts.ParseExecutionMode)",
+      "validation": "Unknown value fails to load: \"<source>: 'mode' has unknown value '<value>'. Allowed: auto, manual, disabled.\""
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow executes, schedules, and records run history exactly like a production one, but it never generates notification events, so a pipeline under active development cannot alert email/Slack subscribers. Parsed case-insensitively by YamlDocumentParts.ParseLifecycle (src/SqlFlow.Yaml/YamlDocumentParts.cs) and projected to CatalogPipeline.Lifecycle on every catalog sync.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:12 (mapped by YamlIngestionFlowLoader, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs)",
+      "validation": "Unknown value fails to load: \"<source>: 'lifecycle' has unknown value '<value>'. Allowed: production, development.\" (YamlDocumentParts.ParseLifecycle, src/SqlFlow.Yaml/YamlDocumentParts.cs)"
+    },
+    {
+      "path": "schema",
+      "type": "object",
+      "required": false,
+      "default": "{ sync: true, cleanColumnNames: false, cleanColumnNameRegex: null, replaceInvalidCharsWith: null, convertUnicodeToNonUnicode: false, allowTableRewrite: false } (MapSchema produces these defaults even when the whole block is absent)",
+      "description": "Optional schema-synchronization block for the ing document: distinct from, and much simpler than, the file-flow document's schema block (no evolve/defaultColumnType/overrides keys here). Bound from IngestionYaml.Schema and mapped by MapSchema (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:359-375) onto IngestionFlow.SchemaSync (SchemaSyncPolicy). Consumed by IngestionSchemaBuilder.Build, which always runs (for both the staging and target desired-schema passes) regardless of sync, and by IngestionFlowRunner's target-evolution step, which runs only when sync is true (IngestionFlowRunner.cs:334-355).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:24 (model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:78, src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:169)"
+    },
+    {
+      "path": "schema.allowTableRewrite",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Opt-in for an expensive table-rewrite ALTER (for example widening int to bigint) on the TARGET table. Consulted only inside the schema.sync evolution call against the target (IngestionFlowRunner.cs:341); the staging-table evolution call earlier in the same run hardcodes allowTableRewrite: false regardless of this setting (IngestionFlowRunner.cs:266). RewritePolicy.Decide maps false to RewriteHandling.RequireOptIn (src/SqlFlow.SqlServer/Schema/RewritePolicy.cs:20-21); EvolutionDdlGenerator.Generate then refuses the whole evolution plan before generating any DDL whenever the plan needs a rewrite and the policy requires opt-in (src/SqlFlow.SqlServer/Schema/EvolutionDdlGenerator.cs:31-34).",
+      "appliesWhen": "schema.sync is true (the target evolution call this governs runs only inside that gate)",
+      "validation": "When a plan needs a table rewrite and this is false: SchemaRewriteNotPermittedException \"Schema evolution on '<target>' requires a table rewrite on column(s) <columns> (for example int to bigint). This holds a table lock for the full rewrite and is refused by default. Set AllowTableRewrite to run it, ideally in a maintenance window.\" (src/SqlFlow.Core/SchemaRewriteNotPermittedException.cs:12-14, thrown from src/SqlFlow.SqlServer/Schema/EvolutionDdlGenerator.cs:33).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:109 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:190)"
+    },
+    {
+      "path": "schema.cleanColumnNameRegex",
+      "type": "string",
+      "required": false,
+      "default": "null; DefaultColumnNameCleaner falls back to the canonical legacy pattern [^a-zA-Z0-9æøåÆØÅ_] (LegacyColumnCleanup.DefaultCleanupRegex) when blank",
+      "description": "Regex whose matches in a raw source column name are replaced (or removed) during the relational sync cleanup. Consulted only when schema.cleanColumnNames is true; blank/absent falls back to the canonical legacy default, which keeps ASCII letters, digits, underscore, and the six Norwegian letters æøåÆØÅ, reproducing the legacy flw.SysCFG.ColCleanupSQLRegExp config default (DefaultColumnNameCleaner.cs:27-32; LegacyColumnCleanup.cs:28-33). This relational-sync cleaner is distinct from, and independently configurable from, the always-on file-flow header cleanup (LegacyColumnCleanup.CleanFileColumnNames), which never consults this key.",
+      "appliesWhen": "schema.cleanColumnNames is true; ignored otherwise",
+      "validation": "An invalid regex throws SqlFlowException \"Invalid CleanColumnNameRegex '<pattern>': <message>\" when DefaultColumnNameCleaner compiles it (a 2-second regex timeout is applied) (DefaultColumnNameCleaner.cs:34-42).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:106 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:178)"
+    },
+    {
+      "path": "schema.cleanColumnNames",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Enables source-column-name cleanup for the relational sync path (legacy SMOHelper.CleanupColumnName), opt-in unlike the file-flow header cleanup, which always runs. When true, DefaultColumnNameCleaner.Clean (the sole IColumnNameCleaner implementation, constructed directly by IngestionFlowRunner, IngestionFlowRunner.cs:240) applies cleanColumnNameRegex (or the legacy default pattern) to every raw source column name, replacing matches per replaceInvalidCharsWith, turning a fully-matched (now-empty) name into the literal placeholder 'EmptyColumnName', and de-duplicating case-insensitive collisions with a numeric suffix (DefaultColumnNameCleaner.cs:17-60). The cleaned names become BOTH the staging and target column names (IngestionSchemaBuilder.Build computes them once and both passes reuse the result), so cleanup is not itself gated by schema.sync. When false (the default), raw source names pass through unchanged.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:105 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:175)"
+    },
+    {
+      "path": "schema.convertUnicodeToNonUnicode",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "When true, every bulk-copied source column's SQL type is passed through UnicodeConverter.ToNonUnicode while building the desired schema (IngestionSchemaBuilder.cs:52): nvarchar becomes varchar, nchar becomes char, ntext becomes text (its length cleared), and sysname becomes varchar(128); every other type, including already-non-Unicode text and non-text types, passes through unchanged (src/SqlFlow.SqlServer/Schema/UnicodeConverter.cs:10-22). Designed for SAP Open Hub sources, which type all text as NVARCHAR. Applied unconditionally by IngestionSchemaBuilder.Build (used for both the staging and target desired schemas), so it is not gated by schema.sync.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:108 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:185)"
+    },
+    {
+      "path": "schema.replaceInvalidCharsWith",
+      "type": "string",
+      "required": false,
+      "default": "null, which DefaultColumnNameCleaner treats as an empty string (matched characters are removed rather than replaced), DefaultColumnNameCleaner.cs:44",
+      "description": "Replacement text substituted for each character schema.cleanColumnNameRegex (or the built-in default pattern) matches in a raw column name, via Regex.Replace (DefaultColumnNameCleaner.cs:44,50).",
+      "appliesWhen": "schema.cleanColumnNames is true; ignored otherwise",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:107 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:181)"
+    },
+    {
+      "path": "schema.sync",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Gates whether the target table's schema is created or evolved on this run. When true (the default), IngestionFlowRunner calls schemaSync.EvolveAsync against the target with the desired column list, creating the table if it is missing or ALTER-adding new source columns (IngestionFlowRunner.cs:334-355); when false, that call is skipped entirely, so a first run against a non-existent target never creates it (the subsequent load statements would then fail against a table SQL Server cannot find) and new source columns are never propagated onto an existing target. Because targetCreated is only ever set true inside this same gate, a false sync also skips the automatic canonical-index creation and desired-index application that otherwise follow a table-creating run. Only the TARGET-side evolution is gated: the canonical staging table is always created (schemaSync.EvolveAsync runs unconditionally for it, with allowTableRewrite hardcoded false, IngestionFlowRunner.cs:266), and column-name cleanup (cleanColumnNames) and unicode conversion (convertUnicodeToNonUnicode) run unconditionally inside IngestionSchemaBuilder.Build, whose single result feeds both the staging and target passes.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:104 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:172)"
+    },
+    {
+      "path": "source",
+      "type": "object",
+      "required": true,
+      "description": "The source endpoint: what the flow reads. Binds to the same IngestionEndpointYaml DTO as 'target' (src/SqlFlow.Yaml/IngestionYaml.cs:44-68) and maps to the required IngestionSource on IngestionFlow.Source. This unit (ing-base) covers only this block's presence/requiredness and the 'object'/'table' three-part-name resolution (see source.object, source.table) plus source.dataSetColumn's role in canonical indexing. Connection routing ('server' / 'connection' / 'provider', resolved via the shared YamlDocumentParts.ResolveEndpointConnection) is documented in the connections unit; the read-shaping refinements 'filter', 'filterIsAppend', 'incrementalClause', and 'ignoreColumns' (see IngestionSource, src/SqlFlow.Core/Ingestion/IngestionFlow.cs:5-20) are out of this unit's scope; verified their actual behavior (combining with the incremental watermark, and with the InitLoad backfill predicate) is implemented in src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs and src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs, neither of which is one of this unit's assigned files. The resolved connection's reference is exposed as IngestionSource.ConnectionReference ('@' plus the resolved server alias), consumed by IngestionFlowRunner.cs:165 to open the actual connection.",
+      "validation": "Missing block throws FlowValidationException \"<source>: 'source' is required.\" (YamlIngestionFlowLoader.cs:87), where <source> is the document path passed to LoadFile/Parse (or '<inline>') -- not the YAML 'source:' key itself.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:18 (model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:5-20 IngestionSource)"
+    },
+    {
+      "path": "source.connection",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.server is not set (exactly one of source.server or source.connection is required)",
+      "description": "An inline connection string or a ${env:...}/${keyvault:...} reference for the database the ingestion reads from, used when the connection is not already declared under connections:. Resolved the same way as source.server, registering a new connection under the synthetic name 'source'.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:47",
+      "validation": "Same mutually-exclusive and missing-connection messages as source.server."
+    },
+    {
+      "path": "source.dataSetColumn",
+      "type": "string",
+      "required": false,
+      "default": "null (unset); no NCI_DataSetColumn canonical index is planned",
+      "description": "Source column name bound verbatim into IngestionSource.DataSetColumn (legacy 'DataSetColumn' column) via the real YamlDocumentParts.NullIfBlank helper; blank/whitespace-only is normalized to null, and NullIfBlank does not trim a non-blank value. This is a DIFFERENT setting from 'load.dataSetColumn' (which drives the dataset-partitioned upsert loop and IS trimmed by its own mapping, `y.DataSetColumn.Trim()`; out of this unit's scope) -- source.dataSetColumn's only consumer traced in this unit's files is the canonical-index planner. On the run that creates the target table, IngestionFlowRunner maps it from its source name to the cleaned target column name via the bulk-copy name map and passes it to CanonicalIndexPlanner.Plan as 'dataSetColumn' (IngestionFlowRunner.cs:365); when non-blank and the name resolves to a real bulk-copied target column, Plan emits a plain (non-unique) NONCLUSTERED index named 'NCI_DataSetColumn' on that column (CanonicalIndexPlanner.cs:47-50), guarded by an `IF NOT EXISTS (SELECT 1 FROM sys.indexes ...)` check so re-application is a no-op. Unlike the required key-column mapping (see target.columnStoreIndex), an unmappable dataSetColumn (for example one also listed in source.ignoreColumns, or naming a virtual column) does NOT fail the run: MapNameOrNull (IngestionFlowRunner.cs:1165-1166) silently returns null and the index is simply skipped. See target.columnStoreIndex for the full canonical-index picture (key/date/dataset/UpdatedDate_DW indexes plus the optional columnstore), all planned together only on the run that creates the target.",
+      "appliesWhen": "Only consequential on the run that creates the target table (canonical indexes are planned once, at creation), which itself only happens when schema sync is enabled (schema.sync, out of this unit's scope).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:61 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:193; model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:16; consumed: src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:365, src/SqlFlow.SqlServer/Ingestion/CanonicalIndexPlanner.cs:47-50)"
+    },
+    {
+      "path": "source.filter",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Raw SQL predicate narrowing the source read, carrying its own leading keyword (legacy contract, for example 'AND SystemID = 13'). Combined with the incremental/full-load WHERE by AssembleWhere (src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs:180-212) according to source.filterIsAppend, and also feeds the deleted-row detector's key-set query (src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:704, unless matchKeys.sourceFilter overrides it there).",
+      "validation": "STATIC narrowing only; spliced into the composed SQL verbatim, with no macro or parameter expansion (a token like @sf_watermark is an undefined variable that fails the read). Never hand-write an incremental watermark here (a 'SELECT MAX(...)' probe subquery, or a comparison against a watermark variable): that is the 'incremental' block's job (incremental.columns, or dateColumn + overlapDays, or lookback for numeric keys), and the engine composes its bound WITH this filter automatically.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:57"
+    },
+    {
+      "path": "source.filterIsAppend",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "How source.filter combines with the computed incremental/full-load WHERE clause (AssembleWhere, src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs:180-212). true (default): the filter is appended after the incremental bound (or after nothing, on a full load or empty target), narrowing further. false: the filter REPLACES the incremental/full-load logic entirely and is used standalone, verbatim, ignoring the watermark and full-load state altogether.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:58"
+    },
+    {
+      "path": "source.ignoreColumns",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Source columns excluded from the bulk copy into staging entirely (src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:229,251); a name listed here can still be referenced as a key column only if it is a virtual/computed column, not a bulk-copied source column (error at IngestionFlowRunner.cs:1161).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:60"
+    },
+    {
+      "path": "source.incrementalClause",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Raw SQL WHERE-fragment appended when probing the TARGET for the incremental watermark (src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs:235,256), and reused verbatim as the @FilterCriteria parameter for inline assertions (src/SqlFlow.SqlServer/Ingestion/AssertionRunner.cs:38). Distinct from source.filter, which narrows the SOURCE read; this narrows the target-side watermark probe and the assertion scope.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:59"
+    },
+    {
+      "path": "source.object",
+      "type": "string",
+      "required": true,
+      "description": "The source's three-part relational object name, Database.Schema.Table (or Database.Table for MySQL-style sources; see below). Resolved by YamlIngestionFlowLoader.ParseObject (YamlIngestionFlowLoader.cs:242-261), shared verbatim between source and target -- only the 'section' label ('source' or 'target') differs. Resolution order: 'object' wins over the 'table' alias (see source.table); whichever is non-blank is then, when it contains no '[' at all, checked for the MySQL two-part convention: a plain (unbracketed) two-segment name 'X.Y' (both segments non-empty after `Split('.', StringSplitOptions.TrimEntries)`) is expanded to 'X.X.Y', treating the database part as also the schema (natural for MySQL, which has no separate schema level). The (possibly-expanded) string is then parsed by RelationalObject.Parse (src/SqlFlow.Core/Ingestion/RelationalObject.cs:20-48): it splits on '.' while respecting [bracketed] identifiers (IngestionText.SplitRespectingBrackets, confirmed bracket-depth-aware with an inner ']' escaped as ']]'), trims and unbrackets each segment (IngestionText.Unbracket), and takes the RIGHTMOST three segments as Database/Schema/Name -- so a name with more than three dotted segments (for example a stray leading server part) silently drops everything left of the third-from-last segment rather than failing. The result becomes IngestionSource.Table (a RelationalObject), whose QualifiedName renders back out as '[Database].[Schema].[Name]' with any ']' doubled inside identifiers.",
+      "validation": "When both 'object' and 'table' are blank: FlowValidationException \"<source>: 'source.object' is required (a three-part name like Database.Schema.Table, or Database.Table for MySQL, where the database is the schema).\" (YamlIngestionFlowLoader.cs:244-247). When the resolved name (after any two-part expansion) has fewer than three dot-separated segments: \"<source>: 'source.object': Object name '<name>' must be a three-part [Database].[Schema].[Object] name; found <n> part(s).\" (RelationalObject.cs:34-35, rewrapped by YamlDocumentParts.ParseQualifiedObject at YamlDocumentParts.cs:181-191, which always labels the field 'source.object' even when the raw value came from the 'table' alias). When the database, schema, or object segment is empty after trimming (e.g. 'Db..Table'): \"<source>: 'source.object': Object name '<name>' has an empty database, schema, or object part.\" (RelationalObject.cs:42-44).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:53 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:188,242-261; model: src/SqlFlow.Core/Ingestion/RelationalObject.cs:11-51, src/SqlFlow.Core/Ingestion/IngestionFlow.cs:10)"
+    },
+    {
+      "path": "source.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "source.connection is set (ignored when source.server is used instead, since that connection's kind was already fixed when declared under connections:)",
+      "description": "The provider of a direct source.connection, parsed case-insensitively by YamlDocumentParts.ParseProvider (src/SqlFlow.Yaml/YamlDocumentParts.cs:122-132), which also accepts the aliases 'sqlserver' (mssql) and 'postgresql' (postgres). Unlike target.provider, mssql, azdb, mysql, and postgres are accepted and actually usable here, since the source side has no SQL-Server-only restriction. 'oracle' is accepted by the parser (DataSourceKind.Oracle) but has no source read path wired, so it parses yet is not usable as a source end to end.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:49",
+      "validation": "Unrecognized token: \"<source>: 'source.provider' has unknown provider '<value>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:105-106)."
+    },
+    {
+      "path": "source.server",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.connection is not set (exactly one of source.server or source.connection is required)",
+      "description": "Name of a connection declared under connections: that the ingestion reads from; the alternative to a direct source.connection. Resolved by YamlDocumentParts.ResolveEndpointConnection into the synthetic connection name 'source' (YamlIngestionFlowLoader.SourceConnectionName). Unlike target, the resolved source connection is NOT restricted to SQL Server: an ing flow may read from mssql, azdb, mysql, or postgres (samples/ingestion/mysql-to-sqlserver.flow.yaml), only the target upsert is SQL-Server-only.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:46",
+      "validation": "Both server and connection set: \"<source>: 'source' sets both 'server' and 'connection'; use exactly one.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:121-122). A name not declared under connections:: \"<source>: 'source.server' references '<name>', which is not declared under 'connections:'.\" (YamlDocumentParts.cs:130-131). Neither set: \"<source>: 'source' needs a connection. Set 'source.connection' to a connection string or a ${...} reference, or 'source.server' to a name declared under 'connections:'.\" (YamlDocumentParts.cs:139-141)."
+    },
+    {
+      "path": "source.table",
+      "type": "string",
+      "required": false,
+      "default": "null (unset); 'source.object' is used instead",
+      "description": "Alias for 'source.object' (the original, pre-'object' spelling); consulted only when 'object' is blank or absent (`NullIfBlank(endpoint.Object) ?? NullIfBlank(endpoint.Table)`, YamlIngestionFlowLoader.cs:244). Once selected, it goes through the exact same two-part MySQL expansion and RelationalObject.Parse rules as 'object' (see source.object). Notably, any resulting validation error still names the field 'source.object', never 'source.table', because YamlIngestionFlowLoader.ParseObject hard-codes the error field to `$\"{section}.object\"` regardless of which YAML key actually supplied the raw string.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:54 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:244)"
+    },
+    {
+      "path": "surrogateKeys",
+      "type": "list<object>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "IDENTITY-backed surrogate-key generation configs for this ing document, bound to List<IngestionSurrogateKeyYaml> (src/SqlFlow.Yaml/IngestionYaml.cs:41) and mapped by YamlIngestionFlowLoader.MapSurrogateKeys (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:520-564) into IngestionFlow.SurrogateKeys (IReadOnlyList<SurrogateKeySpec>, src/SqlFlow.Core/Ingestion/IngestionFlow.cs:72). Each spec runs post-load and post-commit via SurrogateKeyExecutor (src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs), which WithoutDatabaseIngestion.BuildRunner always wires for a YAML document (WithoutDatabaseIngestion.cs:62), so declared surrogate keys always generate for real; the engine's own default when no executor is supplied at all is NullSurrogateKeyExecutor, which generates nothing (IngestionFlowRunner.cs:139). Log-only: a per-spec failure is captured on that spec's SurrogateKeyResult.Error and never rolls back the already-committed load (IngestionFlowRunner.cs:444-454).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:41"
+    },
+    {
+      "path": "surrogateKeys[]",
+      "type": "object",
+      "required": false,
+      "description": "One surrogate-key generation config; binds IngestionSurrogateKeyYaml {server, table, column, keyColumns, sKeyColumns, preProcess, postProcess} (src/SqlFlow.Yaml/IngestionYaml.cs:192-201) and maps to a SurrogateKeySpec (src/SqlFlow.Core/Ingestion/SurrogateKey.cs:11-48).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:192-201 (mapped by YamlIngestionFlowLoader.MapSurrogateKeys, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:520-564)",
+      "validation": "An entry missing table fails with FlowValidationException \"<source>: 'surrogateKeys[<i>].table' is required.\"; missing column fails with \"<source>: 'surrogateKeys[<i>].column' is required.\"; a null or empty keyColumns fails with \"<source>: 'surrogateKeys[<i>].keyColumns' is required.\" (YamlIngestionFlowLoader.cs:532-539). A server naming a connection not declared under connections: fails with \"<source>: 'surrogateKeys[<i>].server' references '<server>', which is not declared under 'connections:'. Leave it unset to generate keys on the target connection.\" (YamlIngestionFlowLoader.cs:541-547)."
+    },
+    {
+      "path": "surrogateKeys[].column",
+      "type": "string",
+      "required": true,
+      "description": "The IDENTITY surrogate column name generated in the lookup table and stamped back onto the target (legacy SurrogateColumn; SurrogateKeySpec.SurrogateColumn). If the target lacks this column it is added as int NULL, together with a nonclustered index named NCI_<column> (SurrogateKeyExecutor.BuildEnsureBaseColumnSql, src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs:312-322), both statements guarded so a re-run is a no-op.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:196",
+      "validation": "Missing/blank throws FlowValidationException \"<source>: 'surrogateKeys[<i>].column' is required.\" (YamlIngestionFlowLoader.cs:534-535)."
+    },
+    {
+      "path": "surrogateKeys[].keyColumns",
+      "type": "list<string>",
+      "required": true,
+      "description": "Business-key columns on the TARGET table (legacy KeyColumns; SurrogateKeySpec.KeyColumns) identifying one logical entity. Drives the DISTINCT and the join predicate in both the generate (anti-join INSERT) and push-back (UPDATE) statements (SurrogateKeyExecutor.BuildGenerateSql/BuildPushBackSql, src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs:265-284); each column's live SQL type is introspected from the already-loaded target table and reused verbatim for the matching lookup-table column (IntrospectBaseTypesAsync/TypeOf, SurrogateKeyExecutor.cs:256-263,370-373).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:197",
+      "validation": "A null or empty list throws FlowValidationException \"<source>: 'surrogateKeys[<i>].keyColumns' is required.\" (YamlIngestionFlowLoader.cs:536-539). At run time, a listed column absent from the introspected target table fails that spec (captured on SurrogateKeyResult.Error, not thrown to the caller) with SqlFlowException \"Surrogate-key business-key column '<column>' is not on the target table.\" (SurrogateKeyExecutor.cs:370-373); the target-introspection call itself throws \"Surrogate-key target <target> was not found.\" if the target table cannot be found at all, and since this introspection runs once before the per-spec loop rather than inside it, that specific failure propagates out of SurrogateKeyExecutor.RunAsync uncaught rather than being captured on any spec's result (SurrogateKeyExecutor.cs:44-46,256-263)."
+    },
+    {
+      "path": "surrogateKeys[].keyColumns[]",
+      "type": "string",
+      "required": true,
+      "description": "One target business-key column name, matched by exact SQL identifier lookup against the target's introspected columns; its position also fixes the positional pairing with sKeyColumns when that list is authored too.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:197"
+    },
+    {
+      "path": "surrogateKeys[].postProcess",
+      "type": "string",
+      "required": false,
+      "default": "unset (no statement runs)",
+      "description": "Raw T-SQL executed on the resolved surrogate connection immediately after key generation and push-back complete (legacy PostProcess), run at SurrogateKeyExecutor.cs:105-109 with the same >2-trimmed-character Gate as preProcess (SurrogateKeyExecutor.cs:375).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:200",
+      "validation": "Same as preProcess: no YAML-time validation beyond NullIfBlank; a run-time failure is captured on SurrogateKeyResult.Error, never rolled back (SurrogateKeyExecutor.cs:56-68)."
+    },
+    {
+      "path": "surrogateKeys[].preProcess",
+      "type": "string",
+      "required": false,
+      "default": "unset (no statement runs)",
+      "description": "Raw T-SQL executed on the resolved SURROGATE connection immediately before key generation (legacy PreProcess), captured into the spec's ordered Statements/SQL trace when it runs (SurrogateKeyExecutor.RunOneAsync, src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs:95-99). Only runs when SurrogateKeyExecutor.Gate(value) is true, i.e. the trimmed text is longer than 2 characters (SurrogateKeyExecutor.cs:375) -- the legacy convention for treating a short/placeholder value as effectively absent; the executed text itself is also .Trim()'d at that call site.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:199",
+      "validation": "No YAML-time validation beyond NullIfBlank (whitespace-only becomes unset; no trimming of a non-blank value). A malformed statement fails only at run time with the database engine's own error; SurrogateKeyExecutor.RunAsync captures it as that spec's SurrogateKeyResult.Error rather than throwing, so it never rolls back the already-committed load (SurrogateKeyExecutor.cs:56-68)."
+    },
+    {
+      "path": "surrogateKeys[].sKeyColumns",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty list; the lookup table then uses the keyColumns names unchanged)",
+      "description": "Optional lookup-table key-column names (legacy sKeyColumns; SurrogateKeySpec.SKeyColumns) that the entries of keyColumns map onto, paired positionally by index (e.g. keyColumns: [CustomerID] with sKeyColumns: [CustId] names the lookup table's key column CustId). Used in place of keyColumns for the lookup table's own DDL and for the lookup-table side of every generate/push-back join (SurrogateKeyExecutor.cs:84,267-270,278-283,296-297).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:198",
+      "validation": "Not validated at YAML load time. At run time, a non-empty list whose count differs from keyColumns's count fails that spec (captured on SurrogateKeyResult.Error rather than thrown to the run's caller) with SqlFlowException \"Surrogate key <id> for <table>: sKeyColumns has <N> columns but KeyColumns has <M> columns; they must match (positional pairing).\" (SurrogateKeyExecutor.cs:78-82)."
+    },
+    {
+      "path": "surrogateKeys[].sKeyColumns[]",
+      "type": "string",
+      "required": false,
+      "description": "One lookup-table column name, positionally paired with the keyColumns entry at the same list index.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:198"
+    },
+    {
+      "path": "surrogateKeys[].server",
+      "type": "string",
+      "required": false,
+      "default": "unset (generate LOCAL, on the flow's own target connection)",
+      "description": "Data-source alias naming where the surrogate keys are generated (legacy SurrogateServer). When set, SurrogateKeySpec.ConnectionReference computes as \"@\" + Server.Trim() (src/SqlFlow.Core/Ingestion/SurrogateKey.cs:47), which SurrogateKeyExecutor resolves at run time through the shared connection registry with ConnectionRole.Target (src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs:244-254). When unset, generation is LOCAL: the generate (INSERT) and push-back (UPDATE) run as two statements in one transaction on the target connection, the lookup table addressed three-part (RunLocalAsync, SurrogateKeyExecutor.cs:125-161). When the resolved connection's canonical string differs from the target's, generation is REMOTE: no linked server is used; the distinct business keys are bulk-copied into a run-scoped temp table on the surrogate server (_SfSkTmp_<flowId>_<token>), generated and stamped there inside a transaction, bulk-copied back into a temp on the target server, then pushed onto the target, with both temps dropped afterward on a best-effort basis (RunRemoteAsync, SurrogateKeyExecutor.cs:167-242).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:194",
+      "validation": "A non-blank value that does not match a name declared under connections: (including the synthetic 'source'/'target' entries the loader adds when source/target author a direct connection: instead of server:, YamlDocumentParts.ResolveEndpointConnection, src/SqlFlow.Yaml/YamlDocumentParts.cs:144-153) fails at load time with FlowValidationException \"<source>: 'surrogateKeys[<i>].server' references '<server>', which is not declared under 'connections:'. Leave it unset to generate keys on the target connection.\" (YamlIngestionFlowLoader.cs:541-547). This check compares the value as returned by NullIfBlank (not further trimmed) against the connections dictionary's keys."
+    },
+    {
+      "path": "surrogateKeys[].table",
+      "type": "string",
+      "required": true,
+      "description": "Three-part Database.Schema.Table name of the surrogate lookup table (legacy SurrogateDbSchTbl; SurrogateKeySpec.SurrogateTable). Auto-created on the resolved surrogate connection if missing, inside its own named database via that database's sys.sp_executesql (so the connecting database need not match): the surrogate column as int IDENTITY(1,1) NOT NULL PRIMARY KEY, the (possibly renamed via sKeyColumns) business-key columns typed from the introspected TARGET table's live column types, plus InsertedDate_DW datetime NULL and SrcDBSchTbl nvarchar(250) NULL, and a UNIQUE constraint over the key columns (SurrogateKeyExecutor.BuildEnsureSurrogateTableSql, src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs:294-310). Unlike source.object/target.object, this value is parsed directly by YamlDocumentParts.ParseQualifiedObject with no two-part MySQL-style auto-expansion: it always requires three dot-separated, bracket-aware parts (an inner ']' escaped as ']]'); a fourth-or-more leading part (e.g. a stray server name) is tolerated and silently dropped, since RelationalObject.Parse keeps only the rightmost three parts (src/SqlFlow.Core/Ingestion/RelationalObject.cs:28-40).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:195",
+      "validation": "Missing/blank throws FlowValidationException \"<source>: 'surrogateKeys[<i>].table' is required.\" (YamlIngestionFlowLoader.cs:532-533). Otherwise parsed via YamlDocumentParts.ParseQualifiedObject -> RelationalObject.Parse (RelationalObject.cs:20-48), rewrapped as FlowValidationException \"<source>: 'surrogateKeys[<i>].table': <message>\" (YamlDocumentParts.cs:181-190), with the inner message \"Object name '<name>' must be a three-part [Database].[Schema].[Object] name; found <N> part(s).\" for fewer than three parts, or \"Object name '<name>' has an empty database, schema, or object part.\" for an empty part."
+    },
+    {
+      "path": "systemColumns",
+      "type": "object",
+      "required": false,
+      "default": "{ insertedDate: true, updatedDate: true, deletedDate: false, rowStatus: false }",
+      "description": "Optional block toggling the four _DW audit columns injected onto the TARGET schema only (never staging, for the same reason documented under change.hashColumns: the production runner never builds the staging schema through IngestionSchemaBuilder at all): InsertedDate_DW, UpdatedDate_DW, DeletedDate_DW, RowStatus_DW. Binds to IngestionSystemColumnsYaml and is mapped by YamlIngestionFlowLoader.MapSystemColumns to SqlFlow.Core.Ingestion.SystemColumnsPolicy (YamlIngestionFlowLoader.cs:343-357); absent and present-but-empty both apply the legacy defaults (Inserted and Updated on, Deleted and RowStatus off). After mapping, deletedDate can be silently force-enabled by the loader when load.matchKeysInSourceAndTarget is true and matchKeys.action resolves to Tag, overriding even an explicit 'deletedDate: false' (YamlIngestionFlowLoader.cs:173-176; see systemColumns.deletedDate).",
+      "definedIn": "src/SqlFlow.Core/Ingestion/IngestionFlow.cs:77"
+    },
+    {
+      "path": "systemColumns.deletedDate",
+      "type": "bool",
+      "required": false,
+      "default": "false (force-enabled to true whenever load.matchKeysInSourceAndTarget is true and matchKeys.action resolves to tag)",
+      "appliesWhen": "required (and force-enabled) when load.matchKeysInSourceAndTarget is true and matchKeys.action resolves to tag",
+      "description": "Injects a nullable datetime2(3) DeletedDate_DW column onto the target (IngestionSchemaBuilder.cs:93), the soft-delete stamp the key-match pass's Tag action writes: SYSUTCDATETIME() when a row's key vanishes from the source, cleared back to NULL if the key later reappears (MatchKeyGenerator.cs:112,128). Consumed as MatchKeyScriptOptions.DeletedDateColumn ('DeletedDate_DW' when true, else null, IngestionFlowRunner.cs:721). Cross-cutting load-time override: when load.matchKeysInSourceAndTarget is true and matchKeys.action resolves to Tag (its default), YamlIngestionFlowLoader force-enables this to true regardless of the authored value; an explicit 'deletedDate: false' is silently overridden (YamlIngestionFlowLoader.cs:173-176, pinned by test YamlIngestionMatchKeysTests.TagMode_AutoEnableOverridesExplicitFalseOnDeletedDate). The run-time requirement below is therefore only reachable for a flow assembled outside the YAML loader, where matchKeysInSourceAndTarget and Tag mode are set without this column enabled.",
+      "validation": "\"Tag mode requires the DeletedDate column (enable the DeletedDate_DW system column).\" (MatchKeyGenerator.cs:82-85, when matchKeys.action is Tag and this is false) and, equivalently, \"MatchKeys Tag mode soft-deletes by stamping DeletedDate_DW; enable the DeletedDate_DW system column.\" (IngestionFlowRunner.cs:673-677, the runner's own pre-check before generating the script).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:98 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:164)"
+    },
+    {
+      "path": "systemColumns.insertedDate",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "CORRECTED: Injects a nullable datetime2(3) InsertedDate_DW column onto the target (IngestionSchemaBuilder.AddSystemColumns, IngestionSchemaBuilder.cs:91). On a keyed flow it is stamped SYSUTCDATETIME() on every INSERT (UpsertGenerator.cs:222-226) and, on the UPDATE branch, back-filled with SYSUTCDATETIME() only for a matched row whose existing value is NULL (a row that predates the column); otherwise its existing value is preserved ('CASE WHEN trg.[...] IS NULL THEN SYSUTCDATETIME() ELSE trg.[...] END', UpsertGenerator.cs:568-574, legacy parity). On a KEYLESS flow (insert-all), it is the ONLY system column ever stamped: BuildInsertAll only checks 'system.InsertedDate' and stamps SYSUTCDATETIME() on insert; it does not accept or stamp UpdatedDate_DW or RowStatus_DW at all, even when those are enabled (IngestionFlowRunner.cs:940-952). When versioning.scd2 is enabled, the SCD2 insert-new-version statement stamps it with the shared as-of instant on every brand-new/changed version it inserts (UpsertGenerator.cs:338-342). Separately, the SCD2 backfill statement (which runs first, and touches only PRE-EXISTING TARGET rows whose period columns are still NULL, via 'UPDATE trg SET ... FROM {trg} AS trg WHERE trg.[ValidTo] IS NULL', with no staging/source ('src') reference anywhere in that statement, UpsertGenerator.cs:297-303) uses that same target row's own existing InsertedDate_DW value, when present, as its inferred ValidFrom, falling back to the 1900-01-01 epoch sentinel otherwise (UpsertGenerator.cs:294-296); this is the pre-existing TARGET row's own value, not a 'source row's' value.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:96 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:162)"
+    },
+    {
+      "path": "systemColumns.rowStatus",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "appliesWhen": "a keyed flow (never populated on a keyless flow even when enabled)",
+      "description": "Injects a nullable char(1) RowStatus_DW column onto the target (IngestionSchemaBuilder.cs:94), a per-row action code the engine stamps: 'I' on insert and 'U' on update (UpsertGenerator's insert branch and UpdateSetClauses, UpsertGenerator.cs:231,576-578); 'D' when the key-match pass tags a row deleted and 'U' again when it resurrects a previously tagged row (MatchKeyGenerator.cs:115,131); and, when versioning.scd2 is enabled, 'U' when an SCD2 version is closed and 'I' when its replacement version is inserted (UpsertGenerator.cs:316-318,344-347). Consumed as UpsertOptions.RowStatusColumn / MatchKeyScriptOptions.RowStatusColumn ('RowStatus_DW' when true, else null). Like systemColumns.updatedDate, only meaningfully stamped on a KEYED flow; a keyless flow's insert-all statement never references RowStatus_DW, so on a keyless flow the column is added to the schema when enabled but is never populated.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:99 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:165)"
+    },
+    {
+      "path": "systemColumns.updatedDate",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "appliesWhen": "a keyed flow (never populated on a keyless flow even when enabled)",
+      "description": "Injects a nullable datetime2(3) UpdatedDate_DW column onto the target (IngestionSchemaBuilder.cs:92). Stamped SYSUTCDATETIME() only on the keyed upsert's UPDATE branch (UpsertGenerator.UpdateSetClauses, UpsertGenerator.cs:563-565) and, when versioning.scd2 is enabled, on the SCD2 close-of-current-version statement (UpsertGenerator.cs:308-312). It is never set on insert, so a freshly inserted row's UpdatedDate_DW stays NULL until it is later updated. A keyless flow's insert-all statement (BuildInsertAll, IngestionFlowRunner.cs:940-952) never references UpdatedDate_DW at all, so on a keyless flow the column is still added to the schema when enabled but is never populated by any statement the engine generates.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:97 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:163)"
+    },
+    {
+      "path": "target",
+      "type": "object",
+      "required": true,
+      "description": "The target endpoint: where the flow writes. Binds to the same IngestionEndpointYaml DTO as 'source' and maps to the required IngestionTarget on IngestionFlow.Target. As with 'source', this unit covers this block's presence/requiredness, the 'object'/'table' three-part-name resolution, 'identityColumn', 'truncateBeforeLoad', and the canonical-index-related 'columnStoreIndex' flag. Connection routing is documented in the connections unit -- the resolved connection must additionally be SQL Server (mssql or azdb), enforced by the shared YamlDocumentParts.RequireSqlServerConnection helper (YamlIngestionFlowLoader.cs:95), because staging, schema evolution, and the upsert are all T-SQL; that check and its message are out of this unit's scope. 'desiredIndexes' is explicitly excluded from this unit (documented in the shared unit) and is likewise out of scope here.",
+      "validation": "Missing block throws FlowValidationException \"<source>: 'target' is required.\" (YamlIngestionFlowLoader.cs:88).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:19 (model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:24-38 IngestionTarget)"
+    },
+    {
+      "path": "target.columnStoreIndex",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Requests a clustered columnstore index on the target, bound to IngestionTarget.ColumnStoreIndex (legacy 'ColumnStoreIndexOnTrg'). This is the main entry point into canonical index behavior: on the run that CREATEs the target table (IngestionFlowRunner.cs:359, gated by `if (targetCreated)`, itself only reachable when schema sync is enabled), IngestionFlowRunner calls CanonicalIndexPlanner.Plan (CanonicalIndexPlanner.cs:17-68), which emits, over the freshly-created (still-empty) table, all of the following as idempotent `IF NOT EXISTS (SELECT 1 FROM sys.indexes ...) CREATE ...` statements with stable, non-hashed names: (1) 'NCI_KeyColumn', a UNIQUE NONCLUSTERED index on the flow's effective key columns (load.keyColumns, overridden by matchKeys.keyColumns when the key-match pass is active -- both out of this unit's scope; confirmed via EffectiveKeyColumns, IngestionFlowRunner.cs:817-820), only when there is at least one key column AND SCD2 is not enabled; (2) 'NCI_DateColumn', a plain NONCLUSTERED index on incremental.dateColumn (out of scope), only when that column is set and maps to a real bulk-copied target column; (3) 'NCI_DataSetColumn' (see source.dataSetColumn); (4) 'NCI_UpdatedDate_DW', a plain NONCLUSTERED index on UpdatedDate_DW, only when the desired schema carries that column (systemColumns.updatedDate, out of scope); and (5), only when THIS flag is true AND the desired schema has no identity primary key (see target.identityColumn), a clustered columnstore index named 'CCSI_' followed by the target table's own name with every character that is not a letter, digit, or underscore stripped (CanonicalIndexPlanner.Sanitize, CanonicalIndexPlanner.cs:61,137-138). A REQUIRED key column that does not resolve to a real bulk-copied target column (for example because it is in source.ignoreColumns or is a virtual column) FAILS THE RUN with SqlFlowException \"Key column '<source>' is not a bulk-copied target column (is it in IgnoreColumns or a virtual column?).\" (IngestionFlowRunner.MapName, IngestionFlowRunner.cs:1157-1161); the optional date/dataset columns instead silently produce no index when unmappable (MapNameOrNull, IngestionFlowRunner.cs:1165-1166), never failing the run. Separately from this once-at-creation Plan(), whenever versioning.scd2.enabled is true (out of scope), CanonicalIndexPlanner.Scd2KeyIndexStatements runs on EVERY run, not only at creation (IngestionFlowRunner.cs:382-393): it drops any pre-existing 'NCI_KeyColumn' (or any other non-filtered unique nonclustered index whose columns exactly match the key columns) and creates a FILTERED unique index 'NCI_KeyColumn ... WHERE [<currentFlagColumn>] = 1' instead, because under SCD2 the business key is unique only among current rows -- this is how turning SCD2 on for an already-created table migrates its key index. All of the above map column names using SOURCE names as declared on the flow through the bulk-copy name map to the cleaned TARGET names before building any statement.",
+      "validation": "None on this key itself (a plain YAML bool, coerced by the YamlDotNet deserializer); the run-time key-column-mapping failure described above is triggered by load.keyColumns / matchKeys.keyColumns (out of scope), not by this flag.",
+      "appliesWhen": "Only takes effect on the run that creates the target table; a no-op on every later run against an already-existing target (there is no retrofit path for canonical indexes).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:65 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:200; model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:33; consumed: src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:359-393, src/SqlFlow.SqlServer/Ingestion/CanonicalIndexPlanner.cs:17-146)"
+    },
+    {
+      "path": "target.connection",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "target.server is not set (exactly one of target.server or target.connection is required)",
+      "description": "An inline connection string or a ${env:...}/${keyvault:...} reference for the database the ingestion writes to, used when the connection is not already declared under connections:.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:47 (shared IngestionEndpointYaml DTO)"
+    },
+    {
+      "path": "target.identityColumn",
+      "type": "string",
+      "required": false,
+      "default": "null (unset); no computed identity column is added",
+      "description": "Name of a computed IDENTITY primary-key column added to the DESIRED TARGET schema only -- never to the canonical staging table, since IngestionFlowRunner always builds the target schema with `IngestionSchemaBuilder.Build(sourceColumns, flow, forStaging: false)` (IngestionFlowRunner.cs:240), and IngestionSchemaBuilder.AddIdentity runs only `if (!forStaging)` (IngestionSchemaBuilder.cs:81-84); the staging table's own columns are instead derived directly from the bulk-copied source columns and never carry this column. When blank, AddIdentity is a no-op. When non-blank and no existing desired column already has that name (case-insensitive), AddIdentity appends a new column: SQL type 'int', NOT NULL, Role=Identity, IsIdentity=true, IsPrimaryKey=true (IngestionSchemaBuilder.cs:129-146); when a column of that name already exists (for example a same-named source column), AddIdentity silently skips adding it -- the existing column is left exactly as inferred/authored and is NOT retrofitted with identity/primary-key semantics. Only the target-table CREATE path actually renders identity/primary-key SQL: EvolutionDdlGenerator.CreateTableStatement adds a `CONSTRAINT [PK_<table>] PRIMARY KEY CLUSTERED (...)` over every column flagged IsPrimaryKey (EvolutionDdlGenerator.cs:79-84), and ColumnDefinition appends ' IDENTITY(1, 1)' to a column flagged IsIdentity (EvolutionDdlGenerator.cs:100); the additive ALTER path used against an already-existing table (ColumnsToAdd) always renders a plain nullable column with neither clause (EvolutionDdlGenerator.cs:52-60). Confirmed (by reading SchemaEvolutionPlanner.cs, one file outside this unit's assigned list) that this ALTER path is genuinely reachable for identityColumn: SchemaEvolutionPlanner.Plan puts any desired column absent from the existing table's columns, including a newly-declared identityColumn, into ColumnsToAdd purely by name lookup (SchemaEvolutionPlanner.cs:34-38), with no special-casing for identity/PK columns. So declaring identityColumn against a target that already exists without it DOES add the column on the next run, just always as a plain nullable column, never retrofitted with identity/primary-key semantics. The column's presence also feeds canonical-index planning: IngestionFlowRunner computes `hasIdentityPrimaryKey: targetSchema.Columns.Any(c => c.IsPrimaryKey)` (IngestionFlowRunner.cs:368) and passes it to CanonicalIndexPlanner.Plan, which suppresses the clustered columnstore index whenever an identity primary key is present, because a clustered columnstore index cannot coexist with a clustered rowstore primary key (see target.columnStoreIndex).",
+      "appliesWhen": "Meaningfully creates an identity/primary-key column only on the run that CREATEs the target table.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:66 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:201; model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:34; consumed: src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs:81-84,129-146, src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:368, src/SqlFlow.SqlServer/Schema/EvolutionDdlGenerator.cs:75-103)"
+    },
+    {
+      "path": "target.object",
+      "type": "string",
+      "required": true,
+      "description": "The target's three-part relational object name. Identical mechanism to source.object (same ParseObject function, same two-part MySQL expansion, same RelationalObject.Parse rules, same rightmost-three-segments behavior); only the error-message section label differs ('target.object' instead of 'source.object'). See source.object for the full parsing description. The resulting RelationalObject also supplies the canonical staging table's database and name parts (IngestionFlowRunner builds the staging object from flow.Target.Table.Database plus the raw schema and the CanonicalWorkTableName derived from the target's schema, name, and FlowId) and is the table the canonical indexes (see target.columnStoreIndex), the truncate step (see target.truncateBeforeLoad), and the match-key/upsert scripts run against.",
+      "validation": "Same three failure modes as source.object, with the section label 'target': both blank -> \"<source>: 'target.object' is required (a three-part name like Database.Schema.Table, or Database.Table for MySQL, where the database is the schema).\"; fewer than three parts -> \"<source>: 'target.object': Object name '<name>' must be a three-part [Database].[Schema].[Object] name; found <n> part(s).\"; empty segment -> \"<source>: 'target.object': Object name '<name>' has an empty database, schema, or object part.\"",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:53 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:198,242-261; model: src/SqlFlow.Core/Ingestion/RelationalObject.cs:11-51, src/SqlFlow.Core/Ingestion/IngestionFlow.cs:29)"
+    },
+    {
+      "path": "target.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "target.connection is set (ignored when target.server is used instead)",
+      "description": "The provider of a direct target.connection, parsed case-insensitively by YamlDocumentParts.ParseProvider (src/SqlFlow.Yaml/YamlDocumentParts.cs:122-132), which also accepts the aliases 'sqlserver' (mssql) and 'postgresql' (postgres). Whatever it resolves to, the target connection is then hard-required to be SQL Server (mssql or azdb); any other recognized provider (mysql, postgres, oracle) parses successfully here but fails one step later with the 'must be SQL Server' error.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:49 (shared IngestionEndpointYaml DTO)",
+      "validation": "Unrecognized token: \"<source>: 'target.provider' has unknown provider '<value>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" A recognized non-SQL-Server kind fails via target.server's SQL-Server-only check."
+    },
+    {
+      "path": "target.server",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "target.connection is not set (exactly one of target.server or target.connection is required)",
+      "description": "Name of a connection declared under connections: that the ingestion writes to; the alternative to a direct target.connection. Resolved into the synthetic connection name 'target' (YamlIngestionFlowLoader.TargetConnectionName). The resolved target connection IS restricted to SQL Server, since the upsert is generated T-SQL.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:46 (shared IngestionEndpointYaml DTO)",
+      "validation": "Same mutually-exclusive and missing-connection messages as source.server (section 'target'). Once resolved, a non-SQL-Server connection fails with \"<source>: the target connection '<name>' is '<kind>'; an ingestion flow's target must be SQL Server (mssql or azdb).\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:174-176, RequireSqlServerConnection, called from src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:95)."
+    },
+    {
+      "path": "target.table",
+      "type": "string",
+      "required": false,
+      "default": "null (unset); 'target.object' is used instead",
+      "description": "Alias for 'target.object'; consulted only when 'object' is blank or absent. Same alias mechanics as source.table (any validation error still names the field 'target.object', never 'target.table').",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:54 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:244)"
+    },
+    {
+      "path": "target.truncateBeforeLoad",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Truncates the target table immediately before staging is applied, for full-reload semantics (legacy 'TruncateTrg' column, IngestionFlow.cs:31 comment). Bound via `targetYaml.TruncateBeforeLoad ?? false` (YamlIngestionFlowLoader.cs:199) onto IngestionTarget.TruncateBeforeLoad. When true, IngestionFlowRunner emits and executes `TRUNCATE TABLE [schema].[table];` (two-part, schema-qualified, since the connection is already scoped to the target database) as run step 6 (IngestionFlowRunner.cs:396-402): after staging is filled and the target schema is evolved (and, on a create, after the canonical indexes and any SCD2 key index are applied), but before the keyed upsert / insert-all apply step. Unlike target.columnStoreIndex, target.identityColumn, and source.dataSetColumn (all consequential only on the run that creates the target), this flag is read and acted on EVERY run: any run with truncateBeforeLoad true wipes the table's rows immediately before every load, not just the first. The TRUNCATE statement carries no `IF OBJECT_ID(...) IS NOT NULL`-style guard, unlike the rest of the engine's DDL/DML in this runner (DropStagingAsync's `DROP TABLE IF EXISTS`, the canonical indexes' `IF NOT EXISTS`, EvolutionDdlGenerator's `IF OBJECT_ID(...) IS NULL`); so if `schema.sync` is off and the target has never been created, this statement fails against a nonexistent table. That failure is still caught by RunAsync's outer handler (IngestionFlowRunner.cs:602), so the run ends gracefully as `IngestionRunResult { Success = false }`, but `Error` carries the raw underlying SqlException text (e.g. an 'Invalid object name' message) rather than a curated SqlFlowException/FlowValidationException message the way most anticipated engine failures are reported. Cross-validated at parse time against SCD2 (see validation): 'versioning.scd2.enabled: true' cannot combine with this flag, because SCD2 appends a new dated version per change and a truncate would erase that whole history.",
+      "validation": "`versioning.scd2.enabled: true` combined with `target.truncateBeforeLoad: true` is rejected at parse time: FlowValidationException \"<source>: 'versioning.scd2' cannot be combined with 'target.truncateBeforeLoad'; truncating would erase the dimension history.\" (YamlIngestionFlowLoader.cs:133-137, only reached when versioning.scd2.enabled is true). No other validation on the key itself (a plain YAML bool). Cross-validated the same way against system-versioned history: 'versioning.temporal.enabled: true' (or the 'versioning.temporalHistory: true' shorthand) cannot combine with this flag, because SQL Server does not allow TRUNCATE TABLE on a system-versioned table at all: FlowValidationException \"<source>: 'versioning.temporal' cannot be combined with 'target.truncateBeforeLoad'. ...\", repeated at run time by IngestionFlowRunner.EnsureSupportedFeatures for the non-YAML load paths.",
+      "appliesWhen": "Applies on every run where the flag is true, not gated to the run that creates the target, unlike target.columnStoreIndex / target.identityColumn / source.dataSetColumn. On the very same run that creates the target the TRUNCATE is a harmless no-op against the just-created empty table.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:64 (mapped: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:199, cross-validated: 133-137; model: src/SqlFlow.Core/Ingestion/IngestionFlow.cs:31; consumed: src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:396-402)"
+    },
+    {
+      "path": "transform",
+      "type": "object",
+      "required": false,
+      "default": "{} (no pre-ingestion transform; type inference off, no authored columns, view generated only when columns are present)",
+      "description": "Optional pre-ingestion transform block, the same TransformYaml shape the file flow uses (inference toggle, authored per-column transforms, and the generate-view toggle). Bound from IngestionYaml.Transform and mapped by YamlFlowLoader.MapInference into IngestionFlow.Transform (a TypeInferencePolicy), src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:222. Its sub-keys (inferTypes, threshold, sampleSize, onConvertError, generateView, columns[].*) are identical to, and documented once under, the file-flow census transform.* entries in docs/reference/flow/keys.json; they are not repeated here to avoid two copies drifting apart. See docs/reference/concepts/pre-ingestion-transform.md for the runtime semantics.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:31 (DTO SqlFlow.Yaml.TransformYaml; mapped at src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:222; model src/SqlFlow.Core/Ingestion/IngestionFlow.cs:92)"
+    },
+    {
+      "path": "versioning",
+      "type": "object",
+      "required": false,
+      "default": "{ temporal: { enabled: false, historySchema: ver, historyTable: null, validFromColumn: ValidFrom_DW, validToColumn: ValidTo_DW, hiddenPeriodColumns: true, periodPrecision: 7, retentionDays: null }, insertUnknownDimensionRow: false, tokenVersioning: false, tokenRetentionDays: null, scd2: { enabled: false, validFromColumn: ValidFrom_DW, validToColumn: ValidTo_DW, currentFlagColumn: IsCurrent_DW, trackedColumns: [] } }",
+      "description": "Optional target-history block for a relational ingestion flow (flowType: ing). Binds to IngestionVersioningYaml and is mapped by YamlIngestionFlowLoader.MapVersioning into SqlFlow.Core.Ingestion.VersioningPolicy, carried on IngestionFlow.Versioning through the whole run. It offers two independent, MUTUALLY EXCLUSIVE history mechanisms. 'temporal' is SQL Server system-versioned temporal history (legacy trgVersioning): the database itself keeps every superseded row version in a paired history table, so the target is queryable as of any past instant with FOR SYSTEM_TIME, and because the period columns are HIDDEN by default the target's visible column list does not change. 'scd2' is application-managed SCD Type 2 history, keeping versions as ordinary rows inside the target itself. Enabling both is rejected, because each change would be recorded twice. The direct boolean 'temporalHistory' is the legacy shorthand for 'temporal.enabled' (it is the key a ported trgVersioning flow carries) and converges on the same TemporalPolicy, so there is one execution path and two authoring surfaces. Of the remaining direct keys, 'insertUnknownDimensionRow' is rejected when set to true, and 'tokenVersioning'/'tokenRetentionDays' are parsed and stored but read by no engine code. When the 'versioning' key itself is absent, MapVersioning still runs and returns the all-off default policy.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:27 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:230; mapper: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:413-428)",
+      "validation": "Load time (YamlIngestionFlowLoader.MapVersioning): FlowValidationException \"<source>: 'versioning.temporal' and 'versioning.scd2' cannot both be enabled. ... Choose one.\" Run time, for flows not built via this loader (IngestionFlowRunner.EnsureSupportedFeatures): the same combination, plus 'versioning.temporal' with 'target.truncateBeforeLoad', fail the run with SqlFlowException before any data work."
+    },
+    {
+      "path": "versioning.insertUnknownDimensionRow",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Would insert an unknown-member row for dimension handling (legacy InsertUnknownDimRow). NOT YET IMPLEMENTED: per the model's doc comment, a correct implementation needs a defined sentinel-key convention plus exemption from the match-key delete pass (src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:238-241), so a flow that sets it to true is rejected rather than silently doing nothing. It is rejected twice: at YAML load, so an authored flow never gets further, and again at run time by IngestionFlowRunner.EnsureSupportedFeatures, which guards flows assembled through the other loaders (full-mode control-DB, legacy migration) that do not go through this YAML loader (src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:205, 837-841).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:135 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:241)",
+      "validation": "Load time (YamlIngestionFlowLoader.cs:117-121): FlowValidationException \"<source>: 'versioning.insertUnknownDimensionRow' is not yet implemented; seed the unknown-member row explicitly for now.\" Run time, for flows not built via this loader (IngestionFlowRunner.cs:837-841): SqlFlowException \"insertUnknownDimensionRow is not yet implemented. Remove the flag; an unknown-member row must be seeded explicitly for now (a designed implementation with match-key exemption is pending).\""
+    },
+    {
+      "path": "versioning.scd2",
+      "type": "object",
+      "required": false,
+      "default": "{ enabled: false, validFromColumn: ValidFrom_DW, validToColumn: ValidTo_DW, currentFlagColumn: IsCurrent_DW, trackedColumns: [] }",
+      "description": "Application-managed slowly-changing-dimension Type 2 (period-based) target history: the engine keeps a validity period per business-key row instead of overwriting it, so unlike 'versioning.temporal' (whose versions live in a separate, database-maintained history table reached through FOR SYSTEM_TIME) its versions are ordinary rows in the target that any SQL or BI tool can join; both can be turned on for an already-created, already-populated target (the period columns are added through ordinary schema evolution, and every pre-existing row is backfilled as the current version the first time the flow runs with it on). Binds to IngestionScd2Yaml and is mapped, with validation, by YamlIngestionFlowLoader.MapScd2 into SqlFlow.Core.Ingestion.Scd2Policy. Consumed by three collaborators once 'enabled' is true: IngestionSchemaBuilder.AddScd2Columns adds the three period columns to the target's desired schema, UpsertGenerator.GenerateScd2Statements replaces the plain two-step upsert with a backfill, close, and insert load, and CanonicalIndexPlanner turns the business-key index into a filtered unique index. When the whole 'scd2' key is absent, MapScd2 returns the disabled default without running the distinct-name check below, since it never computes candidate names to check. The legacy/full-mode row mapper (src/SqlFlow.Core/Ingestion/Legacy/IngestionFlowMapper.cs:136-142) never sets this sub-object at all, so today 'versioning.scd2' is reachable only by authoring the YAML flowType: ing document; a full-mode or legacy-sourced flow always gets the disabled Scd2Policy default.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:138 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:254,266; mapper: src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:430-458)",
+      "validation": "The three period-column names below (each independently defaulted first) must be pairwise distinct, case-insensitively, whenever the 'scd2' block itself is present, regardless of 'enabled' (YamlIngestionFlowLoader.cs:437-448): FlowValidationException \"<source>: 'versioning.scd2' validFromColumn, validToColumn, and currentFlagColumn must be three distinct names (got '<validFrom>', '<validTo>', '<current>').\" Additionally, 'versioning.scd2.enabled: true' cannot combine with 'versioning.temporal.enabled: true' (YamlIngestionFlowLoader.MapVersioning): two history mechanisms on one table would record every change twice."
+    },
+    {
+      "path": "versioning.scd2.currentFlagColumn",
+      "type": "string",
+      "required": false,
+      "default": "IsCurrent_DW",
+      "description": "The current-row indicator column: 1 for the live version of a key, 0 for an expired one. When 'versioning.scd2.enabled' is true, IngestionSchemaBuilder.AddScd2Columns adds it to the target's desired schema (not the staging table, which the production runner builds through a separate, simpler column projection) as a nullable 'bit' system-role column, skipping the add if a same-named column already exists (src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs:100-109, AddComputed at 148-163). At run time UpsertGenerator.GenerateScd2Statements sets it to 1 on backfilled rows and newly-inserted current versions, clears it to 0 when closing a changed current row, and uses 'trg.[column] = 1' as the anti-join condition that finds keys needing a new current version (src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:301, 308, 321-329, 355-362). It is also the filter predicate of the migrated business-key index: on every run where scd2 is enabled, not only the run that creates the target, IngestionFlowRunner calls CanonicalIndexPlanner.Scd2KeyIndexStatements, which drops a same-named 'NCI_KeyColumn' that is not already a filtered unique index, drops any other non-filtered unique nonclustered index whose columns are exactly the business key, and creates 'CREATE UNIQUE NONCLUSTERED INDEX [NCI_KeyColumn] ON <target> (<keyColumns>) WHERE [<currentFlagColumn>] = 1' (src/SqlFlow.SqlServer/Ingestion/CanonicalIndexPlanner.cs:70-126, called from src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:382-393). On the run that creates the target, CanonicalIndexPlanner.Plan also uses 'versioning.scd2.enabled' itself (not this column) to suppress the plain, non-filtered unique 'NCI_KeyColumn' it would otherwise emit (CanonicalIndexPlanner.cs:36-40).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:146 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:278)",
+      "appliesWhen": "versioning.scd2.enabled: true for any schema or SQL effect; the value is still parsed and validated for distinctness even when enabled is false or the key is absent from an otherwise-present scd2 block",
+      "validation": "Blank or whitespace falls back to the default (YamlIngestionFlowLoader.cs:439, NullIfBlank). Together with validFromColumn and validToColumn it must be pairwise distinct: FlowValidationException \"<source>: 'versioning.scd2' validFromColumn, validToColumn, and currentFlagColumn must be three distinct names (got '<validFrom>', '<validTo>', '<current>').\" (YamlIngestionFlowLoader.cs:437-448)."
+    },
+    {
+      "path": "versioning.scd2.enabled",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Turns on the SCD2 load path. Off (the default), a keyed flow always applies through the plain two-step upsert. On, UpsertGenerator.GenerateStatements dispatches to GenerateScd2Statements instead (src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:179-182), and 'load.skipUpdateExisting'/'load.skipInsertNew' are not consulted at all, because the SCD2 statement set replaces both plain branches entirely, per the UpsertOptions.Scd2Enabled doc comment (UpsertGenerator.cs:93-96); 'load.batchUpsert' and 'load.batchUpsertRowCount' (BatchToAvoidLockEscalation) are likewise never applied to the SCD2 statements, only to the plain and dataset-partitioned-loop paths, since GenerateStatements returns from the SCD2 branch before reaching that logic. The business key used by the SCD2 statements, and by the canonical or filtered index, is the flow's effective key columns (load.keyColumns, overridden by matchKeys.keyColumns when load.matchKeysInSourceAndTarget is also on), computed by IngestionFlowRunner.EffectiveKeyColumns (IngestionFlowRunner.cs:817-820, 903-926); this can differ from the plain 'load.keyColumns' count that the load-time validation below inspects. On the run that creates the target, CanonicalIndexPlanner.Plan suppresses the plain unique 'NCI_KeyColumn' index when this flag is on (CanonicalIndexPlanner.cs:36-40); on every run where it is on, IngestionFlowRunner additionally reconciles the key index to the SCD2 filtered-unique form via CanonicalIndexPlanner.Scd2KeyIndexStatements (IngestionFlowRunner.cs:382-393), which is how enabling SCD2 on a pre-existing table migrates its key index before the load can insert a second version of a key.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:143 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:268)",
+      "validation": "Load time, enforced only when true (YamlIngestionFlowLoader.cs:123-138): the flow's own 'load.keyColumns' (not a matchKeys.keyColumns override) must be non-empty, else FlowValidationException \"<source>: 'versioning.scd2' requires 'load.keyColumns' (the business key the dimension versions by).\"; 'target.truncateBeforeLoad: true' is forbidden, else FlowValidationException \"<source>: 'versioning.scd2' cannot be combined with 'target.truncateBeforeLoad'; truncating would erase the dimension history.\" Not checked at YAML load time, but enforced at run time when the flow also sets 'load.dataSetColumn' (src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:152-157, reached from IngestionFlowRunner.BuildLoadStatements when the flow runs): SqlFlowException \"A dataset-column load (DataSetColumn) cannot be combined with SCD2 versioning.\""
+    },
+    {
+      "path": "versioning.scd2.trackedColumns",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (empty means every comparable non-key data column, the usual dimension behavior)",
+      "description": "SOURCE column names whose change opens a new dimension version; a change in any other column leaves the current row untouched. IngestionFlowRunner maps each entry to its cleaned TARGET name through the same source-to-target name map used for 'change.ignoreColumnsInHash', silently dropping any entry that is not a real bulk-copied column (for example one named in source.ignoreColumns, or a virtual column), before passing the mapped list to UpsertGenerator as Scd2TrackedColumns (src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:893-896, 921). Inside UpsertGenerator.GenerateScd2Statements, a non-empty mapped list is intersected with the target's non-key data columns; an empty list instead falls back to every column already eligible for the plain change-detection checksum (every non-key column whose type supports HASHBYTES/CONCAT and that is not in change.ignoreColumnsInHash). Either way, columns excluded from the checksum are removed from the tracked set, and if nothing remains comparable the close statement is skipped entirely, so only brand-new keys get inserted and no existing current row is ever closed (src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:282-289, 306-329).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:147 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:282)",
+      "appliesWhen": "versioning.scd2.enabled: true; when false the list is still parsed but IngestionFlowRunner never reads it (scd2Tracked is forced to an empty list, IngestionFlowRunner.cs:894-896)"
+    },
+    {
+      "path": "versioning.scd2.trackedColumns[]",
+      "type": "string",
+      "required": false,
+      "description": "One SOURCE column name to track for SCD2 change detection. A blank or whitespace-only entry is filtered out while mapping the YAML list (YamlIngestionFlowLoader.cs:456, NullIfBlank inside MapScd2); a non-blank entry that does not resolve to a bulk-copied target column, because it names an ignored or virtual column, is filtered out at run time instead of erroring (IngestionFlowRunner.cs:895, MapNameOrNull). Neither case raises a validation error; see 'versioning.scd2.trackedColumns' for how the resulting set is used.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:147"
+    },
+    {
+      "path": "versioning.scd2.validFromColumn",
+      "type": "string",
+      "required": false,
+      "default": "ValidFrom_DW",
+      "description": "The period-start column name. When 'versioning.scd2.enabled' is true, IngestionSchemaBuilder.AddScd2Columns adds it to the target's desired schema as a nullable 'datetime2(3)' system-role column, skipping the add if a same-named column already exists (src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs:100-109, AddComputed at 148-163); being nullable is what lets the ALTER TABLE ADD succeed on an already-populated target. Final column position is rank-based, not add-order-based: IngestionSchemaBuilder.Order buckets every column into Rank 0 (name starts with 'PK'), Rank 1 (ends with 'PK'), Rank 2 (ordinary), or Rank 3 (ends with '_DW'), sorts by rank first, and only breaks ties within the same rank by the column's original build-order index. A name (default or overridden) ending in '_DW' falls into Rank 3, so it sorts after every ordinary (Rank 2) column, including the real source/virtual data columns. A custom name that does NOT end in '_DW' instead falls into Rank 2, the same rank as an ordinary source column, so it sorts BEFORE all '_DW' columns (not after them); within that Rank-2 group it lands after the real source/virtual columns, because AddScd2Columns appends it to the internal column list after they were added (IngestionSchemaBuilder.Order and Rank, IngestionSchemaBuilder.cs:168-192). At run time UpsertGenerator.GenerateScd2Statements both reads and writes it: the backfill statement sets it, for any target row whose period is still NULL, to the existing value if present, else InsertedDate_DW when that system column is on, else the epoch '1900-01-01 00:00:00.000'; the insert statement sets it to the run's single as-of instant (captured once per run so a closed row's ValidTo equals the new row's ValidFrom exactly) for every new current version (src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:278, 293-303, 333-342).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:144 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:271)",
+      "appliesWhen": "versioning.scd2.enabled: true for any schema or SQL effect; the value is still parsed and validated for distinctness even when enabled is false or the key is absent from an otherwise-present scd2 block",
+      "validation": "Blank or whitespace falls back to the default (YamlIngestionFlowLoader.cs:437, NullIfBlank). Together with validToColumn and currentFlagColumn it must be pairwise distinct: FlowValidationException \"<source>: 'versioning.scd2' validFromColumn, validToColumn, and currentFlagColumn must be three distinct names (got '<validFrom>', '<validTo>', '<current>').\" (YamlIngestionFlowLoader.cs:437-448)."
+    },
+    {
+      "path": "versioning.scd2.validToColumn",
+      "type": "string",
+      "required": false,
+      "default": "ValidTo_DW",
+      "description": "The period-end column name; the current version of a key holds the open-ended sentinel '9999-12-31 23:59:59.999' (the maximum datetime2(3) value, UpsertGenerator.Scd2OpenSentinel, src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:260), so every point-in-time query over the dimension is a uniform half-open ValidFrom-to-ValidTo range with no NULL special case. Added to the target's desired schema the same way as validFromColumn: a nullable 'datetime2(3)' system-role column, skipped if already present (IngestionSchemaBuilder.cs:100-109); the same Rank-based column-ordering rule applies (see 'versioning.scd2.validFromColumn'). At run time: the backfill statement stamps it with the open sentinel for any row whose period is NULL; the close statement stamps it with the run's as-of instant on a current row (flag equal to 1) whose tracked attributes changed from the staged row; the insert statement stamps it with the open sentinel on every new current version (src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:293-303, 305-329, 333-342).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:145 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:274)",
+      "appliesWhen": "versioning.scd2.enabled: true for any schema or SQL effect; the value is still parsed and validated for distinctness even when enabled is false or the key is absent from an otherwise-present scd2 block",
+      "validation": "Blank or whitespace falls back to the default (YamlIngestionFlowLoader.cs:438, NullIfBlank). Together with validFromColumn and currentFlagColumn it must be pairwise distinct: FlowValidationException \"<source>: 'versioning.scd2' validFromColumn, validToColumn, and currentFlagColumn must be three distinct names (got '<validFrom>', '<validTo>', '<current>').\" (YamlIngestionFlowLoader.cs:437-448)."
+    },
+    {
+      "path": "versioning.temporalHistory",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "The legacy trgVersioning shorthand: identical to setting 'versioning.temporal.enabled' to the same value, with every other temporal setting left at its default. Both surfaces are OR-ed together by YamlIngestionFlowLoader.MapTemporal into the single TemporalPolicy the engine reads, so a ported legacy flow needs nothing else. The legacy control-DB mapper (IngestionFlowMapper.FromLegacy) maps flw.Ingestion.trgVersioning onto the same policy, additionally pinning periodPrecision to 0 because that is what flw.GetVersioningScript emitted. See 'versioning.temporal' for what the engine does with it.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:134 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:236)",
+      "validation": "Load time (YamlIngestionFlowLoader.MapTemporal): an explicit 'temporalHistory: false' alongside 'temporal.enabled: true' is a contradiction and raises FlowValidationException \"<source>: 'versioning.temporalHistory: false' contradicts 'versioning.temporal.enabled: true'. 'temporalHistory' is the shorthand for 'temporal.enabled'; set one of them.\" An absent shorthand is not a contradiction. Every other guard is the one documented on 'versioning.temporal'."
+    },
+    {
+      "path": "versioning.temporal",
+      "type": "object",
+      "required": false,
+      "default": "{ enabled: false, historySchema: ver, historyTable: null, validFromColumn: ValidFrom_DW, validToColumn: ValidTo_DW, hiddenPeriodColumns: true, periodPrecision: 7, retentionDays: null }",
+      "description": "SQL Server system-versioned temporal history for the target (legacy trgVersioning, legacy flw.GetVersioningScript). SQL Server keeps every superseded version of a row in a paired history table that it maintains itself, so an UPDATE or DELETE on the target is never lossy and the table is queryable as of any past instant with FOR SYSTEM_TIME AS OF / ALL. Planned from the LIVE target state by src/SqlFlow.SqlServer/Schema/TemporalTablePlanner.cs and applied as run step 11, after schema evolution and the create-time indexes: SQL Server refuses to version a table with no PRIMARY KEY (which the create step supplies), and adding the SYSTEM_TIME period last keeps the period columns out of the schema the evolution planner diffs. Four outcomes depending on that live state: no period -> add the period then enable; period present but versioning off (a manual SET SYSTEM_VERSIONING = OFF leaves the period behind, as does a run interrupted between the two statements) -> only enable; already versioned into the declared history table -> nothing, unless retentionDays differs, which is re-applied; already versioned into a DIFFERENT history table -> the run fails, because re-pointing would orphan the history already recorded. Unlike the legacy engine, which applied versioning only in its create-a-new-table branch, this can be turned on for a target that already exists and already holds rows: the existing rows' ROW START is stamped one second in the past so no row's period is empty and every row stays visible to FOR SYSTEM_TIME AS OF. Turning the flag back OFF never un-versions the table and never drops history; that is an explicit operator action, not a side effect of an edited YAML. Ordinary dynamic schema evolution keeps working on a versioned target: SQL Server supports ADD, ALTER and DROP COLUMN while versioning is on and propagates each change to the history table, so the engine never toggles versioning off to fit a schema change through (which would open a window where changes go unrecorded). The period columns are GENERATED ALWAYS, so the engine excludes them from the schema diff (CatalogSchemaAdapter.ToEvolvableColumns), from the upsert column list, and from change detection.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy",
+      "validation": "Load time (YamlIngestionFlowLoader.MapTemporal / MapVersioning): rejected together with 'versioning.scd2.enabled: true' (two history mechanisms would record every change twice) and together with 'target.truncateBeforeLoad: true' (SQL Server does not allow TRUNCATE TABLE on a system-versioned table; legacy silently skipped the truncate, leaving the flow believing it had done a full reload when it had appended). Run time (IngestionFlowRunner.EnsureSupportedFeatures) repeats both for the control-DB and legacy load paths. Plan time (TemporalTablePlanner.Plan), before any DDL runs: the target must exist, must be a table not a view, and must have a PRIMARY KEY (\"SQL Server requires a system-versioned table to have a PRIMARY KEY, and the target has none. Set 'target.identityColumn' ...\"); a declared history table that differs from the live one is refused; a declared period column name that differs from an existing live period is refused (a period cannot be renamed in place); and a period column name that collides with a data column, on the live table or in the desired schema, is refused."
+    },
+    {
+      "path": "versioning.temporal.enabled",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Turn on system-versioned history for the target. Equivalent to the 'versioning.temporalHistory' shorthand, which is OR-ed with this value; a flow may set either.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy"
+    },
+    {
+      "path": "versioning.temporal.historySchema",
+      "type": "string",
+      "required": false,
+      "default": "ver",
+      "description": "The schema holding the history table. It always resolves inside the TARGET's own database, because SQL Server accepts only a two-part history name. The default 'ver' is the schema legacy SQLFlow used via its flw.SysCFG 'Schema06Version' parameter, so a ported flow keeps its history where the old estate put it. The engine creates the schema when it is missing (an idempotent SCHEMA_ID-guarded CREATE SCHEMA, emitted as the first statement of the temporal batch).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy",
+      "validation": "Load time: must be a plain, undotted name; a dotted value raises FlowValidationException \"<source>: 'versioning.temporal' historySchema/historyTable must be plain, undotted names. SQL Server requires the history table to live in the same database as the target and accepts only a two-part name.\" A blank value falls back to the default."
+    },
+    {
+      "path": "versioning.temporal.historyTable",
+      "type": "string",
+      "required": false,
+      "default": "the target table's own name",
+      "description": "The history table's name. Null (the default) mirrors the target's own table name, which is what legacy did. Set it only when two targets in different schemas would otherwise collide on one history name inside the shared history schema. When the named table already exists (for example a history migrated from an older estate) SQL Server links it rather than creating one, validating column names and ordinals against the current table because the engine always enables with DATA_CONSISTENCY_CHECK = ON.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy",
+      "validation": "Load time: must be a plain, undotted name (same message as historySchema). Trimmed; blank falls back to the target's name."
+    },
+    {
+      "path": "versioning.temporal.validFromColumn",
+      "type": "string",
+      "required": false,
+      "default": "ValidFrom_DW",
+      "description": "The period's ROW START column, added as datetime2(periodPrecision) GENERATED ALWAYS AS ROW START NOT NULL with a DEFAULT of DATEADD(SECOND, -1, SYSUTCDATETIME()). The one-second offset matters on a table that already holds rows: it puts every pre-existing row's period start strictly in the past, so the period is never empty and the row stays visible to FOR SYSTEM_TIME AS OF. This carries the legacy flw.GetVersioningScript semantic forward: history begins at the moment versioning was enabled.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy",
+      "validation": "Plan time: must differ from validToColumn (\"a SYSTEM_TIME period needs two distinct columns\"), must not collide with a data column on the live table or in the desired schema, and must match the live period's column name when the table already carries one (a period cannot be renamed in place)."
+    },
+    {
+      "path": "versioning.temporal.validToColumn",
+      "type": "string",
+      "required": false,
+      "default": "ValidTo_DW",
+      "description": "The period's ROW END column, added as datetime2(periodPrecision) GENERATED ALWAYS AS ROW END NOT NULL with a DEFAULT of the open-ended sentinel rendered at the declared scale (9999-12-31 23:59:59 at precision 0, 9999-12-31 23:59:59.9999999 at precision 7).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy",
+      "validation": "Plan time: the same distinctness, collision, and no-rename checks as validFromColumn."
+    },
+    {
+      "path": "versioning.temporal.hiddenPeriodColumns",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Declare the two period columns HIDDEN (the legacy behavior and the default), so SELECT *, result-set metadata, and every downstream consumer keep seeing the target's original column list. This is what makes enabling temporal history on a live table a NON-BREAKING change for its consumers. Set false to make the period columns part of the ordinary projection. Either way they remain GENERATED ALWAYS and unwritable, and either way sys.columns still reports them, which is why the engine filters on generated_always_type rather than on is_hidden.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy"
+    },
+    {
+      "path": "versioning.temporal.periodPrecision",
+      "type": "int",
+      "required": false,
+      "default": "7",
+      "description": "The datetime2 fractional-second scale (0-7) of the two period columns. The default is SQL Server's own datetime2 default of 7; legacy SQLFlow emitted 0, which cannot tell two updates to the same row inside one second apart. Set it to 0 when linking a history table migrated from a legacy estate, whose period columns must match the current table's types exactly. A flow sourced from the legacy control DB gets 0 automatically (IngestionFlowMapper.FromLegacy).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy",
+      "validation": "Load time: FlowValidationException \"<source>: 'versioning.temporal.periodPrecision' must be between 0 and 7 (got <n>); it is the datetime2 fractional-second scale of the two period columns.\""
+    },
+    {
+      "path": "versioning.temporal.retentionDays",
+      "type": "int",
+      "required": false,
+      "default": "null (INFINITE)",
+      "description": "HISTORY_RETENTION_PERIOD in days: history rows older than this are removed by the engine's background cleanup task. Null (the default) keeps history forever, which the engine renders explicitly as HISTORY_RETENTION_PERIOD = INFINITE, so clearing the setting on a later run returns the table to keeping history forever. Changing it is the ONE difference the temporal planner still acts on once a table is already versioned: re-issuing SET (SYSTEM_VERSIONING = ON ...) is the supported way to change the period, so that statement is emitted unguarded in this case. Requires an engine that supports retention: Azure SQL Database, Azure SQL Managed Instance, or SQL Server 2025 and later; elsewhere SQL Server rejects the option and the engine surfaces that rather than swallowing it.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs (IngestionTemporalYaml); mapped by YamlIngestionFlowLoader.MapTemporal into SqlFlow.Core.Ingestion.TemporalPolicy",
+      "validation": "Load time: FlowValidationException \"<source>: 'versioning.temporal.retentionDays' must be a positive number of days (got <n>); omit it to keep history forever.\""
+    },
+    {
+      "path": "versioning.tokenRetentionDays",
+      "type": "int",
+      "required": false,
+      "default": "null",
+      "description": "Reserved (legacy TokenRetentionDays). Parsed straight through with no coalescing, 'TokenRetentionDays = y.TokenRetentionDays' (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:425), and carried on VersioningPolicy.TokenRetentionDays (src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:248), but read by no engine code found in this codebase: it is not consumed by IngestionFlowRunner, UpsertGenerator, IngestionSchemaBuilder, or CanonicalIndexPlanner. Paired in the model's doc comments with 'tokenVersioning' for a future token-retention feature.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:137 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:248)"
+    },
+    {
+      "path": "versioning.tokenVersioning",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Reserved (legacy TokenVersioning, which the model's doc comment notes the legacy engine itself logged as not implemented). Parsed and carried on VersioningPolicy.TokenVersioning for fidelity with the legacy row (src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:243-245), but read by no engine code: unlike temporalHistory and insertUnknownDimensionRow it is not rejected when set, and unlike scd2.enabled it triggers no schema or SQL generation. Setting it currently has no observable effect on a run.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:136 (model: src/SqlFlow.Core/Ingestion/IngestionPolicies.cs:245)"
+    },
+    {
+      "path": "virtualColumns",
+      "type": "list<object>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Computed projection-column declarations (a faithful port of legacy flw.IngestionVirtual rows), bound to List<IngestionVirtualColumnYaml> (src/SqlFlow.Yaml/IngestionYaml.cs:39) and mapped by YamlIngestionFlowLoader.MapVirtualColumns (src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:460-483) into IngestionFlow.VirtualColumns (IReadOnlyList<VirtualColumn>, src/SqlFlow.Core/Ingestion/IngestionFlow.cs:70). Consumed entirely by IngestionSchemaBuilder.Build (src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs:40-76): it builds a name -> declaration lookup from every entry with a non-blank name (case-insensitive; when the list has duplicate names, only the FIRST declaration for that name is kept, IngestionSchemaBuilder.cs:40-43), then walks the flow's INTROSPECTED SOURCE columns. A source column whose RAW (pre-schema.cleanColumnNames) name matches a declaration is re-marked Role=Virtual/Origin=Computed, its projection becomes that declaration's expression instead of the raw bulk-copied value, and it is excluded from the source-to-target bulk-copy name map, so it is neither read from the source nor treated as a data column for the upsert (though it still appears, computed, in the built target/staging schema). A declaration whose name matches no introspected source column, or that has no name at all, is never looked up and so silently contributes nothing to the built schema -- it is not an error. Because a virtualized column is excluded from the bulk-copy map, naming it (directly, or via matchKeys/versioning.scd2 resolving to it) as a key column fails schema-evolution's canonical-index planning with SqlFlowException \"Key column '<name>' is not a bulk-copied target column (is it in IgnoreColumns or a virtual column?).\" (IngestionFlowRunner.MapName, src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:1157-1161) and fails upsert generation itself with \"Key column '<name>' is not among the data columns.\" (src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:143).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:39"
+    },
+    {
+      "path": "virtualColumns[]",
+      "type": "object",
+      "required": false,
+      "description": "One computed-column declaration; binds IngestionVirtualColumnYaml {name, dataType, dataTypeExpression, expression} (src/SqlFlow.Yaml/IngestionYaml.cs:174-180) and maps to a VirtualColumn record (src/SqlFlow.Core/Ingestion/VirtualColumn.cs:7-21). Only expression is required; name, dataType, and dataTypeExpression are all optional and blank/whitespace values normalize to unset.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:174-180 (mapped by YamlIngestionFlowLoader.MapVirtualColumns, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs:460-483)",
+      "validation": "An entry missing expression fails with FlowValidationException \"<source>: 'virtualColumns[<i>].expression' is required.\" (YamlIngestionFlowLoader.cs:471-472)."
+    },
+    {
+      "path": "virtualColumns[].dataType",
+      "type": "string",
+      "required": false,
+      "default": "unset (null)",
+      "description": "The declared target SQL type (legacy DataType, e.g. nvarchar(50)), bound onto VirtualColumn.DataType for round-trip fidelity with the legacy flw.IngestionVirtual.DataType column. Not read anywhere in the V3 engine path found in this repository: IngestionSchemaBuilder.Build ignores it entirely and always keeps the matched source column's own introspected SQL type (optionally narrowed by schema.convertUnicodeToNonUnicode) for a virtualized column (IngestionSchemaBuilder.cs:52,59). Currently has no effect on the generated schema, upsert, or transformation view.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:177"
+    },
+    {
+      "path": "virtualColumns[].dataTypeExpression",
+      "type": "string",
+      "required": false,
+      "default": "unset (null)",
+      "description": "A T-SQL expression documented as yielding the column's type (legacy DataTypeExp, e.g. CAST('2022-01-01' AS DATE)), an alternative to dataType; bound onto VirtualColumn.DataTypeExpression for legacy flw.IngestionVirtual parity. Like dataType, it is not read anywhere in the V3 engine path found in this repository (IngestionSchemaBuilder.Build never references it); currently has no effect on the generated schema, upsert, or transformation view.",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:178"
+    },
+    {
+      "path": "virtualColumns[].expression",
+      "type": "string",
+      "required": true,
+      "description": "The T-SQL select expression producing the column's value (legacy SelectExp; VirtualColumn.SelectExpression). When the entry's name matches an introspected source column, IngestionSchemaBuilder substitutes this expression as that column's SqlColumn.SelectExpression in place of the raw bulk-copied value (IngestionSchemaBuilder.cs:54-63); the resulting column nonetheless keeps the matched SOURCE column's own SQL data type (after any schema.convertUnicodeToNonUnicode narrowing), NOT a type derived from this entry's own dataType or dataTypeExpression (IngestionSchemaBuilder.cs:52,59).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:179",
+      "validation": "Missing, null, empty, or whitespace-only throws FlowValidationException \"<source>: 'virtualColumns[<i>].expression' is required.\" (YamlIngestionFlowLoader.cs:471-472)."
+    },
+    {
+      "path": "virtualColumns[].name",
+      "type": "string",
+      "required": false,
+      "default": "unset (null); an entry with no name is never looked up, so it never affects the built schema",
+      "description": "The output column name (legacy ColumnName; VirtualColumn.Name). IngestionSchemaBuilder.Build matches it case-insensitively against the RAW (pre-cleanup) name of each introspected source column, not the cleaned/target name (IngestionSchemaBuilder.cs:40-54); only a source column whose raw name matches is turned into this declaration's computed projection. When the virtualColumns list declares the same name more than once (case-insensitively), only the first declaration for that name is used; later duplicates are silently ignored (IngestionSchemaBuilder.cs:40-43).",
+      "definedIn": "src/SqlFlow.Yaml/IngestionYaml.cs:176"
+    }
+  ]
+}

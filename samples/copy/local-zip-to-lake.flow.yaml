@@ -1,0 +1,17 @@
+# Zip-only run: bundle a local export folder into a single archive in the data lake. Runnable live
+# against a local source; point the target at a local folder to keep it fully offline. 'operation: zip'
+# reads every matched file and writes one .zip - no per-file copy. Use 'operation: unzip' to reverse it,
+# and 'operation: copy' for a plain verbatim copy.
+flowType: cpy
+name: Exports_Nightly_Zip
+batch: demo
+operation: zip
+source:
+  location: ./_exports
+  pattern: "*.csv"
+  recursive: true
+target:
+  location: ./_archive
+options:
+  zipName: exports_bundle.zip
+  overwrite: true

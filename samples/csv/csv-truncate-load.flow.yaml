@@ -1,0 +1,12 @@
+# Truncate-load: empty the target before loading, so the table always reflects only the
+# current file (full refresh). The alternative is append (the default).
+name: Csv_TruncateLoad
+source:
+  type: csv
+  location: ./data/orders.csv
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_TruncateLoad
+load:
+  mode: truncate-load

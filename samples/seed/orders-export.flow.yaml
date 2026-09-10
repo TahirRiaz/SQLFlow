@@ -1,0 +1,20 @@
+# SQLFlow seed pipeline - file export (flowType: exp), used to populate the shadow catalog with a
+# genuine export run (RunFile from result.files + the generated SELECTs in RunStatement). It reads
+# the dbo.Orders table loaded by the quickstart and writes it to a CSV file.
+#
+#   sqlflow run samples/seed/orders-export.flow.yaml
+
+flowType: exp
+name: orders-export-seed
+
+connections:
+  dwh: ${env:SQLFLOW_DW}
+
+source:
+  server: dwh
+  object: TestDB.dbo.Orders
+
+target:
+  path: ./out
+  fileName: orders
+  fileType: csv

@@ -1,0 +1,1256 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Hungary became a Christian kingdom in A.D. 1000 and for many centuries served as a bulwark against Ottoman Turkish expansion in Europe. The kingdom eventually became part of the Austro-Hungarian Empire, which collapsed during World War I. The country fell under communist rule after World War II. In 1956, Moscow responded to a Hungarian revolt and announcement of its withdrawal from the Warsaw Pact with a massive military intervention. Under the leadership of Janos KADAR in 1968, Hungary began liberalizing its economy, introducing so-called \"Goulash Communism.\" Hungary held its first multiparty elections in 1990 and initiated a free market economy. It joined NATO in 1999 and the EU five years later."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Central Europe, northwest of Romania"
+    },
+    "Geographic coordinates": {
+      "text": "47 00 N, 20 00 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "93,028 sq km"
+      },
+      "land": {
+        "text": "89,608 sq km"
+      },
+      "water": {
+        "text": "3,420 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly smaller than Virginia; about the same size as Indiana"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "2,106 km"
+      },
+      "border countries": {
+        "text": "Austria 321 km; Croatia 348 km; Romania 424 km; Serbia 164 km; Slovakia 627 km; Slovenia 94 km; Ukraine 128 km"
+      }
+    },
+    "Coastline": {
+      "text": "0 km (landlocked)"
+    },
+    "Maritime claims": {
+      "text": "none (landlocked)"
+    },
+    "Climate": {
+      "text": "temperate; cold, cloudy, humid winters; warm summers"
+    },
+    "Terrain": {
+      "text": "mostly flat to rolling plains; hills and low mountains on the Slovakian border"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Kekes 1,014 m"
+      },
+      "lowest point": {
+        "text": "Tisza River 78 m"
+      },
+      "mean elevation": {
+        "text": "143 m"
+      }
+    },
+    "Natural resources": {
+      "text": "bauxite, coal, natural gas, fertile soils, arable land"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "58.9% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 48.5% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 2% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 8.4% (2018 est.)"
+      },
+      "forest": {
+        "text": "22.5% (2018 est.)"
+      },
+      "other": {
+        "text": "18.6% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "1,010 sq km (2019)"
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lake Balaton - 590 sq km"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Duna (Danube) (shared with Germany [s], Austria, Slovakia, Croatia, Serbia, Bulgaria, Ukraine, Moldova, and Romania [m]) - 2,888 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country, with urban areas attracting larger and denser populations"
+    },
+    "Geography - note": {
+      "text": "landlocked; strategic location astride main land routes between Western Europe and Balkan Peninsula as well as between Ukraine and Mediterranean basin; the north-south flowing Duna (Danube) and Tisza Rivers divide the country into three large regions"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "9,855,745"
+      },
+      "male": {
+        "text": "4,812,668"
+      },
+      "female": {
+        "text": "5,043,077 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Hungarian(s)"
+      },
+      "adjective": {
+        "text": "Hungarian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Hungarian 84.3%, Romani 2.1%, German 1%, other 1.2%, unspecified 13.7% (2022 est.)",
+      "note": "<strong>note:</strong> percentages add up to more than 100% because respondents were able to identify more than one ethnic group; Romani populations are usually underestimated in official statistics and may represent 5–10% of Hungary's population"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Hungarian (official) 98.8%, English 25.3%, German 12.6%, Russian 2.1%, French 1.5%, Romanian 1.4%, other 5.1% (2022 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>A World Factbook nélkülözhetetlen forrása az alapvető információnak.  (Hungarian)<br><br>The World Factbook, the indispensable source for basic information."
+      },
+      "note": "<strong>note:</strong> percentages add up to more than 100% because respondents were able to identify more than one spoken language"
+    },
+    "Religions": {
+      "text": "Catholic 30.1% (Roman Catholic 27.5%, Greek Catholic 1.7%, other Catholic 0.9%), Calvinist 9.8%, Lutheran 1.8%, other Christian (includes Orthodox) 1.6%, other 0.4%, none 16.1%, no answer 40.1% (2022 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "14.6% (male 753,955/female 683,943)"
+      },
+      "15-64 years": {
+        "text": "63.9% (male 3,195,761/female 3,104,750)"
+      },
+      "65 years and over": {
+        "text": "21.5% (2024 est.) (male 862,952/female 1,254,384)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "53.8"
+      },
+      "youth dependency ratio": {
+        "text": "22.4"
+      },
+      "elderly dependency ratio": {
+        "text": "31.4"
+      },
+      "potential support ratio": {
+        "text": "3.2 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "44.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "42.8 years"
+      },
+      "female": {
+        "text": "46.7 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "-0.28% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "9.1 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "14.5 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "2.5 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country, with urban areas attracting larger and denser populations"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "72.9% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.05% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "1.778 million BUDAPEST (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.06 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.1 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.03 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.69 male(s)/female"
+      },
+      "total population": {
+        "text": "0.95 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "28.4 years (2020 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "15 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "4.7 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "5 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "4.3 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "76 years (2024 est.)"
+      },
+      "male": {
+        "text": "72.9 years"
+      },
+      "female": {
+        "text": "79.3 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.6 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.78 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "7.3% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "6.06 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "7 beds/1,000 population (2018)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "26.4% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "10.79 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "3.96 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "3.33 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "3.5 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "31.8% (2020 est.)"
+      },
+      "male": {
+        "text": "35.8% (2020 est.)"
+      },
+      "female": {
+        "text": "27.8% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "51.4% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "4.8% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "99.1%"
+      },
+      "male": {
+        "text": "99.1%"
+      },
+      "female": {
+        "text": "99.1% (2021)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "15 years"
+      },
+      "male": {
+        "text": "15 years"
+      },
+      "female": {
+        "text": "15 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air and water pollution are some of Hungary's most serious environmental problems; water quality in the Hungarian part of the Danube has improved but is still plagued by pollutants from industry and large-scale agriculture; soil pollution"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Air Pollution-Heavy Metals, Air Pollution-Multi-effect Protocol, Air Pollution-Nitrogen Oxides, Air Pollution-Persistent Organic Pollutants, Air Pollution-Sulphur 85, Air Pollution-Sulphur 94, Air Pollution-Volatile Organic Compounds, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "Antarctic-Environmental Protection"
+      }
+    },
+    "Climate": {
+      "text": "temperate; cold, cloudy, humid winters; warm summers"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "58.9% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 48.5% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 2% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 8.4% (2018 est.)"
+      },
+      "forest": {
+        "text": "22.5% (2018 est.)"
+      },
+      "other": {
+        "text": "18.6% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "72.9% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.05% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.1% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.01% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "14.24 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "45.54 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "7.25 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "3.712 million tons (2015 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "962,893 tons (2015 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "25.9% (2015 est.)"
+      }
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Lake Balaton - 590 sq km"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Duna (Danube) (shared with Germany [s], Austria, Slovakia, Croatia, Serbia, Bulgaria, Ukraine, Moldova, and Romania [m]) - 2,888 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "660 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "3.45 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "550 million cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "104 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "4 (2024)"
+      },
+      "global geoparks and regional networks": {
+        "text": "Bakony-Balaton; Bukk Region; Hungary; Novohrad-N&oacute;gr&aacute;d (includes Slovakia) (2024)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Hungary"
+      },
+      "local long form": {
+        "text": "none"
+      },
+      "local short form": {
+        "text": "Magyarorszag"
+      },
+      "former": {
+        "text": "Kingdom of Hungary, Hungarian People's Republic, Hungarian Soviet Republic, Hungarian Republic"
+      },
+      "etymology": {
+        "text": "the Byzantine Greeks refered to the tribes that arrived on the steppes of Eastern Europe in the 9th century as the \"Oungroi,\" a name that was later Latinized to \"Ungri\" and which became \"Hungari\"; the name originally meant an \"[alliance of] ten tribes\"; the Hungarian name \"Magyarorszag\" means \"Country of the Magyars\"; the term may derive from the most prominent of the Hungarian tribes, the Megyer"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Budapest"
+      },
+      "geographic coordinates": {
+        "text": "47 30 N, 19 05 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "the Hungarian capital city was formed in 1873 from the merger of three cities on opposite banks of the Danube: Buda and Obuda (Old Buda) on the western shore and Pest on the eastern; the origins of the original names are obscure, but according to the second century A.D. geographer, Ptolemy, the settlement that would become Pest was called \"Pession\" in ancient times; \"Buda\" may derive from either a Slavic or Turkic personal name"
+      }
+    },
+    "Administrative divisions": {
+      "text": "<p>19 counties (megyek, singular - megye), 25 cities with county rights (megyei jogu varosok, singular - megyei jogu varos), and 1 capital city (fovaros)</p> <p><strong>counties:</strong> Bacs-Kiskun, Baranya, Bekes, Borsod-Abauj-Zemplen, Csongrad-Csanad, Fejer, Gyor-Moson-Sopron, Hajdu-Bihar, Heves, Jasz-Nagykun-Szolnok, Komarom-Esztergom, Nograd, Pest, Somogy, Szabolcs-Szatmar-Bereg, Tolna, Vas, Veszprem, Zala</p> <p><strong>cities with county rights:</strong> Baja, Bekescsaba, Debrecen, Dunaujvaros, Eger, Erd, Esztergom, Gyor, Hodmezovasarhely, Kaposvar, Kecskemet, Miskolc, Nagykanizsa, Nyiregyhaza, Pecs, Salgotarjan, Sopron, Szeged, Szekesfehervar, Szekszard, Szolnok, Szombathely, Tatabanya, Veszprem, Zalaegerszeg</p> <p><strong>capital city:</strong> Budapest</p>"
+    },
+    "Independence": {
+      "text": "16 November 1918 (republic proclaimed); notable earlier dates: 25 December 1000 (crowning of King STEPHEN I, traditional founding date); 30 March 1867 (Austro-Hungarian dual monarchy established)"
+    },
+    "National holiday": {
+      "text": "Saint Stephen's Day, 20 August (1083); note - commemorates his canonization and the transfer of his remains to Buda (now Budapest) in 1083"
+    },
+    "Legal system": {
+      "text": "civil legal system influenced by the German model"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1949 (heavily amended in 1989 following the collapse of communism); latest approved 18 April 2011, signed 25 April 2011, effective 1 January 2012"
+      },
+      "amendments": {
+        "text": "proposed by the president of the republic, by the government, by parliamentary committee, or by Parliament members; passage requires two-thirds majority vote of Parliament members and approval by the president; amended several times, last in 2018"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction with reservations; accepts ICC jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Hungary"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "8 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age, 16 if married and marriage is registered in Hungary; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Tamas SULYOK (since 5 March 2024)"
+      },
+      "head of government": {
+        "text": "Prime Minister Viktor ORBAN (since 29 May 2010)"
+      },
+      "cabinet": {
+        "text": "Cabinet of Ministers proposed by the prime minister and appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president indirectly elected by the National Assembly with two-thirds majority vote in first round or simple majority vote in second round for a 5-year term (eligible for a second term); election last held on 26 February 2024 (next to be held in spring 2029); prime minister elected by the National Assembly on the recommendation of the president; election last held on 3 April 2022 (next to be held in April or May 2027)"
+      },
+      "election results": {
+        "text": "<br><em>2024:</em> Tamas SULYOK elected president; National Assembly vote - 134 to 5<br><br><em>2022: </em>Katalin NOVAK (Fidesz) elected president; National Assembly vote - 137 to 51"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "National Assembly (Országgyülés)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "chamber name": {
+        "text": "National Assembly (Orszaggyules)"
+      },
+      "number of seats": {
+        "text": "199 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "mixed system"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "4/3/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "Hungarian Civic Union-Christian Democratic People's Party (FIDESZ-KDNP) (135); Democratic Coalition (DK) (15); Movement for a Better Hungary (Jobbik) (10); Hungarian Socialist Party (MSZP) (10); Momentum (10); Other (19)"
+      },
+      "percentage of women in chamber": {
+        "text": "15.2%"
+      },
+      "expected date of next election": {
+        "text": "April 2026"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Curia or Supreme Judicial Court (consists of the president, vice president, department heads, and has a maximum of 113 judges, and is organized into civil, criminal, and administrative-labor departments; Constitutional Court (consists of 15 judges, including the court president and vice president)"
+      },
+      "judge selection and term of office": {
+        "text": "Curia president elected by the National Assembly on the recommendation of the president of the republic; other Curia judges appointed by the president upon the recommendation of the National Judicial Council, a separate 15-member administrative body; judge tenure based on interim evaluations until normal retirement at age 62; Constitutional Court judges, including the president of the court, elected by the National Assembly; court vice president elected by the court itself; members serve 12-year terms with mandatory retirement at age 62"
+      },
+      "subordinate courts": {
+        "text": "5 regional courts of appeal; 19 regional or county courts (including Budapest Metropolitan Court); 20 administrative-labor courts; 111 district or local courts"
+      }
+    },
+    "Political parties": {
+      "text": "Christian Democratic People's Party or KDNP<br>Democratic Coalition or DK<br>Dialogue for Hungary or Párbeszéd<br>Fidesz-Hungarian Civic Alliance or Fidesz<br>Hungarian Socialist Party or MSZP<br>Jobbik - Conservatives or Jobbik<br>LMP-Hungary's Green Party or LMP<br>Mi Hazank (Our Homeland Movement) or MHM<br>Momentum Movement or Momentum<br>Movement for a Better Hungary or Jobbik<br>National Self-Government of Germans in Hungary or MNOÖ<br>On the People's Side or A Nép Pártján<br>Our Homeland Movement or Mi Hazánk<br>TISZA – Respect and Freedom Party or TISZA"
+    },
+    "International organization participation": {
+      "text": "Australia Group, BIS, CD, CE, CEI, CERN, EAPC, EBRD, ECB, EIB, ESA (cooperating state), EU, FAO, G-9, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IEA, IFAD, IFC, IFRCS, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, MINURSO, NATO, NEA, NSG, OAS (observer), OECD, OIF (observer), OPCW, OSCE, PCA, Schengen Convention, SELEC, UN, UNCTAD, UNESCO, UNFICYP, UNHCR, UNIDO, UNIFIL, UNOOSA, UNWTO, UPU, Wassenaar Arrangement, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO, ZC"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Szabolcs Ferenc TAK&Aacute;CS (since 23 December 2020)"
+      },
+      "chancery": {
+        "text": "1500 Rhode Island Avenue, N.W.<br>Washington, D.C. 20005"
+      },
+      "telephone": {
+        "text": "[1] (202) 362-6730"
+      },
+      "FAX": {
+        "text": "[1] (202) 966-8135"
+      },
+      "email address and website": {
+        "text": "<br>info.was@mfa.gov.hu<br><br>https://washington.mfa.gov.hu/eng"
+      },
+      "consulate(s) general": {
+        "text": "Chicago, Los Angeles, New York"
+      },
+      "consulate(s)": {
+        "text": "Houston, Miami"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador&nbsp;(vacant); Charg&eacute; d&rsquo;Affaires David HOLMES (since January 2025)"
+      },
+      "embassy": {
+        "text": "Szabadsag ter 12, H-1054 Budapest"
+      },
+      "mailing address": {
+        "text": "5270 Budapest Place, US Department of State, Washington, DC 20521-5270"
+      },
+      "telephone": {
+        "text": "[36] (1) 475-4400"
+      },
+      "FAX": {
+        "text": "[36] (1) 475-4248"
+      },
+      "email address and website": {
+        "text": "<br>acs.budapest@state.gov<br><br>https://hu.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "three equal horizontal bands of red (top), white, and green; the flag dates to the national movement of the 18th and 19th centuries, and fuses the medieval colors of the Hungarian coat of arms with the revolutionary tricolor form of the French flag; folklore attributes virtues to the colors: red for strength, white for faithfulness, and green for hope; alternatively, the red is seen as being for the blood spilled in defense of the land, white for freedom, and green for the pasturelands that make up so much of the country"
+    },
+    "National symbol(s)": {
+      "text": "Holy Crown of Hungary (Crown of Saint Stephen); national colors: red, white, green"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Himnusz\" (Hymn)"
+      },
+      "lyrics/music": {
+        "text": "Ferenc KOLCSEY/Ferenc ERKEL"
+      },
+      "note": "<strong>note:</strong> adopted 1844"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "8 (7 cultural, 1 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Budapest, including the Banks of the Danube, the Buda Castle Quarter, and Andrássy Avenue (c); Old Village of Hollókő and its Surroundings (c); Caves of Aggtelek Karst and Slovak Karst (n); Millenary Benedictine Abbey of Pannonhalma and its Natural Environment (c); Hortobágy National Park - the Puszta (c); Early Christian Necropolis of Pécs (Sopianae) (c); Fertö / Neusiedlersee Cultural Landscape (c); Tokaj Wine Region Historic Cultural Landscape (c)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income EU and OECD economy; tightening fiscal policy in response to budget deficit; delayed EU cohesion fund disbursement due to judicial independence concerns; high inflation and low consumer confidence; seeking alternatives to dependence on Russian natural gas&nbsp;"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$388.906 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$392.468 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$375.268 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "-0.91% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "4.58% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "7.06% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$40,500 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$40,700 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$38,600 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$212.389 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "17.12% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "14.61% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "5.11% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BBB (2019)"
+      },
+      "Moody's rating": {
+        "text": "Baa3 (2016)"
+      },
+      "Standard & Poors rating": {
+        "text": "BBB (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "4.7% (2023 est.)"
+      },
+      "industry": {
+        "text": "24.3% (2023 est.)"
+      },
+      "services": {
+        "text": "57.6% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "49.5% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "20% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "26.3% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "-1% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "81.2% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-76.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "wheat, maize, milk, barley, sunflower seeds, rapeseed, sugar beets, pork, grapes, apples (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "mining, metallurgy, construction materials, processed foods, textiles, chemicals (especially pharmaceuticals), motor vehicles"
+    },
+    "Industrial production growth rate": {
+      "text": "-5.16% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "5.001 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "4.13% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "3.61% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "4.05% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "12.8% (2023 est.)"
+      },
+      "male": {
+        "text": "13.5% (2023 est.)"
+      },
+      "female": {
+        "text": "11.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "12.1% (2021 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "29.2 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "16.8% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "7% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "3.5% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "24.1% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "2.39% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "2.23% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "2.08% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$69.793 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$75.081 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "75.53% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "23.43% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$1.673 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$14.728 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$7.062 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$172.662 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$158.98 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$145.522 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Germany 24%, Italy 6%, Romania 5%, Slovakia 5%, Austria 4% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "cars, vehicle parts/accessories, electric batteries, packaged medicine, computers (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$162.02 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$167.262 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$145.191 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Germany 21%, China 7%, Austria 7%, Slovakia 6%, Poland 6% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "natural gas, vehicle parts/accessories, electricity, cars, plastic products (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$45.719 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$41.219 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$43.483 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "forints (HUF) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "353.088 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "372.596 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "303.141 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "307.997 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "290.66 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "11.995 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "43.186 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "9.439 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "21.589 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "2.801 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "33.1% of total installed capacity (2022 est.)"
+      },
+      "nuclear": {
+        "text": "44.2% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "13.6% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "1.8% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "0.5% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "6.8% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of operational nuclear reactors": {
+        "text": "4 (2023)"
+      },
+      "Net capacity of operational nuclear reactors": {
+        "text": "1.92GW (2023 est.)"
+      },
+      "Percent of total electricity production": {
+        "text": "48.8% (2023 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "5.45 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "6.18 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "132,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "804,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "2.909 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "36,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "175,000 bbl/day (2023 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "12.1 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "1.523 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "9.485 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "9.314 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "3.738 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "44.884 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "4.915 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "21.781 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "18.187 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "102.832 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "2.693 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "28 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "10.2 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "104 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "<p>Hungary’s telecom infrastructure has been upgraded in recent years following considerable investments made by telcos as they upgrade their mobile networks to 5G and deploy more fiber; these developments have helped operators to promote converged fixed and mobile service; the number of fixed lines continue to fall as subscribers migrate to the mobile platform for voice and data services; a number of measures aimed at promoting competition in the broadband market encourage investment in technology upgrades; Hungary has the highest fixed broadband penetration rate in Eastern Europe; there remains considerable growth in mobile broadband services delivered via upgraded networks; 5G development is supported by the government, universities, other telcos, and vendors</p> (2024)"
+      },
+      "domestic": {
+        "text": "fixed-line connections, with 29 fixed per 100 persons and 104 mobile-cellular subscriptions per 100 (2022)"
+      },
+      "international": {
+        "text": "country code - 36; Hungary has fiber-optic cable connections with all neighboring countries; the international switch is in Budapest; satellite earth stations - 2 Intelsat (Atlantic Ocean and Indian Ocean regions), 1 Inmarsat, 1 (very small aperture terminal) VSAT system of ground terminals"
+      }
+    },
+    "Broadcast media": {
+      "text": "mixed system of state-supported public service broadcast media and private broadcasters; the 5 publicly owned TV channels and the 2 main privately owned TV stations are the major national broadcasters; a large number of special interest channels; highly developed market for satellite and cable TV services with about two-thirds of viewers utilizing their services; 4 state-supported public-service radio networks; a large number of local stations including commercial, public service, nonprofit, and community radio stations; digital transition completed at the end of 2013; government-linked businesses have greatly consolidated ownership in broadcast and print media (2019)"
+    },
+    "Internet country code": {
+      "text": ".hu"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "91% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "3.56 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "37 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "5 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "145"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "31,226,848 (2018)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "HA"
+    },
+    "Airports": {
+      "text": "109 (2024)"
+    },
+    "Heliports": {
+      "text": "14 (2024)"
+    },
+    "Pipelines": {
+      "text": "5,874 km gas (high-pressure transmission system), 83,732 km gas (low-pressure distribution network), 850 km oil, 1,200 km refined products (2018)"
+    },
+    "Railways": {
+      "total": {
+        "text": "7,687 km (2020) 3,111 km electrified"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "216,443 km (2022)"
+      }
+    },
+    "Waterways": {
+      "text": "1,622 km (2011) (most on Danube River)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "1 (2023)"
+      },
+      "by type": {
+        "text": "other 1"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Hungarian Defense Forces (HDF or Magyar Honvédség): the HDF is organized as a joint force under a general staff with commands for land, air, cyber, special operations, territorial defense, and support forces (2024)",
+      "note": "<strong>note:</strong> the National Police are under the Ministry of Interior and responsible for maintaining order nationwide; the Ministry of Interior also has the Counterterrorism Center, a special police force responsible for protecting the president and the prime minister and for preventing, uncovering, and detecting terrorist acts"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2024": {
+        "text": "2.1% of GDP (2024 est.)"
+      },
+      "Military Expenditures 2023": {
+        "text": "2.1% of GDP (2023)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.8% of GDP (2022)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.7% of GDP (2021)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.8% of GDP (2020)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 21,000 active-duty troops (16,000 Army; 5,000 Air Force) (2024)",
+      "note": "<strong>note:</strong> in 2017, Hungary announced plans to increase the number of active soldiers to around 37,000 but did not give a timeline"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the HDF has a mix of Soviet-era and more modern, Western equipment from such countries as Germany, France, Sweden, and the US; in 2017, Budapest launched a modernization program known as Zrinyi 2026, which was aimed at replacing its Soviet-era weaponry with modern systems, and increasing Hungary&rsquo;s defense expenditure to 2% of GDP by 2024, in line with NATO spending targets&nbsp; (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-25 years of age for voluntary military service; no conscription (abolished 2005); 6-month service obligation (2023)",
+      "note": "<strong>note:</strong> as of 2021, women comprised over 20% of Hungary's full-time military personnel"
+    },
+    "Military deployments": {
+      "text": "150 Bosnia-Herzegovina (EUFOR stabilization force); 150 Iraq (NATO); 410 Kosovo (NATO/KFOR); note - Hungary has small numbers of troops on several UN missions (2024)"
+    },
+    "Military - note": {
+      "text": "the Hungarian Defense Forces (HDF) are responsible for ensuring the defense of the country’s sovereignty, territorial integrity, and citizens, and fulfilling Hungary’s commitments to the EU and NATO, as well as contributing to other international peacekeeping efforts under the UN; the HDF is also responsible for some aspects of domestic security, crisis management, disaster response, and assisting law enforcement forces in border security; Hungary’s most recent national security strategy addressed migration as an important security concern, alongside other issues, such as great power competition and cyber security; modernizing the HDF by replacing Soviet-era equipment with Western systems and building up Hungary’s defense industrial capacity has been a priority over the past decade<br><br>Hungary has been a member of NATO since 1999 and considers the collective defense ensured within the Alliance as a cornerstone of the country’s security; NATO membership is complemented by Hungary’s ties to the EU under its Common Security and Defense Policy; the HDF has participated in multiple NATO-led security missions, including in Afghanistan, Iraq, and Kosovo, as well as EU-led missions in Bosnia and Herzegovina and Mali; it hosts a NATO battlegroup comprised of troops from Croatia, Hungary, Italy, and the US, and NATO’s Multinational Division Center, a headquarters capable of commanding a division-sized force (typically 15-20,000 troops) in a crisis; both organizations were established as a result of Russian aggression against Ukraine; Hungary also hosts NATO’s Center of Excellence for Military Medicine; Hungary is a member of the Visegrad Group, a regional platform that brings together Czechia, Hungary, Poland, and Slovakia to discuss cultural, defense, and political cooperation (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Hungarian Space Office (HSO; established 1992) (2024)"
+    },
+    "Space program overview": {
+      "text": "has a history of involvement in space activities going back to the Soviet era; growing a modern space program focused on acquiring satellites and contributing to the European Space Agency (ESA); has a national space strategy; builds and operates satellites; researches and develops space technologies, including communications, navigation, and subsystems for satellites; has an astronaut corps; in addition to being an ESA member and cooperating with individual ESA and EU member states, particularly France, has relations with a variety of other foreign space agencies and industries, including those of Brazil, Israel, Russia, Singapore, Turkey, the UAE, and the US; national space strategy included the goals of fostering innovation and increasing Hungary’s competitiveness in the commercial space sector (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic State of Iraq and ash-Sham (ISIS)",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "66,135 (Ukraine) (as of 15 April 2024)"
+      },
+      "stateless persons": {
+        "text": "130 (2022)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "transshipment point for Southwest Asian heroin and cannabis and for South American cocaine destined for Western Europe; limited producer of precursor chemicals, particularly for amphetamine and methamphetamine; efforts to counter money laundering, related to organized crime and drug trafficking are improving but remain vulnerable; significant consumer of ecstasy"
+    }
+  }
+}

@@ -1,0 +1,57 @@
+# SQLFlow pipeline - standalone invoke (flowType: inv).
+#
+# Triggers one Azure Data Factory pipeline or Azure Automation runbook and waits for it to
+# finish (polling until the run reaches a terminal state; anything but success fails the run).
+# The same 'invokes:' and 'servicePrincipals:' blocks also work inside ing/exp/sp documents,
+# where preInvoke/postInvoke reference them as hooks around the load.
+#
+#   sqlflow validate trigger-refresh.flow.yaml   # check the definition
+#   sqlflow run      trigger-refresh.flow.yaml   # trigger and wait
+#
+# No control database, no registration: the file is the whole pipeline.
+
+flowType: inv
+name: trigger-refresh
+
+# ---- SERVICE PRINCIPALS ---------------------------------------------------------
+# Secrets never rest in this file: clientSecret must be a whole ${env:NAME} or
+# ${keyvault:vault/secret} reference. Omit clientSecret (and tenantId/clientId) to
+# authenticate with the ambient Azure credential (managed identity / az login).
+servicePrincipals:
+  deploy:
+    tenantId: 00000000-0000-0000-0000-000000000000
+    clientId: 00000000-0000-0000-0000-000000000000
+    clientSecret: ${env:SQLFLOW_DEPLOY_SP_SECRET}
+    subscriptionId: 00000000-0000-0000-0000-000000000000
+    resourceGroup: rg-data
+    dataFactoryName: adf-prod              # required for adf invokes
+    # automationAccountName: aa-prod       # required for aut invokes
+
+# ---- THE INVOKE -------------------------------------------------------------------
+invoke:
+  type: adf                                # adf (Data Factory) | aut (Automation)
+  pipeline: pl_refresh_marts               # the pipeline (adf) ...
+  # runbook: rb_refresh_marts              # ... or the runbook (aut)
+  servicePrincipal: deploy
+  # Parameters keep their YAML types: plain scalars arrive typed (true is a boolean,
+  # 5000 a number); quote a scalar to force a string. Nested maps/lists are passed as
+  # JSON objects/arrays.
+  parameters:
+    environment: prod
+    fullLoad: true
+    batchSize: 5000
+
+  # ---- OUTPUT (lineage link) ------------------------------------------------------
+  # The file(s) the triggered pipeline/runbook lands. Declaring them lets lineage connect
+  # this invoke to the downstream file ingestion that reads them, so the graph chains
+  # invoke -> file -> landing table -> view -> downstream, and the execution waves order
+  # the fetch before the load. Matching is engine-parity: the ingestion's folder is
+  # confirmed first, then the file name against its glob (a wildcard always searches within
+  # a folder). location is a folder (or a full file path); srcFile is the file-name glob
+  # within it; srcPathMask is an optional regex over the full path.
+  output:
+    location: abfss://raw@datalake.dfs.core.windows.net/orders
+    srcFile: orders_*.csv
+    # srcPathMask: .*/orders/.*             # optional regex, for what a folder cannot express
+
+# onErrorResume: true                      # batch behavior when this flow fails

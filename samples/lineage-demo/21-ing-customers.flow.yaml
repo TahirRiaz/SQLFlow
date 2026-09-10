@@ -1,0 +1,16 @@
+# Typed hop: demo.vCustomers_Pre -> demo.Customers (keyed upsert on customer_id).
+flowType: ing
+name: demo-ing-customers
+connections:
+  src: ${env:SQLFLOW_DEMO_DB}
+  dwh: ${env:SQLFLOW_DEMO_DB}
+# Objects are three-part: a two-part name is read as database.table (the MySQL convention),
+# so SQL Server objects must carry the database explicitly.
+source:
+  server: src
+  object: SqlFlowCatalogTests.demo.vCustomers_Pre
+target:
+  server: dwh
+  object: SqlFlowCatalogTests.demo.Customers
+load:
+  keyColumns: [customer_id]

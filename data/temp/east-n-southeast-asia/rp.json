@@ -1,0 +1,1312 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>The Philippine Islands became a Spanish colony during the 16th century; they were ceded to the US in 1898 following the Spanish-American War.  Led by Emilio AGUINALDO, the Filipinos conducted an insurgency against US rule from 1899-1902, although some fighting continued in outlying islands as late as 1913. In 1935, the Philippines became a self-governing commonwealth. Manuel QUEZON was elected president and was tasked with preparing the country for independence after a 10-year transition. The islands fell under Japanese occupation during World War II, and US forces and Filipinos fought together during 1944-45 to regain control. On 4 July 1946 the Republic of the Philippines attained its independence. <br><br>Twenty-one years of authoritarian rule under Ferdinand MARCOS ended in 1986, when a \"people power\" movement in Manila (\"EDSA 1\") forced him into exile and installed Corazon AQUINO as president. Several coup attempts hampered her presidency, and progress on political stability and economic development faltered until Fidel RAMOS was elected president in 1992. The US closed its last military bases on the islands the same year. Joseph ESTRADA was elected president in 1998. His vice-president, Gloria MACAPAGAL-ARROYO, succeded him in 2001 after ESTRADA's stormy impeachment trial on corruption charges broke down and another \"people power\" movement (\"EDSA 2\") demanded his resignation. MACAPAGAL-ARROYO was elected president in 2004. Corruption allegations marred her presidency, but the Philippine economy was one of the few to avoid contraction after the 2008 global financial crisis. Benigno AQUINO III was elected as president in 2010, followed by Rodrigo DUTERTE in 2016. During his term, DUTERTE pursued a controversial drug war that garnered international criticism for alleged human rights abuses. Ferdinand MARCOS, Jr. was elected president in 2022 with the largest popular vote in a presidential election since his father's ouster.<br><br>For decades, the country has been challenged by armed ethnic separatists, communist rebels, and Islamic terrorist groups, particularly in the southern islands and remote areas of Luzon.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southeastern Asia, archipelago between the Philippine Sea and the South China Sea, east of Vietnam"
+    },
+    "Geographic coordinates": {
+      "text": "13 00 N, 122 00 E"
+    },
+    "Map references": {
+      "text": "Southeast Asia"
+    },
+    "Area": {
+      "total ": {
+        "text": "300,000 sq km"
+      },
+      "land": {
+        "text": "298,170 sq km"
+      },
+      "water": {
+        "text": "1,830 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly less than twice the size of Georgia; slightly larger than Arizona"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "36,289 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "irregular polygon extending up to 100 nm from coastline as defined by 1898 treaty; since late 1970s has also claimed polygonal-shaped area in South China Sea as wide as 285 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "to the depth of exploitation"
+      }
+    },
+    "Climate": {
+      "text": "tropical marine; northeast monsoon (November to April); southwest monsoon (May to October)"
+    },
+    "Terrain": {
+      "text": "mostly mountains with narrow to extensive coastal lowlands"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Mount Apo 2,954 m"
+      },
+      "lowest point": {
+        "text": "Philippine Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "442 m"
+      }
+    },
+    "Natural resources": {
+      "text": "timber, petroleum, nickel, cobalt, silver, gold, salt, copper"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "41% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 18.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 17.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 5% (2018 est.)"
+      },
+      "forest": {
+        "text": "25.9% (2018 est.)"
+      },
+      "other": {
+        "text": "33.1% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "16,270 sq km (2012)"
+    },
+    "Major lakes (area sq km)": {
+      "salt water lake(s)": {
+        "text": "Laguna de Bay - 890 sq km"
+      }
+    },
+    "Population distribution": {
+      "text": "population concentrated where good farmlands lie; highest concentrations are northwest and south-central Luzon, the southeastern extension of Luzon, and the islands of the Visayan Sea, particularly Cebu and Negros; Manila is home to one-eighth of the entire national population"
+    },
+    "Natural hazards": {
+      "text": "<p>astride typhoon belt, usually affected by 15 and struck by five to six cyclonic storms each year; landslides; active volcanoes; destructive earthquakes; tsunamis</p><p><strong>volcanism:</strong> significant volcanic activity; Taal (311 m), which has shown recent unrest and may erupt in the near future, has been deemed a Decade Volcano by the International Association of Volcanology and Chemistry of the Earth's Interior, worthy of study due to its explosive history and close proximity to human populations; Mayon (2,462 m), the country's most active volcano, erupted in 2009 forcing over 33,000 to be evacuated; other historically active volcanoes include Biliran, Babuyan Claro, Bulusan, Camiguin, Camiguin de Babuyanes, Didicas, Iraya, Jolo, Kanlaon, Makaturing, Musuan, Parker, Pinatubo, and Ragang; see note 2 under \"Geography - note\"</p>"
+    },
+    "Geography - note": {
+      "text": "<p><strong>note 1:</strong> for decades, the Philippine archipelago was reported as having 7,107 islands; in 2016, the national mapping authority reported that hundreds of new islands had been discovered and increased the number of islands to 7,641, though not all of the new islands have been verified; the country is favorably located in relation to many of Southeast Asia's main water bodies: the South China Sea, Philippine Sea, Sulu Sea, Celebes Sea, and Luzon Strait</p> <p><strong>note 2:</strong> Philippines is one of the countries along the Ring of Fire, a belt of active volcanoes and earthquake epicenters bordering the Pacific Ocean; up to 90% of the world's earthquakes and some 75% of the world's volcanoes occur within the Ring of Fire</p> <p><strong>note 3:</strong> the Philippines sits astride the Pacific typhoon belt and an average of 9 typhoons make landfall on the islands each year -- with about 5 of these being destructive; the country is the most exposed in the world to tropical storms</p>"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "118,277,063"
+      },
+      "male": {
+        "text": "59,227,092"
+      },
+      "female": {
+        "text": "59,049,971 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Filipino(s)"
+      },
+      "adjective": {
+        "text": "Philippine"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Tagalog 26%, Bisaya/Binisaya 14.3%, Ilocano 8%, Cebuano 8%, Illonggo 7.9%, Bikol/Bicol 6.5%, Waray 3.8%, Kapampangan 3%, Maguindanao 1.9%, Pangasinan 1.9%, other local ethnicities 18.5%, foreign ethnicities 0.2% (2020 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Tagalog 39.9%, Bisaya/Binisaya 16%, Hiligaynon/Ilonggo 7.3%, Ilocano 7.1%, Cebuano 6.5%, Bikol/Bicol 3.9%, Waray 2.6%, Kapampangan 2.4%, Maguindanao 1.4%, Pangasinan/Panggalato 1.3%, other languages/dialects 11.2%, unspecified 0.4% (2020 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Ang World Factbook, ang mapagkukunan ng kailangang impormasyon. (Tagalog)<br><br>The World Factbook, the indispensable source for basic information."
+      },
+      "note": "<strong>note:</strong> data represent percentage of households; unspecified Filipino (based on Tagalog) and English are official languagesTaga; eight major dialects - Tagalog, Cebuano, Ilocano, Hiligaynon or Ilonggo, Bicol, Waray, Pampango, and Pangasinan"
+    },
+    "Religions": {
+      "text": "Roman Catholic 78.8%, Muslim 6.4%, Iglesia ni Cristo 2.6%, other Christian 3.9%, other 8.2%, none/unspecified &lt;0.1 (2020 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>The Philippines is an ethnically diverse country that is in the early stages of demographic transition.  Its fertility rate has dropped steadily since the 1950s.  The decline was more rapid after the introduction of a national population program in the 1970s in large part due to the increased use of modern contraceptive methods, but fertility has decreased more slowly in recent years.  The country’s total fertility rate (TFR) – the average number of births per woman – dropped below 5 in the 1980s, below 4 in the 1990s, and below 3 in the 2010s.  TFR continues to be above replacement level at 2.9 and even higher among the poor, rural residents, and the less-educated.  Significant reasons for elevated TFR are the desire for more than two children, in part because children are a means of financial assistance and security for parents as they age, particularly among the poor.</p> <p>The Philippines are the source of one of the world’s largest emigrant populations, much of which consists of legal temporary workers known as Overseas Foreign Workers or OFWs.  As of 2019, there were 2.2 million OFWs.  They work in a wide array of fields, most frequently in services (such as caregivers and domestic work), skilled trades, and construction but also in professional fields, including nursing and engineering.  OFWs most often migrate to Middle Eastern countries, but other popular destinations include Hong Kong, China, and Singapore, as well as employment on ships.  Filipino seafarers make up 35-40% of the world’s seafarers, as of 2014.   Women OFWs, who work primarily in domestic services and entertainment, have outnumbered men since 1992. </p> <p>Migration and remittances have been a feature of Philippine culture for decades.  The government has encouraged and facilitated emigration, regulating recruitment agencies and adopting legislation to protect the rights of migrant workers.  Filipinos began emigrating to the US and Hawaii early in the 20th century.  In 1934, US legislation limited Filipinos to 50 visas per year except during labor shortages, causing emigration to plummet.  It was not until the 1960s, when the US and other destination countries – Canada, Australia, and New Zealand – loosened their immigration policies, that Filipino emigration expanded and diversified.  The government implemented an overseas employment program in the 1970s, promoting Filipino labor to Gulf countries needing more workers for their oil industries.  Filipino emigration increased rapidly.  The government had intended for international migration to be temporary, but a lack of jobs and poor wages domestically, the ongoing demand for workers in the Gulf countries, and new labor markets in Asia continue to spur Philippine emigration.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "30.2% (male 18,234,279/female 17,462,803)"
+      },
+      "15-64 years": {
+        "text": "64.3% (male 38,381,583/female 37,613,294)"
+      },
+      "65 years and over": {
+        "text": "5.6% (2024 est.) (male 2,611,230/female 3,973,874)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "56.2"
+      },
+      "youth dependency ratio": {
+        "text": "47.8"
+      },
+      "elderly dependency ratio": {
+        "text": "8.3"
+      },
+      "potential support ratio": {
+        "text": "12 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "25.7 years (2024 est.)"
+      },
+      "male": {
+        "text": "25.1 years"
+      },
+      "female": {
+        "text": "26.3 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "1.56% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "22.1 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6.2 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.2 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "population concentrated where good farmlands lie; highest concentrations are northwest and south-central Luzon, the southeastern extension of Luzon, and the islands of the Visayan Sea, particularly Cebu and Negros; Manila is home to one-eighth of the entire national population"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "48.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.04% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "14.667 million MANILA (capital), 1.949 million Davao, 1.025 million Cebu City, 931,000 Zamboanga, 960,000 Antipolo, 803,000 Cagayan de Oro City, 803,000 Dasmarinas (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.66 male(s)/female"
+      },
+      "total population": {
+        "text": "1 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "23.6 years (2022 est.)",
+      "note": "<strong>note:</strong> data represents median age at first birth among women 25-49"
+    },
+    "Maternal mortality ratio": {
+      "text": "78 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "22 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "24.4 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "19.6 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "70.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "67.3 years"
+      },
+      "female": {
+        "text": "74.5 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "2.75 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "1.34 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "54.1% (2017)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 99.1% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 95% of population"
+      },
+      "improved: total": {
+        "text": "total: 97% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.9% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 5% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 3% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "5.1% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.77 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "1 beds/1,000 population (2014)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 96% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 91% of population"
+      },
+      "improved: total": {
+        "text": "total: 93.4% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 4% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 9% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 6.6% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "6.4% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "4.85 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "1.47 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.03 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "3.34 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.01 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "22.9% (2020 est.)"
+      },
+      "male": {
+        "text": "39.3% (2020 est.)"
+      },
+      "female": {
+        "text": "6.5% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "19.1% (2018)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "59.3% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "2.2%"
+      },
+      "women married by age 18": {
+        "text": "16.5% (2017 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "3.7% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "96.3%"
+      },
+      "male": {
+        "text": "95.7%"
+      },
+      "female": {
+        "text": "96.9% (2019)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "13 years"
+      },
+      "male": {
+        "text": "13 years"
+      },
+      "female": {
+        "text": "13 years (2020)"
+      }
+    },
+    "People - note": {
+      "text": "one of only two predominantly Christian nations in Southeast Asia, the other being Timor-Leste"
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "uncontrolled deforestation especially in watershed areas; illegal mining and logging; soil erosion; air and water pollution in major urban centers; coral reef degradation; increasing pollution of coastal mangrove swamps that are important fish breeding grounds; coastal erosion; dynamite fishing; wildlife extinction"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Marine Dumping-London Protocol, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "tropical marine; northeast monsoon (November to April); southwest monsoon (May to October)"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "41% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 18.2% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 17.8% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 5% (2018 est.)"
+      },
+      "forest": {
+        "text": "25.9% (2018 est.)"
+      },
+      "other": {
+        "text": "33.1% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "48.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.04% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.18% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.07% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "22.45 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "122.29 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "51.32 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "14,631,923 tons (2016 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "4,096,938 tons (2014 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "28% (2014 est.)"
+      }
+    },
+    "Major lakes (area sq km)": {
+      "salt water lake(s)": {
+        "text": "Laguna de Bay - 890 sq km"
+      }
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "8.16 billion cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "9.88 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "67.83 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "479 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "1"
+      },
+      "global geoparks and regional networks": {
+        "text": "Bohol Island (2023)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of the Philippines"
+      },
+      "conventional short form": {
+        "text": "Philippines"
+      },
+      "local long form": {
+        "text": "Republika ng Pilipinas"
+      },
+      "local short form": {
+        "text": "Pilipinas"
+      },
+      "etymology": {
+        "text": "named in honor of King PHILLIP II of Spain by Spanish explorer Ruy LOPEZ de VILLALOBOS, who visited some of the islands in 1543"
+      }
+    },
+    "Government type": {
+      "text": "presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Manila"
+      },
+      "geographic coordinates": {
+        "text": "14 36 N, 120 58 E"
+      },
+      "time difference": {
+        "text": "UTC+8 (13 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "derives from the Tagalog \"may-nila\" meaning \"where there is indigo\" and refers to the presence of indigo-yielding plants growing in the area surrounding the original settlement"
+      }
+    },
+    "Administrative divisions": {
+      "text": "<p>81 provinces and 38 chartered cities</p> <p><strong>provinces:</strong> Abra, Agusan del Norte, Agusan del Sur, Aklan, Albay, Antique, Apayao, Aurora, Basilan, Bataan, Batanes, Batangas, Biliran, Benguet, Bohol, Bukidnon, Bulacan, Cagayan, Camarines Norte, Camarines Sur, Camiguin, Capiz, Catanduanes, Cavite, Cebu, Cotabato, Davao del Norte, Davao del Sur, Davao de Oro, Davao Occidental, Davao Oriental, Dinagat Islands, Eastern Samar, Guimaras, Ifugao, Ilocos Norte, Ilocos Sur, Iloilo, Isabela, Kalinga, Laguna, Lanao del Norte, Lanao del Sur, La Union, Leyte, Maguindanao, Marinduque, Masbate, Mindoro Occidental, Mindoro Oriental, Misamis Occidental, Misamis Oriental, Mountain, Negros Occidental, Negros Oriental, Northern Samar, Nueva Ecija, Nueva Vizcaya, Palawan, Pampanga, Pangasinan, Quezon, Quirino, Rizal, Romblon, Samar, Sarangani, Siquijor, Sorsogon, South Cotabato, Southern Leyte, Sultan Kudarat, Sulu, Surigao del Norte, Surigao del Sur, Tarlac, Tawi-Tawi, Zambales, Zamboanga del Norte, Zamboanga del Sur, Zamboanga Sibugay;</p> <p><strong>chartered cities:</strong> Angeles, Bacolod, Baguio, Butuan, Cagayan de Oro, Caloocan, Cebu, Cotabato, Dagupan, Davao, General Santos, Iligan, Iloilo, Lapu-Lapu, Las Pinas, Lucena, Makati, Malabon, Mandaluyong, Mandaue, Manila, Marikina, Muntinlupa, Naga, Navotas, Olongapo, Ormoc, Paranaque, Pasay, Pasig, Puerto Princesa, Quezon, San Juan, Santiago, Tacloban, Taguig, Valenzuela, Zamboanga</p>"
+    },
+    "Independence": {
+      "text": "4 July 1946 (from the US)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 12 June (1898); note - 12 June 1898 was date of declaration of independence from Spain; 4 July 1946 was date of independence from the US"
+    },
+    "Legal system": {
+      "text": "mixed legal system of civil, common, Islamic (sharia), and customary law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest ratified 2 February 1987, effective 11 February 1987"
+      },
+      "amendments": {
+        "text": "proposed by Congress if supported by three fourths of the membership, by a constitutional convention called by Congress, or by public petition; passage by either of the three proposal methods requires a majority vote in a national referendum; note - the constitution has not been amended since its enactment in 1987"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction with reservations; withdrew from the ICCt in March 2019"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of the Philippines"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "10 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Ferdinand \"BongBong\" MARCOS, Jr. (since 30 June 2022)"
+      },
+      "head of government": {
+        "text": "President Ferdinand \"BongBong\" MARCOS, Jr. (since 30 June 2022)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the president with the consent of the Commission of Appointments, an independent body of 25 Congressional members including the Senate president (ex officio chairman), appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president and vice president directly elected on separate ballots by simple majority popular vote for a single 6-year term; election last held on 9 May 2022 (next to be held on 9 May 2028)"
+      },
+      "election results": {
+        "text": "<em><br>2022: </em>Ferdinand MARCOS, Jr. elected president; percent of vote - Ferdinand MARCOS, Jr. (PFP) 58.7%, Leni ROBREDO (independent) 27.9%, Manny PACQUIAO (PROMDI) 6.8%, other 6.6%; Sara DUTERTE-Carpio elected vice president; percent of vote Sara DUTERTE-Carpio (Lakas-CMD) 61.5%, Francis PANGILINAN (LP) 17.8%, Tito SOTTO 15.8%, other 4.9%<br><br><em>2016: </em>Rodrigo DUTERTE elected president; percent of vote - Rodrigo DUTERTE (PDP-Laban) 39%, Manuel \"Mar\" ROXAS (LP) 23.5%, Grace POE (independent) 21.4%, Jejomar BINAY (UNA) 12.7%, Miriam Defensor SANTIAGO (PRP) 3.4%; Leni ROBREDO elected vice president; percent of vote Leni ROBREDO (LP) 35.1%, Ferdinand MARCOS, Jr. (independent) 34.5%, Alan CAYETANO 14.4%, Francis ESCUDERO (independent) 12%, other 4%"
+      },
+      "note": "<strong>note:</strong> the president is both chief of state and head of government"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Congress (Kongreso)"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      }
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "House of Representatives (Kapulungan Ng Mga Kinatawan)"
+      },
+      "number of seats": {
+        "text": "316 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "mixed system"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "3 years"
+      },
+      "most recent election date": {
+        "text": "5/9/2022"
+      },
+      "percentage of women in chamber": {
+        "text": "28%"
+      },
+      "expected date of next election": {
+        "text": "May 2025"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "Senate (Senado)"
+      },
+      "number of seats": {
+        "text": "24 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "partial renewal"
+      },
+      "term in office": {
+        "text": "6 years"
+      },
+      "most recent election date": {
+        "text": "5/9/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "Nationalist People's Coalition (NPC) (5); Partido Demokratiko Pilipino-Laban (PDP-Laban) (5); Nacionalista Party (NP) (4); Independents (5); Other (5)"
+      },
+      "percentage of women in chamber": {
+        "text": "30.4%"
+      },
+      "expected date of next election": {
+        "text": "May 2025"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of a chief justice and 14 associate justices)"
+      },
+      "judge selection and term of office": {
+        "text": "justices are appointed by the president on the recommendation of the Judicial and Bar Council, a constitutionally created, 6-member body that recommends Supreme Court nominees; justices serve until age 70"
+      },
+      "subordinate courts": {
+        "text": "Court of Appeals; Sandiganbayan (special court for corruption cases of government officials); Court of Tax Appeals; regional, metropolitan, and municipal trial courts; sharia courts"
+      }
+    },
+    "Political parties": {
+      "text": "Democratic Action (Aksyon Demokratiko) <br>Alliance for Change (Hugpong ng Pagbabago or HNP) <br>Lakas ng EDSA-Christian Muslim Democrats or Lakas-CMD <br>Liberal Party or LP <br>Nacionalista Party or NP <br>Nationalist People's Coalition or NPC <br>National Unity Party or NUP<br>Partido Demokratiko Pilipino-Lakas ng Bayan or PDP-Laban <br>Partido Federal ng Pilipinas or PFP <br>Progressive Movement for the Devolution of Initiatives or PROMDI"
+    },
+    "International organization participation": {
+      "text": "ADB, APEC, ARF, ASEAN, BIS, CD, CICA (observer), CP, EAS, FAO, G-24, G-77, IAEA, IBRD, ICAO, ICRM, IDA, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, MINUSTAH, NAM, OAS (observer), OPCW, PCA, PIF (partner), UN, UNCTAD, UNESCO, UNHCR, UNIDO, Union Latina, UNMIL, UNMOGIP, UNOCI, UNOOSA, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Jose Manuel del Gallego ROMUALDEZ (since 29 November 2017)"
+      },
+      "chancery": {
+        "text": "1600 Massachusetts Avenue NW, Washington, DC 20036"
+      },
+      "telephone": {
+        "text": "[1] (202) 467-9300"
+      },
+      "FAX": {
+        "text": "[1] (202) 328-7614"
+      },
+      "email address and website": {
+        "text": "<br>info@phembassy-us.org<br><br>The Embassy of the Republic of the Philippines in Washington D.C. (philippineembassy-dc.org)"
+      },
+      "consulate(s) general": {
+        "text": "Chicago, Honolulu, Houston, Los Angeles, New York, San Francisco, Tamuning (Guam)"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador MaryKay Loss CARLSON (since 22 July 2022)"
+      },
+      "embassy": {
+        "text": "1201 Roxas Boulevard, Manila 1000"
+      },
+      "mailing address": {
+        "text": "8600 Manila Place, Washington DC&nbsp; 20521-8600"
+      },
+      "telephone": {
+        "text": "[63] (2) 5301-2000"
+      },
+      "FAX": {
+        "text": "[63] (2) 5301-2017"
+      },
+      "email address and website": {
+        "text": "<br>acsinfomanila@state.gov<br><br>https://ph.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "two equal horizontal bands of blue (top) and red; a white equilateral triangle is based on the hoist side; the center of the triangle displays a yellow sun with eight primary rays; each corner of the triangle contains a small, yellow, five-pointed star; blue stands for peace and justice, red symbolizes courage, the white equal-sided triangle represents equality; the rays recall the first eight provinces that sought independence from Spain, while the stars represent the three major geographical divisions of the country: Luzon, Visayas, and Mindanao; the design of the flag dates to 1897",
+      "note": "<strong>note:</strong> in wartime the flag is flown upside down with the red band at the top"
+    },
+    "National symbol(s)": {
+      "text": "three stars and sun, Philippine eagle; national colors: red, white, blue, yellow"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Lupang Hinirang\" (Chosen Land)"
+      },
+      "lyrics/music": {
+        "text": "Jose PALMA (revised by Felipe PADILLA de Leon)/Julian FELIPE"
+      },
+      "note": "<strong>note:</strong> music adopted 1898, original Spanish lyrics adopted 1899, Filipino (Tagalog) lyrics adopted 1956; although the original lyrics were written in Spanish, later English and Filipino versions were created; today, only the Filipino version is used"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "6 (3 cultural, 3 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Baroque Churches of the Philippines (c); Tubbataha Reefs Natural Park (n); Rice Terraces of the Philippine Cordilleras (c); Historic Vigan (c); Puerto-Princesa Subterranean River National Park (n); Mount Hamiguitan Range Wildlife Sanctuary (n)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "growing Southeast Asian economy; commercial rebound led by transportation, construction and financial services; electronics exports recovering from sector slowdown; significant remittances; interest rate rises following heightened inflation; uncertainties due to increased regional tensions with China&nbsp;"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$1.138 trillion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$1.078 trillion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$1.002 trillion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "5.55% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "7.58% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "5.71% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$9,900 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$9,500 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$8,900 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$437.146 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "5.98% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "5.82% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "3.93% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BBB (2017)"
+      },
+      "Moody's rating": {
+        "text": "Baa2 (2014)"
+      },
+      "Standard & Poors rating": {
+        "text": "BBB+ (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "9.4% (2023 est.)"
+      },
+      "industry": {
+        "text": "28.2% (2023 est.)"
+      },
+      "services": {
+        "text": "62.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "76.5% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "14.2% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "23.6% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "-0.3% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "26.7% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-40.7% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "sugarcane, rice, coconuts, maize, bananas, vegetables, tropical fruits, plantains, pineapples, cassava (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "semiconductors and electronics assembly, business process outsourcing, food and beverage manufacturing, construction, electric/gas/water supply, chemical products, radio/television/communications equipment and apparatus, petroleum and fuel, textile and garments, non-metallic minerals, basic metal industries, transport equipment"
+    },
+    "Industrial production growth rate": {
+      "text": "3.59% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "49.414 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "2.23% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "2.6% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "3.4% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "6.9% (2023 est.)"
+      },
+      "male": {
+        "text": "5.9% (2023 est.)"
+      },
+      "female": {
+        "text": "8.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "18.1% (2021 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "40.7 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "37.3% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "1.9% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2.7% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "32.5% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "8.94% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "9.41% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "9.31% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$65.051 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$75.238 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues and expenses (excluding grants/extrabudgetary units/social security funds) converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "39.9% of GDP (2017 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "14.1% (of GDP) (2023 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$11.817 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$18.261 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$5.943 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$103.714 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$98.832 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$87.798 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "US 14%, China 14%, Hong Kong 11%, Japan 10%, Singapore 6% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "integrated circuits, machine parts, gold, semiconductors, insulated wire (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$150.914 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$152.638 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$126.565 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 32%, Indonesia 8%, South Korea 7%, Japan 7%, Singapore 6% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "integrated circuits, refined petroleum, coal, cars, plastic products (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$103.742 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$96.04 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$108.755 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$67.114 billion (2023 est.)"
+      }
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Philippine pesos (PHP) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "55.63 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "54.478 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "49.255 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "49.624 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "51.796 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "94.8% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "98%"
+      },
+      "electrification - rural areas": {
+        "text": "91.1%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "27.542 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "102.834 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "10.174 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "78.2% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "1.4% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "1.1% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "8% of total installed capacity (2022 est.)"
+      },
+      "geothermal": {
+        "text": "10.2% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "1.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "14.483 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "37.13 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "8.698 million metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "31.634 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "361 million metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "10,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "453,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "138.5 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "2.251 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "2.251 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "98.543 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "136.273 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "70.975 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "60.932 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "4.365 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "15.558 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "4.627 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "4 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "135 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "144 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the Covid-19 pandemic had a relatively minor impact on the Philippine&rsquo;s telecom sector in 2020; subscriber numbers fell in some areas, but this was offset by strong growth in mobile data and broadband usage since a significant proportion of the population transitioned to working or studying from home; major investment programs covering LTE, 5G, and fiber broadband networks suffered slight delays due to holdups in supply chains, but activity has since ramped up in an attempt to complete the roll outs as per the original schedule; the major telecom operators had mixed financial results for the past year; overall, the number of mobile subscribers is expected to grow to 153 million by the end of 2021, with the penetration rate approaching 144%; the government remains keen, and committed, to seeing strong competition, growth, and service excellence in the telecom sector, so there is likely to be continued support (financially as well as through legislation such as enabling mobile tower sharing and number portability) to ensure that the sector remains viable for emerging players; the mobile sector will remain the Philippines&rsquo; primary market for telecommunications well into the future; the unique terrain and resulting challenges associated with accessing remote parts of the archipelago means that in many areas fixed networks are neither cost-effective nor logistically viable; the bulk of telecoms investment over the coming years will continue to be in 5G and 5G-enabled LTE networks; coverage of LTE and 5G networks extends to over 95% of the population, and for the vast majority of people mobile will likely remain their only platform for telecom services (2021)"
+      },
+      "domestic": {
+        "text": "fixed-line nearly 4 per 100 and mobile-cellular nearly 143 per 100 (2021)"
+      },
+      "international": {
+        "text": "country code - 63; landing points for the NDTN, TGN-IA, AAG, PLCN, EAC-02C, DFON, SJC, APCN-2, SeaMeWe, Boracay-Palawan Submarine Cable System, Palawa-Illoilo Cable System, NDTN, SEA-US, SSSFOIP, ASE and JUPITAR submarine cables that together provide connectivity to the US, Southeast Asia, Asia, Europe, Africa, the Middle East, and Australia (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "multiple national private TV and radio networks; multi-channel satellite and cable TV systems available; more than 400 TV stations; about 1,500 cable TV providers with more than 2 million subscribers, and some 1,400 radio stations; the Philippines adopted Japan&rsquo;s Integrated Service Digital Broadcast &ndash; Terrestrial standard for digital terrestrial television in November 2013 and is scheduled to complete the switch from analog to digital broadcasting by the end of 2023 (2019)"
+    },
+    "Internet country code": {
+      "text": ".ph"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "75% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "7.51 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "7 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "13 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "200"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "43,080,118 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "835.9 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "RP"
+    },
+    "Airports": {
+      "text": "246 (2024)"
+    },
+    "Heliports": {
+      "text": "341 (2024)"
+    },
+    "Pipelines": {
+      "text": "530 km gas, 138 km oil (non-operational), 185 km refined products (2017)"
+    },
+    "Railways": {
+      "total": {
+        "text": "77 km (2017)"
+      },
+      "standard gauge": {
+        "text": "49 km (2017) 1.435-m gauge"
+      },
+      "narrow gauge": {
+        "text": "28 km (2017) 1.067-m gauge"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "216,387 km"
+      },
+      "paved": {
+        "text": "61,093 km"
+      },
+      "unpaved": {
+        "text": "155,294 km (2014)"
+      }
+    },
+    "Waterways": {
+      "text": "3,219 km (2011) (limited to vessels with draft less than 1.5 m)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "2,203 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 52, container ship 43, general cargo 955, oil tanker 207, other 946"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "70 (2024)"
+      },
+      "large": {
+        "text": "2"
+      },
+      "medium": {
+        "text": "4"
+      },
+      "small": {
+        "text": "8"
+      },
+      "very small": {
+        "text": "56"
+      },
+      "ports with oil terminals": {
+        "text": "22"
+      },
+      "key ports": {
+        "text": "Batangas City, Cagayan de Oro, Cebu, Manila, San Fernando Harbor, Subic Bay"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Armed Forces of the Philippines (AFP): Army, Navy (includes Marine Corps), Air Force<br><br>Department of Transportation: Philippine Coast Guard (PCG)<br><br>Department of the Interior: Philippine National Police Force (PNP) (2024)",
+      "note": "<strong>note 1:</strong> the PCG is an armed and uniformed service that would be attached to the AFP during a conflict<br><br><strong>note 2: </strong>the Philippine Government also arms and supports civilian militias; the AFP controls the Civilian Armed Force Geographical Units, while the Civilian Volunteer Organizations fall under PNP command"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "1.5% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.2% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.2% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.1% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "1.1% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 140,000 active-duty personnel (100,000 Army; 25,000 Navy, including about 8,000 Marine Corps; 15,000 Air Force) (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the AFP is equipped with a wide mix of imported weapons systems; in recent years, it has received equipment from more than a dozen countries, including Israel, South Korea, and the US (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-27 years of age for voluntary military service for men and women; no conscription (2023)",
+      "note": "<strong>note:</strong> as of 2023, women made up about 8% of the active military; women have attended the Philippine Military Academy and trained as combat soldiers since 1993"
+    },
+    "Military - note": {
+      "text": "the Armed Forces of the Philippines (AFP) were formally organized during the American colonial period as the Philippine Army; they were established by the National Defense Act of 1935 and were comprised of both Filipinos and Americans<br><br>the US and Philippines agreed to a mutual defense treaty in 1951; in 2014, the two governments signed an Enhanced Defense Cooperation Agreement (EDCA) that established new parameters for military cooperation; under the EDCA, the Philippine Government may grant US troops access to Philippine military bases on a rotational basis “for security cooperation exercises, joint and combined military training activities, and humanitarian assistance and disaster relief activities”; the Philippines has Major Non-NATO Ally (MNNA) status with the US, a designation under US law that provides foreign partners with certain benefits in the areas of defense trade and security cooperation<br><br>the Philippine Government faces internal threats from several armed separatists, terrorists, and criminal groups; as such, much of the AFP's operational focus is internal security, particularly in the south, where several separatist Islamic insurgent and terrorist groups operate and a considerable portion of the AFP is typically deployed; additional combat operations are conducted against the Communist People’s Party/New People’s Army, which is active mostly on Luzon, as well as the Visayas and areas of Mindanao; prior to a peace deal in 2014, the AFP fought a decades-long conflict against the Moro Islamic Liberation Front (MILF), a separatist organization based mostly on the island of Mindanao; the MILF's armed wing, the Bangsamoro Islamic Armed Forces (BIAF), had up to 40,000 fighters under arms<br><br>the AFP's naval forces are also involved in interdiction operations against terrorist, insurgent, and criminal groups around the southern islands, including joint maritime patrols with Indonesia and Malaysia, particularly in the Sulu Sea; rising tensions with China over disputed waters and land features in the South China Sea since 2012 have spurred the AFP to place more emphasis on blue-water naval capabilities, including acquiring larger warships such guided missile frigates, corvettes, offshore patrol vessels, and landing platform dock (LPD) amphibious assault ships<br><br>the Philippines National Police (PNP) has an active role in counterinsurgency and counter-terrorism operations alongside the AFP, particularly the Special Action Force, a PNP commando unit that specializes in urban counter-terrorism operations (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Philippine Space Agency (PhilSA; established 2019); Philippine Space Council (PSC; established in 2019 as an advisory body responsible for coordinating and integrating policies, programs and resources affecting space science and technology applications) (2024)"
+    },
+    "Space program overview": {
+      "text": "has a small and ambitious space program focused on acquiring satellites and related technologies, largely for the areas of climate studies, national security, and risk management; also prioritizing development of the country’s space expertise and industry; manufactures and operates satellites (mostly micro- and nano-sized), including remote sensing (RS) and scientific/experimental; has relations with a variety of foreign space agencies and industries, including those of China, the European Space Agency and some of its member states, Japan, Russia, and the US (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Abu Sayyaf Group; Communist Party of the Philippines/New People's Army (CPP/NPA); Islamic State of Iraq and ash-Sham – East Asia (ISIS-EA) in the Philippines",
+      "note": "<strong>note 1: </strong>ISIS-EA factions include Daulah Islamiya-Lanao (aka Maute Group), Daulah Islamiya-Maguindanao, Daulah Islamiya-Socsargen, ISIS-aligned elements of the Abu Sayyaf Group (ASG), ISIS-aligned elements of the Bangsamoro Islamic Freedom Fighters (BIFF), and rogue elements of the Moro Islamic Liberation Front (MILF) <strong><br><br>note 2:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "IDPs": {
+        "text": "102,000 (government troops fighting the Moro Islamic Liberation Front, the Abu Sayyaf Group, and the New People's Army; clan feuds; armed attacks, political violence, and communal tensions in Mindanao) (2022)"
+      },
+      "stateless persons": {
+        "text": "261 (2022); note - stateless persons are descendants of Indonesian migrants"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>Illegal drugs, including methamphetamine hydrochloride, cannabis, and methylenedioxymethamphetamine (MMDA, or \"ecstasy\") enter the Philippines from the Golden Triangle (Thailand, Laos, and Burma); drugs entering the Philippines are used locally and transported to other countries in Southeast Asia and Oceania; Chinese transnational organizations are the principal supplier of methamphetamine;  not a significant source or transit country for drugs entering the United States</p>"
+    }
+  }
+}

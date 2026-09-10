@@ -1,0 +1,4 @@
+<people>
+  <person><id>3</id><fullName>Cy</fullName><email>cy@example.io</email></person>
+  <person><id>4</id><fullName>Di</fullName><email>di@example.io</email></person>
+</people>

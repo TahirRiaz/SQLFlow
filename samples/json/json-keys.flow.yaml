@@ -1,0 +1,19 @@
+# Synthetic per-row keys over flattened JSON, the same generic feature CSV and XLS get:
+#   HashKey_DW   - a hash of all source columns (a dedup key when there is no business key)
+#   ConcatKey_DW - a readable composite of the chosen flattened columns
+name: Json_Keys
+source:
+  type: json
+  location: ./data/users.json
+  options:
+    includeHashKey: "true"
+    includeConcatKey: "true"
+    concatKeyColumns: "user_id, email"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_Keys
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

@@ -1,0 +1,37 @@
+# The consumption side of the demo estate: who READS what the flows build.
+#
+# One file per subscriber is the convention: a consumer is independently owned, added and retired on
+# its own schedule, so its own file keeps that legible in the diff. Each file is parsed on its own and
+# declares its own connections block.
+#
+# A subscriber runs nothing and moves no data, so this is not a flow document: it never becomes a
+# pipeline, joins no schedule, and appears in no execution wave. What it does is close the graph.
+# Every query is parsed exactly like a view body, so the tables it names become read edges on the SAME
+# nodes the sp flows write.
+#
+#   sqlflow lineage .                     # the subscriber nodes appear in lineage.json
+#   sqlflow db sync . --repo lineage-demo # and in catalog.Subscriber / the GUI's Subscribers view
+
+connections:
+  dwh: ${env:SQLFLOW_DEMO_DB}
+
+subscribers:
+  Exec_Dashboard:
+    type: PowerBI
+    owner: analytics@example.com
+    description: Executive KPI dashboard, refreshed each morning
+    url: https://app.powerbi.com/groups/me/reports/exec-kpi
+    server: dwh
+    queries:
+      - name: Kpi
+        sql: |
+          SELECT *
+          FROM   SqlFlowCatalogTests.demo.Kpi_Executive
+
+      # A second dataset on the same report: it joins two objects, which also teaches the
+      # interpreted data model how the business relates them.
+      - name: OrdersByCountry
+        sql: |
+          SELECT   r.Country, r.OrderCount, f.OrderId
+          FROM     SqlFlowCatalogTests.demo.Fact_CountryRollup AS r
+          JOIN     SqlFlowCatalogTests.demo.Fact_OrderSummary  AS f ON f.Country = r.Country

@@ -1,0 +1,14 @@
+# Basic XML: a wrapper of repeating <order> rows. Each direct child of the root is a record by default.
+# Attributes (@id -> id) and nested elements (customer/name -> customer_name) flatten to columns.
+name: Xml_Basic
+source:
+  type: xml
+  location: ./data/orders.xml
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Xml_Basic
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

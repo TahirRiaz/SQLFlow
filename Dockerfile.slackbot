@@ -1,0 +1,29 @@
+# The SQLFlow Slack assistant as a container: SqlFlow.SlackBot, the Socket Mode worker that relays channel
+# mentions and DMs to an Azure AI Foundry agent whose tools are the SQLFlow MCP server. Everything is
+# outbound (Slack websocket, Foundry HTTPS), so it never sits behind an ingress.
+#
+# Configuration is environment-only (see src/SqlFlow.SlackBot/SlackBotOptions.cs for the full set):
+#   SlackBot__Slack__AppToken                  xapp-... Socket Mode token (required)
+#   SlackBot__Slack__BotToken                  xoxb-... bot user OAuth token (required)
+#   SlackBot__Foundry__ProjectEndpoint         https://<account>.services.ai.azure.com/api/projects/<project>
+#   SlackBot__Foundry__ModelDeploymentName     the model deployment the agent runs on (required)
+#   SlackBot__Foundry__McpServerUrl            https://<sqlflow-mcp host>/mcp (required)
+#   SlackBot__SqlFlow__AccessToken             read-scoped sqlf_... token the agent presents to MCP (required)
+#   SlackBot__SqlFlow__GuiBaseUrl              optional; answers link entities into the GUI when set
+#   AZURE_CLIENT_ID                            user-assigned identity for the Foundry sign-in (in Azure)
+#
+# Build from the repository root:
+#   docker build -f Dockerfile.slackbot -t sqlflow-slack-bot:latest .
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+COPY . .
+RUN dotnet publish src/SqlFlow.SlackBot/SqlFlow.SlackBot.csproj \
+    -c Release -o /app /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS runtime
+WORKDIR /app
+COPY --from=build /app .
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+USER $APP_UID
+ENTRYPOINT ["dotnet", "SqlFlow.SlackBot.dll"]

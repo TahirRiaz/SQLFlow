@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "hc",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 27,
+  "keys": [
+    {
+      "path": "baseValue",
+      "type": "string",
+      "required": false,
+      "description": "Single-metric shorthand declaring one monitored aggregate T-SQL expression. Read from HealthCheckYaml.BaseValue and mapped by YamlHealthCheckFlowLoader.MapMetrics: when non-blank it becomes the flow's single HealthCheckMetric, whose Name is derived by HealthCheckMetric.DefaultName(expression) ('rowCount' for a bare COUNT(*), spaces and case ignored; 'value' otherwise) and whose Expression is the trimmed value verbatim. Mutually exclusive with a non-empty 'metrics' list; the exclusivity check is 'list is { Count: > 0 }', so an empty 'metrics: []' does not count as 'set', and 'baseValue' silently wins if both keys are present but 'metrics' is empty. The expression is inserted unescaped into the generated series SQL as 'CAST(<expression> AS float) AS [<name>]' (HealthCheckSqlBuilder.SeriesSelect); it is a trust boundary like preProcess/postProcess SQL (a real analogous concept: IngestionYaml.PreProcess/PostProcess and IngestionSurrogateKeyYaml.PreProcess/PostProcess elsewhere in the codebase), not a validated SQL grammar.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:27 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:76, as the sole entry of Metrics)",
+      "validation": "Blank/whitespace is treated as absent (YamlDocumentParts.NullIfBlank). Setting both a non-blank 'baseValue' and a non-empty 'metrics' list throws FlowValidationException \"<source>: set either 'baseValue' (one metric) or 'metrics' (a list), not both.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:192-196). Leaving both blank/absent throws \"<source>: a health check needs a metric. Set 'baseValue' (an aggregate like COUNT(*) or SUM(Amount)) or a 'metrics' list of {name, baseValue} entries.\" (YamlHealthCheckFlowLoader.cs:203-208)."
+    },
+    {
+      "path": "dateColumn",
+      "type": "string",
+      "required": true,
+      "description": "The date/datetime column both generated statements group by: HealthCheckSqlBuilder.SeriesSelect's GROUP BY/ORDER BY column (bracket-escaped, ']' doubled) and the three CASE-based date probes in DataQualitySelect. It is also the date axis every HealthCheckEngine stage operates on (frequency detection, missing-date walk, calendar features), and is echoed verbatim into the run's HealthCheckReport.DateColumn artifact field and the 'run.start' log line. Bound from HealthCheckYaml.DateColumn, trimmed.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:24 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:73)",
+      "validation": "Blank/missing throws FlowValidationException \"<source>: 'dateColumn' is required (the date column the metrics are grouped by).\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:93-95). Run time: if the query's first result column cannot be read as a date/datetime (SqlDataReader.GetDateTime throws InvalidCastException), the run fails with InvalidOperationException \"The date column '<dateColumn>' of <target> is not a date/datetime type; point dateColumn at a column SQL Server can return as a date.\" (src/SqlFlow.HealthCheck/HealthCheckFlowRunner.cs:589-593)."
+    },
+    {
+      "path": "description",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Free-text description of the flow, bound via YamlDocumentParts.NullIfBlank onto HealthCheckFlow.Description; purely informational, not consumed by any detection logic.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:11"
+    },
+    {
+      "path": "filter",
+      "type": "string",
+      "required": false,
+      "default": "null (no filter clause emitted in either generated statement)",
+      "description": "Optional boolean T-SQL expression ANDed into both generated statements and shared by every metric: HealthCheckSqlBuilder.SeriesSelect appends 'AND (<filter>)' after the sentinel/as-of date bounds (only when non-blank; a blank filter emits no dangling AND), and HealthCheckSqlBuilder.DataQualitySelect ANDs the identical clause into its WHERE clause, so the same filtered row set feeds all three COUNT_BIG probes, describing the same monitored slice as the series. Also echoed verbatim into the run's HealthCheckReport.FilterCriteria artifact field. Bound from HealthCheckYaml.Filter, trimmed; inserted unescaped, the same trust boundary as baseValue and metrics[].baseValue.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:32 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:80, as FilterCriteria)"
+    },
+    {
+      "path": "holidays",
+      "type": "list<date>",
+      "required": false,
+      "default": "[] (empty list)",
+      "description": "Dates the calendar features treat as holidays, feeding HealthCheckEngine.ApplyDateFeatures's IsHoliday SeriesRow feature (1 when the row's calendar date is in the set, else 0). ApplyDateFeatures runs unconditionally on every run, for every metric, before HealthCheckFlowRunner.ResolveModel picks the expectation function (the ApplyDateFeatures call at HealthCheckFlowRunner.cs:258 precedes the ResolveModel call at :267), so every row's IsHoliday always reflects the flow's current holidays list, regardless of which path scores it. IsHoliday is one of the seven calendar columns the AutoML regression trains on (FeatureColumns), and it is also one of the columns the ML.NET PredictionEngine reads at Predict() time on both the fresh-train path (engine.Predict(row) at HealthCheckFlowRunner.cs:535) and the reuse path (engine.Predict(row) at HealthCheckFlowRunner.cs:400): a loaded PredictionEngine evaluates its saved transform pipeline against the row object handed to it, it does not freeze feature values from training time. So editing 'holidays' and rerunning without retraining can still change a reused stored model's scores for the affected dates, to whatever extent that model's already-fitted function is sensitive to IsHoliday; a full retrain is only what lets the model relearn the IsHoliday relationship itself. The one path genuinely blind to 'holidays' is the weekday-median baseline: BaselineModel.Predict(date) (BaselineModel.cs:45-46) keys solely on DayOfWeek and never reads IsHoliday, so a metric scored by the baseline ignores the holidays list completely. Bound from HealthCheckYaml.Holidays (a List<string>, authored as plain YAML date scalars like 2026-01-01) and mapped by YamlHealthCheckFlowLoader.MapHolidays into a deduplicated List<DateOnly>: each entry is parsed with YamlDocumentParts.ParseDate, and a date that repeats (after parsing) is silently dropped, keeping the first occurrence and preserving authored order.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:41 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:120)",
+      "validation": "Per element, in MapHolidays (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:248-270): a blank/whitespace entry throws FlowValidationException \"<source>: 'holidays[<i>]' must not be blank.\"; an entry that does not parse as a date throws \"<source>: 'holidays[<i>]' must be a date like 2024-01-31, got '<value>'.\" (via YamlDocumentParts.ParseDate, src/SqlFlow.Yaml/YamlDocumentParts.cs:218-228, DateOnly.TryParse with InvariantCulture)."
+    },
+    {
+      "path": "holidays[]",
+      "type": "date",
+      "required": true,
+      "description": "One holiday date entry; see 'holidays' for how the list is consumed. Authored as an unquoted or quoted YAML date scalar and bound to a plain C# string list element before YamlDocumentParts.ParseDate converts it to DateOnly. Unlike metrics[].name, an entry has no fallback default: a blank element always throws, the same always-enforced pattern as metrics[].baseValue.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:41",
+      "validation": "Same as 'holidays': blank throws \"<source>: 'holidays[<i>]' must not be blank.\"; unparseable throws \"<source>: 'holidays[<i>]' must be a date like 2024-01-31, got '<value>'.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:259-260)."
+    },
+    {
+      "path": "maturityDays",
+      "type": "int",
+      "required": false,
+      "default": "1",
+      "description": "Trailing days, counted back from the run's as-of date, whose data may still be arriving. HealthCheckEngine.MarkImmaturePoints flags every row with Date >= asOfDate - (maturityDays - 1) as IsImmature. Immature rows are still scored and reported but are excluded from TagAnomalies's anomaly counting, from the observed-mature rows fed to PeltDetector.Detect for level shifts, and from ComputeMetrics's fit statistics, so a partially-loaded 'today' cannot page anyone or poison the fit numbers. 'maturityDays: 0' disables the window outright (row.IsImmature is forced false for every row: the guard is 'maturityDays > 0 && ...'), it does not merely shrink the window to zero width. Also echoed into the run's HealthCheckReport.MaturityDays artifact field.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:35 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:99)",
+      "validation": "Outside [0, 30] throws FlowValidationException \"<source>: 'maturityDays' must be between 0 and 30, got <n>.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:128-133)."
+    },
+    {
+      "path": "mode",
+      "type": "string",
+      "required": false,
+      "default": "auto",
+      "enumValues": ["auto", "manual", "disabled"],
+      "description": "When the health check executes. 'auto' (the default) lets schedules and batch/node group runs pick the flow up like any other automatic execution; 'manual' excludes it from all automatic dispatch and reserves it for an explicit on-demand trigger (the GUI's run button, a single-flow API trigger, or a direct CLI run); 'disabled' deactivates it with the same exclusions and a visible 'disabled' badge. Parsed by YamlDocumentParts.ParseExecutionMode into HealthCheckFlow.Mode (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:170), backed by the ExecutionMode enum (Auto=0, Manual=1, Disabled=2).",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:17 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:109, enum src/SqlFlow.Core/Runs/ExecutionMode.cs)"
+    },
+    {
+      "path": "metrics",
+      "type": "list<object>",
+      "required": false,
+      "description": "Multi-metric form: every entry is computed in the same single scan of the target (HealthCheckSqlBuilder.SeriesSelect appends one 'CAST(<expr> AS float) AS [<name>]' column per entry to one SELECT, sharing one FROM/WHERE/GROUP BY: the 'one scan for every metric' guarantee). Mapped by YamlHealthCheckFlowLoader.MapMetrics. Mutually exclusive with the top-level 'baseValue' shorthand, but the exclusivity check only fires when this list is non-empty ('list is { Count: > 0 }'), so 'metrics: []' alongside a set 'baseValue' does not error; 'baseValue' silently wins. An absent or empty list, with 'baseValue' also blank/absent, fails to load at all.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:30 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:76)",
+      "validation": "Both 'baseValue' (non-blank) and 'metrics' (non-empty) set: FlowValidationException \"<source>: set either 'baseValue' (one metric) or 'metrics' (a list), not both.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:192-196). Both absent/blank/empty: \"<source>: a health check needs a metric. Set 'baseValue' (an aggregate like COUNT(*) or SUM(Amount)) or a 'metrics' list of {name, baseValue} entries.\" (YamlHealthCheckFlowLoader.cs:203-208). Otherwise each entry is validated per 'metrics[]' below."
+    },
+    {
+      "path": "metrics[]",
+      "type": "object",
+      "required": false,
+      "description": "One monitored metric entry, {name, baseValue}. Binds to the HealthCheckMetricYaml DTO and maps to an immutable HealthCheckMetric {Name, Expression} inside the MapMetrics loop.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:44",
+      "validation": "A missing/blank 'baseValue' throws FlowValidationException \"<source>: 'metrics[<i>].baseValue' is required (an aggregate expression).\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:214-215). A 'name' (authored or derived) containing anything other than ASCII letters, digits, '_', or '-' throws \"<source>: 'metrics[<i>].name' '<name>' is invalid. Use letters, digits, '_', or '-'.\" (YamlHealthCheckFlowLoader.cs:218-222,235-236). A name that repeats a prior entry's name, case-insensitively, throws \"<source>: metric name '<name>' is declared more than once.\" (YamlHealthCheckFlowLoader.cs:224-226)."
+    },
+    {
+      "path": "metrics[].baseValue",
+      "type": "string",
+      "required": true,
+      "description": "The aggregate T-SQL expression producing the metric's per-date value: COUNT(*), SUM(Amount), COUNT(DISTINCT CustomerID), AVG(UnitPrice), and so on; a metric-specific condition is written into the aggregate itself, e.g. SUM(CASE WHEN Status = 'OK' THEN 1 END). Trimmed and mapped to HealthCheckMetric.Expression, then inserted unescaped into HealthCheckSqlBuilder.SeriesSelect as 'CAST(<expression> AS float) AS [<name>]', a trust boundary rather than a validated SQL grammar (the same trust model as 'filter' and the top-level 'baseValue'). All entries share the flow-level 'filter' and one table scan.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:47 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:32, as HealthCheckMetric.Expression)",
+      "validation": "Missing/blank throws FlowValidationException \"<source>: 'metrics[<i>].baseValue' is required (an aggregate expression).\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:214-215)."
+    },
+    {
+      "path": "metrics[].name",
+      "type": "string",
+      "required": false,
+      "default": "derived: HealthCheckMetric.DefaultName(baseValue) yields 'rowCount' when the trimmed, space-stripped expression equals 'COUNT(*)' case-insensitively, 'value' otherwise",
+      "description": "The metric's name. Keys its trained-model state folder (HealthCheckModelStore.StateDirectory, via RunHistoryWriter.SafeName) and its section of the scored report/series artifact, and becomes the bracket-escaped column alias in HealthCheckSqlBuilder.SeriesSelect. Renaming a metric therefore orphans its previously stored model (the next run logs a fresh 'no stored model' training reason instead of reusing it). Trimmed; when blank, derived from the entry's own baseValue via HealthCheckMetric.DefaultName.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:46 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:26, as HealthCheckMetric.Name)",
+      "validation": "Must contain only ASCII letters, digits, '_', or '-' (IsValidMetricName, src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:235-236); otherwise FlowValidationException \"<source>: 'metrics[<i>].name' '<name>' is invalid. Use letters, digits, '_', or '-'.\" (YamlHealthCheckFlowLoader.cs:218-222). Must be unique case-insensitively across the list (StringComparer.OrdinalIgnoreCase); a repeat throws \"<source>: metric name '<name>' is declared more than once.\" (YamlHealthCheckFlowLoader.cs:224-226)."
+    },
+    {
+      "path": "ml",
+      "type": "object",
+      "required": false,
+      "default": "{ maxExperimentSeconds: 120, anomalyThreshold: 2.0, esdAlpha: 0.025, maxAnomalyFraction: 0.10, training: auto, retrainAfterDays: null }",
+      "description": "Container for the AutoML/detection-tuning knobs below. Bound from HealthCheckYaml.Ml; an absent block is replaced with 'new HealthCheckMlYaml()' before its six sub-keys are read ('var ml = y.Ml ?? new HealthCheckMlYaml();'), so an absent 'ml:' block behaves identically to an explicit 'ml: {}'. Unlike 'load' on the file-flow document, which maps onto a nested LoadPolicy sub-object, 'ml' has no sibling object on the immutable HealthCheckFlow model: each sub-key is validated in YamlHealthCheckFlowLoader.Map and flattened directly onto HealthCheckFlow's own top-level properties (MaxExperimentSeconds, AnomalyThreshold, EsdAlpha, MaxAnomalyFraction, Training, RetrainAfterDays).",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:40"
+    },
+    {
+      "path": "ml.anomalyThreshold",
+      "type": "double",
+      "required": false,
+      "default": "2.0",
+      "description": "The minimum severity, in robust (median/MAD) sigmas of prediction residual, a statistically significant ESD candidate must still reach to be tagged an anomaly: HealthCheckEngine.TagAnomalies's thresholdStdDev parameter. A flagged candidate whose Severity is below this floor is skipped outright ('anomaly.Severity < thresholdStdDev'), and the same value gates the relative-floor override at 3x: a deviation at or under the 10 percent relative floor is still suppressed unless 'Severity >= 3 * thresholdStdDev'. TagAnomalies also asserts 'ArgumentOutOfRangeException.ThrowIfNegativeOrZero(thresholdStdDev)' as an internal guard, which a validly-loaded flow can never trip because the loader's own range check is at least as strict.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:65 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:88)",
+      "validation": "Non-finite (NaN/Infinity, e.g. authored as .nan/.inf), <= 0, or > 100 throws FlowValidationException \"<source>: 'ml.anomalyThreshold' must be a positive number of standard deviations (at most 100), got <v>.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:107-112); the valid range is the half-open interval (0, 100]."
+    },
+    {
+      "path": "ml.esdAlpha",
+      "type": "double",
+      "required": false,
+      "default": "0.025",
+      "description": "The significance level of each generalized-ESD outward test: EsdDetector.Detect's alpha parameter, used to compute Rosner's per-test critical value 'lambda_i' via a Student-t inverse CDF at 'p = 1 - alpha / (2 * nRemaining)'. Lower values require a more extreme deviation before a point is flagged. EsdDetector itself re-checks 'alpha <= 0 || alpha >= 1' and throws ArgumentOutOfRangeException \"alpha must be strictly between 0 and 1.\" otherwise; because the loader's own range, (0, 0.5), is a strict subset of the detector's (0, 1), that internal guard can never trigger for a flow loaded through this YAML surface.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:66 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:92)",
+      "validation": "Non-finite, <= 0, or >= 0.5 throws FlowValidationException \"<source>: 'ml.esdAlpha' must be a significance level strictly between 0 and 0.5, got <v>.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:114-119); the valid range is the open interval (0, 0.5)."
+    },
+    {
+      "path": "ml.maxAnomalyFraction",
+      "type": "double",
+      "required": false,
+      "default": "0.10",
+      "description": "The ESD search bound: EsdDetector.Detect's maxAnomalyFraction parameter, which caps 'maxAnomalies = min(ceil(n * maxAnomalyFraction), n - 3)', the most outward tests (and therefore the most points) a single Detect call can flag. EsdDetector re-checks the identical bound itself (ArgumentOutOfRangeException \"maxAnomalyFraction must be in (0, 0.49]: a robust test cannot call half the series anomalous.\") as defense in depth; unlike esdAlpha, the loader's range here exactly matches the detector's own guard rather than being narrower.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:67 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:95)",
+      "validation": "Non-finite, <= 0, or > 0.49 throws FlowValidationException \"<source>: 'ml.maxAnomalyFraction' must be in (0, 0.49], got <v>.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:121-126); the valid range is the half-open interval (0, 0.49]."
+    },
+    {
+      "path": "ml.maxExperimentSeconds",
+      "type": "int",
+      "required": false,
+      "default": "120",
+      "description": "The AutoML regression experiment's wall-clock time budget, per metric, in seconds: cast to 'uint' and assigned to RegressionExperimentSettings.MaxExperimentTimeInSeconds in HealthCheckFlowRunner.Train, whenever a metric has at least HealthCheckFlowRunner.MinimumPointsForTraining (10) mature points. Only consulted on the training path; a reused stored model or the weekday-median baseline never read it (confirmed: flow.MaxExperimentSeconds is referenced only inside Train, at HealthCheckFlowRunner.cs:477,484,496).",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:64 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:84)",
+      "validation": "Outside [1, 86400] (the ceiling is the private constant MaxExperimentSecondsCeiling) throws FlowValidationException \"<source>: 'ml.maxExperimentSeconds' must be between 1 and 86400, got <n>.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:33,100-105). Run time: if the AutoML experiment's BestRun has no model within the budget, InvalidOperationException \"AutoML produced no model within <n>s; raise ml.maxExperimentSeconds.\" (src/SqlFlow.HealthCheck/HealthCheckFlowRunner.cs:492-497)."
+    },
+    {
+      "path": "ml.retrainAfterDays",
+      "type": "int",
+      "required": false,
+      "default": "null (no age-based retrain; a stored model is kept until its state folder is deleted, it was trained by an older detection engine, or training is forced)",
+      "description": "With 'ml.training: auto', the maximum age in days of a stored model before it is retrained. Consumed by HealthCheckTrainingDecision.Resolve, whose 'auto' branch retrains when '(utcNow - stored.TrainedAtUtc).TotalDays > maxAge', producing the human-readable reason \"stored model from <date> is older than <n> day(s)\" that is logged at 'model.decision'. Checked only after the 'no stored model' and 'stale engine version' branches, so it never overrides those.",
+      "appliesWhen": "'ml.training' is 'auto' (the default when 'training' is omitted); setting it together with 'always' or 'never' is a load-time error",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:69 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:116)",
+      "validation": "< 1 throws FlowValidationException \"<source>: 'ml.retrainAfterDays' must be at least 1, got <n>.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:139-143). Set together with a training mode other than 'auto' throws \"<source>: 'ml.retrainAfterDays' only applies with 'ml.training: auto' ('<mode>' ignores model age).\" (YamlHealthCheckFlowLoader.cs:145-150), where '<mode>' is the resolved training value lowercased."
+    },
+    {
+      "path": "ml.training",
+      "type": "enum(auto|always|never)",
+      "required": false,
+      "default": "auto",
+      "enumValues": [
+        "auto",
+        "always",
+        "never"
+      ],
+      "description": "Whether each metric trains a fresh AutoML model or reuses/requires the stored one, resolved once per metric by HealthCheckTrainingDecision.Resolve: 'always' always returns a training reason (\"policy 'always'\"); 'never' returns null (reuse) when a stored model exists and throws otherwise (see validation); 'auto' (default) trains when no stored model exists, when the stored model's EngineVersion is older than HealthCheckModelMetadata.CurrentEngineVersion (currently 2), or when 'ml.retrainAfterDays' is set and the stored model is older than that many days, and reuses the stored model otherwise.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:68 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:111; enum HealthCheckTraining at HealthCheckFlow.cs:8-20)",
+      "validation": "Parsed by ParseTraining (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:238-246) case-insensitively via '.Trim().ToLowerInvariant()' with no '-'/'_' separator stripping, unlike load.mode's NormalizeToken, so only the exact tokens auto/always/never (in any letter case) match. Null, blank, or 'auto' all map to HealthCheckTraining.Auto. Any other value throws FlowValidationException \"<source>: 'ml.training' has unknown value '<v>'. Allowed: auto, always, never.\", where '<v>' is the original, untrimmed, uncased authored value. Run time, 'never' with no stored model: InvalidOperationException \"training is 'never' but no stored model exists at '<path>'. Train once with 'training: auto' (or --retrain) before pinning the model.\" (src/SqlFlow.HealthCheck/HealthCheckModelStore.cs:141-143)."
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "description": "Flow identity, required and trimmed via YamlDocumentParts.RequireFlowName; seeds the flow's stable FlowId/SysAlias exactly as every other document kind's name does.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:10",
+      "validation": "Missing or blank: \"<source>: 'name' is required for a health-check flow.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:76, via YamlDocumentParts.RequireFlowName)."
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow executes, schedules, and records run history exactly like a production one, but it never generates notification events, so a pipeline under active development cannot alert email/Slack subscribers. Parsed case-insensitively by YamlDocumentParts.ParseLifecycle (src/SqlFlow.Yaml/YamlDocumentParts.cs) and projected to CatalogPipeline.Lifecycle on every catalog sync.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:13 (mapped by YamlHealthCheckFlowLoader, src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs)",
+      "validation": "Unknown value fails to load: \"<source>: 'lifecycle' has unknown value '<value>'. Allowed: production, development.\" (YamlDocumentParts.ParseLifecycle, src/SqlFlow.Yaml/YamlDocumentParts.cs)"
+    },
+    {
+      "path": "sentinelDateFloor",
+      "type": "date",
+      "required": false,
+      "default": "1990-01-01",
+      "description": "The lower bound of the calendar window both generated statements operate over: HealthCheckSqlBuilder.SeriesSelect bounds the series scan to [sentinelDateFloor .. asOfDate] (a plain '>=' comparison against the yyyy-MM-dd literal), and HealthCheckSqlBuilder.DataQualitySelect's SentinelDatedRows probe counts rows strictly before it. The floor exists so a warehouse's placeholder dates (commonly 1900-01-01) or any far-past sentinel row cannot become the series' first observed date and stretch HealthCheckEngine.DetectMissingDates's walk across decades of invented gaps; such rows are not dropped silently, they are exactly what SentinelDatedRows counts and reports. Bound from HealthCheckYaml.SentinelDateFloor, a plain YAML string like 2000-01-01, via YamlDocumentParts.ParseDate.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:38 (model: src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs:103, DateOnly)",
+      "validation": "Blank/absent defaults to DateOnly(1990,1,1) (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:135); a non-blank, unparseable value throws FlowValidationException \"<source>: 'sentinelDateFloor' must be a date like 2024-01-31, got '<value>'.\" (YamlDocumentParts.ParseDate, src/SqlFlow.Yaml/YamlDocumentParts.cs:218-228, DateOnly.TryParse with InvariantCulture)."
+    },
+    {
+      "path": "target",
+      "type": "object",
+      "required": true,
+      "description": "Required descriptor of the SQL Server table or view the health check monitors: exactly one of target.server or target.connection, plus target.object (and optional target.provider). Binds to the private HealthCheckTargetYaml and is consumed only inside YamlHealthCheckFlowLoader.Map.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:23",
+      "validation": "Missing/null block: FlowValidationException \"<source>: 'target' is required.\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:79)."
+    },
+    {
+      "path": "target.connection",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "target.server is not set (exactly one of target.server or target.connection is required)",
+      "description": "An inline connection string or a ${env:...}/${keyvault:...} reference for the database holding the monitored table, used when the connection is not already declared under connections:.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:53"
+    },
+    {
+      "path": "target.object",
+      "type": "string",
+      "required": true,
+      "description": "The three-part [Database].[Schema].[Table] name of the monitored table or view, parsed via YamlDocumentParts.ParseQualifiedObject.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:59",
+      "validation": "Blank or absent: \"<source>: 'target.object' is required (a three-part name like Database.Schema.Table).\" (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:89-91)."
+    },
+    {
+      "path": "target.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "target.connection is set (ignored when target.server is used instead)",
+      "description": "The provider of a direct target.connection. The series query the detection engine runs is T-SQL, so in practice this must resolve to mssql or azdb.",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:57"
+    },
+    {
+      "path": "target.server",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "target.connection is not set (exactly one of target.server or target.connection is required)",
+      "description": "Name of a connection declared under connections: that the monitored table lives on; the alternative to a direct target.connection. Resolved by YamlDocumentParts.ResolveEndpointConnection (src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs:81-83).",
+      "definedIn": "src/SqlFlow.Yaml/HealthCheckYaml.cs:52",
+      "validation": "Both server and connection set, or neither set: same wording as the shared ResolveEndpointConnection messages (see docs/reference/flow/keys.shared.json connections entries and the sibling source.server/procedure.server entries in keys.exp.json/keys.sp.json for the exact text, with section 'target'). A name not declared under connections:: \"<source>: 'target.server' references '<name>', which is not declared under 'connections:'.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:155-156)."
+    }
+  ]
+}

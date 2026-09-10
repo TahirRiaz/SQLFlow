@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.Catalog</RootNamespace>
+    <Description>The EF-managed shadow catalog: a read-model of the git/YAML pipeline estate and the on-disk run history, the backing store for the GUI/API tier. Entity Framework lives ONLY in this assembly; the engine stays EF-free.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <!-- PasswordHasher (PBKDF2) for local SQLFlow users: the one hashing implementation shared by the control
+         plane (via DI) and the CLI's offline 'user' command, so a CLI-set hash verifies at login unchanged. -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Core" />
+    <!-- Cronos: DST-aware cron parsing for the schedule clock (the scheduling domain - table, store, clock - lives here). -->
+    <PackageReference Include="Cronos" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
+    <ProjectReference Include="..\SqlFlow.Lineage\SqlFlow.Lineage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SqlFlow.Core.Tests" />
+  </ItemGroup>
+
+</Project>

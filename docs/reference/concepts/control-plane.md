@@ -1,0 +1,319 @@
+---
+id: concept-control-plane
+title: "The control plane: API surface, configuration, bootstrap, managed sync"
+type: concept
+summary: The ASP.NET Core control plane host, its /api/v1 surface and scopes, ControlPlane configuration, first-run bootstrap, and managed git-to-catalog sync.
+keywords:
+  - control plane
+  - api/v1
+  - scopes
+  - configuration
+  - bootstrap
+  - repo sources
+  - run trigger
+  - lineage api
+related:
+  - cli-worker
+  - concept-authentication-and-identity
+  - concept-shadow-catalog
+  - guide-deployment
+sourceRefs:
+  - src/SqlFlow.ControlPlane/Program.cs
+  - src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs
+  - src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs
+  - src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs
+  - src/SqlFlow.ControlPlane/Background/RepoSyncService.cs
+  - src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/CatalogEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/RunEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/NodeEndpoints.cs
+  - src/SqlFlow.Catalog/RepoSourceStore.cs
+  - src/SqlFlow.Catalog/RunQueueStore.cs
+  - src/SqlFlow.Catalog/CatalogEntities.cs
+  - src/SqlFlow.Node/GitMaterializer.cs
+---
+
+# The control plane: API surface, configuration, bootstrap, managed sync
+
+The control plane (src/SqlFlow.ControlPlane) is an ASP.NET Core host that serves the HTTP API over the shadow catalog, triggers and queues runs, fires schedules, and keeps the catalog synced from git. It composes the identical engine wiring as the CLI and standalone workers via `AddSqlFlowEngine()` (src/SqlFlow.ControlPlane/Program.cs), so a run triggered over the API behaves exactly like a run started by `sqlflow run`: same source readers, same secret resolution chain, same connection registry, same `DocumentExecutor`.
+
+It exists so that a team has one place to observe the estate (repos, pipelines, runs, lineage, nodes), one privileged surface to operate it (trigger, cancel, schedule, sync), and zero manual steps to keep the queryable shadow catalog current with git.
+
+## Host composition
+
+`src/SqlFlow.ControlPlane/Program.cs` builds the host in one pass:
+
+- Configuration is bound from the `ControlPlane` section and validated eagerly at startup (`options.Validate()` plus `ValidateOnStart()`), so a misconfigured deployment never starts serving.
+- The catalog is read through a pooled `CatalogDbContext` with `NoTracking` query behavior and `EnableRetryOnFailure`.
+- Background services host bootstrap provisioning (`BootstrapProvisioningService`), the run worker (`RunExecutionWorker`, only when `Worker:Enabled` is true), the schedule scanner (`SchedulerService`), and the managed git sync (`RepoSyncService`).
+- The run queue is the catalog's `Run` table itself: the trigger endpoint enqueues a `queued` row through `IRunDispatcher`, a worker claims the oldest queued run atomically (single-statement `UPDATE ... WITH (UPDLOCK, READPAST, ROWLOCK)` in src/SqlFlow.Catalog/RunQueueStore.cs), and the outcome is recorded under the same id the trigger returned. Runs survive a restart and are visible to the read API from the moment they are queued.
+- Every response passes through `CorrelationIdMiddleware`, and errors are surfaced as RFC problem details (`AddProblemDetails` plus a `GlobalExceptionHandler`).
+- OpenAPI is mapped at `/openapi/v1.json` via `MapOpenApi()`.
+
+### Authentication and scopes
+
+JWT bearer validation pins the algorithm to HS256 only (`ValidAlgorithms = [HmacSha256]`), validates issuer, audience, lifetime, and signing key, uses a 30 second `ClockSkew`, and sets `MapInboundClaims = false` so the `sub` and `scope` claim types stay as issued.
+
+Three authorization policies gate the surface, driven by a space-delimited `scope` claim:
+
+| Policy | Requirement |
+| --- | --- |
+| `read` | Any authenticated user |
+| `operate` | `scope` claim contains `operate` |
+| `admin` | `scope` claim contains `admin` |
+
+The sign-in surface under `/api/v1/auth` maps `GET /auth/providers` and `POST /auth/login` always, `POST /auth/exchange` only when `AzureAd:Enabled` is true, and the break-glass `POST /auth/token` only when `Jwt:BootstrapSecret` is set. See ./authentication-and-identity.md for token issuance, local users, and Entra SSO.
+
+### API surface
+
+All endpoints live under `/api/v1`.
+
+Read surface (policy `read`):
+
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /repos`, `GET /repos/{id}` | Repository registry |
+| `GET /pipelines`, `GET /pipelines/{id}` | Pipeline registry (filters: `repoId`, `kind`, `active`, `name`) |
+| `GET /pipelines/{id}/definition` | The pipeline's parsed definition as JSON |
+| `GET /pipelines/{id}/columns` | Declared and detected pre-ingestion transform columns |
+| `GET /pipelines/{id}/files`, `GET /pipelines/{id}/files/stats` | Every distinct file the pipeline has processed (deduplicated by name and path), and the size profile over them: average, median, standard deviation, extremes, totals, and a window over the newest files, so a caller can tell a normal delivery from an anomalous one |
+| `GET /runs`, `GET /runs/{runId}` | Run history and detail (filters include `repoId`, `pipelineId`, `flowKind`, `status`, `success`, `flowName`, `batch`, `latest`) |
+| `GET /runs/{runId}/files` `/assertions` `/statements` `/surrogate-keys` `/health-metrics` | Per-run drill-down |
+| `GET /runs/{runId}/trace` | The run's consolidated trace: canonical engine events (file progress, resolved watermarks, decisions, stage summaries, warnings) interleaved with the generated SQL statements by timestamp |
+| `GET /runs/{runId}/trace/text` | The whole trace rendered as one plain-text document (run header, then every entry with SQL inline): the Copy-trace surface, and the form to hand an LLM when debugging a run |
+| `GET /runs/{runId}/trace/stream` | The trace as Server-Sent Events while the run executes: one `entry` frame per new trace entry, a final `end` frame at the terminal status (the client then refetches the paged endpoint, which holds the authoritative re-projection); `afterEventId`/`afterStatementId` cursors resume a dropped connection |
+| `GET /pipelines/{pipelineId}/trace`, `/trace/text` | The pipeline's LATEST run's trace (paged JSON or plain text) without resolving a run id first: the entry point for "show me what its last run did" when debugging a pipeline, by hand or from an LLM tool |
+| `GET /runs/groups/{groupId}/stream` | The run group as Server-Sent Events while it executes: a `member` frame (a run summary with its newest trace event as the "last action") whenever a member changes, a full snapshot on connect, one `end` frame with the final rollup once every member is terminal |
+| `GET /lineage/objects`, `/lineage/objects/detail`, `/lineage/objects/columns` | Lineage objects |
+| `GET /lineage/objects/refresh` | How an object is populated and how often it updates: the flows that write it, each with its latest run and the schedules that fire it (cadence, next fire); a view with no writing flow reports the modules its content derives from |
+| `GET /lineage/objects/join-paths` | ALL the ways to join one object to others: a breadth-first walk of the interpreted relationship graph returning each route as an ordered chain of hops with a ready-to-paste ON clause. `target` narrows to routes reaching one named table (through a bridge when they are not related directly), `maxHops` 1-4 (default 2). Rival routes between the same pair are kept, not deduplicated, and each is ranked by its weakest link |
+| `GET /lineage/objects/graph` | The transitive lineage of one object: BFS upstream (where the data comes from) and downstream (what depends on it), each step depth-annotated and naming the flow or module carrying the hop; `direction=upstream\|downstream\|both`, `depth` 1-8 (default 3), capped with a `truncated` flag |
+| `GET /repos/{repoId}/lineage/edges`, `/repos/{repoId}/waves`, `/repos/{repoId}/dependencies` | Repo-scoped lineage |
+| `GET /search/all` | One global search fanned across every surface below, each category counted in full with a preview of top hits; the reply echoes the parsed `tokens` (a multi-word term matches word by word, every word required, so "ferry passengers" finds `FerryPassengers_PerDeparture`) |
+| `GET /search/objects`, `/search/columns`, `/search/definitions` | Cross-repo data dictionary and code search (objects by name, synced columns by name, module bodies and emitted DDL) |
+| `GET /search/files`, `/search/flows` | Processed files by name/path; flow YAML by name, path, or body text |
+| `GET /search/flow-columns` | The columns FLOWS produce, matched by output name, source column, or the SQL expression computing them: the reverse "which pipeline computes column X" lookup, independent of any warehouse schema sync |
+| `GET /search/statements` | The SQL runs actually executed, grouped to one row per (flow, step) with an occurrence count and the newest sample; searches a 90-day window by default (`days=0` for all retained history) |
+| `GET /search/subscribers` | The consumers of the warehouse (dashboards, reports, workbooks, applications) by name, tool, owner, description, notes, location (the report URL or workbook path), or declaring file. Searching `Incomplete dataset` lists every consumer whose registered lineage is only partial |
+| `GET /schedules`, `GET /schedules/{id}` | Schedules |
+| `GET /nodes` | Worker fleet with a derived online flag |
+| `GET /repos/sources` | Managed repo sources |
+| `GET /summary` | Estate summary |
+| `GET /dataops/capabilities` | Whether the data-operations surface is enabled here, the operations available, and the linked servers a baseline comparison may name (concept-data-operations) |
+
+Operate surface (policy `operate`):
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /runs` | Trigger a run or a run group (202 Accepted) |
+| `POST /runs/{runId}/cancel` | Cancel a run (200 `cancelled` from queued; 202 `cancelling` while running) |
+| `POST /runs/groups/{groupId}/cancel` | Cancel a whole run group (queued members cancelled, running members requested) |
+| `POST /schedules`, `POST /schedules/{id}/pause`, `POST /schedules/{id}/resume`, `DELETE /schedules/{id}` | Ad-hoc schedule management |
+| `POST /repos/sources` | Register or update a managed repo source (upsert) |
+| `POST /repos/sources/{id}/sync` | Force a sync now |
+| `POST /repos/discover` | Preview a repo's flows without importing (the selective-scan wizard) |
+| `POST /repos/sources/{id}/proposals` | Propose pipelines to a source as a pull request (`author` scope) |
+| `POST /datasources/tasks` | Enqueue an ad-hoc compute task against a datasource: browse/introspect, detect a unique key, the warehouse-health DMV probes, and (behind `DataOps:Enabled`) `duplicateKeys`, `compareBaseline` and `runQuery`. References only; the executing node resolves the credential |
+| `POST /datasources/tasks/{taskId}/cancel` | Cancel a queued or running compute task |
+| `POST /dataops/queries/prepare` | Validate an ad-hoc SELECT and mint a one-time plan token; nothing runs. Behind `DataOps:Enabled` |
+| `POST /dataops/queries/{planId}/run` | Redeem an approved plan token and queue the query. Takes a token, never a statement, so the confirmation cannot be skipped |
+
+Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/activate` `/deactivate` `/password`, and `GET /roles` (src/SqlFlow.ControlPlane/Api/UserEndpoints.cs).
+
+### Health probes and rate limiting
+
+- `GET /health/live` has no dependencies (its predicate excludes every check); `GET /health/ready` runs the catalog database check. Both are mapped with `DisableRateLimiting()`, so probe traffic behind a shared egress IP can never be throttled into a false negative.
+- A global fixed-window rate limiter partitions per authenticated subject (the `sub` claim) or, when anonymous, per client IP: default 120 permits per 60 second window, `QueueLimit = 0`, and HTTP 429 on rejection. The limiter runs after authentication so the partition can key on the subject.
+
+### CORS and reverse-proxy awareness
+
+- CORS is an explicit allowlist (`ControlPlane:Cors:AllowedOrigins`). An empty list means no CORS policy is registered at all: same-origin only.
+- Forwarded headers (`X-Forwarded-For`, `X-Forwarded-Proto`) are honored only when `ControlPlane:Proxy:Enabled` is true, and only from the proxies listed in `KnownNetworks` (CIDRs) or `KnownProxies` (IPs), with `ForwardLimit` hops (default 1). The forwarded-headers middleware runs first in the pipeline so the rate limiter and login throttle see the real client address. Enabling the proxy section while trusting no proxies is a startup error ("ControlPlane:Proxy is enabled but trusts no proxies; ...").
+
+### Fleet visibility
+
+`GET /nodes` (src/SqlFlow.ControlPlane/Api/NodeEndpoints.cs) lists workers that have heartbeated into the catalog, most recently seen first. A node is reported `online` when its last heartbeat is within the last 60 seconds, computed at read time. Each heartbeat also carries the node's `BusyRuns` (how many runs it is executing), which the KEDA autoscaler reads so occupied workers hold their replicas while idle ones remain the reclaimable surplus.
+
+### The orphan-run reaper
+
+A background sweep (`OrphanRunReaper`, src/SqlFlow.ControlPlane/Background/OrphanRunReaper.cs) recovers runs left `running` by a node that stopped heartbeating for `ControlPlane:Reaper:StaleAfterSeconds` (default 180): the executing process is gone, so no outcome will ever be recorded, and the stuck row would otherwise block every future run of its pipeline. Losing a worker is recoverable, not terminal: an orphan is requeued for another worker to execute (its claim cleared), recorded `cancelled` when an operator cancel was already pending, and failed only once it has consumed its whole attempt budget (`RunQueueStore.MaxExecutionAttempts`, 3 claims), which is the bound that stops a poison run from crash-looping the fleet. Every claim increments the run's `Attempt`, which doubles as a fencing token: a zombie node's late outcome writes present a stale attempt and are dropped, so the successor execution's result is authoritative. The same sweep prunes fleet-registry rows for nodes offline longer than `NodeRetentionHours`.
+
+A **stopping** node is not an orphaned one, and the two must not be confused. When a worker is asked to stop (a SIGTERM from an autoscaler reclaiming the replica, a revision swap, an operator restart) it stops claiming but keeps executing the runs it already holds, and it keeps heartbeating for the whole drain precisely so this sweep leaves that work alone (src/SqlFlow.Node/RunWorker.cs). Were a draining node to go silent, the reaper would declare it dead within `StaleAfterSeconds`, requeue its runs, and a sibling node would re-execute work that was about to finish while the draining node's own outcome writes lost to the claim fence. Only when a node's drain window expires does it sever what remains, and those runs then become genuine orphans for this sweep to requeue.
+
+Because a requeue consumes an execution attempt, anything that severs runs routinely will eventually exhaust the budget of a healthy run and fail it with "a run that repeatedly dies mid-flight is treated as the cause". In an autoscaled fleet the usual culprit is not the flow but the platform: replicas are reclaimed on a cadence, and a termination grace period shorter than the worker's drain window turns every scale-in into a severed run. See [`sqlflow worker`](../cli/worker.md) for the drain contract and the grace-period requirement.
+
+## Configuration
+
+All settings bind from the `ControlPlane` configuration section (environment variables use the `ControlPlane__Section__Key` form) and are validated at startup with messages that name the offending field (src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs).
+
+| Key | Default | Notes |
+| --- | --- | --- |
+| `Catalog:ConnectionReference` | `${env:SQLFLOW_CATALOG_DB}` | A connection string or a `${env:...}` / `${keyvault:...}` reference, resolved once through the SqlFlow secret resolver and cached for the app lifetime; a transient resolution failure is retried, not cached (src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs) |
+| `Jwt:Issuer` | `sqlflow-control-plane` | Required non-blank |
+| `Jwt:Audience` | `sqlflow` | Required non-blank |
+| `Jwt:SigningKey` | none | Required; at least 32 UTF-8 bytes for HS256; source it from a secret, never a literal |
+| `Jwt:AccessTokenMinutes` | `720` | Range 1..1440. One token's life; a signed-in GUI rolls its token at `POST /auth/renew` rather than letting it lapse |
+| `Jwt:SessionMaxDays` | `30` | Range 1..365. The absolute ceiling on a rolling session, measured from the actual sign-in |
+| `Jwt:BootstrapSecret` | unset | Optional; at least 32 bytes when set; `POST /auth/token` is only mapped when set |
+| `AzureAd:Enabled` | `false` | When true, `TenantId` and `ClientId` are required |
+| `AzureAd:Authority` | derived | Defaults to `https://login.microsoftonline.com/{TenantId}/v2.0` |
+| `AzureAd:DefaultRole` | `viewer` | Role a first-time Entra user is provisioned with |
+| `Bootstrap:ApplyMigrations` | `true` | `false` logs pending migrations as a warning instead of applying them |
+| `Bootstrap:AllowCreate` | `false` | When `false` (the default), startup only migrates an EXISTING catalog: a missing database or a populated non-catalog database is refused loudly and startup stops without retrying, so a wrong or mistyped connection never provisions against the wrong (possibly production) server. `true` lets startup CREATE the catalog database and initialise its schema into an empty one, for first-time provisioning or ephemeral/test databases |
+| `Bootstrap:AdminUsername` / `Bootstrap:AdminPasswordReference` | unset | Must be set together; the password is a secret reference, never a literal |
+| `Bootstrap:DemoRepo` | unset | `Name` and `RemoteUrl` required when configured; `Branch` default `main`; `SyncIntervalSeconds` default `300` |
+| `Cors:AllowedOrigins` | `[]` | Empty means same-origin only |
+| `RateLimit:PermitPerWindow` / `RateLimit:WindowSeconds` | `120` / `60` | Both must be positive |
+| `Scheduler:PollSeconds` | `15` | Schedule scan cadence; must be positive |
+| `ManagedSync:PollSeconds` | `30` | Repo-source scan cadence |
+| `Worker:Enabled` | `true` | `false` makes the replica API-only (no in-process worker) |
+| `Worker:Pools` | `[]` | Empty claims only untargeted runs |
+| `Proxy:Enabled` | `false` | See proxy section above; `ForwardLimit` default `1` |
+| `DataOps:Enabled` | `false` | The kill switch for the data-operations surface: ad-hoc business queries, the duplicate-key check and the old-versus-new baseline comparison. All are read-only, and both are refused with a 403 naming this setting while it is off. The four warehouse-health DMV probes are a separate, older feature and are NOT gated by it (concept-data-operations) |
+| `DataOps:Comparison:LinkedServers` | `[]` | The linked servers a baseline comparison may name. A linked-server name becomes an identifier in generated SQL and a route into another estate, so it is configuration, never something a request chooses; an unlisted name is refused |
+| `DataOps:Comparison:DefaultLinkedServer` | unset | Used when a comparison names none; must be one of `LinkedServers` or startup fails |
+| `DataOps:Comparison:Databases` | `[]` | Optional narrowing to named databases on those servers. Empty permits any database the linked server's own login can reach, which is the usual case because the linked server is the boundary |
+
+## First-run bootstrap
+
+`BootstrapProvisioningService` (src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs) runs in the background and retries with backoff (5s, 10s, 20s, 40s, then every 60s) until the catalog is reachable, so the start order of app and database never matters; the readiness probe reports the catalog being unavailable in the meantime.
+
+Before provisioning anything, the service applies the `Bootstrap:AllowCreate` guard (default `false`). Unless it is `true`, a missing database or a populated non-catalog database is a deterministic configuration mistake that retrying cannot fix, so the service logs a critical error and stops (readiness stays red) rather than conjuring a database or injecting catalog tables into the wrong server. Only `AllowCreate = true` creates the catalog database and initialises its schema into an empty one.
+
+Order of operations, all idempotent:
+
+1. Apply pending EF catalog migrations when `Bootstrap:ApplyMigrations` is true (the default). With it false, pending migrations are logged as a warning: "Apply them out of band; parts of the API may fail until then."
+2. Seed the built-in roles: `admin` (scopes `read operate admin author`), `operator` (`read operate author`), `viewer` (`read`). Existing role rows are kept as-is (`EnsureRoleAsync` inserts only when the role is absent, so a catalog seeded before `author` existed needs the scope granted by hand).
+3. Create the initial admin from `Bootstrap:AdminUsername` and `Bootstrap:AdminPasswordReference` (resolved through the secret resolver) when the user is absent. An existing admin's password is never reset. An empty or too-short resolved password logs an error and skips creation rather than provisioning a weak credential.
+4. Register the optional demo repo source (`Bootstrap:DemoRepo`) as an upsert, so configuration stays the desired state across restarts.
+
+## Managed git-to-catalog sync (repo sources)
+
+A `CatalogRepoSource` (src/SqlFlow.Catalog/CatalogEntities.cs) registers a git repository the control plane keeps synced: it periodically pulls the branch HEAD and runs the catalog sync, so nobody runs `sqlflow db sync` by hand and git stays the source of truth. Defaults: `Branch` `main`, `SyncIntervalSeconds` `300`, `Enabled` `true`. `Name` is unique and the synced pipelines and runs are attributed to it. A source's id is `FlowIdentity.FromName("reposource/{name}")`, so re-registering the same name updates in place; a new source is due immediately (`NextSyncUtc = now`).
+
+`RepoSyncService` (src/SqlFlow.ControlPlane/Background/RepoSyncService.cs) scans every `ManagedSync:PollSeconds` (default 30, at most 50 sources per tick) for sources due to sync. Each due sync is claimed by compare-and-swap on `NextSyncUtc` (`RepoSourceStore.TryClaimSyncAsync`), so several control-plane nodes never sync the same source twice in one interval. The winner then:
+
+1. Clones the branch tip fresh into `<cache>/<repoHash>/branch` (`GitMaterializer.MaterializeBranch`, src/SqlFlow.Node/GitMaterializer.cs). A repo with no commits fails with `'<remote>' (branch '<branch>') has no commits to sync.`
+2. Runs the exact same `CatalogSync` as the CLI's `sqlflow db sync` (the offline tier; the connected/derived tier is a separate opt-in of the CLI's `--connect`), passing the source's flow selection (see below).
+3. Records the pulled commit SHA on success (`LastSyncedSha`, clearing `LastError`) or a secret-redacted error on failure (`LastError`, keeping the last successful SHA).
+
+One source's failure never stops the others or the loop.
+
+### Git credentials (a reference, never a secret)
+
+A private remote's token is named by the source's `CredentialReference`, a `${keyvault:vault/secret}` or `${env:NAME}` reference resolved through the SqlFlow secret resolver at clone time (`GitMaterializer.ResolveCredentialsAsync`); an optional `CredentialUsername` pairs with it for hosts that authenticate the username too (Bitbucket app passwords). Only the reference is stored; the secret value is created and maintained in the vault, and the API rejects a raw token that is not a `${...}` reference. A source with no reference falls back to the host's own environment (`SQLFLOW_GIT_TOKEN`, optional `SQLFLOW_GIT_USERNAME`), which covers public remotes. The node resolves the secret itself and it never rests in the catalog or the queue.
+
+### Preview-first selective scan
+
+A source imports every `*.flow.yaml` by default. To onboard a subset, `POST /repos/discover` clones the remote and lists its flows (relative path, parsed name and kind or the parse error, size, and redacted content for preview) WITHOUT touching the catalog. The chosen exclusions are stored on the source as `ExcludedFlowPaths` (a JSON array of repo-relative paths); the sync then projects only the included flows as pipelines. Because the sync is the single activation point, an excluded flow never becomes a catalog pipeline (so the scheduler never runs it), a previously-imported flow that becomes excluded is deactivated on the next sync (its run history is kept), and a re-included flow is imported again.
+
+API:
+
+- `GET /repos/sources` (read): paged list of `RepoSourceDto` with fields `id`, `name`, `remoteUrl`, `branch`, `enabled`, `syncIntervalSeconds`, `nextSyncUtc`, `lastSyncUtc`, `lastSyncedSha`, `lastError`, `credentialReference`, `credentialUsername`, `excludedFlowPaths`, `createdUtc`, `updatedUtc`.
+- `POST /repos/sources` (operate): upsert with body `{name, remoteUrl, branch?, syncIntervalSeconds?, enabled?, credentialReference?, credentialUsername?, excludedFlowPaths?}`; `branch` defaults to `main`, `syncIntervalSeconds` to 300, `enabled` to true, and an omitted `excludedFlowPaths` imports every flow. A blank `name` or `remoteUrl`, or a `credentialReference` that is not a `${...}` reference, is 400. Returns 201 Created with the source id.
+- `POST /repos/sources/{id}/sync` (operate): makes the source due now; 404 for an unknown or disabled source ("No enabled repo source '{id}'.").
+- `POST /repos/discover` (operate): body `{remoteUrl, branch?, credentialReference?, credentialUsername?}`; clones and returns the flow list for the selection wizard. Read-only; nothing is written to the catalog. A clone or credential failure is a 400 with a redacted message.
+- `POST /repos/sources/{id}/proposals` (author): propose pipelines to the source's repo as a pull request. Body `{title, body?, baseBranch?, headBranch?, files:[{path, content}]}`; `baseBranch` defaults to the source's tracked branch and `headBranch` to a content-derived `sqlflow/proposal-*` name. The control plane pushes the files onto a fresh branch off the base and opens a pull request using the source's own stored credential (github.com or bitbucket.org over HTTPS); it never writes the catalog directly, so a human reviews and merges before the managed sync imports the flows. `files[].path` must be repo-relative and end in `.yaml`/`.yml`/`.sql`/`.json`/`.md`; a bad path, an unsupported remote host, or a source with no configured credential is a 400. Returns 201 with `{pullRequestUrl, pullRequestNumber, headBranch, commitSha, filesChanged}`. Feed `commitSha` to `POST /runs` (`commitSha`) to test the proposal pinned to the pull-request commit before it merges. If the branch pushes but the pull request cannot be opened, the branch is rolled back and the response is 502. The git clone is staged in a throwaway temp directory deleted when the request finishes; the whole staging root (`{temp}/sqlflow/proposals`) is also swept on control-plane startup and shutdown, so a staged clone never outlives the session and a crash leak is reclaimed on the next start.
+
+## Triggering, backfilling, and cancelling runs
+
+`POST /api/v1/runs` (operate scope, src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs) takes:
+
+```json
+{
+  "repoId": "0195c9a2-7f30-7c44-9c1e-0aa1b2c3d4e5",
+  "flowName": "ing/customers",
+  "pool": null,
+  "commitSha": null,
+  "fullLoad": false,
+  "backfillFrom": "2026-01-01",
+  "backfillTo": "2026-01-31",
+  "filePattern": null,
+  "scope": null,
+  "batch": null,
+  "assertionsOnly": false
+}
+```
+
+- `flowName` is required and must be non-blank (400 "A run trigger requires a non-blank flowName.").
+- `commitSha` must be a 4 to 64 character hexadecimal git object id, or the request is 400: "commitSha must be a 4- to 64-character hexadecimal git object id (or omitted to pin to the last synced commit)." When omitted, enqueueing pins the run to the repo's last synced commit (`LastSyncedSha`) when one is resolvable, so the executed version matches what the catalog shows and any node can materialize it; only a repo with no resolvable synced commit runs unpinned from the node's local copy (src/SqlFlow.Catalog/RunQueueStore.cs).
+- The per-run substitution parameters (`fullLoad`, `backfillFrom`/`backfillTo`, `filePattern`) are validated at the trust boundary via `RunParameters.Validate()`, so an inverted window or a control-character glob is refused as 400 "Invalid run parameters" before anything is queued.
+- An unknown or deactivated pipeline is 404: "No active pipeline '&lt;flow&gt;' in repo '&lt;repoId&gt;'." The pipeline's kind is carried onto the queued run.
+- `scope` selects how much to run: omitted or `flow` triggers the single flow (the default described above); `node` expands the named flow and all its lineage descendants; `batch` expands a whole data source, identified either by the `batch` label or by reading it from the anchor `flowName`. The built-in backfill and `assertionsOnly` are single-flow concepts, so a `node`/`batch` scope always runs its members with default parameters (a group carrying `assertionsOnly` is refused 400).
+- `assertionsOnly` (ingestion flows only) evaluates the flow's data-quality assertions, manual-mode ones included, against the current target without loading anything; on any other flow kind it is a 400.
+- Success for a single flow is 202 Accepted with `{runId, status: "queued"}` and a `Location` header pointing at `GET /api/v1/runs/{runId}`.
+- Success for a `node`/`batch` scope is 202 Accepted with a `RunGroupAccepted` payload `{groupId, memberCount, status: "queued"}` and a `Location` header pointing at `GET /api/v1/runs/groups/{groupId}`. A scope that expands to no active members is 404.
+- No secret is ever accepted in the request or echoed back; the executing node resolves all credentials from its own environment.
+
+`POST /api/v1/runs/{runId}/cancel` (operate scope): a still-queued run is cancelled outright, 200 `{status: "cancelled"}`; a run already RUNNING is cancellable too, but asynchronously, so its owning node is stamped with a durable cancel request and the endpoint returns 202 Accepted with `{status: "cancelling"}` (poll `GET /api/v1/runs/{runId}` for the terminal outcome). An unknown id is 404 "No run '{runId}'."; an already-terminal run is 409 "Run '{runId}' has already finished and cannot be cancelled." The companion `POST /api/v1/runs/groups/{groupId}/cancel` cancels a whole run group the same way (queued members cancelled outright, running members sent a request): 202 `{status: "cancelling"}` when any member was still running, 200 `{status: "cancelled"}` otherwise, and 404 for an unknown group.
+
+## Lineage read API
+
+src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs serves the catalog's lineage graph:
+
+- `GET /lineage/objects`: paged object list with `name` (contains), `serverRef`, and `kind` filters, ordered by `level` (the object's depth in the estate-wide data-movement graph, sources first; null level last), then database/schema/name. `ObjectDto` deliberately omits the heavy `Definition` field.
+- `GET /lineage/objects/detail?key=...`: one object with its full module body; `definition` is null for plain tables, an unconnected sync, or an encrypted module.
+- `GET /lineage/objects/columns?key=...`: paged columns of one object, ordered by ordinal.
+- `GET /repos/{repoId}/lineage/edges`: paged attributed edges with `pipelineId`, `objectKey`, `relation`, and `tier` filters.
+- `GET /repos/{repoId}/waves`: the execution plan grouped by wave, whole (not paged); wave `-1` means lineage has not been computed for those pipelines yet.
+- `GET /repos/{repoId}/dependencies`: paged flow-to-flow dependencies.
+- `GET /pipelines/{id}/columns` (src/SqlFlow.ControlPlane/Api/CatalogEndpoints.cs): the declared and detected pre-ingestion transform columns, declared-first.
+
+Every query is read-only (`AsNoTracking`), projected to DTOs (raw EF entities never leave the host), and listing endpoints are bounded by page size. Repo-scoped endpoints verify the repo exists and return 404 for an unknown repo rather than an empty result a caller could not distinguish from a repo with no lineage yet.
+
+## Configuration touchpoints
+
+- Configuration section: `ControlPlane` (env form `ControlPlane__...`), documented in the table above; src/SqlFlow.ControlPlane/appsettings.json carries the non-secret defaults.
+- Environment variables: `SQLFLOW_CATALOG_DB` (the default catalog connection reference), `SQLFLOW_GIT_TOKEN` and `SQLFLOW_GIT_USERNAME` (managed-sync and worker git credentials).
+- CLI: `sqlflow db sync [path] [--repo <name>] [--repo-url <url>] [--connect]` runs the same `CatalogSync` a managed source runs; `sqlflow worker` runs the same node runtime the control plane hosts in-process (src/SqlFlow.Cli/Program.cs).
+
+## Example: compose deployment
+
+Adapted from deploy/compose/docker-compose.yml (API-only control plane replica plus separate workers):
+
+```yaml
+services:
+  controlplane:
+    environment:
+      ControlPlane__Catalog__ConnectionReference: "Server=mssql;Database=SqlFlowCatalog;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      ControlPlane__Jwt__SigningKey: ${SQLFLOW_JWT_SIGNING_KEY}
+      ControlPlane__Jwt__BootstrapSecret: ${SQLFLOW_BOOTSTRAP_SECRET}
+      ControlPlane__Bootstrap__AdminUsername: ${SQLFLOW_ADMIN_USERNAME:-admin}
+      ControlPlane__Bootstrap__AdminPasswordReference: ${SQLFLOW_ADMIN_PASSWORD}
+      ControlPlane__Cors__AllowedOrigins__0: http://localhost:8081
+      ControlPlane__Worker__Enabled: "false"
+    ports:
+      - "5000:8080"
+
+  worker:
+    environment:
+      SQLFLOW_CATALOG_DB: "Server=mssql;Database=SqlFlowCatalog;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      SQLFLOW_GIT_TOKEN: ${SQLFLOW_GIT_TOKEN:-}
+```
+
+Register a source and trigger a run:
+
+```bash
+# Register a managed repo source (operate scope)
+curl -s -X POST http://localhost:5000/api/v1/repos/sources \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"name":"warehouse","remoteUrl":"https://github.com/acme/warehouse-flows.git","branch":"main","syncIntervalSeconds":300}'
+
+# Trigger a backfill run (202 Accepted; poll the Location header)
+curl -s -X POST http://localhost:5000/api/v1/runs \
+  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"repoId":"'$REPO_ID'","flowName":"ing/customers","fullLoad":false,"backfillFrom":"2026-01-01","backfillTo":"2026-01-31"}'
+```
+
+## See also
+
+- concept-data-operations: the duplicate-key check and the baseline comparison behind `DataOps:Enabled`
+
+
+- [Worker CLI](../cli/worker.md): the standalone node runtime that drains the same run queue.
+- [Authentication and identity](./authentication-and-identity.md): tokens, local users, Entra SSO, roles.
+- [The shadow catalog](./shadow-catalog.md): the database this API reads and the sync writes.
+- [Deployment guide](../guides/deployment.md): compose and ingress layouts.

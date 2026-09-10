@@ -1,0 +1,13 @@
+# Custom default column type: the raw layer types every column as a string. Override the
+# default SQL type used when creating columns (default varchar(255)).
+name: Csv_CustomType
+source:
+  type: csv
+  location: ./data/orders.csv
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_CustomType
+schema:
+  evolve: widen
+  defaultColumnType: nvarchar(4000)

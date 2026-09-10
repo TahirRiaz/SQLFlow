@@ -1,0 +1,30 @@
+# SQLFlow pipeline - stored procedure (flowType: sp).
+#
+# Executes one existing stored procedure on a resolved SQL Server (no parameters bound).
+# Use it for the orchestration steps that already live in T-SQL: mart rebuilds, statistics
+# refreshes, archive sweeps. The EXEC is captured in the run's trace.sql.
+#
+#   sqlflow validate refresh-marts.flow.yaml   # check the definition
+#   sqlflow run      refresh-marts.flow.yaml   # EXEC the procedure
+#
+# No control database, no registration: the file is the whole pipeline.
+
+flowType: sp
+name: refresh-marts
+description: Rebuilds the reporting marts after the nightly loads.
+
+# ---- CONNECTIONS --------------------------------------------------------------
+# Named here, referenced below by 'server:'. Secrets never rest in this file -
+# use a whole ${env:NAME} or ${keyvault:vault/secret} reference (it may expand to
+# a SQL-auth string), or a passwordless string (Integrated Security / AD Default).
+connections:
+  dwh: ${env:SQLFLOW_DW}
+
+# ---- PROCEDURE ------------------------------------------------------------------
+# 'connection:' inline is also accepted instead of 'server:'. The procedure is a
+# strict three-part name: Database.Schema.Procedure.
+procedure:
+  server: dwh
+  object: DW.dbo.usp_RefreshMarts
+
+# onErrorResume: true                   # batch behavior when this flow fails

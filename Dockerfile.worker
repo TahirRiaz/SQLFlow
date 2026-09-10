@@ -1,0 +1,37 @@
+# A SQLFlow compute node as a container: runs `sqlflow worker`, the pull-based drain loop over the durable run
+# queue. It needs OUTBOUND SQL to the catalog database and (for SHA-pinned runs) outbound git to the repo remotes;
+# it exposes nothing, so it never sits behind an ingress. Scale it on queue depth (see deploy/k8s for the KEDA
+# setup), not on traffic.
+#
+# Configuration is environment-only, matching the worker's "credentials live on the node" model:
+#   SQLFLOW_CATALOG_DB            the catalog connection string (required)
+#   SQLFLOW_WORKER_POOL           comma-separated pools this node serves (optional; empty = untargeted runs only)
+#   SQLFLOW_WORKER_POLL_SECONDS   queue poll cadence (optional; default 5)
+#   SQLFLOW_GIT_TOKEN             token for private git remotes (optional)
+#   plus every ${env:...} reference the flows themselves use (source/target connection strings).
+#
+# Build from the repository root:
+#   docker build -f Dockerfile.worker -t sqlflow-worker:latest .
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+COPY . .
+# Framework-dependent publish; building inside the linux SDK image restores the linux-x64 native assets the
+# engine carries (LibGit2Sharp for materialization, the DuckDB reader), so they ship under runtimes/linux-x64.
+RUN dotnet publish src/SqlFlow.Cli/SqlFlow.Cli.csproj \
+    -c Release -o /app /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/runtime:9.0 AS runtime
+# LibGit2Sharp's bundled native git needs OpenSSL present on the Debian runtime image for HTTPS remotes.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /app .
+COPY deploy/docker/worker-entrypoint.sh /worker-entrypoint.sh
+# The CR strip keeps the shebang valid when the build context comes from a Windows checkout (CRLF would make
+# the kernel look for /bin/sh\r and fail the container with "no such file or directory").
+RUN sed -i 's/\r$//' /worker-entrypoint.sh && chmod +x /worker-entrypoint.sh
+ENV DOTNET_RUNNING_IN_CONTAINER=true
+USER $APP_UID
+ENTRYPOINT ["/worker-entrypoint.sh"]

@@ -1,0 +1,4 @@
+<catalog>
+  <product><id>1</id><name>Widget</name><spec><weight>10</weight><dims>2x3</dims></spec></product>
+  <product><id>2</id><name>Gadget</name><spec><weight>5</weight><dims>1x1</dims></spec></product>
+</catalog>

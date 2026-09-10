@@ -1,0 +1,5 @@
+# EF Core writes these files (dotnet ef migrations add ...); they are tool-generated, not hand-maintained, and
+# regenerate on every new migration. Mark them as generated so the repo's style/analyzer rules do not flag the
+# tool's output. This scopes the relaxation to this folder only; the rest of the code stays strict.
+[*.cs]
+generated_code = true

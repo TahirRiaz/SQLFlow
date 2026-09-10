@@ -1,0 +1,10 @@
+# Downstream fact build 1: demo.usp_BuildCountryRollup reads demo.Fact_OrderSummary and writes
+# demo.Fact_CountryRollup. The connected tier derives the read of Fact_OrderSummary from the proc body,
+# which is what binds this flow after demo-build-order-fact in the plan.
+flowType: sp
+name: demo-build-country-rollup
+connections:
+  dwh: ${env:SQLFLOW_DEMO_DB}
+procedure:
+  server: dwh
+  object: SqlFlowCatalogTests.demo.usp_BuildCountryRollup

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.Assistant</RootNamespace>
+    <Description>The SQLFlow assistant core shared by every conversational surface (the Slack bot and the GUI chat): one provider abstraction over Azure AI Foundry / OpenAI (Responses API) and Anthropic (Messages API with the MCP connector), all consuming the deployed SQLFlow MCP server as their tool source and the same instructions, so the assistant behaves identically no matter where the question was asked. Supports both buffered answers (Slack posts one reply) and token streaming (the GUI chat renders the answer as it is produced).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" />
+    <!-- The official Anthropic SDK, used by the Anthropic provider mode (Messages API + MCP connector). -->
+    <PackageReference Include="Anthropic" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Single code path for Azure auth: the same credential factory the engine uses for Key Vault and
+         ADF/Automation also signs the assistant into the Foundry account (managed identity in Azure,
+         az login on a dev box). -->
+    <ProjectReference Include="..\SqlFlow.Azure\SqlFlow.Azure.csproj" />
+  </ItemGroup>
+
+</Project>

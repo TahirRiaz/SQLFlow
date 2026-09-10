@@ -1,0 +1,22 @@
+# Incremental load: on each run the engine probes the target for MAX(dateColumn) and reads only files
+# newer than that watermark, so a re-run picks up just the new files. The target silver table is the
+# state, so no control database is needed. A run that finds nothing new is a clean no-op.
+#
+#   table:       table to probe for the watermark (defaults to this flow's target)
+#   dateColumn:  date/datetime column to take MAX of (FileDate_DW is the injected file date)
+#   overlapDays: subtract a safety window from the watermark (0 = exact)
+#   fullLoad:    ignore the watermark and reload everything
+#
+# Behaviour is verified end to end by IncrementalIntegrationTests (first run seeds, an older file is a
+# no-op, a newer file loads only itself).
+name: Csv_Incremental
+source:
+  type: csv
+  location: ./data/orders.csv
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_Incremental
+incremental:
+  dateColumn: FileDate_DW
+  overlapDays: 0

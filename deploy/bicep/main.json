@@ -1,0 +1,2992 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "14656896503109120882"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Azure region. Defaults to the resource group location."
+      }
+    },
+    "controlPlaneImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Container image reference for the control plane, e.g. myregistry.azurecr.io/sqlflow-control-plane:latest"
+      }
+    },
+    "workerImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Container image reference for the worker, e.g. myregistry.azurecr.io/sqlflow-worker:latest"
+      }
+    },
+    "guiImage": {
+      "type": "string",
+      "metadata": {
+        "description": "Container image reference for the GUI, e.g. myregistry.azurecr.io/sqlflow-gui:latest"
+      }
+    },
+    "acrName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name of a container registry in THIS resource group holding the three images: each app identity is granted AcrPull on it. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+      }
+    },
+    "acrLoginServer": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Login server of a registry outside this resource group (grant AcrPull to the three app identities yourself). Ignored when acrName is set."
+      }
+    },
+    "existingSqlServer": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Address of an existing SQL Server to host the catalog instead of creating one: host or host,port (a Managed Instance private FQDN, a public-endpoint address with ,3342, or any reachable SQL Server). Empty creates an Azure SQL logical server + database here. With an existing server the network path is yours to provide (for a VNet-only Managed Instance, set infrastructureSubnetId so the apps egress inside its VNet) and the catalog database is created by bootstrap on first start."
+      }
+    },
+    "infrastructureSubnetId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Resource id of a vNet subnet to integrate the Container Apps environment into (consumption architecture: an undelegated subnet of at least /23). Empty deploys the environment without VNet integration."
+      }
+    },
+    "sqlAdminLogin": {
+      "type": "string",
+      "defaultValue": "sqlflowadmin",
+      "metadata": {
+        "description": "SQL admin login: for the server created here, or the existing server's login when existingSqlServer is set."
+      }
+    },
+    "sqlAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "SQL admin password (Azure SQL enforces complexity). Single quotes and semicolons are handled; the value is quoted into the connection string."
+      }
+    },
+    "jwtSigningKey": {
+      "type": "securestring",
+      "minLength": 32,
+      "metadata": {
+        "description": "HS256 signing key for control plane tokens: at least 32 bytes of randomness, e.g. openssl rand -base64 48."
+      }
+    },
+    "adminUsername": {
+      "type": "string",
+      "defaultValue": "admin",
+      "metadata": {
+        "description": "Username of the initial admin user bootstrap provisioning creates on first start."
+      }
+    },
+    "adminPassword": {
+      "type": "securestring",
+      "minLength": 12,
+      "metadata": {
+        "description": "Password for the initial admin user (at least 12 characters)."
+      }
+    },
+    "gitToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Token for private git remotes: managed sync on the control plane fetches with it, workers materialize with it. Leave empty when every registered repo is public."
+      }
+    },
+    "gitUsername": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Username paired with gitToken when the host requires one: a Bitbucket app password takes the account username, a Bitbucket repository access token takes x-token-auth; GitHub ignores it. Empty sends the token alone."
+      }
+    },
+    "provisionEntraApp": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Let this template create and own the Entra app registration users sign in with (App Roles + \"Assignment required\" baked in, so only assigned group members can sign in), through the Microsoft Graph Bicep extension. On (the default) enables \"Sign in with Microsoft\" and ignores azureAdAllowedTenantIds/azureAdClientId; the deploying principal then needs directory write (Application Administrator or Application.ReadWrite.All), and assigning a group needs Entra ID P1. Turn off for local-only sign-in, or to point at an externally managed registration via azureAdAllowedTenantIds + azureAdClientId."
+      }
+    },
+    "azureAdAllowedGroupObjectId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Object id of the Entra security group whose members may sign in when provisionEntraApp is on. Only its members are assigned the app role and can obtain a token. Empty still enforces assignment required, so no one signs in until a group or users are assigned in the enterprise application. Reaches only this app's home tenant (subscription().tenantId); a tenant named in azureAdAdditionalAllowedTenantIds assigns its own users itself. Ignored when provisionEntraApp is off."
+      }
+    },
+    "entraAppDisplayName": {
+      "type": "string",
+      "defaultValue": "SQLFlow",
+      "metadata": {
+        "description": "Display name for the app registration this template creates when provisionEntraApp is on."
+      }
+    },
+    "entraAppUniqueName": {
+      "type": "string",
+      "defaultValue": "sqlflow",
+      "metadata": {
+        "description": "Stable unique name (Graph identity key) for that registration, so redeploys update the same app. Lowercase, no spaces."
+      }
+    },
+    "azureAdAdditionalAllowedTenantIds": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "PROVISIONED app mode only (provisionEntraApp on): further Entra tenant (directory) ids, beyond this deployment's own home tenant (always trusted), whose users may also sign in. A non-empty list makes the app registration multi-tenant automatically; each named tenant's own admin must still consent to the app once and then assign the SqlFlow.User role to their own users/groups (this template has no directory access into a tenant it does not own) — see the entraForeignTenantReminder output for that step. Empty keeps the app single-tenant."
+      }
+    },
+    "azureAdAllowedTenantIds": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "EXTERNAL app mode only (provisionEntraApp off): Microsoft Entra tenant (directory) ids allowed for GUI single sign-on, against an app registration you manage yourself. Set together with azureAdClientId to offer \"Sign in with Microsoft\"; leave empty for local sign-in only. Register the GUI origin (the guiUrl output) as a redirect URI on that SPA registration, and make it multi-tenant yourself if this list has more than one entry."
+      }
+    },
+    "azureAdClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "EXTERNAL app mode only (provisionEntraApp off): client id of the SPA app registration users sign in with. Set together with azureAdAllowedTenantIds to enable SSO. Ignored when provisionEntraApp is on (this template creates the registration and supplies the client id itself)."
+      }
+    },
+    "azureAdDefaultRole": {
+      "type": "string",
+      "defaultValue": "viewer",
+      "metadata": {
+        "description": "Role a first-time SSO user is provisioned with (least privilege by default; an admin raises it afterwards in the GUI)."
+      }
+    },
+    "workerFlowEnv": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "ADDITIONAL flow environment references beyond the built-in SQLFLOW_CONN_PRE and SQLFLOW_CONN_DWH, one object per ${env:...} reference the worker pool's flows use: { name: the environment variable, secretName: an EXISTING Key Vault secret in keyVaultName holding its value }, e.g. [{ name: 'SQLFLOW_CONN_ERP', secretName: 'erp-source-conn' }]. Data-source credentials are put in the vault out of band and never pass through this template; the worker reads them under its own identity, so they never reach the control plane."
+      }
+    },
+    "aiFoundryName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name for an Azure AI Foundry account (also its endpoint subdomain, globally unique) deployed alongside the estate, with the control plane and worker identities granted caller access. Empty skips AI Foundry."
+      }
+    },
+    "aiFoundryProjectName": {
+      "type": "string",
+      "defaultValue": "sqlflow",
+      "metadata": {
+        "description": "Name of the Foundry project created under the AI Foundry account."
+      }
+    },
+    "aiFoundryModelName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Model deployed under the AI Foundry account, e.g. gpt-5.1 (pick one the region still accepts for new deployments: az cognitiveservices model list). Required by the Slack assistant's agent; empty deploys no model."
+      }
+    },
+    "aiFoundryModelVersion": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Version of that model. Empty lets the service pick the current default version."
+      }
+    },
+    "aiFoundryModelCapacity": {
+      "type": "int",
+      "defaultValue": 30,
+      "metadata": {
+        "description": "Capacity for the model deployment, in thousands of tokens per minute."
+      }
+    },
+    "aiFoundryTranscriptionModelName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional audio-transcription model deployed beside the chat model (e.g. gpt-4o-mini-transcribe), enabling the GUI chat assistant's server-side voice input. Empty deploys none; the mic then falls back to the browser's built-in speech recognition."
+      }
+    },
+    "aiFoundryTranscriptionModelVersion": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Version of the transcription model. Empty lets the service pick the current default version."
+      }
+    },
+    "mcpImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Container image for the SQLFlow MCP server in HTTP mode, e.g. <registry>/sqlflow-mcp:latest (built from Dockerfile.mcp). Empty skips it, and with it the Slack assistant."
+      }
+    },
+    "slackBotImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Container image for the Slack assistant, e.g. <registry>/sqlflow-slack-bot:latest (built from Dockerfile.slackbot). Empty skips the Slack assistant."
+      }
+    },
+    "slackAppToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Slack app-level token (xapp-...) with connections:write, from the Slack app created with deploy/slack/manifest.yaml. Required for the Slack assistant."
+      }
+    },
+    "slackBotToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Slack bot user OAuth token (xoxb-...) of that app. Required for the Slack assistant."
+      }
+    },
+    "slackBotSqlflowToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "A READ-scoped SQLFlow personal access token (sqlf_...) the assistant presents to the MCP server. Mint it in the GUI or CLI after the estate is up, then redeploy with this set; empty skips the Slack assistant."
+      }
+    },
+    "slackBotProvider": {
+      "type": "string",
+      "defaultValue": "AzureFoundry",
+      "allowedValues": [
+        "AzureFoundry",
+        "OpenAI",
+        "Anthropic"
+      ],
+      "metadata": {
+        "description": "The Slack assistant model provider: AzureFoundry (the Foundry Responses API via managed identity, needs aiFoundryName + aiFoundryModelName), OpenAI (the OpenAI platform via API key), or Anthropic (the Claude API via API key). The two key-based modes have no Azure AI dependency."
+      }
+    },
+    "slackBotModelApiKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The provider API key for the OpenAI (sk-...) or Anthropic (sk-ant-...) mode. Required for those modes and ignored for AzureFoundry; empty in a key-based mode skips the Slack assistant."
+      }
+    },
+    "slackBotOpenAIModel": {
+      "type": "string",
+      "defaultValue": "gpt-5-mini",
+      "metadata": {
+        "description": "The OpenAI model, which must support the Responses API with the hosted MCP tool. Used when slackBotProvider is OpenAI."
+      }
+    },
+    "slackBotAnthropicModel": {
+      "type": "string",
+      "defaultValue": "claude-opus-4-8",
+      "metadata": {
+        "description": "The Claude model id. Used when slackBotProvider is Anthropic."
+      }
+    },
+    "mcpName": {
+      "type": "string",
+      "defaultValue": "sqlflow-mcp",
+      "metadata": {
+        "description": "Name of the Container App running the MCP server."
+      }
+    },
+    "slackBotName": {
+      "type": "string",
+      "defaultValue": "sqlflow-slack-bot",
+      "metadata": {
+        "description": "Name of the Container App running the Slack assistant."
+      }
+    },
+    "workerPool": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The pool the worker app serves. Empty drains untargeted runs only."
+      }
+    },
+    "workerMaxReplicas": {
+      "type": "int",
+      "defaultValue": 10,
+      "minValue": 1,
+      "metadata": {
+        "description": "Upper bound for worker queue-depth scale out (one queued run per replica)."
+      }
+    },
+    "controlPlaneMinReplicas": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "Minimum control plane replicas. Keep at 1 so the API is warm (a trigger never waits on a cold start)."
+      }
+    },
+    "controlPlaneMaxReplicas": {
+      "type": "int",
+      "defaultValue": 3,
+      "metadata": {
+        "description": "Maximum control plane replicas for ingress autoscale."
+      }
+    },
+    "controlPlaneName": {
+      "type": "string",
+      "defaultValue": "sqlflow-control-plane",
+      "metadata": {
+        "description": "Name of the Container App running the control plane."
+      }
+    },
+    "workerName": {
+      "type": "string",
+      "defaultValue": "sqlflow-worker",
+      "metadata": {
+        "description": "Name of the Container App running the worker pool."
+      }
+    },
+    "guiName": {
+      "type": "string",
+      "defaultValue": "sqlflow-gui",
+      "metadata": {
+        "description": "Name of the Container App running the GUI."
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "sqlflow-env",
+      "metadata": {
+        "description": "Name of the Container Apps managed environment."
+      }
+    },
+    "logAnalyticsName": {
+      "type": "string",
+      "defaultValue": "sqlflow-logs",
+      "metadata": {
+        "description": "Name of the Log Analytics workspace receiving container logs."
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[format('sqlflow-kv-{0}', uniqueString(resourceGroup().id))]",
+      "minLength": 3,
+      "maxLength": 24,
+      "metadata": {
+        "description": "Key Vault name (globally unique, 3-24 alphanumerics and hyphens)."
+      }
+    },
+    "sqlServerName": {
+      "type": "string",
+      "defaultValue": "[format('sqlflow-sql-{0}', uniqueString(resourceGroup().id))]",
+      "metadata": {
+        "description": "Azure SQL logical server name (globally unique, lowercase)."
+      }
+    },
+    "catalogDatabaseName": {
+      "type": "string",
+      "defaultValue": "SqlFlowCatalog",
+      "metadata": {
+        "description": "Name of the catalog database on that server."
+      }
+    },
+    "preDatabaseName": {
+      "type": "string",
+      "defaultValue": "SqlFlowPre",
+      "metadata": {
+        "description": "Name of the staging database flows land raw ingests in, reachable from flow YAML as ${env:SQLFLOW_CONN_PRE}."
+      }
+    },
+    "dwhDatabaseName": {
+      "type": "string",
+      "defaultValue": "SqlFlowDwh",
+      "metadata": {
+        "description": "Name of the warehouse database flows publish modelled data to, reachable from flow YAML as ${env:SQLFLOW_CONN_DWH}."
+      }
+    },
+    "sqlDatabaseSku": {
+      "type": "object",
+      "defaultValue": {
+        "name": "S1",
+        "tier": "Standard"
+      },
+      "metadata": {
+        "description": "Catalog database SKU (ignored when existingSqlServer is set). The catalog is metadata plus the run queue: modest, but polled continuously, so avoid serverless auto-pause."
+      }
+    },
+    "dataDatabaseSku": {
+      "type": "object",
+      "defaultValue": {
+        "name": "S1",
+        "tier": "Standard"
+      },
+      "metadata": {
+        "description": "SKU for the pre and dwh databases (ignored when existingSqlServer is set). These carry the data, so they are sized apart from the catalog."
+      }
+    }
+  },
+  "variables": {
+    "catalogConnectionSecretName": "sqlflow-catalog-db",
+    "preConnectionSecretName": "sqlflow-pre-db",
+    "dwhConnectionSecretName": "sqlflow-dwh-db",
+    "jwtSigningKeySecretName": "sqlflow-jwt-signing-key",
+    "adminPasswordSecretName": "sqlflow-admin-password",
+    "gitTokenSecretName": "sqlflow-git-token",
+    "slackAppTokenSecretName": "sqlflow-slack-app-token",
+    "slackBotTokenSecretName": "sqlflow-slack-bot-token",
+    "slackBotSqlflowTokenSecretName": "sqlflow-slack-bot-access-token",
+    "slackBotModelApiKeySecretName": "sqlflow-slack-bot-model-api-key",
+    "mcpEnabled": "[not(empty(parameters('mcpImage')))]",
+    "chatAssistantEnabled": "[and(and(variables('mcpEnabled'), not(empty(parameters('aiFoundryName')))), not(empty(parameters('aiFoundryModelName'))))]",
+    "slackBotUsesApiKey": "[not(equals(parameters('slackBotProvider'), 'AzureFoundry'))]",
+    "slackBotProviderReady": "[if(variables('slackBotUsesApiKey'), not(empty(parameters('slackBotModelApiKey'))), and(not(empty(parameters('aiFoundryName'))), not(empty(parameters('aiFoundryModelName')))))]",
+    "slackBotEnabled": "[and(and(and(and(and(variables('mcpEnabled'), not(empty(parameters('slackBotImage')))), not(empty(parameters('slackAppToken')))), not(empty(parameters('slackBotToken')))), not(empty(parameters('slackBotSqlflowToken')))), variables('slackBotProviderReady'))]",
+    "quotedSqlAdminPassword": "[format('''{0}''', replace(parameters('sqlAdminPassword'), '''', ''''''))]",
+    "scalerPasswordEncoded": "[replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(parameters('sqlAdminPassword'), '%', '%25'), '+', '%2B'), '/', '%2F'), '=', '%3D'), ' ', '%20'), '@', '%40'), ':', '%3A'), '?', '%3F'), '#', '%23'), '&', '%26'), ';', '%3B')]",
+    "scalerConnectionSecretName": "sqlflow-catalog-db-scaler",
+    "entraSignInAudience": "[if(empty(parameters('azureAdAdditionalAllowedTenantIds')), 'AzureADMyOrg', 'AzureADMultipleOrgs')]",
+    "effectiveAzureAdAllowedTenantIds": "[if(parameters('provisionEntraApp'), concat(createArray(subscription().tenantId), parameters('azureAdAdditionalAllowedTenantIds')), parameters('azureAdAllowedTenantIds'))]",
+    "builtInFlowEnv": [
+      {
+        "name": "SQLFLOW_CONN_PRE",
+        "secretName": "[variables('preConnectionSecretName')]"
+      },
+      {
+        "name": "SQLFLOW_CONN_DWH",
+        "secretName": "[variables('dwhConnectionSecretName')]"
+      }
+    ],
+    "aiFoundryProjectEndpoint": "[if(empty(parameters('aiFoundryName')), '', format('https://{0}.services.ai.azure.com/api/projects/{1}', parameters('aiFoundryName'), parameters('aiFoundryProjectName')))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2023-09-01",
+      "name": "[parameters('logAnalyticsName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2024-03-01",
+      "name": "[parameters('environmentName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName')), '2023-09-01').primarySharedKey]"
+          }
+        },
+        "vnetConfiguration": "[if(empty(parameters('infrastructureSubnetId')), null(), createObject('infrastructureSubnetId', parameters('infrastructureSubnetId')))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('keyVaultName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "tenantId": "[subscription().tenantId]",
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "enableRbacAuthorization": true
+      }
+    },
+    {
+      "condition": "[empty(parameters('existingSqlServer'))]",
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[parameters('sqlServerName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "administratorLogin": "[parameters('sqlAdminLogin')]",
+        "administratorLoginPassword": "[parameters('sqlAdminPassword')]",
+        "version": "12.0",
+        "minimalTlsVersion": "1.2",
+        "publicNetworkAccess": "Enabled"
+      }
+    },
+    {
+      "condition": "[empty(parameters('existingSqlServer'))]",
+      "type": "Microsoft.Sql/servers/firewallRules",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', parameters('sqlServerName'), 'AllowAllWindowsAzureIps')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "condition": "[empty(parameters('existingSqlServer'))]",
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', parameters('sqlServerName'), parameters('catalogDatabaseName'))]",
+      "location": "[parameters('location')]",
+      "sku": "[parameters('sqlDatabaseSku')]",
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "condition": "[empty(parameters('existingSqlServer'))]",
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', parameters('sqlServerName'), parameters('preDatabaseName'))]",
+      "location": "[parameters('location')]",
+      "sku": "[parameters('dataDatabaseSku')]",
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "condition": "[empty(parameters('existingSqlServer'))]",
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2023-08-01-preview",
+      "name": "[format('{0}/{1}', parameters('sqlServerName'), parameters('dwhDatabaseName'))]",
+      "location": "[parameters('location')]",
+      "sku": "[parameters('dataDatabaseSku')]",
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('catalogConnectionSecretName'))]",
+      "properties": {
+        "value": "[format('Server=tcp:{0};Initial Catalog={1};User ID={2};Password={3};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30', if(empty(parameters('existingSqlServer')), format('{0},1433', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01-preview').fullyQualifiedDomainName), if(contains(parameters('existingSqlServer'), ','), parameters('existingSqlServer'), format('{0},1433', parameters('existingSqlServer')))), parameters('catalogDatabaseName'), parameters('sqlAdminLogin'), variables('quotedSqlAdminPassword'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('preConnectionSecretName'))]",
+      "properties": {
+        "value": "[format('Server=tcp:{0};Initial Catalog={1};User ID={2};Password={3};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30', if(empty(parameters('existingSqlServer')), format('{0},1433', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01-preview').fullyQualifiedDomainName), if(contains(parameters('existingSqlServer'), ','), parameters('existingSqlServer'), format('{0},1433', parameters('existingSqlServer')))), parameters('preDatabaseName'), parameters('sqlAdminLogin'), variables('quotedSqlAdminPassword'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('dwhConnectionSecretName'))]",
+      "properties": {
+        "value": "[format('Server=tcp:{0};Initial Catalog={1};User ID={2};Password={3};Encrypt=True;TrustServerCertificate=False;Connection Timeout=30', if(empty(parameters('existingSqlServer')), format('{0},1433', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01-preview').fullyQualifiedDomainName), if(contains(parameters('existingSqlServer'), ','), parameters('existingSqlServer'), format('{0},1433', parameters('existingSqlServer')))), parameters('dwhDatabaseName'), parameters('sqlAdminLogin'), variables('quotedSqlAdminPassword'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('scalerConnectionSecretName'))]",
+      "properties": {
+        "value": "[format('sqlserver://{0}:{1}@{2}?database={3}&encrypt=true&TrustServerCertificate=false', parameters('sqlAdminLogin'), variables('scalerPasswordEncoded'), replace(if(empty(parameters('existingSqlServer')), format('{0},1433', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01-preview').fullyQualifiedDomainName), if(contains(parameters('existingSqlServer'), ','), parameters('existingSqlServer'), format('{0},1433', parameters('existingSqlServer')))), ',', ':'), parameters('catalogDatabaseName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('jwtSigningKeySecretName'))]",
+      "properties": {
+        "value": "[parameters('jwtSigningKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('adminPasswordSecretName'))]",
+      "properties": {
+        "value": "[parameters('adminPassword')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('gitToken')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('gitTokenSecretName'))]",
+      "properties": {
+        "value": "[parameters('gitToken')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('slackBotEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('slackAppTokenSecretName'))]",
+      "properties": {
+        "value": "[parameters('slackAppToken')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('slackBotEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('slackBotTokenSecretName'))]",
+      "properties": {
+        "value": "[parameters('slackBotToken')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('slackBotEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('slackBotSqlflowTokenSecretName'))]",
+      "properties": {
+        "value": "[parameters('slackBotSqlflowToken')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[and(variables('slackBotEnabled'), variables('slackBotUsesApiKey'))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('slackBotModelApiKeySecretName'))]",
+      "properties": {
+        "value": "[parameters('slackBotModelApiKey')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[parameters('provisionEntraApp')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-entra-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "displayName": {
+            "value": "[parameters('entraAppDisplayName')]"
+          },
+          "uniqueName": {
+            "value": "[parameters('entraAppUniqueName')]"
+          },
+          "redirectUri": {
+            "value": "[format('https://{0}', format('{0}.{1}', parameters('guiName'), reference(resourceId('Microsoft.App/managedEnvironments', parameters('environmentName')), '2024-03-01').defaultDomain))]"
+          },
+          "allowedGroupObjectId": {
+            "value": "[parameters('azureAdAllowedGroupObjectId')]"
+          },
+          "signInAudience": {
+            "value": "[variables('entraSignInAudience')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "languageVersion": "2.0",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "3564996844865373802"
+            }
+          },
+          "parameters": {
+            "displayName": {
+              "type": "string",
+              "defaultValue": "SQLFlow",
+              "metadata": {
+                "description": "Display name of the app registration as it appears in Entra and on the consent prompt."
+              }
+            },
+            "uniqueName": {
+              "type": "string",
+              "defaultValue": "sqlflow",
+              "metadata": {
+                "description": "Stable unique name for the registration (the Graph identity key used to find and update it across deploys). Lowercase, no spaces."
+              }
+            },
+            "redirectUri": {
+              "type": "string",
+              "metadata": {
+                "description": "The exact GUI origin to register as the SPA redirect URI, e.g. https://sqlflow-gui.<env>.azurecontainerapps.io. MSAL signs in against window.location.origin, so this is the origin with no trailing path."
+              }
+            },
+            "allowedGroupObjectId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Object id of the Entra security group whose members may sign in. Its members are assigned the SqlFlow.User role. Empty leaves the app with assignment required but no members, so assign a group or users in the enterprise application before anyone can sign in. Only reaches users in THIS app's home tenant; a foreign tenant assigns its own users itself once it has consented (see redeploy notes above)."
+              }
+            },
+            "signInAudience": {
+              "type": "string",
+              "defaultValue": "AzureADMyOrg",
+              "allowedValues": [
+                "AzureADMyOrg",
+                "AzureADMultipleOrgs"
+              ],
+              "metadata": {
+                "description": "AzureADMyOrg (default) restricts sign-in to this app's home tenant. AzureADMultipleOrgs additionally allows any tenant that has consented to the app; the control plane's own AllowedTenantIds is the actual gate on which of those tenants are trusted."
+              }
+            }
+          },
+          "variables": {
+            "appRoleId": "[guid(parameters('uniqueName'), 'SqlFlow.User')]",
+            "microsoftGraphAppId": "00000003-0000-0000-c000-000000000000",
+            "userReadScopeId": "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+          },
+          "imports": {
+            "microsoftGraphV1": {
+              "provider": "MicrosoftGraph",
+              "version": "0.2.0-preview"
+            }
+          },
+          "resources": {
+            "application": {
+              "import": "microsoftGraphV1",
+              "type": "Microsoft.Graph/applications@v1.0",
+              "properties": {
+                "uniqueName": "[parameters('uniqueName')]",
+                "displayName": "[parameters('displayName')]",
+                "signInAudience": "[parameters('signInAudience')]",
+                "spa": {
+                  "redirectUris": [
+                    "[parameters('redirectUri')]"
+                  ]
+                },
+                "appRoles": [
+                  {
+                    "id": "[variables('appRoleId')]",
+                    "allowedMemberTypes": [
+                      "User"
+                    ],
+                    "displayName": "SQLFlow User",
+                    "description": "May sign in to SQLFlow. Assignment is required, so only members of this role reach the app.",
+                    "value": "SqlFlow.User",
+                    "isEnabled": true
+                  }
+                ],
+                "requiredResourceAccess": [
+                  {
+                    "resourceAppId": "[variables('microsoftGraphAppId')]",
+                    "resourceAccess": [
+                      {
+                        "id": "[variables('userReadScopeId')]",
+                        "type": "Scope"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "servicePrincipal": {
+              "import": "microsoftGraphV1",
+              "type": "Microsoft.Graph/servicePrincipals@v1.0",
+              "properties": {
+                "appId": "[reference('application').appId]",
+                "appRoleAssignmentRequired": true
+              },
+              "dependsOn": [
+                "application"
+              ]
+            },
+            "groupAssignment": {
+              "condition": "[not(empty(parameters('allowedGroupObjectId')))]",
+              "import": "microsoftGraphV1",
+              "type": "Microsoft.Graph/appRoleAssignedTo@v1.0",
+              "properties": {
+                "appRoleId": "[variables('appRoleId')]",
+                "principalId": "[parameters('allowedGroupObjectId')]",
+                "resourceId": "[reference('servicePrincipal').id]"
+              },
+              "dependsOn": [
+                "servicePrincipal"
+              ]
+            }
+          },
+          "outputs": {
+            "clientId": {
+              "type": "string",
+              "metadata": {
+                "description": "Client (application) id of the registration: pass to the control plane as its AzureAd ClientId."
+              },
+              "value": "[reference('application').appId]"
+            },
+            "servicePrincipalObjectId": {
+              "type": "string",
+              "metadata": {
+                "description": "Object id of the enterprise application (service principal)."
+              },
+              "value": "[reference('servicePrincipal').id]"
+            },
+            "appRoleValue": {
+              "type": "string",
+              "metadata": {
+                "description": "Value of the app role that gates sign-in; appears in the token roles claim for assigned users."
+              },
+              "value": "SqlFlow.User"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-control-plane-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "name": {
+            "value": "[parameters('controlPlaneName')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('controlPlaneImage')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "catalogConnectionSecretName": {
+            "value": "[variables('catalogConnectionSecretName')]"
+          },
+          "jwtSigningKeySecretName": {
+            "value": "[variables('jwtSigningKeySecretName')]"
+          },
+          "workerEnabled": {
+            "value": false
+          },
+          "corsAllowedOrigins": {
+            "value": [
+              "[format('https://{0}', format('{0}.{1}', parameters('guiName'), reference(resourceId('Microsoft.App/managedEnvironments', parameters('environmentName')), '2024-03-01').defaultDomain))]"
+            ]
+          },
+          "bootstrapAdminUsername": {
+            "value": "[parameters('adminUsername')]"
+          },
+          "bootstrapAdminPasswordSecretName": {
+            "value": "[variables('adminPasswordSecretName')]"
+          },
+          "gitTokenSecretName": "[if(empty(parameters('gitToken')), createObject('value', ''), createObject('value', variables('gitTokenSecretName')))]",
+          "gitUsername": {
+            "value": "[parameters('gitUsername')]"
+          },
+          "azureAdAllowedTenantIds": {
+            "value": "[variables('effectiveAzureAdAllowedTenantIds')]"
+          },
+          "azureAdClientId": "[if(parameters('provisionEntraApp'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-entra-app'), '2025-04-01').outputs.clientId.value), createObject('value', parameters('azureAdClientId')))]",
+          "azureAdDefaultRole": {
+            "value": "[parameters('azureAdDefaultRole')]"
+          },
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "acrLoginServer": {
+            "value": "[parameters('acrLoginServer')]"
+          },
+          "assistantEnabled": {
+            "value": "[variables('chatAssistantEnabled')]"
+          },
+          "assistantFoundryProjectEndpoint": "[if(variables('chatAssistantEnabled'), createObject('value', variables('aiFoundryProjectEndpoint')), createObject('value', ''))]",
+          "assistantFoundryModelDeploymentName": "[if(variables('chatAssistantEnabled'), createObject('value', parameters('aiFoundryModelName')), createObject('value', ''))]",
+          "assistantFoundryTranscriptionDeploymentName": "[if(variables('chatAssistantEnabled'), createObject('value', parameters('aiFoundryTranscriptionModelName')), createObject('value', ''))]",
+          "assistantMcpServerUrl": "[if(variables('chatAssistantEnabled'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-mcp-app'), '2025-04-01').outputs.mcpUrl.value), createObject('value', ''))]",
+          "minReplicas": {
+            "value": "[parameters('controlPlaneMinReplicas')]"
+          },
+          "maxReplicas": {
+            "value": "[parameters('controlPlaneMaxReplicas')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "10741321074227073934"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region. Defaults to the resource group location."
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "sqlflow-control-plane",
+              "metadata": {
+                "description": "Name of the Container App (and the prefix for its managed identity)."
+              }
+            },
+            "managedEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource id of an existing Container Apps managed environment to host the app."
+              }
+            },
+            "image": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image reference, e.g. myregistry.azurecr.io/sqlflow-control-plane:latest"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of an existing Key Vault holding the catalog connection and JWT signing key secrets."
+              }
+            },
+            "catalogConnectionSecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-catalog-db",
+              "metadata": {
+                "description": "Key Vault secret name for the catalog ADO.NET connection string."
+              }
+            },
+            "jwtSigningKeySecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-jwt-signing-key",
+              "metadata": {
+                "description": "Key Vault secret name for the JWT signing key (must decode to at least 32 bytes)."
+              }
+            },
+            "jwtIssuer": {
+              "type": "string",
+              "defaultValue": "sqlflow-control-plane",
+              "metadata": {
+                "description": "JWT issuer the control plane validates."
+              }
+            },
+            "jwtAudience": {
+              "type": "string",
+              "defaultValue": "sqlflow",
+              "metadata": {
+                "description": "JWT audience the control plane validates."
+              }
+            },
+            "workerEnabled": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Run the in-process worker inside the control plane (single-app mode). Set false when dedicated workers (worker.bicep) drain the run queue, so API replicas do API work only."
+              }
+            },
+            "corsAllowedOrigins": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Browser origins allowed to call the API, e.g. the gui.bicep app URL. Leave empty when the GUI is same-origin behind a path-splitting front, or when only non-browser clients call the API."
+              }
+            },
+            "bootstrapAdminPasswordSecretName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Key Vault secret name for the initial admin password (at least 12 characters). When set, bootstrap provisioning creates that admin on first start; leave empty to skip user bootstrap."
+              }
+            },
+            "bootstrapAdminUsername": {
+              "type": "string",
+              "defaultValue": "admin",
+              "metadata": {
+                "description": "Username for the bootstrap admin. Only used when bootstrapAdminPasswordSecretName is set."
+              }
+            },
+            "gitTokenSecretName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Key Vault secret name for a git token used by managed sync to fetch private remotes. Leave empty when every registered repo is public."
+              }
+            },
+            "gitUsername": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone."
+              }
+            },
+            "proxyKnownNetworks": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "CIDRs of the ingress hops to trust for X-Forwarded-* headers. Leave empty to keep proxy trust off; per-client rate limiting then keys on the ingress hop address instead of the real client."
+              }
+            },
+            "azureAdAllowedTenantIds": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Microsoft Entra tenant (directory) ids allowed to sign in to the GUI. Set together with azureAdClientId to offer \"Sign in with Microsoft\" on the login page; leave empty for local username/password only. Multiple tenants (e.g. the app registration's own tenant plus a customer's corporate tenant) are supported: the app registration itself must be multi-tenant, and each additional tenant's admin must consent to it."
+              }
+            },
+            "azureAdClientId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Client id of the SPA app registration users sign in with (its redirect URI must be the GUI origin). Set together with azureAdAllowedTenantIds to enable SSO."
+              }
+            },
+            "azureAdDefaultRole": {
+              "type": "string",
+              "defaultValue": "viewer",
+              "metadata": {
+                "description": "Role a first-time SSO user is provisioned with (least privilege by default; an admin raises it afterwards)."
+              }
+            },
+            "acrName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of a container registry in THIS resource group: the template grants the app identity AcrPull on it and configures the pull. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
+              }
+            },
+            "assistantEnabled": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Enable the GUI chat assistant (/api/v1/chat): the same assistant core as the Slack bot, streamed to the GUI, with every agent run forwarding the calling user's own bearer to the MCP server. Requires the Foundry and MCP parameters below; the key-based providers are configured out of band via ControlPlane__Assistant__* env vars instead."
+              }
+            },
+            "assistantFoundryProjectEndpoint": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The Foundry project endpoint the assistant runs against (https://<account>.services.ai.azure.com/api/projects/<project>). Required when assistantEnabled."
+              }
+            },
+            "assistantFoundryModelDeploymentName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The model deployment the assistant runs on. Required when assistantEnabled."
+              }
+            },
+            "assistantFoundryTranscriptionDeploymentName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional audio-transcription deployment in the same account; empty leaves voice input on the browser's built-in speech recognition."
+              }
+            },
+            "assistantMcpServerUrl": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The deployed SQLFlow MCP server endpoint (https://<mcp host>/mcp), the assistant's tool source. Required when assistantEnabled."
+              }
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 1,
+              "minValue": 1,
+              "metadata": {
+                "description": "Minimum replicas. Keep at 1 so the API is warm (a trigger never waits on a cold start)."
+              }
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 3,
+              "metadata": {
+                "description": "Maximum replicas for ingress autoscale."
+              }
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "corsEnv",
+                "count": "[length(parameters('corsAllowedOrigins'))]",
+                "input": {
+                  "name": "[format('ControlPlane__Cors__AllowedOrigins__{0}', copyIndex('corsEnv'))]",
+                  "value": "[parameters('corsAllowedOrigins')[copyIndex('corsEnv')]]"
+                }
+              },
+              {
+                "name": "proxyNetworkEnv",
+                "count": "[length(parameters('proxyKnownNetworks'))]",
+                "input": {
+                  "name": "[format('ControlPlane__Proxy__KnownNetworks__{0}', copyIndex('proxyNetworkEnv'))]",
+                  "value": "[parameters('proxyKnownNetworks')[copyIndex('proxyNetworkEnv')]]"
+                }
+              },
+              {
+                "name": "azureAdTenantEnv",
+                "count": "[length(parameters('azureAdAllowedTenantIds'))]",
+                "input": {
+                  "name": "[format('ControlPlane__AzureAd__AllowedTenantIds__{0}', copyIndex('azureAdTenantEnv'))]",
+                  "value": "[parameters('azureAdAllowedTenantIds')[copyIndex('azureAdTenantEnv')]]"
+                }
+              }
+            ],
+            "keyVaultSecretsUserRoleId": "4633458b-17de-408a-b874-0445c86b69e6",
+            "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
+            "vaultUri": "[format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+            "baseSecrets": [
+              {
+                "name": "catalog-db",
+                "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('catalogConnectionSecretName'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              },
+              {
+                "name": "jwt-signing-key",
+                "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('jwtSigningKeySecretName'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              }
+            ],
+            "bootstrapSecrets": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'bootstrap-admin-password', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('bootstrapAdminPasswordSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "bootstrapEnv": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'ControlPlane__Bootstrap__AdminUsername', 'value', parameters('bootstrapAdminUsername')), createObject('name', 'ControlPlane__Bootstrap__AdminPasswordReference', 'secretRef', 'bootstrap-admin-password')))]",
+            "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
+            "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
+            "proxyEnv": "[if(empty(parameters('proxyKnownNetworks')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Proxy__Enabled', 'value', 'true')), variables('proxyNetworkEnv')))]",
+            "assistantEnv": "[if(not(parameters('assistantEnabled')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Assistant__Enabled', 'value', 'true'), createObject('name', 'ControlPlane__Assistant__Foundry__ProjectEndpoint', 'value', parameters('assistantFoundryProjectEndpoint')), createObject('name', 'ControlPlane__Assistant__Foundry__ModelDeploymentName', 'value', parameters('assistantFoundryModelDeploymentName')), createObject('name', 'ControlPlane__Assistant__Mcp__ServerUrl', 'value', parameters('assistantMcpServerUrl'))), if(empty(parameters('assistantFoundryTranscriptionDeploymentName')), createArray(), createArray(createObject('name', 'ControlPlane__Assistant__Foundry__TranscriptionDeploymentName', 'value', parameters('assistantFoundryTranscriptionDeploymentName'))))))]",
+            "entraEnv": "[if(or(empty(parameters('azureAdAllowedTenantIds')), empty(parameters('azureAdClientId'))), createArray(), concat(variables('azureAdTenantEnv'), createArray(createObject('name', 'ControlPlane__AzureAd__ClientId', 'value', parameters('azureAdClientId')), createObject('name', 'ControlPlane__AzureAd__DefaultRole', 'value', parameters('azureAdDefaultRole')))))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-id', parameters('name'))]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUserRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('acrName')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName')))]",
+              "name": "[guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "auto"
+                  },
+                  "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+                  "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'))]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "control-plane",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1.0Gi"
+                      },
+                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'))]",
+                      "probes": [
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/health/live",
+                            "port": 8080
+                          },
+                          "periodSeconds": 30
+                        },
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/health/ready",
+                            "port": 8080
+                          },
+                          "periodSeconds": 30
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]",
+                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "controlPlaneBaseUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "The control plane base URL to give the ADF pipeline as controlPlaneBaseUrl."
+              },
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
+            },
+            "identityClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "The client id of the app identity (grant it db_datareader/writer on the catalog + access to flow secrets)."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId]"
+            },
+            "identityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal (object) id of the app identity, for role assignments made outside this template."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('adminPasswordSecretName'))]",
+        "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('catalogDatabaseName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('catalogConnectionSecretName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'sqlflow-entra-app')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('gitTokenSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('jwtSigningKeySecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'sqlflow-mcp-app')]",
+        "[resourceId('Microsoft.Sql/servers/firewallRules', parameters('sqlServerName'), 'AllowAllWindowsAzureIps')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-worker-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "name": {
+            "value": "[parameters('workerName')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('workerImage')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "catalogConnectionSecretName": {
+            "value": "[variables('catalogConnectionSecretName')]"
+          },
+          "pool": {
+            "value": "[parameters('workerPool')]"
+          },
+          "gitTokenSecretName": "[if(empty(parameters('gitToken')), createObject('value', ''), createObject('value', variables('gitTokenSecretName')))]",
+          "gitUsername": {
+            "value": "[parameters('gitUsername')]"
+          },
+          "flowEnv": {
+            "value": "[concat(variables('builtInFlowEnv'), parameters('workerFlowEnv'))]"
+          },
+          "scalerConnectionSecretName": {
+            "value": "[variables('scalerConnectionSecretName')]"
+          },
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "acrLoginServer": {
+            "value": "[parameters('acrLoginServer')]"
+          },
+          "maxReplicas": {
+            "value": "[parameters('workerMaxReplicas')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "3107366611164256148"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region. Defaults to the resource group location."
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "sqlflow-worker",
+              "metadata": {
+                "description": "Name of the Container App (and the prefix for its managed identity). Deploy one app per pool, e.g. sqlflow-worker-etl."
+              }
+            },
+            "managedEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource id of an existing Container Apps managed environment to host the app."
+              }
+            },
+            "image": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image reference, e.g. myregistry.azurecr.io/sqlflow-worker:latest"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of an existing Key Vault holding the catalog connection (and any flow) secrets."
+              }
+            },
+            "catalogConnectionSecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-catalog-db",
+              "metadata": {
+                "description": "Key Vault secret name for the catalog ADO.NET connection string."
+              }
+            },
+            "pool": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The pool this deployment serves (single pool name, used for both SQLFLOW_WORKER_POOL and the scale query). Empty drains untargeted runs only."
+              }
+            },
+            "gitTokenSecretName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Key Vault secret name for a token for private git remotes (SHA-pinned materialization). Leave empty when remotes are public."
+              }
+            },
+            "gitUsername": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone."
+              }
+            },
+            "flowEnv": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Flow environment references, one object per ${env:...} reference the pool's flows use: { name: the environment variable, secretName: the Key Vault secret holding its value }. Credentials live on the node, never in the control plane."
+              }
+            },
+            "acrName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of a container registry in THIS resource group: the template grants the app identity AcrPull on it and configures the pull. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
+              }
+            },
+            "scalerConnectionSecretName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Key Vault secret name for a Go-driver-compatible catalog connection string used ONLY by the KEDA scale rule (a go-mssqldb URL, sqlserver://user:urlencoded-pw@host:port?database=...). The KEDA mssql scaler is not .NET SqlClient: it does not strip the single quotes an ADO.NET connection string puts around a password, so the .NET catalog connection cannot be reused for the scaler. Leave empty to reuse catalogConnectionSecretName for the scaler (correct only when that password needs no quoting)."
+              }
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 10,
+              "minValue": 1,
+              "metadata": {
+                "description": "Upper bound for queue-depth scale out."
+              }
+            },
+            "maxConcurrentRunsPerReplica": {
+              "type": "int",
+              "defaultValue": 4,
+              "minValue": 1,
+              "metadata": {
+                "description": "How many runs one replica executes at once. MUST match the node's own concurrency (SqlFlow.Node RunWorker.DefaultMaxConcurrentRuns, 4), because the scale rule divides queued work by it to size the fleet. Setting it higher than the node's value starves the queue; lower spawns replicas that find nothing left to claim."
+              }
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "1.0",
+              "metadata": {
+                "description": "vCPU per replica, as a string for exact decimals. Must form a valid Container Apps consumption pair with memory."
+              }
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "2.0Gi",
+              "metadata": {
+                "description": "Memory per replica, paired with cpu."
+              }
+            }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "flowEnvSecrets",
+                "count": "[length(parameters('flowEnv'))]",
+                "input": {
+                  "name": "[format('flow-env-{0}', copyIndex('flowEnvSecrets'))]",
+                  "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('flowEnv')[copyIndex('flowEnvSecrets')].secretName)]",
+                  "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+                }
+              },
+              {
+                "name": "flowEnvVars",
+                "count": "[length(parameters('flowEnv'))]",
+                "input": {
+                  "name": "[parameters('flowEnv')[copyIndex('flowEnvVars')].name]",
+                  "secretRef": "[format('flow-env-{0}', copyIndex('flowEnvVars'))]"
+                }
+              }
+            ],
+            "keyVaultSecretsUserRoleId": "4633458b-17de-408a-b874-0445c86b69e6",
+            "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
+            "vaultUri": "[format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+            "baseSecrets": [
+              {
+                "name": "catalog-db",
+                "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('catalogConnectionSecretName'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              }
+            ],
+            "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "scalerSecrets": "[if(empty(parameters('scalerConnectionSecretName')), createArray(), createArray(createObject('name', 'catalog-scaler', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('scalerConnectionSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "scalerSecretRef": "[if(empty(parameters('scalerConnectionSecretName')), 'catalog-db', 'catalog-scaler')]",
+            "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
+            "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
+            "queueDepthQuery": "[if(empty(parameters('pool')), format('SELECT (SELECT MAX(v) FROM (VALUES ((CAST(CEILING((SELECT COUNT(*) FROM [catalog].[Run] AS r WHERE r.[Status] = ''queued'' AND r.[TargetPool] IS NULL AND (r.[GroupId] IS NULL OR NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS s WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave] AND s.[Status] IN (''queued'', ''running''))) AND (r.[GroupMaxConcurrency] IS NULL OR (SELECT COUNT(*) FROM [catalog].[Run] AS w WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = ''running'') < r.[GroupMaxConcurrency]) AND NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS p WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = ''running'')) / {0}.0) AS int) + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME()) AND ([Pool] = N'''' OR [Pool] IS NULL)))), (ISNULL((SELECT [MinReplicas] FROM [catalog].[WorkerPool] WHERE [Pool] = N''''), 0)), (ISNULL((SELECT CASE WHEN [ManualUntilUtc] > SYSUTCDATETIME() THEN [ManualReplicas] ELSE 0 END FROM [catalog].[WorkerPool] WHERE [Pool] = N''''), 0))) AS t(v))', parameters('maxConcurrentRunsPerReplica')), format('SELECT (SELECT MAX(v) FROM (VALUES ((CAST(CEILING((SELECT COUNT(*) FROM [catalog].[Run] AS r WHERE r.[Status] = ''queued'' AND r.[TargetPool] = ''{0}'' AND (r.[GroupId] IS NULL OR NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS s WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave] AND s.[Status] IN (''queued'', ''running''))) AND (r.[GroupMaxConcurrency] IS NULL OR (SELECT COUNT(*) FROM [catalog].[Run] AS w WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = ''running'') < r.[GroupMaxConcurrency]) AND NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS p WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = ''running'')) / {1}.0) AS int) + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME()) AND [Pool] = N''{2}''))), (ISNULL((SELECT [MinReplicas] FROM [catalog].[WorkerPool] WHERE [Pool] = N''{3}''), 0)), (ISNULL((SELECT CASE WHEN [ManualUntilUtc] > SYSUTCDATETIME() THEN [ManualReplicas] ELSE 0 END FROM [catalog].[WorkerPool] WHERE [Pool] = N''{4}''), 0))) AS t(v))', parameters('pool'), parameters('maxConcurrentRunsPerReplica'), parameters('pool'), parameters('pool'), parameters('pool')))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-id', parameters('name'))]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUserRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('acrName')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName')))]",
+              "name": "[guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+                  "secrets": "[concat(variables('baseSecrets'), variables('gitTokenSecrets'), variables('flowEnvSecrets'), variables('scalerSecrets'))]"
+                },
+                "template": {
+                  "terminationGracePeriodSeconds": 600,
+                  "containers": [
+                    {
+                      "name": "worker",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      },
+                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('flowEnvVars'))]"
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": [
+                      {
+                        "name": "queue-depth",
+                        "custom": {
+                          "type": "mssql",
+                          "metadata": {
+                            "query": "[variables('queueDepthQuery')]",
+                            "targetValue": "1"
+                          },
+                          "auth": [
+                            {
+                              "secretRef": "[variables('scalerSecretRef')]",
+                              "triggerParameter": "connectionString"
+                            }
+                          ]
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]",
+                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "identityClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "The client id of the worker identity (grant it access to the data its pool's flows touch)."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId]"
+            },
+            "identityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal (object) id of the worker identity, for role assignments made outside this template."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('catalogDatabaseName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('catalogConnectionSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('scalerConnectionSecretName'))]",
+        "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('dwhDatabaseName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('dwhConnectionSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('gitTokenSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]",
+        "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('preDatabaseName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('preConnectionSecretName'))]",
+        "[resourceId('Microsoft.Sql/servers/firewallRules', parameters('sqlServerName'), 'AllowAllWindowsAzureIps')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-gui-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "name": {
+            "value": "[parameters('guiName')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('guiImage')]"
+          },
+          "apiBaseUrl": {
+            "value": "[format('https://{0}', format('{0}.{1}', parameters('controlPlaneName'), reference(resourceId('Microsoft.App/managedEnvironments', parameters('environmentName')), '2024-03-01').defaultDomain))]"
+          },
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "acrLoginServer": {
+            "value": "[parameters('acrLoginServer')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "14978286038425780424"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region. Defaults to the resource group location."
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "sqlflow-gui",
+              "metadata": {
+                "description": "Name of the Container App (and the prefix for its managed identity)."
+              }
+            },
+            "managedEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource id of an existing Container Apps managed environment to host the app."
+              }
+            },
+            "image": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image reference, e.g. myregistry.azurecr.io/sqlflow-gui:latest"
+              }
+            },
+            "apiBaseUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "The control plane origin the SPA calls, e.g. https://sqlflow-control-plane.<env>.azurecontainerapps.io. Empty means same-origin, valid only behind a path-splitting front."
+              }
+            },
+            "acrName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of a container registry in THIS resource group: the template grants the app identity AcrPull on it and configures the pull. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
+              }
+            },
+            "minReplicas": {
+              "type": "int",
+              "defaultValue": 1,
+              "minValue": 1,
+              "metadata": {
+                "description": "Minimum replicas. Static content: one is enough, more buys ingress resilience."
+              }
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 3,
+              "metadata": {
+                "description": "Maximum replicas for ingress autoscale."
+              }
+            }
+          },
+          "variables": {
+            "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-id', parameters('name'))]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "condition": "[not(empty(parameters('acrName')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName')))]",
+              "name": "[guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "auto"
+                  },
+                  "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "gui",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "SQLFLOW_API_BASE_URL",
+                          "value": "[parameters('apiBaseUrl')]"
+                        }
+                      ],
+                      "probes": [
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 8080
+                          },
+                          "periodSeconds": 30
+                        },
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/",
+                            "port": 8080
+                          },
+                          "periodSeconds": 15
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": "[parameters('minReplicas')]",
+                    "maxReplicas": "[parameters('maxReplicas')]",
+                    "rules": [
+                      {
+                        "name": "http-load",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "200"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "guiUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "The GUI URL: sign in here with the bootstrap admin."
+              },
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('aiFoundryName')))]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-ai-foundry",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "name": {
+            "value": "[parameters('aiFoundryName')]"
+          },
+          "projectName": {
+            "value": "[parameters('aiFoundryProjectName')]"
+          },
+          "modelName": {
+            "value": "[parameters('aiFoundryModelName')]"
+          },
+          "modelVersion": {
+            "value": "[parameters('aiFoundryModelVersion')]"
+          },
+          "modelCapacity": {
+            "value": "[parameters('aiFoundryModelCapacity')]"
+          },
+          "transcriptionModelName": {
+            "value": "[parameters('aiFoundryTranscriptionModelName')]"
+          },
+          "transcriptionModelVersion": {
+            "value": "[parameters('aiFoundryTranscriptionModelVersion')]"
+          },
+          "userPrincipalIds": {
+            "value": [
+              "[reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-control-plane-app'), '2025-04-01').outputs.identityPrincipalId.value]",
+              "[reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-worker-app'), '2025-04-01').outputs.identityPrincipalId.value]"
+            ]
+          },
+          "agentPrincipalIds": {
+            "value": "[concat(if(and(variables('slackBotEnabled'), not(variables('slackBotUsesApiKey'))), createArray(reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-slack-bot-app'), '2025-04-01').outputs.identityPrincipalId.value), createArray()), if(variables('chatAssistantEnabled'), createArray(reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-control-plane-app'), '2025-04-01').outputs.identityPrincipalId.value), createArray()))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "14368204849936570258"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region. Defaults to the resource group location."
+              }
+            },
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Account name, which is also the endpoint subdomain (lowercase letters, digits, hyphens; globally unique)."
+              }
+            },
+            "projectName": {
+              "type": "string",
+              "defaultValue": "default",
+              "metadata": {
+                "description": "Name of the Foundry project created under the account."
+              }
+            },
+            "projectDisplayName": {
+              "type": "string",
+              "defaultValue": "[parameters('projectName')]",
+              "metadata": {
+                "description": "Display name of the project. Defaults to the project name."
+              }
+            },
+            "userPrincipalIds": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Principal (object) ids granted the Cognitive Services User role on the account, e.g. the managed identities of apps that will call models."
+              }
+            },
+            "agentPrincipalIds": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Principal (object) ids granted the Azure AI User role on the account: the data-plane role Foundry Agent Service callers need (create agents, threads, and runs). The Slack bot identity goes here."
+              }
+            },
+            "modelName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Model to deploy under the account, e.g. gpt-5.1 (pick one the region still accepts for new deployments). Empty deploys no model."
+              }
+            },
+            "modelFormat": {
+              "type": "string",
+              "defaultValue": "OpenAI",
+              "metadata": {
+                "description": "Publisher format of the model, e.g. OpenAI."
+              }
+            },
+            "modelVersion": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Model version to pin. Empty lets the service pick the current default version."
+              }
+            },
+            "modelDeploymentName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of the model deployment. Defaults to the model name; agents reference this name."
+              }
+            },
+            "modelSkuName": {
+              "type": "string",
+              "defaultValue": "GlobalStandard",
+              "metadata": {
+                "description": "Deployment SKU: GlobalStandard suits chat workloads; use Standard for data-residency-bound regions."
+              }
+            },
+            "modelCapacity": {
+              "type": "int",
+              "defaultValue": 30,
+              "minValue": 1,
+              "metadata": {
+                "description": "Deployment capacity in thousands of tokens per minute."
+              }
+            },
+            "transcriptionModelName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Optional audio-transcription model deployed beside the chat model (e.g. gpt-4o-mini-transcribe or whisper), for the GUI chat assistant's voice input. Empty deploys none."
+              }
+            },
+            "transcriptionModelVersion": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Version of the transcription model. Empty lets the service pick the current default version."
+              }
+            },
+            "transcriptionModelCapacity": {
+              "type": "int",
+              "defaultValue": 30,
+              "minValue": 1,
+              "metadata": {
+                "description": "Capacity for the transcription deployment, in thousands of tokens per minute."
+              }
+            },
+            "disableLocalAuth": {
+              "type": "bool",
+              "defaultValue": false,
+              "metadata": {
+                "description": "Disable key-based auth so only Entra identities can call the endpoint."
+              }
+            }
+          },
+          "variables": {
+            "cognitiveServicesUserRoleId": "a97b65f3-24c7-4388-baec-2e87135dc908",
+            "cognitiveServicesOpenAIUserRoleId": "5e0bd9bd-7b93-4f28-af87-19fc36ad61bd",
+            "effectiveModelDeploymentName": "[if(empty(parameters('modelDeploymentName')), parameters('modelName'), parameters('modelDeploymentName'))]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.CognitiveServices/accounts",
+              "apiVersion": "2025-06-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "kind": "AIServices",
+              "sku": {
+                "name": "S0"
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "customSubDomainName": "[parameters('name')]",
+                "allowProjectManagement": true,
+                "publicNetworkAccess": "Enabled",
+                "disableLocalAuth": "[parameters('disableLocalAuth')]"
+              }
+            },
+            {
+              "type": "Microsoft.CognitiveServices/accounts/projects",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', parameters('name'), parameters('projectName'))]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "displayName": "[parameters('projectDisplayName')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('modelName')))]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', parameters('name'), variables('effectiveModelDeploymentName'))]",
+              "sku": {
+                "name": "[parameters('modelSkuName')]",
+                "capacity": "[parameters('modelCapacity')]"
+              },
+              "properties": {
+                "model": "[union(createObject('format', parameters('modelFormat'), 'name', parameters('modelName')), if(empty(parameters('modelVersion')), createObject(), createObject('version', parameters('modelVersion'))))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('name'), parameters('projectName'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('transcriptionModelName')))]",
+              "type": "Microsoft.CognitiveServices/accounts/deployments",
+              "apiVersion": "2025-06-01",
+              "name": "[format('{0}/{1}', parameters('name'), parameters('transcriptionModelName'))]",
+              "sku": {
+                "name": "[parameters('modelSkuName')]",
+                "capacity": "[parameters('transcriptionModelCapacity')]"
+              },
+              "properties": {
+                "model": "[union(createObject('format', parameters('modelFormat'), 'name', parameters('transcriptionModelName')), if(empty(parameters('transcriptionModelVersion')), createObject(), createObject('version', parameters('transcriptionModelVersion'))))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/deployments', parameters('name'), variables('effectiveModelDeploymentName'))]",
+                "[resourceId('Microsoft.CognitiveServices/accounts/projects', parameters('name'), parameters('projectName'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "userAccess",
+                "count": "[length(parameters('userPrincipalIds'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), parameters('userPrincipalIds')[copyIndex()], variables('cognitiveServicesUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesUserRoleId'))]",
+                "principalId": "[parameters('userPrincipalIds')[copyIndex()]]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
+              ]
+            },
+            {
+              "copy": {
+                "name": "agentAccess",
+                "count": "[length(parameters('agentPrincipalIds'))]"
+              },
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]",
+              "name": "[guid(resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), parameters('agentPrincipalIds')[copyIndex()], variables('cognitiveServicesOpenAIUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('cognitiveServicesOpenAIUserRoleId'))]",
+                "principalId": "[parameters('agentPrincipalIds')[copyIndex()]]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.CognitiveServices/accounts', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "endpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "The account endpoint callers use (token-authenticated when granted Cognitive Services User)."
+              },
+              "value": "[reference(resourceId('Microsoft.CognitiveServices/accounts', parameters('name')), '2025-06-01').endpoint]"
+            },
+            "projectEndpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "The Foundry project endpoint, the address agent clients (the Slack bot) connect to."
+              },
+              "value": "[format('https://{0}.services.ai.azure.com/api/projects/{1}', parameters('name'), parameters('projectName'))]"
+            },
+            "accountName": {
+              "type": "string",
+              "metadata": {
+                "description": "The account name, for later model deployments or diagnostics."
+              },
+              "value": "[parameters('name')]"
+            },
+            "projectName": {
+              "type": "string",
+              "metadata": {
+                "description": "The project name under the account."
+              },
+              "value": "[parameters('projectName')]"
+            },
+            "modelDeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "The model deployment name agents reference, or empty when no model was deployed."
+              },
+              "value": "[if(empty(parameters('modelName')), '', variables('effectiveModelDeploymentName'))]"
+            },
+            "transcriptionDeploymentName": {
+              "type": "string",
+              "metadata": {
+                "description": "The audio-transcription deployment name, or empty when none was deployed."
+              },
+              "value": "[parameters('transcriptionModelName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'sqlflow-control-plane-app')]",
+        "[resourceId('Microsoft.Resources/deployments', 'sqlflow-slack-bot-app')]",
+        "[resourceId('Microsoft.Resources/deployments', 'sqlflow-worker-app')]"
+      ]
+    },
+    {
+      "condition": "[variables('mcpEnabled')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-mcp-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "name": {
+            "value": "[parameters('mcpName')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('mcpImage')]"
+          },
+          "controlPlaneUrl": {
+            "value": "[format('https://{0}', format('{0}.{1}', parameters('controlPlaneName'), reference(resourceId('Microsoft.App/managedEnvironments', parameters('environmentName')), '2024-03-01').defaultDomain))]"
+          },
+          "guiUrl": {
+            "value": "[format('https://{0}', format('{0}.{1}', parameters('guiName'), reference(resourceId('Microsoft.App/managedEnvironments', parameters('environmentName')), '2024-03-01').defaultDomain))]"
+          },
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "acrLoginServer": {
+            "value": "[parameters('acrLoginServer')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "4961288835625252752"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region. Defaults to the resource group location."
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "sqlflow-mcp",
+              "metadata": {
+                "description": "Name of the Container App."
+              }
+            },
+            "managedEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource id of an existing Container Apps managed environment to host the app."
+              }
+            },
+            "image": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image reference, e.g. myregistry.azurecr.io/sqlflow-mcp:latest"
+              }
+            },
+            "controlPlaneUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Base URL of the SQLFlow control plane the MCP tools proxy, e.g. https://sqlflow-control-plane.<env-domain>."
+              }
+            },
+            "guiUrl": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Public base URL of the SQLFlow GUI, e.g. https://sqlflow-gui.<env-domain>. Tool results carry deep links into it (an object's catalog page, its lineage graph, a run) so an assistant can hand the reader something to open. Empty emits root-relative links, which only resolve for a client rendering inside the GUI itself."
+              }
+            },
+            "acrName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of a container registry in THIS resource group: the template grants the app identity AcrPull on it and configures the pull. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
+              }
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "0.25",
+              "metadata": {
+                "description": "vCPU per replica; the server is a thin authenticated proxy, so the smallest consumption pair suffices."
+              }
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "0.5Gi",
+              "metadata": {
+                "description": "Memory per replica, paired with cpu."
+              }
+            }
+          },
+          "variables": {
+            "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-id', parameters('name'))]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "condition": "[not(empty(parameters('acrName')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName')))]",
+              "name": "[guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "http",
+                    "allowInsecure": false
+                  },
+                  "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "sqlflow-mcp",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      },
+                      "env": [
+                        {
+                          "name": "SQLFLOW_CONTROL_PLANE_URL",
+                          "value": "[parameters('controlPlaneUrl')]"
+                        },
+                        {
+                          "name": "SQLFLOW_MCP_HTTP_BIND",
+                          "value": "0.0.0.0:8080"
+                        },
+                        {
+                          "name": "SQLFLOW_GUI_URL",
+                          "value": "[parameters('guiUrl')]"
+                        }
+                      ],
+                      "probes": [
+                        {
+                          "type": "Startup",
+                          "httpGet": {
+                            "path": "/healthz",
+                            "port": 8080
+                          },
+                          "initialDelaySeconds": 2,
+                          "periodSeconds": 3,
+                          "failureThreshold": 10
+                        },
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/healthz",
+                            "port": 8080
+                          },
+                          "periodSeconds": 15,
+                          "failureThreshold": 3
+                        },
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/healthz",
+                            "port": 8080
+                          },
+                          "periodSeconds": 10,
+                          "failureThreshold": 3
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 1
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "mcpUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "The MCP endpoint URL to register with clients (Foundry MCP tool serverUrl)."
+              },
+              "value": "[format('https://{0}/mcp', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
+            },
+            "identityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal (object) id of the app identity, for role assignments made outside this template."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('slackBotEnabled')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-slack-bot-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "name": {
+            "value": "[parameters('slackBotName')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('slackBotImage')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "assistantProvider": {
+            "value": "[parameters('slackBotProvider')]"
+          },
+          "slackAppTokenSecretName": {
+            "value": "[variables('slackAppTokenSecretName')]"
+          },
+          "slackBotTokenSecretName": {
+            "value": "[variables('slackBotTokenSecretName')]"
+          },
+          "sqlflowAccessTokenSecretName": {
+            "value": "[variables('slackBotSqlflowTokenSecretName')]"
+          },
+          "modelApiKeySecretName": {
+            "value": "[variables('slackBotModelApiKeySecretName')]"
+          },
+          "foundryProjectEndpoint": {
+            "value": "[variables('aiFoundryProjectEndpoint')]"
+          },
+          "foundryModelDeploymentName": {
+            "value": "[parameters('aiFoundryModelName')]"
+          },
+          "openaiModel": {
+            "value": "[parameters('slackBotOpenAIModel')]"
+          },
+          "anthropicModel": {
+            "value": "[parameters('slackBotAnthropicModel')]"
+          },
+          "mcpServerUrl": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-mcp-app'), '2025-04-01').outputs.mcpUrl.value]"
+          },
+          "guiBaseUrl": {
+            "value": "[format('https://{0}', format('{0}.{1}', parameters('guiName'), reference(resourceId('Microsoft.App/managedEnvironments', parameters('environmentName')), '2024-03-01').defaultDomain))]"
+          },
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "acrLoginServer": {
+            "value": "[parameters('acrLoginServer')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "10273724677933771996"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region. Defaults to the resource group location."
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "sqlflow-slack-bot",
+              "metadata": {
+                "description": "Name of the Container App (and the prefix for its managed identity)."
+              }
+            },
+            "managedEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource id of an existing Container Apps managed environment to host the app."
+              }
+            },
+            "image": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image reference, e.g. myregistry.azurecr.io/sqlflow-slack-bot:latest"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of an existing Key Vault holding the Slack and SQLFlow token secrets."
+              }
+            },
+            "assistantProvider": {
+              "type": "string",
+              "defaultValue": "AzureFoundry",
+              "allowedValues": [
+                "AzureFoundry",
+                "OpenAI",
+                "Anthropic"
+              ],
+              "metadata": {
+                "description": "The model provider answering questions: AzureFoundry (managed identity, no key), OpenAI (platform API key), or Anthropic (Claude API key)."
+              }
+            },
+            "slackAppTokenSecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-slack-app-token",
+              "metadata": {
+                "description": "Key Vault secret name for the Slack app-level token (xapp-..., Socket Mode)."
+              }
+            },
+            "slackBotTokenSecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-slack-bot-token",
+              "metadata": {
+                "description": "Key Vault secret name for the Slack bot user OAuth token (xoxb-...)."
+              }
+            },
+            "sqlflowAccessTokenSecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-slack-bot-access-token",
+              "metadata": {
+                "description": "Key Vault secret name for the read-scoped SQLFlow personal access token the assistant presents to the MCP server."
+              }
+            },
+            "modelApiKeySecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-slack-bot-model-api-key",
+              "metadata": {
+                "description": "Key Vault secret name for the provider API key. Read only when assistantProvider is OpenAI or Anthropic."
+              }
+            },
+            "foundryProjectEndpoint": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The Foundry project endpoint, e.g. https://<account>.services.ai.azure.com/api/projects/<project>. Required when assistantProvider is AzureFoundry."
+              }
+            },
+            "foundryModelDeploymentName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The model deployment (in the same Foundry account) the assistant runs on. Required when assistantProvider is AzureFoundry."
+              }
+            },
+            "openaiModel": {
+              "type": "string",
+              "defaultValue": "gpt-5-mini",
+              "metadata": {
+                "description": "The OpenAI model, which must support the Responses API with the hosted MCP tool. Used when assistantProvider is OpenAI."
+              }
+            },
+            "anthropicModel": {
+              "type": "string",
+              "defaultValue": "claude-opus-4-8",
+              "metadata": {
+                "description": "The Claude model id. Used when assistantProvider is Anthropic."
+              }
+            },
+            "mcpServerUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "The deployed SQLFlow MCP server endpoint the assistant uses as its tool source, e.g. https://sqlflow-mcp.<env-domain>/mcp."
+              }
+            },
+            "guiBaseUrl": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "SQLFlow GUI base URL; when set, answers link runs and pipelines to their GUI pages. Empty disables links."
+              }
+            },
+            "acrName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of a container registry in THIS resource group: the template grants the app identity AcrPull on it and configures the pull. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
+              }
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "0.25",
+              "metadata": {
+                "description": "vCPU per replica; a relay with no local model work needs the smallest consumption pair."
+              }
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "0.5Gi",
+              "metadata": {
+                "description": "Memory per replica, paired with cpu."
+              }
+            }
+          },
+          "variables": {
+            "keyVaultSecretsUserRoleId": "4633458b-17de-408a-b874-0445c86b69e6",
+            "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d",
+            "usesApiKey": "[not(equals(parameters('assistantProvider'), 'AzureFoundry'))]",
+            "vaultUri": "[format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
+            "baseSecrets": [
+              {
+                "name": "slack-app-token",
+                "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('slackAppTokenSecretName'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              },
+              {
+                "name": "slack-bot-token",
+                "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('slackBotTokenSecretName'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              },
+              {
+                "name": "sqlflow-access-token",
+                "keyVaultUrl": "[format('{0}secrets/{1}', variables('vaultUri'), parameters('sqlflowAccessTokenSecretName'))]",
+                "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              }
+            ],
+            "apiKeySecrets": "[if(variables('usesApiKey'), createArray(createObject('name', 'model-api-key', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('modelApiKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))), createArray())]",
+            "baseEnv": [
+              {
+                "name": "SlackBot__Provider",
+                "value": "[parameters('assistantProvider')]"
+              },
+              {
+                "name": "SlackBot__Slack__AppToken",
+                "secretRef": "slack-app-token"
+              },
+              {
+                "name": "SlackBot__Slack__BotToken",
+                "secretRef": "slack-bot-token"
+              },
+              {
+                "name": "SlackBot__SqlFlow__AccessToken",
+                "secretRef": "sqlflow-access-token"
+              },
+              {
+                "name": "SlackBot__SqlFlow__GuiBaseUrl",
+                "value": "[parameters('guiBaseUrl')]"
+              },
+              {
+                "name": "SlackBot__Mcp__ServerUrl",
+                "value": "[parameters('mcpServerUrl')]"
+              }
+            ],
+            "openaiEnv": "[if(equals(parameters('assistantProvider'), 'OpenAI'), createArray(createObject('name', 'SlackBot__OpenAI__ApiKey', 'secretRef', 'model-api-key'), createObject('name', 'SlackBot__OpenAI__Model', 'value', parameters('openaiModel'))), createArray())]",
+            "anthropicEnv": "[if(equals(parameters('assistantProvider'), 'Anthropic'), createArray(createObject('name', 'SlackBot__Anthropic__ApiKey', 'secretRef', 'model-api-key'), createObject('name', 'SlackBot__Anthropic__Model', 'value', parameters('anthropicModel'))), createArray())]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-id', parameters('name'))]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUserRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('acrName')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName')))]",
+              "name": "[guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+                  "secrets": "[concat(variables('baseSecrets'), variables('apiKeySecrets'))]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "slack-bot",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      },
+                      "env": "[concat(variables('baseEnv'), if(equals(parameters('assistantProvider'), 'AzureFoundry'), createArray(createObject('name', 'SlackBot__Foundry__ProjectEndpoint', 'value', parameters('foundryProjectEndpoint')), createObject('name', 'SlackBot__Foundry__ModelDeploymentName', 'value', parameters('foundryModelDeploymentName')), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), createArray()), variables('openaiEnv'), variables('anthropicEnv'))]"
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 1
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]",
+                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "identityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal (object) id of the bot identity: in AzureFoundry mode, grant it Foundry access (ai-foundry.bicep agentPrincipalIds)."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]"
+            },
+            "identityClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "The client id of the bot identity."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]",
+        "[resourceId('Microsoft.Resources/deployments', 'sqlflow-mcp-app')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('slackAppTokenSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('slackBotModelApiKeySecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('slackBotSqlflowTokenSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('slackBotTokenSecretName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "guiUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "Sign in here with the bootstrap admin (adminUsername/adminPassword)."
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-gui-app'), '2025-04-01').outputs.guiUrl.value]"
+    },
+    "entraClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "Client id of the Entra registration users sign in with: created and owned by this template when provisionEntraApp is on, otherwise the azureAdClientId you passed. Empty means SSO is off (local sign-in only)."
+      },
+      "value": "[if(parameters('provisionEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-entra-app'), '2025-04-01').outputs.clientId.value, parameters('azureAdClientId'))]"
+    },
+    "entraRedirectUri": {
+      "type": "string",
+      "metadata": {
+        "description": "The GUI origin registered as the SPA redirect URI. When provisionEntraApp is on this template already set it on the registration; in external mode add it yourself (Single-page application platform). Empty when SSO is off."
+      },
+      "value": "[if(empty(if(parameters('provisionEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-entra-app'), '2025-04-01').outputs.clientId.value, parameters('azureAdClientId'))), '', reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-gui-app'), '2025-04-01').outputs.guiUrl.value)]"
+    },
+    "entraAssignmentReminder": {
+      "type": "string",
+      "metadata": {
+        "description": "Next step for Bicep-owned SSO: assignment is required, so no one can sign in until members are assigned. Set azureAdAllowedGroupObjectId to a security group to grant its members access, or assign users/groups in the enterprise application. Empty when a group was already assigned or SSO is off."
+      },
+      "value": "[if(and(parameters('provisionEntraApp'), empty(parameters('azureAdAllowedGroupObjectId'))), 'Assign a group via azureAdAllowedGroupObjectId (or in the enterprise application) so members can sign in; assignment is required and none are assigned yet.', '')]"
+    },
+    "entraForeignTenantReminder": {
+      "type": "string",
+      "metadata": {
+        "description": "Next step for each tenant named in azureAdAdditionalAllowedTenantIds: this template cannot grant role assignments outside its own home tenant, so an admin in that tenant must consent to the app (creates their own local enterprise application object) and then assign the SqlFlow.User role to their own users or groups on it. Empty when no additional tenant was configured or SSO is off."
+      },
+      "value": "[if(and(parameters('provisionEntraApp'), not(empty(parameters('azureAdAdditionalAllowedTenantIds')))), format('For each tenant in azureAdAdditionalAllowedTenantIds: an admin there must consent to app {0}, then assign the SqlFlow.User role to their own users/groups in their own enterprise application view.', if(parameters('provisionEntraApp'), reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-entra-app'), '2025-04-01').outputs.clientId.value, parameters('azureAdClientId'))), '')]"
+    },
+    "controlPlaneBaseUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "The API base URL: point the ADF pipeline (deploy/adf) and CLI remotes at this."
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-control-plane-app'), '2025-04-01').outputs.controlPlaneBaseUrl.value]"
+    },
+    "controlPlaneIdentityClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "Client id of the control plane identity, for granting access to flow secrets beyond this vault."
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-control-plane-app'), '2025-04-01').outputs.identityClientId.value]"
+    },
+    "workerIdentityClientId": {
+      "type": "string",
+      "metadata": {
+        "description": "Client id of the worker identity, for granting access to the data its pool's flows touch."
+      },
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-worker-app'), '2025-04-01').outputs.identityClientId.value]"
+    },
+    "sqlServerFqdn": {
+      "type": "string",
+      "metadata": {
+        "description": "Catalog SQL server address (the catalog connection string is in Key Vault as sqlflow-catalog-db)."
+      },
+      "value": "[if(empty(parameters('existingSqlServer')), reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-08-01-preview').fullyQualifiedDomainName, parameters('existingSqlServer'))]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "metadata": {
+        "description": "The vault holding every estate secret; put flow credentials here as ${keyvault:...} targets."
+      },
+      "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
+    },
+    "aiFoundryEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "The AI Foundry endpoint, or empty when aiFoundryName was not set."
+      },
+      "value": "[if(empty(parameters('aiFoundryName')), '', reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-ai-foundry'), '2025-04-01').outputs.endpoint.value)]"
+    },
+    "aiFoundryProjectEndpoint": {
+      "type": "string",
+      "metadata": {
+        "description": "The Foundry project endpoint agent clients connect to, or empty when aiFoundryName was not set."
+      },
+      "value": "[variables('aiFoundryProjectEndpoint')]"
+    },
+    "mcpUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "The MCP endpoint URL (register in Foundry, VS Code, or any remote MCP client), or empty when mcpImage was not set."
+      },
+      "value": "[if(variables('mcpEnabled'), reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-mcp-app'), '2025-04-01').outputs.mcpUrl.value, '')]"
+    }
+  }
+}

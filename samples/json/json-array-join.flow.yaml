@@ -1,0 +1,16 @@
+# arrayHandling: join collapses a scalar array into one delimited string (tags -> "red;green;blue").
+name: Json_ArrayJoin
+source:
+  type: json
+  location: ./data/tags.json
+  options:
+    arrayHandling: join
+    joinSeparator: ";"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_ArrayJoin
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

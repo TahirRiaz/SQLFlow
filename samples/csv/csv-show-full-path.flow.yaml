@@ -1,0 +1,11 @@
+# Provenance: store the full path (not just the file name) in the FileName_DW column.
+name: Csv_FullPath
+source:
+  type: csv
+  location: ./data/orders.csv
+  options:
+    showPathWithFileName: "true"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_FullPath

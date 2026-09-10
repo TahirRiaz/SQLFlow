@@ -1,0 +1,1274 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Vietnam's early history included periods of occupation by outside forces and eventual power consolidation under Vietnamese dynastic families. A succession of Han Chinese emperors ruled the area, which was centered on the Red River Valley, until approximately the 10th century. The Ly Dynasty (11th-13th century) created the first independent Vietnamese state, which was known as Dai Viet, and established their capital at Thang Long (Hanoi). Under the Tran Dynasty (13th-15th century), TRAN Hung Dao, one of Vietnam’s national heroes, led Dai Viet forces to fight off Mongol invaders in 1279. After a brief Chinese occupation in the early 1400s, Vietnamese resistance leader LE Thai To made himself emperor and established the Le Dynasty, which lasted until the late 18th century despite decades of political turmoil, civil war, and division. During this period, Dai Viet expanded southward to the Central Highlands and Mekong Delta, reaching the approximate boundaries of modern-day Vietnam by the 1750s. Dai Viet suffered additional civil war and division in the latter half of the 18th century, but it was reunited and renamed Vietnam under Emperor NGUYEN Phuc Anh (aka Gia Long) in 1802.<br><br>France began its conquest of Vietnam in 1858 and made Vietnam part of French Indochina in 1887. Vietnam declared independence after World War II, but the French continued to rule until communist forces under Ho Chi MINH defeated them in 1954. Under the Geneva Accords of 1954, Vietnam was divided into the communist North and anti-communist South. Fighting erupted between the two governments shortly afterwards with the North supporting communist rebels in the South and eventually committing thousands of combat troops. The US provided to the South significant economic and military assistance, including large numbers of US military forces, which reached a peak strength of over 500,000 troops in 1968. US combat forces were withdrawn following a cease-fire agreement in 1973. Two years later, North Vietnamese forces overran the South, reuniting the country under communist rule. The conflict, known as the Second Indochina War (1955-1975), caused more than 58,000 US combat and non-combat deaths and created deep domestic divisions in the US. It also devastated Vietnam, spilled over into the neighboring countries of Cambodia and Laos, and is estimated to have resulted in the deaths of up to 3 million Vietnamese civilians and soldiers.  <br><br>Despite the return of peace, the country experienced little economic growth for over a decade because of its diplomatic isolation, leadership policies, and the persecution and mass exodus of citizens, many of them successful South Vietnamese merchants. However, since the enactment of Vietnam's \"doi moi\" (renovation) policy in 1986, the economy has seen strong growth, particularly in agricultural and industrial production, construction, exports, foreign investment, and tourism. Nevertheless, the Communist Party maintains tight political and social control of the country, and Vietnam faces many related challenges, such as rising income inequality and corruption."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southeastern Asia, bordering the Gulf of Thailand, Gulf of Tonkin, and South China Sea, as well as China, Laos, and Cambodia"
+    },
+    "Geographic coordinates": {
+      "text": "16 10 N, 107 50 E"
+    },
+    "Map references": {
+      "text": "Southeast Asia"
+    },
+    "Area": {
+      "total ": {
+        "text": "331,210 sq km"
+      },
+      "land": {
+        "text": "310,070 sq km"
+      },
+      "water": {
+        "text": "21,140 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about three times the size of Tennessee; slightly larger than New Mexico"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "4,616 km"
+      },
+      "border countries": {
+        "text": "Cambodia 1,158 km; China 1,297 km; Laos 2,161 km"
+      }
+    },
+    "Coastline": {
+      "text": "3,444 km (excludes islands)"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "continental shelf": {
+        "text": "200 nm or to the edge of the continental margin"
+      }
+    },
+    "Climate": {
+      "text": "tropical in south; monsoonal in north with hot, rainy season (May to September) and warm, dry season (October to March)"
+    },
+    "Terrain": {
+      "text": "low, flat delta in south and north; central highlands; hilly, mountainous in far north and northwest"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Fan Si Pan 3,144 m"
+      },
+      "lowest point": {
+        "text": "South China Sea 0 m"
+      },
+      "mean elevation": {
+        "text": "398 m"
+      }
+    },
+    "Natural resources": {
+      "text": "antimony, phosphates, coal, manganese, rare earth elements, bauxite, chromate, offshore oil and gas deposits, timber, hydropower, arable land"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "34.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 20.6% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 12.1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 2.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "45% (2018 est.)"
+      },
+      "other": {
+        "text": "20.2% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "46,000 sq km (2012)"
+    },
+    "Major rivers (by length in km)": {
+      "text": "Sông Tiên Giang (Mekong) river mouth (shared with China [s], Burma, Laos, Thailand, Cambodia) - 4,350 km; Pearl river source (shared with China [m]) - 2,200 km; Red river mouth (shared with China [s]) - 1,149 km <br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Pacific Ocean drainage: Mekong (805,604 sq km)"
+    },
+    "Population distribution": {
+      "text": "though it has one of the highest population densities in the world, the population is not evenly dispersed; clustering is heaviest along the South China Sea and Gulf of Tonkin, with the Mekong Delta (in the south) and the Red River Valley (in the north) having the largest concentrations of people"
+    },
+    "Natural hazards": {
+      "text": "occasional typhoons (May to January) with extensive flooding, especially in the Mekong River delta"
+    },
+    "Geography - note": {
+      "text": "<strong>note 1:</strong> extending 1,650 km north to south, the country is only 50 km across at its narrowest point <br><br><strong>note 2:</strong> Son Doong in Phong Nha-Ke Bang National Park is the world's largest cave (greatest cross sectional area) and is the largest known cave passage in the world by volume; it currently measures a total of 38.5 million cu m (about 1.35 billion cu ft); it connects to Thung cave (but not yet officially); when recognized, it will add an additional 1.6 million cu m in volume; Son Doong is so massive that it contains its own jungle, underground river, and localized weather system; clouds form inside the cave and spew out from its exits and two dolines (openings, or sinkhole skylights, created by collapsed ceilings that allow sunlight to stream in)<br><strong><br></strong>"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "105,758,975"
+      },
+      "male": {
+        "text": "53,109,175"
+      },
+      "female": {
+        "text": "52,649,800 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Vietnamese (singular and plural)"
+      },
+      "adjective": {
+        "text": "Vietnamese"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Kinh (Viet) 85.3%, Tay 1.9%, Thai 1.9%, Muong 1.5%, Khmer 1.4%, Mong 1.4%, Nung 1.1%, other 5.5% (2019 est.)",
+      "note": "<strong>note:</strong> 54 ethnic groups are recognized by the Vietnamese Government"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Vietnamese (official); English (often as a second language); some French, Chinese, and Khmer; mountain-area languages (including Mon-Khmer and Malayo-Polynesian)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Dữ kiện thế giới, là nguồn thông tin cơ bản không thể thiếu. (Vietnamese)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Catholic 6.1%, Buddhist 5.8%, Protestant 1%, other 0.8%, none 86.3% (2019 est.)",
+      "note": "<strong>note:</strong> most Vietnamese are culturally Buddhist"
+    },
+    "Demographic profile": {
+      "text": "<p>When Vietnam was reunified in 1975, the country had a youthful age structure and a high fertility rate.  The population growth rate slowed dramatically during the next 25 years, as fertility declined and infant mortality and life expectancy improved.  The country’s adoption of a one-or-two-child policy in 1988 led to increased rates of contraception and abortion.  The total fertility rate dropped rapidly from nearly 5 in 1979 to 2.1 or replacement level in 1990, and at 1.8 is below replacement level today.  Fertility is higher in the more rural central highlands and northern uplands, which are inhabited primarily by poorer ethnic minorities, and is lower among the majority Kinh, ethnic Chinese, and a few other ethnic groups, particularly in urban centers.  With more than two-thirds of the population of working age (15-64), Vietnam has the potential to reap a demographic dividend for approximately three decades (between 2010 and 2040).  However, its ability to do so will depend on improving the quality of education and training for its workforce and creating jobs.  The Vietnamese Government is also considering changes to the country’s population policy because if the country’s fertility rate remains below replacement level, it could lead to a worker shortage in the future.</p> <p>Vietnam has experienced both internal migration and net emigration, both for humanitarian and economic reasons, for the last several decades.  Internal migration – rural-rural and rural-urban, temporary and permanent – continues to be a means of coping with Vietnam’s extreme weather and flooding.  Although Vietnam’s population is still mainly rural, increasing numbers of young men and women have been drawn to the country’s urban centers where they are more likely to find steady jobs and higher pay in the growing industrial and service sectors.</p> <p>The aftermath of the Vietnam War in 1975 resulted in an outpouring of approximately 1.6 million Vietnamese refugees over the next two decades.  Between 1975 and 1997, programs such as the Orderly Departure Program and the Comprehensive Plan of Action resettled hundreds of thousands of Vietnamese refugees abroad, including the United States (880,000), China (260,000, mainly ethnic Chinese Hoa), Canada (160,000), Australia (155,000), and European countries (150,000). <br><br>In the 1980s, some Vietnamese students and workers began to migrate to allied communist countries, including the Soviet Union, Czechoslovakia, Bulgaria, and East Germany.  The vast majority returned home following the fall of communism in Eastern Europe in the early 1990s.  Since that time, Vietnamese labor migrants instead started to pursue opportunities in Asia and the Middle East.  They often perform low-skilled jobs under harsh conditions for low pay and are vulnerable to forced labor, including debt bondage to the private brokers who arrange the work contracts.  Despite Vietnam’s current labor surplus, the country has in recent years attracted some foreign workers, mainly from China and other Asian countries.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "23.2% (male 12,953,719/female 11,579,690)"
+      },
+      "15-64 years": {
+        "text": "68.5% (male 36,591,845/female 35,887,201)"
+      },
+      "65 years and over": {
+        "text": "8.3% (2024 est.) (male 3,563,611/female 5,182,909)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "45.6"
+      },
+      "youth dependency ratio": {
+        "text": "32.8"
+      },
+      "elderly dependency ratio": {
+        "text": "12.7"
+      },
+      "potential support ratio": {
+        "text": "7.8 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "33.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "32 years"
+      },
+      "female": {
+        "text": "34.2 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.89% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "14.9 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "5.8 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.2 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "though it has one of the highest population densities in the world, the population is not evenly dispersed; clustering is heaviest along the South China Sea and Gulf of Tonkin, with the Mekong Delta (in the south) and the Red River Valley (in the north) having the largest concentrations of people"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "39.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.7% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "9.321 million Ho Chi Minh City, 5.253 million HANOI (capital), 1.865 million Can Tho, 1.423 million Hai Phong, 1.221 million Da Nang, 1.111 million Bien Hoa (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.1 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.12 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.02 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.69 male(s)/female"
+      },
+      "total population": {
+        "text": "1.01 male(s)/female (2024 est.)"
+      }
+    },
+    "Maternal mortality ratio": {
+      "text": "124 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "14.1 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "14.4 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "13.7 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "76.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "73.5 years"
+      },
+      "female": {
+        "text": "78.9 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "2.03 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.96 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "72.8% (2020)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 99.2% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 95.5% of population"
+      },
+      "improved: total": {
+        "text": "total: 96.9% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.8% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 4.5% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 3.1% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "4.7% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.83 physicians/1,000 population (2016)"
+    },
+    "Hospital bed density": {
+      "text": "3.2 beds/1,000 population (2013)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 98.7% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 90% of population"
+      },
+      "improved: total": {
+        "text": "total: 93.3% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 1.3% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 10% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 6.7% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "2.1% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "3.41 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "3.18 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.02 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.21 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "24.8% (2020 est.)"
+      },
+      "male": {
+        "text": "47.4% (2020 est.)"
+      },
+      "female": {
+        "text": "2.2% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "11.6% (2020)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "72.6% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "1.1%"
+      },
+      "women married by age 18": {
+        "text": "14.6%"
+      },
+      "men married by age 18": {
+        "text": "1.9% (2021 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "4.1% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "95.8%"
+      },
+      "male": {
+        "text": "97%"
+      },
+      "female": {
+        "text": "94.6% (2019)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "logging and slash-and-burn agricultural practices contribute to deforestation and soil degradation; water pollution and overfishing threaten marine life populations; groundwater contamination limits potable water supply; air pollution; growing urban industrialization and population migration are rapidly degrading environment in Hanoi and Ho Chi Minh City"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "none of the selected agreements"
+      }
+    },
+    "Climate": {
+      "text": "tropical in south; monsoonal in north with hot, rainy season (May to September) and warm, dry season (October to March)"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "34.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 20.6% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 12.1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 2.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "45% (2018 est.)"
+      },
+      "other": {
+        "text": "20.2% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "39.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "2.7% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "1.49% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.35% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "20.89 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "192.67 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "110.4 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "9,570,300 tons (2011 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "2,201,169 tons (2014 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "23% (2014 est.)"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Sông Tiên Giang (Mekong) river mouth (shared with China [s], Burma, Laos, Thailand, Cambodia) - 4,350 km; Pearl river source (shared with China [m]) - 2,200 km; Red river mouth (shared with China [s]) - 1,149 km <br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Pacific Ocean drainage: Mekong (805,604 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "1.21 billion cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "3.07 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "77.75 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "884.12 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "3"
+      },
+      "global geoparks and regional networks": {
+        "text": "Dak Nong; Dong Van Karst Plateau; Non nuoc Cao Bang (2023)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Socialist Republic of Vietnam"
+      },
+      "conventional short form": {
+        "text": "Vietnam"
+      },
+      "local long form": {
+        "text": "Cong Hoa Xa Hoi Chu Nghia Viet Nam"
+      },
+      "local short form": {
+        "text": "Viet Nam"
+      },
+      "former": {
+        "text": "Democratic Republic of Vietnam (North Vietnam), Republic of Vietnam (South Vietnam)"
+      },
+      "abbreviation": {
+        "text": "SRV"
+      },
+      "etymology": {
+        "text": "\"Viet nam\" translates as \"Viet south,\" where \"Viet\" is an ethnic self identification dating to a second century B.C. kingdom and \"nam\" refers to its location in relation to other Viet kingdoms"
+      }
+    },
+    "Government type": {
+      "text": "communist party-led state"
+    },
+    "Capital": {
+      "name": {
+        "text": "Hanoi (Ha Noi)"
+      },
+      "geographic coordinates": {
+        "text": "21 02 N, 105 51 E"
+      },
+      "time difference": {
+        "text": "UTC+7 (12 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "the city has had many names in its history going back to A.D. 1010 when it first became the capital of imperial Vietnam; in 1831, it received its current name of Ha Noi, meaning \"between the rivers,\" which refers to its geographic location"
+      }
+    },
+    "Administrative divisions": {
+      "text": "<p>58 provinces (tinh, singular and plural) and 5 municipalities (thanh pho, singular and plural)</p> <p><strong>provinces:</strong> An Giang, Bac Giang, Bac Kan, Bac Lieu, Bac Ninh, Ba Ria-Vung Tau, Ben Tre, Binh Dinh, Binh Duong, Binh Phuoc, Binh Thuan, Ca Mau, Cao Bang, Dak Lak, Dak Nong, Dien Bien, Dong Nai, Dong Thap, Gia Lai, Ha Giang, Ha Nam, Ha Tinh, Hai Duong, Hau Giang, Hoa Binh, Hung Yen, Khanh Hoa, Kien Giang, Kon Tum, Lai Chau, Lam Dong, Lang Son, Lao Cai, Long An, Nam Dinh, Nghe An, Ninh Binh, Ninh Thuan, Phu Tho, Phu Yen, Quang Binh, Quang Nam, Quang Ngai, Quang Ninh, Quang Tri, Soc Trang, Son La, Tay Ninh, Thai Binh, Thai Nguyen, Thanh Hoa, Thua Thien-Hue, Tien Giang, Tra Vinh, Tuyen Quang, Vinh Long, Vinh Phuc, Yen Bai</p> <p><strong>municipalities:</strong> Can Tho, Da Nang, Ha Noi (Hanoi), Hai Phong, Ho Chi Minh City (Saigon)</p>"
+    },
+    "Independence": {
+      "text": "2 September 1945 (from France)"
+    },
+    "National holiday": {
+      "text": "Independence Day (National Day), 2 September (1945)"
+    },
+    "Legal system": {
+      "text": "civil law system; note - the civil code of 2005 reflects a European-style civil law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous; latest adopted 28 November 2013, effective 1 January 2014"
+      },
+      "amendments": {
+        "text": "proposed by the president, by the National Assembly&rsquo;s Standing Committee, or by at least two thirds of the National Assembly membership; a decision to draft an amendment requires approval by at least a two-thirds majority vote of the Assembly membership, followed by the formation of a constitutional drafting committee to write a draft and collect citizens&rsquo; opinions; passage requires at least two-thirds majority of the Assembly membership; the Assembly can opt to conduct a referendum"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; non-party state to the ICCt"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Vietnam"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Luong CUONG (since 21 Oct 2024)"
+      },
+      "head of government": {
+        "text": "Prime Minister Pham Minh CHINH (since 26 July 2021)"
+      },
+      "cabinet": {
+        "text": "Cabinet proposed by the prime minister, confirmed by the National Assembly, and appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president indirectly elected by the National Assembly from among its members for a single 5-year term; prime minister recommended by the president and confirmed by the National Assembly; deputy prime ministers confirmed by the National Assembly and appointed by the president"
+      },
+      "note": "<strong>note: </strong>in August 2024, To LAM was elected general secretary of the Central Committee of the Communist Party of Vietnam, the country’s most powerful position"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "National Assembly (Quoc-Hoi)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "500 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "5/23/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "Communist Party (485); Other (14)"
+      },
+      "percentage of women in chamber": {
+        "text": "31.4%"
+      },
+      "expected date of next election": {
+        "text": "May 2026"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme People's Court (consists of the chief justice and 13 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "chief justice elected by the National Assembly upon the recommendation of the president for a 5-year, renewable term; deputy chief justice appointed by the president from among the judges for a 5-year term; judges appointed by the president and confirmed by the National Assembly for 5-year terms"
+      },
+      "subordinate courts": {
+        "text": "High Courts (administrative, civil, criminal, economic, labor, family, juvenile); provincial courts; district courts; Military Court; note - the National Assembly Standing Committee can establish special tribunals upon the recommendation of the chief justice"
+      }
+    },
+    "Political parties": {
+      "text": "Communist Party of Vietnam or CPV",
+      "note": "<strong>note:</strong>  other parties proscribed"
+    },
+    "International organization participation": {
+      "text": "ADB, APEC, ARF, ASEAN, CICA, CP, EAS, FAO, G-77, IAEA, IBRD, ICAO, ICC (NGOs), ICRM, IDA, IFAD, IFC, IFRCS, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, MIGA, NAM, OIF, OPCW, PCA, UN, UNCTAD, UNESCO, UNHRC, UNIDO, UNOOSA, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO (2024)"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Nguyen Quoc DZUNG (since 19 April 2022)"
+      },
+      "chancery": {
+        "text": "1233 20th Street NW, Suite 400, Washington, DC 20036"
+      },
+      "telephone": {
+        "text": "[1] (202) 861-0737"
+      },
+      "FAX": {
+        "text": "[1] (202) 861-0917"
+      },
+      "email address and website": {
+        "text": "<br>vanphong@vietnamembassy.us<br><br>http://vietnamembassy-usa.org/"
+      },
+      "consulate(s) general": {
+        "text": "Houston, San Francisco"
+      },
+      "consulate(s)": {
+        "text": "New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Marc KNAPPER (since 11 February 2022)"
+      },
+      "embassy": {
+        "text": "7 Lang Ha Street, Hanoi"
+      },
+      "mailing address": {
+        "text": "4550 Hanoi Place, Washington, DC 20521-4550"
+      },
+      "telephone": {
+        "text": "[84] (24) 3850-5000"
+      },
+      "FAX": {
+        "text": "[84] (24) 3850-5010"
+      },
+      "email address and website": {
+        "text": "<br>ACShanoi@state.gov<br><br>https://vn.usembassy.gov/"
+      },
+      "consulate(s) general": {
+        "text": "Ho Chi Minh City"
+      }
+    },
+    "Flag description": {
+      "text": "red field with a large yellow five-pointed star in the center; red symbolizes revolution and blood, the five-pointed star represents the five elements of the populace - peasants, workers, intellectuals, traders, and soldiers - that unite to build socialism"
+    },
+    "National symbol(s)": {
+      "text": "yellow, five-pointed star on red field; lotus blossom; national colors: red, yellow"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Tien quan ca\" (The Song of the Marching Troops)"
+      },
+      "lyrics/music": {
+        "text": "Nguyen Van CAO"
+      },
+      "note": "<strong>note:</strong> adopted as the national anthem of the Democratic Republic of Vietnam in 1945; it became the national anthem of the unified Socialist Republic of Vietnam in 1976; although it consists of two verses, only the first is used as the official anthem"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "8 (5 cultural, 2 natural, 1 mixed)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Complex of Hué Monuments (c); Ha Long Bay (n); Hoi An Ancient Town (c); My Son Sanctuary (c); Phong Nha-Ke Bang National Park (n); Imperial Citadel of Thang Long - Hanoi (c); Citadel of the Ho Dynasty (c); Trang An Landscape Complex (m)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "lower middle-income socialist East Asian economy; rapid economic growth since Đổi Mới reforms; strong investment and productivity growth; tourism and manufacturing hub; TPP signatory; declining poverty aside from ethnic minorities; systemic corruption"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$1.354 trillion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$1.289 trillion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$1.192 trillion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "5.05% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "8.12% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "2.55% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$13,500 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$12,900 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$12,000 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$429.717 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "3.25% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "3.16% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "1.83% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BB (2018)"
+      },
+      "Moody's rating": {
+        "text": "Ba3 (2018)"
+      },
+      "Standard & Poors rating": {
+        "text": "BB (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "12% (2023 est.)"
+      },
+      "industry": {
+        "text": "37.1% (2023 est.)"
+      },
+      "services": {
+        "text": "42.5% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "54.6% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "8.9% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "30.4% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "1.6% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "87.2% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-79.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "rice, vegetables, sugarcane, cassava, maize, pork, fruits, bananas, coffee, coconuts (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "food processing, garments, shoes, machine-building; mining, coal, steel; cement, chemical fertilizer, glass, tires, oil, mobile phones"
+    },
+    "Industrial production growth rate": {
+      "text": "3.74% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "55.966 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "1.6% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "1.54% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "2.39% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "6.2% (2023 est.)"
+      },
+      "male": {
+        "text": "6.5% (2023 est.)"
+      },
+      "female": {
+        "text": "5.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "4.3% (2022 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2022": {
+        "text": "36.1 (2022 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "34.9% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "1.9% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "2.6% (2022 est.)"
+      },
+      "highest 10%": {
+        "text": "28.1% (2022 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "3.26% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "3.22% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "3.47% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$42.247 billion (2014 est.)"
+      },
+      "expenditures": {
+        "text": "$38.025 billion (2014 est.)"
+      },
+      "note": "<b>note:</b> central government revenues and expenses (excluding grants/extrabudgetary units/social security funds) converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "58.5% of GDP (2017 est.)"
+      },
+      "note": "<strong>note:</strong> official data; data cover general government debt and include debt instruments issued (or owned) by government entities other than the treasury; the data include treasury debt held by foreign entities; the data include debt issued by subnational entities, as well as intragovernmental debt; intragovernmental debt consists of treasury borrowings from surpluses in the social funds, such as for retirement, medical care, and unemployment; debt instruments for the social funds are not sold at public auctions"
+    },
+    "Taxes and other revenues": {
+      "text": "24.8% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "$25.833 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "$1.402 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$4.628 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$375.1 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$385.241 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$340.126 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "US 29%, China 15%, South Korea 6%, Japan 6%, Hong Kong 3% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "broadcasting equipment, garments, telephones, integrated circuits, machine parts (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$339.859 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$369.746 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$338.327 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 38%, South Korea 17%, Japan 5%, Taiwan 4%, Thailand 4% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "integrated circuits, broadcasting equipment, refined petroleum, telephones, fabric (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$92.238 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$86.54 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$109.371 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$37.055 billion (2023 est.)"
+      }
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "dong (VND) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "23,787.319 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "23,271.213 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "23,159.783 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "23,208.368 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "23,050.242 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "85.04 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "251.549 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "628.664 million kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "1.515 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "17.084 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "56.8% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "11.2% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "1.3% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "29.6% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "1.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "43.614 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "83.116 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "1.032 million metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "40.534 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "3.36 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "187,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "494,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "4.4 billion barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "7.676 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "7.676 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "699.426 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "297.826 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "219.167 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "63.759 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "14.9 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "39.117 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "2.316 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "2 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "131 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "140 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "even with Covid-19 pandemic-related mobility restrictions in place, Vietnam&rsquo;s economy has continued to outperform the rest of the region in 2020 and 2021; the telecom sector essentially spent most of this period in a holding pattern, focusing on maintaining service throughout the crisis while preparing for some major changes to come in the mobile market in 2022; both fixed-line telephony and mobile have experienced small drops in subscriber numbers since the start of the pandemic, but the similarities between the two markets end there; fixed-line teledensity continued its downwards trajectory towards virtual oblivion, with just 3% penetration (around 3 million subscribers) at the start of 2021; the mobile market has lost about the same number of subscribers since the end of 2019, but has been sitting on much higher penetration levels around 130% for many years; growth is expected to kick in again in 2022 following the anticipated launch of commercial 5G mobile services along with a range of government-led schemes to move consumers completely off 2G and 3G; one example is the planned redistribution of GSM/3G bandwidth to LTE; in addition to propelling Vietnam into having one of the most advanced mobile markets in the world, this should also spur on the mobile broadband segment; with a penetration level of just over 70%, mobile broadband has considerable room to grow; increasing economic prosperity coupled with the latest smartphone technology and networks should see mobile broadband underwriting the country&rsquo;s telecommunications sector for at least the next few years; this report includes the regulator's market data to July 2021, telcos' financial and operating data updates to June 2021, Telecom Maturity Index charts and analyses, assessment of the global impact of Covid-19 on the telecoms sector, and other recent market developments (2021)"
+      },
+      "domestic": {
+        "text": "fixed-line is 3 per 100 and mobile-cellular is 140 per 100 (2021)"
+      },
+      "international": {
+        "text": "country code - 84; landing points for the SeaMeWe-3, APG, SJC2, AAE-1, AAG and the TGN-IA submarine cable system providing connectivity to Europe, Africa, the Middle East, Asia, Southeast Asia, Australia, and the US; telecom satellite earth stations - 2, (Vinasat 1 and Vinasat 2) (Indian Ocean region) (2023)"
+      }
+    },
+    "Broadcast media": {
+      "text": "government controls all broadcast media exercising oversight through the Ministry of Information and Communication (MIC); government-controlled national TV provider, Vietnam Television (VTV), operates a network of several channels with regional broadcasting centers; programming is relayed nationwide via a network of provincial and municipal TV stations; law limits access to satellite TV but many households are able to access foreign programming via home satellite equipment; government-controlled Voice of Vietnam, the national radio broadcaster, broadcasts on several channels and is repeated on AM, FM, and shortwave stations throughout Vietnam (2018)"
+    },
+    "Internet country code": {
+      "text": ".vn"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "78% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "22.8 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "23 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "5 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "224"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "47,049,671 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "481.37 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "VN"
+    },
+    "Airports": {
+      "text": "42 (2024)"
+    },
+    "Heliports": {
+      "text": "25 (2024)"
+    },
+    "Pipelines": {
+      "text": "72 km condensate, 398 km condensate/gas, 955 km gas, 128 km oil, 33 km oil/gas/water, 206 km refined products, 13 km water (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "2,600 km (2014)"
+      },
+      "standard gauge": {
+        "text": "178 km (2014) 1.435-m gauge; 253 km mixed gauge"
+      },
+      "narrow gauge": {
+        "text": "2,169 km (2014) 1.000-m gauge"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "195,468 km"
+      },
+      "paved": {
+        "text": "148,338 km"
+      },
+      "unpaved": {
+        "text": "47,130 km (2013)"
+      }
+    },
+    "Waterways": {
+      "text": "47,130 km (2011) (30,831 km weight under 50 tons)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "1,973 (2022)"
+      },
+      "by type": {
+        "text": "bulk carrier 117, container ship 45, general cargo 1,176, oil tanker 134, other 501"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "16 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "1"
+      },
+      "small": {
+        "text": "6"
+      },
+      "very small": {
+        "text": "9"
+      },
+      "ports with oil terminals": {
+        "text": "12"
+      },
+      "key ports": {
+        "text": "Da Nang, Hai Phong, Nghe Tinh, Nha Trang, Thanh Ho Chi Minh, Vinh Cam Ranh, Vung Tau"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "People's Army of Vietnam (PAVN; aka Vietnam People's Army, VPA): Ground Forces, Navy (includes naval infantry), Air Defense Force, Border Defense Force, Vietnam Coast Guard<br><br>Vietnam People's Ministry of Public Security; Vietnam Civil Defense Force (2024)",
+      "note": "<strong>note 1:</strong> the People's Public Security Ministry is responsible for internal security and controls the national police, a special national security investigative agency, and other internal security units, including specialized riot police regiments<br><br><strong>note 2:</strong> the Vietnam Coast Guard was established in 1998 as the Vietnam Marine Police and renamed in 2013; Vietnam officially established a maritime self-defense force (civilian militia) in 2010 after the National Assembly passed the Law on Militia and Self-Defense Forces in 2009; the Vietnam Department of Fisheries Resources Surveillance (DFIRES; under the Ministry of Agriculture and Rural Development), established in 2013, is responsible for fisheries enforcement, aquatic conservation roles, and is designated as Vietnam's standing agency for combating illegal, unregulated, and unreported fishing; it is armed, allowed to use force if necessary, and works in tandem with the Vietnam Coast Guard"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "1.8% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "2.3% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "2.3% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "2.4% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "2.3% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "information is limited and varied; estimated 450,000 active-duty troops; estimated 40,000 Border Defense Force and Coast Guard (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the PAVN is armed largely with weapons and equipment from Russia and the former Soviet Union; in recent years, Vietnam has moved to diversify arms its arms suppliers and has acquired items from countries such as India, South Korea, and the US; Vietnam has a small defense industry involved in the manufacture of small arms, ground combat vehicles, and naval systems (2024)",
+      "note": "<strong>note:</strong> the US lifted an embargo on arms sales to Vietnam in 2016"
+    },
+    "Military service age and obligation": {
+      "text": "18-27 years of age for compulsory and voluntary military service for men and women (in practice only men are drafted); service obligation is between 24 (Army, Air Defense) and 36 (Navy and Air Force) months (2023)"
+    },
+    "Military deployments": {
+      "text": "190 Abyei/South Sudan/Sudan (UNISFA) (2024)"
+    },
+    "Military - note": {
+      "text": "since withdrawing its military occupation forces from Cambodia in the late 1980s and the end of Soviet aid in 1991, Vietnam has practiced a non-aligned foreign policy that emphasizes friendly ties with all members of the international community; Hanoi adheres to a security doctrine called the \"Four Nos\" (no alliances, no siding with one country against another, no foreign bases, and no using force in international relations); despite longstanding tensions with Beijing over maritime boundaries in the South China Sea, Vietnam puts a priority on stable relations with China, given its proximity, size, and status as Vietnam's largest trading partner<br><br>the PAVN is one of the region’s largest militaries and has participated in numerous conflicts since its founding in the mid-1940s, including the First (1946-54) and Second (1955-1975) Indochina Wars, the Cambodian-Vietnamese War (1978-1989), and the Sino-Vietnamese War (1979); the PAVN’s current missions include protecting the country's independence, sovereignty, territorial integrity, and national interests; in recent years, it has placed additional emphasis on protecting the country’s maritime economy and sovereignty in the South China Sea, including strengthening air and naval capabilities; the PAVN also assists with natural disasters and is involved in economic projects, such as electrical infrastructure, oil and gas services, hydroelectric projects, aviation and seaport services, telecommunications, and the shipbuilding industry, while military-owned factories and enterprises produce weapons and equipment<br><br>the PAVN is the military arm of the ruling Communist Party of Vietnam (CPV) and responsible to the Central Military Commission (CMC), the highest party organ on military policy; the CMC is led by the CPV General Secretary (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Vietnam National Space Center (VNSC; established 2011; formerly known as the Vietnam National Satellite Center); Space Technology Institute (STI; established 2006); both the VNSC and the STI operate under the Vietnamese Academy of Science and Technology (VAST); Ministry of Science and Technology (2024)"
+    },
+    "Space program overview": {
+      "text": "has a growing space program focused on acquiring, operating, and exploiting satellites, as well as expanding domestic capabilities in satellites and associated sub-system production, space sciences, and technology applications; builds and operates communications and remote sensing satellites; conducting research and development on space science and applied space technologies, such as advanced optics and space data exploitation; has worked closely with Japan on its space program since inception; cooperation has included funding, loans, training, technical expertise, and data sharing; has also established relationships with the space agencies or commercial space sectors of some European countries (such as France), India, and the US (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "stateless persons": {
+        "text": "35,475 (2022); note - Vietnam's stateless ethnic Chinese Cambodian population dates to the 1970s when thousands of Cambodians fled to Vietnam to escape the Khmer Rouge and were no longer recognized as Cambodian citizens; Vietnamese women who gave up their citizenship to marry foreign men have found themselves stateless after divorcing and returning home to Vietnam; the government addressed this problem in 2009, and Vietnamese women are beginning to reclaim their citizenship"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>a transshipment and destination country for all types of illegal drugs; most transshipments destined for other Asian countries and not the United States; heroin transits from Thailand, Laos, and Burma for domestic use and shipping to r countries in Southeast Asia, Oceania, China and Taiwan; methamphetamine and amphetamine type stimulants from Burma locally consumed and shipped; South American cocaine locally consumed and distributed to Southeast Asia and Oceania</p>"
+    }
+  }
+}

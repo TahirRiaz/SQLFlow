@@ -1,0 +1,999 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>The Ottoman Empire took control of Kosovo in 1389 after defeating Serbian forces. Large numbers of Turks and Albanians moved to the region, and by the end of the 19th century, Albanians had replaced Serbs as the majority ethnic group in Kosovo. Serbia reacquired control of Kosovo during the First Balkan War of 1912, and after World War II, Kosovo became an autonomous province of Serbia in the Socialist Federal Republic of Yugoslavia (SFRY). Increasing Albanian nationalism in the 1980s led to riots and calls for Kosovo's independence, but in 1989, Belgrade -- which has in turn served as the capital of Serbia and Yugoslavia -- revoked Kosovo's autonomous status. When the SFRY broke up in 1991, Kosovo Albanian leaders organized an independence referendum, and Belgrade's repressive response led to an insurgency. Kosovo remained part of Serbia, which joined with Montenegro to declare a new Federal Republic of Yugoslavia (FRY) in 1992. <br><br>In 1998, Belgrade launched a brutal counterinsurgency campaign, with some 800,000 ethnic Albanians expelled from their homes in Kosovo. After international mediation failed, a NATO military operation began in March 1999 and forced Belgrade to withdraw its forces from Kosovo. UN Security Council Resolution 1244 (1999) placed Kosovo under the temporary control of the UN Interim Administration Mission in Kosovo (UNMIK). Negotiations in 2006-07 ended without agreement between Serbia and Kosovo, though the UN issued a comprehensive report that endorsed independence. On 17 February 2008, the Kosovo Assembly declared Kosovo independent. <br><br>Serbia continues to reject Kosovo's independence, but the two countries began EU-facilitated discussions in 2013 to normalize relations, which resulted in several agreements. Additional agreements were reached in 2015 and 2023, but implementation remains incomplete. In 2022, Kosovo formally applied for membership in the EU, which is contingent on fulfillment of accession criteria, and the Council of Europe. Kosovo is also seeking UN and NATO memberships.</p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southeastern Europe, between Serbia and Macedonia"
+    },
+    "Geographic coordinates": {
+      "text": "42 35 N, 21 00 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "10,887 sq km"
+      },
+      "land": {
+        "text": "10,887 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly larger than Delaware"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "714 km"
+      },
+      "border countries": {
+        "text": "Albania 112 km; North Macedonia 160 km; Montenegro 76 km; Serbia 366 km"
+      }
+    },
+    "Coastline": {
+      "text": "0 km (landlocked)"
+    },
+    "Maritime claims": {
+      "text": "none (landlocked)"
+    },
+    "Climate": {
+      "text": "influenced by continental air masses resulting in relatively cold winters with heavy snowfall and hot, dry summers and autumns; Mediterranean and alpine influences create regional variation; maximum rainfall between October and December"
+    },
+    "Terrain": {
+      "text": "flat fluvial basin at an elevation of 400-700 m above sea level surrounded by several high mountain ranges with elevations of 2,000 to 2,500 m"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Gjeravica/Deravica 2,656 m"
+      },
+      "lowest point": {
+        "text": "Drini i Bardhe/Beli Drim (located on the border with Albania) 297 m"
+      },
+      "mean elevation": {
+        "text": "450 m"
+      }
+    },
+    "Natural resources": {
+      "text": "nickel, lead, zinc, magnesium, lignite, kaolin, chrome, bauxite"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "52.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 27.4% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.9% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 23.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "41.7% (2018 est.)"
+      },
+      "other": {
+        "text": "5.5% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "NA"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Population distribution": {
+      "text": "population clusters exist throughout the country, the largest being in the east in and around the capital of Pristina"
+    },
+    "Geography - note": {
+      "text": "the 41-km long Nerodimka River divides into two branches, each of which flows into a different sea: the northern branch flows into the Sitnica River, which via the Ibar, Morava, and Danube Rivers ultimately flows into the Black Sea; the southern branch flows via the Lepenac and Vardar Rivers into the Aegean Sea"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "1,977,093"
+      },
+      "male": {
+        "text": "1,017,992"
+      },
+      "female": {
+        "text": "959,101 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Kosovan"
+      },
+      "adjective": {
+        "text": "Kosovan"
+      },
+      "note": "<strong>note:</strong> Kosovo, a neutral term, is sometimes also used as a noun or adjective as in Kosovo Albanian, Kosovo Serb, Kosovo minority, or Kosovo citizen"
+    },
+    "Ethnic groups": {
+      "text": "Albanians 92.9%, Bosniaks 1.6%, Serbs 1.5%, Turk 1.1%, Ashkali 0.9%, Egyptian 0.7%, Gorani 0.6%, Romani 0.5%, other/unspecified 0.2% (2011 est.)",
+      "note": "<strong>note:</strong> these estimates may under-represent Serb, Romani, and some other ethnic minorities because they are based on the 2011 Kosovo national census, which excluded northern Kosovo (a largely Serb-inhabited region) and was partially boycotted by Serb and Romani communities in southern Kosovo"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Albanian (official) 94.5%, Bosnian 1.7%, Serbian (official) 1.6%, Turkish 1.1%, other 0.9% (includes Romani), unspecified 0.1% (2011 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "Libri i fakteve boterore, burimi i pazevendesueshem per informacione elementare (Albanian)<br><br>Knjiga svetskih činjenica, neophodan izvor osnovnih informacija. (Serbian)<br><br>The World Factbook, the indispensable source for basic information."
+      },
+      "note": "<strong>note:</strong> these estimates may under-represent Serb, Romani, and other ethnic minority languages because they are based on the 2011 Kosovo national census, which excluded northern Kosovo (a largely Serb-inhabited region) and was partially boycotted by Serb and Romani communities in southern Kosovo"
+    },
+    "Religions": {
+      "text": "Muslim 95.6%, Roman Catholic 2.2%, Orthodox 1.5%, other 0.1%, none 0.1%, unspecified 0.6% (2011 est.)",
+      "note": "<strong>note:</strong> these estimates may under-represent Serb, Romani, and some other ethnic minorities because they are based on the 2011 Kosovo national census, which excluded northern Kosovo (a largely Serb-inhabited region) and was partially boycotted by Serb and Romani communities in southern Kosovo"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "22.7% (male 233,010/female 216,304)"
+      },
+      "15-64 years": {
+        "text": "68.9% (male 712,403/female 649,932)"
+      },
+      "65 years and over": {
+        "text": "8.4% (2024 est.) (male 72,579/female 92,865)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "46.9"
+      },
+      "youth dependency ratio": {
+        "text": "32.3"
+      },
+      "elderly dependency ratio": {
+        "text": "14.6"
+      },
+      "potential support ratio": {
+        "text": "6.9 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "32 years (2024 est.)"
+      },
+      "male": {
+        "text": "31.7 years"
+      },
+      "female": {
+        "text": "32.4 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.68% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "14.4 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "7.2 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.4 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "population clusters exist throughout the country, the largest being in the east in and around the capital of Pristina"
+    },
+    "Major urban areas - population": {
+      "text": "218,782 PRISTINA (capital) (2020)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.08 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.08 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.1 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.78 male(s)/female"
+      },
+      "total population": {
+        "text": "1.06 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "22.9 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "24.2 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "21.5 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "73.1 years (2024 est.)"
+      },
+      "male": {
+        "text": "71 years"
+      },
+      "female": {
+        "text": "75.5 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.87 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.9 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: NA"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: NA"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: NA"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: NA"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Education expenditures": {
+      "text": "NA"
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air pollution (pollution from power plants and nearby lignite mines take a toll on people's health); water scarcity and pollution; land degradation"
+    },
+    "Climate": {
+      "text": "influenced by continental air masses resulting in relatively cold winters with heavy snowfall and hot, dry summers and autumns; Mediterranean and alpine influences create regional variation; maximum rainfall between October and December"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "52.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 27.4% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 1.9% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 23.5% (2018 est.)"
+      },
+      "forest": {
+        "text": "41.7% (2018 est.)"
+      },
+      "other": {
+        "text": "5.5% (2018 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.31% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "carbon dioxide emissions": {
+        "text": "8.94 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "0.54 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "319,000 tons (2015 est.)"
+      }
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Kosovo"
+      },
+      "conventional short form": {
+        "text": "Kosovo"
+      },
+      "local long form": {
+        "text": "Republika e Kosoves (Albanian)/ Republika Kosovo (Serbian)"
+      },
+      "local short form": {
+        "text": "Kosove (Albanian)/ Kosovo (Serbian)"
+      },
+      "etymology": {
+        "text": "name derives from the Serbian \"kos\" meaning \"blackbird,\" an ellipsis (linguistic omission) for \"kosove polje\" or \"field of the blackbirds\""
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Pristina (Prishtine, Prishtina)"
+      },
+      "geographic coordinates": {
+        "text": "42 40 N, 21 10 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "the name may derive from a Proto-Slavic word reconstructed as \"pryshchina,\" meaning \"spring (of water)\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "38 municipalities (komunat, singular - komuna (Albanian); opstine, singular - opstina (Serbian)); Decan (Decani), Dragash (Dragas), Ferizaj (Urosevac), Fushe Kosove (Kosovo Polje), Gjakove (Dakovica), Gjilan (Gnjilane), Gllogovc (Glogovac), Gracanice (Gracanica), Hani i Elezit (Deneral Jankovic), Istog (Istok), Junik, Kacanik, Kamenice (Kamenica), Kline (Klina), Kllokot (Klokot), Leposaviq (Leposavic), Lipjan (Lipljan), Malisheve (Malisevo), Mamushe (Mamusa), Mitrovice e Jugut (Juzna Mitrovica) [South Mitrovica], Mitrovice e Veriut (Severna Mitrovica) [North Mitrovica], Novoberde (Novo Brdo), Obiliq (Obilic), Partesh (Partes), Peje (Pec), Podujeve (Podujevo), Prishtine (Pristina), Prizren, Rahovec (Orahovac), Ranillug (Ranilug), Shterpce (Strpce), Shtime (Stimlje), Skenderaj (Srbica), Suhareke (Suva Reka), Viti (Vitina), Vushtrri (Vucitrn), Zubin Potok, Zvecan"
+    },
+    "Independence": {
+      "text": "17 February 2008 (from Serbia)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 17 February (2008)"
+    },
+    "Legal system": {
+      "text": "civil law system; note - the European Union Rule of Law Mission (EULEX) retained limited executive powers within the Kosovo judiciary for complex cases from 2008 to 2018"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1974, 1990; latest (postindependence) draft finalized 2 April 2008, signed 7 April 2008, ratified 9 April 2008, entered into force 15 June 2008; note - amendment 24, passed by the Assembly in August 2015, established the Kosovo Relocated Specialist Institution, referred to as the Kosovo Specialist Chamber or \"Specialist Court,\" to try war crimes, crimes against humanity, and other crimes under Kosovo law committed during and immediately after the Kosovo War (1998-2000)"
+      },
+      "amendments": {
+        "text": "proposed by the government, by the president of the republic, or by one fourth of Assembly deputies; passage requires two-thirds majority vote of the Assembly, including two-thirds majority vote of deputies representing non-majority communities, followed by a favorable Constitutional Court assessment; amended several times, last in 2020"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; non-party state to the ICCt"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Kosovo"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Vjosa OSMANI-Sadriu (since 4 April 2021)"
+      },
+      "head of government": {
+        "text": "Prime Minister Albin KURTI (since 22 March 2021)"
+      },
+      "cabinet": {
+        "text": "Cabinet elected by the Assembly"
+      },
+      "elections/appointments": {
+        "text": "president indirectly elected by at least two-thirds majority vote of the Assembly for a 5-year term; if a candidate does not attain a two-thirds threshold in the first two ballots, the candidate winning a simple majority vote in the third ballot is elected (eligible for a second term); election last held on 3 to 4 April 2021 (next to be held in 2026); prime minister indirectly elected by the Assembly"
+      },
+      "election results": {
+        "text": "<em><br>2021: </em> Vjosa OSMANI-Sadriu elected president in third ballot; Assembly vote - Vjosa OSMANI-Sadriu (Guxo!) 71 votes; Albin KURTI (LVV) elected prime minister; Assembly vote - 67 for, 30 against<br><br><em>2017: </em>Ramush HARADINAJ (AAK) elected prime minister; Assembly vote - 61 for, 1 abstention, 0 against (opposition boycott)<br><br><em>2016:</em> Hashim THACI elected president in third ballot; Assembly vote - Hashim THACI (PDK) 71 votes"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Assembly (Kuvendi i Kosoves/Skupstina Kosova)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "120 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "2/14/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "Self-Determination Movement (LVV) (58), Democratic Party of Kosovo (PDK) (19), Democratic League of Kosovo (LDK) (15), Serb List (10), Alliance for the Future of Kosovo (AAK) (8), other (10)"
+      },
+      "percentage of women in chamber": {
+        "text": "34%"
+      },
+      "expected date of next election": {
+        "text": "2025"
+      },
+      "note": "<strong>note:</strong> 20 seats reserved for ethnic minorities -- 10 for Serbs and 10 for other minorities"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court (consists of the court president and 18 judges and organized into Appeals Panel of the Kosovo Property Agency and Special Chamber); Constitutional Court (consists of the court president, vice president, and 7 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court judges nominated by the Kosovo Judicial Council, a 13-member independent body staffed by judges and lay members, and also responsible for overall administration of Kosovo's judicial system; judges appointed by the president of the Republic of Kosovo; judges appointed until mandatory retirement age; Constitutional Court judges nominated by the Kosovo Assembly and appointed by the president of the republic to serve single, 9-year terms"
+      },
+      "subordinate courts": {
+        "text": "Court of Appeals (organized into 4 departments: General, Serious Crime, Commercial Matters, and Administrative Matters); Basic Court (located in 7 municipalities, each with several branches)"
+      },
+      "note": "<strong>note:</strong> in August 2015, the Kosovo Assembly approved a constitutional amendment that established the Kosovo Relocated Specialist Judicial Institution, also referred to as the Kosovo Specialist Chambers or \"Special Court\"; the court, located at the Hague in the Netherlands, began operating in late 2016 and has jurisdiction to try crimes against humanity, war crimes, and other crimes under Kosovo law that occurred in the 1998-2000 period"
+    },
+    "Political parties": {
+      "text": "Alliance for the Future of Kosovo or AAK<br>Ashkali Party for Integration or PAI<br>Civic Initiative for Freedom, Justice, and Survival<br>Democratic League of Kosovo or LDK<br>Democratic Party of Kosovo or PDK<br>New Democratic Initiative of Kosovo or IRDK<br>New Democratic Party or NDS <br>Progressive Movement of Kosovar Roma or LPRK<br>Romani Initiative<br>Self-Determination Movement (Lëvizja Vetevendosje or Vetevendosie) or LVV or VV<br>Serb List or SL<br>Social Democratic Union or SDU<br>Turkish Democratic Party of Kosovo or KDTP<br>Unique Gorani Party or JGP<br>Vakat Coalition or VAKAT"
+    },
+    "International organization participation": {
+      "text": "FIFA, IBRD, IDA, IFC, IMF, IOC, ITUC (NGOs), MIGA, OIF (observer)"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Ilir DUGOLLI (since 13 January 2022)"
+      },
+      "chancery": {
+        "text": "3612 Massachusetts Ave NW, Washington, D.C. 20007"
+      },
+      "telephone": {
+        "text": "[1] (202) 450-2130"
+      },
+      "FAX": {
+        "text": "[1] (202) 735-0609"
+      },
+      "email address and website": {
+        "text": "<br>embassy.usa@rks-gov.net<br><br>U.S. Embassies of the Republic of Kosovo (ambasadat.net)"
+      },
+      "consulate(s) general": {
+        "text": "New York"
+      },
+      "consulate(s)": {
+        "text": "Des Moines (IA)"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador&nbsp;(vacant); Charg&eacute; d'Affaires Anu PRATTIPATI (since January 2025)"
+      },
+      "embassy": {
+        "text": "Arberia/Dragodan, Rr.&nbsp; 4 KORRIKU Nr. 25, Pristina"
+      },
+      "mailing address": {
+        "text": "9520 Pristina Place, Washington DC&nbsp; 20521-9520"
+      },
+      "telephone": {
+        "text": "[383] 38-59-59-3000"
+      },
+      "FAX": {
+        "text": "[383] 38-604-890"
+      },
+      "email address and website": {
+        "text": "<br>PristinaACS@state.gov<br><br>https://xk.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "centered on a dark blue field is a gold-colored silhouette of Kosovo surmounted by six white, five-pointed stars arrayed in a slight arc; each star represents one of the major ethnic groups of Kosovo: Albanians, Serbs, Turks, Gorani, Roma, and Bosniaks",
+      "note": "<strong>note:</strong> one of only two national flags that uses a map as a design element; the flag of Cyprus is the other"
+    },
+    "National symbol(s)": {
+      "text": "six, five-pointed, white stars; national colors: blue, gold, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "Europe"
+      },
+      "lyrics/music": {
+        "text": "no lyrics/Mendi MENGJIQI"
+      },
+      "note": "<strong>note:</strong> adopted 2008; Kosovo chose to exclude lyrics in its anthem so as not to offend the country's minority ethnic groups"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "1 (cultural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Medieval Monuments in Kosovo"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "small-but-growing European economy; non-EU member but unilateral euro user; very high unemployment, especially youth; vulnerable reliance on diaspora tourism services, curtailed by COVID-19 disruptions; unclear public loan portfolio health"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$23.962 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$23.025 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$22.08 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "4.07% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "4.28% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "10.75% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$13,600 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$13,000 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$12,400 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$10.468 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "4.94% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "11.58% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "3.35% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "7.2% (2023 est.)"
+      },
+      "industry": {
+        "text": "26.3% (2023 est.)"
+      },
+      "services": {
+        "text": "46.6% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "84.1% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "12.6% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "31.5% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "2.5% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "39.6% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-70.3% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "wheat, corn, berries, potatoes, peppers, fruit; dairy, livestock; fish"
+    },
+    "Industries": {
+      "text": "mineral mining, construction materials, base metals, leather, machinery, appliances, foodstuffs and beverages, textiles"
+    },
+    "Industrial production growth rate": {
+      "text": "3.35% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "500,300 (2017 est.)",
+      "note": "<strong>note:</strong> includes those estimated to be employed in the gray economy"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2017": {
+        "text": "30.5% (2017 est.)"
+      },
+      "Unemployment rate 2016": {
+        "text": "27.5% (2016 est.)"
+      },
+      "note": "<strong>note:</strong> Kosovo has a large informal sector that may not be reflected in these data"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "48.8% (2020 est.)"
+      },
+      "male": {
+        "text": "44.9%"
+      },
+      "female": {
+        "text": "57.3%"
+      }
+    },
+    "Population below poverty line": {
+      "text": "17.6% (2015 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2017": {
+        "text": "29 (2017 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "3.8% (2017 est.)"
+      },
+      "highest 10%": {
+        "text": "24.6% (2017 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "17.51% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "17.24% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "18.01% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$1.951 billion (2020 est.)"
+      },
+      "expenditures": {
+        "text": "$2.547 billion (2020 est.)"
+      }
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "21.2% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "29% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$785.09 million (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$983.283 million (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$818.351 million (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$4.156 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$3.579 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$3.138 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "United States 16%, Albania 15%, North Macedonia 12%, Germany 8%, Italy 8% (2021)"
+    },
+    "Exports - commodities": {
+      "text": "mattress materials, iron alloys, metal piping, scrap iron, building plastics, mineral water, seating (2021)"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$7.362 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$6.661 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$6.128 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Germany 13%, Turkey 13%, China 10%, Serbia 7%, Italy 6% (2021)"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, cars, iron rods, electricity, cigars, packaged medicines (2021)"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$1.245 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$1.248 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$1.244 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$829.127 million (2023 est.)"
+      }
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.951 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.877 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      },
+      "note": "<strong>note: </strong>Kosovo, which is neither an EU member state nor a party to a formal EU monetary agreement, uses the euro as its de facto currency"
+    }
+  },
+  "Energy": {
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "1.547 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "6.487 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "3.139 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "3.687 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "1.05 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "90.8% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.2% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "5.2% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "3.8% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "9.074 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "8.927 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "127,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "12,000 metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "1.564 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "15,000 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "8.619 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "6.427 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "2.192 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "57.072 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "383,763 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "7 (2022 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "1,777,859 (2022 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "98 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Kosovo has benefited from financial and regulatory assistance as part of the EU pre-accession process; the telecom sector has been liberalized, and legislation has aligned the sector with the EU&rsquo;s revised regulatory framework; infrastructure development includes WiMax and other municipal wireless internet services; digitalization of TV broadcasting; network upgrades include a 5G roll-out in the coming years (2022 )"
+      },
+      "domestic": {
+        "text": "fixed-line roughly 25 per 100 and mobile-cellular 98 per 100 persons (2022)"
+      },
+      "international": {
+        "text": "country code - 383"
+      }
+    },
+    "Internet country code": {
+      "text": ".xk; note - assigned as a temporary code under UN Security Council resolution 1244/99<br><br> ",
+      "note": "&nbsp;"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "89% (2018 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "0 (2020)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "Z6"
+    },
+    "Airports": {
+      "text": "4 (2024)"
+    },
+    "Heliports": {
+      "text": "6 (2024)"
+    },
+    "Railways": {
+      "total": {
+        "text": "437 km (2020)"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "2,248 km (2022)"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Kosovo Security Force (KSF; Forca e Sigurisë së Kosovës or FSK): Land Force, National Guard (2024)",
+      "note": "<strong>note:</strong> the Kosovo Police are under the Ministry of Internal Affairs"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "1.3% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.1% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.1% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "0.8% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 3,300 KSF personnel, including about 800 reserves (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the KSF is equipped with small arms and light vehicles and has relied on limited amounts of donated equipment from several countries, particularly Turkey and the US (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "any citizen of Kosovo over the age of 18 is eligible to serve in the Kosovo Security Force; upper age for enlisting is 30 for officers, 25 for other ranks, although these may be waived for recruits with key skills considered essential for the KSF<br> (2024)"
+    },
+    "Military - note": {
+      "text": "the Kosovo Security Force (KSF) was established in 2009 as a small (1,500 personnel), lightly armed disaster response force; the NATO-led Kosovo Force (KFOR) was charged with assisting in the development of the KSF and bringing it up to standards designated by NATO; the KSF was certified as fully operational by the North Atlantic Council in 2013, indicating the then 2,200-strong KSF was entirely capable of performing the tasks assigned under its mandate, which included non-military security functions that were not appropriate for the police, plus missions such as search and rescue, explosive ordnance disposal, control and clearance of hazardous materials, firefighting, and other humanitarian assistance tasks<br><br>in 2019, Kosovo approved legislation that began a process to transition the KSF by 2028 into a professional military (the Kosovo Armed Forces) led by a General Staff and comprised of a Land Force, a National Guard, a Logistics Command, and a Doctrine and Training Command; it would have a strength of up to 5,000 with about 3,000 reserves; at the same time, the KSF’s mission was expanded to include traditional military functions, such as territorial defense and international peacekeeping; the KSF’s first international mission was the deployment of a small force to Kuwait in 2021 <br><br>the NATO-led KFOR has operated in the country as a peace support force since 1999; in addition to assisting in the development of the KSF, KFOR is responsible for providing a safe and secure environment and ensuring freedom of movement for all citizens; as of 2024, it numbered about 4,400 troops from 28 countries; Kosovo regards the US as a key ally and security guarantor, and the US has provided considerable support to the KSF, including equipment and training (2024)"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic State of Iraq and ash-Sham (ISIS)",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Disputes - international": {
+      "note": "<strong>note:</strong> NATO-led Kosovo Force peacekeepers deployed under UN Security Council Resolution 1244 continue to ensure a safe and secure environment and freedom of movement for all Kosovo citizens; in September 2023, KFOR deployed additional forces in the north of Kosovo and increased patrols along the border with Serbia after Kosovo-Serb paramilitaries attacked Kosovo police near the town of Banjska; some of Kosovo’s ethnic Serb minority, most of whom live in the northern regions, view themselves as part of Serbia, and Serbian municipalities along the northern border have challenged the final status of Kosovo-Serbia boundary; some protests have turned violent "
+    },
+    "Refugees and internally displaced persons": {
+      "IDPs": {
+        "text": "16,000 (primarily ethnic Serbs displaced during the 1998-1999 war fearing reprisals from the majority ethnic-Albanian population; a smaller number of ethnic Serbs, Roma, Ashkali, and Egyptians fled their homes in 2004 as a result of violence) (2022)"
+      },
+      "note": "<strong>note:</strong> 9,011 estimated refugee and migrant arrivals (January 2015-August 2023)"
+    }
+  }
+}

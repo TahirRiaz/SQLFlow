@@ -1,0 +1,289 @@
+/*
+  SQLFlow design system: a VS Code-style workbench look built on Tailwind v4 + shadcn/ui tokens.
+
+  The identity is anchored on the SQLFlow logo (public/brand/): deep navy #283e56 with a warm cream mark.
+  The workbench follows the VS Code model: chrome (activity bar, side bar, panel, status bar) sits a shade
+  darker than the editor surface, the status bar wears the brand blue, and data renders in a monospace face.
+
+  Dark mode is keyed on the `dark` class the theme provider sets on <html>; shadcn semantic tokens
+  (--background, --primary, ...) are the single source of truth, and the workbench chrome tokens
+  (--activity-bar, --status-bar, ...) extend them for the shell.
+*/
+
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.375rem;
+
+  /* Identity (from the logo) */
+  --brand-navy: #283e56;
+  --brand-navy-deep: #1b2c40;
+  --brand-cream: #fdf3e7;
+
+  /* Core surfaces: light mode reads like VS Code Light, with the brand navy kept for the activity bar. */
+  --background: #f6f8fb;
+  --foreground: #1d2733;
+  --card: #ffffff;
+  --card-foreground: #1d2733;
+  --popover: #ffffff;
+  --popover-foreground: #1d2733;
+  --primary: #2f6fce;
+  --primary-foreground: #ffffff;
+  --secondary: #e8edf4;
+  --secondary-foreground: #33455c;
+  --muted: #edf1f6;
+  --muted-foreground: #5b6b7f;
+  --accent: #e4ecf6;
+  --accent-foreground: #1d2733;
+  --destructive: #d1242f;
+  --destructive-foreground: #ffffff;
+  --border: #dfe5ee;
+  --input: #ccd6e3;
+  --ring: #2f6fce;
+
+  /* Status semantics (badges, toasts, run states) */
+  --success: #1a7f37;
+  --success-foreground: #ffffff;
+  --warning: #9a6700;
+  --warning-foreground: #ffffff;
+  --info: #0969da;
+  --info-foreground: #ffffff;
+
+  /* Workbench chrome: activity bar and status bar stay branded in both modes. */
+  --activity-bar: var(--brand-navy);
+  --activity-bar-foreground: #b6c4d6;
+  --activity-bar-active: #ffffff;
+  --activity-bar-badge: #2f6fce;
+  --side-bar: #eef2f7;
+  --side-bar-foreground: #33455c;
+  --panel: #ffffff;
+  --status-bar: #2f6fce;
+  --status-bar-foreground: #ffffff;
+  --tab-bar: #eef2f7;
+  --tab-active: #ffffff;
+  --editor: #ffffff;
+
+  /* Sidebar tokens (shadcn naming, consumed by ui primitives) */
+  --sidebar: var(--side-bar);
+  --sidebar-foreground: var(--side-bar-foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #dde6f0;
+  --sidebar-accent-foreground: #1d2733;
+  --sidebar-border: #dfe5ee;
+  --sidebar-ring: var(--ring);
+
+  /* Chart series: the validated categorical palette (DESIGN.md 3.4). Fixed slot order, never cycled;
+     do not re-order or substitute steps without re-running the dataviz validator. */
+  --chart-1: #2a78d6;
+  --chart-2: #008300;
+  --chart-3: #e87ba4;
+  --chart-4: #eda100;
+  --chart-5: #1baf7a;
+  --chart-6: #eb6834;
+  --chart-7: #4a3aa7;
+  --chart-8: #e34948;
+}
+
+.dark {
+  /* Core surfaces: navy-family darks (never neutral gray), editor a shade lighter than the chrome. */
+  --background: #111a28;
+  --foreground: #dce6f2;
+  --card: #16202f;
+  --card-foreground: #dce6f2;
+  --popover: #16202f;
+  --popover-foreground: #dce6f2;
+  --primary: #4d9dff;
+  --primary-foreground: #081524;
+  --secondary: #1c2839;
+  --secondary-foreground: #c7d3e2;
+  --muted: #1a2536;
+  --muted-foreground: #8b9db3;
+  --accent: #1d2c40;
+  --accent-foreground: #e6eef8;
+  --destructive: #e5484d;
+  --destructive-foreground: #ffffff;
+  --border: #223146;
+  --input: #2a3b53;
+  --ring: #4d9dff;
+
+  --success: #3fb950;
+  --success-foreground: #081524;
+  --warning: #d29922;
+  --warning-foreground: #081524;
+  --info: #58a6ff;
+  --info-foreground: #081524;
+
+  --activity-bar: #0c1420;
+  --activity-bar-foreground: #7d90a8;
+  --activity-bar-active: #ffffff;
+  --activity-bar-badge: #4d9dff;
+  --side-bar: #0f1826;
+  --side-bar-foreground: #b7c4d4;
+  --panel: #0f1826;
+  --status-bar: #2f6fce;
+  --status-bar-foreground: #ffffff;
+  --tab-bar: #0c1420;
+  --tab-active: #111a28;
+  --editor: #111a28;
+
+  --sidebar: var(--side-bar);
+  --sidebar-foreground: var(--side-bar-foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: #1d2c40;
+  --sidebar-accent-foreground: #e6eef8;
+  --sidebar-border: #1c2a3d;
+  --sidebar-ring: var(--ring);
+
+  /* Dark steps of the same eight hues, validated against the dark card surface (DESIGN.md 3.4). */
+  --chart-1: #3987e5;
+  --chart-2: #008300;
+  --chart-3: #d55181;
+  --chart-4: #c98500;
+  --chart-5: #199e70;
+  --chart-6: #d95926;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+}
+
+@theme inline {
+  --font-sans: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "JetBrains Mono", Consolas, "Courier New", monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+
+  --color-activity-bar: var(--activity-bar);
+  --color-activity-bar-foreground: var(--activity-bar-foreground);
+  --color-activity-bar-active: var(--activity-bar-active);
+  --color-activity-bar-badge: var(--activity-bar-badge);
+  --color-side-bar: var(--side-bar);
+  --color-side-bar-foreground: var(--side-bar-foreground);
+  --color-panel: var(--panel);
+  --color-status-bar: var(--status-bar);
+  --color-status-bar-foreground: var(--status-bar-foreground);
+  --color-tab-bar: var(--tab-bar);
+  --color-tab-active: var(--tab-active);
+  --color-editor: var(--editor);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-7: var(--chart-7);
+  --color-chart-8: var(--chart-8);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 13px;
+  }
+
+  /* VS Code-like scrollbars: slim, transparent track, thumb visible only where content scrolls. */
+  * {
+    scrollbar-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent) transparent;
+    scrollbar-width: thin;
+  }
+
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--muted-foreground) 35%, transparent);
+    border-radius: 5px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--primary) 30%, transparent);
+  }
+}
+
+/* The route-loading sweep (components/TopProgressBar.tsx). */
+@keyframes top-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(350%);
+  }
+}
+
+/* React Flow (lineage graph) picks up the workbench tokens instead of the library defaults. */
+.react-flow__node {
+  border-color: var(--primary);
+  color: var(--foreground);
+  background: var(--card);
+}
+
+.react-flow__node.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 40%, transparent);
+}
+
+.react-flow__edge-path {
+  stroke: var(--muted-foreground);
+}
+
+.react-flow__minimap {
+  background: var(--background);
+}

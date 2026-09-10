@@ -1,0 +1,1316 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The archipelago was once largely under the control of Buddhist and Hindu rulers. By around the 7th century, a Buddhist kingdom arose on Sumatra and expanded into Java and the Malay Peninsula until it was conquered in the late 13th century by the Hindu Majapahit Empire from Java. Majapahit (1290-1527) united most of modern-day Indonesia and Malaysia. Traders introduced Islam around the 11th century, and the religion was gradually over the next 500 years. The Portuguese conquered parts of Indonesia in the 16th century, but the Dutch ousted them (except in East Timor) and began colonizing the islands in the early 17th century. It would be the early 20th century before Dutch colonial rule was established across the entirety of what would become the boundaries of the modern Indonesian state.<br><br>Japan occupied the islands from 1942 to 1945. Indonesia declared its independence shortly before Japan's surrender, but it required four years of sometimes brutal fighting, intermittent negotiations, and UN mediation before the Netherlands agreed to transfer sovereignty in 1949. A period of sometimes unruly parliamentary democracy ended in 1957 when President SOEKARNO declared martial law and instituted \"Guided Democracy.\" After an abortive coup in 1965 by alleged communist sympathizers, SOEKARNO was gradually eased from power. From 1967 until 1998, President SUHARTO ruled Indonesia with his \"New Order\" government. After street protests toppled SUHARTO in 1998, free and fair legislative elections took place in 1999 while the country's first direct presidential election occurred in 2004. Indonesia has since become a robust democracy, holding four direct presidential elections, each considered by international observers to have been largely free and fair. <br><br>Indonesia is now the world's third-most-populous  democracy and the world's largest Muslim-majority nation. It has had strong economic growth since overcoming the Asian financial crisis of the late 1990s. By the 2020s, it had the largest economy in Southeast Asia, and its economy ranked in the world's top 10 in terms of purchasing power parity. It has also made considerable gains in reducing poverty. Although relations amongst its diverse population--there are more than 300 ethnic groups--have been harmonious in the 2000s, there have been areas of sectarian discontent and violence, as well as instances of religious extremism and terrorism. A political settlement to an armed separatist conflict in Aceh was achieved in 2005, but a separatist group in Papua continued to conduct a low-intensity conflict as of 2024."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Southeastern Asia, archipelago between the Indian Ocean and the Pacific Ocean"
+    },
+    "Geographic coordinates": {
+      "text": "5 00 S, 120 00 E"
+    },
+    "Map references": {
+      "text": "Southeast Asia"
+    },
+    "Area": {
+      "total ": {
+        "text": "1,904,569 sq km"
+      },
+      "land": {
+        "text": "1,811,569 sq km"
+      },
+      "water": {
+        "text": "93,000 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly less than three times the size of Texas"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "2,958 km"
+      },
+      "border countries": {
+        "text": "Malaysia 1,881 km; Papua New Guinea 824 km; Timor-Leste 253 km"
+      }
+    },
+    "Coastline": {
+      "text": "54,716 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      },
+      "note": "measured from claimed archipelagic straight baselines"
+    },
+    "Climate": {
+      "text": "tropical; hot, humid; more moderate in highlands"
+    },
+    "Terrain": {
+      "text": "mostly coastal lowlands; larger islands have interior mountains"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Puncak Jaya 4,884 m"
+      },
+      "lowest point": {
+        "text": "Indian Ocean 0 m"
+      },
+      "mean elevation": {
+        "text": "367 m"
+      }
+    },
+    "Natural resources": {
+      "text": "petroleum, tin, natural gas, nickel, timber, bauxite, copper, fertile soils, coal, gold, silver",
+      "note": "<strong>note:</strong> Indonesia is the World's leading producer of nickel with an output of 1.6 million mt in 2022"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "31.2% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 13% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 12.1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 6.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "51.7% (2018 est.)"
+      },
+      "other": {
+        "text": "17.1% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "67,220 sq km (2012)"
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Danau Toba - 1,150 sq km<br>note - located in the caldera of a super volcano that erupted more than 70,000 years ago; it is the largest volcanic lake in the World"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Sepik (shared with Papua New Guinea [s]) - 1,126 km; Fly (shared with Papua New Guinea [s]) - 1,050 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Population distribution": {
+      "text": "major concentration on the island of Java, which is considered one of the most densely populated places on earth; of the outer islands (those surrounding Java and Bali), Sumatra contains some of the most significant clusters, particularly in the south near the Selat Sunda, and along the northeastern coast near Medan; the cities of Makasar (Sulawesi), Banjarmasin (Kalimantan) are also heavily populated"
+    },
+    "Natural hazards": {
+      "text": "<p>occasional floods; severe droughts; tsunamis; earthquakes; volcanoes; forest fires</p> <p><strong>volcanism:</strong> Indonesia contains the most volcanoes of any country in the world - some 76 are historically active; significant volcanic activity occurs on Java, Sumatra, the Sunda Islands, Halmahera Island, Sulawesi Island, Sangihe Island, and in the Banda Sea; Merapi (2,968 m), Indonesia's most active volcano and in eruption since 2010, has been deemed a Decade Volcano by the International Association of Volcanology and Chemistry of the Earth's Interior, worthy of study due to its explosive history and close proximity to human populations; on 22 December 2018, a large explosion and flank collapse destroyed most of the 338 m high island of Anak Krakatau (Child of Krakatau) and generated a deadly tsunami inundating portions of western Java and southern Sumatra leaving more than 400 dead; other notable historically active volcanoes include Agung, Awu, Karangetang, Krakatau (Krakatoa), Makian, Raung, Sinabung, and Tambora; see note 2 under \"Geography - note\"</p>"
+    },
+    "Geography - note": {
+      "text": "<p><strong>note 1:</strong> according to Indonesia's National Coordinating Agency for Survey and Mapping, the total number of islands in the archipelago is 13,466, of which 922 are permanently inhabited (Indonesia is the world's largest country comprised solely of islands); the country straddles the equator and occupies a strategic location astride or along major sea lanes from the Indian Ocean to the Pacific Ocean</p> <p><strong>note 2:</strong> Indonesia is one of the countries along the Ring of Fire, a belt of active volcanoes and earthquake epicenters bordering the Pacific Ocean; up to 90% of the world's earthquakes and some 75% of the world's volcanoes occur within the Ring of Fire; 80% of tsunamis, caused by volcanic or seismic events, occur within the \"Pacific Ring of Fire\"</p> <p><strong>note 3:</strong> despite having the fourth largest population in the world, Indonesia is the most heavily forested region on earth after the Amazon<br><br><strong>note 4: </strong>two major food crops apparently developed on the island of New Guinea: bananas and sugarcane</p>"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "281,562,465"
+      },
+      "male": {
+        "text": "140,800,047"
+      },
+      "female": {
+        "text": "140,762,418 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Indonesian(s)"
+      },
+      "adjective": {
+        "text": "Indonesian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Javanese 40.1%, Sundanese 15.5%, Malay 3.7%, Batak 3.6%, Madurese 3%, Betawi 2.9%, Minangkabau 2.7%, Buginese 2.7%, Bantenese 2%, Banjarese 1.7%, Balinese 1.7%, Acehnese 1.4%, Dayak 1.4%, Sasak 1.3%, Chinese 1.2%, other 15% (2010 est.)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Bahasa Indonesia (official, modified form of Malay), English, Dutch, local dialects (of which the most widely spoken is Javanese); note -&nbsp;more than 700 languages are used in Indonesia"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Fakta Dunia, sumber informasi dasar yang sangat diperlukan. (Indonesian)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Muslim 87.4%, Protestant 7.5%, Roman Catholic 3.1%, Hindu 1.7%, other 0.8% (includes Buddhist and Confucian) (2022 est.)"
+    },
+    "Demographic profile": {
+      "text": "<p>Indonesia has the world’s fourth-largest population.  It is predominantly Muslim and has the largest Muslim population of any country in the world.  The population is projected to increase to as much as 320 million by 2045.  A government-supported family planning program.  The total fertility rate (TFR) – the average number of births per woman – from 5.6 in the mid-1960s to 2.7 in the mid-1990s.  The success of the program was also due to the social acceptance of family planning, which received backing from influential Muslim leaders and organizations.</p> <p>The fertility decline slowed in the late 1990’s when responsibility for family planning programs shifted to the district level, where the programs were not prioritized.  Since 2012 the national government revitalized the national family planning program, and Indonesia’s TFR has slowly decreased to 2.3 in 2020.  The government may reach its goal of achieving replacement level fertility – 2.1 children per woman – but the large number of women of childbearing age ensures significant population growth for many years. </p> <p>Indonesia is a source country for labor migrants, a transit country for asylum seekers, and a destination mainly for highly skilled migrant workers.  International labor migration, both legal and illegal, from Indonesia to other parts of Asia (most commonly Malaysia) and the Middle East has taken place for decades because of high unemployment and underemployment, poverty, and low wages domestically.  Increasing numbers of migrant workers are drawn to Australia, Canada, New Zealand, and the US.  The majority of Indonesian labor migration is temporary and consists predominantly of low-skilled workers, mainly women working as domestics.</p> <p>Indonesia’s strategic location between Asia and Australia and between the Pacific and Indian Oceans – and its relatively easy accessibility via boat – appeal to asylum seekers.  It is also an attractive transit location because of its easy entry requirements and the ability to continue on to Australia.  Recent asylum seekers have come from Afghanistan, Burma (Rohingyas), Iraq, Somalia, and Sri Lanka.  Since 2013, when Australia tightening its immigration policy, thousands of migrants and asylum seekers have been stranded in Indonesia, where they live in precarious conditions and receive only limited support from international organizations.  The situation for refugees in Indonesia has also worsened because Australia and the US, which had resettled the majority of refugees in Indonesia, have significantly lowered their intake.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "23.8% (male 34,247,218/female 32,701,367)"
+      },
+      "15-64 years": {
+        "text": "68.3% (male 96,268,201/female 95,961,293)"
+      },
+      "65 years and over": {
+        "text": "8% (2024 est.) (male 10,284,628/female 12,099,758)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "47.6"
+      },
+      "youth dependency ratio": {
+        "text": "37.6"
+      },
+      "elderly dependency ratio": {
+        "text": "10"
+      },
+      "potential support ratio": {
+        "text": "10 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "31.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "30.8 years"
+      },
+      "female": {
+        "text": "32.3 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.73% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "14.8 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6.8 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-0.7 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "major concentration on the island of Java, which is considered one of the most densely populated places on earth; of the outer islands (those surrounding Java and Bali), Sumatra contains some of the most significant clusters, particularly in the south near the Selat Sunda, and along the northeastern coast near Medan; the cities of Makasar (Sulawesi), Banjarmasin (Kalimantan) are also heavily populated"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "58.6% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.99% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "11.249 million JAKARTA (capital), 3.729 million Bekasi, 3.044 million Surabaya, 3.041 million Depok, 2.674 million Bandung, 2.514 million Tangerang (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.05 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.85 male(s)/female"
+      },
+      "total population": {
+        "text": "1 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "22.4 years (2017 est.)",
+      "note": "<strong>note:</strong> data represents median age at first birth among women 25-49"
+    },
+    "Maternal mortality ratio": {
+      "text": "173 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "18.9 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "21.3 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "16.4 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "73.6 years (2024 est.)"
+      },
+      "male": {
+        "text": "71.3 years"
+      },
+      "female": {
+        "text": "76 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.96 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.96 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "55.5% (2018)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 98.2% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 86.8% of population"
+      },
+      "improved: total": {
+        "text": "total: 93.3% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 1.8% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 13.2% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 6.7% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "3.4% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "0.62 physicians/1,000 population (2020)"
+    },
+    "Hospital bed density": {
+      "text": "1 beds/1,000 population (2017)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 97.2% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 86.5% of population"
+      },
+      "improved: total": {
+        "text": "total: 92.5% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 2.8% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 13.5% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 7.5% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "6.9% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "0.08 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "0.06 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.01 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.02 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "37.6% (2020 est.)"
+      },
+      "male": {
+        "text": "71.4% (2020 est.)"
+      },
+      "female": {
+        "text": "3.7% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "17.7% (2018)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "70% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "2%"
+      },
+      "women married by age 18": {
+        "text": "16.3% (2017 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "3.5% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "96%"
+      },
+      "male": {
+        "text": "97.4%"
+      },
+      "female": {
+        "text": "94.6% (2020)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "14 years"
+      },
+      "male": {
+        "text": "14 years"
+      },
+      "female": {
+        "text": "14 years (2018)"
+      }
+    },
+    "People - note": {
+      "text": "Indonesia is the fourth most populous nation in the World after China, India, and the United States; more than half of the Indonesian population - roughly 150 million people or 55% - live on the island of Java (about the size of California) making it the most crowded island on earth"
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "large-scale deforestation (much of it illegal) and related wildfires cause heavy smog; over-exploitation of marine resources; environmental problems associated with rapid urbanization and economic development, including air pollution, traffic congestion, garbage management, and reliable water and waste water services; water pollution from industrial wastes, sewage"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Hazardous Wastes, Law of the Sea, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "Marine Life Conservation"
+      }
+    },
+    "Climate": {
+      "text": "tropical; hot, humid; more moderate in highlands"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "31.2% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 13% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 12.1% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 6.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "51.7% (2018 est.)"
+      },
+      "other": {
+        "text": "17.1% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "58.6% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.99% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.39% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "1.06% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "19.34 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "563.32 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "244.5 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "65.2 million tons (2016 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "4.564 million tons (2016 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "7% (2016 est.)"
+      }
+    },
+    "Major lakes (area sq km)": {
+      "fresh water lake(s)": {
+        "text": "Danau Toba - 1,150 sq km<br>note - located in the caldera of a super volcano that erupted more than 70,000 years ago; it is the largest volcanic lake in the World"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Sepik (shared with Papua New Guinea [s]) - 1,126 km; Fly (shared with Papua New Guinea [s]) - 1,050 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "23.8 billion cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "9.14 billion cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "189.7 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "2.02 trillion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "10"
+      },
+      "global geoparks and regional networks": {
+        "text": "Batur; Belitong; Ciletuh - Palabuhanratu; Gunung Sewu; Ijen; Maros Pangkep; Merangin Jambi; Raja Ampat; Rinjani-Lombok; Toba Caldera (2023)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Indonesia"
+      },
+      "conventional short form": {
+        "text": "Indonesia"
+      },
+      "local long form": {
+        "text": "Republik Indonesia"
+      },
+      "local short form": {
+        "text": "Indonesia"
+      },
+      "former": {
+        "text": "Netherlands East Indies (Dutch East Indies), Netherlands New Guinea"
+      },
+      "etymology": {
+        "text": "the name is an 18th-century construct of two Greek words, \"Indos\" (India) and \"nesoi\" (islands), meaning \"Indian islands\""
+      }
+    },
+    "Government type": {
+      "text": "presidential republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Jakarta; note - Indonesian lawmakers on 18 January 2022 approved the relocation of the country&rsquo;s capital from Jakarta to a site on the island of Borneo between Samarinda City and the port city of Balikpapan; Nusantara (\"archipelago\"), the name of the new capital, was in development as of late 2024 and is expected to be completed in 2045"
+      },
+      "geographic coordinates": {
+        "text": "6 10 S, 106 49 E"
+      },
+      "time difference": {
+        "text": "UTC+7 (12 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "time zone note": {
+        "text": "Indonesia has three time zones"
+      },
+      "etymology": {
+        "text": "\"Jakarta\" derives from the Sanscrit \"Jayakarta\" meaning \"victorious city\" and refers to a successful defeat and expulsion of the Portuguese in 1527; previously the port had been named \"Sunda Kelapa\""
+      }
+    },
+    "Administrative divisions": {
+      "text": "35 provinces (provinsi-provinsi, singular - provinsi), 1 autonomous province*, 1 special region** (daerah istimewa), and 1 national capital district*** (daerah khusus ibukota); Aceh*, Bali, Banten, Bengkulu, Gorontalo, Jakarta***, Jambi, Jawa Barat (West Java), Jawa Tengah (Central Java), Jawa Timur (East Java), Kalimantan Barat (West Kalimantan), Kalimantan Selatan (South Kalimantan), Kalimantan Tengah (Central Kalimantan), Kalimantan Timur (East Kalimantan), Kalimantan Utara (North Kalimantan), Kepulauan Bangka Belitung (Bangka Belitung Islands), Kepulauan Riau (Riau Islands), Lampung, Maluku, Maluku Utara (North Maluku), Nusa Tenggara Barat (West Nusa Tenggara), Nusa Tenggara Timur (East Nusa Tenggara), Papua, Papua Barat (West Papua), Papua Barat Daya (Southwest Papua), Papua Pegunungan (Papua Highlands), Papua Selatan (South Papua), Papua Tengah (Central Papua), Riau, Sulawesi Barat (West Sulawesi), Sulawesi Selatan (South Sulawesi), Sulawesi Tengah (Central Sulawesi), Sulawesi Tenggara (Southeast Sulawesi), Sulawesi Utara (North Sulawesi), Sumatera Barat (West Sumatra), Sumatera Selatan (South Sumatra), Sumatera Utara (North Sumatra), Yogyakarta**",
+      "note": "<strong>note:</strong> following the implementation of decentralization beginning on 1 January 2001, regencies and municipalities have become the key administrative units responsible for providing most government services"
+    },
+    "Independence": {
+      "text": "17 August 1945 (declared independence from the Netherlands)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 17 August (1945)"
+    },
+    "Legal system": {
+      "text": "civil law system based on the Roman-Dutch model and influenced by customary law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "drafted July to August 1945, effective 18 August 1945, abrogated by 1949 and 1950 constitutions; 1945 constitution restored 5 July 1959"
+      },
+      "amendments": {
+        "text": "proposed by the People&rsquo;s Consultative Assembly, with at least two thirds of its members present; passage requires simple majority vote by the Assembly membership; constitutional articles on the unitary form of the state cannot be amended; amended several times, last in 2002"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; non-party state to the ICCt"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Indonesia"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 continuous years"
+      }
+    },
+    "Suffrage": {
+      "text": "17 years of age; universal; married persons regardless of age"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President PRABOWO Subianto Djojohadikusumo (since 20 October 2024)"
+      },
+      "head of government": {
+        "text": "President PRABOWO Subianto Djojohadikusumo (since 20 October 2024)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the president"
+      },
+      "elections/appointments": {
+        "text": "president and vice president directly elected by absolute majority popular vote for a 5-year term (eligible for a second term); election last held on 14 February 2024 (next to be held in 2029)"
+      },
+      "election results": {
+        "text": "<em><br>2024: </em>PRABOWO Subianto elected president (assumes office 20 October 2024); percent of vote - PRABOWO Subianto (GERINDRA) 58.6%, Anies Rasyid BASWEDAN (Independent) 24.9%, GANJAR Pranowo (PDI-P) 16.5%<em><br><br>2019:</em> Joko WIDODO reelected president; percent of vote - Joko WIDODO (PDI-P) 55.5%, PRABOWO Subianto Djojohadikusumo (GERINDRA) 44.5%"
+      },
+      "note": "<strong>note:</strong> the president is both chief of state and head of government"
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "House of Representatives (Dewan Perwakilan Rakyat)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "580 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "2/14/2024"
+      },
+      "parties elected and seats per party": {
+        "text": "Indonesian Democratic Party - Struggle (PDI-P) (110); Party of Functional Groups (Golkar) (102); Great Indonesia Movement (Gerindra) (86); National Democratic Party (NasDem) (69); National Awakening Party (PKB) (68); Prosperous Justice Party (PKS) (53); National Mandate Party (PAN) (48); Democratic Party (PD) (44)"
+      },
+      "percentage of women in chamber": {
+        "text": "21.9%"
+      },
+      "expected date of next election": {
+        "text": "April 2029"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court or Mahkamah Agung (51 judges divided into 8 chambers); Constitutional Court or Mahkamah Konstitusi (consists of 9 judges)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court judges nominated by Judicial Commission, appointed by president with concurrence of parliament; judges serve until retirement at age 65; Constitutional Court judges - 3 nominated by president, 3 by Supreme Court, and 3 by parliament; judges appointed by the president; judges serve until mandatory retirement at age 70"
+      },
+      "subordinate courts": {
+        "text": "High Courts of Appeal, district courts, religious courts"
+      }
+    },
+    "Political parties": {
+      "text": "Democrat Party or PD <br>Functional Groups Party or GOLKAR <br>Great Indonesia Movement Party or GERINDRA <br>Indonesia Democratic Party-Struggle or PDI-P <br>National Awakening Party or PKB <br>National Democratic Party or NasDem <br>National Mandate Party or PAN <br>Prosperous Justice Party or PKS "
+    },
+    "International organization participation": {
+      "text": "ADB, APEC, ARF, ASEAN, BIS, CD, CICA (observer), CP, D-8, EAS, EITI (compliant country), FAO, G-11, G-15, G-20, G-77, IAEA, IBRD, ICAO, ICC (national committees), ICRM, IDA, IDB, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM (observer), IORA, IPU, ISO, ITSO, ITU, ITUC (NGOs), MIGA, MINURSO, MINUSTAH, MONUSCO, MSG (associate member), NAM, OECD (enhanced engagement), OIC, OPCW, PIF (partner), UN, UNAMID, UNCTAD, UNESCO, UNHRC, UNIDO, UNIFIL, UNISFA, UNMIL, UNOOSA, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador (vacant); Charg&eacute; d'Affaires Ida Bagus Made BIMANTARA (since 30 November 2023)"
+      },
+      "chancery": {
+        "text": "2020 Massachusetts Avenue NW, Washington, DC 20036"
+      },
+      "telephone": {
+        "text": "[1] (202) 775-5200"
+      },
+      "FAX": {
+        "text": "[1] (202) 775-5236"
+      },
+      "email address and website": {
+        "text": "<br>washington.kbri@kemlu.go.id<br><br>Embassy of The Republic of Indonesia, in Washington D.C., The United States of America (kemlu.go.id)"
+      },
+      "consulate(s) general": {
+        "text": "Chicago, Houston, Los Angeles, New York, San Francisco"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Kamala Shirin LAKHDHIR (since 8 August 2024)"
+      },
+      "embassy": {
+        "text": "Jl. Medan Merdeka Selatan No. 3-5, Jakarta 10110"
+      },
+      "mailing address": {
+        "text": "8200 Jakarta Place, Washington DC&nbsp; 20521-8200"
+      },
+      "telephone": {
+        "text": "[62] (21) 5083-1000"
+      },
+      "FAX": {
+        "text": "[62] (21) 385-7189"
+      },
+      "email address and website": {
+        "text": "<br>jakartaacs@state.gov<br><br>https://id.usembassy.gov/"
+      },
+      "consulate(s) general": {
+        "text": "Surabaya"
+      },
+      "consulate(s)": {
+        "text": "Medan"
+      }
+    },
+    "Flag description": {
+      "text": "two equal horizontal bands of red (top) and white; the colors derive from the banner of the Majapahit Empire of the 13th-15th centuries; red symbolizes courage, white represents purity",
+      "note": "<strong>note:</strong> similar to the flag of Monaco, which is shorter; also similar to the flag of Poland, which is white (top) and red"
+    },
+    "National symbol(s)": {
+      "text": "garuda (mythical bird); national colors: red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Indonesia Raya\" (Great Indonesia)"
+      },
+      "lyrics/music": {
+        "text": "Wage Rudolf SOEPRATMAN"
+      },
+      "note": "<strong>note:</strong> adopted 1945"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "10 (6 cultural, 4 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Borobudur Temple Compounds (c); Komodo National Park (n); Prambanan Temple Compounds (c); Ujung Kulon National Park (n); Sangiran Early Man Site (c); Lorentz National Park (n); Tropical Rainforest Heritage of Sumatra (n); Cultural Landscape of Bali Province (c); Ombilin Coal Mining Heritage of Sawahlunto (c); Cosmological Axis of Yogyakarta and its Historic Landmarks (c)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "upper middle-income, largest and growing Southeast Asian economy; higher lending rates to moderate inflation; ongoing relocation of capital fueling infrastructure projects; major tourism sector prompting green economy goals"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$3.906 trillion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$3.718 trillion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$3.531 trillion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "5.05% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "5.31% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "3.7% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$13,900 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$13,300 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$12,800 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$1.371 trillion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "3.67% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "4.21% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "1.56% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BBB (2017)"
+      },
+      "Moody's rating": {
+        "text": "Baa2 (2018)"
+      },
+      "Standard & Poors rating": {
+        "text": "BBB (2019)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "12.5% (2023 est.)"
+      },
+      "industry": {
+        "text": "40.2% (2023 est.)"
+      },
+      "services": {
+        "text": "42.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "54.4% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "7.4% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "29.3% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "1.2% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "21.7% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-19.6% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "oil palm fruit, rice, sugarcane, maize, coconuts, cassava, bananas, eggs, mangoes/guavas, chicken (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "petroleum and natural gas, textiles, automotive, electrical appliances, apparel, footwear, mining, cement, medical instruments and appliances, handicrafts, chemical fertilizers, plywood, rubber, processed food, jewelry, and tourism"
+    },
+    "Industrial production growth rate": {
+      "text": "5% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "142.688 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "3.42% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "3.46% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "3.83% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "13.9% (2023 est.)"
+      },
+      "male": {
+        "text": "14.2% (2023 est.)"
+      },
+      "female": {
+        "text": "13.6% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "9.4% (2023 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2023": {
+        "text": "36.1 (2023 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "33.5% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "7.3% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "3.3% (2023 est.)"
+      },
+      "highest 10%": {
+        "text": "29.9% (2023 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "1.06% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "0.99% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "0.79% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$130.872 billion (2020 est.)"
+      },
+      "expenditures": {
+        "text": "$192.97 billion (2020 est.)"
+      }
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "45.34% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "11.6% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$2.138 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "$13.215 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$3.511 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$290.969 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$315.746 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$246.787 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "China 21%, US 10%, Japan 8%, India 8%, Malaysia 5% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "coal, palm oil, iron alloys, natural gas, steel (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$262.746 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$273.031 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$217.579 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "China 31%, Singapore 10%, Japan 6%, Malaysia 5%, Thailand 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, crude petroleum, vehicle parts/accessories, natural gas, plastics (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$146.359 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$137.222 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$144.908 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$237.223 billion (2023 est.)"
+      }
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Indonesian rupiah (IDR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "15,236.885 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "14,849.854 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "14,308.144 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "14,582.203 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "14,147.671 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "98.2%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "69.706 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "312.423 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "972.7 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "25.71 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "79.9% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "8.1% of total installed capacity (2022 est.)"
+      },
+      "geothermal": {
+        "text": "4.9% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "6.8% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "659.357 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "202.283 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "469.09 million metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "12.396 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "34.869 billion metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "865,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "1.728 million bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "2.48 billion barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "57.41 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "36.061 billion cubic meters (2022 est.)"
+      },
+      "exports": {
+        "text": "22.064 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "1.027 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "1.408 trillion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "684.926 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "386.828 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "224.45 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "73.649 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "33.039 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "9.16 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "3 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "352 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "115 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Indonesia faces more than the usual number of obstacles in terms of enabling widespread access to quality telecommunications services for its population of more than 270 million; the geographical challenges have been further compounded by a variety of social, political, and economic problems over the years that have kept the country&rsquo;s wealth distributed very thinly; the fixed-line (fiber) and mobile operators have continued to expand and upgrade their networks across the country; Indonesia&rsquo;s 18,000 islands (many of which, however, are sparsely populated) makes the deployment of fixed-line infrastructure on a broad scale difficult; there has been renewed activity in fiber optic cable, but the bundling of fixed-line telephony with TV and internet services will see the country&rsquo;s teledensity stabilize; mobile subscriptions have reached more than 130% and is projected to exceed 150% by 2026; with 4G LTE universally available, the major mobile companies have been busy launching 5G services in selected areas; the rollout of 5G will be hampered by the lack of availability of suitable frequencies; the 4G had to be reallocated from broadcasting services, and indications are that the same process is going to have to be followed in order to allow the expansion of 5G into its core frequency bands (3.3 to 4.2GHz) (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line subscribership roughly 3 per 100 and mobile-cellular 134 per 100 persons (2021)"
+      },
+      "international": {
+        "text": "country code - 62; landing points for the SEA-ME-WE-3 &amp; 5, DAMAI, JASUKA,&nbsp;BDM,&nbsp;Dumai-Melaka Cable System, IGG, JIBA,&nbsp;Link 1, 3, 4, &nbsp;&amp; 5, PGASCOM, B3J2, Tanjung Pandam-Sungai Kakap Cable System, JAKABARE, JAYABAYA, INDIGO-West, Matrix&nbsp;Cable System, ASC, SJJK, Jaka2LaDeMa, S-U-B Cable System, JBCS, MKCS, BALOK, Palapa Ring East, West&nbsp;and Middle, SMPCS Packet-1 and 2, LTCS, TSCS, SEA-US and Kamal Domestic Submarine Cable System, 35&nbsp;submarine cable networks that provide links throughout Asia, the Middle East,&nbsp;Australia, Southeast Asia, Africa&nbsp;and Europe; satellite earth stations - 2 Intelsat (1 Indian Ocean and 1 Pacific Ocean) (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "mixture of about a dozen national TV networks -&nbsp;1 public broadcaster, the remainder private broadcasters - each with multiple transmitters; more than 100 local TV stations; widespread use of satellite and cable TV systems; public radio broadcaster operates 6 national networks, as well as regional and local stations; overall, more than 700 radio stations with more than 650 privately operated (2019)"
+    },
+    "Internet country code": {
+      "text": ".id"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "69% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "13.5 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "5 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "25 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "611"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "115,154,100 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "1,131,910,000 (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "PK"
+    },
+    "Airports": {
+      "text": "513 (2024)"
+    },
+    "Heliports": {
+      "text": "24 (2024)"
+    },
+    "Pipelines": {
+      "text": "1,064 km condensate, 150 km condensate/gas, 11,702 km gas, 119 km liquid petroleum gas, 7,767 km oil, 77 km oil/gas/water, 728 km refined products, 53 km unknown, 44 km water (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "8,159 km (2014)"
+      },
+      "narrow gauge": {
+        "text": "8,159 km (2014) 1.067-m gauge (565 km electrified)"
+      },
+      "note": "<strong>note:</strong> 4,816 km operational"
+    },
+    "Roadways": {
+      "total": {
+        "text": "496,607 km"
+      },
+      "paved": {
+        "text": "283,102 km"
+      },
+      "unpaved": {
+        "text": "213,505 km (2011)"
+      }
+    },
+    "Waterways": {
+      "text": "21,579 km (2011)"
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "11,422 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 160, container ship 219, general cargo 2,347, oil tanker 714, other 7,982"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "123 (2024)"
+      },
+      "large": {
+        "text": "3"
+      },
+      "medium": {
+        "text": "6"
+      },
+      "small": {
+        "text": "18"
+      },
+      "very small": {
+        "text": "96"
+      },
+      "ports with oil terminals": {
+        "text": "79"
+      },
+      "key ports": {
+        "text": "Belawan, Cilacap, Dumai, Jakarta, Kasim Terminal, Merak Mas Terminal, Palembang, Surabaya, Ujung Pandang"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Indonesian National Armed Forces (Tentara Nasional Indonesia, TNI): Army (TNI-Angkatan Darat (TNI-AD)), Navy (TNI-Angkatan Laut (TNI-AL); includes Marine Corps (Korps Marinir or KorMar)), Air Force (TNI-Angkatan Udara (TNI-AU)) (2024)",
+      "note": "<strong>note 1:</strong> in 2014, Indonesia created a Maritime Security Agency (Bakamla) to coordinate the actions of all maritime security agencies, including the Navy, the Indonesian Sea and Coast Guard (Kesatuan Penjagaan Laut dan Pantai, KPLP), the Water Police (Polair), Customs (Bea Cukai), and Ministry of Marine Affairs and Fisheries<br><br><strong>note 2: </strong>the Indonesian National Police, which reports directly to the president, includes a paramilitary Mobile Brigade Corps (BRIMOB) and Detachment 88 (Densus or Detasemen Khusus 88 Antiteror), a specialized counterterrorism force"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "0.8% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "0.8% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "0.8% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "0.8% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "0.8% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 400,000 active-duty troops (300,000 Army; 60,000 Navy, including about 20,000 marines; 30,000 Air Force) (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory is a wide mix of Chinese, Russian, and Western (including US) equipment; in recent years, major suppliers have included China, France, Germany, the Netherlands, South Korea, and the US; the TNI has been engaged in a modernization program for more than a decade; Indonesia has a growing defense industry fueled by technology transfers and cooperation agreements with several countries; in 2019, the Indonesian Government said that growing its domestic defense industry would be a national priority over the following decade (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-45 years of age for voluntary military service for men and women, with selective conscription authorized (men, age 18), but not utilized; 24-month service obligation, with reserve obligation to age 45 (officers) (2024)",
+      "note": "<strong>note:</strong> as of 2023, women comprised about 7% of the Indonesian military"
+    },
+    "Military deployments": {
+      "text": "225 (plus about 140 police) Central African Republic (MINUSCA); 1,025 Democratic Republic of the Congo (MONUSCO); 1,225 Lebanon (UNIFIL) (2024)"
+    },
+    "Military - note": {
+      "text": "the military is responsible for external defense, combatting separatism, and responding to natural disasters; in certain conditions it may provide operational support to police, such as for counterterrorism operations, maintaining public order, and addressing communal conflicts; the TNI has undergone reforms since the 1990s to improve its professionalism and limit its involvement in internal politics<br><br>the Army is involved in counterinsurgency operations in Papua against the West Papua Liberation Army, the military wing of the Free Papua Organization, which has been fighting a low-level insurgency since Indonesia annexed the former Dutch colony in the 1960s; the Army has also been assisting police in Sulawesi in countering the Mujahideen Indonesia Timur (MIT; aka East Indonesia Mujahideen), a local militant group affiliated with the Islamic State of Iraq and ash-Sham (ISIS)<br><br>the Navy is responsible for coastal defense and patrolling Indonesia’s territorial waters where it faces such issues as piracy, transnational crime, illegal fishing, and incursions by Chinese vessels; Indonesia is not a formal claimant in the South China Sea, although some of its waters lie within China's “nine-dash line” maritime claims, resulting in some stand offs in recent years; since 2016, the Indonesian military has bolstered its presence on Great Natuna Island (aka Pulau Natuna Besar), the main island of the Middle Natuna Archipelago, which is part of the Riau Islands Province, and held military exercises in the surrounding waters (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "Indonesian Space Agency (INASA; formed 2022); National Research and Innovation Agency (BRIN; established 2021); Research Organization for Aeronautics and Space (ORPA; formed 2021) &nbsp; (2024)"
+    },
+    "Space launch site(s)": {
+      "text": "Stasiun Peluncuran Roket rocket launch facility (West Java); building a space launch facility/spaceport on Biak, Papua (estimated completion date is 2025) (2024)"
+    },
+    "Space program overview": {
+      "text": "has had a space program since the 1960s that has focused largely on rocket development and the acquisition and operation of satellites; operates satellites; manufactures remote sensing (RS) satellites; has a sounding (research) rocket program geared towards development of an indigenous orbital satellite launch vehicle (SLV) and independent satellite launch capabilities; researching and developing a range of other space-related technologies and capabilities related to satellite payloads, communications, RS, and astronomy; has relations with several foreign space agencies and industries, including those of France, Germany, India, Japan, Russia, and the US (2024)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Islamic State of Iraq and ash-Sham (aka Jemaah Anshorut Daulah); Jemaah Islamiyah",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "5,684 (Afghanistan) (mid-year 2022)"
+      },
+      "IDPs": {
+        "text": "72,000 (inter-communal, inter-faith, and separatist violence between 1998 and 2004 in Aceh and Papua; religious attacks and land conflicts in 2007 and 2013; most IDPs in Aceh, Maluku, East Nusa Tengarra) (2022)"
+      },
+      "stateless persons": {
+        "text": "866 (2022)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>major transit point and destination for illicit narcotics; a destination for methamphetamine, ecstasy, and other illicit drugs; methamphetamine production facilities within Indonesia </p> <p> </p> <p> </p>"
+    }
+  }
+}

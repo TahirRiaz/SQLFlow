@@ -1,0 +1,12 @@
+# Include the source file line number as a column (FileLineNumber) for traceability back
+# to the exact line each row came from.
+name: Csv_LineNumber
+source:
+  type: csv
+  location: ./data/orders.csv
+  options:
+    includeFileLineNumber: "true"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_LineNumber

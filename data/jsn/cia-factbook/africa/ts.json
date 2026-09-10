@@ -1,0 +1,1262 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "<p>Many empires have controlled Tunisia, including the Phoenicians (as early as the 12 century B.C.), Carthaginians, Romans, Vandals, Byzantines, various Arab and Berber kingdoms, and Ottomans (16th to late-19th centuries). Rivalry between French and Italian interests in Tunisia culminated in a French invasion in 1881 and the creation of a protectorate. Agitation for independence in the decades after World War I finally convinced the French to recognize Tunisia as an independent state in 1956. The country's first president, Habib BOURGUIBA, established a strict one-party state. He dominated the country for 31 years, repressing Islamic fundamentalism and establishing rights for women. In 1987, Zine el Abidine BEN ALI replaced BOURGUIBA in a bloodless coup. <br><br>Street protests that began in Tunis in 2010 over high unemployment, corruption, widespread poverty, and high food prices escalated in 2011, culminating in rioting that led to hundreds of deaths and later became known as the start of the regional Arab Spring uprising. BEN ALI dismissed the government and fled the country, and a \"national unity government\" was formed. Elections for the new Constituent Assembly were held later that year, and human rights activist Moncef MARZOUKI was elected as interim president. The Assembly began drafting a new constitution in 2012 and, after several iterations and a months-long political crisis that stalled the transition, ratified the document in 2014. Parliamentary and presidential elections for a permanent government were held at the end of 2014. Beji CAID ESSEBSI was elected as the first president under the country's new constitution. After ESSEBSI’s death in office in 2019, Kais SAIED was elected. SAIED's term, as well as that of Tunisia's 217-member parliament, was set to expire in 2024. However, in 2021, SAIED used the exceptional powers allowed under Tunisia's constitution to dismiss the prime minister and suspend the legislature. Tunisians approved a new constitution through public referendum in 2022, expanding presidential powers and creating a new bicameral legislature. </p>"
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Northern Africa, bordering the Mediterranean Sea, between Algeria and Libya"
+    },
+    "Geographic coordinates": {
+      "text": "34 00 N, 9 00 E"
+    },
+    "Map references": {
+      "text": "Africa"
+    },
+    "Area": {
+      "total ": {
+        "text": "163,610 sq km"
+      },
+      "land": {
+        "text": "155,360 sq km"
+      },
+      "water": {
+        "text": "8,250 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly larger than Georgia"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "1,495 km"
+      },
+      "border countries": {
+        "text": "Algeria 1,034 km; Libya 461 km"
+      }
+    },
+    "Coastline": {
+      "text": "1,148 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "contiguous zone": {
+        "text": "24 nm"
+      },
+      "exclusive economic zone": {
+        "text": "12 nm"
+      }
+    },
+    "Climate": {
+      "text": "temperate in north with mild, rainy winters and hot, dry summers; desert in south"
+    },
+    "Terrain": {
+      "text": "mountains in north; hot, dry central plain; semiarid south merges into the Sahara"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Jebel ech Chambi 1,544 m"
+      },
+      "lowest point": {
+        "text": "Shatt al Gharsah -17 m"
+      },
+      "mean elevation": {
+        "text": "246 m"
+      }
+    },
+    "Natural resources": {
+      "text": "petroleum, phosphates, iron ore, lead, zinc, salt"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "64.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 18.3% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 15.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 31.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "6.6% (2018 est.)"
+      },
+      "other": {
+        "text": "28.6% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "3,920 sq km (2013)"
+    },
+    "Major aquifers": {
+      "text": "North Western Sahara Aquifer System"
+    },
+    "Population distribution": {
+      "text": "the overwhelming majority of the population is located in the northern half of the country; the south remains largely underpopulated as shown in this population distribution map"
+    },
+    "Natural hazards": {
+      "text": "flooding; earthquakes; droughts"
+    },
+    "Geography - note": {
+      "text": "strategic location in central Mediterranean; Malta and Tunisia are discussing the commercial exploitation of the continental shelf between their countries, particularly for oil exploration"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "12,048,847"
+      },
+      "male": {
+        "text": "5,972,242"
+      },
+      "female": {
+        "text": "6,076,605 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Tunisian(s)"
+      },
+      "adjective": {
+        "text": "Tunisian"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Arab 98%, European 1%, Jewish and other 1%"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Arabic (official, one of the languages of commerce), French (commerce), Tamazight"
+      },
+      "major-language sample(s)": {
+        "text": "<br>كتاب حقائق العالم، أحسن كتاب تتعلم به المعلومات الأساسية (Arabic)<br><br>The World Factbook, une source indispensable d'informations de base. (French)<br><br>The World Factbook, the indispensable source for basic information."
+      },
+      "note": "<strong>note:</strong> despite having no official status, French plays a major role in the country and is spoken by about two thirds of the population"
+    },
+    "Religions": {
+      "text": "Muslim (official; Sunni) 99%, other (includes Christian, Jewish, Shia Muslim, and Baha'i) &lt;1%"
+    },
+    "Demographic profile": {
+      "text": "<p>The Tunisian Government took steps in the 1960s to decrease population growth and gender inequality in order to improve socioeconomic development. Through its introduction of a national family planning program (the first in Africa) and by raising the legal age of marriage, Tunisia rapidly reduced its total fertility rate from about 7 children per woman in 1960 to 2 in 2022. Unlike many of its North African and Middle Eastern neighbors, Tunisia will soon be shifting from being a youth-bulge country to having a transitional age structure, characterized by lower fertility and mortality rates, a slower population growth rate, a rising median age, and a longer average life expectancy.</p> <p>Currently, the sizable young working-age population is straining Tunisia’s labor market and education and health care systems. Persistent high unemployment among Tunisia’s growing workforce, particularly its increasing number of university graduates and women, was a key factor in the uprisings that led to the overthrow of the BEN ALI regime in 2011. In the near term, Tunisia’s large number of jobless young, working-age adults; deficiencies in primary and secondary education; and the ongoing lack of job creation and skills mismatches could contribute to future unrest. In the longer term, a sustained low fertility rate will shrink future youth cohorts and alleviate demographic pressure on Tunisia’s labor market, but employment and education hurdles will still need to be addressed.</p> <p>Tunisia has a history of labor emigration. In the 1960s, workers migrated to European countries to escape poor economic conditions and to fill Europe’s need for low-skilled labor in construction and manufacturing. The Tunisian Government signed bilateral labor agreements with France, Germany, Belgium, Hungary, and the Netherlands, with the expectation that Tunisian workers would eventually return home. At the same time, growing numbers of Tunisians headed to Libya, often illegally, to work in the expanding oil industry. In the mid-1970s, with European countries beginning to restrict immigration and Tunisian-Libyan tensions brewing, Tunisian economic migrants turned toward the Gulf countries. After mass expulsions from Libya in 1983, Tunisian migrants increasingly sought family reunification in Europe or moved illegally to southern Europe, while Tunisia itself developed into a transit point for Sub-Saharan migrants heading to Europe.</p> <p>Following the ousting of BEN ALI in 2011, the illegal migration of unemployed Tunisian youths to Italy and onward to France soared into the tens of thousands. Thousands more Tunisian and foreign workers escaping civil war in Libya flooded into Tunisia and joined the exodus. A readmission agreement signed by Italy and Tunisia in April 2011 helped stem the outflow, leaving Tunisia and international organizations to repatriate, resettle, or accommodate some 1 million Libyans and third-country nationals.</p>"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "24.4% (male 1,516,871/female 1,426,522)"
+      },
+      "15-64 years": {
+        "text": "65.2% (male 3,861,731/female 3,990,802)"
+      },
+      "65 years and over": {
+        "text": "10.4% (2024 est.) (male 593,640/female 659,281)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "50.9"
+      },
+      "youth dependency ratio": {
+        "text": "36.3"
+      },
+      "elderly dependency ratio": {
+        "text": "13.3"
+      },
+      "potential support ratio": {
+        "text": "7.5 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "34.4 years (2024 est.)"
+      },
+      "male": {
+        "text": "33.6 years"
+      },
+      "female": {
+        "text": "35.1 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.58% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "13.5 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "6.4 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-1.3 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "the overwhelming majority of the population is located in the northern half of the country; the south remains largely underpopulated as shown in this population distribution map"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "70.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.34% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "2.475 million TUNIS (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.06 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.06 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.97 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.9 male(s)/female"
+      },
+      "total population": {
+        "text": "0.98 male(s)/female (2024 est.)"
+      }
+    },
+    "Maternal mortality ratio": {
+      "text": "37 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "11.3 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "12.7 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "9.8 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "77.3 years (2024 est.)"
+      },
+      "male": {
+        "text": "75.7 years"
+      },
+      "female": {
+        "text": "79.1 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.93 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.94 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "50.7% (2018)"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 97.3% of population"
+      },
+      "improved: total": {
+        "text": "total: 99.2% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 2.7% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0.8% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "6.3% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "1.3 physicians/1,000 population (2017)"
+    },
+    "Hospital bed density": {
+      "text": "2.2 beds/1,000 population (2017)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 98.8% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 99.4% of population"
+      },
+      "improved: total": {
+        "text": "total: 99% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 1.2% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0.6% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 1% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "26.9% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "1.51 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "0.99 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "0.32 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "0.17 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0.03 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "24.6% (2020 est.)"
+      },
+      "male": {
+        "text": "47.2% (2020 est.)"
+      },
+      "female": {
+        "text": "2% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "1.6% (2018)"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "53.9% (2023 est.)"
+    },
+    "Child marriage": {
+      "women married by age 15": {
+        "text": "1.5% (2018 est.)"
+      }
+    },
+    "Education expenditures": {
+      "text": "7.3% of GDP (2016 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "82.7%"
+      },
+      "male": {
+        "text": "89.1%"
+      },
+      "female": {
+        "text": "82.7% (2021)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "15 years"
+      },
+      "male": {
+        "text": "14 years"
+      },
+      "female": {
+        "text": "16 years (2016)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "toxic and hazardous waste disposal is ineffective and poses health risks; water pollution from raw sewage; limited natural freshwater resources; deforestation; overgrazing; soil erosion; desertification"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Marine Dumping-London Convention, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Wetlands"
+      },
+      "signed, but not ratified": {
+        "text": "Marine Life Conservation"
+      }
+    },
+    "Climate": {
+      "text": "temperate in north with mild, rainy winters and hot, dry summers; desert in south"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "64.8% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 18.3% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 15.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 31.1% (2018 est.)"
+      },
+      "forest": {
+        "text": "6.6% (2018 est.)"
+      },
+      "other": {
+        "text": "28.6% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "70.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "1.34% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.21% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "26.52 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "29.94 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "7.89 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "2.7 million tons (2014 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "108,000 tons (2014 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "4% (2014 est.)"
+      }
+    },
+    "Major aquifers": {
+      "text": "North Western Sahara Aquifer System"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "820 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "60 million cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "2.71 billion cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "4.62 billion cubic meters (2020 est.)"
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Republic of Tunisia"
+      },
+      "conventional short form": {
+        "text": "Tunisia"
+      },
+      "local long form": {
+        "text": "Al Jumhuriyah at Tunisiyah"
+      },
+      "local short form": {
+        "text": "Tunis"
+      },
+      "etymology": {
+        "text": "the country name derives from the capital city of Tunis"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Tunis"
+      },
+      "geographic coordinates": {
+        "text": "36 48 N, 10 11 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "three possibilities exist for the derivation of the name; originally a Berber settlement (earliest reference 4th century B.C.), the strategic site fell to the Carthaginians (Phoenicians) and the city could be named after the Punic goddess Tanit, since many ancient cities were named after patron deities; alternatively, the Berber root word \"ens,\" which means \"to lie down\" or \"to pass the night,\" may indicate that the site was originally a camp or rest stop; finally, the name may be the same as the city of Tynes, mentioned in the writings of some ancient authors"
+      }
+    },
+    "Administrative divisions": {
+      "text": "24 governorates (wilayat, singular - wilayah); Beja (Bajah), Ben Arous (Bin 'Arus), Bizerte (Banzart), Gabes (Qabis), Gafsa (Qafsah), Jendouba (Jundubah), Kairouan (Al Qayrawan), Kasserine (Al Qasrayn), Kebili (Qibili), Kef (Al Kaf), L'Ariana (Aryanah), Mahdia (Al Mahdiyah), Manouba (Manubah), Medenine (Madanin), Monastir (Al Munastir), Nabeul (Nabul), Sfax (Safaqis), Sidi Bouzid (Sidi Bu Zayd), Siliana (Silyanah), Sousse (Susah), Tataouine (Tatawin), Tozeur (Tawzar), Tunis, Zaghouan (Zaghwan)"
+    },
+    "Independence": {
+      "text": "20 March 1956 (from France)"
+    },
+    "National holiday": {
+      "text": "Independence Day, 20 March (1956); Revolution and Youth Day, 14 January (2011)"
+    },
+    "Legal system": {
+      "text": "mixed legal system of civil law, based on the French civil code and Islamic (sharia) law; some judicial review of legislative acts in the Supreme Court in joint session"
+    },
+    "Constitution": {
+      "history": {
+        "text": "<p>several previous; latest - draft published by the president 30 June 2022, approved by referendum 25 July 2022, and adopted 27 July 2022</p>"
+      },
+      "amendments": {
+        "text": "proposed by the president of the republic or by one third of the Assembly of the Representatives of the People membership; following review by the Constitutional Court, approval to proceed requires an absolute majority vote by the Assembly and final passage requires a two-thirds Assembly majority vote; the president can opt to submit an amendment to a referendum, which requires an absolute majority of votes cast for passage"
+      }
+    },
+    "International law organization participation": {
+      "text": "has not submitted an ICJ jurisdiction declaration; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Tunisia"
+      },
+      "dual citizenship recognized": {
+        "text": "yes"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal except for active government security forces (including the police and the military), people with mental disabilities, people who have served more than three months in prison (criminal cases only), and people given a suspended sentence of more than six months"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Kais SAIED (since 23 October 2019)"
+      },
+      "head of government": {
+        "text": "Prime Minister Kamel MADDOURI (since 8 August 2024); President Kais SAIED dismissed Prime Minister Ahmed HACHANI on 7 August 2024 and appointed Kamel MADDOURI as prime minister"
+      },
+      "cabinet": {
+        "text": "prime minister appointed by the president; cabinet members appointed by the president in consultation with the prime minister"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); last held on 6 October 2024 (next to be held in 2029)"
+      },
+      "election results": {
+        "text": "<p><em>2024: </em>Kais SAIED reelected president in first round - Kais SAIED (independent) 90.7%, Ayachi ZAMMEL (Long Live Tunisia) 7.3%, Zouhair MAGHZAOUI (People's Movement) 2%<em><br><br>2019:</em> Kais SAIED elected president in second round; percent of vote in first round - Kais SAIED (independent) 18.4%, Nabil KAROUI (Heart of Tunisia) 15.6%, Abdelfattah MOUROU (Nahda Movement) 12.9%, Abdelkrim ZBIDI (independent) 10.7%, Youssef CHAHED (Long Live Tunisia) 7.4%, Safi SAID (independent) 7.1%, Lotfi MRAIHI (Republican People's Union) 6.6%, other 21.3%; percent of vote in second round - Kais SAIED 72.7%, Nabil KAROUI 27.3%<br><br> </p>"
+      },
+      "note": "<strong>note: </strong>the president can dismiss any member of government on his own initiative or in consultation with the prime minister"
+    },
+    "Legislative branch": {
+      "legislative structure": {
+        "text": "bicameral"
+      },
+      "note": "<strong>note:</strong> in 2022, President SAIED issued a new electoral law that requires all legislative candidates to run as independents"
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "Assembly of People's Representatives (Majlis Nawwab ash-Sha'ab)"
+      },
+      "number of seats": {
+        "text": "161 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "12/17/2022 to 1/29/2023"
+      },
+      "percentage of women in chamber": {
+        "text": "15.8%"
+      },
+      "expected date of next election": {
+        "text": "December 2027"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "National Council of Regions and Districts"
+      },
+      "number of seats": {
+        "text": "77 (all indirectly elected)"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "4/19/2024"
+      },
+      "percentage of women in chamber": {
+        "text": "13%"
+      },
+      "expected date of next election": {
+        "text": "April 2029"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Court of Cassation (consists of the first president, chamber presidents, and magistrates and organized into 27 civil and 11 criminal chambers)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court judges nominated by the Supreme Judicial Council, an independent 4-part body consisting mainly of elected judges and the remainder legal specialists; judge tenure based on terms of appointment; Constitutional Court (established in the 2014 and 2022 constitutions, but inception has been delayed; note - in mid-February 2022, President SAIED dissolved the Supreme Judicial Council and replaced it with an interim council in early March 2022"
+      },
+      "subordinate courts": {
+        "text": "Courts of Appeal; administrative courts; Court of Audit; Housing Court; courts of first instance; lower district courts; military courts"
+      },
+      "note": "<strong>note:</strong> the Tunisian constitution of January 2014 called for the establishment of a constitutional court by the end of 2015, but the court was never formed; the new constitution of July 2022 calls for the establishment of a constitutional court consisting of 9 members appointed by presidential decree; members to include former senior judges of other courts"
+    },
+    "Political parties": {
+      "text": "Afek Tounes<br>Al Badil Al-Tounisi (The Tunisian Alternative)<br>Al-Amal Party<br>Call for Tunisia Party (Nidaa Tounes)<br>Current of Love (formerly the Popular Petition party)<br>Democratic Current<br>Democratic Patriots' Unified Party<br>Dignity Coalition or Al Karama Coalition<br>Ennahda Movement (The Renaissance)<br>Ettakatol Party<br>Free Destourian Party or PDL<br>Green Tunisia Party<br>Harakat Hak<br>Heart of Tunisia (Qalb Tounes)<br>July 25 Movement<br>Labor and Achievement Party<br>Long Live Tunisia (Tahya Tounes)<br>Movement of Socialist Democrats or MDS<br>National Coalition Party<br>National Salvation Front<br>New Carthage Party<br>Party of the Democratic Arab Vanguard<br>People's Movement<br>Republican Party (Al Joumhouri)<br>The Movement Party (Hizb Harak)<br>Third Republic Party<br>Tunisian Ba'ath Movement<br>Voice of the Republic<br>Workers' Party",
+      "note": "<strong>note:</strong> President SAIED in 2022 issued a decree that forbids political parties' participation in legislative elections; although parties remain a facet of Tunisian political life, they have lost significant influence"
+    },
+    "International organization participation": {
+      "text": "ABEDA, AfDB, AFESD, AIIB, AMF, AMU, AU, BSEC (observer), CAEU, CD, EBRD, FAO, G-11, G-77, IAEA, IBRD, ICAO, ICC (national committees), ICCt, ICRM, IDA, IDB, IFAD, IFC, IFRCS, IHO, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITSO, ITU, ITUC (NGOs), LAS, MIGA, MONUSCO, NAM, OAS (observer), OIC, OIF, OPCW, OSCE (partner), UN, UNCTAD, UNESCO, UNHCR, UNIDO, UNOCI, UNOOSA, UNWTO, UPU, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Hanene&nbsp;TAJOURI&nbsp;BESSASSI (since 1 December 2021)"
+      },
+      "chancery": {
+        "text": "1515 Massachusetts Avenue NW, Washington, DC 20005"
+      },
+      "telephone": {
+        "text": "[1] (202) 862-1850"
+      },
+      "FAX": {
+        "text": "[1] (202) 862-1858"
+      },
+      "email address and website": {
+        "text": "<br>AT.Washington@Tunisiaembassy.org<br><br>https://www.tunisianembassy.org/"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Joey HOOD (since 2 February 2023)"
+      },
+      "embassy": {
+        "text": "Les Berges du Lac, 1053 Tunis"
+      },
+      "mailing address": {
+        "text": "6360 Tunis Place, Washington DC&nbsp; 20521-6360"
+      },
+      "telephone": {
+        "text": "[216] 71-107-000"
+      },
+      "FAX": {
+        "text": "[216] 71-107-090"
+      },
+      "email address and website": {
+        "text": "<br>tuniswebsitecontact@state.gov<br><br>https://tn.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "red with a white disk in the center bearing a red crescent nearly encircling a red five-pointed star; resembles the Ottoman flag (red banner with white crescent and star) and recalls Tunisia's history as part of the Ottoman Empire; red represents the blood shed by martyrs in the struggle against oppression, white stands for peace; the crescent and star are traditional symbols of Islam",
+      "note": "<strong>note:</strong> the flag is based on that of Turkey, itself a successor state to the Ottoman Empire"
+    },
+    "National symbol(s)": {
+      "text": "encircled red crescent moon and five-pointed star; national colors: red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Humat Al Hima\" (Defenders of the Homeland)"
+      },
+      "lyrics/music": {
+        "text": "Mustafa Sadik AL-RAFII and Aboul-Qacem ECHEBBI/Mohamad Abdel WAHAB"
+      },
+      "note": "<strong>note:</strong> adopted 1957, replaced 1958, restored 1987; Mohamad Abdel WAHAB also composed the music for the anthem of the United Arab Emirates"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "9 (8 cultural, 1 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Amphitheatre of El Jem (c); Archaeological Site of Carthage (c); Medina of Tunis (c); Ichkeul National Park (n); Punic Town of Kerkuane (c); Kairouan (c); Medina of Sousse (c); Dougga / Thugga (c); Djerba: Testimony to a settlement pattern in an island territory (c)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "lower middle-income North African economy; drafting reforms for foreign lenders; high unemployment, especially for youth and women; hit hard by COVID-19; high public sector wages; high public debt; protectionist austerity measures; key EU trade partner"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$153.152 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$153.092 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$149.106 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "0.04% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "2.67% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "4.61% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$12,600 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$12,600 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$12,400 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$48.53 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "9.33% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "8.31% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "5.71% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "B (2020)"
+      },
+      "Moody's rating": {
+        "text": "B2 (2018)"
+      },
+      "Standard & Poors rating": {
+        "text": "N/A (2013)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "9.5% (2023 est.)"
+      },
+      "industry": {
+        "text": "23.5% (2023 est.)"
+      },
+      "services": {
+        "text": "62.1% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "73.1% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "19.7% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "15.9% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "51.9% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-55.3% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "milk, olives, tomatoes, wheat, barley, watermelons, chilies/peppers, potatoes, dates, oranges (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "petroleum, mining (particularly phosphate, iron ore), tourism, textiles, footwear, agribusiness, beverages"
+    },
+    "Industrial production growth rate": {
+      "text": "-0.97% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "4.367 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "15.11% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "15.3% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "16.51% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "37.5% (2023 est.)"
+      },
+      "male": {
+        "text": "38.3% (2023 est.)"
+      },
+      "female": {
+        "text": "35.6% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "16.6% (2021 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "33.7 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "22.3% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "3.3% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "3.1% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "27% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "5.92% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "6.3% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "6.34% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$10.866 billion (2019 est.)"
+      },
+      "expenditures": {
+        "text": "$12.375 billion (2019 est.)"
+      }
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "70.3% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "24.7% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$1.111 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$3.969 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$2.77 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$19.732 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$17.254 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$14.054 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "France 22%, Italy 16%, Germany 14%, Spain 4%, Libya 4% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "garments, insulated wire, refined petroleum, crude petroleum, pure olive oil (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$21.953 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$22.453 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$18.178 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Italy 14%, France 14%, China 9%, Germany 7%, Turkey 6% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, natural gas, plastic products, wheat, cars (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$9.24 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$8.094 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$8.846 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Debt - external": {
+      "Debt - external 2023": {
+        "text": "$22.336 billion (2023 est.)"
+      },
+      "note": "<b>note:</b> present value of external debt in current US dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Tunisian dinars (TND) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "3.106 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "3.104 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "2.794 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "2.812 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "2.934 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "99.7%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "6.328 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "19.061 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "154 million kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "2.726 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "4.722 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "96.9% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "1.5% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "1.5% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "0.1% of total installed capacity (2022 est.)"
+      }
+    },
+    "Coal": {
+      "consumption": {
+        "text": "2,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "2,000 metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "35,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "108,000 bbl/day (2022 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "425 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "1.323 billion cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "5.153 billion cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "3.898 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "65.129 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "23.645 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "5,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "13.203 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "10.437 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "33.641 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "1.863 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "15 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "16.4 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "129 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "Tunisia has one of the most sophisticated telecom infrastructures in North Africa; penetration rates for mobile and Internet services are among the highest in the region; government program of regulation and infrastructure projects aims to improve Internet connectivity to underserved areas; operators built extensive LTE infrastructure in 2019, and continue to discuss plans for future 5G networks and services; one operator has signed an agreement to pursue nano-satellite launches in 2023; internet censorship abolished, though concerns of government surveillance remain; legislation passed in 2017 supporting e-commerce and active e-government; importer of some integrated circuits and broadcasting equipment (including radio, television, and communications transmitters) from the PRC (2022)"
+      },
+      "domestic": {
+        "text": "fixed-line is nearly 14 per 100 and mobile-cellular teledensity is 129 telephones per 100 persons (2022)"
+      },
+      "international": {
+        "text": "country code - 216; landing points for the SEA-ME-WE-4, Didon, HANNIBAL System and Trapani-Kelibia&nbsp;submarine cable systems that provides links to Europe, Africa, the Middle East, Asia and Southeast Asia; satellite earth stations - 1 Intelsat (Atlantic Ocean) and 1 Arabsat; coaxial cable and microwave radio relay to Algeria and Libya; participant in Medarabtel; 2 international gateway digital switches (2020)"
+      }
+    },
+    "Broadcast media": {
+      "text": "2 state-owned TV stations; 10 private TV stations broadcast locally; satellite TV service is available; state-owned radio network with 2 stations; several dozen private radio stations and community radio stations; transmissions of multiple international broadcasters available (2019)"
+    },
+    "Internet country code": {
+      "text": ".tn"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "74% (2022 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "1.73 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "14 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "7 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "53"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "4,274,199 (2018)"
+      },
+      "annual freight traffic on registered air carriers": {
+        "text": "13.23 million (2018) mt-km"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "TS"
+    },
+    "Airports": {
+      "text": "14 (2024)"
+    },
+    "Heliports": {
+      "text": "11 (2024)"
+    },
+    "Pipelines": {
+      "text": "68 km condensate, 3,111 km gas, 1,381 km oil, 453 km refined products (2013)"
+    },
+    "Railways": {
+      "total": {
+        "text": "2,173 km (2014) (1,991 in use)"
+      },
+      "standard gauge": {
+        "text": "471 km (2014) 1.435-m gauge"
+      },
+      "narrow gauge": {
+        "text": "1,694 km (2014) 1.000-m gauge (65 km electrified)"
+      },
+      "dual gauge": {
+        "text": "8 km (2014) 1.435-1.000-m gauge"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "32,332 km"
+      },
+      "paved": {
+        "text": "12,264 km"
+      },
+      "unpaved": {
+        "text": "20,068 km (2020)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "72 (2023)"
+      },
+      "by type": {
+        "text": "container ship 1, general cargo 8, oil tanker 1, other 62"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "16 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "3"
+      },
+      "small": {
+        "text": "7"
+      },
+      "very small": {
+        "text": "6"
+      },
+      "ports with oil terminals": {
+        "text": "10"
+      },
+      "key ports": {
+        "text": "Ashtart Oil Terminal, Banzart, Didon Terminal, Gabes, La Goulette, Menzel Bourguiba, Mersa Sfax, Sousse, Tazerka Oil Terminal, Tunis"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Tunisian Armed Forces (Forces Armées Tunisiennes, FAT): Tunisian Army (includes Air Defense Force), Tunisian Navy, Tunisia Air Force<br><br>Ministry of Interior (MoI): National Police, National Guard (2024)",
+      "note": "<strong>note:</strong> the National Police has primary responsibility for law enforcement in the major cities, while the National Guard (gendarmerie) oversees border security and patrols smaller towns and rural areas; the National Police Anti-Terrorism Brigade and the National Guard Special Unit have the lead for MOI counterterrorism operations "
+    },
+    "Military expenditures": {
+      "Military Expenditures 2023": {
+        "text": "2.5% of GDP (2023 est.)"
+      },
+      "Military Expenditures 2022": {
+        "text": "2.7% of GDP (2022 est.)"
+      },
+      "Military Expenditures 2021": {
+        "text": "3% of GDP (2021 est.)"
+      },
+      "Military Expenditures 2020": {
+        "text": "3% of GDP (2020 est.)"
+      },
+      "Military Expenditures 2019": {
+        "text": "3.8% of GDP (2019 est.)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 35,000 active-duty personnel (25,000 Army; 5,000 Navy; 5,000 Air Force); estimated 10,000 National Guard (2023)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the Tunisian military's inventory consists mostly of older or second-hand equipment from a wide variety of suppliers, including Brazil, China, Turkey, and the US, as well as several European countries, such as France, Germany, and Italy (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-23 years of age for voluntary service for men and women; 20-23 years of age for compulsory service for men with a 12-month service obligation; individuals engaged in higher education or vocational training programs prior to their military drafting are allowed to delay service until they have completed their programs (up to age 35); exemptions allowed for males considered to a family's sole provider;  (2023)",
+      "note": "<strong>note:</strong> women have been allowed in the service since 1975 as volunteers; as of 2023, women constituted about 8% of the military and served in all three services"
+    },
+    "Military deployments": {
+      "text": "775 Central African Republic (MINUSCA) (2024)"
+    },
+    "Military - note": {
+      "text": "the FAT is responsible for territorial defense and internal security; its operational areas of focus are countering Islamist terrorist groups and assisting with securing the border; areas of focus include security operations in the mountainous regions along the Algerian border where smuggling and criminal activity has occurred and militants linked to the al-Qa'ida and Islamic State of Iraq and ash-Sham terrorist groups have been active; the military has the lead for security operations in the area and has conducted joint operations with Algerian security forces; the FAT in recent years also has increased its role in securing the southern border with Libya against terrorist activity and infiltrators, criminal gangs, smuggling, and trafficking; in the remote areas of the border with Libya, buffer/exclusion zones have also been established where the military has the lead for security and counter-terrorism operations; outside of these border areas, the Ministry of Interior has responsibility<br> <br>the FAT conducts bilateral and multinational training exercises with a variety of countries, including Algeria and other North African and Middle Eastern countries, France, and the US, as well as NATO; it also participates in UN peacekeeping operations; Tunisia has Major Non-NATO Ally (MNNA) status with the US, a designation under US law that provides foreign partners with certain benefits in the areas of defense trade and security cooperation (2024)"
+    }
+  },
+  "Terrorism": {
+    "Terrorist group(s)": {
+      "text": "Ansar al-Sharia in Tunisia; Islamic State of Iraq and ash-Sham (ISIS) network in Tunisia (known locally as Ajnad al-Khilafah or the Army of the Caliphate); al-Qa'ida in the Islamic Maghreb",
+      "note": "<strong>note:</strong> details about the history, aims, leadership, organization, areas of operation, tactics, targets, weapons, size, and sources of support of the group(s) appear(s) in the Terrorism reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Illicit drugs": {
+      "text": "NA"
+    }
+  }
+}

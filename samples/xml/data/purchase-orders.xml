@@ -1,0 +1,11 @@
+<orders>
+  <order>
+    <id>1</id>
+    <line><sku>A1</sku><qty>2</qty></line>
+    <line><sku>A2</sku><qty>5</qty></line>
+  </order>
+  <order>
+    <id>2</id>
+    <line><sku>B1</sku><qty>9</qty></line>
+  </order>
+</orders>

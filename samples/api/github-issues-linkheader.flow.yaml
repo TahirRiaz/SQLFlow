@@ -1,0 +1,49 @@
+# Bearer auth + RFC 5988 Link-header pagination (the GitHub REST API), landed page-by-page.
+# Pattern reference: any "follow the next link until it's gone" API.
+flowType: api
+name: GitHub_Issues
+batch: github
+
+# Declared runtime parameters: owner/repo bind into the request path below; a run (or the debugger's
+# auto-generated parameter form) can override either per execution.
+params:
+  owner: microsoft
+  repo: vscode
+
+source:
+  transport: http
+  baseUrl: https://api.github.com
+  auth:
+    type: bearer
+    secretRef: ${keyvault:dw-keyvault-prod/github-token}
+  request:
+    method: GET
+    path: /repos/{owner}/{repo}/issues
+    headers:
+      Accept: application/vnd.github+json
+      X-GitHub-Api-Version: "2022-11-28"
+    query:
+      state: all
+      per_page: "100"
+      since: "{window.from:yyyy-MM-ddTHH:mm:ssZ}"
+  pagination:
+    strategy: link_header
+    maxPages: 100
+  iterate:
+    - kind: date_window
+      granularity: month
+      from: now-3mo
+      to: now
+  reliability:
+    rateLimitRps: 2
+    urlAllowlist: ["api.github.com"]
+
+landing:
+  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/github/issues
+  pathTemplate: "history/{yyyy}/{MM}/issues_{window.from:yyyyMMdd}"
+  format: json
+  compression: gzip
+
+incremental:
+  source: response
+  column: updated_at

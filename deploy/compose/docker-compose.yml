@@ -1,0 +1,88 @@
+# The full SQLFlow stack for local/parity deployments: SQL Server (catalog + demo sink), the control plane, one
+# scalable worker, and the GUI. Copy .env.example to .env and set the secrets first.
+#
+#   docker compose up -d --build
+#   docker compose up -d --scale worker=3        # more compute, no other change
+#
+# GUI:            http://localhost:8081  (sign in with the bootstrap admin from .env)
+# Control plane:  http://localhost:5000  (OpenAPI at /openapi/v1.json)
+#
+# Production ingress layouts route /api/* and the GUI under ONE host instead (see deploy/k8s), which drops the
+# CORS configuration used here.
+
+name: sqlflow
+
+services:
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+      MSSQL_PID: Developer
+    volumes:
+      - mssql-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -C -Q 'SELECT 1' -b"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    # Published for host-side tooling only; the stack talks to it on the compose network.
+    ports:
+      - "14333:1433"
+
+  controlplane:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      ControlPlane__Catalog__ConnectionReference: "Server=mssql;Database=SqlFlowCatalog;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      ControlPlane__Jwt__SigningKey: ${SQLFLOW_JWT_SIGNING_KEY:?set SQLFLOW_JWT_SIGNING_KEY in .env}
+      ControlPlane__Jwt__BootstrapSecret: ${SQLFLOW_BOOTSTRAP_SECRET:?set SQLFLOW_BOOTSTRAP_SECRET in .env}
+      ControlPlane__Bootstrap__AdminUsername: ${SQLFLOW_ADMIN_USERNAME:-admin}
+      ControlPlane__Bootstrap__AdminPasswordReference: ${SQLFLOW_ADMIN_PASSWORD:?set SQLFLOW_ADMIN_PASSWORD in .env}
+      # The GUI is a separate origin in this compose layout.
+      ControlPlane__Cors__AllowedOrigins__0: http://localhost:8081
+      # Compute belongs to the worker service; this replica is API + scheduler + sync only.
+      ControlPlane__Worker__Enabled: "false"
+      # Flows in the demo estate reference this sink.
+      SQLFlowSinkConStr: "Server=mssql;Database=SqlFlowDemo;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+    ports:
+      - "5000:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/health/live || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.worker
+    depends_on:
+      mssql:
+        condition: service_healthy
+    environment:
+      SQLFLOW_CATALOG_DB: "Server=mssql;Database=SqlFlowCatalog;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      SQLFlowSinkConStr: "Server=mssql;Database=SqlFlowDemo;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      # Serve a pool by listing it here; empty drains untargeted runs only.
+      SQLFLOW_WORKER_POOL: ${SQLFLOW_WORKER_POOL:-}
+      SQLFLOW_GIT_TOKEN: ${SQLFLOW_GIT_TOKEN:-}
+    restart: unless-stopped
+
+  gui:
+    build:
+      context: ../../gui
+    environment:
+      SQLFLOW_API_BASE_URL: http://localhost:5000
+    ports:
+      - "8081:8080"
+    restart: unless-stopped
+
+volumes:
+  mssql-data:

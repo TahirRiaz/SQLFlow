@@ -1,0 +1,17 @@
+# Raw columns only: turn off the injected provenance columns (FileName_DW, FileDate_DW,
+# FileRowDate_DW, FileSize_DW, DataSet_DW, RowNumber_DW) to load just the source columns.
+name: Csv_NoSystemColumns
+source:
+  type: csv
+  location: ./data/orders.csv
+  options:
+    includeFileName: "false"
+    includeFileDate: "false"
+    includeFileRowDate: "false"
+    includeFileSize: "false"
+    includeDataSet: "false"
+    includeRowNumber: "false"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_NoSystemColumns

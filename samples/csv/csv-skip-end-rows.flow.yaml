@@ -1,0 +1,12 @@
+# Skip trailing data rows: drop a fixed number of rows at the end (e.g. a footer or
+# totals line). Applied per file.
+name: Csv_SkipEnd
+source:
+  type: csv
+  location: ./data/footer.csv
+  options:
+    skipEndingDataRows: "1"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_SkipEnd

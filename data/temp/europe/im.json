@@ -1,0 +1,738 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "The Isle of Man was part of the Norwegian Kingdom of the Hebrides until the 13th century, when it was ceded to Scotland. The isle came under English lordship in the 14th century before being purchased by the British Government in 1765. Current concerns include reviving the almost extinct Manx Gaelic language. The Isle of Man is a British Crown dependency, which makes it a self-governing possession of the British Crown that is not part of the UK. The UK Government, however, remains constitutionally responsible for its defense and international representation."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Western Europe, island in the Irish Sea, between Great Britain and Ireland"
+    },
+    "Geographic coordinates": {
+      "text": "54 15 N, 4 30 W"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "572 sq km"
+      },
+      "land": {
+        "text": "572 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly more than three times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "160 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive fishing zone": {
+        "text": "12 nm"
+      }
+    },
+    "Climate": {
+      "text": "temperate; cool summers and mild winters; overcast about a third of the time"
+    },
+    "Terrain": {
+      "text": "hills in north and south bisected by central valley"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Snaefell 621 m"
+      },
+      "lowest point": {
+        "text": "Irish Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "none"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "74.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 43.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 30.9% (2018 est.)"
+      },
+      "forest": {
+        "text": "6.1% (2018 est.)"
+      },
+      "other": {
+        "text": "19.2% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Population distribution": {
+      "text": "most people concentrated in cities and large towns of which Douglas, in the southeast, is the largest"
+    },
+    "Natural hazards": {
+      "text": "occasional high winds and rough seas"
+    },
+    "Geography - note": {
+      "text": "one small islet, the Calf of Man, lies to the southwest and is a bird sanctuary"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "92,269"
+      },
+      "male": {
+        "text": "46,331"
+      },
+      "female": {
+        "text": "45,938 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Manxman (men), Manxwoman (women)"
+      },
+      "adjective": {
+        "text": "Manx"
+      }
+    },
+    "Ethnic groups": {
+      "text": "White 94.7%, Asian 3.1%, Mixed 1%, Black 0.6%, other 0.4% (2021 est.)",
+      "note": "<strong>note:</strong> data represent population by nationality"
+    },
+    "Languages": {
+      "text": "English, Manx Gaelic (about 2% of the population has some knowledge)"
+    },
+    "Religions": {
+      "text": "Christian 54.7%, Muslim 0.5%, Buddhist 0.5%, Hindu 0.4%, Jewish 0.2%, none 43.8% (2021 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "16% (male 7,701/female 7,100)"
+      },
+      "15-64 years": {
+        "text": "61.9% (male 29,035/female 28,044)"
+      },
+      "65 years and over": {
+        "text": "22.1% (2024 est.) (male 9,595/female 10,794)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "58.6"
+      },
+      "youth dependency ratio": {
+        "text": "23.6"
+      },
+      "elderly dependency ratio": {
+        "text": "34.9"
+      },
+      "potential support ratio": {
+        "text": "2.9 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "44.9 years (2024 est.)"
+      },
+      "male": {
+        "text": "43.7 years"
+      },
+      "female": {
+        "text": "46.1 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "0.45% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "10.4 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "10.2 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "4.3 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "most people concentrated in cities and large towns of which Douglas, in the southeast, is the largest"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "53.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.97% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "27,000 DOUGLAS (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.08 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.08 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "1.04 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.89 male(s)/female"
+      },
+      "total population": {
+        "text": "1.01 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "4.1 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "4.4 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "3.7 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "82.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "80.7 years"
+      },
+      "female": {
+        "text": "84.4 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.88 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.9 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 99.1% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0.9% of population (2020)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: NA"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: NA"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Education expenditures": {
+      "text": "NA"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air pollution, marine pollution; waste disposal (both household and industrial)"
+    },
+    "Climate": {
+      "text": "temperate; cool summers and mild winters; overcast about a third of the time"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "74.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 43.8% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 30.9% (2018 est.)"
+      },
+      "forest": {
+        "text": "6.1% (2018 est.)"
+      },
+      "other": {
+        "text": "19.2% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "53.5% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.97% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2017 est.)"
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "50,551 tons (2011 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "25,276 tons (2011 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "50% (2011 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Isle of Man"
+      },
+      "abbreviation": {
+        "text": "I.O.M."
+      },
+      "etymology": {
+        "text": "the name \"man\" may be derived from the Celtic word for \"mountain\""
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy (Tynwald)"
+    },
+    "Dependency status": {
+      "text": "British crown dependency"
+    },
+    "Capital": {
+      "name": {
+        "text": "Douglas"
+      },
+      "geographic coordinates": {
+        "text": "54 09 N, 4 29 W"
+      },
+      "time difference": {
+        "text": "UTC 0 (5 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "name derives from the Dhoo and Glass Rivers, which flow through the valley in which the town is located and which in Manx mean the \"dark\" and the \"light\" rivers respectively"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none; there are no first-order administrative divisions as defined by the US Government, but there are 24 local authorities each with its own elections"
+    },
+    "Independence": {
+      "text": "none (British Crown dependency)"
+    },
+    "National holiday": {
+      "text": "Tynwald Day, 5 July (1417); date Tynwald Day was first recorded"
+    },
+    "Legal system": {
+      "text": "the laws of the UK&nbsp;apply where applicable and include Manx statutes"
+    },
+    "Constitution": {
+      "history": {
+        "text": "development of the Isle of Man constitution dates to at least the 14th century"
+      },
+      "amendments": {
+        "text": "proposed as a bill in the House of Keys, by the \"Government,\" by a \"Member of the House,\" or through petition to the House or Legislative Council; passage normally requires three separate readings and approval of at least 13 House members; following both House and Council agreement, assent is required by the lieutenant governor on behalf of the Crown; the constitution has been expanded and amended many times, last in 2020"
+      }
+    },
+    "Citizenship": {
+      "text": "see United Kingdom"
+    },
+    "Suffrage": {
+      "text": "16 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "Lord of Mann King CHARLES III (since 8 September 2022); represented by Lieutenant Governor Sir John LORIMER (since 29 September 2021)"
+      },
+      "head of government": {
+        "text": "Chief Minister Alfred CANNAN (since 12 October 2021)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers appointed by the lieutenant governor"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; lieutenant governor appointed by the monarch; chief minister indirectly elected by the Tynwald for a 5-year term (eligible for second term); election last held on 23 September 2021 (next to be held in 2026)"
+      },
+      "election results": {
+        "text": "<em><br>2021:</em> Alfred CANNAN (independent) elected chief minister; Tynwald House of Keys vote - 21 of 24<br><br><em>2016:</em> Howard QUAYLE elected chief minister; Tynwald House of Keys vote - 21 of 33"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Tynwald (High Court of Tynwald)"
+      },
+      "legislative structure": {
+        "text": "bicameral"
+      },
+      "note": "<strong>note:</strong> Legislative Council includes the President of Tynwald, 2 non-voting members (the Lord Bishop of Sodor and Man and the attorney general), and 8 members indirectly elected by the House of Keys"
+    },
+    "Legislative branch - lower chamber": {
+      "chamber name": {
+        "text": "House of Keys"
+      },
+      "number of seats": {
+        "text": "24 (directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "5 years"
+      },
+      "most recent election date": {
+        "text": "9/23/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "independent (21); Manx Labour Party (2); Liberal Vannin (1)"
+      },
+      "percentage of women in chamber": {
+        "text": "40%"
+      },
+      "expected date of next election": {
+        "text": "September 2026"
+      }
+    },
+    "Legislative branch - upper chamber": {
+      "chamber name": {
+        "text": "Legislative Council"
+      },
+      "number of seats": {
+        "text": "11 (3 appointed, 8 indirectly elected)"
+      },
+      "scope of elections": {
+        "text": "partial renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "3/14/2023"
+      },
+      "percentage of women in chamber": {
+        "text": "36.4%"
+      },
+      "expected date of next election": {
+        "text": "March 2028"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Isle of Man High Court of Justice (consists of 3 permanent judges or \"deemsters\" and 1 judge of appeal; organized into the Staff of Government Division or Court of Appeal and the Civil Division); the Court of General Gaol Delivery is not formally part of the High Court but is administered as though part of the High Court and deals with serious criminal cases; note - appeals beyond the Court of Appeal are referred to the Judicial Committee of the Privy Council (in London)"
+      },
+      "judge selection and term of office": {
+        "text": "deemsters appointed by the Lord Chancellor of England on the nomination of the lieutenant governor; deemsters can serve until age 70"
+      },
+      "subordinate courts": {
+        "text": "High Court; Court of Summary Gaol Delivery; Summary Courts; Magistrate's Court; specialized courts"
+      }
+    },
+    "Political parties": {
+      "text": "Green Party <br>Liberal Vannin Party or LVP <br>Manx Labor Party<br>Mec Vannin (sometimes referred to as the Manx Nationalist Party)",
+      "note": "<strong>note:</strong> most members sit as independents"
+    },
+    "International organization participation": {
+      "text": "UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (British crown dependency)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (British crown dependency)"
+      }
+    },
+    "Flag description": {
+      "text": "red with the Three Legs of Man emblem (triskelion), in the center; the three legs are joined at the thigh and bent at the knee; in order to have the toes pointing clockwise on both sides of the flag, a two-sided emblem is used; the flag is based on the coat of arms of the last recognized Norse King of Mann, MAGNUS III (r. 1252-65); the triskelion has its roots in an early Celtic sun symbol"
+    },
+    "National symbol(s)": {
+      "text": "triskelion (a motif of three legs); national colors: red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Arrane Ashoonagh dy Vannin\" (O Land of Our Birth)"
+      },
+      "lyrics/music": {
+        "text": "William Henry GILL [English], John J. KNEEN [Manx]/traditional"
+      },
+      "note": "<strong>note:</strong> adopted 2003, in use since 1907; serves as a local anthem; as a British Crown dependency, \"God Save the King\" is official (see United Kingdom) and is played when the sovereign, members of the royal family, or the lieutenant governor are present"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income British island economy; known financial services and tourism industries; taxation incentives for technology and financial firms to operate; historic fishing and agriculture industries are declining; major online gambling and film industry locale"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2015": {
+        "text": "$6.792 billion (2015 est.)"
+      },
+      "Real GDP (purchasing power parity) 2014": {
+        "text": "$7.428 billion (2014 est.)"
+      },
+      "note": "<strong>note:</strong> data are in 2014 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2021": {
+        "text": "3.84% (2021 est.)"
+      },
+      "Real GDP growth rate 2020": {
+        "text": "-8.84% (2020 est.)"
+      },
+      "Real GDP growth rate 2019": {
+        "text": "0.25% (2019 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2014": {
+        "text": "$84,600 (2014 est.)"
+      }
+    },
+    "GDP (official exchange rate)": {
+      "text": "$7.931 billion (2021 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2017": {
+        "text": "4.1% (2017 est.)"
+      },
+      "Inflation rate (consumer prices) 2016": {
+        "text": "1% (2016 est.)"
+      }
+    },
+    "Credit ratings": {
+      "Moody's rating": {
+        "text": "Aa3 (2020)"
+      },
+      "Standard & Poors rating": {
+        "text": "N/A"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0.3% (2021 est.)"
+      },
+      "industry": {
+        "text": "9.4% (2021 est.)"
+      },
+      "services": {
+        "text": "91.8% (2021 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "Agricultural products": {
+      "text": "cereals, vegetables; cattle, sheep, pigs, poultry"
+    },
+    "Industries": {
+      "text": "financial services, light manufacturing, tourism"
+    },
+    "Industrial production growth rate": {
+      "text": "9.95% (2021 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2017": {
+        "text": "1.1% (2017 est.)"
+      }
+    },
+    "Exports - partners": {
+      "text": "almost entirely United Kingdom (2022)"
+    },
+    "Exports - commodities": {
+      "text": "crude petroleum, artwork, vegetables, fruits, whiskies (2022)"
+    },
+    "Imports - partners": {
+      "text": "almost entirely United Kingdom (2022)"
+    },
+    "Imports - commodities": {
+      "text": "ships, delivery trucks (2022)"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Manx pounds (IMP) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.805 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.811 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.727 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.78 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.783 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the Isle of Man has an extensive communications infrastructure consisting of telephone cables, submarine cables, and an array of television and mobile phone transmitters and towers (2022)"
+      },
+      "domestic": {
+        "text": "landline, telefax, mobile cellular telephone system"
+      },
+      "international": {
+        "text": "country code - 44; fiber-optic cable, microwave radio relay, satellite earth station, submarine cable"
+      }
+    },
+    "Broadcast media": {
+      "text": "national public radio broadcasts over 3 FM stations and 1 AM station; 2 commercial broadcasters operating with 1 having multiple FM stations; receives radio and TV services via relays from British TV and radio broadcasters"
+    },
+    "Internet country code": {
+      "text": ".im"
+    }
+  },
+  "Transportation": {
+    "Civil aircraft registration country code prefix": {
+      "text": "M"
+    },
+    "Airports": {
+      "text": "4 (2024)"
+    },
+    "Heliports": {
+      "text": "1 (2024)"
+    },
+    "Railways": {
+      "total": {
+        "text": "63 km (2008)"
+      },
+      "narrow gauge": {
+        "text": "6 km (2008) 1.076-m gauge (6 km electrified)"
+      },
+      "note": "57 0.914-mm gauge (29 km electrified) <strong>note:</strong> primarily summer tourist attractions"
+    },
+    "Roadways": {
+      "total": {
+        "text": "1,107 km (2022)"
+      },
+      "paved": {
+        "text": "1,107 km"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "269 (2023)"
+      },
+      "by type": {
+        "text": "bulk carrier 102, container ship 6, general cargo 27, oil tanker 56, other 78"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "2 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "2"
+      },
+      "very small": {
+        "text": "0"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Douglas, Ramsey"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of the UK"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

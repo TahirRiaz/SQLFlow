@@ -1,0 +1,921 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Discovered and claimed for Spain in 1499, Aruba was acquired by the Dutch in 1636. Three main industries have since dominated the island's economy: gold mining, oil refining, and tourism. A 19th-century gold rush was followed by prosperity brought on by the opening of an oil refinery in 1924. The last decades of the 20th century saw a boom in the tourism industry. Aruba seceded from the Netherlands Antilles in 1986 and became a separate, semi-autonomous member of the Kingdom of the Netherlands. Movement toward full independence was halted at Aruba's request in 1990."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Caribbean, island in the Caribbean Sea, north of Venezuela"
+    },
+    "Geographic coordinates": {
+      "text": "12 30 N, 69 58 W"
+    },
+    "Map references": {
+      "text": "Central America and the Caribbean"
+    },
+    "Area": {
+      "total ": {
+        "text": "180 sq km"
+      },
+      "land": {
+        "text": "180 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "slightly larger than Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "68.5 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "tropical marine; little seasonal temperature variation"
+    },
+    "Terrain": {
+      "text": "flat with a few hills; scant vegetation"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Ceru Jamanota 188 m"
+      },
+      "lowest point": {
+        "text": "Caribbean Sea 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "NEGL; white sandy beaches foster tourism"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "11.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 11.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "2.3% (2018 est.)"
+      },
+      "other": {
+        "text": "86.6% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "NA"
+    },
+    "Population distribution": {
+      "text": "most residents live in or around Oranjestad and San Nicolaas; most settlments tend to be located on the less mountainous western side of the island"
+    },
+    "Natural hazards": {
+      "text": "hurricanes; lies outside the Caribbean hurricane belt and is rarely threatened"
+    },
+    "Geography - note": {
+      "text": "a flat, riverless island renowned for its white sand beaches; its tropical climate is moderated by constant trade winds from the Atlantic Ocean; the temperature is almost constant at about 27 degrees Celsius (81 degrees Fahrenheit)"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "125,063"
+      },
+      "male": {
+        "text": "59,101"
+      },
+      "female": {
+        "text": "65,962 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Aruban(s)"
+      },
+      "adjective": {
+        "text": "Aruban; Dutch"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Dutch 78.7%, Colombian 6.6%, Venezuelan 5.5%, Dominican 2.8%, Haitian 1.3%, other 5.1% (2020 est.)",
+      "note": "<strong>note:</strong> data represent population by nationality"
+    },
+    "Languages": {
+      "text": "Papiamento (official) (a creole language that mixes Portuguese, Spanish, Dutch, English, French, African languages, and Arawak) 69.4%, Spanish 13.7%, English (widely spoken) 7.1%, Dutch (official) 6.1%, Chinese 1.5%, other 1.7%, unspecified 0.4% (2010 est.)"
+    },
+    "Religions": {
+      "text": "Roman Catholic 75.3%, Protestant 4.9% (includes Methodist 0.9%, Adventist 0.9%, Anglican 0.4%, other Protestant 2.7%), Jehovah's Witness 1.7%, other 12%, none 5.5%, unspecified 0.5% (2010 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "17.2% (male 10,815/female 10,747)"
+      },
+      "15-64 years": {
+        "text": "65.7% (male 39,621/female 42,487)"
+      },
+      "65 years and over": {
+        "text": "17.1% (2024 est.) (male 8,665/female 12,728)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "47.8"
+      },
+      "youth dependency ratio": {
+        "text": "24.8"
+      },
+      "elderly dependency ratio": {
+        "text": "23"
+      },
+      "potential support ratio": {
+        "text": "4.4 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "40.9 years (2024 est.)"
+      },
+      "male": {
+        "text": "39.3 years"
+      },
+      "female": {
+        "text": "42.4 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "1.08% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "11.6 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "8.8 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "8 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "most residents live in or around Oranjestad and San Nicolaas; most settlments tend to be located on the less mountainous western side of the island"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "44.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.77% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "30,000 ORANJESTAD (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.02 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.01 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.93 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.68 male(s)/female"
+      },
+      "total population": {
+        "text": "0.9 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "11.5 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "15.6 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "7.3 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "78.5 years (2024 est.)"
+      },
+      "male": {
+        "text": "75.4 years"
+      },
+      "female": {
+        "text": "81.6 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.82 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.9 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 98.1% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 98.1% of population"
+      },
+      "improved: total": {
+        "text": "total: 98.1% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 1.9% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 1.9% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 1.9% of population (2015 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 97.7% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 97.7% of population"
+      },
+      "improved: total": {
+        "text": "total: 97.7% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 2.3% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 2.3% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 2.3% of population (2015 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "42.1% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "5.5% of GDP (2016 est.)"
+    },
+    "Literacy": {
+      "definition": {
+        "text": "age 15 and over can read and write"
+      },
+      "total population": {
+        "text": "97.8%"
+      },
+      "male": {
+        "text": "97.8%"
+      },
+      "female": {
+        "text": "97.8% (2018)"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "14 years"
+      },
+      "male": {
+        "text": "13 years"
+      },
+      "female": {
+        "text": "14 years (2012)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "difficulty in properly disposing of waste produced by large numbers of tourists; waste burning that occurs in the landfill causes air pollution and poses an environmental and health risk; ocean environmental damage due to plastic pollution"
+    },
+    "Climate": {
+      "text": "tropical marine; little seasonal temperature variation"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "11.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 11.1% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "2.3% (2018 est.)"
+      },
+      "other": {
+        "text": "86.6% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "44.3% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.77% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0% of GDP (2017 est.)"
+    },
+    "Air pollutants": {
+      "carbon dioxide emissions": {
+        "text": "0.88 megatons (2016 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "88,132 tons (2013 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "9,695 tons (2013 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "11% (2013 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Country of Aruba"
+      },
+      "conventional short form": {
+        "text": "Aruba"
+      },
+      "local long form": {
+        "text": "Land Aruba (Dutch); Pais Aruba (Papiamento)"
+      },
+      "local short form": {
+        "text": "Aruba"
+      },
+      "etymology": {
+        "text": "the origin of the island's name is unclear; according to tradition, the name comes from the Spanish phrase \"oro huba\" (there was gold), but in fact no gold was ever found on the island; another possibility is the native word \"oruba,\" which means \"well-situated\""
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy; part of the Kingdom of the Netherlands"
+    },
+    "Dependency status": {
+      "text": "constituent country of the Kingdom of the Netherlands; full autonomy in internal affairs obtained in 1986 upon separation from the Netherlands Antilles; Dutch Government responsible for defense and foreign affairs"
+    },
+    "Capital": {
+      "name": {
+        "text": "Oranjestad"
+      },
+      "geographic coordinates": {
+        "text": "12 31 N, 70 02 W"
+      },
+      "time difference": {
+        "text": "UTC-4 (1 hour ahead of Washington, DC, during Standard Time)"
+      },
+      "etymology": {
+        "text": "translates as \"orange city\" in Dutch; in 1824, the city was named after the royal family of the Netherlands, the House of Orange-Nassau&nbsp;"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none (part of the Kingdom of the Netherlands)",
+      "note": "<strong>note:</strong> Aruba is one of four constituent countries of the Kingdom of the Netherlands; the other three are the Netherlands, Curacao, and Sint Maarten"
+    },
+    "Independence": {
+      "text": "none (part of the Kingdom of the Netherlands)"
+    },
+    "National holiday": {
+      "text": "National Anthem and Flag Day, 18 March (1976)"
+    },
+    "Legal system": {
+      "text": "civil law system based on the Dutch civil code"
+    },
+    "Constitution": {
+      "history": {
+        "text": "previous 1947, 1955; latest drafted and approved August 1985, enacted 1 January 1986 (regulates governance of Aruba but is subordinate to the Charter for the Kingdom of the Netherlands); in 1986,&nbsp;Aruba became a semi-autonomous entity within the Kingdom of the Netherlands"
+      }
+    },
+    "Citizenship": {
+      "text": "see the Netherlands"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "King WILLEM-ALEXANDER of the Netherlands (since 30 April 2013); represented by Governor General Alfonso BOEKHOUDT (since 1 January 2017)"
+      },
+      "head of government": {
+        "text": "Prime Minister Evelyn WEVER-CROES (since 17 November 2017)"
+      },
+      "cabinet": {
+        "text": "Council of Ministers elected by the Legislature (Staten)"
+      },
+      "elections/appointments": {
+        "text": "the monarchy is hereditary; governor general appointed by the monarch for a 6-year term; prime minister and deputy prime minister indirectly elected by the Staten for 4-year term; election last held on 25 June 2021 (next to be held by June 2025)"
+      },
+      "election results": {
+        "text": "as leader of the majority party of the ruling coalition, Evelyn WEVER-CROES (MEP) elected prime minister; percent of Staten vote - NA"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Legislature (Staten)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "21"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "6/25/2021"
+      },
+      "parties elected and seats per party": {
+        "text": "MEP (9); AVP (7); ROOTS (2); MAS (2); Accion21 (1)"
+      },
+      "percentage of women in chamber": {
+        "text": "38.1%"
+      },
+      "expected date of next election": {
+        "text": "June 2025"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Joint Court of Justice of Aruba, Curacao, Sint Maarten, and of Bonaire, Sint Eustatius and Saba or \"Joint Court of Justice\" (sits as a 3-judge panel); final appeals heard by the Supreme Court in The Hague, Netherlands"
+      },
+      "judge selection and term of office": {
+        "text": "Joint Court judges appointed for life by the monarch"
+      },
+      "subordinate courts": {
+        "text": "&nbsp;Court in First Instance"
+      }
+    },
+    "Political parties": {
+      "text": "Accion21<br>Aruban People's Party or AVP<br>Democratic Network or RED<br>Movimiento Aruba Soberano (Aruban Sovereignty Movement) or MAS<br>People's Electoral Movement Party or MEP<br>Pueblo Orguyoso y Respeta or POR<br>RAIZ (ROOTS)"
+    },
+    "International organization participation": {
+      "text": "ACS (associate), Caricom (observer), FATF, ILO, IMF, Interpol, IOC, ITUC (NGOs), UNESCO (associate), UNWTO (associate), UPU"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (represented by the Kingdom of the Netherlands)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "the US does not have an embassy in Aruba; the Consul General to Curacao is accredited to Aruba"
+      }
+    },
+    "Flag description": {
+      "text": "blue, with two narrow, horizontal, yellow stripes across the lower portion and a red, four-pointed star outlined in white in the upper hoist-side corner; the star represents Aruba and its red soil and white beaches, its four points the four major languages (Papiamento, Dutch, Spanish, English) as well as the four points of a compass, to indicate that its inhabitants come from all over the world; the blue symbolizes Caribbean waters and skies; the stripes represent the island's two main \"industries\": the flow of tourists to the sun-drenched beaches and the flow of minerals from the earth"
+    },
+    "National symbol(s)": {
+      "text": "Hooiberg (Haystack) Hill; national colors: blue, yellow, red, white"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Aruba Deshi Tera\" (Aruba Precious Country)"
+      },
+      "lyrics/music": {
+        "text": "Juan Chabaya 'Padu' LAMPE/Rufo Inocencio WEVER"
+      },
+      "note": "<strong>note:</strong> local anthem adopted 1986; as part of the Kingdom of the Netherlands, \"Het Wilhelmus\" is official (see Netherlands)"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "small, tourism-dependent, territorial-island economy; very high public debt; COVID-19 crippled economic activity; partial recovery underway via tourism, benefitting from its high amount of timeshare residences; considering reopening oil refinery"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$4.35 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$4.172 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$3.844 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "4.26% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "8.52% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "27.64% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$40,500 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$38,900 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$35,700 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$3.649 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2019": {
+        "text": "4.26% (2019 est.)"
+      },
+      "Inflation rate (consumer prices) 2018": {
+        "text": "3.63% (2018 est.)"
+      },
+      "Inflation rate (consumer prices) 2017": {
+        "text": "-1.03% (2017 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "BB (2020)"
+      },
+      "Standard & Poors rating": {
+        "text": "BBB+ (2013)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "0% (2019 est.)"
+      },
+      "industry": {
+        "text": "11.4% (2019 est.)"
+      },
+      "services": {
+        "text": "78.3% (2019 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "52.1% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "19.6% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "21.5% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "0% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "88.3% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-81.5% (2023 est.)"
+      },
+      "note": "<strong>note:</strong> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "aloes; livestock; fish"
+    },
+    "Industries": {
+      "text": "tourism, petroleum transshipment facilities, banking"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2016": {
+        "text": "7.7% (2016 est.)"
+      }
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "1.03% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "1.17% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "1.22% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$793 million (2019 est.)"
+      },
+      "expenditures": {
+        "text": "$782 million (2019 est.)"
+      }
+    },
+    "Public debt": {
+      "Public debt 2017": {
+        "text": "86% of GDP (2017 est.)"
+      }
+    },
+    "Taxes and other revenues": {
+      "text": "25.2% (of GDP) (2017 est.)"
+    },
+    "Current account balance": {
+      "Current account balance 2022": {
+        "text": "$230.556 million (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "$79.257 million (2021 est.)"
+      },
+      "Current account balance 2020": {
+        "text": "-$316.455 million (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2022": {
+        "text": "$2.853 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$2.201 billion (2021 est.)"
+      },
+      "Exports 2020": {
+        "text": "$1.444 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Colombia 40%, US 12%, Jordan 11%, Guyana 8%, Netherlands 6% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "tobacco, liquor, refined petroleum, scrap iron, orthopedic appliances (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2022": {
+        "text": "$2.429 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$1.947 billion (2021 est.)"
+      },
+      "Imports 2020": {
+        "text": "$1.644 billion (2020 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "US 39%, Netherlands 11%, Guyana 9%, Colombia 8%, China 5% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, crude petroleum, tobacco, jewelry, other foods (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$1.468 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$1.544 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$1.513 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "Aruban guilders/florins per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "1.79 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "1.79 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "1.79 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "1.79 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "1.79 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "99.9% (2022 est.)"
+      },
+      "electrification - urban areas": {
+        "text": "100%"
+      },
+      "electrification - rural areas": {
+        "text": "100%"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "304,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "809.548 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "166.766 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "84.9% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "1.2% of total installed capacity (2022 est.)"
+      },
+      "wind": {
+        "text": "13.9% of total installed capacity (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "8,000 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "1.214 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "1.214 million metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "161.715 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "35,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "33 (2021 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "141,000 (2021 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "132 (2021 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the telecom sector has seen a decline in subscriber numbers (particularly for prepaid mobile services the mainstay of short term visitors) and revenue; fixed and mobile broadband services are two areas that have benefited from the crisis as employees and students have resorted to working from home; one area of the telecom market that is not prepared for growth is 5G mobile; governments, regulators, and even the mobile network operators have shown that they have not been investing in 5G opportunities at the present time; network expansion and enhancements remain concentrated around improving LTE coverage (2021)"
+      },
+      "domestic": {
+        "text": "33 per 100 fixed-line telephone subscriptions and 130 per 100 mobile-cellular (2021)"
+      },
+      "international": {
+        "text": "country code - 297; landing&nbsp;points for the PAN-AM, PCCS, Deep Blue Cable, and Alonso de Ojeda&nbsp;submarine telecommunications cable system that extends from Trinidad and Tobago, Florida,&nbsp;Puerto Ricco,&nbsp;Jamaica, Guyana, Sint Eustatius &amp; Saba, Suriname, Dominican Republic, BVI, USVI, Haiti, Cayman Islands, the Netherlands Antilles,&nbsp; through Aruba to Panama, Venezuela, Colombia, Ecuador, Peru and Chile; extensive interisland microwave radio relay links (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "<p class=\"ssrcss-1q0x1qg-Paragraph e1jhz7w10\">Aruba observes freedom of the press, as guaranteed under Dutch law, the newspapers are in the Papiamento language, there are two commercial TV stations, a cable TV subscription service provides access to foreign channels and there are a wide range of commercial radio stations available</p> (2023)"
+    },
+    "Internet country code": {
+      "text": ".aw"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "97% (2021 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "19,000 (2020 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "18 (2020 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "3 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "19"
+      },
+      "annual passenger traffic on registered air carriers": {
+        "text": "274,280 (2018)"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "P4"
+    },
+    "Airports": {
+      "text": "1 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "1,000 km (2010)"
+      }
+    },
+    "Merchant marine": {
+      "total": {
+        "text": "1 (2023)"
+      },
+      "by type": {
+        "text": "other 1"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "2 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Paardenbaai (Oranjestad), Sint Nicolaas Baai"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "no regular military forces; Aruban Militia (ARUMIL); Police Department for local law enforcement, supported by the Royal Netherlands Marechaussee (Gendarmerie), the Dutch Caribbean Police Force (Korps Politie Caribisch Nederland, KPCN), and the Dutch Caribbean Coast Guard (DCCG or Kustwacht Caribisch Gebied (KWCARIB)) (2024)"
+    },
+    "Military - note": {
+      "text": "defense is the responsibility of the Kingdom of the Netherlands; the Aruba security services focus on organized crime and terrorism; the Dutch Government controls foreign and defense policy; the Dutch Caribbean Coast Guard (DCCG) provides maritime security; the Dutch military maintains a presence on Aruba, including a marine company and a naval base (2024)"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "17,085 (Venezuela) (2023)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "<p>northbound transshipment point for cocaine from Colombia and Venezuela; cocaine shipped to the United States, other Caribbean islands, Africa, and Europe</p> <p> </p>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+[package]
+name = "sqlflow-lsp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Language server for SQLFlow .flow.yaml: completion, hover, diagnostics, document symbols, and code actions over stdio"
+
+[[bin]]
+name = "sqlflow-lsp"
+path = "src/main.rs"
+
+[dependencies]
+sqlflow-lang = { path = "../sqlflow-lang" }
+tower-lsp = "0.20"
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

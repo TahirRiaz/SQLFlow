@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyt="http://www.nytimes.com/namespaces/rss/2.0" version="2.0">
+  <channel>
+    <title>NYT &gt; World &gt; Africa</title>
+    <link>https://www.nytimes.com/section/world/africa</link>
+    <atom:link href="https://rss.nytimes.com/services/xml/rss/nyt/Africa.xml" rel="self" type="application/rss+xml"></atom:link>
+    <description></description>
+    <language>en-us</language>
+    <copyright>Copyright 2025 The New York Times Company</copyright>
+    <lastBuildDate>Wed, 19 Mar 2025 01:06:05 +0000</lastBuildDate>
+    <pubDate>Tue, 18 Mar 2025 20:00:14 +0000</pubDate>
+    <image>
+      <title>NYT &gt; World &gt; Africa</title>
+      <url>https://static01.nyt.com/images/misc/NYT_logo_rss_250x40.png</url>
+      <link>https://www.nytimes.com/section/world/africa</link>
+    </image>
+    <item>
+      <title>South Africa Will Not Remove Antarctic Team After a Reported Assault</title>
+      <link>https://www.nytimes.com/2025/03/18/world/africa/south-africa-antarctica-assault-harassment.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/africa/south-africa-antarctica-assault-harassment.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/africa/south-africa-antarctica-assault-harassment.html" rel="standout"></atom:link>
+      <description>A researcher at a South African base in Antarctica has been accused of physical assault and sexual harassment. South Africa said it had no immediate plans to remove the accused or any colleagues.</description>
+      <dc:creator>Zimasa Matiwane and Amelia Nierenberg</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 20:00:14 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Sexual Harassment</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Antarctic Regions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Africa</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Research</category>
+      <media:content height="1802" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-antarctic-ftqm/18int-antarctic-ftqm-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Pool photo by Mark Ralston</media:credit>
+      <media:description>Antarctica’s harsh conditions have routinely made it difficult for countries to scrutinize researchers’ behavior there.</media:description>
+    </item>
+    <item>
+      <title>U.S. Foreign Aid Cuts Hit Sudanese Refugees Fleeing Violence and Famine in Darfur</title>
+      <link>https://www.nytimes.com/2025/03/18/world/africa/trump-foreign-aid-sudan-refugees.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/africa/trump-foreign-aid-sudan-refugees.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/africa/trump-foreign-aid-sudan-refugees.html" rel="standout"></atom:link>
+      <description>Just weeks after the U.S. government suspended its work in massive foreign aid cuts announced in January, humanitarians say much of the damage to critical programs has already been done.</description>
+      <dc:creator>Alex Pena</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 14:04:19 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Refugees and Displaced Persons</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Humanitarian Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Women and Girls</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Sudan</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Chad</category>
+      <media:content height="1080" medium="image" url="https://static01.nyt.com/images/2025/04/13/video/135922-18vid-trump-foreign-aid-sudan-refugees/135922-18vid-trump-foreign-aid-sudan-refugees-mediumSquareAt3X.jpg" width="1080"></media:content>
+      <media:credit>Daniel Vergara for The New York Times</media:credit>
+    </item>
+    <item>
+      <title>Rwanda Cuts Ties With Belgium Over Congo Conflict and E.U. Sanctions</title>
+      <link>https://www.nytimes.com/2025/03/17/world/africa/rwanda-belgium-congo-eu-sanctions.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/africa/rwanda-belgium-congo-eu-sanctions.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/africa/rwanda-belgium-congo-eu-sanctions.html" rel="standout"></atom:link>
+      <description>Belgium, Rwanda’s former colonial ruler, pushed for the European Union to impose sanction against Rwandan officials over their role in invading eastern Congo and plundering its mineral wealth.</description>
+      <dc:creator>Elian Peltier</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 18:01:36 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Rwanda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Belgium</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Congo, Democratic Republic of (Congo-Kinshasa)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">European Union</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Embargoes and Sanctions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Conflict Minerals and Resources</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War and Armed Conflicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Metals and Minerals</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Diplomatic Service, Embassies and Consulates</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">March 23 Movement</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Mines and Mining</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Peace Process</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/17int-rwanda-belgium-1-jhlk/17int-rwanda-belgium-1-jhlk-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Guerchom Ndebo for The New York Times</media:credit>
+      <media:description>M23 fighters with captured Congolese troops on trucks in Goma, Democratic Republic of Congo, in January.</media:description>
+    </item>
+    <item>
+      <title>How South Sudan Returned to the Brink of War</title>
+      <link>https://www.nytimes.com/2025/03/17/world/africa/south-sudan-war.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/africa/south-sudan-war.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/africa/south-sudan-war.html" rel="standout"></atom:link>
+      <description>An attack on a U.N. helicopter has highlighted rising tensions in the world’s youngest country, where a seven-year-old peace deal looks ever more fragile.</description>
+      <dc:creator>Abdi Latif Dahir</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 16:33:54 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War and Armed Conflicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Sudan</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Machar, Riek</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Kiir Mayardit, Salva</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Uganda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Museveni, Yoweri</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Sudan</category>
+      <media:content height="1802" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/17int-southsudan-vqch/17int-southsudan-vqch-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Ivor Prickett for The New York Times</media:credit>
+      <media:description>The outskirts of Juba, South Sudan’s capital, last year. The country endured several years of civil war before a fragile peace agreement in 2018.</media:description>
+    </item>
+    <item>
+      <title>East African Housekeepers Face Rape, Assault and Death in Saudi Arabia</title>
+      <link>https://www.nytimes.com/2025/03/16/world/africa/saudi-arabia-kenya-uganda-maids-women.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/16/world/africa/saudi-arabia-kenya-uganda-maids-women.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/16/world/africa/saudi-arabia-kenya-uganda-maids-women.html" rel="standout"></atom:link>
+      <description>East African leaders and Saudi royals are among those profiting off a lucrative, deadly trade in domestic workers.</description>
+      <dc:creator>Abdi Latif Dahir, Justin Scheck and Kiana Hayeri</dc:creator>
+      <pubDate>Sun, 16 Mar 2025 15:33:13 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kenya</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Workers</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Saudi Arabia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Uganda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Workplace Hazards and Violations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Domestic Service</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Human Rights and Human Rights Violations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Fatalities)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kampala (Uganda)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Nairobi (Kenya)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Ruto, William</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Employment Agencies</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Women and Girls</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Maharah Human Resources Co</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Saudi Manpower Solutions Co (Smasco)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Mawarid International Recruitment Co</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">vis-photo</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/03/11/multimedia/00gulf-domestics-promo-lhgp/00gulf-domestics-promo-lhgp-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Kiana Hayeri for The New York Times</media:credit>
+    </item>
+    <item>
+      <title>Takeaways From Our Investigation Into Domestic Worker Abuse in Saudi Arabia</title>
+      <link>https://www.nytimes.com/2025/03/16/world/africa/maids-abuse-saudi-arabia-takeaways.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/16/world/africa/maids-abuse-saudi-arabia-takeaways.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/16/world/africa/maids-abuse-saudi-arabia-takeaways.html" rel="standout"></atom:link>
+      <description>Housekeepers from East Africa suffer beatings, starvation and sexual assault in Saudi Arabia. Here’s what else we learned about the cross-border trade in domestic workers.</description>
+      <dc:creator>Justin Scheck and Abdi Latif Dahir</dc:creator>
+      <pubDate>Sun, 16 Mar 2025 11:03:54 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Saudi Arabia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kenya</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Uganda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Ruto, William</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Museveni, Yoweri</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Labor and Jobs</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Workplace Hazards and Violations</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/03/13/multimedia/00gulf-domestics-takeaways-1-qbpf/00gulf-domestics-takeaways-1-qbpf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Kiana Hayeri for The New York Times</media:credit>
+      <media:description>From left: Mary Nsiimenta says her boss locked her on a rooftop; Winfridah Kwamboka never made it back home; Faridah Nassanga says she was raped.</media:description>
+    </item>
+    <item>
+      <title>Trump Tries to Use White South Africans as Cautionary Tale</title>
+      <link>https://www.nytimes.com/2025/03/15/world/africa/south-africa-whites-trump.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/15/world/africa/south-africa-whites-trump.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/15/world/africa/south-africa-whites-trump.html" rel="standout"></atom:link>
+      <description>The president and his allies accuse South Africa of discriminating against and killing white people, and warn that it could happen in America if attempts to promote diversity aren’t stopped.</description>
+      <dc:creator>John Eligon</dc:creator>
+      <pubDate>Sat, 15 Mar 2025 09:31:54 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Africa</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Minorities</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Discrimination</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Race and Ethnicity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Black People</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Whites</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Apartheid (Policy)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/15/multimedia/15int-safrica-trump-ljkf/15int-safrica-trump-ljkf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Joao Silva/The New York Times</media:credit>
+      <media:description>White South Africans rallying in support of President Trump outside the U.S. Embassy in Pretoria, South Africa, last month.</media:description>
+    </item>
+    <item>
+      <title>Trump Administration Expels South Africa’s Ambassador to the U.S.</title>
+      <link>https://www.nytimes.com/2025/03/14/us/politics/south-africa-ambassador-marco-rubio.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/14/us/politics/south-africa-ambassador-marco-rubio.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/14/us/politics/south-africa-ambassador-marco-rubio.html" rel="standout"></atom:link>
+      <description>Secretary of State Marco Rubio had lashed out on social media over comments critical of President Trump that the ambassador had made to a think tank in Johannesburg.</description>
+      <dc:creator>Edward Wong and John Eligon</dc:creator>
+      <pubDate>Sat, 15 Mar 2025 06:16:43 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Africa</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Rasool, Ebrahim</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Diplomatic Service, Embassies and Consulates</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Rubio, Marco</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">State Department</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Ramaphosa, Cyril</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14trump-news-rubio-safrica-ambassador/14trump-news-live-rasool-hvjw-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Cliff Owen/Associated Press</media:credit>
+      <media:description>South Africa’s ambassador to the United States, Ebrahim Rasool, in Washington in 2013.</media:description>
+    </item>
+    <item>
+      <title>The Impact of Shrinking Resources in Uganda, Seen Through a Reporter’s Eyes</title>
+      <link>https://www.nytimes.com/2025/03/14/insider/uganda-lgbtq.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/14/insider/uganda-lgbtq.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/14/insider/uganda-lgbtq.html" rel="standout"></atom:link>
+      <description>After the Trump administration cut most U.S. foreign aid, a reporter wanted to understand how it would affect one of Uganda’s most vulnerable communities.</description>
+      <dc:creator>Abdi Latif Dahir</dc:creator>
+      <pubDate>Fri, 14 Mar 2025 07:00:05 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Uganda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Somalia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kenya</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Nairobi (Kenya)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">East Africa</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14a2_insider-Uganda-mhtf/14a2_insider-Uganda-mhtf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Stuart Tibaweswa for The New York Times</media:credit>
+      <media:description>Andrea Minaj Casablanca lost her job in Uganda after the Trump administration dismantled the U.S. Agency for International Development.</media:description>
+    </item>
+    <item>
+      <title>Video: Blood Moon Total Lunar Eclipse</title>
+      <link>https://www.nytimes.com/2025/03/13/science/lunar-eclipse-blood-moon.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/13/science/lunar-eclipse-blood-moon.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/13/science/lunar-eclipse-blood-moon.html" rel="standout"></atom:link>
+      <description>Earth’s shadow will block most of the light that illuminates the lunar surface, creating what is known as a blood moon.</description>
+      <dc:creator>Katrina Miller</dc:creator>
+      <pubDate>Fri, 14 Mar 2025 21:07:50 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Moon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Eclipses</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Space and Astronomy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <media:content height="1000" medium="image" url="https://static01.nyt.com/images/2025/03/12/multimedia/2025-03-10-lunar-eclipse-index/2025-03-10-lunar-eclipse-index-mediumSquareAt3X-v12.jpg" width="1000"></media:content>
+      <media:credit>The New York Times</media:credit>
+    </item>
+    <item>
+      <title>U.S.A.I.D. Official Orders Employees to Shred or Burn Classified and Personnel Records</title>
+      <link>https://www.nytimes.com/2025/03/11/us/politics/usaid-shred-burn-documents.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/11/us/politics/usaid-shred-burn-documents.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/11/us/politics/usaid-shred-burn-documents.html" rel="standout"></atom:link>
+      <description>Union representatives demanded that the aid agency follow the law stated in the Federal Records Act. Defense lawyers argued that officials had not destroyed personnel records and would not destroy any more documents without notification.</description>
+      <dc:creator>Edward Wong</dc:creator>
+      <pubDate>Wed, 12 Mar 2025 02:23:18 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Classified Information and State Secrets</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Archives and Records</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Government Employees</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">National Archives and Records Administration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United States Agency for International Development</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Carr, Erica Y</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Marocco, Pete</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">State Department</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Rubio, Marco</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/11/multimedia/11DC-USAID-qgvp/11DC-USAID-qgvp-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Jason Andrew for The New York Times</media:credit>
+      <media:description>It is unclear if officials at the U.S. Agency for International Development got permission from the National Archives and Records Administration to destroy the documents.</media:description>
+    </item>
+    <item>
+      <title>Tuberculosis Resurgent as Trump Funding Cut Disrupts Treatment Globally</title>
+      <link>https://www.nytimes.com/2025/03/11/health/tuberculosis-kenya-us-cuts.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/11/health/tuberculosis-kenya-us-cuts.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/11/health/tuberculosis-kenya-us-cuts.html" rel="standout"></atom:link>
+      <description>The United States was the major funder of tuberculosis programs. Now hundreds of thousands of sick patients can’t find tests or drugs, and risk spreading the disease.</description>
+      <dc:creator>Stephanie Nolen and Brian Otieno</dc:creator>
+      <pubDate>Tue, 11 Mar 2025 23:58:59 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Tuberculosis</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Medicine and Health</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Health Care Workers</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United States Agency for International Development</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kenya</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Africa</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/10/multimedia/xx-tuberculosis-cuts-01-cvwb/xx-tuberculosis-cuts-01-cvwb-mediumSquareAt3X.jpg" width="1800"></media:content>
+    </item>
+    <item>
+      <title>Athol Fugard’s Plays Illustrated the Value of Every Human Life</title>
+      <link>https://www.nytimes.com/2025/03/11/theater/athol-fugard-plays-apartheid.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/11/theater/athol-fugard-plays-apartheid.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/11/theater/athol-fugard-plays-apartheid.html" rel="standout"></atom:link>
+      <description>“Sizwe Banzi Is Dead” and other works bear witness to forgotten lives and to the moral blindness and blinkered vision of the realities of apartheid South Africa.</description>
+      <dc:creator>Roslyn Sulcas</dc:creator>
+      <pubDate>Tue, 11 Mar 2025 18:28:12 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Theater</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Fugard, Athol</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Fugard Theater</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Africa</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_ttl">Sizwe Banzi Is Dead (Play)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_ttl">&#39;Master Harold&#39;...and the Boys (Play)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_ttl">Blood Knot (Play)</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/11/multimedia/11fugard-appreciation-1-qvzm/11fugard-appreciation-1-qvzm-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Sara Krulwich/The New York Times</media:credit>
+      <media:description>Athol Fugard’s “Sizwe Banzi Is Dead,” written with and starring John Kani, left, and Winston Ntshona, follows a man who assumes another identity and assigns his own to a corpse to gain a passbook that is required to work.</media:description>
+    </item>
+    <item>
+      <title>With U.S. Aid Cuts No Longer a Threat, Rwanda Bets Big on Soft Power</title>
+      <link>https://www.nytimes.com/2025/03/11/world/africa/rwanda-congo-john-legend-tourism-m23-invasion.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/11/world/africa/rwanda-congo-john-legend-tourism-m23-invasion.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/11/world/africa/rwanda-congo-john-legend-tourism-m23-invasion.html" rel="standout"></atom:link>
+      <description>Rwanda appears to be betting on its reputation as a key security partner and sports destination to minimize any backlash to its involvement in the war.</description>
+      <dc:creator>Elian Peltier and Guerchom Ndebo</dc:creator>
+      <pubDate>Tue, 11 Mar 2025 04:01:13 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Rwanda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Congo, Democratic Republic of (Congo-Kinshasa)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War and Armed Conflicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">March 23 Movement</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Investments</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Athletics and Sports</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Kagame, Paul</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kigali (Rwanda)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Africa</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">vis-photo</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/10/multimedia/11rwanda-promo/11rwanda-promo-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Guerchom Ndebo for The New York Times</media:credit>
+    </item>
+    <item>
+      <title>Africa Received Billions in U.S. Aid. Here’s What It Will Lose.</title>
+      <link>https://www.nytimes.com/2025/03/08/world/africa/africa-usaid-funds.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/08/world/africa/africa-usaid-funds.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/08/world/africa/africa-usaid-funds.html" rel="standout"></atom:link>
+      <description>The United States spent decades responding to conflicts and disease in Africa. The continent is now expected to be the hardest hit by the Trump administration’s aid cuts.</description>
+      <dc:creator>Ruth Maclean and Saikou Jammeh</dc:creator>
+      <pubDate>Sun, 09 Mar 2025 20:10:13 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Africa</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United States Agency for International Development</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Humanitarian Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Investments</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Malnutrition</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Acquired Immune Deficiency Syndrome</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/08/multimedia/08africa-usaid-1-zlbc/08africa-usaid-1-zlbc-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Guerchom Ndebo for The New York Times</media:credit>
+      <media:description>A father and son last month at the Bulengo camp for displaced people near Goma in the east of the Democratic Republic of Congo.</media:description>
+    </item>
+    <item>
+      <title>U.N. Helicopter Attacked as South Sudan Teeters on Brink</title>
+      <link>https://www.nytimes.com/2025/03/07/world/africa/un-helicopter-attack-south-sudan.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/07/world/africa/un-helicopter-attack-south-sudan.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/07/world/africa/un-helicopter-attack-south-sudan.html" rel="standout"></atom:link>
+      <description>The aircraft came under fire as it tried to rescue wounded soldiers, the United Nations said. The attack came amid fears that a critical power-sharing deal was at risk of collapse, risking all-out civil war.</description>
+      <dc:creator>Declan Walsh</dc:creator>
+      <pubDate>Fri, 07 Mar 2025 20:13:10 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Sudan</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Kiir Mayardit, Salva</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Machar, Riek</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United Nations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Helicopters</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <media:content height="1802" medium="image" url="https://static01.nyt.com/images/2025/03/07/multimedia/07southsudan-1-mtqh/07southsudan-1-mtqh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Ivor Prickett for The New York Times</media:credit>
+      <media:description>A billboard showing President Salva Kiir of South Sudan in Juba, the country’s capital, last year.</media:description>
+    </item>
+    <item>
+      <title>Trump Offers South African Farmers Expedited Citizenship</title>
+      <link>https://www.nytimes.com/2025/03/07/world/africa/trump-south-africa-farmers-citizenship.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/07/world/africa/trump-south-africa-farmers-citizenship.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/07/world/africa/trump-south-africa-farmers-citizenship.html" rel="standout"></atom:link>
+      <description>The president falsely claimed on social media that the South African government was confiscating farmland, echoing previous statements that the country was mistreating white people.</description>
+      <dc:creator>John Eligon</dc:creator>
+      <pubDate>Fri, 07 Mar 2025 19:01:25 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Musk, Elon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Ramaphosa, Cyril</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Africa</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/07/multimedia/07safrica-trump01a-photo-bkcw/07safrica-trump01a-photo-bkcw-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Joao Silva/The New York Times</media:credit>
+      <media:description>Supporters of President Trump outside the U.S. Embassy in Pretoria, South Africa, in February.</media:description>
+    </item>
+    <item>
+      <title>Climate Change Made South Sudan Heat Wave More Likely, Study Finds</title>
+      <link>https://www.nytimes.com/2025/03/07/climate/sudan-heat-wave-climate-change.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/07/climate/sudan-heat-wave-climate-change.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/07/climate/sudan-heat-wave-climate-change.html" rel="standout"></atom:link>
+      <description>Years of war and food insecurity in the region made the extreme heat especially dangerous.</description>
+      <dc:creator>Austyn Gaffney</dc:creator>
+      <pubDate>Fri, 07 Mar 2025 18:27:42 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Global Warming</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Sudan</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Juba (South Sudan)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Heat and Heat Waves</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Greenhouse Gas Emissions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Heatstroke</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">World Weather Attribution</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Education (K-12)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Developing Countries</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/07/climate/07cli-sudan-heatwave/07cli-sudan-heatwave-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Wang Guansen/Xinhua, via Getty Images</media:credit>
+      <media:description>Displaced people collected water on the outskirts of Juba, South Sudan, in February.</media:description>
+    </item>
+    <item>
+      <title>Migrant Boats Capsize Off Yemen and Djibouti, U.N. Says</title>
+      <link>https://www.nytimes.com/2025/03/07/world/africa/yemen-djibouti-migrants-dead-missing.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/07/world/africa/yemen-djibouti-migrants-dead-missing.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/07/world/africa/yemen-djibouti-migrants-dead-missing.html" rel="standout"></atom:link>
+      <description>The missing people were on two boats that capsized off Yemen, which is on a major route for migrants trying to reach Gulf countries for work.</description>
+      <dc:creator>The Associated Press</dc:creator>
+      <pubDate>Fri, 07 Mar 2025 12:33:25 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Drownings</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Illegal Immigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Maritime Accidents and Safety</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Fatalities)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">International Organization for Migration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Abyan (Yemen)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Djibouti</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Yemen</category>
+    </item>
+    <item>
+      <title>As Ebola Spreads in Uganda, Trump Aid Freeze Hinders Effort to Contain It, U.S. Officials Fear</title>
+      <link>https://www.nytimes.com/2025/03/06/health/ebola-uganda-usaid.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/06/health/ebola-uganda-usaid.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/06/health/ebola-uganda-usaid.html" rel="standout"></atom:link>
+      <description>Two more people are reported dead from the disease, and dozens are in isolation, as the outbreak grows.</description>
+      <dc:creator>Abdi Latif Dahir and Stephanie Nolen</dc:creator>
+      <pubDate>Fri, 07 Mar 2025 02:56:23 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Uganda</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Ebola Virus</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Centers for Disease Control and Prevention</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United States Agency for International Development</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Musk, Elon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Africa Centers for Disease Control and Prevention</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/06/multimedia/06-ebola-uganda-01-hjbp/06-ebola-uganda-01-hjbp-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Hajarah Nalwadda/Associated Press</media:credit>
+      <media:description>The Mulago Referral Hospital in Kampala, Uganda, last month.</media:description>
+    </item>
+  </channel>
+</rss>

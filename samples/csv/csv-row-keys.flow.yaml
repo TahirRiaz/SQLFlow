@@ -1,0 +1,22 @@
+# Synthetic row keys: when the incoming file has no business key, generate one at ingestion time.
+#  - includeHashKey: adds HashKey_DW, a hash (default SHA2_512) over the chosen columns. Stored as a
+#    fixed varbinary on SQL Server. Ideal as a dedup/identity key.
+#  - includeConcatKey: adds ConcatKey_DW, a readable composite of the chosen columns joined by a
+#    separator.
+# hashKeyColumns / concatKeyColumns are optional: empty means all SOURCE columns, with the injected
+# provenance columns (FileName_DW, dates, row number) excluded so the key is stable across files.
+name: Csv_RowKeys
+source:
+  type: csv
+  location: ./data/orders.csv
+  options:
+    includeHashKey: "true"
+    hashKeyType: SHA2_512
+    hashKeyColumns: OrderId,Customer
+    includeConcatKey: "true"
+    concatKeyColumns: OrderId,Customer
+    concatKeySeparator: "|"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Csv_RowKeys

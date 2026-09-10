@@ -1,0 +1,123 @@
+# SQLFlow pipeline - table-to-table ingestion with dynamic schema evolution.
+#
+# Copies a SQL Server source table into a target table through the flow's canonical staging
+# table (one per flow, in the raw schema, rebuilt each run):
+# the target is created on first run, NEW SOURCE COLUMNS ARE ADDED AUTOMATICALLY on later
+# runs (dynamic schema evolution, on by default), and rows are applied with a keyed
+# two-step upsert (update changed, insert new) - never a blind reload.
+#
+#   sqlflow validate orders-ingestion.flow.yaml   # check the definition
+#   sqlflow run      orders-ingestion.flow.yaml   # stage, evolve, upsert
+#
+# No control database, no registration: the file is the whole pipeline.
+
+flowType: ing
+name: orders-ingestion
+
+# ---- CONNECTIONS --------------------------------------------------------------
+# Named here, referenced below by 'server:'. Secrets never rest in this file -
+# use a whole ${env:NAME} or ${keyvault:vault/secret} reference (it may expand to
+# a SQL-auth string), or a passwordless string (Integrated Security / AD Default).
+connections:
+  erp: ${env:SQLFLOW_SRC}
+  dwh: ${env:SQLFLOW_DW}
+
+# ---- SOURCE -------------------------------------------------------------------
+source:
+  server: erp
+  object: AdventureWorks.Sales.Orders   # three-part: Database.Schema.Table (or view)
+  # filter: "Status = 'open'"           # raw WHERE fragment appended to the read
+  # ignoreColumns: [InternalNote]       # source columns to drop
+  # dataSetColumn: Region               # dataset/partition column (gets an index)
+
+# ---- TARGET -------------------------------------------------------------------
+# 'connection:' inline is also accepted on source/target instead of 'server:'.
+target:
+  server: dwh
+  object: DW.raw.Orders
+  # truncateBeforeLoad: false           # full reload semantics
+  # columnStoreIndex: false             # clustered columnstore on first create
+  # desiredIndexes: "CREATE INDEX ..."  # declared indexes, applied on create
+
+# ---- LOAD ---------------------------------------------------------------------
+# keyColumns drive the upsert: matched+changed rows are UPDATEd, new rows INSERTed.
+# Without keys the flow appends everything.
+load:
+  keyColumns: [OrderID]
+  # skipUpdateExisting: false           # insert-only
+  # skipInsertNew: false                # update-only
+  # matchKeysInSourceAndTarget: false   # detect + tag/delete rows that vanished from source
+  # streamData: true
+  # threads: 4
+  # keepStagingTable: false             # staging is always kept on failure
+
+# ---- KEY-MATCH (deleted-row detection) -----------------------------------------
+# When load.matchKeysInSourceAndTarget: true, the engine lands the full distinct
+# source key set in the flow's canonical key table after each load and compares it against the
+# target. Target rows whose keys are gone from the source are tagged (soft delete,
+# the default) or hard-deleted, depending on 'action'.
+#
+# Tag mode auto-enables the DeletedDate_DW system column (the soft-delete stamp).
+#
+# matchKeys:
+#   action: tag                         # tag (default) or delete
+#   keyColumns: [OrderID]               # override load.keyColumns for this pass only
+#   thresholdPercent: 20                # skip the action if more than N% would be affected
+#   ignoreDeletedRowsAfterMonths: 6     # tag only rows whose dateColumn is within N months
+#   dateColumn: OrderDate               # date column for the ignore window
+#   sourceFilter: "AND Status = 'open'" # bound the source key read (raw-append AND clause)
+#   targetFilter: "AND Region = 'NA'"   # bound which target rows the pass may touch
+
+# ---- SCHEMA EVOLUTION (the default; shown for visibility) -----------------------
+# schema:
+#   sync: true                          # add newly-seen source columns to the target
+#   allowTableRewrite: false            # permit type-widening rewrites (int -> bigint)
+
+# ---- INCREMENTAL (only new/changed rows after the first run) --------------------
+# incremental:
+#   columns: [ModifiedDate]             # high-water mark probed from the target
+#   overlapDays: 7                      # safety re-read window
+#   fullLoad: false
+
+# ---- ONE-TIME BACKFILL ----------------------------------------------------------
+# initLoad:
+#   enabled: true
+#   fromDate: 2020-01-01
+#   toDate: 2024-12-31
+#   batchBy: M                          # M month | D day | K integer key ranges
+#   batchSize: 1
+
+# ---- DATA QUALITY (inline assertions, evaluated after the load) ------------------
+# @TableName expands to the target table; results are reported, never blocking.
+assertions:
+  - name: NotEmpty
+    expression: SELECT COUNT(*) FROM @TableName
+
+# ---- HOOKS (raw T-SQL on the target, and Azure invokes around the load) -----------
+# preProcess: "EXEC dbo.usp_BeforeOrders"
+# postProcess: "UPDATE STATISTICS DW.raw.Orders"
+# preInvoke: gate-pipeline                # names declared under 'invokes:' (see the
+# postInvoke: notify-pipeline             # samples/invoke document for the blocks)
+# invokes:
+#   notify-pipeline:
+#     type: adf
+#     pipeline: pl_notify
+#     servicePrincipal: deploy
+# servicePrincipals:
+#   deploy:
+#     subscriptionId: ...
+#     resourceGroup: rg-data
+#     dataFactoryName: adf-prod
+
+# ---- SURROGATE KEYS (generated after the load, written back to the target) -------
+# surrogateKeys:
+#   - table: DW.dim.Customer            # IDENTITY-backed lookup table (auto-created)
+#     column: CustomerKey
+#     keyColumns: [CustomerID]
+#     # server: dwh                     # other connection = remote generation
+
+# ---- COMPUTED COLUMNS -------------------------------------------------------------
+# virtualColumns:
+#   - name: LoadTag
+#     dataType: nvarchar(50)
+#     expression: "'erp-nightly'"

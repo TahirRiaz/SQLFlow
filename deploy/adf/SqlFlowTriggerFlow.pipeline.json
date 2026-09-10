@@ -1,0 +1,239 @@
+{
+  "name": "SqlFlowTriggerFlow",
+  "properties": {
+    "description": "Triggers a SQLFlow pipeline through the warm control-plane API and waits for it to finish. This is the drop-in: ADF authenticates, POSTs a run (a sub-second call - nothing is provisioned here), then polls the run to a terminal state and fails the ADF activity if the run did not succeed. Import via ADF Studio (Pipeline -> ... -> Import) or deploy as a Microsoft.DataFactory/factories/pipelines resource.",
+    "parameters": {
+      "controlPlaneBaseUrl": {
+        "type": "string",
+        "metadata": "Base URL of the control plane, e.g. https://sqlflow-control-plane.<region>.azurecontainerapps.io"
+      },
+      "repoId": {
+        "type": "string",
+        "metadata": "The repo's id in the catalog (GET /api/v1/repos)."
+      },
+      "flowName": {
+        "type": "string",
+        "metadata": "The flow to run."
+      },
+      "bootstrapSecret": {
+        "type": "secureString",
+        "metadata": "The control plane's bootstrap secret. In production, source this from a Key Vault linked service rather than a parameter value."
+      },
+      "pollIntervalSeconds": {
+        "type": "int",
+        "defaultValue": 15
+      },
+      "timeout": {
+        "type": "string",
+        "defaultValue": "1.00:00:00",
+        "metadata": "Max wait as d.hh:mm:ss."
+      }
+    },
+    "variables": {
+      "runId": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    },
+    "activities": [
+      {
+        "name": "GetToken",
+        "type": "WebActivity",
+        "policy": {
+          "timeout": "0.00:02:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 15
+        },
+        "typeProperties": {
+          "url": {
+            "value": "@concat(pipeline().parameters.controlPlaneBaseUrl, '/api/v1/auth/token')",
+            "type": "Expression"
+          },
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "secret": "@pipeline().parameters.bootstrapSecret",
+            "scopes": [
+              "operate"
+            ]
+          }
+        }
+      },
+      {
+        "name": "TriggerRun",
+        "type": "WebActivity",
+        "dependsOn": [
+          {
+            "activity": "GetToken",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "policy": {
+          "timeout": "0.00:02:00",
+          "retry": 2,
+          "retryIntervalInSeconds": 15
+        },
+        "typeProperties": {
+          "url": {
+            "value": "@concat(pipeline().parameters.controlPlaneBaseUrl, '/api/v1/runs')",
+            "type": "Expression"
+          },
+          "method": "POST",
+          "headers": {
+            "Content-Type": "application/json",
+            "Authorization": {
+              "value": "@concat('Bearer ', activity('GetToken').output.accessToken)",
+              "type": "Expression"
+            }
+          },
+          "body": {
+            "repoId": "@pipeline().parameters.repoId",
+            "flowName": "@pipeline().parameters.flowName"
+          }
+        }
+      },
+      {
+        "name": "SetRunId",
+        "type": "SetVariable",
+        "dependsOn": [
+          {
+            "activity": "TriggerRun",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "variableName": "runId",
+          "value": {
+            "value": "@activity('TriggerRun').output.runId",
+            "type": "Expression"
+          }
+        }
+      },
+      {
+        "name": "WaitForRun",
+        "type": "Until",
+        "dependsOn": [
+          {
+            "activity": "SetRunId",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@or(or(equals(variables('status'), 'succeeded'), equals(variables('status'), 'failed')), equals(variables('status'), 'cancelled'))",
+            "type": "Expression"
+          },
+          "timeout": {
+            "value": "@pipeline().parameters.timeout",
+            "type": "Expression"
+          },
+          "activities": [
+            {
+              "name": "Wait",
+              "type": "Wait",
+              "typeProperties": {
+                "waitTimeInSeconds": {
+                  "value": "@pipeline().parameters.pollIntervalSeconds",
+                  "type": "Expression"
+                }
+              }
+            },
+            {
+              "name": "GetRun",
+              "type": "WebActivity",
+              "dependsOn": [
+                {
+                  "activity": "Wait",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "policy": {
+                "timeout": "0.00:02:00",
+                "retry": 3,
+                "retryIntervalInSeconds": 15
+              },
+              "typeProperties": {
+                "url": {
+                  "value": "@concat(pipeline().parameters.controlPlaneBaseUrl, '/api/v1/runs/', variables('runId'))",
+                  "type": "Expression"
+                },
+                "method": "GET",
+                "headers": {
+                  "Authorization": {
+                    "value": "@concat('Bearer ', activity('GetToken').output.accessToken)",
+                    "type": "Expression"
+                  }
+                }
+              }
+            },
+            {
+              "name": "SetStatus",
+              "type": "SetVariable",
+              "dependsOn": [
+                {
+                  "activity": "GetRun",
+                  "dependencyConditions": [
+                    "Succeeded"
+                  ]
+                }
+              ],
+              "typeProperties": {
+                "variableName": "status",
+                "value": {
+                  "value": "@activity('GetRun').output.status",
+                  "type": "Expression"
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "FailIfRunDidNotSucceed",
+        "type": "IfCondition",
+        "dependsOn": [
+          {
+            "activity": "WaitForRun",
+            "dependencyConditions": [
+              "Succeeded"
+            ]
+          }
+        ],
+        "typeProperties": {
+          "expression": {
+            "value": "@not(equals(variables('status'), 'succeeded'))",
+            "type": "Expression"
+          },
+          "ifTrueActivities": [
+            {
+              "name": "FailPipeline",
+              "type": "Fail",
+              "typeProperties": {
+                "message": {
+                  "value": "@concat('SQLFlow run ', variables('runId'), ' ended with status: ', variables('status'))",
+                  "type": "Expression"
+                },
+                "errorCode": "SqlFlowRunFailed"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "annotations": [
+      "sqlflow"
+    ]
+  }
+}

@@ -1,0 +1,1142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyt="http://www.nytimes.com/namespaces/rss/2.0" version="2.0">
+  <channel>
+    <title>NYT &gt; World News</title>
+    <link>https://www.nytimes.com/section/world</link>
+    <atom:link href="https://rss.nytimes.com/services/xml/rss/nyt/World.xml" rel="self" type="application/rss+xml"></atom:link>
+    <description></description>
+    <language>en-us</language>
+    <copyright>Copyright 2025 The New York Times Company</copyright>
+    <lastBuildDate>Mon, 24 Feb 2025 22:19:59 +0000</lastBuildDate>
+    <pubDate>Mon, 24 Feb 2025 22:17:22 +0000</pubDate>
+    <image>
+      <title>NYT &gt; World News</title>
+      <url>https://static01.nyt.com/images/misc/NYT_logo_rss_250x40.png</url>
+      <link>https://www.nytimes.com/section/world</link>
+    </image>
+    <item>
+      <title>3 Years Into Russia-Ukraine War, Trump Ushers in New World for Putin</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/putin-trump-russia-ukraine-war.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/putin-trump-russia-ukraine-war.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/putin-trump-russia-ukraine-war.html" rel="standout"></atom:link>
+      <description>Fresh possibilities have emerged for President Vladimir V. Putin of Russia with a change of power in Washington.</description>
+      <dc:creator>Paul Sonne</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:45:31 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24putin-anniversary-hvgm/24putin-anniversary-hvgm-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Tyler Hicks/The New York Times</media:credit>
+      <media:description>Ukrainian soldiers firing at Russian targets from the front line this month. President Vladimir V. Putin dug in on the battlefield to wait out Western resolve in a longer and more onerous conflict than Moscow had expected.</media:description>
+    </item>
+    <item>
+      <title>How Friedrich Merz Will Try to Lead Europe Despite a Weakened Hand</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/friedrich-merz-europe-germany.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/friedrich-merz-europe-germany.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/friedrich-merz-europe-germany.html" rel="standout"></atom:link>
+      <description>The likely next chancellor is unpopular, and his country’s economy has stalled. But his penchant for risks could help lead to a European showdown with President Trump.</description>
+      <dc:creator>Jim Tankersley and Christopher F. Schuetze</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:18:19 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Alternative for Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Democratic Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Free Democratic Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Berlin (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24Germany-Merz-vwfc/24Germany-Merz-vwfc-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Maja Hitij/Getty Images</media:credit>
+      <media:description>Friedrich Merz speaking in Berlin on Monday.</media:description>
+    </item>
+    <item>
+      <title>What Trump’s Deportation Plans Mean for Central America</title>
+      <link>https://www.nytimes.com/2025/02/24/world/americas/central-america-panama-trump-deportation-migrants.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/americas/central-america-panama-trump-deportation-migrants.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/americas/central-america-panama-trump-deportation-migrants.html" rel="standout"></atom:link>
+      <description>Deporting migrants to Central American countries removes many political and legal hurdles for the Trump administration. How far can the practice go before these nations reach a breaking point?</description>
+      <dc:creator>Annie Correal</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:46:00 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deportation</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Illegal Immigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Embargoes and Sanctions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Rubio, Marco</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Castro, Xiomara</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Chaves, Rodrigo</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Central America</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Panama</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Darien Gap</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Costa Rica</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24central-america-migrants-qlcz/24central-america-migrants-qlcz-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Patricio Bianchi/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Migrants of various nationalities who were deported from the United States were taken to a remote shelter in Costa Rica on Friday.</media:description>
+    </item>
+    <item>
+      <title>Europe Prepares to Face Russia as Trump’s America Steps Back</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/europe-ukraine-anniversary.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/europe-ukraine-anniversary.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/europe-ukraine-anniversary.html" rel="standout"></atom:link>
+      <description>European leaders visited Kyiv to mark the war’s third anniversary. The show of solidarity in Ukraine on Monday comes at a head-spinning moment for the continent.</description>
+      <dc:creator>Kim Barker, Jeanna Smialek and Steven Erlanger</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:56:53 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">von der Leyen, Ursula</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24europe-ukraine-diplo-01-ctqf/24europe-ukraine-diplo-01-ctqf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Tyler Hicks/The New York Times</media:credit>
+      <media:description>Ukrainian soldiers readied weapons and ammunition as they prepared to launch an assault on Russian soldiers in eastern Ukraine earlier this month.</media:description>
+    </item>
+    <item>
+      <title>Francis Is in Critical Condition. What Happens When a Pope Dies?</title>
+      <link>https://www.nytimes.com/article/francis-what-happens-when-pope-dies.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/article/francis-what-happens-when-pope-dies.html</guid>
+      <atom:link href="https://www.nytimes.com/article/francis-what-happens-when-pope-dies.html" rel="standout"></atom:link>
+      <description>Time-honored rituals, drafted and refined over centuries, allow for ritual mourning and provide order at a dramatic moment of transition.</description>
+      <dc:creator>Elisabetta Povoledo and Jason Horowitz</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 21:17:27 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Funerals and Memorials</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Cardinals (Roman Catholic Prelates)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Coffins</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Priests</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Grief (Emotion)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Roman Catholic Church</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Sistine Chapel (Vatican City)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Francis</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">John Paul II</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Re, Giovanni Battista</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Rome (Italy)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Vatican City</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24pope-explainer-01-khmv/24pope-explainer-01-khmv-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>James Hill for The New York Times</media:credit>
+      <media:description>Candles and flowers outside the Policlinico Agostino Gemelli, the hospital in Rome where Pope Francis is receiving treatment, on Monday.</media:description>
+    </item>
+    <item>
+      <title>As Trump Courts Putin, China’s Leader Xi Emphasizes Close Ties With Russia</title>
+      <link>https://www.nytimes.com/2025/02/24/world/asia/xi-putin-call-russia-china-trump.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/asia/xi-putin-call-russia-china-trump.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/asia/xi-putin-call-russia-china-trump.html" rel="standout"></atom:link>
+      <description>The Chinese and Russian leaders reaffirmed their relationship in a video call on Monday, an apparent rebuff to the idea that the Trump administration could drive a wedge between them.</description>
+      <dc:creator>David Pierson and Paul Sonne</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 16:54:13 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Xi Jinping</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24China-Putin-01-lfzh/24China-Putin-01-lfzh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Gavriil Grigorov/Agence France-Presse — Getty Images</media:credit>
+      <media:description>In a photo distributed by Russian state media, President Vladimir V. Putin of Russia holds a video call last month with President Xi Jinping of China.</media:description>
+    </item>
+    <item>
+      <title>Is Zelensky’s Approach to Trump Hurting Ukraine?</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/ukraine-zelensky-trump.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/ukraine-zelensky-trump.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/ukraine-zelensky-trump.html" rel="standout"></atom:link>
+      <description>Through three years of wartime leadership, Ukraine’s president has mostly played weak hands wisely. But his approach has fallen flat with the Trump administration.</description>
+      <dc:creator>Andrew E. Kramer</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 11:37:34 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Interference in 2016 US Elections and Ties to Trump Associates</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Bessent, Scott</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Duda, Andrzej (1972- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Poroshenko, Petro Olekseyevich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kyiv (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24ukraine-zelensky-02-blkm/24ukraine-zelensky-02-blkm-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>James Hill for The New York Times</media:credit>
+      <media:description>President Volodymyr Zelensky, right, with President Trump in Paris in December before his inauguration. </media:description>
+    </item>
+    <item>
+      <title>5 Takeaways From Germany’s Election</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/takeaways-germany-election.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/takeaways-germany-election.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/takeaways-germany-election.html" rel="standout"></atom:link>
+      <description>Friedrich Merz and his party won, Elon Musk didn’t seem to move voters, and more lessons from an early German vote with big implications for Europe.</description>
+      <dc:creator>Christopher F. Schuetze and Jim Tankersley</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 13:32:57 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Alternative for Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Democratic Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Social Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merz, Friedrich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Left Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Scholz, Olaf (1958- )</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23Germany-takeaways-01-mtwq/23Germany-takeaways-01-mtwq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Sergey Ponomarev for The New York Times</media:credit>
+      <media:description>Voting on Sunday at a polling station in Berlin. Turnout for the parliamentary election was the highest in years.</media:description>
+    </item>
+    <item>
+      <title>Hamas Official Expresses Reservations About Oct. 7 Attack on Israel</title>
+      <link>https://www.nytimes.com/2025/02/24/world/middleeast/hamas-official-interview-attack-israel.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/middleeast/hamas-official-interview-attack-israel.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/middleeast/hamas-official-interview-attack-israel.html" rel="standout"></atom:link>
+      <description>Mousa Abu Marzouk, the head of Hamas’s foreign relations office, said he would not have supported such an attack on Israel had he known of the devastation it would wreak on Gaza.</description>
+      <dc:creator>Adam Rasgon</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 20:21:08 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War and Armed Conflicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Civilian Casualties</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Hamas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Gaza Strip</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Israel</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24mideast-hamas-01-blqv/24mideast-hamas-01-blqv-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Saher Alghorra for The New York Times</media:credit>
+      <media:description>Hamas militants during the handover of three Israeli hostages to the Red Cross in Gaza on Saturday.</media:description>
+    </item>
+    <item>
+      <title>Gaza Cease-Fire Could End in Days, With No Extension Agreed. What Happens Next?</title>
+      <link>https://www.nytimes.com/2025/02/24/world/middleeast/israel-hamas-gaza-ceasefire.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/middleeast/israel-hamas-gaza-ceasefire.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/middleeast/israel-hamas-gaza-ceasefire.html" rel="standout"></atom:link>
+      <description>Less than a week before it expires, Israel and Hamas have failed to agree to extend the cease-fire in Gaza. Here’s how the deal could still continue — and what happens if it doesn’t.</description>
+      <dc:creator>Patrick Kingsley and Ronen Bergman</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 14:47:44 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Hamas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Netanyahu, Benjamin</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Israel</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Gaza Strip</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Witkoff, Steven</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24mideast-assess-hwcl/24mideast-assess-hwcl-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Zain Jaafar/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Palestinians waiting in Ramallah on Sunday after Israel delayed the release of Palestinian prisoners.</media:description>
+    </item>
+    <item>
+      <title>British Couple Arrested by Taliban in Afghanistan, Family Says</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/reynolds-couple-arrested-afghanistan.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/reynolds-couple-arrested-afghanistan.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/reynolds-couple-arrested-afghanistan.html" rel="standout"></atom:link>
+      <description>Peter and Barbie Reynolds were arrested on Feb. 1, their children told U.K. news outlets. The couple had run an education company in Afghanistan for almost two decades.</description>
+      <dc:creator>Megan Specia</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:38:52 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Taliban</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Afghanistan</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Bamiyan (Afghanistan)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Great Britain</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kabul (Afghanistan)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Women and Girls</category>
+    </item>
+    <item>
+      <title>How TikTok Helped Germany’s Left to a Surprise Election Showing</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/germany-election-die-linke.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/germany-election-die-linke.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/germany-election-die-linke.html" rel="standout"></atom:link>
+      <description>Struggling a month ago, the Die Linke party surged into Parliament by riding a backlash against conservative immigration policy.</description>
+      <dc:creator>Tatiana Firsova and Jim Tankersley</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:16:43 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Social Media</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Voting and Voters</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Left Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">TikTok (ByteDance)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Reichinnek, Heidi (1988- )</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24germany-left-fqcz/24germany-left-fqcz-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Martin Divisek/EPA, via Shutterstock</media:credit>
+      <media:description>Heidi Reichinnek, center, on Monday. Her party, Die Linke, surprised by winning nearly 9 percent of the vote in German elections on Sunday.</media:description>
+    </item>
+    <item>
+      <title>Ukraine Marks Third Anniversary of War With Little Fanfare</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/ukraine-war-anniversary-zelensky.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/ukraine-war-anniversary-zelensky.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/ukraine-war-anniversary-zelensky.html" rel="standout"></atom:link>
+      <description>For Ukrainians, Feb. 24 was a day to remember, without major ceremony, what has been lost in the three years since Russia’s full-scale invasion.</description>
+      <dc:creator>Maria Varenikova</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 13:28:07 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Civilian Casualties</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kyiv (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24ukraine-anniversary-01-zlcj/24ukraine-anniversary-01-zlcj-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Javad Parsa/NTB, via, via Reuters</media:credit>
+      <media:description>President Volodymyr Zelensky of Ukraine and his wife, Olena Zelenska, visited Kyiv’s Maidan Square on Monday.</media:description>
+    </item>
+    <item>
+      <title>Ukraine Nears a Deal to Give U.S. a Share of Its Mineral Wealth</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/ukraine-us-mineral-wealth-deal.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/ukraine-us-mineral-wealth-deal.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/ukraine-us-mineral-wealth-deal.html" rel="standout"></atom:link>
+      <description>President Trump said that Ukraine’s president may soon visit the White House to sign a deal, though how it ties in to efforts to end the Russian invasion and guarantee Ukraine’s security is unclear.</description>
+      <dc:creator>Constant Méheut</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 22:17:22 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24ukraine-deal-1-qwlv/24ukraine-deal-1-qwlv-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Tyler Hicks/The New York Times</media:credit>
+      <media:description>In Kostiantynivka, an industrial city in eastern Ukraine, on Monday. The city has been under heavy bombardment from Russian forces.</media:description>
+    </item>
+    <item>
+      <title>Tuesday Briefing: The Ukraine War’s 3rd Anniversary</title>
+      <link>https://www.nytimes.com/2025/02/24/briefing/ukraine-war-anniversary-hamas-doubts-north-korea-fisherman.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/briefing/ukraine-war-anniversary-hamas-doubts-north-korea-fisherman.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/briefing/ukraine-war-anniversary-hamas-doubts-north-korea-fisherman.html" rel="standout"></atom:link>
+      <description>Plus, letting resorts run wild.</description>
+      <dc:creator>Emmett Lindner</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 20:58:44 +0000</pubDate>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/25ambriefing-asia-lead/25ambriefing-asia-lead-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Tyler Hicks/The New York Times</media:credit>
+      <media:description>Bomb damage in Kostiantynivka, Ukraine, on Monday.</media:description>
+    </item>
+    <item>
+      <title>Trump, Meeting With Macron, Says He Might Visit Russia</title>
+      <link>https://www.nytimes.com/2025/02/24/us/politics/trump-macron-ukraine.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/us/politics/trump-macron-ukraine.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/us/politics/trump-macron-ukraine.html" rel="standout"></atom:link>
+      <description>Meeting at the White House, President Trump declined to call President Vladimir V. Putin of Russia a dictator while President Emmanuel Macron of France stated flatly that “the aggressor is Russia.”</description>
+      <dc:creator>Peter Baker</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:49:38 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Macron, Emmanuel (1977- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24dc-prexy-mvpb/24dc-prexy-mvpb-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Doug Mills/The New York Times</media:credit>
+      <media:description>President Donald J. Trump with President Emmanuel Macron of France, in the Oval Office on Monday.</media:description>
+    </item>
+    <item>
+      <title>Why Tensions Are Rising Over Israel’s Operations in the West Bank</title>
+      <link>https://www.nytimes.com/2025/02/24/world/middleeast/israel-west-bank-what-why.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/middleeast/israel-west-bank-what-why.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/middleeast/israel-west-bank-what-why.html" rel="standout"></atom:link>
+      <description>Amid the most intensive Israeli operations in the area in decades, Palestinians fear entrenched displacement and a return to military control in some towns.</description>
+      <dc:creator>Fatima AbdulKarim and Erika Solomon</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:57:09 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Palestinians</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Palestinian Authority</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United Nations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Katz, Israel (1955- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Netanyahu, Benjamin</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Israel</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Jenin (West Bank)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Tulkarm (West Bank)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">West Bank</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24westbank-explainer-02-fjwq/24westbank-explainer-02-fjwq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Alaa Badarneh/EPA, via Shutterstock</media:credit>
+      <media:description>Israeli soldiers during a military operation inside the Jenin refugee camp on Monday.</media:description>
+    </item>
+    <item>
+      <title>U.S. Votes Against U.N. Resolution Demanding Russian Withdrawal from Ukraine</title>
+      <link>https://www.nytimes.com/2025/02/24/world/middleeast/us-un-russia-ukraine-war.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/middleeast/us-un-russia-ukraine-war.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/middleeast/us-un-russia-ukraine-war.html" rel="standout"></atom:link>
+      <description>The United States voted against a resolution, backed by most of Europe, demanding Russian withdrawal from Ukraine — a deep fissure between allies, and a sharp shift in American policy.</description>
+      <dc:creator>Farnaz Fassihi</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 21:16:07 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War Crimes, Genocide and Crimes Against Humanity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">General Assembly (UN)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Security Council (UN)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United Nations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24un-ukraine-1-chmv/24un-ukraine-1-chmv-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Sarah Yenesel/EPA, via Shutterstock</media:credit>
+      <media:description>Mariana Betsa, deputy foreign minister of Ukraine, addresses the U.N. General Assembly, urging approval of a resolution demanding that Russia withdraw forces from Ukraine, in New York on Monday.</media:description>
+    </item>
+    <item>
+      <title>Elon Musk Congratulates AfD Leader on Germany’s Election Results</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/musk-afd-weidel-call.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/musk-afd-weidel-call.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/musk-afd-weidel-call.html" rel="standout"></atom:link>
+      <description>The leader of the party said she received the call after the party known as the AfD finished second in national elections, by far the best showing in its history.</description>
+      <dc:creator>Christopher F. Schuetze</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:46:10 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Alternative for Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Democratic Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">X (Formerly Twitter)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Musk, Elon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Weidel, Alice</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Vance, J D</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merz, Friedrich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24germany-musk-bmvp/24germany-musk-bmvp-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Hannibal Hanschke/EPA, via Shutterstock</media:credit>
+      <media:description>Alice Weidel, leader of the Alternative for Germany party, talking via video link with Elon Musk at an election rally in Halle, Germany, last month.</media:description>
+    </item>
+    <item>
+      <title>Hopes Fade for Workers Trapped for Days in Tunnel in India</title>
+      <link>https://www.nytimes.com/2025/02/24/world/asia/india-tunnel-collapse-workers-trapped.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/asia/india-tunnel-collapse-workers-trapped.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/asia/india-tunnel-collapse-workers-trapped.html" rel="standout"></atom:link>
+      <description>Local officials have been unable to make contact with eight people after wall of silt and water caused the ceiling to collapse.</description>
+      <dc:creator>Ali Watkins</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 15:56:47 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">India</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Telangana (India)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Disasters and Emergencies</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Bridges and Tunnels</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Accidents and Safety</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Building (Construction)</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24xp-tunnel-qzch/24xp-tunnel-qzch-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Agence France-Presse — Getty Images</media:credit>
+      <media:description>Search teams are working to rescue eight workers believed to be trapped in a tunnel that collapsed in Indian state of Telangana.</media:description>
+    </item>
+    <item>
+      <title>Frank G. Wisner, Diplomat With Impact on Foreign Policy, Dies at 86</title>
+      <link>https://www.nytimes.com/2025/02/24/us/politics/frank-g-wisner-ii-dead.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/us/politics/frank-g-wisner-ii-dead.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/us/politics/frank-g-wisner-ii-dead.html" rel="standout"></atom:link>
+      <description>He headed U.S. embassies around the world and relished the role, bringing a gregarious style to promoting American interests. But he clashed with the Obama White House.</description>
+      <dc:creator>Alan Cowell</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 14:56:14 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Diplomatic Service, Embassies and Consulates</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Obituaries)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Wisner, Frank Gardiner</category>
+      <media:content height="1732" medium="image" url="https://static01.nyt.com/images/2025/01/15/multimedia/00wisner-1-hqwl/00wisner-1-hqwl-mediumSquareAt3X.jpg" width="1732"></media:content>
+      <media:credit>Valdrin Xhemaj/European Pressphoto Agency</media:credit>
+      <media:description>Frank G. Wisner II in 2007. The guest list at his dinner parties offered a Who’s Who of the elite.</media:description>
+    </item>
+    <item>
+      <title>In Russia, Anniversary of Ukraine War Draws Little Public Mention</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/russia-ukraine-war-anniversary.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/russia-ukraine-war-anniversary.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/russia-ukraine-war-anniversary.html" rel="standout"></atom:link>
+      <description>President Vladimir V. Putin of Russia is not scheduled to attend any events on Monday to mark the anniversary of the full-scale invasion that he ordered.</description>
+      <dc:creator>Nataliya Vasilyeva</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 12:53:59 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Moscow (Russia)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24russia-anniversary-mqpb/24russia-anniversary-mqpb-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Evgenia Novozhenina/Reuters</media:credit>
+      <media:description>Red Square in Moscow was open to visitors rather than filled with commemorations on Monday.</media:description>
+    </item>
+    <item>
+      <title>Trial of Former Surgeon Accused of Abusing Nearly 300 Opens in France</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/france-surgeon-trial-patient-abuse-le-scouarnec.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/france-surgeon-trial-patient-abuse-le-scouarnec.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/france-surgeon-trial-patient-abuse-le-scouarnec.html" rel="standout"></atom:link>
+      <description>A former surgeon is accused of raping or sexually assaulting 299 people, mostly children, over 25 years. It is considered to be France’s largest-ever pedophilia case.</description>
+      <dc:creator>Aurelien Breeden</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 16:54:49 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Le Scouarnec, Joel</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">France</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Child Abuse and Neglect</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Sex Crimes</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Brittany (France)</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24france-trial-wpvk/24france-trial-wpvk-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Thomas Padilla/Associated Press</media:credit>
+      <media:description>The trial of retired surgeon Joël Le Scouarnec, who is accused of raping or sexually assaulting 299 people over 25 years, started on Monday in Vannes, in Brittany.</media:description>
+    </item>
+    <item>
+      <title>How Denmark’s Social Democrats Are Succeeding With Stricter Immigration Policies</title>
+      <link>https://www.nytimes.com/2025/02/24/magazine/denmark-immigration-policy-progressives.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/magazine/denmark-immigration-policy-progressives.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/magazine/denmark-immigration-policy-progressives.html" rel="standout"></atom:link>
+      <description>Around the world, progressive parties have come to see tight immigration restrictions as unnecessary, even cruel. What if they’re actually the only way for progressivism to flourish?</description>
+      <dc:creator>David Leonhardt</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 20:06:10 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Frederiksen, Mette</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Social Democratic Party (Denmark)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Illegal Immigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Denmark</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deportation</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Workers</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Labor and Jobs</category>
+    </item>
+    <item>
+      <title>5 Photos Show How the Ukraine War Changed</title>
+      <link>https://www.nytimes.com/video/world/europe/100000009987270/photos-show-ukraine-war.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/video/world/europe/100000009987270/photos-show-ukraine-war.html</guid>
+      <atom:link href="https://www.nytimes.com/video/world/europe/100000009987270/photos-show-ukraine-war.html" rel="standout"></atom:link>
+      <description>On the third anniversary of Russia’s invasion of Ukraine, Tyler Hicks, a war photographer for The New York Times, looks back at five photos he took during the conflict and reflects on how the rules of engagement have changed, affecting what he can document and what the world can witness.</description>
+      <dc:creator>Tyler Hicks, Christina Thornell, Rebecca Suner, Gaëlle Girbes and David Jouppi</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 10:00:38 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Photography</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War and Armed Conflicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">News and News Media</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">New York Times</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Hicks, Tyler</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+    </item>
+    <item>
+      <title>Pope Francis, in Critical Condition, Is ‘Resting’ in Hospital, Vatican Says</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/pope-francis-health-vatican-hospital.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/pope-francis-health-vatican-hospital.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/pope-francis-health-vatican-hospital.html" rel="standout"></atom:link>
+      <description>Francis is being treated for pneumonia, a complex infection and kidney problems that have left him in critical condition. He did some light work on Monday.</description>
+      <dc:creator>Emma Bubola and Gina Kolata</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 19:23:38 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Popes</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Kidneys</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Pneumonia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Roman Catholic Church</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Francis</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Rome (Italy)</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24pope-health-pckz/24pope-health-pckz-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>James Hill for The New York Times</media:credit>
+      <media:description>Flowers, candles and balloons have been left at the feet of a statue of former Pope John Paul II at the hospital in Rome where Pope Francis is being treated.</media:description>
+    </item>
+    <item>
+      <title>Every Planet in Our Solar System Will Be Visible at Night This Week</title>
+      <link>https://www.nytimes.com/2025/02/24/science/astronomy-planets-stargazing.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/science/astronomy-planets-stargazing.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/science/astronomy-planets-stargazing.html" rel="standout"></atom:link>
+      <description>With Mercury joining the show, all seven of Earth’s celestial neighbors will be present at dusk this week.</description>
+      <dc:creator>Katrina Miller</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 08:00:21 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Planets</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Space and Astronomy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Telescopes and Observatories</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Venus (Planet)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Solar System</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Mercury (Planet)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Mars (Planet)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Saturn (Planet)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Jupiter (Planet)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">your-feed-science</category>
+      <media:content height="1000" medium="image" url="https://static01.nyt.com/images/2025/02/21/multimedia/2025-02-25-planet-parade-map-index/2025-02-25-planet-parade-map-index-mediumSquareAt3X.png" width="1000"></media:content>
+    </item>
+    <item>
+      <title>Greenpeace Goes to Court in $300 Million Suit That Poses Bankruptcy Risk</title>
+      <link>https://www.nytimes.com/2025/02/24/climate/greenpeace-energy-transfer-dakota-access-lawsuit.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/climate/greenpeace-energy-transfer-dakota-access-lawsuit.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/climate/greenpeace-energy-transfer-dakota-access-lawsuit.html" rel="standout"></atom:link>
+      <description>In a closely watched case, the owner of the Dakota Access Pipeline is claiming the environmental group masterminded protests that hurt the company’s business.</description>
+      <dc:creator>Karen Zraick</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 18:58:54 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Global Warming</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Greenhouse Gas Emissions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Suits and Litigation (Civil)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Pipelines</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Compensation for Damages (Law)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Energy Transfer Partners LP</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Greenpeace</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/24/multimedia/24cli-greenpeace-mhqk/24cli-greenpeace-mhqk-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Alyssa Schukar for The New York Times</media:credit>
+      <media:description>Protesters at the Dakota Access Pipeline in 2016.</media:description>
+    </item>
+    <item>
+      <title>North Koreans on Chinese Tuna Boats Boost Revenue for Kim Jong-un</title>
+      <link>https://www.nytimes.com/2025/02/24/world/asia/north-korea-china-fishing-boats.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/asia/north-korea-china-fishing-boats.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/asia/north-korea-china-fishing-boats.html" rel="standout"></atom:link>
+      <description>Thousands of miles from home, North Koreans work on Chinese tuna longliners in the Indian Ocean for pay that goes to their leader, a new study says.</description>
+      <dc:creator>Choe Sang-Hun and Muktita Suhartono</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 11:18:27 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">North Korea</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Fishing, Commercial</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Kim Jong-un</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Labor and Jobs</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Workplace Hazards and Violations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Tuna</category>
+    </item>
+    <item>
+      <title>Monday Briefing</title>
+      <link>https://www.nytimes.com/2025/02/24/briefing/germany-election-west-bank.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/briefing/germany-election-west-bank.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/briefing/germany-election-west-bank.html" rel="standout"></atom:link>
+      <description>Results from Germany’s election.</description>
+      <dc:creator>Natasha Frost</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 05:01:18 +0000</pubDate>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/24ambriefing-europe-nl-german/24ambriefing-europe-nl-german-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Hannibal Hanschke/EPA, via Shutterstock</media:credit>
+      <media:description>Friedrich Merz has promised to crack down on immigration and to cut taxes and business regulations.</media:description>
+    </item>
+    <item>
+      <title>In One Woman’s Life, the Story of Ukraine’s War, 3 Years On</title>
+      <link>https://www.nytimes.com/2025/02/24/world/europe/ukraine-prisoner-of-war.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/24/world/europe/ukraine-prisoner-of-war.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/24/world/europe/ukraine-prisoner-of-war.html" rel="standout"></atom:link>
+      <description>In treatment for cancer and with her husband in a Russian prison, Olha Kurtmallaieva, 25, worries that time may be running out for her and, possibly, her country.</description>
+      <dc:creator>Kim Barker</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 17:14:08 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Prisoners of War</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Berdiansk (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Mariupol (Ukraine)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/02/22/multimedia/xxukraine-pow-wife-01-vlwz/xxukraine-pow-wife-01-vlwz-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Oksana Parafeniuk for The New York Times</media:credit>
+      <media:description>Olha Kurtmallaieva at home on Friday in Kyiv, Ukraine. She was diagnosed with cancer in 2021, about six months before the Russians invaded.</media:description>
+    </item>
+    <item>
+      <title>Kenyan Police Officer Deployed to Tackle Gangs in Haiti Killed</title>
+      <link>https://www.nytimes.com/2025/02/23/world/americas/haiti-kenya-police-officer-killed.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/americas/haiti-kenya-police-officer-killed.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/americas/haiti-kenya-police-officer-killed.html" rel="standout"></atom:link>
+      <description>The officer’s death appeared to be the first among the Kenyan forces that were sent to Haiti last year as part of an international effort to subdue gang violence.</description>
+      <dc:creator>Yan Zhuang and Matthew Mpoke Bigg</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 11:40:18 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Gangs</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Police</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Attacks on Police</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Haiti</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Kenya</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Port-au-Prince (Haiti)</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23xp-haiti-twlh/23xp-haiti-twlh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Ralph Tedy Erol/Reuters</media:credit>
+      <media:description>Kenyan police officers in Port-au-Prince, Haiti, earlier this month. Hundreds of Kenyan police officers have been deployed to Haiti to reinforce a security mission to tackle gang violence.</media:description>
+    </item>
+    <item>
+      <title>German Election 2025: Friedrich Merz Appears Poised to Be Next Chancellor</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/friedrich-merz-germany-chancellor-election.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/friedrich-merz-germany-chancellor-election.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/friedrich-merz-germany-chancellor-election.html" rel="standout"></atom:link>
+      <description>The Christian Democrat, who appeared to have a path to a stable governing coalition, hopes to lead Europe’s response to President Trump’s reshuffling of alliances.</description>
+      <dc:creator>Jim Tankersley</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 06:00:10 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merz, Friedrich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Scholz, Olaf (1958- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Illegal Immigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Immigration and Emigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Alternative for Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Democratic Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Social Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Free Democratic Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Left Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Sahra Wagenknecht Alliance (BSW)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Social Democratic Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23german-election-mqbz/23german-election-mqbz-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Hannibal Hanschke/EPA, via Shutterstock</media:credit>
+      <media:description>Friedrich Merz, the leader of Germany’s Christian Democrats, said his top priority as chancellor would be “to strengthen Europe as quickly as possible.”</media:description>
+    </item>
+    <item>
+      <title>Germany Election Votes Are Cast. What Happens Now?</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/germany-election-voting.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/germany-election-voting.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/germany-election-voting.html" rel="standout"></atom:link>
+      <description>The country appears headed for a coalition government. But the process of building one could take months.</description>
+      <dc:creator>Christopher F. Schuetze</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 21:28:25 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Legislatures and Parliaments</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Democratic Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merz, Friedrich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <media:content height="1802" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23germany-election-whats-next-lfmw/23germany-election-whats-next-lfmw-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Katrin Streicher for The New York Times</media:credit>
+      <media:description>Election posters in Lutherstadt Wittenberg, Germany, last week.</media:description>
+    </item>
+    <item>
+      <title>Monday Briefing: Conservatives Near Victory in Germany</title>
+      <link>https://www.nytimes.com/2025/02/23/briefing/germany-election-israel-west-bank-zelensky-nato.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/briefing/germany-election-israel-west-bank-zelensky-nato.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/briefing/germany-election-israel-west-bank-zelensky-nato.html" rel="standout"></atom:link>
+      <description>Plus, a pharaoh’s tomb was unearthed.</description>
+      <dc:creator>Emmett Lindner</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 20:58:34 +0000</pubDate>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/24ambriefing-asia-german/24ambriefing-asia-german-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Ina Fassbender/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Friedrich Merz, leader of Germany’s Christian Democratic Union.</media:description>
+    </item>
+    <item>
+      <title>Why the Far-Right AfD Is Unlikely to Join Germany’s Next Government</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/germany-election-firewall-afd.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/germany-election-firewall-afd.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/germany-election-firewall-afd.html" rel="standout"></atom:link>
+      <description>The collective shunning of the AfD party is part of a longstanding attempt to blunt its move into the mainstream.</description>
+      <dc:creator>Jim Tankersley</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 20:38:53 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Munich (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">World War II (1939-45)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23germany-election-firewall-cbpf/23germany-election-firewall-cbpf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Sergey Ponomarev for The New York Times</media:credit>
+      <media:description>An AfD campaign event in Halle, Germany, in January.</media:description>
+    </item>
+    <item>
+      <title>Who Is Friedrich Merz, the Man Poised to Be Germany’s Next Chancellor?</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/friedrich-merz-germany-chancellor.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/friedrich-merz-germany-chancellor.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/friedrich-merz-germany-chancellor.html" rel="standout"></atom:link>
+      <description>Friedrich Merz, head of the conservative Christian Democrats, has vowed to bring stronger leadership to Europe, where the new Trump administration has sowed anxiety.</description>
+      <dc:creator>Steven Erlanger and Christopher F. Schuetze</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 13:23:47 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merkel, Angela</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merz, Friedrich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Scholz, Olaf (1958- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Vance, J D</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23germany-election-chancellor-bpqm/23germany-election-chancellor-bpqm-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Ebrahim Noroozi/Associated Press</media:credit>
+      <media:description>Friedrich Merz, the leader of the Christian Democratic Union, this month in Berlin.</media:description>
+    </item>
+    <item>
+      <title>Expanding West Bank Campaign, Israel Sends Tanks for First Time in Decades</title>
+      <link>https://www.nytimes.com/2025/02/23/world/middleeast/israel-west-bank-tanks.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/middleeast/israel-west-bank-tanks.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/middleeast/israel-west-bank-tanks.html" rel="standout"></atom:link>
+      <description>Israel’s defense minister, Israel Katz, said that 40,000 Palestinian residents displaced from militant hotbeds would not be allowed to return to their homes.</description>
+      <dc:creator>Isabel Kershner</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 17:54:07 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Palestinians</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Terrorism</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Palestinian Authority</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Katz, Israel (1955- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Netanyahu, Benjamin</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">West Bank</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23west-bank-clbq/23west-bank-clbq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Jaafar Ashtiyeh/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Israeli tanks entering the Jenin camp in the occupied West Bank on Sunday.</media:description>
+    </item>
+    <item>
+      <title>German Voters Took Note of Election Interference by Trump Administration Officials</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/trump-us-germany-election.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/trump-us-germany-election.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/trump-us-germany-election.html" rel="standout"></atom:link>
+      <description>Several voters took note of a speech by Vice President JD Vance this month, when he told European leaders to stop shunning parties deemed “extreme.”</description>
+      <dc:creator>Catherine Odom and Sam Gurwitt</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 18:39:40 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Alternative for Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Green Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Left Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Musk, Elon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Vance, J D</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Weidel, Alice</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Dresden (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Europe</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Munich (Germany)</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23germany-election-us-meddling-fzbg/23germany-election-us-meddling-fzbg-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Tobias Schwarz/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Vice President JD Vance at the Munich Security Conference this month.</media:description>
+    </item>
+    <item>
+      <title>Here are the latest developments.</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/here-are-the-latest-developments.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/here-are-the-latest-developments.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/here-are-the-latest-developments.html" rel="standout"></atom:link>
+      <description></description>
+      <dc:creator>Jim Tankersley, Christopher F. Schuetze and Melissa Eddy</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 20:21:27 +0000</pubDate>
+    </item>
+    <item>
+      <title>Amid Regional Diplomatic Furor, Sudan’s Paramilitaries Forge a Rival Government</title>
+      <link>https://www.nytimes.com/2025/02/23/world/africa/sudan-rsf-paramilitaries-kenya-charter-government-civil-war.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/africa/sudan-rsf-paramilitaries-kenya-charter-government-civil-war.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/africa/sudan-rsf-paramilitaries-kenya-charter-government-civil-war.html" rel="standout"></atom:link>
+      <description>The Rapid Support Forces said it was paving the way to an end to the civil war. Critics called it an audacious gambit by a group that the United States has accused of genocide.</description>
+      <dc:creator>Declan Walsh</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 13:05:45 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War and Armed Conflicts</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War Crimes, Genocide and Crimes Against Humanity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Famine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Rapid Support Forces (Sudan)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Ruto, William</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Hamdan, Mohamed (Hemeti)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">al-Burhan, Abdel Fattah</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Darfur (Sudan)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Nairobi (Kenya)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Sudan</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23sudan-fcqh/23sudan-fcqh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Agence France-Presse — Getty Images</media:credit>
+      <media:description>A damaged building in Wad Madani, Sudan, that was retaken by the Sudanese Army from its rival Rapid Support Forces this month.</media:description>
+    </item>
+    <item>
+      <title>Israel and Hamas Trade Accusations of Violating Fragile Cease-Fire</title>
+      <link>https://www.nytimes.com/2025/02/23/world/middleeast/israel-hamas-hostage-cease-fire.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/middleeast/israel-hamas-hostage-cease-fire.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/middleeast/israel-hamas-hostage-cease-fire.html" rel="standout"></atom:link>
+      <description>Hamas criticized Israel’s decision to delay the release of hundreds of Palestinian prisoners, amid growing tensions and concerns for the future of the truce in Gaza.</description>
+      <dc:creator>Isabel Kershner</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 20:10:59 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Palestinians</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Hamas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Netanyahu, Benjamin</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Gaza Strip</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Israel</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23mideast-ledeall-btgw/23mideast-ledeall-btgw-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Saher Alghorra for The New York Times</media:credit>
+      <media:description>Hamas handing over three Israeli hostages on Saturday to the Red Cross in Nuseirat, in the Gaza Strip.</media:description>
+    </item>
+    <item>
+      <title>Zelensky Pushes Back Against U.S. Mineral Deal and Announces European Summit</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/ukraine-trump-mineral-deal.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/ukraine-trump-mineral-deal.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/ukraine-trump-mineral-deal.html" rel="standout"></atom:link>
+      <description>The Ukrainian leader also said he would step down if Ukraine was allowed to join NATO, though it was unclear if he was serious or not.</description>
+      <dc:creator>Constant Méheut and Andrew E. Kramer</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 19:57:56 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Peace Process</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Metals and Minerals</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23ukraine-deal-zbfm/23ukraine-deal-zbfm-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Sergei Supinsky/Agence France-Presse — Getty Images</media:credit>
+      <media:description>President Volodymyr Zelensky of Ukraine has traded blows with President Trump amid an escalating feud over peace talks.</media:description>
+    </item>
+    <item>
+      <title>This Christian Convert Fled Iran, and Ran Into Trump’s Deportation Policy</title>
+      <link>https://www.nytimes.com/2025/02/23/world/middleeast/this-christian-convert-fled-iran-and-ran-into-trumps-deportation-policy.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/middleeast/this-christian-convert-fled-iran-and-ran-into-trumps-deportation-policy.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/middleeast/this-christian-convert-fled-iran-and-ran-into-trumps-deportation-policy.html" rel="standout"></atom:link>
+      <description>Artemis Ghasemzadeh is among a group of migrants being held in a jungle camp in Panama.</description>
+      <dc:creator>Farnaz Fassihi and Hamed Aleaziz</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 19:16:24 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Illegal Immigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deportation</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Asylum, Right of</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Immigration and Emigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Christians and Christianity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Refugees and Displaced Persons</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Homeland Security Department</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Panama</category>
+    </item>
+    <item>
+      <title>No Exit</title>
+      <link>https://www.nytimes.com/2025/02/23/world/americas/panama-migrants-hotel-photo.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/americas/panama-migrants-hotel-photo.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/americas/panama-migrants-hotel-photo.html" rel="standout"></atom:link>
+      <description>About 300 migrants from all around the world were deported from the United States to Panama. There, they were trapped in a hotel, facing a choice of whether to return to places they had fled.</description>
+      <dc:creator>Federico Rios</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 13:08:48 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deportation</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Illegal Immigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Panama</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Iran</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Panama City (Panama)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Darien Gap</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/22/world/panama-oneimage-promo/panama-oneimage-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Federico Rios for The New York Times</media:credit>
+    </item>
+    <item>
+      <title>Pope Francis Suffering From Kidney Failure in Addition to Pneumonia</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/pope-francis-health.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/pope-francis-health.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/pope-francis-health.html" rel="standout"></atom:link>
+      <description>The kidney ailment appears to be in an early stage, the Vatican said, adding that the pontiff is still receiving high flows of oxygen for his respiratory illness.</description>
+      <dc:creator>Elisabetta Povoledo</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 14:45:49 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Popes</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Francis</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Roman Catholic Church</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Rome (Italy)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Pneumonia</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23pope-health-qvtl/23pope-health-qvtl-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Alessandra Tarantino/Associated Press</media:credit>
+      <media:description>Deacons arriving at the Vatican on Sunday for a Mass that was supposed to be celebrated by Pope Francis.</media:description>
+    </item>
+    <item>
+      <title>Catholics Pray for Ailing Pope Francis at Sunday Mass</title>
+      <link>https://www.nytimes.com/2025/02/23/world/asia/mass-pope-francis-prayers-photos.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/asia/mass-pope-francis-prayers-photos.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/asia/mass-pope-francis-prayers-photos.html" rel="standout"></atom:link>
+      <description>The 88-year-old pontiff, who has been hospitalized for more than a week, had a restful night after receiving oxygen and a blood transfusion on Saturday, the Vatican said.</description>
+      <dc:creator>Yan Zhuang and Camille Elemia</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 10:27:42 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Francis</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Prayers and Prayer Books</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Roman Catholic Church</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Christians and Christianity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Vatican City</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Popes</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Benedict XVI</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23xp-mass-photos-vjgq/23xp-mass-photos-vjgq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Alessandra Tarantino/Associated Press</media:credit>
+      <media:description>Sunday Mass in St. Peter’s Basilica at the Vatican, a service that Pope Francis had intended to preside over. He has been hospitalized for more than a week.</media:description>
+    </item>
+    <item>
+      <title>Macron and Starmer Have Played Trump’s Game Before, but the Rules Are Changing</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/france-uk-trump-macron-starmer.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/france-uk-trump-macron-starmer.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/france-uk-trump-macron-starmer.html" rel="standout"></atom:link>
+      <description>The leaders of France and Britain are both due to meet with President Trump this week. Approaches previously tried with him may no longer work.</description>
+      <dc:creator>Mark Landler</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 13:11:51 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Starmer, Keir</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Macron, Emmanuel (1977- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">France</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Great Britain</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Russian Invasion of Ukraine (2022)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Peace Process</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Putin, Vladimir V</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Zelensky, Volodymyr</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23europe-diplo-01-whmg/23europe-diplo-01-whmg-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Aurelien Morissard/Associated Press</media:credit>
+      <media:description>President Emmanuel Macron of France, left, and Prime Minister Keir Starmer of Britain will have to navigate shifting alliances as they meet with President Trump in Washington.</media:description>
+    </item>
+    <item>
+      <title>Germany Election 2025: What to Watch For</title>
+      <link>https://www.nytimes.com/2025/02/23/world/europe/germany-election.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/europe/germany-election.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/europe/germany-election.html" rel="standout"></atom:link>
+      <description>What Germans decide in national elections that are likely to produce a new chancellor will be of critical importance as Europe re-evaluates relations with the Trump administration.</description>
+      <dc:creator>Christopher F. Schuetze</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 11:46:10 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Polls and Public Opinion</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Presidential Election of 2024</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Right-Wing Extremism and Alt-Right</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elections</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Fringe Groups and Movements</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Neo Nazi Groups</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Immigration and Emigration</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Legislatures and Parliaments</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Alternative for Germany</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Christian Democratic Union (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Free Democratic Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Left Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Sahra Wagenknecht Alliance (BSW)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Social Democratic Party (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Lindner, Christian W</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Merz, Friedrich</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Musk, Elon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Scholz, Olaf (1958- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Vance, J D</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Wagenknecht, Sahra (1969- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Weidel, Alice</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Germany</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23germany-wtwf-kmgf/23germany-wtwf-kmgf-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>John Macdougall/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Campaign posters in Berlin last month.</media:description>
+    </item>
+    <item>
+      <title>Hezbollah Stages Show of Strength at Hassan Nasrallah’s Funeral</title>
+      <link>https://www.nytimes.com/2025/02/23/world/middleeast/hezbollah-nasrallah-funeral-lebanon.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/middleeast/hezbollah-nasrallah-funeral-lebanon.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/middleeast/hezbollah-nasrallah-funeral-lebanon.html" rel="standout"></atom:link>
+      <description>The Iran-backed Lebanese militant group held an elaborate commemoration for its longtime leader, Hassan Nasrallah, who was killed by Israel in September.</description>
+      <dc:creator>Christina Goldbaum and Euan Ward</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 20:41:49 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Iran-Israel Proxy Conflict</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Hezbollah</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Nasrallah, Hassan</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Israel</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Lebanon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Middle East</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Gaza Strip</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/02/23/multimedia/23lebanon-funeral-kcpl/23lebanon-funeral-kcpl-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Diego Ibarra Sanchez for The New York Times</media:credit>
+      <media:description>Hezbollah supporters gathered on Sunday to pay tribute to Hassan Nasrallah, the group’s former leader, and Hashem Saffiedine, another top official, on Sunday outside Beirut, Lebanon.</media:description>
+    </item>
+    <item>
+      <title>The Battle of Iwo Jima: A Photo History</title>
+      <link>https://www.nytimes.com/2025/02/23/world/asia/the-battle-of-iwo-jima-a-history.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/23/world/asia/the-battle-of-iwo-jima-a-history.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/23/world/asia/the-battle-of-iwo-jima-a-history.html" rel="standout"></atom:link>
+      <description>U.S. Marines raised an American flag on the Japanese island’s highest peak exactly 80 years ago. But the fighting, some of the deadliest of World War II, would rage on for a month.</description>
+      <dc:creator>Hannah Beech</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 21:00:26 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">vis-photo</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Iwo Jima (Japan)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">World War II (1939-45)</category>
+      <media:content height="1777" medium="image" url="https://static01.nyt.com/images/2025/02/12/multimedia/00iwo-jima-anniversary-photos-01-tzhw/00iwo-jima-anniversary-photos-01-tzhw-mediumSquareAt3X-v2.jpg" width="1776"></media:content>
+      <media:credit>Joe Rosenthal/Associated Press</media:credit>
+      <media:description>U.S. Marines of the 28th Regiment of the Fifth Division planted an American flag atop Mount Suribachi, Iwo Jima, on Feb. 23, 1945.</media:description>
+    </item>
+    <item>
+      <title>Hamas Frees 6 Hostages as Israel Delays Palestinian Prisoner Release</title>
+      <link>https://www.nytimes.com/2025/02/22/world/middleeast/israel-hostage-hamas-ceasefire.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/22/world/middleeast/israel-hostage-hamas-ceasefire.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/22/world/middleeast/israel-hostage-hamas-ceasefire.html" rel="standout"></atom:link>
+      <description>The six Israelis were the last living captives set to be released in the first phase of the cease-fire. The agreement, strained for weeks, has an uncertain future.</description>
+      <dc:creator>Isabel Kershner, Aaron Boxerman, Adam Rasgon and Fatima AbdulKarim</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 06:20:03 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Israel-Gaza War (2023- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Peace Process</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Kidnapping and Hostages</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Gaza Strip</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Terrorism</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Hamas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Israel</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Mengistu, Avera</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Bibas, Shiri</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Palestinians</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Prisons and Prisoners</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/22/multimedia/22mideast-ledeall-01-mwfb/22mideast-ledeall-01-mwfb-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Saher Alghorra for The New York Times</media:credit>
+      <media:description>From left to right, Eliya Cohen, Omer Shem Tov, and Omer Wenkert, three of the six hostages who were released on Saturday, at an orchestrated ceremony in Nuseirat, Gaza.</media:description>
+    </item>
+    <item>
+      <title>‘Religious Motivation’ Possible in Berlin Stabbing, Police Say</title>
+      <link>https://www.nytimes.com/2025/02/22/world/europe/berlin-stabbing-holocaust-memorial.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/22/world/europe/berlin-stabbing-holocaust-memorial.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/22/world/europe/berlin-stabbing-holocaust-memorial.html" rel="standout"></atom:link>
+      <description>The suspect, a Syrian refugee, told the police that a plan had come into his mind to kill Jews. The attack raises tensions just before an election in which immigration is a big issue.</description>
+      <dc:creator>Eve Sampson</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 01:09:05 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Berlin (Germany)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Murders, Attempted Murders and Homicides</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Refugees and Displaced Persons</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Syria</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/22/multimedia/22berlin-arrest-tjkl/22berlin-arrest-tjkl-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Christopher Neundorf/EPA, via Shutterstock</media:credit>
+      <media:description>The Holocaust Memorial in Berlin was cordoned off by the police as a crime scene on Saturday.</media:description>
+    </item>
+    <item>
+      <title>Trump Appointees Fire Hundreds at U.S.A.I.D. Working on Urgent Aid</title>
+      <link>https://www.nytimes.com/2025/02/22/us/politics/usaid-urgent-aid-firings.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/22/us/politics/usaid-urgent-aid-firings.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/22/us/politics/usaid-urgent-aid-firings.html" rel="standout"></atom:link>
+      <description>The firings added to doubts about whether Secretary of State Marco Rubio, the agency’s acting head, supports lifesaving humanitarian assistance, as he has said he does.</description>
+      <dc:creator>Edward Wong and Zolan Kanno-Youngs</dc:creator>
+      <pubDate>Mon, 24 Feb 2025 16:18:50 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Humanitarian Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Government Employees</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Layoffs and Job Reductions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United States Agency for International Development</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Office of Transition Initiatives</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Musk, Elon</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Marocco, Pete</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Rubio, Marco</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Ukraine</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Afghanistan</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/22/multimedia/22dc-usaid-zvmw/22dc-usaid-zvmw-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Haiyun Jiang for The New York Times</media:credit>
+      <media:description>Trump administration appointees running the United States Agency for International Development have fired hundreds of employees in recent days.</media:description>
+    </item>
+    <item>
+      <title>Nine-Month Manhunt for French Fugitive Finally Produces an Arrest</title>
+      <link>https://www.nytimes.com/2025/02/22/world/europe/france-manhunt-prison-break-arrest.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/22/world/europe/france-manhunt-prison-break-arrest.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/22/world/europe/france-manhunt-prison-break-arrest.html" rel="standout"></atom:link>
+      <description>A French convict was arrested in Romania months after he had been freed in a brazen daytime ambush that killed two prison guards, authorities said.</description>
+      <dc:creator>Eve Sampson and Liz Alderman</dc:creator>
+      <pubDate>Sat, 22 Feb 2025 22:09:09 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Fugitives</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Prison Guards and Corrections Officers</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Prison Escapes</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Prisons and Prisoners</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">France</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Romania</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/22/multimedia/22france-manhunt-01-qhtz/22france-manhunt-01-qhtz-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Daniel Mihailescu/Agence France-Presse — Getty Images</media:credit>
+      <media:description>The Central Arrest of Bucharest, where French convict and drug trafficker Mohamed Amra was detained after his arrest, on Saturday.</media:description>
+    </item>
+    <item>
+      <title>‘Terrorist’ Attack at Market in France Leaves One Dead</title>
+      <link>https://www.nytimes.com/2025/02/22/world/europe/terrorist-attack-france-market.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/22/world/europe/terrorist-attack-france-market.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/22/world/europe/terrorist-attack-france-market.html" rel="standout"></atom:link>
+      <description>The suspect, an Algerian national who was on France’s terrorist watch list, was arrested.</description>
+      <dc:creator>Lynsey Chutel</dc:creator>
+      <pubDate>Sat, 22 Feb 2025 22:27:35 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Terrorism</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Attacks on Police</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Macron, Emmanuel (1977- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">France</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Murders, Attempted Murders and Homicides</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Assaults</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/22/multimedia/22france-attack-jcml/22france-attack-jcml-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Sebastien Bozon/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Police officers collected evidence at the site of a knife attack in Mulhouse, in eastern France, on Saturday.</media:description>
+    </item>
+    <item>
+      <title>Pope Francis in Critical Condition After ‘Respiratory Crisis,’ Vatican Says</title>
+      <link>https://www.nytimes.com/2025/02/22/world/europe/pope-francis-critical-condition.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/02/22/world/europe/pope-francis-critical-condition.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/02/22/world/europe/pope-francis-critical-condition.html" rel="standout"></atom:link>
+      <description>The announcement on Saturday evening indicated that Francis’ medical condition had become more complicated since an update from his doctors on Friday.</description>
+      <dc:creator>Elisabetta Povoledo</dc:creator>
+      <pubDate>Sun, 23 Feb 2025 04:04:36 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Francis</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Roman Catholic Church</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/22/multimedia/22pope-health-vbtz/22pope-health-vbtz-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Giuseppe Lami/EPA, via Shutterstock</media:credit>
+      <media:description>The hospital where Pope Francis is undergoing treatment in Rome.</media:description>
+    </item>
+  </channel>
+</rss>

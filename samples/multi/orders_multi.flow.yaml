@@ -1,0 +1,18 @@
+name: orders_multi
+
+source:
+  type: csv
+  location: C:\Projects\SQLFlowV3\samples\multi   # a folder: all matching files are consolidated
+  options:
+    srcFile: "*.csv"
+
+target:
+  connection: ${env:SQLFLOW_DW}
+  schema: dbo
+  table: OrdersMulti
+
+schema:
+  evolve: widen          # union of columns across files becomes the target schema
+
+load:
+  mode: append

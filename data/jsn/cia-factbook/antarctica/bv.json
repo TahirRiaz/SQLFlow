@@ -1,0 +1,181 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "This uninhabited volcanic island in Antarctica is almost entirely covered by glaciers, making it difficult to approach. Bouvet Island is recognized as the most remote island on Earth because it is furthest from any other point of land (1,639 km from Antarctica). The island was named after the French naval officer who discovered it in 1739, although no country laid claim to it until 1825, when the British flag was raised. A few expeditions visited the island in the late 19th century. In 1929, the UK waived its claim in favor of Norway, which had occupied the island two years previously. In 1971, Norway designated Bouvet Island and the adjacent territorial waters as a nature reserve. Since 1977, Norway has run an automated meteorological station and studied foraging strategies and distribution of fur seals and penguins on the island. In 2006, an earthquake weakened the station's foundation, causing it to be blown out to sea in a winter storm. Norway erected a new research station in 2014 that can hold six people for periods of two to four months."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "island in the South Atlantic Ocean, southwest of the Cape of Good Hope (South Africa)"
+    },
+    "Geographic coordinates": {
+      "text": "54 26 S, 3 24 E"
+    },
+    "Map references": {
+      "text": "Antarctic Region"
+    },
+    "Area": {
+      "total ": {
+        "text": "49 sq km"
+      },
+      "land": {
+        "text": "49 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about 0.3 times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "29.6 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "4 nm"
+      }
+    },
+    "Climate": {
+      "text": "antarctic"
+    },
+    "Terrain": {
+      "text": "volcanic; coast is mostly inaccessible"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Olavtoppen (Olav Peak) 780 m"
+      },
+      "lowest point": {
+        "text": "South Atlantic Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "none"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "0% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "100% (2018 est.)"
+      }
+    },
+    "Natural hazards": {
+      "text": "occasional volcanism, rock slides; harsh climate, surrounded by pack ice in winter"
+    },
+    "Geography - note": {
+      "text": "almost entirely covered by glacial ice (93%); declared a nature reserve by Norway; the distance from Bouvet Island to Norway is 12,776 km, which is almost one-third the circumference of the earth"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "uninhabited"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "none; almost entirely ice covered"
+    },
+    "Climate": {
+      "text": "antarctic"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "0% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 0% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "0% (2018 est.)"
+      },
+      "other": {
+        "text": "100% (2018 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "none"
+      },
+      "conventional short form": {
+        "text": "Bouvet Island"
+      },
+      "etymology": {
+        "text": "named after the French naval officer Jean-Baptiste Charles BOUVET who discovered the island in 1739"
+      },
+      "note": "<strong>note:</strong> pronounced boo-vay i-land"
+    },
+    "Dependency status": {
+      "text": "territory of Norway; administered by the Polar Department of the Ministry of Justice and Oslo Police"
+    },
+    "Legal system": {
+      "text": "the laws of Norway apply where applicable"
+    },
+    "Flag description": {
+      "text": "the flag of Norway is used"
+    }
+  },
+  "Economy": {
+    "Exports - partners": {
+      "text": "Singapore 76%, US 7%, Uzbekistan 5%, UK 2%, Brazil 1% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "fish, tensile testing machines, jewelry, paper, garments (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports - partners": {
+      "text": "Singapore 72%, US 18%, Panama 3%, Indonesia 2%, Denmark 1% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "aluminum structures, animal products, cement, air pumps, electrical transformers (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    }
+  },
+  "Communications": {
+    "Internet country code": {
+      "text": ".bv"
+    },
+    "Communications - note": {
+      "text": "has an automated meteorological station"
+    }
+  },
+  "Transportation": {
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of Norway"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

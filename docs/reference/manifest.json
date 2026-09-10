@@ -1,0 +1,3955 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "docs": [
+    {
+      "id": "cli-auth",
+      "corpus": "reference",
+      "path": "cli/auth.md",
+      "title": "sqlflow auth and Azure authentication modes",
+      "type": "cli-command",
+      "summary": "Verify Azure authentication end to end; resolves SQLFLOW_AZURE_AUTH to a mode and acquires a real token for a chosen scope.",
+      "keywords": [
+        "auth",
+        "azure",
+        "sqlflow_azure_auth",
+        "managed identity",
+        "service principal",
+        "token",
+        "defaultazurecredential",
+        "diagnostic"
+      ],
+      "cliCommand": "auth",
+      "related": [
+        "concept-connections-and-secrets",
+        "source-type-duckdb",
+        "flow-inv",
+        "flow-service-principals",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Azure/AzureAuth.cs",
+        "src/SqlFlow.Azure/AzureCredentialFactory.cs",
+        "src/SqlFlow.Azure/AzureEnvironment.cs",
+        "src/SqlFlow.Azure/AzureStorageCredentialProvider.cs"
+      ]
+    },
+    {
+      "id": "cli-catalog",
+      "corpus": "reference",
+      "path": "cli/catalog.md",
+      "title": "sqlflow catalog: databases, schemas, tables, search, columns",
+      "type": "cli-command",
+      "summary": "Browse a live source connection from the CLI; list databases, schemas, tables and views, search objects, and introspect columns on any supported provider.",
+      "keywords": [
+        "catalog",
+        "discovery",
+        "source browsing",
+        "providers",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "cliCommand": "catalog",
+      "related": [
+        "cli-catalog-scaffold",
+        "concept-connections-and-secrets",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Core/Catalog/CatalogService.cs",
+        "src/SqlFlow.Core/Catalog/CatalogQuery.cs",
+        "src/SqlFlow.Core/Catalog/CatalogModel.cs",
+        "src/SqlFlow.Core/Catalog/ICatalogReader.cs",
+        "src/SqlFlow.Core/Catalog/ThreePartName.cs",
+        "src/SqlFlow.Core/Connections/ConnectionResolver.cs"
+      ]
+    },
+    {
+      "id": "cli-catalog-scaffold",
+      "corpus": "reference",
+      "path": "cli/catalog-scaffold.md",
+      "title": "sqlflow catalog scaffold and scaffold-all",
+      "type": "cli-command",
+      "summary": "Generate runnable flowType ing YAML from discovered source tables, one object at a time (scaffold) or in bulk (scaffold-all).",
+      "keywords": [
+        "scaffold",
+        "scaffold-all",
+        "generate flow",
+        "replication",
+        "ingestion yaml",
+        "key detection",
+        "detect-keys",
+        "keycolumns"
+      ],
+      "cliCommand": "catalog",
+      "related": [
+        "cli-catalog",
+        "cli-detect-unique-key",
+        "flow-ing",
+        "guide-table-to-table-ingestion",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Core/Catalog/CatalogScaffolder.cs",
+        "tests/SqlFlow.Core.Tests/CatalogScaffolderTests.cs",
+        "samples/ingestion/mysql-to-sqlserver.flow.yaml"
+      ]
+    },
+    {
+      "id": "cli-control-plane",
+      "corpus": "reference",
+      "path": "cli/control-plane.md",
+      "title": "sqlflow control-plane verbs",
+      "type": "cli-command",
+      "summary": "Remote CLI verbs over the control plane's /api/v1 surface, covering what the GUI does from a terminal plus whoami, doctor, run history, and completions.",
+      "keywords": [
+        "control plane",
+        "login",
+        "trigger",
+        "runs",
+        "groups",
+        "schedules",
+        "repos",
+        "pipelines",
+        "datasources",
+        "search",
+        "lineage",
+        "whoami",
+        "doctor",
+        "completions"
+      ],
+      "cliCommand": "control-plane",
+      "related": [
+        "cli-run",
+        "cli-validate",
+        "cli-db",
+        "cli-worker"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.Estate.cs",
+        "src/SqlFlow.Cli/Remote/ControlPlaneClient.cs"
+      ]
+    },
+    {
+      "id": "cli-db",
+      "corpus": "reference",
+      "path": "cli/db.md",
+      "title": "sqlflow db: migrate, sync, status",
+      "type": "cli-command",
+      "summary": "Bootstrap the shadow catalog schema (migrate), project the YAML estate, run history, and lineage into it (sync), and report migration drift (status).",
+      "keywords": [
+        "shadow catalog",
+        "migrate",
+        "sync",
+        "status",
+        "sqlflow_catalog_db",
+        "repo",
+        "write-back",
+        "ef migrations"
+      ],
+      "cliCommand": "sqlflow db <migrate|sync|status> [path] [--db <conn-ref>] [--create] [--repo name] [--repo-url url] [--connect]",
+      "related": [
+        "concept-shadow-catalog",
+        "concept-control-plane",
+        "cli-lineage",
+        "cli-run",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Catalog/CatalogDatabase.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.Catalog/CatalogTransaction.cs",
+        "src/SqlFlow.Catalog/CatalogDbContext.cs",
+        "src/SqlFlow.Core/Secrets/SecretHygiene.cs"
+      ]
+    },
+    {
+      "id": "cli-detect-unique-key",
+      "corpus": "reference",
+      "path": "cli/detect-unique-key.md",
+      "title": "sqlflow detect-unique-key",
+      "type": "cli-command",
+      "summary": "Discover the minimal column set(s) that uniquely identify a table's rows, answering from declared keys in metadata when possible, else via T-SQL profiling wi...",
+      "keywords": [
+        "unique key",
+        "key detection",
+        "declared keys",
+        "profiling",
+        "sampling",
+        "composite keys",
+        "cardinality",
+        "selectivity"
+      ],
+      "cliCommand": "detect-unique-key",
+      "related": [
+        "cli-catalog-scaffold",
+        "cli-healthcheck",
+        "concept-environment-variables",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Core/Profiling/UniqueKeyDetector.cs",
+        "src/SqlFlow.Core/Profiling/UniqueKeyModels.cs",
+        "src/SqlFlow.SqlServer/Profiling/SqlServerUniquenessProbe.cs"
+      ]
+    },
+    {
+      "id": "cli-discover",
+      "corpus": "reference",
+      "path": "cli/discover.md",
+      "title": "sqlflow discover",
+      "type": "cli-command",
+      "summary": "Scan a pipeline's declared JSON or XML source and report its path structure, flatten columns, schema drift, and a starter source.options block.",
+      "keywords": [
+        "discover",
+        "json",
+        "xml",
+        "structure scan",
+        "collisions",
+        "source options"
+      ],
+      "cliCommand": "discover",
+      "related": [
+        "cli-paths",
+        "cli-flatten",
+        "concept-json-xml-flattening",
+        "guide-explore-json-xml",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Sources/JsonSourceReader.cs",
+        "src/SqlFlow.Sources/XmlSourceReader.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Sources/FlattenIntrospection.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs"
+      ]
+    },
+    {
+      "id": "cli-flatten",
+      "corpus": "reference",
+      "path": "cli/flatten.md",
+      "title": "sqlflow flatten",
+      "type": "cli-command",
+      "summary": "Point at a JSON or XML file or folder to emit a runnable flow stub (the flatten formula) or, with --data, dump the flattened rows as CSV.",
+      "keywords": [
+        "flatten",
+        "formula",
+        "flow stub",
+        "csv preview",
+        "column mappings",
+        "arrayhandling",
+        "repeathandling"
+      ],
+      "cliCommand": "flatten",
+      "related": [
+        "cli-paths",
+        "cli-discover",
+        "concept-json-xml-flattening",
+        "guide-explore-json-xml",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Sources/JsonSourceReader.cs",
+        "src/SqlFlow.Sources/Json/JsonFlattenConfig.cs",
+        "src/SqlFlow.Sources/Xml/XmlFlattenConfig.cs"
+      ]
+    },
+    {
+      "id": "cli-healthcheck",
+      "corpus": "reference",
+      "path": "cli/healthcheck.md",
+      "title": "sqlflow healthcheck (ad-hoc)",
+      "type": "cli-command",
+      "summary": "Zero-configuration ML anomaly check against any table, no pipeline file; auto-detects the date column and runs the full hc detection stack.",
+      "keywords": [
+        "healthcheck",
+        "anomaly detection",
+        "ml",
+        "ad-hoc",
+        "fail-on-anomaly",
+        "state-dir",
+        "date column",
+        "esd",
+        "pelt"
+      ],
+      "cliCommand": "healthcheck",
+      "related": [
+        "flow-hc",
+        "concept-run-artifacts",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.HealthCheck/DateColumnSelector.cs",
+        "src/SqlFlow.HealthCheck/WithoutDatabaseHealthCheck.cs",
+        "src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs"
+      ]
+    },
+    {
+      "id": "cli-infer",
+      "corpus": "reference",
+      "path": "cli/infer.md",
+      "title": "sqlflow infer and the .infer.yaml spec",
+      "type": "cli-command",
+      "summary": "Profile a loaded SQL Server table from a standalone .infer.yaml spec, infer the optimal type per column, and emit the JSON inference report.",
+      "keywords": [
+        "infer",
+        "type inference",
+        "infer.yaml",
+        "standalone spec",
+        "onconverterror",
+        "threshold",
+        "silent null",
+        "inference report"
+      ],
+      "cliCommand": "infer",
+      "related": [
+        "concept-type-inference",
+        "flow-transform",
+        "cli-validate",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Yaml/InferSpecLoader.cs",
+        "src/SqlFlow.Core/Abstractions/IInferenceService.cs",
+        "src/SqlFlow.Core/Engine/InferenceService.cs",
+        "src/SqlFlow.Core/Engine/TypeInferencer.cs",
+        "src/SqlFlow.Core/Model/InferenceRequest.cs",
+        "src/SqlFlow.Core/Model/InferenceReport.cs",
+        "src/SqlFlow.Core/Model/TypeInference.cs",
+        "src/SqlFlow.Core/SqlFlowException.cs",
+        "samples/infer/orders.infer.yaml"
+      ]
+    },
+    {
+      "id": "cli-lineage",
+      "corpus": "reference",
+      "path": "cli/lineage.md",
+      "title": "sqlflow lineage",
+      "type": "cli-command",
+      "summary": "Compute tiered AST lineage over a flow-estate folder: execution waves, cycles, impact walks, per-flow wave rationale, and the lineage.json artifact.",
+      "keywords": [
+        "lineage",
+        "tiers",
+        "impact analysis",
+        "waves",
+        "explain",
+        "lineage.json",
+        "cycles",
+        "upstream",
+        "downstream"
+      ],
+      "cliCommand": "lineage",
+      "related": [
+        "concept-lineage-tiers",
+        "concept-lineage-graph-and-plan",
+        "guide-lineage-demo",
+        "cli-db",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Lineage/LineageService.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/Collection/RunArtifactCollector.cs",
+        "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
+        "src/SqlFlow.Core/Lineage/LineageReport.cs",
+        "src/SqlFlow.Core/Lineage/FlowExplanation.cs"
+      ]
+    },
+    {
+      "id": "cli-paths",
+      "corpus": "reference",
+      "path": "cli/paths.md",
+      "title": "sqlflow paths",
+      "type": "cli-command",
+      "summary": "List every addressable JSONPath or XPath in a JSON, NDJSON, or XML file or folder, with the column each value path would become.",
+      "keywords": [
+        "paths",
+        "jsonpath",
+        "xpath",
+        "introspection",
+        "columns",
+        "inventory",
+        "collisions"
+      ],
+      "cliCommand": "paths",
+      "related": [
+        "cli-discover",
+        "cli-flatten",
+        "concept-json-xml-flattening",
+        "guide-explore-json-xml",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Sources/FlattenIntrospection.cs",
+        "src/SqlFlow.Sources/JsonSourceReader.cs",
+        "src/SqlFlow.Sources/XmlSourceReader.cs",
+        "src/SqlFlow.Sources/Json/JsonPathInventory.cs",
+        "src/SqlFlow.Sources/Xml/XmlPathInventory.cs"
+      ]
+    },
+    {
+      "id": "cli-plan",
+      "corpus": "reference",
+      "path": "cli/plan.md",
+      "title": "sqlflow plan",
+      "type": "cli-command",
+      "summary": "Preview the exact DDL a file flow would run. Reads the source schema, introspects the live target, diffs, and prints the plan without executing anything.",
+      "keywords": [
+        "plan",
+        "dry run",
+        "ddl preview",
+        "schema diff",
+        "schema delta",
+        "file flows"
+      ],
+      "cliCommand": "plan",
+      "related": [
+        "cli-run",
+        "cli-validate",
+        "concept-schema-evolution",
+        "flow-schema",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Engine/SchemaDiffer.cs",
+        "src/SqlFlow.Core/Model/Results.cs",
+        "src/SqlFlow.SqlServer/SqlServerDdlGenerator.cs",
+        "src/SqlFlow.SqlServer/SqlServerTypeMapper.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs",
+        "src/SqlFlow.Core/SqlFlowException.cs",
+        "samples/quickstart/orders.flow.yaml"
+      ]
+    },
+    {
+      "id": "cli-run",
+      "corpus": "reference",
+      "path": "cli/run.md",
+      "title": "sqlflow run",
+      "type": "cli-command",
+      "summary": "Execute one flow document (file, ing, exp, sp, hc, inv, scm, or batch), write its run artifacts, and record the run into the shadow catalog.",
+      "keywords": [
+        "run",
+        "execute",
+        "batch",
+        "json output",
+        "catalog write-back",
+        "backfill flags"
+      ],
+      "cliCommand": "run",
+      "related": [
+        "cli-plan",
+        "guide-incremental-and-backfill",
+        "concept-run-artifacts",
+        "flow-batch",
+        "concept-shadow-catalog",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
+        "src/SqlFlow.Execution/ExecutionJson.cs",
+        "src/SqlFlow.Execution/RunHistory.cs",
+        "src/SqlFlow.Core/Runs/RunHistoryWriter.cs",
+        "src/SqlFlow.Core/Runs/RunParameters.cs",
+        "src/SqlFlow.Orchestration/BatchOrchestrator.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs"
+      ]
+    },
+    {
+      "id": "cli-validate",
+      "corpus": "reference",
+      "path": "cli/validate.md",
+      "title": "sqlflow validate",
+      "type": "cli-command",
+      "summary": "Validate any flow document offline. Parses all eight document kinds, prints a per-kind OK line, warns on embedded credentials, exits 0 or 1.",
+      "keywords": [
+        "validate",
+        "yaml",
+        "document kinds",
+        "exit codes",
+        "errors"
+      ],
+      "cliCommand": "validate",
+      "related": [
+        "cli-run",
+        "cli-plan",
+        "flow-overview",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs",
+        "src/SqlFlow.Core/Secrets/SecretHygiene.cs",
+        "src/SqlFlow.Yaml/YamlDocumentLoader.cs"
+      ]
+    },
+    {
+      "id": "cli-worker",
+      "corpus": "reference",
+      "path": "cli/worker.md",
+      "title": "sqlflow worker: self-hosted compute node",
+      "type": "cli-command",
+      "summary": "Runs this host as a compute node that drains the catalog's durable run queue with atomic claims, pool routing, and node-local credential resolution.",
+      "keywords": [
+        "worker",
+        "run queue",
+        "pools",
+        "polling",
+        "compute node",
+        "claiming",
+        "crash recovery",
+        "attempt budget",
+        "claim fence",
+        "busy heartbeat",
+        "graceful shutdown",
+        "drain",
+        "SIGTERM",
+        "termination grace period",
+        "scale-in"
+      ],
+      "cliCommand": "worker",
+      "related": [
+        "concept-control-plane",
+        "concept-architecture-and-execution",
+        "guide-deployment",
+        "concept-cli-conventions"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Node/RunWorker.cs",
+        "src/SqlFlow.Node/GitMaterializer.cs",
+        "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.ControlPlane/Background/RunDispatcher.cs",
+        "src/SqlFlow.ControlPlane/Background/RunExecutionWorker.cs",
+        "Dockerfile.worker",
+        "deploy/docker/worker-entrypoint.sh",
+        "deploy/compose/docker-compose.yml",
+        "deploy/k8s/worker-pool.yaml"
+      ]
+    },
+    {
+      "id": "concept-architecture-and-execution",
+      "corpus": "reference",
+      "path": "concepts/architecture-and-execution.md",
+      "title": "Architecture: lightweight vs full mode and the single execution pathway",
+      "type": "concept",
+      "summary": "Two modes, one engine. How DocumentExecutor, AddSqlFlowEngine, the control plane, and pull-based workers share a single execution code path.",
+      "keywords": [
+        "documentexecutor",
+        "addsqlflowengine",
+        "lightweight mode",
+        "full mode",
+        "control plane",
+        "workers",
+        "pull model",
+        "pools"
+      ],
+      "related": [
+        "cli-run",
+        "cli-worker",
+        "concept-control-plane",
+        "flow-overview"
+      ],
+      "sourceRefs": [
+        "docs/architecture.md",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
+        "src/SqlFlow.Execution/SqlFlowEngineServices.cs",
+        "src/SqlFlow.SqlServer/Ingestion/WithoutDatabaseIngestion.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
+        "docs/environment-variables.md"
+      ]
+    },
+    {
+      "id": "concept-authentication-and-identity",
+      "corpus": "reference",
+      "path": "concepts/authentication-and-identity.md",
+      "title": "Authentication and identity: local login, bootstrap tokens, Entra SSO",
+      "type": "concept",
+      "summary": "How the control plane signs users in (local, Entra SSO, bootstrap secret), issues HS256 tokens with scopes, and administers users and roles.",
+      "keywords": [
+        "jwt",
+        "login",
+        "bootstrap secret",
+        "entra",
+        "sso",
+        "msal",
+        "roles",
+        "scopes",
+        "throttle"
+      ],
+      "related": [
+        "concept-control-plane",
+        "guide-deployment"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Api/AuthEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/UserEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/Contracts.cs",
+        "src/SqlFlow.ControlPlane/Security/TokenIssuer.cs",
+        "src/SqlFlow.ControlPlane/Security/LoginThrottle.cs",
+        "src/SqlFlow.ControlPlane/Security/EntraTokenValidator.cs",
+        "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.ControlPlane/Program.cs",
+        "src/SqlFlow.Catalog/UserStore.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs"
+      ]
+    },
+    {
+      "id": "concept-cli-conventions",
+      "corpus": "reference",
+      "path": "concepts/cli-conventions.md",
+      "title": "CLI conventions: argument parsing and exit codes",
+      "type": "concept",
+      "summary": "How the sqlflow CLI parses positionals and options, where value-taking flags may be placed, and what each exit code (0, 1, 2) means.",
+      "keywords": [
+        "argument parsing",
+        "positionals",
+        "options",
+        "exit codes",
+        "exit 2",
+        "verbose",
+        "help"
+      ],
+      "related": [
+        "cli-run",
+        "cli-healthcheck",
+        "cli-db"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "tests/SqlFlow.Core.Tests/CliArgumentParsingTests.cs"
+      ]
+    },
+    {
+      "id": "concept-connections-and-secrets",
+      "corpus": "reference",
+      "path": "concepts/connections-and-secrets.md",
+      "title": "Connection references, secret resolution, and hygiene",
+      "type": "concept",
+      "summary": "How SQLFlow classifies @alias, ${scheme:locator}, and inline connection references, resolves secrets, and warns on embedded credentials.",
+      "keywords": [
+        "@alias",
+        "${env:}",
+        "${keyvault:}",
+        "secret providers",
+        "redaction",
+        "hygiene warnings",
+        "secretless",
+        "connection reference"
+      ],
+      "related": [
+        "flow-connections",
+        "concept-environment-variables",
+        "cli-auth",
+        "flow-target"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Connections/ConnectionRef.cs",
+        "src/SqlFlow.Core/Connections/ConnectionResolver.cs",
+        "src/SqlFlow.Core/Connections/ConnectionConvention.cs",
+        "src/SqlFlow.Core/Connections/CredentialProfile.cs",
+        "src/SqlFlow.Core/Connections/ResolvedConnection.cs",
+        "src/SqlFlow.Core/Connections/DataSource.cs",
+        "src/SqlFlow.Core/Connections/DataSourceCapabilities.cs",
+        "src/SqlFlow.Core/Connections/NullDataSourceStore.cs",
+        "src/SqlFlow.Core/Connections/InMemoryDataSourceStore.cs",
+        "src/SqlFlow.Core/Connections/SourceProviders.cs",
+        "src/SqlFlow.Core/Secrets/SecretResolver.cs",
+        "src/SqlFlow.Core/Secrets/EnvSecretProvider.cs",
+        "src/SqlFlow.Core/Secrets/SecretHygiene.cs",
+        "src/SqlFlow.Core/Secrets/LocalEnvFile.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Azure/AzureAuth.cs",
+        "src/SqlFlow.Azure/AzureCredentialFactory.cs",
+        "src/SqlFlow.Azure/AzureKeyVaultSecretProvider.cs",
+        "src/SqlFlow.Azure/AzureKeyVaultSecretVault.cs",
+        "src/SqlFlow.SqlServer/WithoutDatabaseResolver.cs",
+        "src/SqlFlow.SqlServer/FullMode/SqlDataSourceStore.cs",
+        "src/SqlFlow.Execution/SqlFlowEngineServices.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-control-plane",
+      "corpus": "reference",
+      "path": "concepts/control-plane.md",
+      "title": "The control plane: API surface, configuration, bootstrap, managed sync",
+      "type": "concept",
+      "summary": "The ASP.NET Core control plane host, its /api/v1 surface and scopes, ControlPlane configuration, first-run bootstrap, and managed git-to-catalog sync.",
+      "keywords": [
+        "control plane",
+        "api/v1",
+        "scopes",
+        "configuration",
+        "bootstrap",
+        "repo sources",
+        "run trigger",
+        "lineage api"
+      ],
+      "related": [
+        "cli-worker",
+        "concept-authentication-and-identity",
+        "concept-shadow-catalog",
+        "guide-deployment"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Program.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs",
+        "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncService.cs",
+        "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/CatalogEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/RunEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/NodeEndpoints.cs",
+        "src/SqlFlow.Catalog/RepoSourceStore.cs",
+        "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Node/GitMaterializer.cs"
+      ]
+    },
+    {
+      "id": "concept-data-operations",
+      "corpus": "reference",
+      "path": "concepts/data-operations.md",
+      "title": "Data operations: ad-hoc business queries, duplicate keys, and baseline comparison",
+      "type": "concept",
+      "summary": "The prepare-confirm-run query surface, the duplicate-key check, and baseline comparison, behind the ControlPlane DataOps switch.",
+      "keywords": [
+        "dataops",
+        "text to sql",
+        "ad-hoc query",
+        "duplicate keys",
+        "baseline comparison",
+        "linked server",
+        "migration reconciliation",
+        "compute task"
+      ],
+      "related": [
+        "concept-control-plane",
+        "concept-shadow-catalog",
+        "concept-upsert-and-change-detection",
+        "concept-provenance-and-row-keys"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Quality/DuplicateKeyModels.cs",
+        "src/SqlFlow.Core/Query/QueryModels.cs",
+        "src/SqlFlow.Core/Comparison/BaselineComparisonModels.cs",
+        "src/SqlFlow.Core/Comparison/SqlFragmentGuard.cs",
+        "src/SqlFlow.SqlServer/Quality/SqlServerDuplicateKeyProbe.cs",
+        "src/SqlFlow.SqlServer/Query/ReadOnlyQueryGuard.cs",
+        "src/SqlFlow.SqlServer/Query/SqlServerQueryRunner.cs",
+        "src/SqlFlow.ControlPlane/Api/QueryEndpoints.cs",
+        "src/SqlFlow.SqlServer/Comparison/SqlServerBaselineComparer.cs",
+        "src/SqlFlow.Execution/ComputeTaskExecutor.cs",
+        "src/SqlFlow.ControlPlane/Api/DatasourceEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs"
+      ]
+    },
+    {
+      "id": "concept-environment-variables",
+      "corpus": "reference",
+      "path": "concepts/environment-variables.md",
+      "title": "SQLFLOW_* environment variables and the .sqlflow/env file",
+      "type": "concept",
+      "summary": "Every environment variable the CLI, workers, and control plane read, plus the git-ignored .sqlflow/env file and its precedence rules.",
+      "keywords": [
+        "sqlflow_conn",
+        "sqlflow_catalog_db",
+        "sqlflow_source",
+        "env file",
+        ".sqlflow/env",
+        "precedence",
+        "sqlflow_azure_auth",
+        "secrets"
+      ],
+      "related": [
+        "concept-connections-and-secrets",
+        "flow-connections",
+        "cli-db"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Connections/ConnectionConvention.cs",
+        "src/SqlFlow.Core/Secrets/LocalEnvFile.cs",
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Azure/AzureAuth.cs",
+        "src/SqlFlow.Azure/AzureCredentialFactory.cs",
+        "src/SqlFlow.Azure/AzureEnvironment.cs",
+        "src/SqlFlow.Catalog/CatalogDatabase.cs",
+        "src/SqlFlow.Node/GitMaterializer.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "Dockerfile.worker",
+        "deploy/docker/worker-entrypoint.sh",
+        "deploy/compose/docker-compose.yml"
+      ]
+    },
+    {
+      "id": "concept-file-discovery-and-lifecycle",
+      "corpus": "reference",
+      "path": "concepts/file-discovery-and-lifecycle.md",
+      "title": "File discovery, date windows, and post-load lifecycle",
+      "type": "concept",
+      "summary": "How file flows select source files (glob, path mask, date window, partition pruning) and what happens to files after a successful load.",
+      "keywords": [
+        "srcfile",
+        "glob",
+        "srcpathmask",
+        "filedate",
+        "recursion",
+        "copytopath",
+        "ziptopath",
+        "delete",
+        "partition pruning"
+      ],
+      "related": [
+        "flow-source",
+        "flow-incremental",
+        "concept-file-source-pipeline"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Sources/LocalFileStore.cs",
+        "src/SqlFlow.Sources/FileDateFilter.cs",
+        "src/SqlFlow.Sources/LocalFileLifecycle.cs",
+        "src/SqlFlow.Core/Model/FileDateSpec.cs",
+        "src/SqlFlow.Core/Model/FileDiscovery.cs",
+        "src/SqlFlow.Core/Model/FileRef.cs",
+        "src/SqlFlow.Core/Model/PreIngestionCsv.cs"
+      ]
+    },
+    {
+      "id": "concept-file-source-pipeline",
+      "corpus": "reference",
+      "path": "concepts/file-source-pipeline.md",
+      "title": "The shared file-ingestion pipeline, source.options parsing, and column-name cleanup",
+      "type": "concept",
+      "summary": "How every file format rides one pipeline (FileSourceReaderBase), how the source.options string bag is parsed, and the always-on legacy column cleanup.",
+      "keywords": [
+        "filesourcereaderbase",
+        "options bag",
+        "aliases",
+        "getbool",
+        "column cleanup",
+        "legacy parity",
+        "manifest",
+        "coercion"
+      ],
+      "related": [
+        "flow-source",
+        "concept-file-discovery-and-lifecycle",
+        "source-type-csv",
+        "source-type-parquet",
+        "flow-incremental"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Sources/FileSourceOptions.cs",
+        "src/SqlFlow.Core/Model/SourceOptions.cs",
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Core/Model/PreIngestionCsv.cs",
+        "src/SqlFlow.Core/Model/PreIngestionXls.cs",
+        "src/SqlFlow.Core/Model/PreIngestionJsn.cs",
+        "src/SqlFlow.Core/Model/PreIngestionXml.cs",
+        "src/SqlFlow.Core/Model/PreIngestionParquet.cs",
+        "src/SqlFlow.Core/Ingestion/LegacyColumnCleanup.cs",
+        "src/SqlFlow.Sources/ParquetSourceReader.cs"
+      ]
+    },
+    {
+      "id": "concept-flow-identity",
+      "corpus": "reference",
+      "path": "concepts/flow-identity.md",
+      "title": "Flow identity: deterministic FlowId and per-run RunId",
+      "type": "concept",
+      "summary": "How SQLFlow derives a stable FlowId from the flow name (RFC 4122 v5 GUID) and stamps a fresh RunId on every execution.",
+      "keywords": [
+        "flowid",
+        "runid",
+        "version 5 guid",
+        "deterministic",
+        "rename",
+        "identity",
+        "sysalias"
+      ],
+      "related": [
+        "concept-shadow-catalog",
+        "concept-run-artifacts",
+        "flow-overview"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Identity/FlowIdentity.cs",
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Catalog/CatalogIdentity.cs",
+        "tests/SqlFlow.Core.Tests/FlowIdentityTests.cs"
+      ]
+    },
+    {
+      "id": "concept-healthcheck-engine",
+      "corpus": "reference",
+      "path": "concepts/healthcheck-engine.md",
+      "title": "Health-check detection engine internals",
+      "type": "concept",
+      "summary": "How the hc detection stack works under the hood: SQL generation, imputation, Theil-Sen, AutoML, generalized ESD, and PELT level shifts.",
+      "keywords": [
+        "esd test",
+        "rosner",
+        "pelt",
+        "level shift",
+        "theil-sen",
+        "robust statistics",
+        "median absolute deviation",
+        "student-t",
+        "weekday-median baseline",
+        "imputation"
+      ],
+      "related": [
+        "flow-hc",
+        "cli-healthcheck",
+        "concept-run-artifacts"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.HealthCheck/HealthCheckFlowRunner.cs",
+        "src/SqlFlow.HealthCheck/HealthCheckSqlBuilder.cs",
+        "src/SqlFlow.HealthCheck/HealthCheckEngine.cs",
+        "src/SqlFlow.HealthCheck/EsdDetector.cs",
+        "src/SqlFlow.HealthCheck/PeltDetector.cs",
+        "src/SqlFlow.HealthCheck/TrendEstimator.cs",
+        "src/SqlFlow.HealthCheck/RobustStatistics.cs",
+        "src/SqlFlow.HealthCheck/StudentT.cs",
+        "src/SqlFlow.HealthCheck/BaselineModel.cs",
+        "src/SqlFlow.HealthCheck/HealthCheckModelStore.cs",
+        "src/SqlFlow.HealthCheck/DateColumnSelector.cs",
+        "src/SqlFlow.HealthCheck/SeriesRow.cs",
+        "src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs"
+      ]
+    },
+    {
+      "id": "concept-ingestion-run-pipeline",
+      "corpus": "reference",
+      "path": "concepts/ingestion-run-pipeline.md",
+      "title": "Ingestion run pipeline internals: staging, source SELECT, windows, InitLoad",
+      "type": "concept",
+      "summary": "How IngestionFlowRunner executes a flowType ing run, from source SELECT and staging through incremental windows, InitLoad chunks, and the SQL trace.",
+      "keywords": [
+        "staging table",
+        "run pipeline",
+        "where 1=1",
+        "incremental window",
+        "initload chunks",
+        "schema builder",
+        "dialects",
+        "sql trace"
+      ],
+      "related": [
+        "flow-ing",
+        "flow-ing-schema-incremental",
+        "concept-upsert-and-change-detection",
+        "concept-schema-evolution"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/ChunkRanges.cs",
+        "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.SqlServer/Schema/UnicodeConverter.cs",
+        "src/SqlFlow.Core/Ingestion/DefaultColumnNameCleaner.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionFlow.cs",
+        "src/SqlFlow.Core/Ingestion/SqlTrace.cs"
+      ]
+    },
+    {
+      "id": "concept-json-xml-flattening",
+      "corpus": "reference",
+      "path": "concepts/json-xml-flattening.md",
+      "title": "JSON and XML flattening: paths, arrays, aliases, introspection",
+      "type": "concept",
+      "summary": "How the path-based flatteners turn nested JSON and XML into flat columns, handle arrays, coalesce renamed fields, and expose introspection.",
+      "keywords": [
+        "jsonpath",
+        "xpath",
+        "arrayhandling",
+        "explode",
+        "pathaliases",
+        "iflattenintrospector",
+        "collisions",
+        "columnmappings"
+      ],
+      "related": [
+        "source-type-json",
+        "source-type-xml",
+        "cli-flatten",
+        "guide-explore-json-xml"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/Json/JsonFlattenConfig.cs",
+        "src/SqlFlow.Sources/Json/JsonPathFlattener.cs",
+        "src/SqlFlow.Sources/Json/JsonFlattenFormula.cs",
+        "src/SqlFlow.Sources/Json/JsonPathInventory.cs",
+        "src/SqlFlow.Sources/Xml/XmlFlattenConfig.cs",
+        "src/SqlFlow.Sources/Xml/XmlPathFlattener.cs",
+        "src/SqlFlow.Sources/Xml/XmlFlattenFormula.cs",
+        "src/SqlFlow.Sources/Xml/XmlRecordReader.cs",
+        "src/SqlFlow.Sources/FlattenIntrospection.cs",
+        "src/SqlFlow.Sources/JsonSourceReader.cs",
+        "src/SqlFlow.Sources/XmlSourceReader.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Core/Model/PreIngestionJsn.cs",
+        "src/SqlFlow.Core/Model/PreIngestionXml.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-landing-data-protection",
+      "corpus": "reference",
+      "path": "concepts/landing-data-protection.md",
+      "title": "Landing-time data protection (landing.protect)",
+      "type": "concept",
+      "summary": "landing.protect rules scrub, pseudonymise, or generalise PII in the raw payload before it is written to the lake, format-aware across json, jsonl, xml, and csv.",
+      "keywords": [
+        "protect",
+        "pii",
+        "gdpr",
+        "redact",
+        "mask",
+        "hash",
+        "hmac",
+        "tokenize",
+        "encrypt",
+        "pseudonymisation",
+        "generalize",
+        "data protection",
+        "scrub",
+        "landing"
+      ],
+      "related": [
+        "concept-file-discovery-and-lifecycle",
+        "concept-connections-and-secrets",
+        "flow-source"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Acquire/AcquireProtect.cs",
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs",
+        "src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs",
+        "src/SqlFlow.Acquire/Runtime/Protection/PayloadTransforms.cs",
+        "src/SqlFlow.Acquire/Runtime/Protection/XmlProtection.cs",
+        "src/SqlFlow.Acquire/Runtime/Protection/CsvProtection.cs",
+        "src/SqlFlow.Acquire/Engine/LandingPipeline.cs",
+        "src/SqlFlow.Yaml/YamlAcquireFlowLoader.cs"
+      ]
+    },
+    {
+      "id": "concept-lineage-graph-and-plan",
+      "corpus": "reference",
+      "path": "concepts/lineage-graph-and-plan.md",
+      "title": "The lineage graph: report model, node identity, execution plan, facts dump",
+      "type": "concept",
+      "summary": "How lineage.json is structured, how nodes get their identity, how the execution plan waves are computed, and what facts.json dumps for debugging.",
+      "keywords": [
+        "lineage.json",
+        "nodekey",
+        "execution plan",
+        "kahn waves",
+        "cycles",
+        "facts.json",
+        "flow dependencies",
+        "node identity"
+      ],
+      "related": [
+        "cli-lineage",
+        "flow-batch",
+        "concept-lineage-tiers",
+        "concept-shadow-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Lineage/LineageReport.cs",
+        "src/SqlFlow.Core/Lineage/LineageFactsDump.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
+        "src/SqlFlow.Lineage/Collection/DefaultDatabaseResolver.cs",
+        "src/SqlFlow.Lineage/Collection/CatalogCollector.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/LineageService.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-lineage-tiers",
+      "corpus": "reference",
+      "path": "concepts/lineage-tiers.md",
+      "title": "Lineage tiers: declared, observed, and derived (SQL module expansion)",
+      "type": "concept",
+      "summary": "The three lineage provenance tiers: declared YAML intent, observed run.json execution, and derived live-catalog expansion via sys.sql_modules.",
+      "keywords": [
+        "declared",
+        "observed",
+        "derived",
+        "scriptdom",
+        "sys.sql_modules",
+        "module expansion",
+        "run artifacts",
+        "provenance",
+        "connectivity posture"
+      ],
+      "related": [
+        "cli-lineage",
+        "concept-lineage-graph-and-plan",
+        "guide-lineage-demo",
+        "concept-run-artifacts"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Lineage/LineageReport.cs",
+        "src/SqlFlow.Lineage/LineageService.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/Collection/RunArtifactCollector.cs",
+        "src/SqlFlow.Lineage/Collection/CatalogCollector.cs",
+        "src/SqlFlow.Lineage/Collection/ScriptFactBuilder.cs",
+        "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Lineage/Extraction/TSqlLineageExtractor.cs",
+        "src/SqlFlow.Lineage/Extraction/ScriptDependencies.cs",
+        "src/SqlFlow.Core/Runs/RunHistoryWriter.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-pre-ingestion-transform",
+      "corpus": "reference",
+      "path": "concepts/pre-ingestion-transform.md",
+      "title": "Pre-ingestion transform views and chained-flow topology",
+      "type": "concept",
+      "summary": "How the typed v<Table> view is generated over the pre table, and how a downstream ingestion flow reads it to carry types into raw and target.",
+      "keywords": [
+        "v<table> view",
+        "typed view",
+        "chained flows",
+        "create or alter view",
+        "transform resolution",
+        "precedence",
+        "pre table",
+        "pass-through"
+      ],
+      "related": [
+        "flow-transform",
+        "concept-type-inference",
+        "guide-lineage-demo",
+        "concept-shadow-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/TypeInference.cs",
+        "src/SqlFlow.Core/Model/Results.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionFlow.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Engine/ColumnTransformResolver.cs",
+        "src/SqlFlow.Core/Engine/TransformViewBuilder.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Catalog/CatalogProjection.cs"
+      ]
+    },
+    {
+      "id": "concept-provenance-and-row-keys",
+      "corpus": "reference",
+      "path": "concepts/provenance-and-row-keys.md",
+      "title": "Injected _DW provenance columns and synthetic row keys",
+      "type": "concept",
+      "summary": "The _DW provenance columns every file flow injects, plus the opt-in HashKey_DW and ConcatKey_DW synthetic row keys and their toggles.",
+      "keywords": [
+        "filename_dw",
+        "filedate_dw",
+        "rownumber_dw",
+        "hashkey_dw",
+        "concatkey_dw",
+        "hashkeytype",
+        "provenance",
+        "system columns"
+      ],
+      "related": [
+        "flow-source",
+        "flow-incremental",
+        "concept-upsert-and-change-detection"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Sources/FileSourceOptions.cs",
+        "src/SqlFlow.Core/Model/PreIngestionCsv.cs",
+        "src/SqlFlow.Core/Model/SourceOptions.cs",
+        "src/SqlFlow.SqlServer/SqlServerTypeMapper.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-run-artifacts",
+      "corpus": "reference",
+      "path": "concepts/run-artifacts.md",
+      "title": "Run artifacts, logging, and diagnostics",
+      "type": "concept",
+      "summary": "Every run writes a durable .sqlflow/runs folder with run.json, run.log, and trace.sql; how the log levels, pruning, and tracing seams work.",
+      "keywords": [
+        ".sqlflow/runs",
+        "run.json",
+        "run.log",
+        "trace.sql",
+        "log levels",
+        "activitysource",
+        "pruning",
+        "healthcheck.json",
+        "batch.json"
+      ],
+      "related": [
+        "cli-run",
+        "concept-shadow-catalog",
+        "concept-lineage-tiers"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Runs/RunHistoryWriter.cs",
+        "src/SqlFlow.Core/Runs/RunArtifact.cs",
+        "src/SqlFlow.Core/Runs/RunLog.cs",
+        "src/SqlFlow.Core/Ingestion/SqlTrace.cs",
+        "src/SqlFlow.Core/Batch/BatchRunResult.cs",
+        "src/SqlFlow.Core/Diagnostics/SqlFlowDiagnostics.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Events/NullFlowEventSink.cs",
+        "src/SqlFlow.Execution/RunHistory.cs",
+        "src/SqlFlow.Execution/ExecutionJson.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
+        "src/SqlFlow.Execution/RunLogRenderer.cs",
+        "src/SqlFlow.Execution/SqlFlowEngineServices.cs",
+        "src/SqlFlow.HealthCheck/HealthCheckModelStore.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-schema-evolution",
+      "corpus": "reference",
+      "path": "concepts/schema-evolution.md",
+      "title": "Schema evolution: diffing, monotonic widening, and DDL apply",
+      "type": "concept",
+      "summary": "How SQLFlow diffs desired vs live schemas, widens types monotonically, classifies rewrite cost, and applies DDL under app locks.",
+      "keywords": [
+        "schema drift",
+        "widen",
+        "sqldatatype",
+        "type families",
+        "table rewrite",
+        "allowtablerewrite",
+        "app locks",
+        "type mapping",
+        "monotonic widening",
+        "ddl"
+      ],
+      "related": [
+        "flow-schema",
+        "flow-ing-schema-incremental",
+        "cli-plan",
+        "concept-ingestion-run-pipeline"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Engine/SchemaDiffer.cs",
+        "src/SqlFlow.Core/Engine/DesiredSchemaBuilder.cs",
+        "src/SqlFlow.Core/Model/Schema.cs",
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Core/Model/DdlBatch.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.SqlServer/SqlServerDdlGenerator.cs",
+        "src/SqlFlow.SqlServer/SqlServerSchemaProvider.cs",
+        "src/SqlFlow.SqlServer/SqlServerTypeMapper.cs",
+        "src/SqlFlow.SqlServer/Schema/SchemaEvolutionPlanner.cs",
+        "src/SqlFlow.SqlServer/Schema/EvolutionPlan.cs",
+        "src/SqlFlow.SqlServer/Schema/EvolutionDdlGenerator.cs",
+        "src/SqlFlow.SqlServer/Schema/SchemaSyncService.cs",
+        "src/SqlFlow.SqlServer/Schema/SqlColumn.cs",
+        "src/SqlFlow.SqlServer/Schema/SqlDataType.cs",
+        "src/SqlFlow.SqlServer/Schema/SqlTypeResolution.cs",
+        "src/SqlFlow.SqlServer/Schema/ChangeFootprintClassifier.cs",
+        "src/SqlFlow.SqlServer/Schema/RewritePolicy.cs",
+        "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.SqlServer/Schema/HashKey.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs"
+      ]
+    },
+    {
+      "id": "concept-shadow-catalog",
+      "corpus": "reference",
+      "path": "concepts/shadow-catalog.md",
+      "title": "The shadow catalog: sync mechanics, projections, and identities",
+      "type": "concept",
+      "summary": "How the catalog database mirrors the git/YAML estate and run history one way, with SHA-256 change detection, redaction, and deterministic ids.",
+      "keywords": [
+        "shadow catalog",
+        "read-model",
+        "sha-256 hashing",
+        "redaction",
+        "run projection",
+        "pipeline columns",
+        "full-text search",
+        "repo-scoped ids"
+      ],
+      "related": [
+        "cli-db",
+        "cli-run",
+        "concept-control-plane",
+        "concept-lineage-graph-and-plan"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.Catalog/CatalogProjection.cs",
+        "src/SqlFlow.Catalog/CatalogIdentity.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Catalog/CatalogDbContext.cs",
+        "src/SqlFlow.Catalog/Migrations/20260617165538_ObjectFullTextSearch.cs",
+        "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-shared-target-watermarks",
+      "corpus": "reference",
+      "path": "concepts/shared-target-watermarks.md",
+      "title": "Incremental watermarks when several flows share one target table",
+      "type": "concept",
+      "summary": "Why a fan-in of flows into one target starves all but one writer, how to scope the probe with source.incrementalClause, and why overlapDays is inert on a num...",
+      "keywords": [
+        "watermark",
+        "incremental",
+        "shared target",
+        "fan-in",
+        "incrementalclause",
+        "overlapdays",
+        "lookback",
+        "datecolumn",
+        "discriminator",
+        "silent data loss"
+      ],
+      "related": [
+        "guide-incremental-and-backfill",
+        "flow-incremental",
+        "concept-ingestion-run-pipeline",
+        "concept-upsert-and-change-detection"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs"
+      ]
+    },
+    {
+      "id": "concept-type-inference",
+      "corpus": "reference",
+      "path": "concepts/type-inference.md",
+      "title": "Type inference: profiling, decision rules, and server locale",
+      "type": "concept",
+      "summary": "How SQLFlow profiles raw string columns with TRY_CONVERT, picks SQL types via locale-aware decision rules, and emits the typed transform expressions.",
+      "keywords": [
+        "try_convert",
+        "profiling",
+        "typeinferencer",
+        "culture",
+        "locale",
+        "threshold",
+        "sampling",
+        "onconverterror"
+      ],
+      "related": [
+        "flow-transform",
+        "cli-infer",
+        "concept-pre-ingestion-transform"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Engine/TypeInferencer.cs",
+        "src/SqlFlow.Core/Engine/InferenceService.cs",
+        "src/SqlFlow.Core/Engine/LocaleConversion.cs",
+        "src/SqlFlow.Core/Model/TypeInference.cs",
+        "src/SqlFlow.SqlServer/SqlServerColumnProfiler.cs",
+        "src/SqlFlow.SqlServer/SqlServerLocaleProvider.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/InferSpecLoader.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "concept-upsert-and-change-detection",
+      "corpus": "reference",
+      "path": "concepts/upsert-and-change-detection.md",
+      "title": "The two-step upsert, batching, hash change detection, and deleted-row matching",
+      "type": "concept",
+      "summary": "How ing flows apply staging to the target: UPDATE then INSERT (never MERGE), HASHBYTES change detection, lock-friendly batching, and matchKeys deletes.",
+      "keywords": [
+        "upsert",
+        "no merge",
+        "hashbytes",
+        "batchupsert",
+        "lock escalation",
+        "datasetcolumn",
+        "matchkeys",
+        "soft delete"
+      ],
+      "related": [
+        "flow-ing-load",
+        "flow-ing-versioning",
+        "flow-ing",
+        "concept-ingestion-run-pipeline"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs",
+        "src/SqlFlow.SqlServer/Schema/MatchKeyGenerator.cs",
+        "src/SqlFlow.SqlServer/Schema/HashKey.cs",
+        "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs"
+      ]
+    },
+    {
+      "id": "flow-api",
+      "corpus": "reference",
+      "path": "flow/api.md",
+      "title": "API flow (flowType: api): acquire from an HTTP API, SFTP server, or Azure Table",
+      "type": "flow-reference",
+      "summary": "flowType: api fetches from an HTTP API, SFTP server, or Azure Table and lands raw payloads byte-for-byte, with auth, pagination, fan-out, and resume.",
+      "keywords": [
+        "api",
+        "acquisition",
+        "acquire",
+        "http",
+        "rest",
+        "graphql",
+        "soap",
+        "pagination",
+        "iterate",
+        "landing",
+        "watermark",
+        "runbook replacement"
+      ],
+      "related": [
+        "flow-overview",
+        "flow-sftp",
+        "flow-cpy",
+        "flow-trl",
+        "concept-landing-data-protection",
+        "concept-connections-and-secrets",
+        "concept-file-discovery-and-lifecycle"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs",
+        "src/SqlFlow.Yaml/YamlAcquireFlowLoader.cs",
+        "src/SqlFlow.Acquire/Engine/AcquireEngine.cs",
+        "src/SqlFlow.Acquire/Engine/AcquireFlowRunner.cs",
+        "src/SqlFlow.Acquire/Engine/HttpTransport.cs",
+        "src/SqlFlow.Acquire/Engine/SftpTransport.cs",
+        "src/SqlFlow.Acquire/Engine/AzureTableTransport.cs",
+        "src/SqlFlow.Acquire/Engine/LandingPipeline.cs",
+        "src/SqlFlow.Acquire/Runtime/AuthResolver.cs",
+        "src/SqlFlow.Acquire/Runtime/RetryPolicy.cs",
+        "src/SqlFlow.Acquire/Runtime/UrlGuard.cs",
+        "src/SqlFlow.Acquire/Runtime/TemplateEngine.cs"
+      ]
+    },
+    {
+      "id": "flow-batch",
+      "corpus": "reference",
+      "path": "flow/batch.md",
+      "title": "Batch flow (flowType: batch): ordered multi-flow runs",
+      "type": "flow-reference",
+      "summary": "flowType: batch runs member flows in lineage-computed waves with include/exclude globs, onError stop|continue, ignoreErrors, maxParallel, and connect.",
+      "keywords": [
+        "batch",
+        "members",
+        "include globs",
+        "waves",
+        "maxparallel",
+        "onerror",
+        "ignoreerrors",
+        "connect",
+        "inactive"
+      ],
+      "yamlPath": "(root, flowType: batch)",
+      "related": [
+        "cli-run",
+        "concept-lineage-graph-and-plan",
+        "concept-architecture-and-execution"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs",
+        "src/SqlFlow.Core/Batch/BatchFlow.cs",
+        "src/SqlFlow.Core/Batch/BatchRunResult.cs",
+        "src/SqlFlow.Orchestration/BatchOrchestrator.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
+        "src/SqlFlow.Cli/Program.cs",
+        "samples/seed/seed-batch.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-cal",
+      "corpus": "reference",
+      "path": "flow/cal.md",
+      "title": "Calendar flow (flowType: cal): a generated date dimension",
+      "type": "flow-reference",
+      "summary": "flowType: cal generates a date dimension for a declared range from rules alone (no source), then merges it so the target holds exactly that range.",
+      "keywords": [
+        "calendar",
+        "cal",
+        "date dimension",
+        "dim_calendar",
+        "holidays",
+        "observances",
+        "fiscal year",
+        "easter",
+        "equinox",
+        "daylight saving"
+      ],
+      "related": [
+        "flow-overview",
+        "flow-schedule",
+        "flow-ing",
+        "concept-connections-and-secrets"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Calendar/CalendarFlow.cs",
+        "src/SqlFlow.Core/Calendar/CalendarRow.cs",
+        "src/SqlFlow.Core/Calendar/CalendarDimensionBuilder.cs",
+        "src/SqlFlow.Core/Calendar/CountryCalendar.cs",
+        "src/SqlFlow.Core/Calendar/NorwegianCalendar.cs",
+        "src/SqlFlow.Core/Calendar/SeasonEvents.cs",
+        "src/SqlFlow.Core/Calendar/Observance.cs",
+        "src/SqlFlow.SqlServer/Calendar/CalendarFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Calendar/CalendarTable.cs",
+        "src/SqlFlow.Yaml/YamlCalendarFlowLoader.cs"
+      ]
+    },
+    {
+      "id": "flow-connections",
+      "corpus": "reference",
+      "path": "flow/connections.md",
+      "title": "connections block and endpoint resolution",
+      "type": "flow-reference",
+      "summary": "The connections block of a flow YAML document, provider tokens, the SQLFLOW_CONN convention, and how endpoints resolve to a declared or direct connection.",
+      "keywords": [
+        "connections",
+        "alias",
+        "provider",
+        "server",
+        "connection",
+        "sqlflow_conn",
+        "endpoint resolution",
+        "mssql",
+        "mysql",
+        "postgres"
+      ],
+      "yamlPath": "connections",
+      "related": [
+        "concept-connections-and-secrets",
+        "concept-environment-variables",
+        "guide-table-to-table-ingestion"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Core/Connections/ConnectionConvention.cs",
+        "src/SqlFlow.Core/Connections/DataSource.cs",
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlExportFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs"
+      ]
+    },
+    {
+      "id": "flow-cpy",
+      "corpus": "reference",
+      "path": "flow/cpy.md",
+      "title": "Copy flow (flowType: cpy): file copy between storage endpoints, with zip/unzip",
+      "type": "flow-reference",
+      "summary": "flowType: cpy copies files byte-for-byte between local disk and Azure Blob/ADLS in any direction, optionally zipping or unzipping.",
+      "keywords": [
+        "copy",
+        "cpy",
+        "lake to lake",
+        "zip",
+        "unzip",
+        "azure blob",
+        "adls"
+      ],
+      "related": [
+        "flow-overview",
+        "flow-sftp",
+        "flow-api"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Copy/CopyFlow.cs",
+        "src/SqlFlow.Copy/CopyEngine.cs",
+        "src/SqlFlow.Copy/LocalCopyEndpoint.cs",
+        "src/SqlFlow.Copy/AzureBlobCopyEndpoint.cs",
+        "src/SqlFlow.Yaml/YamlCopyFlowLoader.cs",
+        "samples/copy/baatbooking-storage-to-lake.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-exp",
+      "corpus": "reference",
+      "path": "flow/exp.md",
+      "title": "Export flow (flowType: exp): tables to CSV/Parquet files",
+      "type": "flow-reference",
+      "summary": "flowType: exp reads a SQL Server table or view and writes CSV or Parquet files, one full file or chunked by day, month, or integer key.",
+      "keywords": [
+        "export",
+        "flowtype exp",
+        "csv",
+        "parquet",
+        "chunking",
+        "filetype",
+        "subfolderpattern",
+        "source.filter"
+      ],
+      "yamlPath": "(root, flowType: exp)",
+      "related": [
+        "flow-overview",
+        "source-type-parquet",
+        "flow-hooks",
+        "guide-incremental-and-backfill"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlExportFlowLoader.cs",
+        "src/SqlFlow.Yaml/ExportYaml.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Core/Export/ExportFlow.cs",
+        "src/SqlFlow.Core/Export/IExportDestination.cs",
+        "src/SqlFlow.SqlServer/Export/ExportSegmentPlanner.cs",
+        "src/SqlFlow.SqlServer/Export/ExportFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Export/ExportFileWriters.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs",
+        "samples/export/orders-export.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-hc",
+      "corpus": "reference",
+      "path": "flow/hc.md",
+      "title": "Health-check flow (flowType: hc): metrics and ML detection",
+      "type": "flow-reference",
+      "summary": "flowType: hc reference: monitored metrics, dateColumn, maturityDays, holidays, and the ml block (thresholds, ESD alpha, training policy).",
+      "keywords": [
+        "healthcheck",
+        "flowtype hc",
+        "metrics",
+        "datecolumn",
+        "anomaly detection",
+        "theil-sen",
+        "esd",
+        "pelt",
+        "maturitydays"
+      ],
+      "yamlPath": "(root, flowType: hc)",
+      "related": [
+        "cli-healthcheck",
+        "concept-run-artifacts",
+        "concept-healthcheck-engine",
+        "flow-overview"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlHealthCheckFlowLoader.cs",
+        "src/SqlFlow.Yaml/HealthCheckYaml.cs",
+        "src/SqlFlow.Core/HealthChecks/HealthCheckFlow.cs",
+        "src/SqlFlow.HealthCheck/HealthCheckFlowRunner.cs",
+        "src/SqlFlow.HealthCheck/HealthCheckModelStore.cs",
+        "src/SqlFlow.HealthCheck/WithoutDatabaseHealthCheck.cs",
+        "src/SqlFlow.Cli/Program.cs",
+        "samples/healthcheck/orders-healthcheck.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-hooks",
+      "corpus": "reference",
+      "path": "flow/hooks.md",
+      "title": "Process and invoke hooks: preProcess, postProcess, desiredIndexes, preInvoke, postInvoke",
+      "type": "flow-reference",
+      "summary": "SQL hooks run on the target before and after the load, declared index scripts, and Azure invoke hooks, for file flows and ingestion flows.",
+      "keywords": [
+        "preprocess",
+        "postprocess",
+        "desiredindexes",
+        "preinvoke",
+        "postinvoke",
+        "hooks",
+        "create index",
+        "invokes"
+      ],
+      "yamlPath": "preProcess / postProcess / desiredIndexes / preInvoke / postInvoke",
+      "related": [
+        "flow-inv",
+        "flow-load",
+        "flow-ing",
+        "flow-sp",
+        "flow-exp"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlInvokeParts.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.Core/Invoke/IInvokeRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/TargetProcessHooks.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.SqlServer/SqlServerSchemaProvider.cs",
+        "src/SqlFlow.SqlServer/SqlServerIndexManager.cs",
+        "src/SqlFlow.SqlServer/SqlServerDesiredIndexManager.cs"
+      ]
+    },
+    {
+      "id": "flow-incremental",
+      "corpus": "reference",
+      "path": "flow/incremental.md",
+      "title": "File flow: incremental section and watermark mechanics",
+      "type": "flow-reference",
+      "summary": "The incremental block for file flows, file-date and row-level watermark modes, overlap windows, fullLoad, and loader validation rules.",
+      "keywords": [
+        "incremental",
+        "watermark",
+        "filedate_dw",
+        "overlapdays",
+        "watermarkcolumn",
+        "watermarkoverlap",
+        "fullload",
+        "incrementalafterdate"
+      ],
+      "yamlPath": "incremental",
+      "related": [
+        "concept-file-discovery-and-lifecycle",
+        "guide-incremental-and-backfill",
+        "flow-ing-schema-incremental"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.Core/Model/Watermark.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Engine/WatermarkFilteringDataReader.cs",
+        "src/SqlFlow.SqlServer/SqlServerIncrementalProbe.cs",
+        "src/SqlFlow.Sources/FileDateFilter.cs",
+        "src/SqlFlow.Sources/ParquetSourceReader.cs",
+        "samples/csv/csv-incremental.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-ing",
+      "corpus": "reference",
+      "path": "flow/ing.md",
+      "title": "Ingestion flow (flowType: ing): document, source, target",
+      "type": "flow-reference",
+      "summary": "The flowType: ing YAML document for table-to-table ingestion: top-level keys, source and target endpoints, three-part names, and cross-field rules.",
+      "keywords": [
+        "flowtype ing",
+        "source.object",
+        "target.object",
+        "three-part name",
+        "canonical indexes",
+        "identitycolumn",
+        "ingestion",
+        "upsert",
+        "sysalias"
+      ],
+      "yamlPath": "(root, flowType: ing)",
+      "related": [
+        "flow-ing-load",
+        "flow-ing-schema-incremental",
+        "guide-table-to-table-ingestion",
+        "concept-ingestion-run-pipeline"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionFlow.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.Core/Ingestion/RelationalObject.cs",
+        "src/SqlFlow.SqlServer/Ingestion/CanonicalIndexPlanner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs"
+      ]
+    },
+    {
+      "id": "flow-ing-load",
+      "corpus": "reference",
+      "path": "flow/ing-load.md",
+      "title": "Ingestion flow: load, matchKeys, change, systemColumns",
+      "type": "flow-reference",
+      "summary": "Keyed upsert (load), deleted-row detection (matchKeys), hash change detection (change), and the _DW audit columns (systemColumns) of an ing flow.",
+      "keywords": [
+        "keycolumns",
+        "upsert",
+        "batchupsert",
+        "matchkeys",
+        "hashcolumns",
+        "system columns",
+        "soft delete",
+        "datasetcolumn"
+      ],
+      "yamlPath": "load / matchKeys / change / systemColumns (flowType: ing)",
+      "related": [
+        "concept-upsert-and-change-detection",
+        "flow-ing",
+        "flow-ing-versioning"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs",
+        "src/SqlFlow.SqlServer/Schema/MatchKeyGenerator.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Schema/HashKey.cs"
+      ]
+    },
+    {
+      "id": "flow-ing-quality",
+      "corpus": "reference",
+      "path": "flow/ing-quality.md",
+      "title": "Ingestion flow: assertions, surrogateKeys, virtualColumns",
+      "type": "flow-reference",
+      "summary": "Inline data-quality assertions, IDENTITY-backed surrogate-key generation, and computed virtual columns on an ing flow document.",
+      "keywords": [
+        "assertions",
+        "surrogate keys",
+        "virtual columns",
+        "data quality",
+        "@tablename",
+        "computed columns",
+        "identity lookup",
+        "keycolumns"
+      ],
+      "yamlPath": "assertions / surrogateKeys / virtualColumns (flowType: ing)",
+      "related": [
+        "flow-ing",
+        "concept-shadow-catalog",
+        "concept-ingestion-run-pipeline"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "src/SqlFlow.Core/Ingestion/AssertionDefinition.cs",
+        "src/SqlFlow.Core/Ingestion/InMemoryAssertionDefinitionStore.cs",
+        "src/SqlFlow.Core/Ingestion/SurrogateKey.cs",
+        "src/SqlFlow.Core/Ingestion/VirtualColumn.cs",
+        "src/SqlFlow.SqlServer/Ingestion/AssertionRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.Catalog/CatalogProjection.cs"
+      ]
+    },
+    {
+      "id": "flow-ing-schema-incremental",
+      "corpus": "reference",
+      "path": "flow/ing-schema-incremental.md",
+      "title": "Ingestion flow: schema sync, incremental, initLoad",
+      "type": "flow-reference",
+      "summary": "Reference for the schema, incremental, and initLoad sections of an ing flow: schema sync, column cleanup, watermark windows, chunked backfill.",
+      "keywords": [
+        "schema.sync",
+        "cleancolumnnames",
+        "allowtablerewrite",
+        "incremental",
+        "overlapdays",
+        "lookback",
+        "initload",
+        "backfill"
+      ],
+      "yamlPath": "schema / incremental / initLoad (flowType: ing)",
+      "related": [
+        "concept-schema-evolution",
+        "concept-ingestion-run-pipeline",
+        "flow-incremental",
+        "guide-incremental-and-backfill"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.Core/Ingestion/DefaultColumnNameCleaner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/ChunkRanges.cs"
+      ]
+    },
+    {
+      "id": "flow-ing-versioning",
+      "corpus": "reference",
+      "path": "flow/ing-versioning.md",
+      "title": "Ingestion flow: versioning, temporal history, and SCD2",
+      "type": "flow-reference",
+      "summary": "Target history for an ingestion flow: SQL Server system-versioned temporal tables, and application-managed SCD Type 2 dimension history.",
+      "keywords": [
+        "scd2",
+        "versioning",
+        "validfrom_dw",
+        "validto_dw",
+        "iscurrent_dw",
+        "dimension history",
+        "temporalhistory",
+        "temporal",
+        "system-versioned",
+        "system_time",
+        "history table",
+        "for system_time",
+        "retentiondays",
+        "trackedcolumns"
+      ],
+      "yamlPath": "versioning (flowType: ing)",
+      "related": [
+        "flow-ing-load",
+        "concept-upsert-and-change-detection"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.SqlServer/Schema/TemporalTablePlanner.cs",
+        "src/SqlFlow.SqlServer/Schema/SchemaSyncService.cs",
+        "src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs",
+        "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.SqlServer/Ingestion/CanonicalIndexPlanner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs"
+      ]
+    },
+    {
+      "id": "flow-inv",
+      "corpus": "reference",
+      "path": "flow/inv.md",
+      "title": "Invoke flow (flowType: inv) and the invokes block",
+      "type": "flow-reference",
+      "summary": "flowType: inv triggers one ADF pipeline or Automation runbook and polls it; the same invokes/servicePrincipals blocks back pre/post invoke hooks.",
+      "keywords": [
+        "invoke",
+        "adf",
+        "automation runbook",
+        "pipeline",
+        "polling",
+        "onerrorresume",
+        "serviceprincipal"
+      ],
+      "yamlPath": "(root, flowType: inv) / invokes",
+      "related": [
+        "flow-overview",
+        "flow-service-principals",
+        "cli-auth",
+        "flow-hooks"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlInvokeFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlInvokeParts.cs",
+        "src/SqlFlow.Yaml/InvokeYaml.cs",
+        "src/SqlFlow.Core/Invoke/InvokeType.cs",
+        "src/SqlFlow.Core/Invoke/InvokeDefinition.cs",
+        "src/SqlFlow.Core/Invoke/IInvokeDispatcher.cs",
+        "src/SqlFlow.Core/Connections/ServicePrincipalProfile.cs",
+        "src/SqlFlow.Azure/Invoke/AzureDataFactoryInvokeExecutor.cs",
+        "src/SqlFlow.Azure/Invoke/AzureAutomationInvokeExecutor.cs",
+        "src/SqlFlow.Azure/Invoke/AzureServicePrincipalResolver.cs",
+        "src/SqlFlow.Azure/Invoke/InvokeParameterJson.cs",
+        "samples/invoke/trigger-refresh.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-load",
+      "corpus": "reference",
+      "path": "flow/load.md",
+      "title": "File flow: load section and index handling",
+      "type": "flow-reference",
+      "summary": "load block of a file flow: mode (append or truncate-load), batchSize, tableLock, manageIndexes, plus desiredIndexes and the SqlBulkCopy path.",
+      "keywords": [
+        "load.mode",
+        "append",
+        "truncate-load",
+        "batchsize",
+        "tablelock",
+        "manageindexes",
+        "resetwhenconsolidated",
+        "landing reset",
+        "desiredindexes",
+        "sqlbulkcopy"
+      ],
+      "yamlPath": "load",
+      "related": [
+        "flow-schema",
+        "flow-hooks",
+        "concept-schema-evolution"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.SqlServer/SqlBulkLoader.cs",
+        "src/SqlFlow.SqlServer/BulkTuning.cs",
+        "src/SqlFlow.SqlServer/SqlServerIndexManager.cs",
+        "src/SqlFlow.SqlServer/SqlServerDesiredIndexManager.cs",
+        "src/SqlFlow.SqlServer/DesiredIndexParser.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Model/IndexAction.cs",
+        "src/SqlFlow.Core/Data/StreamingDataReader.cs"
+      ]
+    },
+    {
+      "id": "flow-overview",
+      "corpus": "reference",
+      "path": "flow/overview.md",
+      "title": "Anatomy of a flow file: the twelve document kinds",
+      "type": "flow-reference",
+      "summary": "How the top-level flowType key selects one of twelve flow document kinds, what each kind contains, and how loading and validation behave.",
+      "keywords": [
+        "flowtype",
+        "document kinds",
+        "file flow",
+        "top-level keys",
+        "yaml anatomy"
+      ],
+      "related": [
+        "flow-source",
+        "flow-ing",
+        "flow-batch",
+        "concept-flow-identity",
+        "cli-validate"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlDocumentLoader.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlBatchFlowLoader.cs",
+        "src/SqlFlow.Core/SqlFlowException.cs",
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Core/Runs/RunHistoryWriter.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
+        "src/SqlFlow.Execution/SqlFlowEngineServices.cs",
+        "src/SqlFlow.Orchestration/BatchOrchestrator.cs",
+        "src/SqlFlow.DuckDb/DuckDbSourceReader.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "flow-schedule",
+      "corpus": "reference",
+      "path": "flow/schedule.md",
+      "title": "schedule section and the scheduler",
+      "type": "flow-reference",
+      "summary": "Declare when a flow runs with a top-level schedule block (cron or intervalSeconds); the control plane's scheduler turns it into queued runs.",
+      "keywords": [
+        "schedule",
+        "cron",
+        "intervalseconds",
+        "timezone",
+        "enabled",
+        "scheduler service",
+        "paused",
+        "schedules.yaml",
+        "shared schedule",
+        "schedule reference",
+        "schedule macro",
+        "scope",
+        "batch schedule",
+        "node schedule",
+        "wave order",
+        "when does a source update",
+        "schedule plan"
+      ],
+      "yamlPath": "schedule",
+      "related": [
+        "concept-control-plane",
+        "cli-db",
+        "cli-worker",
+        "flow-overview"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlDocumentLoader.cs",
+        "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Core/ScheduleSpec.cs",
+        "src/SqlFlow.Catalog/ScheduleClock.cs",
+        "src/SqlFlow.Catalog/ScheduleStore.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.ControlPlane/Background/SchedulerService.cs",
+        "src/SqlFlow.ControlPlane/Api/ScheduleEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs"
+      ]
+    },
+    {
+      "id": "flow-schema",
+      "corpus": "reference",
+      "path": "flow/schema.md",
+      "title": "File flow: schema section (evolve, defaultColumnType, overrides)",
+      "type": "flow-reference",
+      "summary": "schema block of a flow YAML: evolution policy (create, widen, strict), default SQL type for raw columns, and per-column type/nullability overrides.",
+      "keywords": [
+        "schema.evolve",
+        "create",
+        "widen",
+        "strict",
+        "defaultcolumntype",
+        "overrides",
+        "schema evolution",
+        "schema drift"
+      ],
+      "yamlPath": "schema",
+      "related": [
+        "concept-schema-evolution",
+        "flow-load",
+        "cli-plan"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Core/Engine/SchemaDiffer.cs",
+        "src/SqlFlow.Core/SqlFlowException.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.SqlServer/SqlServerTypeMapper.cs",
+        "schemas/sqlflow.flow.schema.json"
+      ]
+    },
+    {
+      "id": "flow-scm",
+      "corpus": "reference",
+      "path": "flow/scm.md",
+      "title": "Source-control flow (flowType: scm)",
+      "type": "flow-reference",
+      "summary": "flowType: scm scripts a SQL Server database's objects with SMO into a git working tree, commits the snapshot, and optionally pushes to a remote.",
+      "keywords": [
+        "source control",
+        "flowtype scm",
+        "smo",
+        "git snapshot",
+        "repository",
+        "scripting",
+        "schedule",
+        "schema history",
+        "ddl comparison"
+      ],
+      "yamlPath": "(root, flowType: scm)",
+      "related": [
+        "flow-overview",
+        "flow-schedule",
+        "concept-shadow-catalog",
+        "concept-lineage-graph-and-plan"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs",
+        "src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Core/SourceControl/SourceControlFlow.cs",
+        "src/SqlFlow.Core/SourceControl/SourceControlObjectTypes.cs",
+        "src/SqlFlow.SourceControl/SourceControlService.cs",
+        "src/SqlFlow.SourceControl/SmoDatabaseScripter.cs",
+        "src/SqlFlow.SourceControl/SnapshotWriter.cs",
+        "src/SqlFlow.SourceControl/LibGit2GitWorkspace.cs",
+        "src/SqlFlow.ControlPlane/Api/GitHistoryEndpoints.cs",
+        "src/SqlFlow.Catalog/CatalogProjection.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "flow-service-principals",
+      "corpus": "reference",
+      "path": "flow/service-principals.md",
+      "title": "servicePrincipals block",
+      "type": "flow-reference",
+      "summary": "Declare secretless Azure service principals that invoke definitions reference by name for ADF pipeline and Automation runbook triggers.",
+      "keywords": [
+        "service principal",
+        "tenantid",
+        "clientsecret",
+        "keyvault",
+        "subscription",
+        "resource group",
+        "datafactoryname",
+        "automationaccountname"
+      ],
+      "yamlPath": "servicePrincipals",
+      "related": [
+        "flow-inv",
+        "cli-auth",
+        "concept-connections-and-secrets"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlInvokeParts.cs",
+        "src/SqlFlow.Yaml/InvokeYaml.cs",
+        "src/SqlFlow.Core/Connections/ServicePrincipalProfile.cs",
+        "src/SqlFlow.Azure/Invoke/AzureServicePrincipalResolver.cs",
+        "src/SqlFlow.Core/Secrets/ISecretResolver.cs",
+        "src/SqlFlow.Core/Secrets/SecretResolver.cs",
+        "samples/invoke/trigger-refresh.flow.yaml",
+        "tests/SqlFlow.Core.Tests/AzureServicePrincipalResolverTests.cs"
+      ]
+    },
+    {
+      "id": "flow-sftp",
+      "corpus": "reference",
+      "path": "flow/sftp.md",
+      "title": "SFTP flow (flowType: sftp): download from / upload to an SFTP server",
+      "type": "flow-reference",
+      "summary": "flowType: sftp downloads files from an SFTP server into the data lake / local, or uploads the other way, byte-for-byte.",
+      "keywords": [
+        "sftp",
+        "download",
+        "upload",
+        "vendor drop",
+        "private key"
+      ],
+      "related": [
+        "flow-overview",
+        "flow-cpy",
+        "flow-api"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Sftp/SftpFlow.cs",
+        "src/SqlFlow.Sftp/SftpEngine.cs",
+        "src/SqlFlow.Yaml/YamlSftpFlowLoader.cs",
+        "samples/sftp/citybike-nets-download.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-source",
+      "corpus": "reference",
+      "path": "flow/source.md",
+      "title": "File flow: source section",
+      "type": "flow-reference",
+      "summary": "The source section of a file flow: type selects the reader, location points at the data, options carries reader-specific settings.",
+      "keywords": [
+        "source.type",
+        "source.location",
+        "source.options",
+        "reader selection",
+        "file flow",
+        "srcpath",
+        "defaultcoldatatype"
+      ],
+      "yamlPath": "source",
+      "related": [
+        "source-type-csv",
+        "source-type-json",
+        "concept-file-source-pipeline",
+        "concept-file-discovery-and-lifecycle"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Execution/SqlFlowEngineServices.cs",
+        "src/SqlFlow.Core/Model/SourceOptions.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs"
+      ]
+    },
+    {
+      "id": "flow-sp",
+      "corpus": "reference",
+      "path": "flow/sp.md",
+      "title": "Stored-procedure flow (flowType: sp)",
+      "type": "flow-reference",
+      "summary": "flowType: sp executes one existing stored procedure (three-part name) on a resolved SQL Server, binding literal or run-time-resolved parameters, with optiona...",
+      "keywords": [
+        "stored procedure",
+        "flowtype sp",
+        "procedure.object",
+        "three-part name",
+        "exec",
+        "postinvoke",
+        "onerrorresume"
+      ],
+      "yamlPath": "(root, flowType: sp)",
+      "related": [
+        "flow-overview",
+        "flow-inv",
+        "flow-hooks",
+        "flow-batch",
+        "guide-lineage-demo"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlStoredProcedureFlowLoader.cs",
+        "src/SqlFlow.Yaml/StoredProcedureYaml.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Yaml/YamlInvokeParts.cs",
+        "src/SqlFlow.Core/StoredProcedures/StoredProcedureFlow.cs",
+        "src/SqlFlow.SqlServer/StoredProcedures/StoredProcedureFlowRunner.cs",
+        "samples/sp/refresh-marts.flow.yaml",
+        "samples/lineage-demo/30-build-order-fact.flow.yaml"
+      ]
+    },
+    {
+      "id": "flow-subscribers",
+      "corpus": "reference",
+      "path": "flow/subscribers.md",
+      "title": "subscribers.yaml and consumption lineage",
+      "type": "flow-reference",
+      "summary": "Declare who consumes the warehouse in a subscribers.yaml; every subscriber query is parsed into read edges, so lineage answers which report uses which table.",
+      "keywords": [
+        "subscribers.yaml",
+        "data subscriber",
+        "subscriber",
+        "consumer",
+        "powerbi",
+        "tableau",
+        "dashboard",
+        "report",
+        "consumption lineage",
+        "who reads this table",
+        "impact analysis",
+        "downstream",
+        "DataSubscriber",
+        "DataSubscriberQuery",
+        "subscriber notes",
+        "incomplete dataset",
+        "stale report"
+      ],
+      "yamlPath": "subscribers",
+      "related": [
+        "concept-lineage-graph-and-plan",
+        "concept-lineage-tiers",
+        "flow-schedule",
+        "flow-overview"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Subscribers/DataSubscriber.cs",
+        "docs/reference/flow/keys.subscribers.json",
+        "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Core/Lineage/LineageReport.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs"
+      ]
+    },
+    {
+      "id": "flow-target",
+      "corpus": "reference",
+      "path": "flow/target.md",
+      "title": "File flow: target section",
+      "type": "flow-reference",
+      "summary": "The target section of a file flow: required connection, schema, and table keys naming the SQL Server table the load writes to.",
+      "keywords": [
+        "target.connection",
+        "target.schema",
+        "target.table",
+        "connection reference",
+        "secret reference",
+        "qualified name",
+        "sql server target"
+      ],
+      "yamlPath": "target",
+      "related": [
+        "flow-source",
+        "concept-connections-and-secrets",
+        "flow-schema"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Secrets/SecretResolver.cs",
+        "src/SqlFlow.Core/Secrets/EnvSecretProvider.cs",
+        "src/SqlFlow.Azure/AzureKeyVaultSecretProvider.cs",
+        "src/SqlFlow.SqlServer/SqlBulkLoader.cs",
+        "src/SqlFlow.SqlServer/SqlServerSchemaProvider.cs",
+        "src/SqlFlow.Execution/DocumentLoader.cs",
+        "src/SqlFlow.Core/Secrets/SecretHygiene.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "flow-transform",
+      "corpus": "reference",
+      "path": "flow/transform.md",
+      "title": "transform section: type inference and column transforms",
+      "type": "flow-reference",
+      "summary": "transform block shared by file and ing flows: inferTypes, onConvertError, threshold, sample, generateView, and authored per-column transforms with @ColName.",
+      "keywords": [
+        "transform",
+        "infertypes",
+        "columns",
+        "generateview",
+        "onconverterror",
+        "threshold",
+        "@colname",
+        "virtual",
+        "excludefromview"
+      ],
+      "yamlPath": "transform",
+      "related": [
+        "concept-type-inference",
+        "concept-pre-ingestion-transform",
+        "cli-infer"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/TypeInference.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Core/Engine/ColumnTransformResolver.cs",
+        "src/SqlFlow.Core/Engine/TransformViewBuilder.cs",
+        "src/SqlFlow.Core/Engine/ColumnTransformExpression.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "schemas/sqlflow.flow.schema.json"
+      ]
+    },
+    {
+      "id": "flow-trl",
+      "corpus": "reference",
+      "path": "flow/trl.md",
+      "title": "Translate flow (flowType: trl): query results to shaped JSON, saved and delivered",
+      "type": "flow-reference",
+      "summary": "flowType: trl maps a SQL query result through a declared JSON template into arbitrarily shaped documents, always saves them to a destination first (determini...",
+      "keywords": [
+        "translate",
+        "trl",
+        "json template",
+        "document mapping",
+        "osdu",
+        "api delivery",
+        "envelope",
+        "forEach",
+        "datasets",
+        "jsonl"
+      ],
+      "related": [
+        "flow-overview",
+        "flow-exp",
+        "flow-api",
+        "flow-schedule",
+        "concept-connections-and-secrets"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Translate/TranslateFlow.cs",
+        "src/SqlFlow.Core/Translate/TranslateTemplate.cs",
+        "src/SqlFlow.Core/Translate/TranslateTemplateText.cs",
+        "src/SqlFlow.Translate/TranslateFlowRunner.cs",
+        "src/SqlFlow.Translate/JsonTemplateRenderer.cs",
+        "src/SqlFlow.Translate/TranslateDatasetIndex.cs",
+        "src/SqlFlow.Translate/TranslateOutputWriter.cs",
+        "src/SqlFlow.Translate/TranslateInvoker.cs",
+        "src/SqlFlow.Yaml/YamlTranslateFlowLoader.cs"
+      ]
+    },
+    {
+      "id": "guide-canonical-authoring",
+      "corpus": "reference",
+      "path": "guides/canonical-authoring.md",
+      "title": "Canonical flow authoring: the simplest design that the engine already owns",
+      "type": "guide",
+      "summary": "The design loop for creating or changing a pipeline (scaffold or discover, edit, validate, propose) and the declare-intent-not-mechanism rules: incremental v...",
+      "keywords": [
+        "canonical",
+        "authoring",
+        "design",
+        "new pipeline",
+        "scaffold",
+        "incremental",
+        "watermark",
+        "upsert",
+        "keycolumns",
+        "macro",
+        "best practice"
+      ],
+      "related": [
+        "flow-incremental",
+        "flow-ing-schema-incremental",
+        "guide-incremental-and-backfill",
+        "concept-upsert-and-change-detection",
+        "cli-catalog-scaffold",
+        "cli-validate"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Catalog/CatalogScaffolder.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Yaml/YamlDocumentLoader.cs",
+        "src/SqlFlow.ControlPlane/Api/FlowProposalEndpoints.cs",
+        "tools/sqlflow-lang/src/features.rs"
+      ]
+    },
+    {
+      "id": "guide-chat-assistant",
+      "corpus": "reference",
+      "path": "guides/chat-assistant.md",
+      "title": "The GUI chat assistant: the SQLFlow agent in the workbench, with per-user authority and voice input",
+      "type": "guide",
+      "summary": "How the GUI's Assistant page answers questions - the same assistant core as the Slack bot, streamed over SSE from the control plane, with tool calls made und...",
+      "keywords": [
+        "chat",
+        "assistant",
+        "gui",
+        "streaming",
+        "sse",
+        "conversations",
+        "foundry",
+        "responses api",
+        "mcp",
+        "per-user",
+        "voice",
+        "dictation",
+        "transcription",
+        "image",
+        "screenshot"
+      ],
+      "related": [
+        "guide-slack-assistant",
+        "guide-deployment",
+        "concept-authentication-and-identity",
+        "concept-control-plane"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Assistant/IAssistantGateway.cs",
+        "src/SqlFlow.Assistant/ResponsesApiGateway.cs",
+        "src/SqlFlow.Assistant/AnthropicGateway.cs",
+        "src/SqlFlow.Assistant/TranscriptionGateway.cs",
+        "src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "gui/src/features/chat/ChatPage.tsx",
+        "gui/src/features/chat/chatAdapters.ts",
+        "deploy/bicep/control-plane.bicep",
+        "deploy/bicep/ai-foundry.bicep"
+      ]
+    },
+    {
+      "id": "guide-deployment",
+      "corpus": "reference",
+      "path": "guides/deployment.md",
+      "title": "Deploying: docker compose, Kubernetes, and ADF integration",
+      "type": "guide",
+      "summary": "Deploy the control plane, workers, and GUI with docker compose or Kubernetes (KEDA), and trigger flows from Azure Data Factory Web Activities.",
+      "keywords": [
+        "docker compose",
+        "kubernetes",
+        "keda",
+        "hpa",
+        "adf",
+        "web activities",
+        "images",
+        "worker pools",
+        "ingress"
+      ],
+      "related": [
+        "concept-control-plane",
+        "cli-worker",
+        "concept-authentication-and-identity"
+      ],
+      "sourceRefs": [
+        "deploy/README.md",
+        "deploy/compose/docker-compose.yml",
+        "deploy/compose/.env.example",
+        "Dockerfile.worker",
+        "deploy/docker/worker-entrypoint.sh",
+        "deploy/k8s/controlplane.yaml",
+        "deploy/k8s/worker-pool.yaml",
+        "deploy/k8s/gui.yaml",
+        "deploy/k8s/ingress.yaml",
+        "deploy/k8s/secrets.example.yaml",
+        "deploy/bicep/control-plane.bicep",
+        "deploy/bicep/worker.bicep",
+        "deploy/bicep/gui.bicep",
+        "deploy/bicep/ai-foundry.bicep",
+        "deploy/bicep/main.bicep",
+        "deploy/adf/SqlFlowTriggerFlow.pipeline.json",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
+        "src/SqlFlow.Cli/Program.cs",
+        "docs/adf-dropin.md"
+      ]
+    },
+    {
+      "id": "guide-explore-json-xml",
+      "corpus": "reference",
+      "path": "guides/explore-json-xml.md",
+      "title": "Explore, shape, and load nested JSON/XML data",
+      "type": "guide",
+      "summary": "Workflow for nested JSON/XML - list paths, preview flattened rows, generate a runnable flow stub, run it, then infer types.",
+      "keywords": [
+        "paths",
+        "discover",
+        "flatten",
+        "workflow",
+        "preview data",
+        "nested data",
+        "jsonpath",
+        "xpath"
+      ],
+      "related": [
+        "cli-paths",
+        "cli-flatten",
+        "cli-discover",
+        "cli-infer",
+        "concept-json-xml-flattening",
+        "source-type-json"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Yaml/FlowYaml.cs",
+        "src/SqlFlow.Yaml/InferSpecLoader.cs",
+        "samples/json/README.md",
+        "samples/xml/README.md",
+        "samples/json/json-schema-evolution.flow.yaml",
+        "samples/infer/orders.infer.yaml"
+      ]
+    },
+    {
+      "id": "guide-foreign-db-ingestion",
+      "corpus": "reference",
+      "path": "guides/foreign-db-ingestion.md",
+      "title": "MySQL, PostgreSQL, and Oracle sources into SQL Server",
+      "type": "guide",
+      "summary": "Ingest from MySQL, PostgreSQL, or Oracle into SQL Server by declaring a provider on the connection; dialects and type mapping are automatic.",
+      "keywords": [
+        "mysql",
+        "postgres",
+        "oracle",
+        "provider",
+        "foreign sources",
+        "dialects",
+        "type mapping"
+      ],
+      "related": [
+        "flow-connections",
+        "cli-catalog",
+        "guide-table-to-table-ingestion"
+      ],
+      "sourceRefs": [
+        "samples/ingestion/mysql-to-sqlserver.flow.yaml",
+        "src/SqlFlow.Providers/SqlFlowSourceProviders.cs",
+        "src/SqlFlow.Providers/MySql/MySqlSourceProvider.cs",
+        "src/SqlFlow.Providers/MySql/MySqlSourceTypeMapper.cs",
+        "src/SqlFlow.Providers/Postgres/PostgresSourceProvider.cs",
+        "src/SqlFlow.Providers/Postgres/PostgresSourceTypeMapper.cs",
+        "src/SqlFlow.Providers/Oracle/OracleSourceProvider.cs",
+        "src/SqlFlow.Providers/Oracle/OracleSourceTypeMapper.cs",
+        "src/SqlFlow.Core/Connections/SourceProviders.cs",
+        "src/SqlFlow.Core/Connections/DataSource.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.Cli/Program.cs",
+        "docs/environment-variables.md"
+      ]
+    },
+    {
+      "id": "guide-getting-started",
+      "corpus": "reference",
+      "path": "guides/getting-started.md",
+      "title": "Getting started: first run and authoring your first flow",
+      "type": "guide",
+      "summary": "Run your first pipeline in three commands, then author a .flow.yaml from scratch with editor IntelliSense and inspect the run artifacts.",
+      "keywords": [
+        "quickstart",
+        "first flow",
+        "orders.flow.yaml",
+        "validate plan run",
+        "editor intellisense",
+        "json schema",
+        "environment variables"
+      ],
+      "related": [
+        "cli-run",
+        "cli-plan",
+        "cli-validate",
+        "flow-overview",
+        "flow-source",
+        "flow-schema",
+        "flow-load",
+        "concept-connections-and-secrets",
+        "concept-environment-variables"
+      ],
+      "sourceRefs": [
+        "README.md",
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Core/Secrets/LocalEnvFile.cs",
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Core/Model/PreIngestionCsv.cs",
+        "src/SqlFlow.Core/Runs/RunHistoryWriter.cs",
+        "schemas/sqlflow.flow.schema.json",
+        ".vscode/settings.json",
+        "samples/quickstart/orders.flow.yaml",
+        "samples/csv/README.md",
+        "docs/environment-variables.md"
+      ]
+    },
+    {
+      "id": "guide-incremental-and-backfill",
+      "corpus": "reference",
+      "path": "guides/incremental-and-backfill.md",
+      "title": "Incremental loads and per-run backfill parameters",
+      "type": "guide",
+      "summary": "How incremental watermarks work per flow kind, and how to backfill with --full, --from/--to, and --file-pattern without editing YAML.",
+      "keywords": [
+        "backfill",
+        "watermark",
+        "incremental",
+        "full load",
+        "runparameters",
+        "initload",
+        "file pattern",
+        "window"
+      ],
+      "related": [
+        "flow-incremental",
+        "flow-ing-schema-incremental",
+        "cli-run",
+        "concept-control-plane"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Runs/RunParameters.cs",
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs",
+        "src/SqlFlow.Core/Model/FlowDefinition.cs",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "samples/csv/csv-incremental.flow.yaml",
+        "samples/ingestion/orders-ingestion.flow.yaml"
+      ]
+    },
+    {
+      "id": "guide-lineage-demo",
+      "corpus": "reference",
+      "path": "guides/lineage-demo.md",
+      "title": "Lineage demo walkthrough: a seven-flow chained estate",
+      "type": "guide",
+      "summary": "Run the samples/lineage-demo estate end to end and land a five-wave execution plan with declared and derived lineage in the catalog.",
+      "keywords": [
+        "lineage demo",
+        "waves",
+        "chained flows",
+        "samples",
+        "walkthrough",
+        "db sync",
+        "connect"
+      ],
+      "related": [
+        "cli-lineage",
+        "concept-lineage-tiers",
+        "concept-pre-ingestion-transform",
+        "cli-db"
+      ],
+      "sourceRefs": [
+        "samples/lineage-demo/README.md",
+        "samples/lineage-demo/10-land-orders.flow.yaml",
+        "samples/lineage-demo/11-land-customers.flow.yaml",
+        "samples/lineage-demo/20-ing-orders.flow.yaml",
+        "samples/lineage-demo/21-ing-customers.flow.yaml",
+        "samples/lineage-demo/30-build-order-fact.flow.yaml",
+        "samples/lineage-demo/40-build-country-rollup.flow.yaml",
+        "samples/lineage-demo/50-build-exec-kpi.flow.yaml",
+        "samples/lineage-demo/sql/usp_BuildOrderFact.sql",
+        "samples/lineage-demo/sql/usp_BuildRollups.sql",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "guide-notifications",
+      "corpus": "reference",
+      "path": "guides/notifications.md",
+      "title": "Failure notifications: email and Slack alerts with digest and anti-spam controls",
+      "type": "guide",
+      "summary": "Opt-in email (SMTP or Microsoft Graph) and Slack alerts for failed runs and assertions, immediate or digest, with anti-spam coalescing and lifecycle gating.",
+      "keywords": [
+        "notifications",
+        "alerts",
+        "email",
+        "smtp",
+        "microsoft graph",
+        "slack",
+        "digest",
+        "subscriptions",
+        "lifecycle",
+        "anti-spam"
+      ],
+      "related": [
+        "flow-overview",
+        "guide-deployment",
+        "concept-connections-and-secrets"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Background/NotificationService.cs",
+        "src/SqlFlow.ControlPlane/Notifications/NotificationComposer.cs",
+        "src/SqlFlow.ControlPlane/Api/NotificationEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.Catalog/NotificationStore.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs"
+      ]
+    },
+    {
+      "id": "guide-slack-assistant",
+      "corpus": "reference",
+      "path": "guides/slack-assistant.md",
+      "title": "The Slack assistant: a read-only SQLFlow agent over Foundry's Responses API and the MCP server",
+      "type": "guide",
+      "summary": "How the SQLFlow Slack bot answers questions - a Socket Mode relay to an Azure AI Foundry Responses API call whose MCP tool is the SQLFlow MCP server, read-on...",
+      "keywords": [
+        "slack",
+        "assistant",
+        "bot",
+        "foundry",
+        "responses api",
+        "mcp",
+        "agent",
+        "socket mode",
+        "gpt-5.1",
+        "read-only",
+        "vision",
+        "image",
+        "screenshot",
+        "diagnose missing data",
+        "lineage"
+      ],
+      "related": [
+        "guide-chat-assistant",
+        "guide-deployment",
+        "concept-authentication-and-identity",
+        "concept-control-plane"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Assistant/ResponsesApiGateway.cs",
+        "src/SqlFlow.SlackBot/SlackAssistantHandler.cs",
+        "src/SqlFlow.SlackBot/SlackBotOptions.cs",
+        "tools/sqlflow-mcp/src/http_server.rs",
+        "deploy/bicep/slack-bot.bicep",
+        "deploy/bicep/mcp.bicep",
+        "deploy/bicep/ai-foundry.bicep",
+        "deploy/slack/manifest.yaml"
+      ]
+    },
+    {
+      "id": "guide-source-backfill",
+      "corpus": "reference",
+      "path": "guides/source-backfill.md",
+      "title": "Backfilling a whole source (integration, file ingestion, silver)",
+      "type": "guide",
+      "summary": "Reprocess a whole ingest source for a date range: integration re-lands files, file ingestion re-reads them, silver re-pulls from the source minimum.",
+      "keywords": [
+        "backfill",
+        "reprocess",
+        "whole source",
+        "schedule backfill",
+        "force re-land",
+        "min from source",
+        "reprocessFromSourceMin",
+        "flow + descendants",
+        "integration",
+        "silver"
+      ],
+      "related": [
+        "guide-incremental-and-backfill",
+        "flow-incremental",
+        "concept-control-plane"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Runs/RunParameters.cs",
+        "src/SqlFlow.Core/Runs/RunParameterApplicability.cs",
+        "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/ScheduleEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Background/ScheduleFire.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.Copy/CopyEngine.cs",
+        "src/SqlFlow.Acquire/Engine/AcquireFlowRunner.cs",
+        "src/SqlFlow.Acquire/Engine/LandingPipeline.cs",
+        "src/SqlFlow.Sftp/SftpEngine.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs"
+      ]
+    },
+    {
+      "id": "guide-table-to-table-ingestion",
+      "corpus": "reference",
+      "path": "guides/table-to-table-ingestion.md",
+      "title": "Table-to-table ingestion end to end",
+      "type": "guide",
+      "summary": "Build, validate, and run a flowType ing pipeline that copies a source table into SQL Server through staging, schema sync, and a keyed upsert.",
+      "keywords": [
+        "ingestion",
+        "flowtype ing",
+        "upsert",
+        "staging",
+        "schema sync",
+        "keycolumns",
+        "matchkeys",
+        "walkthrough"
+      ],
+      "related": [
+        "flow-ing",
+        "flow-ing-load",
+        "cli-catalog-scaffold",
+        "concept-ingestion-run-pipeline"
+      ],
+      "sourceRefs": [
+        "samples/ingestion/orders-ingestion.flow.yaml",
+        "samples/seed/orders-dw.flow.yaml",
+        "src/SqlFlow.Yaml/IngestionYaml.cs",
+        "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs",
+        "src/SqlFlow.Yaml/YamlDocumentParts.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionFlow.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/CanonicalIndexPlanner.cs",
+        "src/SqlFlow.Cli/Program.cs"
+      ]
+    },
+    {
+      "id": "source-type-csv",
+      "corpus": "reference",
+      "path": "flow/source-types/csv.md",
+      "title": "CSV source (source.type: csv)",
+      "type": "source-type",
+      "summary": "Options for delimited and fixed-width text sources: delimiter, qualifier, header, encoding, row shaping, provenance columns, and synthetic row keys.",
+      "keywords": [
+        "csv",
+        "delimiter",
+        "textqualifier",
+        "fixed-width",
+        "header",
+        "columnwidths",
+        "encoding",
+        "hashkey",
+        "provenance"
+      ],
+      "yamlPath": "source.options",
+      "related": [
+        "flow-source",
+        "concept-file-source-pipeline",
+        "concept-file-discovery-and-lifecycle",
+        "concept-provenance-and-row-keys"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/CsvSourceReader.cs",
+        "src/SqlFlow.Core/Model/PreIngestionCsv.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Sources/FileDateFilter.cs",
+        "src/SqlFlow.Yaml/YamlFlowLoader.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.SqlServer/SqlServerTypeMapper.cs"
+      ]
+    },
+    {
+      "id": "source-type-duckdb",
+      "corpus": "reference",
+      "path": "flow/source-types/duckdb.md",
+      "title": "DuckDB / Delta source (source.type: duckdb | delta)",
+      "type": "source-type",
+      "summary": "Run a DuckDB query over Parquet/CSV/JSON files or Delta tables, locally or on ADLS/S3, with typed columns and predicate pushdown.",
+      "keywords": [
+        "duckdb",
+        "delta",
+        "query",
+        "extensions",
+        "adls",
+        "s3",
+        "cloud storage auth",
+        "predicate pushdown",
+        "hive partitioning"
+      ],
+      "yamlPath": "source.options (type: duckdb|delta)",
+      "related": [
+        "cli-auth",
+        "source-type-parquet",
+        "flow-source",
+        "flow-incremental"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.DuckDb/DuckDbSourceReader.cs",
+        "src/SqlFlow.DuckDb/DuckDbQuery.cs",
+        "src/SqlFlow.DuckDb/DuckDbAzureSecret.cs",
+        "src/SqlFlow.DuckDb/DuckDbTypeMap.cs",
+        "src/SqlFlow.Azure/AzureStorageCredentialProvider.cs",
+        "src/SqlFlow.Core/Connections/CloudCredential.cs",
+        "src/SqlFlow.Core/Model/FileDateSpec.cs",
+        "src/SqlFlow.Core/Model/Watermark.cs"
+      ]
+    },
+    {
+      "id": "source-type-json",
+      "corpus": "reference",
+      "path": "flow/source-types/json.md",
+      "title": "JSON / NDJSON source (source.type: json | jsonl | ndjson)",
+      "type": "source-type",
+      "summary": "Flatten JSON and newline-delimited JSON files into raw-string columns with path-based include, exclude, explode, alias, and array-handling rules.",
+      "keywords": [
+        "json",
+        "ndjson",
+        "jsonl",
+        "rootpath",
+        "flatten",
+        "includepaths",
+        "arrayhandling",
+        "explodepaths",
+        "pathaliases"
+      ],
+      "yamlPath": "source.options (type: json|jsonl|ndjson)",
+      "related": [
+        "concept-json-xml-flattening",
+        "concept-file-discovery-and-lifecycle",
+        "cli-paths",
+        "cli-flatten",
+        "cli-discover",
+        "guide-explore-json-xml"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/JsonSourceReader.cs",
+        "src/SqlFlow.Sources/Json/JsonRecordReader.cs",
+        "src/SqlFlow.Sources/Json/JsonFlattenConfig.cs",
+        "src/SqlFlow.Sources/Json/JsonPathFlattener.cs",
+        "src/SqlFlow.Core/Model/PreIngestionJsn.cs",
+        "samples/json/README.md"
+      ]
+    },
+    {
+      "id": "source-type-parquet",
+      "corpus": "reference",
+      "path": "flow/source-types/parquet.md",
+      "title": "Parquet source (source.type: parquet | prq)",
+      "type": "source-type",
+      "summary": "Typed Parquet ingestion: file schema maps straight to SQL Server types, nested data becomes JSON, row groups stream and prune on the incremental watermark.",
+      "keywords": [
+        "parquet",
+        "prq",
+        "typed columns",
+        "self-describing",
+        "type mapping",
+        "row group",
+        "nested",
+        "decimal",
+        "watermark pruning",
+        "partitionlist"
+      ],
+      "yamlPath": "source.options (type: parquet|prq)",
+      "related": [
+        "source-type-duckdb",
+        "flow-source",
+        "concept-type-inference"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/ParquetSourceReader.cs",
+        "src/SqlFlow.Core/Model/PreIngestionParquet.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Core/Model/Watermark.cs",
+        "src/SqlFlow.Core/Model/FileDateSpec.cs",
+        "samples/parquet/README.md",
+        "samples/parquet/parquet-basic.flow.yaml",
+        "samples/parquet/parquet-folder.flow.yaml"
+      ]
+    },
+    {
+      "id": "source-type-xls",
+      "corpus": "reference",
+      "path": "flow/source-types/xls.md",
+      "title": "Excel source (source.type: xls | xlsx)",
+      "type": "source-type",
+      "summary": "Read Excel workbooks (.xls/.xlsx) into SQL Server: sheet selection by name or index, cell ranges, headers, and the shared file-ingestion pipeline.",
+      "keywords": [
+        "excel",
+        "xls",
+        "xlsx",
+        "sheetname",
+        "sheetrange",
+        "usesheetindex",
+        "exceldatareader",
+        "workbook"
+      ],
+      "yamlPath": "source.options (type: xls|xlsx)",
+      "related": [
+        "flow-source",
+        "source-type-csv",
+        "concept-file-source-pipeline"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/XlsSourceReader.cs",
+        "src/SqlFlow.Core/Model/PreIngestionXls.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Core/Model/FileDateSpec.cs",
+        "src/SqlFlow.Sources/FileDateFilter.cs",
+        "src/SqlFlow.Core/Model/SourceOptions.cs",
+        "src/SqlFlow.Core/Ingestion/LegacyColumnCleanup.cs",
+        "src/SqlFlow.SqlServer/SqlServerTypeMapper.cs",
+        "tests/SqlFlow.Core.Tests/XlsSourceReaderTests.cs"
+      ]
+    },
+    {
+      "id": "source-type-xml",
+      "corpus": "reference",
+      "path": "flow/source-types/xml.md",
+      "title": "XML source (source.type: xml)",
+      "type": "source-type",
+      "summary": "Ingest XML files with the path-based flattener: rowXPath record selection, attribute columns, namespace stripping, repeat handling, and explode.",
+      "keywords": [
+        "xml",
+        "rowxpath",
+        "hierarchyidentifier",
+        "attributes",
+        "attributeprefix",
+        "namespaces",
+        "flatten",
+        "repeathandling",
+        "explodepaths"
+      ],
+      "yamlPath": "source.options (type: xml)",
+      "related": [
+        "concept-json-xml-flattening",
+        "concept-file-discovery-and-lifecycle",
+        "source-type-json",
+        "cli-paths",
+        "cli-infer",
+        "guide-explore-json-xml"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Model/PreIngestionXml.cs",
+        "src/SqlFlow.Sources/XmlSourceReader.cs",
+        "src/SqlFlow.Sources/Xml/XmlRecordReader.cs",
+        "src/SqlFlow.Sources/Xml/XmlFlattenConfig.cs",
+        "src/SqlFlow.Sources/Xml/XmlPathFlattener.cs",
+        "src/SqlFlow.Sources/Xml/XmlPathInventory.cs",
+        "samples/xml/README.md"
+      ]
+    },
+    {
+      "id": "wiki-api-authentication",
+      "corpus": "wiki",
+      "path": "patterns/api-authentication.md",
+      "title": "Pattern: authenticating to a third-party API without storing a secret in YAML",
+      "type": "pattern",
+      "summary": "The five auth shapes, the four token-endpoint variations production forced, and why every credential is a reference rather than a value.",
+      "keywords": [
+        "oauth2",
+        "client credentials",
+        "refresh token",
+        "token exchange",
+        "bearer",
+        "basic auth",
+        "api key",
+        "key vault",
+        "oidc discovery"
+      ],
+      "related": [
+        "wiki-api-resilience",
+        "wiki-api-resume-and-watermarks",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Runtime/AuthResolver.cs",
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs",
+        "src/SqlFlow.Yaml/YamlAcquireFlowLoader.cs"
+      ]
+    },
+    {
+      "id": "wiki-api-fanout",
+      "corpus": "wiki",
+      "path": "patterns/api-fanout.md",
+      "title": "Pattern: fetching one endpoint many times (date windows, id lists, discovered ids)",
+      "type": "pattern",
+      "summary": "The three iterate kinds, how they compose as a cartesian product, batching many ids into one request, and why a live id-discovery call hides retired entities.",
+      "keywords": [
+        "iterate",
+        "date window",
+        "backfill",
+        "ids_from",
+        "idBindings",
+        "batchSize",
+        "fan-out",
+        "granularity",
+        "overlapMinutes"
+      ],
+      "related": [
+        "wiki-api-pagination",
+        "wiki-api-resume-and-watermarks",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Engine/AcquireEngine.cs",
+        "src/SqlFlow.Acquire/Runtime/RelativeTime.cs",
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+      ]
+    },
+    {
+      "id": "wiki-api-pagination",
+      "corpus": "wiki",
+      "path": "patterns/api-pagination.md",
+      "title": "Pattern: walking a paged endpoint without missing or duplicating records",
+      "type": "pattern",
+      "summary": "The five pagination strategies, how each decides it has reached the end, and why a cursor feed that repeats its cursor needs keyset instead.",
+      "keywords": [
+        "pagination",
+        "keyset",
+        "cursor",
+        "offset",
+        "link header",
+        "recordsPath",
+        "stopOnStatus",
+        "maxPages"
+      ],
+      "related": [
+        "wiki-api-resume-and-watermarks",
+        "wiki-api-fanout",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Engine/HttpTransport.cs",
+        "src/SqlFlow.Acquire/Runtime/JsonPathReader.cs",
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+      ]
+    },
+    {
+      "id": "wiki-api-resilience",
+      "corpus": "wiki",
+      "path": "patterns/api-resilience.md",
+      "title": "Pattern: surviving a third-party API (retries, rate limits, dead ids, SSRF)",
+      "type": "pattern",
+      "summary": "The reliability envelope every request runs under: retries, rate limits, tolerating dead ids, and the SSRF guard the allowlist cannot widen.",
+      "keywords": [
+        "retry",
+        "backoff",
+        "rate limit",
+        "concurrency",
+        "skipStatusCodes",
+        "urlAllowlist",
+        "ssrf",
+        "timeout",
+        "responseCharset"
+      ],
+      "related": [
+        "wiki-api-authentication",
+        "wiki-api-fanout",
+        "wiki-ignored-yaml-keys",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Runtime/RetryPolicy.cs",
+        "src/SqlFlow.Acquire/Runtime/RateLimiter.cs",
+        "src/SqlFlow.Acquire/Runtime/UrlGuard.cs",
+        "src/SqlFlow.Acquire/Runtime/HttpExecutor.cs",
+        "src/SqlFlow.Acquire/Runtime/HeaderRedaction.cs"
+      ]
+    },
+    {
+      "id": "wiki-api-resume-and-watermarks",
+      "corpus": "wiki",
+      "path": "patterns/api-resume-and-watermarks.md",
+      "title": "Pattern: resuming an acquisition where the last run stopped",
+      "type": "pattern",
+      "summary": "The three watermark sources, why a node-local run record is the fragile one, and how a per-entity SQL watermark keeps a fan-out feed from resetting.",
+      "keywords": [
+        "watermark",
+        "incremental",
+        "resume",
+        "keyVariable",
+        "seed",
+        "lookback",
+        "run history",
+        "durability"
+      ],
+      "related": [
+        "wiki-api-pagination",
+        "wiki-api-fanout",
+        "wiki-census-drift",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs",
+        "src/SqlFlow.Acquire/Engine/AcquireEngine.cs",
+        "src/SqlFlow.Acquire/Engine/AcquireWatermarkHistory.cs",
+        "src/SqlFlow.Acquire/Engine/AcquireFlowRunner.cs"
+      ]
+    },
+    {
+      "id": "wiki-census-drift",
+      "corpus": "wiki",
+      "path": "maps/census-drift.md",
+      "title": "Census drift map: keys the engine has that keys.api.json does not",
+      "type": "map",
+      "summary": "Nine key paths the api engine accepts that keys.api.json does not declare, plus an enum a version behind; the census drives editor completion.",
+      "keywords": [
+        "keys.api.json",
+        "census",
+        "drift",
+        "lsp",
+        "vscode",
+        "autocomplete",
+        "incremental sql",
+        "concurrency"
+      ],
+      "related": [
+        "wiki-ignored-yaml-keys",
+        "wiki-api-resume-and-watermarks",
+        "wiki-design-doc-drift"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs",
+        "src/SqlFlow.Yaml/YamlAcquireFlowLoader.cs",
+        "src/SqlFlow.Acquire/Engine/AcquireEngine.cs",
+        "src/SqlFlow.Acquire/Engine/HttpTransport.cs",
+        "tools/sqlflow-lang/src/census.rs"
+      ]
+    },
+    {
+      "id": "wiki-chaining-flows-through-the-lake",
+      "corpus": "wiki",
+      "path": "narratives/chaining-flows-through-the-lake.md",
+      "title": "How flows chain: the lake path and the pre view are the only two joints",
+      "type": "narrative",
+      "summary": "Flows are never wired to each other; they are joined by naming the same artifact. Two joints do all the work, and lineage derives the waves from them.",
+      "keywords": [
+        "chaining",
+        "lineage",
+        "waves",
+        "lake path",
+        "az normalization",
+        "pre view",
+        "composition",
+        "hand-off"
+      ],
+      "related": [
+        "wiki-recipe-connect-any-source",
+        "wiki-recipe-api-source",
+        "wiki-recipe-vendor-file-source",
+        "wiki-recipe-database-source",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Lineage/LineageService.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Core/Lineage/LineageReport.cs"
+      ]
+    },
+    {
+      "id": "wiki-design-doc-drift",
+      "corpus": "wiki",
+      "path": "maps/design-doc-drift.md",
+      "title": "Design document drift map: which docs under docs/ can still be trusted",
+      "type": "map",
+      "summary": "Which documents under docs/ are historical design intent and which are current, the drift each declares, and how the api prose gap was closed.",
+      "keywords": [
+        "drift",
+        "design documents",
+        "historical",
+        "superseded",
+        "acquisition",
+        "api flow",
+        "documentation map"
+      ],
+      "related": [
+        "wiki-string-first-landing",
+        "wiki-census-drift"
+      ],
+      "sourceRefs": []
+    },
+    {
+      "id": "wiki-file-ingestion-shaping",
+      "corpus": "wiki",
+      "path": "patterns/file-ingestion-shaping.md",
+      "title": "Pattern: turning landed files into tables (nested JSON, dialect CSV, provenance)",
+      "type": "pattern",
+      "summary": "Shaping nested documents, surviving CSV dialects, dating a file from its name, and pinning the columns type inference keeps getting wrong.",
+      "keywords": [
+        "explodePaths",
+        "includePaths",
+        "pathAliases",
+        "flattening",
+        "csv dialect",
+        "fileDate",
+        "includeRowNumber",
+        "schema overrides",
+        "defaultColDataType"
+      ],
+      "related": [
+        "wiki-landing-and-protection",
+        "wiki-string-first-landing",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": []
+    },
+    {
+      "id": "wiki-ignored-yaml-keys",
+      "corpus": "wiki",
+      "path": "incidents/ignored-yaml-keys.md",
+      "title": "A misspelled or misplaced YAML key does nothing, and says nothing",
+      "type": "incident",
+      "summary": "Loaders ignore unmatched properties, so a wrong or misplaced key is dropped in silence; a live production flow sets a retry knob that does not exist.",
+      "keywords": [
+        "ignoreUnmatchedProperties",
+        "silent",
+        "yaml",
+        "validation",
+        "backoffSeconds",
+        "truncateBeforeLoad",
+        "misconfiguration"
+      ],
+      "related": [
+        "wiki-api-resilience",
+        "wiki-upsert-and-history",
+        "wiki-census-drift"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlAcquireFlowLoader.cs",
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+      ]
+    },
+    {
+      "id": "wiki-landing-and-protection",
+      "corpus": "wiki",
+      "path": "patterns/landing-and-protection.md",
+      "title": "Pattern: landing raw payloads verbatim, and the one time you must not",
+      "type": "pattern",
+      "summary": "Why acquisition lands bytes unchanged, how the path template partitions the lake, and why PII scrubbing is the single deliberate exception to landing verbatim.",
+      "keywords": [
+        "landing",
+        "pathTemplate",
+        "raw zone",
+        "skipUnchanged",
+        "skipEmpty",
+        "protect",
+        "pii",
+        "pseudonymisation",
+        "gdpr"
+      ],
+      "related": [
+        "wiki-string-first-landing",
+        "wiki-file-ingestion-shaping",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Engine/LandingPipeline.cs",
+        "src/SqlFlow.Acquire/Landing/AzureRawLandingStore.cs",
+        "src/SqlFlow.Acquire/Runtime/Protection/PayloadProtector.cs",
+        "src/SqlFlow.Acquire/Runtime/Protection/ProtectPath.cs"
+      ]
+    },
+    {
+      "id": "wiki-orchestration-and-scheduling",
+      "corpus": "wiki",
+      "path": "patterns/orchestration-and-scheduling.md",
+      "title": "Pattern: ordering a source's flows, and retiring one without deleting it",
+      "type": "pattern",
+      "summary": "One schedule per source on its anchor, wave ordering by lineage rather than batch, chaining with after, and retiring a flow without losing it.",
+      "keywords": [
+        "schedule",
+        "cron",
+        "catchup",
+        "after",
+        "wave",
+        "batch",
+        "mode disabled",
+        "lineage",
+        "orchestration"
+      ],
+      "related": [
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": []
+    },
+    {
+      "id": "wiki-pattern-catalog",
+      "corpus": "wiki",
+      "path": "maps/pattern-catalog.md",
+      "title": "Pattern catalog: which data-engineering problem maps to which SQLFlow shape",
+      "type": "map",
+      "summary": "Problem-first index over 751 production pipelines, mapping each recurring data-engineering problem to the SQLFlow shape that solves it.",
+      "keywords": [
+        "patterns",
+        "catalog",
+        "problem",
+        "recipes",
+        "production",
+        "estate",
+        "index"
+      ],
+      "related": [
+        "wiki-api-authentication",
+        "wiki-api-pagination",
+        "wiki-api-fanout",
+        "wiki-api-resume-and-watermarks",
+        "wiki-api-resilience",
+        "wiki-landing-and-protection",
+        "wiki-file-ingestion-shaping",
+        "wiki-relational-incremental",
+        "wiki-upsert-and-history",
+        "wiki-orchestration-and-scheduling"
+      ],
+      "sourceRefs": []
+    },
+    {
+      "id": "wiki-recipe-api-source",
+      "corpus": "wiki",
+      "path": "narratives/recipe-api-source.md",
+      "title": "Recipe: a REST API into the warehouse, end to end (api + jsn + ing)",
+      "type": "narrative",
+      "summary": "The three files that take a paged REST endpoint to an arc table, the schedule that fires them in order, and the commands to validate, run and verify each stage.",
+      "keywords": [
+        "recipe",
+        "end to end",
+        "api",
+        "json",
+        "ing",
+        "schedule",
+        "three stage",
+        "acquisition"
+      ],
+      "related": [
+        "wiki-chaining-flows-through-the-lake",
+        "wiki-recipe-inspect-and-debug",
+        "wiki-recipe-backfill-and-replay",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Engine/AcquireEngine.cs",
+        "src/SqlFlow.Sources/JsonSourceReader.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-backfill-and-replay",
+      "corpus": "wiki",
+      "path": "narratives/recipe-backfill-and-replay.md",
+      "title": "Recipe: backfilling history and replaying what you already landed",
+      "type": "narrative",
+      "summary": "The flags that reach back past a watermark, why a backfilled arc table stays invisible to the flow above it, and how to replay landed files without re-fetching.",
+      "keywords": [
+        "backfill",
+        "replay",
+        "full load",
+        "from to",
+        "watermark",
+        "file-pattern",
+        "reprocess",
+        "dry-run"
+      ],
+      "related": [
+        "wiki-api-resume-and-watermarks",
+        "wiki-relational-incremental",
+        "wiki-recipe-inspect-and-debug",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Engine/AcquireFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-connect-any-source",
+      "corpus": "wiki",
+      "path": "narratives/recipe-connect-any-source.md",
+      "title": "Recipe: connecting any source, and picking the right flow kind for it",
+      "type": "narrative",
+      "summary": "Every integration in one table: which flow kind fetches it, the minimum YAML, and the rule for when two kinds could both work.",
+      "keywords": [
+        "integration",
+        "connectors",
+        "source types",
+        "http",
+        "graphql",
+        "soap",
+        "sftp",
+        "s3",
+        "azure table",
+        "mysql",
+        "postgres",
+        "oracle",
+        "parquet",
+        "delta",
+        "duckdb"
+      ],
+      "related": [
+        "wiki-recipe-api-source",
+        "wiki-recipe-vendor-file-source",
+        "wiki-recipe-database-source",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Acquire/Engine/IAcquireTransport.cs",
+        "src/SqlFlow.Providers/SqlFlowSourceProviders.cs",
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-database-source",
+      "corpus": "wiki",
+      "path": "narratives/recipe-database-source.md",
+      "title": "Recipe: another database into the warehouse (scaffold, then ing)",
+      "type": "narrative",
+      "summary": "Browsing a foreign source, scaffolding runnable ing YAML from its tables, and treating the first load and the daily delta as two problems.",
+      "keywords": [
+        "recipe",
+        "ing",
+        "foreign database",
+        "scaffold",
+        "mysql",
+        "postgres",
+        "initLoad",
+        "incremental",
+        "detect-unique-key"
+      ],
+      "related": [
+        "wiki-chaining-flows-through-the-lake",
+        "wiki-relational-incremental",
+        "wiki-recipe-backfill-and-replay",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-dimension-and-surrogate-keys",
+      "corpus": "wiki",
+      "path": "narratives/recipe-dimension-and-surrogate-keys.md",
+      "title": "Recipe: building a dimension and its surrogate keys",
+      "type": "narrative",
+      "summary": "Minting surrogate keys in a key table, projecting arc into a dimension without reshaping it, and the snapshot trap that truncates history.",
+      "keywords": [
+        "dimension",
+        "surrogate key",
+        "skey",
+        "edw",
+        "star schema",
+        "scd",
+        "date dimension",
+        "cal",
+        "conformed"
+      ],
+      "related": [
+        "wiki-recipe-staging-to-silver",
+        "wiki-upsert-and-history",
+        "wiki-recipe-fan-in-shared-target",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionFlow.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-export-and-deliver",
+      "corpus": "wiki",
+      "path": "narratives/recipe-export-and-deliver.md",
+      "title": "Recipe: getting data back out (files, documents, and other systems)",
+      "type": "narrative",
+      "summary": "The three ways data leaves: exp writes files, trl reshapes rows into documents, and inv hands off to a pipeline SQLFlow does not own.",
+      "keywords": [
+        "export",
+        "exp",
+        "trl",
+        "parquet",
+        "documents",
+        "json template",
+        "delivery",
+        "inv",
+        "adf"
+      ],
+      "related": [
+        "wiki-recipe-database-source",
+        "wiki-orchestration-and-scheduling",
+        "wiki-recipe-quality-and-monitoring",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Translate/TranslateFlowRunner.cs",
+        "src/SqlFlow.Translate/JsonTemplateRenderer.cs",
+        "src/SqlFlow.Translate/TranslateOutputWriter.cs",
+        "src/SqlFlow.Core/Lineage/LineageReport.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-fan-in-shared-target",
+      "corpus": "wiki",
+      "path": "narratives/recipe-fan-in-shared-target.md",
+      "title": "Recipe: pushing several regions or tenants into one table",
+      "type": "narrative",
+      "summary": "N flows merging into one table: the discriminator in the merge key, the scoped watermark probe that stops them starving each other, and serial scheduling.",
+      "keywords": [
+        "fan-in",
+        "multi-region",
+        "shared target",
+        "discriminator",
+        "incrementalClause",
+        "tenant",
+        "partition",
+        "starvation"
+      ],
+      "related": [
+        "wiki-recipe-incremental-load",
+        "wiki-upsert-and-history",
+        "wiki-orchestration-and-scheduling",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-incremental-load",
+      "corpus": "wiki",
+      "path": "narratives/recipe-incremental-load.md",
+      "title": "Recipe: choosing an incremental load, and the two ways it silently does nothing",
+      "type": "narrative",
+      "summary": "A decision tree for the watermark, the columns-versus-dateColumn trap that disables your overlap without warning, and how each stage of a chain resumes.",
+      "keywords": [
+        "incremental",
+        "watermark",
+        "dateColumn",
+        "columns",
+        "overlapDays",
+        "lookback",
+        "late arriving",
+        "recipe"
+      ],
+      "related": [
+        "wiki-recipe-fan-in-shared-target",
+        "wiki-recipe-backfill-and-replay",
+        "wiki-relational-incremental",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SqlServer/Ingestion/IncrementalWindowResolver.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
+        "src/SqlFlow.Core/Acquire/AcquireFlow.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-inspect-and-debug",
+      "corpus": "wiki",
+      "path": "narratives/recipe-inspect-and-debug.md",
+      "title": "Recipe: seeing what a flow will do, and finding out why it did not",
+      "type": "narrative",
+      "summary": "The read-only commands that answer a question without running anything, and the ordered checklist when a flow loads nothing.",
+      "keywords": [
+        "debug",
+        "plan",
+        "validate",
+        "discover",
+        "paths",
+        "flatten",
+        "dry-run",
+        "run artifacts",
+        "troubleshooting"
+      ],
+      "related": [
+        "wiki-chaining-flows-through-the-lake",
+        "wiki-ignored-yaml-keys",
+        "wiki-recipe-backfill-and-replay",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Cli/Program.cs",
+        "src/SqlFlow.Core/Engine/FlowRunner.cs",
+        "src/SqlFlow.Core/Ingestion/SqlTrace.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-quality-and-monitoring",
+      "corpus": "wiki",
+      "path": "narratives/recipe-quality-and-monitoring.md",
+      "title": "Recipe: noticing when a pipeline succeeds and is still wrong",
+      "type": "narrative",
+      "summary": "Anomaly checks on what a load produces, the derived health check any ing flow can carry, and the assertions a model will not write.",
+      "keywords": [
+        "health check",
+        "hc",
+        "anomaly",
+        "monitoring",
+        "data quality",
+        "maturityDays",
+        "assertions",
+        "silent failure"
+      ],
+      "related": [
+        "wiki-recipe-fan-in-shared-target",
+        "wiki-recipe-inspect-and-debug",
+        "wiki-recipe-export-and-deliver",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.HealthCheck/HealthCheckEngine.cs",
+        "src/SqlFlow.Core/HealthChecks/HealthCheckRunResult.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-staging-to-silver",
+      "corpus": "wiki",
+      "path": "narratives/recipe-staging-to-silver.md",
+      "title": "Recipe: staging to silver, where the typed contract is actually written",
+      "type": "narrative",
+      "summary": "The typed view is the contract: writing it, keeping a rebuilt table's old shape, and running two eras behind one name.",
+      "keywords": [
+        "staging",
+        "silver",
+        "pre",
+        "arc",
+        "typed view",
+        "generateView",
+        "compatibility view",
+        "era split",
+        "contract"
+      ],
+      "related": [
+        "wiki-chaining-flows-through-the-lake",
+        "wiki-recipe-dimension-and-surrogate-keys",
+        "wiki-string-first-landing",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/Engine/TypeInferencer.cs",
+        "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
+        "src/SqlFlow.Core/Ingestion/IngestionFlow.cs"
+      ]
+    },
+    {
+      "id": "wiki-recipe-vendor-file-source",
+      "corpus": "wiki",
+      "path": "narratives/recipe-vendor-file-source.md",
+      "title": "Recipe: vendor files into the warehouse (sftp or cpy, then csv/xls, then ing)",
+      "type": "narrative",
+      "summary": "Pulling an SFTP drop or bridging another lake with cpy, the output block lineage needs, and one file feeding several tables.",
+      "keywords": [
+        "recipe",
+        "sftp",
+        "cpy",
+        "vendor drop",
+        "xls",
+        "csv",
+        "output lineage",
+        "fan-out to tables"
+      ],
+      "related": [
+        "wiki-chaining-flows-through-the-lake",
+        "wiki-recipe-inspect-and-debug",
+        "wiki-file-ingestion-shaping",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sftp/SftpEngine.cs",
+        "src/SqlFlow.Copy/CopyEngine.cs",
+        "src/SqlFlow.Sources/CsvSourceReader.cs"
+      ]
+    },
+    {
+      "id": "wiki-relational-incremental",
+      "corpus": "wiki",
+      "path": "patterns/relational-incremental.md",
+      "title": "Pattern: incrementally ingesting a relational source without missing late rows",
+      "type": "pattern",
+      "summary": "Date-column windows with overlap, chunked first loads, and pushing a filter into the source without turning an append into a full compare.",
+      "keywords": [
+        "incremental",
+        "overlapDays",
+        "dateColumn",
+        "initLoad",
+        "source filter",
+        "filterIsAppend",
+        "ignoreColumns",
+        "incrementalClause",
+        "threads"
+      ],
+      "related": [
+        "wiki-upsert-and-history",
+        "wiki-api-resume-and-watermarks",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": []
+    },
+    {
+      "id": "wiki-string-first-landing",
+      "corpus": "wiki",
+      "path": "decisions/string-first-landing.md",
+      "title": "Landing is string-first, and typing is a separate stage",
+      "type": "decision",
+      "summary": "Why every non-Parquet source lands as strings and typing is deferred, what was rejected, and how an empty cell becomes NULL rather than a blank.",
+      "keywords": [
+        "string-first",
+        "landing",
+        "type inference",
+        "raw table",
+        "pre-ingestion transform",
+        "parquet",
+        "empty string",
+        null
+      ],
+      "related": [
+        "wiki-design-doc-drift"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Sources/FileSourceReaderBase.cs",
+        "src/SqlFlow.Core/Engine/TypeInferencer.cs",
+        "src/SqlFlow.Core/Engine/InferenceService.cs",
+        "src/SqlFlow.SqlServer/SqlServerColumnProfiler.cs"
+      ]
+    },
+    {
+      "id": "wiki-upsert-and-history",
+      "corpus": "wiki",
+      "path": "patterns/upsert-and-history.md",
+      "title": "Pattern: upserting, keeping history, and not breaking a downstream consumer",
+      "type": "pattern",
+      "summary": "Choosing a merge key, when append beats upsert, temporal versioning and surrogate keys, and the compatibility view that lets a rebuilt table keep its old shape.",
+      "keywords": [
+        "upsert",
+        "keyColumns",
+        "batchUpsert",
+        "truncateBeforeLoad",
+        "surrogateKeys",
+        "temporal",
+        "scd2",
+        "system columns",
+        "compatibility view"
+      ],
+      "related": [
+        "wiki-relational-incremental",
+        "wiki-pattern-catalog"
+      ],
+      "sourceRefs": []
+    }
+  ]
+}

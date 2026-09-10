@@ -1,0 +1,386 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:nyt="http://www.nytimes.com/namespaces/rss/2.0" version="2.0">
+  <channel>
+    <title>NYT &gt; World &gt; Asia Pacific</title>
+    <link>https://www.nytimes.com/section/world/asia</link>
+    <atom:link href="https://rss.nytimes.com/services/xml/rss/nyt/AsiaPacific.xml" rel="self" type="application/rss+xml"></atom:link>
+    <description></description>
+    <language>en-us</language>
+    <copyright>Copyright 2025 The New York Times Company</copyright>
+    <lastBuildDate>Wed, 19 Mar 2025 01:06:05 +0000</lastBuildDate>
+    <pubDate>Wed, 19 Mar 2025 00:44:38 +0000</pubDate>
+    <image>
+      <title>NYT &gt; World &gt; Asia Pacific</title>
+      <url>https://static01.nyt.com/images/misc/NYT_logo_rss_250x40.png</url>
+      <link>https://www.nytimes.com/section/world/asia</link>
+    </image>
+    <item>
+      <title>Wednesday Briefing: Russia Agreed to Halt Some Strikes</title>
+      <link>https://www.nytimes.com/2025/03/18/briefing/putin-cease-fire-israel-strikes-trump-supreme-court.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/briefing/putin-cease-fire-israel-strikes-trump-supreme-court.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/briefing/putin-cease-fire-israel-strikes-trump-supreme-court.html" rel="standout"></atom:link>
+      <description>Plus, Ohtani’s star power in Japan.</description>
+      <dc:creator>Emmett Lindner</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 21:08:32 +0000</pubDate>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/19/multimedia/19ambriefing-asia-nl-lede-kqzh/19ambriefing-asia-nl-lede-kqzh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Mauricio Lima for The New York Times</media:credit>
+      <media:description>A Ukrainian thermal power plant damaged by Russian missile strikes last year.</media:description>
+    </item>
+    <item>
+      <title>Hong Kong Adds to China’s Growing Criticism of Panama Canal Deal</title>
+      <link>https://www.nytimes.com/2025/03/18/business/hong-kong-panama-canal-ck-hutchison.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/business/hong-kong-panama-canal-ck-hutchison.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/business/hong-kong-panama-canal-ck-hutchison.html" rel="standout"></atom:link>
+      <description>The city’s chief executive said a deal between the Hong Kong conglomerate CK Hutchison and BlackRock, a major American investment firm, requires “serious attention.”</description>
+      <dc:creator>Alexandra Stevenson</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 14:07:18 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Cheung Kong Limited</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Lee, John (1957- )</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Li Ka-shing</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Hong Kong</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Panama Canal and Canal Zone</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">United States</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18Biz-HK-Panama-pfvm/18Biz-HK-Panama-pfvm-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Ng Han Guan/Associated Press</media:credit>
+      <media:description>Hong Kong’s chief executive, John Lee, center, during the opening session of the National People’s Congress in Beijing.</media:description>
+    </item>
+    <item>
+      <title>Chinese Nationalists Praise Trump’s Cuts to Voice of America</title>
+      <link>https://www.nytimes.com/2025/03/18/world/asia/china-trump-voice-of-america.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/asia/china-trump-voice-of-america.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/asia/china-trump-voice-of-america.html" rel="standout"></atom:link>
+      <description>Beijing has long criticized the outlet, as well as Radio Free Asia, for highlighting human rights abuses in China.</description>
+      <dc:creator>Tiffany May</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 13:39:32 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Radio</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">News and News Media</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Radio Free Asia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Voice of America</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Global Times</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Budgets and Budgeting</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/18/multimedia/18int-china-voa-01-mvjf/18int-china-voa-01-mvjf-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Alex Wong/Getty Images</media:credit>
+      <media:description>Voice of America’s ability to operate is in question after President Trump signed an executive order calling for the dismantling of the federal agency that oversees it.</media:description>
+    </item>
+    <item>
+      <title>Drones Will Do Some Schlepping for Sherpas on Mount Everest</title>
+      <link>https://www.nytimes.com/2025/03/18/world/asia/mount-everest-drones.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/world/asia/mount-everest-drones.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/world/asia/mount-everest-drones.html" rel="standout"></atom:link>
+      <description>The devices will be used to airlift heavy, dangerous loads normally carried by mountain guides. They might even deliver a hot meal or two.</description>
+      <dc:creator>Bhadra Sharma and Mujib Mashal</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 04:58:53 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Drones (Pilotless Planes)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Sherpas (Himalayan People)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Workplace Hazards and Violations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">DJI Innovations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Sagarmatha Pollution Control Committee</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Himalayas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Nepal</category>
+      <media:content height="1798" medium="image" url="https://static01.nyt.com/images/2025/03/16/multimedia/00int-nepal-drones-01-mbgf/00int-nepal-drones-01-mbgf-mediumSquareAt3X-v2.jpg" width="1800"></media:content>
+      <media:credit>Navesh Chitrakar/Reuters</media:credit>
+      <media:description>A Sherpa in Nepal’s Everest region, with Mount Kongde in the background. More guides have died in accidents on Mount Everest as snowmelt has accelerated.</media:description>
+    </item>
+    <item>
+      <title>DeepSeek Is Embraced in China by Government Nationwide</title>
+      <link>https://www.nytimes.com/2025/03/18/business/china-government-deepseek.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/18/business/china-government-deepseek.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/18/business/china-government-deepseek.html" rel="standout"></atom:link>
+      <description>Government bodies nationwide have been eager to show they are using DeepSeek’s A.I. technology since the company’s founder met with Xi Jinping, China’s leader.</description>
+      <dc:creator>Meaghan Tobin and Claire Fu</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 04:00:07 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">DeepSeek Artificial Intelligence Co Ltd</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Artificial Intelligence</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Computers and the Internet</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Entrepreneurship</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Liang Wenfeng</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Xi Jinping</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Shanghai (China)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Shenzhen (China)</category>
+      <media:content height="1799" medium="image" url="https://static01.nyt.com/images/2025/03/12/multimedia/00china-deepseek-01-gcfq/00china-deepseek-01-gcfq-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Florence Lo/Reuters</media:credit>
+      <media:description>DeepSeek’s success has garnered its founder, Liang Wenfeng, attention from the highest levels of China’s leadership. Last month, he joined executives at a meeting with China’s top leader, Xi Jinping.</media:description>
+    </item>
+    <item>
+      <title>Tuesday Briefing: A Trump-Putin Call</title>
+      <link>https://www.nytimes.com/2025/03/17/briefing/trump-putin-ukraine-us-deportations-rwanda-sanctions.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/briefing/trump-putin-ukraine-us-deportations-rwanda-sanctions.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/briefing/trump-putin-ukraine-us-deportations-rwanda-sanctions.html" rel="standout"></atom:link>
+      <description>Plus, a “retirement home” for penguins.</description>
+      <dc:creator>Emmett Lindner</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 21:01:04 +0000</pubDate>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/17/multimedia/18ambriefing-asia-nl-lede2/18ambriefing-asia-nl-lede2-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Tierney L. Cross for The New York Times</media:credit>
+      <media:description>“We want to see if we can bring that war to an end,” President Trump said on Sunday. </media:description>
+    </item>
+    <item>
+      <title>These Iguanas Got Carried Away and Ended Up in Fiji, 5,000 Miles From Home</title>
+      <link>https://www.nytimes.com/2025/03/17/science/iguanas-fiji-rafting.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/science/iguanas-fiji-rafting.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/science/iguanas-fiji-rafting.html" rel="standout"></atom:link>
+      <description>Genetic evidence suggests that the reptiles somehow managed millions of years ago to make an ocean crossing from North America to Fiji.</description>
+      <dc:creator>Asher Elbein</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 19:00:05 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Iguanas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Fiji</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Oceans and Seas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Genetics and Heredity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">North America</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Research</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Proceedings of the National Academy of Sciences</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Far East, South and Southeast Asia and Pacific Areas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">your-feed-science</category>
+    </item>
+    <item>
+      <title>Lee Shau-Kee, Hong Kong Real Estate Tycoon, Dies at 97</title>
+      <link>https://www.nytimes.com/2025/03/17/business/lee-shau-kee-dead.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/business/lee-shau-kee-dead.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/business/lee-shau-kee-dead.html" rel="standout"></atom:link>
+      <description>Sometimes called the Warren Buffett of Hong Kong, he made his billions by initially building apartments for middle-class descendants of mainland refugees.</description>
+      <dc:creator>Jonathan Kandell</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 05:55:18 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Lee Shau-Kee</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Henderson Land Development Company Ltd</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Hong Kong</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Real Estate (Commercial)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Obituaries)</category>
+      <media:content height="1648" medium="image" url="https://static01.nyt.com/images/2022/05/17/obituaries/00lee_shau_kee-01/00lee_shau_kee-01-mediumSquareAt3X.jpg" width="1650"></media:content>
+      <media:credit>K. Y. Cheng/South China Morning Post, via Getty Images</media:credit>
+      <media:description>Lee Shau-kee in 2004. A shrewd investor whose moves were closely followed by speculators, he died with an estimated fortune of $29.2 billion.</media:description>
+    </item>
+    <item>
+      <title>Families of Jeju Air Plane Crash Victims Press for Answers</title>
+      <link>https://www.nytimes.com/2025/03/17/world/asia/south-korea-jeju-air-victims.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/asia/south-korea-jeju-air-victims.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/asia/south-korea-jeju-air-victims.html" rel="standout"></atom:link>
+      <description>Some relatives of the 179 people killed in the worst aviation disaster in South Korea regularly return to the airport where it happened. “Only here can we cry,” one said.</description>
+      <dc:creator>John Yoon</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 07:16:04 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Airlines and Airplanes</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Aviation Accidents, Safety and Disasters</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Jeju Air Flight 2216</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Fatalities)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Grief (Emotion)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Muan International Airport</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Jeju Air Co Ltd</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Muan (South Korea)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">South Korea</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Families and Family Life</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/12/multimedia/00int-jejuair-victims-01-hkmg/00int-jejuair-victims-01-hkmg-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Chang W. Lee/The New York Times</media:credit>
+      <media:description>Some relatives of those killed in the Jeju Air crash have been staying at Muan International Airport, sleeping in tents that were set up for them soon after the Dec. 29 crash.</media:description>
+    </item>
+    <item>
+      <title>Nary a Critical Word: Bill Gates’s Close Bond With Narendra Modi</title>
+      <link>https://www.nytimes.com/2025/03/17/world/asia/india-bill-gates-narendra-modi.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/17/world/asia/india-bill-gates-narendra-modi.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/17/world/asia/india-bill-gates-narendra-modi.html" rel="standout"></atom:link>
+      <description>The relationship between the billionaire philanthropist and the Indian leader helps both men meet their missions. But it also papers over the erosion of rights under Mr. Modi.</description>
+      <dc:creator>Anupreeta Das</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 05:30:35 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Philanthropy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Gates, Bill</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Modi, Narendra</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">India</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14india-gates-modi-01-vjck/14india-gates-modi-01-vjck-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>narendramodi_in/X, via Reuters</media:credit>
+      <media:description>Bill Gates met with Prime Minister Narendra Modi three weeks before India’s general election in 2024.</media:description>
+    </item>
+    <item>
+      <title>Monday Briefing: U.S. Deports Hundreds in Face of a Court Order</title>
+      <link>https://www.nytimes.com/2025/03/16/briefing/us-deportations-ukraine-retreat-kenya-saudi-arabia.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/16/briefing/us-deportations-ukraine-retreat-kenya-saudi-arabia.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/16/briefing/us-deportations-ukraine-retreat-kenya-saudi-arabia.html" rel="standout"></atom:link>
+      <description>Plus, shadows light up Iranian history.</description>
+      <dc:creator>Emmett Lindner</dc:creator>
+      <pubDate>Sun, 16 Mar 2025 21:01:31 +0000</pubDate>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/16/multimedia/17ambriefing-asia-nl-lede/17ambriefing-asia-nl-lede-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Pool photo by Mark Schiefelbein</media:credit>
+      <media:description>President Nayib Bukele, left, of El Salvador hosted Secretary of State Marco Rubio last month.</media:description>
+    </item>
+    <item>
+      <title>China Outlines Plan to Bolster Consumption in Face of Trump Tariffs</title>
+      <link>https://www.nytimes.com/2025/03/16/business/china-consumption.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/16/business/china-consumption.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/16/business/china-consumption.html" rel="standout"></atom:link>
+      <description>Beijing’s leaders are ordering fiscally strapped local governments to spend more to help workers, consumers and businesses.</description>
+      <dc:creator>Keith Bradsher</dc:creator>
+      <pubDate>Tue, 18 Mar 2025 02:31:40 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Economic Conditions and Trends</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Trade and World Market</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Customs (Tariff)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Stimulus (Economic)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Local Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Communist Party of China</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/16/multimedia/16biz-China-Econ-gpvk/16biz-China-Econ-gpvk-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Wu Hao/EPA, via Shutterstock</media:credit>
+      <media:description>The Chinese government and the Communist Party issued a list of initiatives on Sunday, including larger pensions, to bolster China’s lagging domestic consumption.</media:description>
+    </item>
+    <item>
+      <title>The 95-Year-Old Japanese Man Who Is the World’s Oldest Speedskater</title>
+      <link>https://www.nytimes.com/2025/03/16/world/asia/japan-speedskater-age-record.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/16/world/asia/japan-speedskater-age-record.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/16/world/asia/japan-speedskater-age-record.html" rel="standout"></atom:link>
+      <description>Iichi Marumo started competing in his late 80s, after a life spent farming, publishing poetry and volunteering to fly in a kamikaze mission during World War II.</description>
+      <dc:creator>Martin Fackler and Hisako Ueno</dc:creator>
+      <pubDate>Sun, 16 Mar 2025 14:42:52 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Content Type: Personal Profile</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Elderly</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Speedskating</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Records and Achievements</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Guinness World Records</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Japan</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/02/28/multimedia/00japan-speedskater-03-gqzj/00japan-speedskater-03-gqzj-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Noriko Hayashi for The New York Times</media:credit>
+      <media:description>Mr. Marumo standing by the rink at Chino International Sports Park Skating Center in Nagano, Japan.</media:description>
+    </item>
+    <item>
+      <title>Roy L. Prosterman, 89, Dies; Worked to Secure Land for the Rural Poor</title>
+      <link>https://www.nytimes.com/2025/03/15/world/roy-prosterman-dead.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/15/world/roy-prosterman-dead.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/15/world/roy-prosterman-dead.html" rel="standout"></atom:link>
+      <description>Seeing land rights as the key to lifting up the impoverished, he pushed authoritarian governments as well as emerging democratic ones to distribute farmland.</description>
+      <dc:creator>Adam Nossiter</dc:creator>
+      <pubDate>Sat, 15 Mar 2025 22:25:14 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Prosterman, Roy</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Obituaries)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Legal Profession</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Land Use Policies</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Poverty</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Rural Areas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Agriculture and Farming</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Developing Countries</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Landesa</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">Rural Development Institute</category>
+    </item>
+    <item>
+      <title>U.S. Puts Sanctions on Thai Officials for Sending Uyghurs to China</title>
+      <link>https://www.nytimes.com/2025/03/15/world/asia/us-sanctions-thai-uyghurs-china.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/15/world/asia/us-sanctions-thai-uyghurs-china.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/15/world/asia/us-sanctions-thai-uyghurs-china.html" rel="standout"></atom:link>
+      <description>The State Department said it was “combating China’s efforts to pressure governments to forcibly return Uyghurs and other groups to China.”</description>
+      <dc:creator>Sui-Lee Wee</dc:creator>
+      <pubDate>Sat, 15 Mar 2025 12:36:11 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Uighurs (Chinese Ethnic Group)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Thailand</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">United States International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deportation</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Minorities</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Muslims and Islam</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Visas</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">State Department</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/15/multimedia/15int-thailand-uyghurs-gwlk/15int-thailand-uyghurs-gwlk-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Narong Sangnak/EPA, via Shutterstock</media:credit>
+      <media:description>An immigration detention center in Bangkok in February. Thailand deported 40 Uyghur asylum seekers back to China last month.</media:description>
+    </item>
+    <item>
+      <title>Trump Foreign Aid Cuts Threaten Refugees’ Survival: ‘People Will Die’</title>
+      <link>https://www.nytimes.com/2025/03/14/world/asia/trump-aid-cuts-refugees-rohingya.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/14/world/asia/trump-aid-cuts-refugees-rohingya.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/14/world/asia/trump-aid-cuts-refugees-rohingya.html" rel="standout"></atom:link>
+      <description>At the world’s largest refugee camp, for Rohingya people in Bangladesh, the food allowance per person is set to fall to just $6 per month, far below what aid officials say is required for survival.</description>
+      <dc:creator>Mujib Mashal</dc:creator>
+      <pubDate>Mon, 17 Mar 2025 00:50:12 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Foreign Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Refugees and Displaced Persons</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Rohingya (Ethnic Group)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Humanitarian Aid</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">United Nations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">World Food Program</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Guterres, Antonio</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Yunus, Muhammad</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Cox&#39;s Bazar (Bangladesh)</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14rohingya-1-fjhm/14rohingya-1-fjhm-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Mohammad Ponir Hossain/Reuters</media:credit>
+      <media:description>In a sprawling Rohingya refugee camp in Bangladesh, aid cuts could mean starvation, officials say. Thousands of people there took part in a fast-breaking meal in Cox’s Bazar, Bangladesh, on Friday.</media:description>
+    </item>
+    <item>
+      <title>Duterte Appears in Court in The Hague via Video After Arrest</title>
+      <link>https://www.nytimes.com/2025/03/14/world/asia/duterte-philippines-icc-crimes-against-humanity.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/14/world/asia/duterte-philippines-icc-crimes-against-humanity.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/14/world/asia/duterte-philippines-icc-crimes-against-humanity.html" rel="standout"></atom:link>
+      <description>The former leader of the Philippines has been charged with crimes against humanity after thousands of civilians were killed during his time in office.</description>
+      <dc:creator>Claire Moses and Marlise Simons</dc:creator>
+      <pubDate>Fri, 14 Mar 2025 21:37:45 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Politics and Government</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Deaths (Fatalities)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War Crimes, Genocide and Crimes Against Humanity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Drug Abuse and Traffic</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Duterte, Sara</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Duterte, Rodrigo</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Hague (Netherlands)</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">International Criminal Court</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Philippines</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14int-icc-duterte-jlfz/14int-icc-duterte-jlfz-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Peter Dejong/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Rodrigo Duterte, the former president of the Philippines, appeared on a screen on Friday in the courtroom during his first appearance before the International Criminal Court in The Hague.</media:description>
+    </item>
+    <item>
+      <title>The People Whose Children Were Killed in Duterte’s Drug War</title>
+      <link>https://www.nytimes.com/2025/03/14/world/asia/philippines-duterte-arrest-victims-justice.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/14/world/asia/philippines-duterte-arrest-victims-justice.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/14/world/asia/philippines-duterte-arrest-victims-justice.html" rel="standout"></atom:link>
+      <description>For many Filipinos, Rodrigo Duterte’s transfer to the International Criminal Court was a milestone in their quest for justice. But some were conflicted.</description>
+      <dc:creator>Aie Balagtas See</dc:creator>
+      <pubDate>Fri, 14 Mar 2025 20:57:29 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">War Crimes, Genocide and Crimes Against Humanity</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Civilian Casualties</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Demonstrations, Protests and Riots</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">International Criminal Court</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Philippines</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Duterte, Rodrigo</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14duterte-victims-01-gvmh/14duterte-victims-01-gvmh-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Earvin Perias/Agence France-Presse — Getty Images</media:credit>
+      <media:description>Protesters demanding justice for drug war victims, after the arrest of former President Rodrigo Duterte of the Philippines, in Quezon City, on Tuesday.</media:description>
+    </item>
+    <item>
+      <title>China Backs Iran in Nuclear Talks, Slams ‘Threat of Force’ From the West</title>
+      <link>https://www.nytimes.com/2025/03/14/world/asia/china-iran-trump-russia.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/14/world/asia/china-iran-trump-russia.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/14/world/asia/china-iran-trump-russia.html" rel="standout"></atom:link>
+      <description>Beijing sought to position itself as a key player in negotiations with Iran over its nuclear program, as President Trump called for talks with Tehran.</description>
+      <dc:creator>Keith Bradsher and Berry Wang</dc:creator>
+      <pubDate>Fri, 14 Mar 2025 11:47:56 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">International Relations</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Nuclear Weapons</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Embargoes and Sanctions</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Defense and Military Forces</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_org">International Atomic Energy Agency</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Trump, Donald J</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_per">Wang Yi</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Russia</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Iran</category>
+      <media:content height="1800" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14int-china-iran-gfjp/14int-china-iran-gfjp-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Pool photo</media:credit>
+      <media:description>China hosted talks in Beijing on Friday with the deputy foreign ministers of Russia and Iran to discuss Iran’s nuclear program. China said sanctions on Iran should be lifted.</media:description>
+    </item>
+    <item>
+      <title>China Condemns CK Hutchison-BlackRock Panama Canal Deal</title>
+      <link>https://www.nytimes.com/2025/03/14/business/panama-canal-ck-hutchison-blackrock.html</link>
+      <guid isPermaLink="true">https://www.nytimes.com/2025/03/14/business/panama-canal-ck-hutchison-blackrock.html</guid>
+      <atom:link href="https://www.nytimes.com/2025/03/14/business/panama-canal-ck-hutchison-blackrock.html" rel="standout"></atom:link>
+      <description>The Hong Kong conglomerate CK Hutchison’s planned sale of ports in Panama to a group led by BlackRock, the American finance giant, is under fire from Beijing.</description>
+      <dc:creator>Keith Bradsher</dc:creator>
+      <pubDate>Fri, 14 Mar 2025 09:39:18 +0000</pubDate>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Panama Canal and Canal Zone</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">Hong Kong</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/nyt_geo">China</category>
+      <category domain="http://www.nytimes.com/namespaces/keywords/des">Canals</category>
+      <media:content height="1801" medium="image" url="https://static01.nyt.com/images/2025/03/14/multimedia/14Biz-China-Panama-jpcm/14Biz-China-Panama-jpcm-mediumSquareAt3X.jpg" width="1800"></media:content>
+      <media:credit>Federico Rios for The New York Times</media:credit>
+      <media:description>Ships crossing Gatun locks at the Panama Canal, Panama in 2024.</media:description>
+    </item>
+  </channel>
+</rss>

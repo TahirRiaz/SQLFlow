@@ -1,0 +1,676 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "First settled by the French in the early 17th century, Saint Pierre and Miquelon are the sole remaining vestige of France's once vast North American possessions. They attained the status of an overseas collectivity in 2003."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Northern North America, islands in the North Atlantic Ocean, south of Newfoundland (Canada)"
+    },
+    "Geographic coordinates": {
+      "text": "46 50 N, 56 20 W"
+    },
+    "Map references": {
+      "text": "North America"
+    },
+    "Area": {
+      "total ": {
+        "text": "242 sq km"
+      },
+      "land": {
+        "text": "242 sq km"
+      },
+      "water": {
+        "text": "0 sq km"
+      },
+      "note": "<strong>note:</strong> includes eight small islands in the Saint Pierre and the Miquelon groups"
+    },
+    "Area - comparative": {
+      "text": "one and half times the size of Washington, DC"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "0 km"
+      }
+    },
+    "Coastline": {
+      "text": "120 km"
+    },
+    "Maritime claims": {
+      "territorial sea": {
+        "text": "12 nm"
+      },
+      "exclusive economic zone": {
+        "text": "200 nm"
+      }
+    },
+    "Climate": {
+      "text": "cold and wet, with considerable mist and fog; spring and autumn are often windy"
+    },
+    "Terrain": {
+      "text": "mostly barren rock"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Morne de la Grande Montagne 240 m"
+      },
+      "lowest point": {
+        "text": "Atlantic Ocean 0 m"
+      }
+    },
+    "Natural resources": {
+      "text": "fish, deepwater ports"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "8.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 8.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "12.5% (2018 est.)"
+      },
+      "other": {
+        "text": "78.8% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "0 sq km (2022)"
+    },
+    "Population distribution": {
+      "text": "most of the population is found on Saint Pierre Island; a small settlement is located on the north end of Miquelon Island"
+    },
+    "Natural hazards": {
+      "text": "persistent fog throughout the year can be a maritime hazard"
+    },
+    "Geography - note": {
+      "text": "vegetation scanty; the islands are part of the northern Appalachians, along with Newfoundland"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "5,132"
+      },
+      "male": {
+        "text": "2,476"
+      },
+      "female": {
+        "text": "2,656 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Frenchman(men), Frenchwoman(women)"
+      },
+      "adjective": {
+        "text": "French"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Basques and Bretons (French fishermen)"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "French (official)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>The World Factbook, une source indispensable d'informations de base. (French)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Roman Catholic 99%, other 1%"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "13.1% (male 346/female 328)"
+      },
+      "15-64 years": {
+        "text": "61.6% (male 1,559/female 1,600)"
+      },
+      "65 years and over": {
+        "text": "25.3% (2024 est.) (male 571/female 728)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "52"
+      },
+      "youth dependency ratio": {
+        "text": "26.1"
+      },
+      "elderly dependency ratio": {
+        "text": "25.9"
+      },
+      "potential support ratio": {
+        "text": "3.9 (2021)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "51.2 years (2024 est.)"
+      },
+      "male": {
+        "text": "50.5 years"
+      },
+      "female": {
+        "text": "51.9 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "-1.21% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "6.4 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "11.7 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "-6.8 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "most of the population is found on Saint Pierre Island; a small settlement is located on the north end of Miquelon Island"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "90.1% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.75% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "6,000 SAINT-PIERRE (capital) (2018)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.06 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.05 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.97 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.78 male(s)/female"
+      },
+      "total population": {
+        "text": "0.93 male(s)/female (2024 est.)"
+      }
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "7.8 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "9.6 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "5.8 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "81.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "79.5 years"
+      },
+      "female": {
+        "text": "84.3 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.6 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.78 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 91.4% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 8.6% of population (2017 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "NA"
+    },
+    "Physician density": {
+      "text": "NA"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: NA"
+      },
+      "improved: rural": {
+        "text": "rural: NA"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: NA"
+      },
+      "unimproved: rural": {
+        "text": "rural: NA"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "64.1% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "NA"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "overfishing; recent test drilling for oil in waters around Saint Pierre and Miquelon may bring future development that would impact the environment"
+    },
+    "Climate": {
+      "text": "cold and wet, with considerable mist and fog; spring and autumn are often windy"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "8.7% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 8.7% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 0% (2018 est.)"
+      },
+      "forest": {
+        "text": "12.5% (2018 est.)"
+      },
+      "other": {
+        "text": "78.8% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "90.1% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.75% annual rate of change (2020-25 est.)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Territorial Collectivity of Saint Pierre and Miquelon"
+      },
+      "conventional short form": {
+        "text": "Saint Pierre and Miquelon"
+      },
+      "local long form": {
+        "text": "D&eacute;partement de Saint-Pierre et Miquelon"
+      },
+      "local short form": {
+        "text": "Saint-Pierre et Miquelon"
+      },
+      "etymology": {
+        "text": "Saint-Pierre is named after Saint PETER, the patron saint of fishermen; Miquelon may be a corruption of the Basque name Mikelon"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary democracy (Territorial Council); overseas collectivity of France"
+    },
+    "Dependency status": {
+      "text": "overseas collectivity of France"
+    },
+    "Capital": {
+      "name": {
+        "text": "Saint-Pierre"
+      },
+      "geographic coordinates": {
+        "text": "46 46 N, 56 11 W"
+      },
+      "time difference": {
+        "text": "UTC-3 (2 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins second Sunday in March; ends first Sunday in November"
+      },
+      "etymology": {
+        "text": "named after Saint Peter, the patron saint of fisherman"
+      }
+    },
+    "Administrative divisions": {
+      "text": "none (territorial overseas collectivity of France); note - there are no first-order administrative divisions as defined by the US Government, but there are 2 communes at the second order - Saint Pierre, Miquelon"
+    },
+    "Independence": {
+      "text": "none (overseas collectivity collectivity of France; has been under French control since 1763)"
+    },
+    "National holiday": {
+      "text": "F&ecirc;te de la F&eacute;d&eacute;ration, 14 July (1790)"
+    },
+    "Legal system": {
+      "text": "French civil law"
+    },
+    "Constitution": {
+      "history": {
+        "text": "4 October 1958 (French Constitution)"
+      },
+      "amendments": {
+        "text": "amendment procedures of France's constitution apply"
+      }
+    },
+    "Citizenship": {
+      "text": "see France"
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Emmanuel MACRON (since 14 May 2017); represented by Prefect Bruno ANDRE (since September 2023)"
+      },
+      "head of government": {
+        "text": "President of Territorial Council Bernard BRIAND (since 13 October 2020)"
+      },
+      "cabinet": {
+        "text": "Le Cabinet du Prefet"
+      },
+      "elections/appointments": {
+        "text": "French president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); election last held on 10 April and 24 April 2022 (next to be held in 2027); prefect appointed by French president on the advice of French Ministry of Interior; Territorial Council president elected by Territorial Council councilors by absolute majority vote; term NA; election last held on 13 October 2020 (next to be held NA)"
+      },
+      "election results": {
+        "text": "<br><em>2020: </em>Bernard BRIAND elected President of Territorial Council; Territorial Council vote - 17 for, 2 abstentions<br><br><em>2017:</em> Stephane LENORMAND elected President of Territorial Council vote - NA"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "Territorial Council (Conseil Territorial)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "number of seats": {
+        "text": "19 (directly elected)"
+      },
+      "electoral system": {
+        "text": "plurality/majority"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "6 years"
+      },
+      "most recent election date": {
+        "text": "3/27/2022"
+      },
+      "parties elected and seats per party": {
+        "text": "AD (15); Focus on the Future (4)"
+      },
+      "expected date of next election": {
+        "text": "March 2028"
+      },
+      "note": "<strong>note:</strong> 1 senator is indirectly elected to the French Senate by an electoral college for a 6-year term, and 1 deputy is directly elected to the French National Assembly for a 5-year term"
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Superior Tribunal of Appeals or Tribunal Superieur d'Appel (composition NA)"
+      },
+      "judge selection and term of office": {
+        "text": "judge selection and tenure NA"
+      },
+      "subordinate courts": {
+        "text": "NA"
+      }
+    },
+    "Political parties": {
+      "text": "Archipelago Tomorrow (Archipel Domain) or AD (affiliated with The Republicans)<br>Focus on the Future (Cap sur l'Avenir) (affiliated with Left Radical Party)<br>Together to Build (Ensemble pour Construire)"
+    },
+    "International organization participation": {
+      "text": "UPU, WFTU (NGOs)"
+    },
+    "Diplomatic representation in the US": {
+      "text": "none (overseas territory of France)"
+    },
+    "Diplomatic representation from the US": {
+      "embassy": {
+        "text": "none (territorial overseas collectivity of France)"
+      }
+    },
+    "Flag description": {
+      "text": "a yellow three-masted sailing ship facing the hoist side rides on a blue background with scattered, white, wavy lines under the ship; a continuous black-over-white wavy line divides the ship from the white wavy lines; on the hoist side, a vertical band is divided into three parts: the top part (called ikkurina) is red with a green diagonal cross extending to the corners overlaid by a white cross dividing the rectangle into four sections; the middle part has a white background with an ermine pattern; the third part has a red background with two stylized yellow lions outlined in black, one above the other; these three heraldic arms represent settlement by colonists from the Basque Country (top), Brittany, and Normandy; the blue on the main portion of the flag symbolizes the Atlantic Ocean and the stylized ship represents the Grande Hermine in which Jacques Cartier \"discovered\" the islands in 1536",
+      "note": "<strong>note:</strong> the flag of France used for official occasions"
+    },
+    "National symbol(s)": {
+      "text": "16th-century sailing ship"
+    },
+    "National anthem": {
+      "text": "<p><strong>note:</strong> as a collectivity of France, \"La Marseillaise\" is official (see France)</p>"
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income, French North American territorial economy; primarily fishing exports; substantial French Government support; highly seasonal labor force; euro user; increasing tourism and aquaculture investments"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2015": {
+        "text": "$261.3 million (2015 est.)"
+      },
+      "note": "<strong>note:</strong> supplemented by annual payments from France of about $60 million"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$261.3 million (2015 est.)"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2015": {
+        "text": "1.5% (2015)"
+      }
+    },
+    "Agricultural products": {
+      "text": "vegetables; poultry, cattle, sheep, pigs; fish"
+    },
+    "Industries": {
+      "text": "fish processing and supply base for fishing fleets; tourism"
+    },
+    "Labor force": {
+      "text": "4,429 (2015)"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2015": {
+        "text": "8.7% (2015 est.)"
+      }
+    },
+    "Exports - partners": {
+      "text": "Canada 84%, France 11%, Ireland 3%, Slovakia 1%, Democratic Republic of the Congo 0% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "processed crustaceans, shellfish, fish, special purpose motor vehicles, vehicle parts/accessories (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports - partners": {
+      "text": "France 52%, Canada 42%, Netherlands 2%, Germany 1%, Belgium 1% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "refined petroleum, packaged medicine, other foods, plastic products, cars (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.95 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.876 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "26,000 kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "48.714 million kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "2 million kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "100% of total installed capacity (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "refined petroleum consumption": {
+        "text": "400 bbl/day (2022 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "59,000 metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "59,000 metric tonnes of CO2 (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "4,800 (2015 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "76 (2015 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "adequate (2019)"
+      },
+      "domestic": {
+        "text": "fixed-line teledensity 76 per 100 persons (2019)"
+      },
+      "international": {
+        "text": "country code - 508; landing point for the St Pierre and Miquelon Cable connecting Saint Pierre&nbsp;&amp; Miquelon and Canada; radiotelephone communication with most countries in the world; satellite earth station - 1 in French domestic satellite system (2019)"
+      }
+    },
+    "Broadcast media": {
+      "text": "8 TV stations, all part of the French Overseas Network, and local cable provided by SPM Telecom; 3 of 4 radio stations on St. Pierre and on Miquelon are part of the French Overseas Network (2021)"
+    },
+    "Internet country code": {
+      "text": ".pm"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "88.7% (2022 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "Airports": {
+      "text": "2 (2024)"
+    },
+    "Roadways": {
+      "total": {
+        "text": "117 km"
+      },
+      "paved": {
+        "text": "80 km"
+      },
+      "unpaved": {
+        "text": "37 km (2009)"
+      }
+    },
+    "Ports": {
+      "total ports": {
+        "text": "2 (2024)"
+      },
+      "large": {
+        "text": "0"
+      },
+      "medium": {
+        "text": "0"
+      },
+      "small": {
+        "text": "1"
+      },
+      "very small": {
+        "text": "0"
+      },
+      "size unknown": {
+        "text": "1"
+      },
+      "ports with oil terminals": {
+        "text": "1"
+      },
+      "key ports": {
+        "text": "Miquelon, St. Pierre"
+      }
+    }
+  },
+  "Military and Security": {
+    "Military - note": {
+      "text": "defense is the responsibility of France"
+    }
+  },
+  "Transnational Issues": {
+  }
+}

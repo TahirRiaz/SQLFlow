@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.Sources</RootNamespace>
+    <Description>Source readers (CSV, XLS, JSON, XML, Parquet) with schema/type inference and path-based JSON/XML flattening.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="GenericParsing.Standard" />
+    <PackageReference Include="ExcelDataReader" />
+    <PackageReference Include="System.Text.Encoding.CodePages" />
+    <PackageReference Include="Parquet.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+  </ItemGroup>
+
+</Project>

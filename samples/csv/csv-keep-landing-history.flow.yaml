@@ -1,0 +1,18 @@
+# Opt out of the landing reset: by default (resetWhenConsolidated: true) a chained landing target is
+# truncated at the start of the next run once every flow reading its typed view has consolidated it,
+# because a staging table that never resets grows without bound. Set it false to let the landing table
+# accumulate across runs, for example while a report still queries the base table directly.
+name: Csv_KeepLandingHistory
+source:
+  type: csv
+  location: ./data/orders.csv
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: pre
+  table: Csv_KeepLandingHistory
+transform:
+  inferTypes: true
+  generateView: true
+load:
+  mode: append
+  resetWhenConsolidated: false

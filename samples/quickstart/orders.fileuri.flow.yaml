@@ -1,0 +1,16 @@
+name: orders_fileuri
+
+source:
+  type: csv
+  location: file:///C:/Projects/SQLFlowV3/samples/quickstart/orders.csv   # file:// scheme -> LocalFileStore
+
+target:
+  connection: ${env:SQLFLOW_DW}
+  schema: dbo
+  table: Orders
+
+schema:
+  evolve: widen
+
+load:
+  mode: truncate-load

@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>SQLFlow translation engine (flowType: trl): map SQL query results through a declared JSON template into arbitrarily shaped documents, write them to local or cloud destinations, and deliver the saved documents to remote HTTP APIs through the shared acquisition HTTP stack.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <ProjectReference Include="..\SqlFlow.SqlServer\SqlFlow.SqlServer.csproj" />
+    <ProjectReference Include="..\SqlFlow.Acquire\SqlFlow.Acquire.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SqlFlow.Translate.Tests" />
+  </ItemGroup>
+
+</Project>

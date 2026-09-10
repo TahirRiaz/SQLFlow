@@ -1,0 +1,18 @@
+# Explode: each element of an array becomes its own output row (like SQL UNNEST). Here $.lines is an
+# array of line items per order, so the order fields (id) repeat on every line and the line fields
+# (lines_sku, lines_qty) vary. Two orders with 2 + 1 lines produce 3 rows. Several explode paths
+# cross-product; an exploded array is consumed (no 'lines' JSON column).
+name: Json_Explode
+source:
+  type: json
+  location: ./data/lineitems.json
+  options:
+    explodePaths: "$.lines"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_Explode
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

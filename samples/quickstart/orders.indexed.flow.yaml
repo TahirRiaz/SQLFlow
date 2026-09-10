@@ -1,0 +1,17 @@
+name: orders_indexed
+
+source:
+  type: csv
+  location: ./orders.csv
+
+target:
+  connection: ${env:SQLFLOW_DW}
+  schema: dbo
+  table: Orders
+
+schema:
+  evolve: widen
+
+load:
+  mode: truncate-load
+  manageIndexes: true     # script + drop non-clustered indexes before load, recreate after

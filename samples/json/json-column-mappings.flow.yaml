@@ -1,0 +1,16 @@
+# columnMappings rename specific paths. $.user.id becomes user_key and $.user.firstName becomes
+# first_name, instead of the auto-generated user_id / user_first_name.
+name: Json_ColumnMappings
+source:
+  type: json
+  location: ./data/users.json
+  options:
+    columnMappings: "$.user.id=user_key; $.user.firstName=first_name"
+target:
+  connection: ${env:SQLFlowSinkConStr}
+  schema: dbo
+  table: Json_ColumnMappings
+schema:
+  defaultColumnType: nvarchar(4000)
+load:
+  mode: truncate-load

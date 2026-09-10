@@ -1,0 +1,1225 @@
+{
+  "Introduction": {
+    "Background": {
+      "text": "Slovakia traces its roots to the 9th century state of Great Moravia. The Slovaks then became part of the Hungarian Kingdom, where they remained for the next 1,000 years. After the formation of the dual Austro-Hungarian monarchy in 1867, language and education policies favoring the use of Hungarian (known as \"Magyarization\") led to a public backlash that boosted Slovak nationalism and strengthened Slovak cultural ties with the closely related Czechs, who fell administratively under the Austrian half of the empire. When the Austro-Hungarian Empire dissolved at the end of World War I, the Slovaks joined the Czechs to form Czechoslovakia. During the interwar period, Slovak nationalist leaders pushed for autonomy within Czechoslovakia, and in 1939, in the wake of Germany's annexation of the Sudetenland, the newly established Slovak Republic became a German client state for the remainder of World War II. <br><br>After World War II, Czechoslovakia was reconstituted and came under communist rule within Soviet-dominated Eastern Europe. In 1968, Warsaw Pact troops invaded and ended the efforts of Czechoslovakia's leaders to liberalize communist rule and create \"socialism with a human face,\" ushering in a period of repression known as \"normalization.\" The peaceful Velvet Revolution swept the Communist Party from power at the end of 1989 and inaugurated a return to democratic rule and a market economy. On 1 January 1993, Czechoslovakia underwent a nonviolent \"velvet divorce\" into its two national components, Slovakia and the Czech Republic. Slovakia joined both NATO and the EU in 2004 and the euro zone in 2009."
+    }
+  },
+  "Geography": {
+    "Location": {
+      "text": "Central Europe, south of Poland"
+    },
+    "Geographic coordinates": {
+      "text": "48 40 N, 19 30 E"
+    },
+    "Map references": {
+      "text": "Europe"
+    },
+    "Area": {
+      "total ": {
+        "text": "49,035 sq km"
+      },
+      "land": {
+        "text": "48,105 sq km"
+      },
+      "water": {
+        "text": "930 sq km"
+      }
+    },
+    "Area - comparative": {
+      "text": "about one and a half times the size of Maryland; about twice the size of New Hampshire"
+    },
+    "Land boundaries": {
+      "total": {
+        "text": "1,587 km"
+      },
+      "border countries": {
+        "text": "Austria 105 km; Czechia 241 km; Hungary 627 km; Poland 517 km; Ukraine 97 km"
+      }
+    },
+    "Coastline": {
+      "text": "0 km (landlocked)"
+    },
+    "Maritime claims": {
+      "text": "none (landlocked)"
+    },
+    "Climate": {
+      "text": "temperate; cool summers; cold, cloudy, humid winters"
+    },
+    "Terrain": {
+      "text": "rugged mountains in the central and northern part and lowlands in the south"
+    },
+    "Elevation": {
+      "highest point": {
+        "text": "Gerlachovsky Stit 2,655 m"
+      },
+      "lowest point": {
+        "text": "Bodrok River 94 m"
+      },
+      "mean elevation": {
+        "text": "458 m"
+      }
+    },
+    "Natural resources": {
+      "text": "lignite, small amounts of iron ore, copper and manganese ore; salt; arable land"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "40.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 28.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 10.8% (2018 est.)"
+      },
+      "forest": {
+        "text": "40.2% (2018 est.)"
+      },
+      "other": {
+        "text": "19.7% (2018 est.)"
+      }
+    },
+    "Irrigated land": {
+      "text": "211 sq km (2015)"
+    },
+    "Major rivers (by length in km)": {
+      "text": "Dunaj (Danube) (shared with Germany [s], Austria, Hungary, Croatia, Serbia, Bulgaria, Ukraine, Moldova, and Romania [m]) - 2,888 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country; slightly larger concentration in the west in proximity to the Czech border"
+    },
+    "Natural hazards": {
+      "text": "flooding"
+    },
+    "Geography - note": {
+      "text": "landlocked; most of the country is rugged and mountainous; the Tatra Mountains in the north are interspersed with many scenic lakes and valleys"
+    }
+  },
+  "People and Society": {
+    "Population": {
+      "total": {
+        "text": "5,563,649"
+      },
+      "male": {
+        "text": "2,684,747"
+      },
+      "female": {
+        "text": "2,878,902 (2024 est.)"
+      }
+    },
+    "Nationality": {
+      "noun": {
+        "text": "Slovak(s)"
+      },
+      "adjective": {
+        "text": "Slovak"
+      }
+    },
+    "Ethnic groups": {
+      "text": "Slovak 83.8%, Hungarian 7.8%, Romani 1.2%, other 1.8% (includes Czech, Ruthenian, Ukrainian, Russian, German, Polish), unspecified 5.4% (2021 est.)",
+      "note": "<strong>note:</strong> data represent population by nationality; Romani populations are usually underestimated in official statistics and may represent 7–11% of Slovakia's population"
+    },
+    "Languages": {
+      "Languages": {
+        "text": "Slovak (official) 81.8%, Hungarian 8.5%, Roma 1.8%, other 2.2%, unspecified 5.7% (2021 est.)"
+      },
+      "major-language sample(s)": {
+        "text": "<br>Svetova Kniha Faktov, nenahraditelny zdroj zakladnej informacie. (Slovak)<br><br>The World Factbook, the indispensable source for basic information."
+      }
+    },
+    "Religions": {
+      "text": "Roman Catholic 55.8%, Evangelical Church of the Augsburg Confession 5.3%, Greek Catholic 4%, Reformed Christian 1.6%, other 3%, none 23.8%, unspecified 6.5% (2021 est.)"
+    },
+    "Age structure": {
+      "0-14 years": {
+        "text": "15.3% (male 444,033/female 408,902)"
+      },
+      "15-64 years": {
+        "text": "66.5% (male 1,834,359/female 1,867,158)"
+      },
+      "65 years and over": {
+        "text": "18.1% (2024 est.) (male 406,355/female 602,842)"
+      }
+    },
+    "Dependency ratios": {
+      "total dependency ratio": {
+        "text": "49.5"
+      },
+      "youth dependency ratio": {
+        "text": "23.7"
+      },
+      "elderly dependency ratio": {
+        "text": "25.8"
+      },
+      "potential support ratio": {
+        "text": "3.9 (2021 est.)"
+      }
+    },
+    "Median age": {
+      "total": {
+        "text": "42.8 years (2024 est.)"
+      },
+      "male": {
+        "text": "41.3 years"
+      },
+      "female": {
+        "text": "44.4 years"
+      }
+    },
+    "Population growth rate": {
+      "text": "-0.08% (2024 est.)"
+    },
+    "Birth rate": {
+      "text": "10 births/1,000 population (2024 est.)"
+    },
+    "Death rate": {
+      "text": "11.2 deaths/1,000 population (2024 est.)"
+    },
+    "Net migration rate": {
+      "text": "0.4 migrant(s)/1,000 population (2024 est.)"
+    },
+    "Population distribution": {
+      "text": "a fairly even distribution throughout most of the country; slightly larger concentration in the west in proximity to the Czech border"
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "54% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.17% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Major urban areas - population": {
+      "text": "441,000 BRATISLAVA (capital) (2023)"
+    },
+    "Sex ratio": {
+      "at birth": {
+        "text": "1.07 male(s)/female"
+      },
+      "0-14 years": {
+        "text": "1.09 male(s)/female"
+      },
+      "15-64 years": {
+        "text": "0.98 male(s)/female"
+      },
+      "65 years and over": {
+        "text": "0.67 male(s)/female"
+      },
+      "total population": {
+        "text": "0.93 male(s)/female (2024 est.)"
+      }
+    },
+    "Mother's mean age at first birth": {
+      "text": "27.2 years (2020 est.)"
+    },
+    "Maternal mortality ratio": {
+      "text": "5 deaths/100,000 live births (2020 est.)"
+    },
+    "Infant mortality rate": {
+      "total": {
+        "text": "5.1 deaths/1,000 live births (2024 est.)"
+      },
+      "male": {
+        "text": "5.7 deaths/1,000 live births"
+      },
+      "female": {
+        "text": "4.5 deaths/1,000 live births"
+      }
+    },
+    "Life expectancy at birth": {
+      "total population": {
+        "text": "77.2 years (2024 est.)"
+      },
+      "male": {
+        "text": "73.7 years"
+      },
+      "female": {
+        "text": "81 years"
+      }
+    },
+    "Total fertility rate": {
+      "text": "1.6 children born/woman (2024 est.)"
+    },
+    "Gross reproduction rate": {
+      "text": "0.77 (2024 est.)"
+    },
+    "Contraceptive prevalence rate": {
+      "text": "NA"
+    },
+    "Drinking water source": {
+      "improved: urban": {
+        "text": "urban: 100% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Current health expenditure": {
+      "text": "7.2% of GDP (2020)"
+    },
+    "Physician density": {
+      "text": "3.57 physicians/1,000 population (2019)"
+    },
+    "Hospital bed density": {
+      "text": "5.7 beds/1,000 population (2018)"
+    },
+    "Sanitation facility access": {
+      "improved: urban": {
+        "text": "urban: 99.9% of population"
+      },
+      "improved: rural": {
+        "text": "rural: 100% of population"
+      },
+      "improved: total": {
+        "text": "total: 100% of population"
+      },
+      "unimproved: urban": {
+        "text": "urban: 0.1% of population"
+      },
+      "unimproved: rural": {
+        "text": "rural: 0% of population"
+      },
+      "unimproved: total": {
+        "text": "total: 0% of population (2020 est.)"
+      }
+    },
+    "Obesity - adult prevalence rate": {
+      "text": "20.5% (2016)"
+    },
+    "Alcohol consumption per capita": {
+      "total": {
+        "text": "10.3 liters of pure alcohol (2019 est.)"
+      },
+      "beer": {
+        "text": "4.14 liters of pure alcohol (2019 est.)"
+      },
+      "wine": {
+        "text": "2.01 liters of pure alcohol (2019 est.)"
+      },
+      "spirits": {
+        "text": "4.14 liters of pure alcohol (2019 est.)"
+      },
+      "other alcohols": {
+        "text": "0 liters of pure alcohol (2019 est.)"
+      }
+    },
+    "Tobacco use": {
+      "total": {
+        "text": "31.5% (2020 est.)"
+      },
+      "male": {
+        "text": "37.4% (2020 est.)"
+      },
+      "female": {
+        "text": "25.6% (2020 est.)"
+      }
+    },
+    "Children under the age of 5 years underweight": {
+      "text": "NA"
+    },
+    "Currently married women (ages 15-49)": {
+      "text": "47.9% (2023 est.)"
+    },
+    "Education expenditures": {
+      "text": "4.6% of GDP (2020 est.)"
+    },
+    "Literacy": {
+      "total population": {
+        "text": "NA"
+      },
+      "male": {
+        "text": "NA"
+      },
+      "female": {
+        "text": "NA"
+      }
+    },
+    "School life expectancy (primary to tertiary education)": {
+      "total": {
+        "text": "15 years"
+      },
+      "male": {
+        "text": "14 years"
+      },
+      "female": {
+        "text": "15 years (2020)"
+      }
+    }
+  },
+  "Environment": {
+    "Environment - current issues": {
+      "text": "air pollution and acid rain present human health risks and damage forests; land erosion caused by agricultural and mining practices; water pollution"
+    },
+    "Environment - international agreements": {
+      "party to": {
+        "text": "Air Pollution, Air Pollution-Heavy Metals, Air Pollution-Multi-effect Protocol, Air Pollution-Nitrogen Oxides, Air Pollution-Persistent Organic Pollutants, Air Pollution-Sulphur 85, Air Pollution-Sulphur 94, Air Pollution-Volatile Organic Compounds, Antarctic Treaty, Biodiversity, Climate Change, Climate Change-Kyoto Protocol, Climate Change-Paris Agreement, Comprehensive Nuclear Test Ban, Desertification, Endangered Species, Environmental Modification, Hazardous Wastes, Law of the Sea, Nuclear Test Ban, Ozone Layer Protection, Ship Pollution, Tropical Timber 2006, Wetlands, Whaling"
+      },
+      "signed, but not ratified": {
+        "text": "Antarctic-Environmental Protection"
+      }
+    },
+    "Climate": {
+      "text": "temperate; cool summers; cold, cloudy, humid winters"
+    },
+    "Land use": {
+      "agricultural land": {
+        "text": "40.1% (2018 est.)"
+      },
+      "agricultural land: arable land": {
+        "text": "arable land: 28.9% (2018 est.)"
+      },
+      "agricultural land: permanent crops": {
+        "text": "permanent crops: 0.4% (2018 est.)"
+      },
+      "agricultural land: permanent pasture": {
+        "text": "permanent pasture: 10.8% (2018 est.)"
+      },
+      "forest": {
+        "text": "40.2% (2018 est.)"
+      },
+      "other": {
+        "text": "19.7% (2018 est.)"
+      }
+    },
+    "Urbanization": {
+      "urban population": {
+        "text": "54% of total population (2023)"
+      },
+      "rate of urbanization": {
+        "text": "0.17% annual rate of change (2020-25 est.)"
+      }
+    },
+    "Revenue from forest resources": {
+      "text": "0.22% of GDP (2018 est.)"
+    },
+    "Revenue from coal": {
+      "text": "0.01% of GDP (2018 est.)"
+    },
+    "Air pollutants": {
+      "particulate matter emissions": {
+        "text": "15.89 micrograms per cubic meter (2019 est.)"
+      },
+      "carbon dioxide emissions": {
+        "text": "32.42 megatons (2016 est.)"
+      },
+      "methane emissions": {
+        "text": "4.43 megatons (2020 est.)"
+      }
+    },
+    "Waste and recycling": {
+      "municipal solid waste generated annually": {
+        "text": "1.784 million tons (2015 est.)"
+      },
+      "municipal solid waste recycled annually": {
+        "text": "135,941 tons (2015 est.)"
+      },
+      "percent of municipal solid waste recycled": {
+        "text": "7.6% (2015 est.)"
+      }
+    },
+    "Major rivers (by length in km)": {
+      "text": "Dunaj (Danube) (shared with Germany [s], Austria, Hungary, Croatia, Serbia, Bulgaria, Ukraine, Moldova, and Romania [m]) - 2,888 km<br><strong>note</strong> – [s] after country name indicates river source; [m] after country name indicates river mouth"
+    },
+    "Major watersheds (area sq km)": {
+      "text": "Atlantic Ocean drainage: <em>(Black Sea)</em> Danube (795,656 sq km)"
+    },
+    "Total water withdrawal": {
+      "municipal": {
+        "text": "290 million cubic meters (2020 est.)"
+      },
+      "industrial": {
+        "text": "230 million cubic meters (2020 est.)"
+      },
+      "agricultural": {
+        "text": "30 million cubic meters (2020 est.)"
+      }
+    },
+    "Total renewable water resources": {
+      "text": "50.1 billion cubic meters (2020 est.)"
+    },
+    "Geoparks": {
+      "total global geoparks and regional networks": {
+        "text": "1"
+      },
+      "global geoparks and regional networks": {
+        "text": "Novohrad-N&oacute;gr&aacute;d (includes Hungary) (2023)"
+      }
+    }
+  },
+  "Government": {
+    "Country name": {
+      "conventional long form": {
+        "text": "Slovak Republic"
+      },
+      "conventional short form": {
+        "text": "Slovakia"
+      },
+      "local long form": {
+        "text": "Slovenska republika"
+      },
+      "local short form": {
+        "text": "Slovensko"
+      },
+      "etymology": {
+        "text": "may derive from the medieval Latin word \"Slavus\" (Slav), which had the local form \"Sloven\", used since the 13th century to refer to the territory of Slovakia and its inhabitants"
+      }
+    },
+    "Government type": {
+      "text": "parliamentary republic"
+    },
+    "Capital": {
+      "name": {
+        "text": "Bratislava"
+      },
+      "geographic coordinates": {
+        "text": "48 09 N, 17 07 E"
+      },
+      "time difference": {
+        "text": "UTC+1 (6 hours ahead of Washington, DC, during Standard Time)"
+      },
+      "daylight saving time": {
+        "text": "+1hr, begins last Sunday in March; ends last Sunday in October"
+      },
+      "etymology": {
+        "text": "the name was adopted in 1919 after Czechoslovakia gained its independence and may derive from later transliterations of the 9th century military commander, Braslav, or the 11th century Bohemian Duke BRETISLAV I; alternatively, the name may derive from the Slovak words <em>brat</em> (brother) and <em>slava</em> (glory)"
+      }
+    },
+    "Administrative divisions": {
+      "text": "8 regions (kraje, singular - kraj); Banska Bystrica, Bratislava, Kosice, Nitra, Presov, Trencin, Trnava, Zilina"
+    },
+    "Independence": {
+      "text": "1 January 1993 (Czechoslovakia split into the Czech Republic and Slovakia)"
+    },
+    "National holiday": {
+      "text": "Constitution Day, 1 September (1992)"
+    },
+    "Legal system": {
+      "text": "civil law system based on Austro-Hungarian codes; note - legal code modified to comply with the obligations of Organization on Security and Cooperation in Europe"
+    },
+    "Constitution": {
+      "history": {
+        "text": "several previous (preindependence); latest passed by the National Council 1 September 1992, signed 3 September 1992, effective 1 October 1992"
+      },
+      "amendments": {
+        "text": "proposed by the National Council; passage requires at least three-fifths majority vote of Council members; amended many times, last in 2020"
+      }
+    },
+    "International law organization participation": {
+      "text": "accepts compulsory ICJ jurisdiction with reservations; accepts ICCt jurisdiction"
+    },
+    "Citizenship": {
+      "citizenship by birth": {
+        "text": "no"
+      },
+      "citizenship by descent only": {
+        "text": "at least one parent must be a citizen of Slovakia"
+      },
+      "dual citizenship recognized": {
+        "text": "no"
+      },
+      "residency requirement for naturalization": {
+        "text": "5 years"
+      }
+    },
+    "Suffrage": {
+      "text": "18 years of age; universal"
+    },
+    "Executive branch": {
+      "chief of state": {
+        "text": "President Peter PELLEGRINI (since 15 June 2024)"
+      },
+      "head of government": {
+        "text": "Prime Minister Robert FICO (since 25 October 2023)"
+      },
+      "cabinet": {
+        "text": "Cabinet appointed by the president on the recommendation of the prime minister"
+      },
+      "elections/appointments": {
+        "text": "president directly elected by absolute majority popular vote in 2 rounds if needed for a 5-year term (eligible for a second term); election first round held on 23 March 2024 with a runoff on 6 April 2024 (next to be held in 2029); following National Council elections (every 4 years), the president designates a prime minister candidate, usually the leader of the party or coalition that wins the most votes, who must win a vote of confidence in the National Council"
+      },
+      "election results": {
+        "text": "<em><br>2024: </em>Peter PELLEGRINI elected president in the second round; percent of vote in second round Peter PELLEGRINI 53.1%; Ivan KORCOK 46.9%; percent of vote in first round - Ivan KORCOK (independent) 42.5%; Peter PELLEGRINI (Hlas-SD) 37%; Stefan HARABIN (independent) 11.7%, other 8.8%; <em><br><br>2019:</em> Zuzana CAPUTOVA elected president in second round; percent of vote - Zuzana CAPUTOVA (PS) 58.4%, Maros SEFCOVIC (independent) 41.6%"
+      }
+    },
+    "Legislative branch": {
+      "legislature name": {
+        "text": "National Council (Narodna rada Slovenskej republiky)"
+      },
+      "legislative structure": {
+        "text": "unicameral"
+      },
+      "chamber name": {
+        "text": "National Council (Národná rada)"
+      },
+      "number of seats": {
+        "text": "150 (all directly elected)"
+      },
+      "electoral system": {
+        "text": "proportional representation"
+      },
+      "scope of elections": {
+        "text": "full renewal"
+      },
+      "term in office": {
+        "text": "4 years"
+      },
+      "most recent election date": {
+        "text": "9/30/2023"
+      },
+      "parties elected and seats per party": {
+        "text": "Smer - Social Democracy (Smer-SD) (42); Progressive Slovakia (PS) (32); Hlas (“Voice”) - SD (27); Coalition OĽaNO and Friends, 'For the People' and 'Christian Union' (16); Christian Democratic Movement (KDH) (12); Freedom and Solidarity (SaS) (11); Slovak National Party (SNS) (10)"
+      },
+      "percentage of women in chamber": {
+        "text": "23.3%"
+      },
+      "expected date of next election": {
+        "text": "September 2027"
+      }
+    },
+    "Judicial branch": {
+      "highest court(s)": {
+        "text": "Supreme Court of the Slovak Republic (consists of the court president, vice president, and approximately 80 judges organized into criminal, civil, commercial, and administrative divisions with 3- and 5-judge panels); Constitutional Court of the Slovak Republic (consists of 13 judges organized into 3-judge panels)"
+      },
+      "judge selection and term of office": {
+        "text": "Supreme Court judge candidates nominated by the Judicial Council of the Slovak Republic, an 18-member self-governing body that includes the Supreme Court chief justice and presidential, governmental, parliamentary, and judiciary appointees; judges appointed by the president serve for life subject to removal by the president at age 65; Constitutional Court judges nominated by the National Council of the Republic and appointed by the president; judges serve 12-year terms"
+      },
+      "subordinate courts": {
+        "text": "regional and district civil courts; Special Criminal Court; Higher Military Court; military district courts; Court of Audit;"
+      }
+    },
+    "Political parties": {
+      "text": "Alliance-Szovetseg or A-S<br>Christian Union or KÚ<br>Civic Conservative Party or OKS<br>Democrats<br>Direction-Social Democracy or Smer-SSD<br>For the People or Za Ludi<br>Freedom and Solidarity or SaS<br>Life National Party or Život–NS (formerly Christian Democracy - Life and Prosperity - Alliance for Slovkia)<br>New Majority or NOVA<br>Ordinary People and Independent Personalities - New Majority or OLaNO-NOVA<br>People's Party Our Slovakia or LSNS<br>Progressive Slovakia or PS<br>Republic<br>Slovak National Party or SNS<br>Voice - Social Democracy or Hlas-SD<br>We Are Family or Sme-Rodina (formerly Party of Citizens of Slovakia)"
+    },
+    "International organization participation": {
+      "text": "Australia Group, BIS, BSEC (observer), CBSS (observer), CD, CE, CEI, CERN, EAPC, EBRD, ECB, EIB, EMU, EU, FAO, IAEA, IBRD, ICAO, ICC (national committees), ICRM, IDA, IEA, IFC, IFRCS, ILO, IMF, IMO, IMSO, Interpol, IOC, IOM, IPU, ISO, ITU, ITUC (NGOs), MIGA, NATO, NEA, NSG, OAS (observer), OECD, OIF (observer), OPCW, OSCE, PCA, Schengen Convention, SELEC (observer), UN, UNCTAD, UNESCO, UNFICYP, UNIDO, UNOOSA, UNTSO, UNWTO, UPU, Wassenaar Arrangement, WCO, WFTU (NGOs), WHO, WIPO, WMO, WTO, ZC"
+    },
+    "Diplomatic representation in the US": {
+      "chief of mission": {
+        "text": "Ambassador Radovan JAVORČ&Iacute;K (since 18 January 2021)"
+      },
+      "chancery": {
+        "text": "3523 International Court NW, Washington, DC 20008"
+      },
+      "telephone": {
+        "text": "[1] (202) 237-1054"
+      },
+      "FAX": {
+        "text": "[1] (202) 237-6438"
+      },
+      "email address and website": {
+        "text": "<br>emb.washington@mzv.sk<br><br>https://www.mzv.sk/web/washington-en"
+      },
+      "consulate(s) general": {
+        "text": "New York"
+      }
+    },
+    "Diplomatic representation from the US": {
+      "chief of mission": {
+        "text": "Ambassador Gautam A. RANA (since 28 September 2022)"
+      },
+      "embassy": {
+        "text": "P.O. Box 309, 814 99 Bratislava"
+      },
+      "mailing address": {
+        "text": "5840 Bratislava Place, Washington DC&nbsp; 20521-5840"
+      },
+      "telephone": {
+        "text": "[421] (2) 5443-3338"
+      },
+      "FAX": {
+        "text": "[421] (2) 5441-8861"
+      },
+      "email address and website": {
+        "text": "<br>consulbratislava@state.gov<br><br>https://sk.usembassy.gov/"
+      }
+    },
+    "Flag description": {
+      "text": "three equal horizontal bands of white (top), blue, and red derive from the Pan-Slav colors; the Slovakian coat of arms (consisting of a red shield bordered in white and bearing a white double-barred cross of St. Cyril and St. Methodius surmounting three blue hills) is centered over the bands but offset slightly to the hoist side",
+      "note": "<strong>note:</strong> the Pan-Slav colors were inspired by the 19th-century flag of Russia"
+    },
+    "National symbol(s)": {
+      "text": "double-barred cross (Cross of St. Cyril and St. Methodius) surmounting three peaks; national colors: white, blue, red"
+    },
+    "National anthem": {
+      "name": {
+        "text": "\"Nad Tatrou sa blyska\" (Lightning Over the Tatras)"
+      },
+      "lyrics/music": {
+        "text": "Janko MATUSKA/traditional"
+      },
+      "note": "<strong>note:</strong> adopted 1993, in use since 1844; music based on the Slovak folk song \"Kopala studienku\" (She was digging a well)"
+    },
+    "National heritage": {
+      "total World Heritage Sites": {
+        "text": "8 (6 cultural, 2 natural)"
+      },
+      "selected World Heritage Site locales": {
+        "text": "Historic Town of Bansk&aacute; &Scaron;tiavnica (c); Levoča, Spi&scaron;sk&yacute; Hrad, and the Associated Cultural Monuments (c); Vlkol&iacute;nec (c); Caves of Aggtelek Karst and Slovak Karst (n); Bardejov Town (c); Ancient and Primeval Beech Forests of the Carpathians (n); Wooden Churches of the Slovak Carpathians (c); Frontiers of the Roman Empire - The Danube Limes (Western Segment) (c)"
+      }
+    }
+  },
+  "Economy": {
+    "Economic overview": {
+      "text": "high-income EU- and eurozone-member economy; manufacturing and exports led by automotive sector; weakening of anti-corruption laws may impact foreign investment and status of EU funds; influx of foreign labor offsets aging workforce; widening fiscal deficit from social spending and EU-financed public investments&nbsp;"
+    },
+    "Real GDP (purchasing power parity)": {
+      "Real GDP (purchasing power parity) 2023": {
+        "text": "$213.219 billion (2023 est.)"
+      },
+      "Real GDP (purchasing power parity) 2022": {
+        "text": "$210.32 billion (2022 est.)"
+      },
+      "Real GDP (purchasing power parity) 2021": {
+        "text": "$209.379 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "Real GDP growth rate": {
+      "Real GDP growth rate 2023": {
+        "text": "1.38% (2023 est.)"
+      },
+      "Real GDP growth rate 2022": {
+        "text": "0.45% (2022 est.)"
+      },
+      "Real GDP growth rate 2021": {
+        "text": "4.77% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual GDP % growth based on constant local currency"
+    },
+    "Real GDP per capita": {
+      "Real GDP per capita 2023": {
+        "text": "$39,300 (2023 est.)"
+      },
+      "Real GDP per capita 2022": {
+        "text": "$38,700 (2022 est.)"
+      },
+      "Real GDP per capita 2021": {
+        "text": "$38,400 (2021 est.)"
+      },
+      "note": "<b>note:</b> data in 2021 dollars"
+    },
+    "GDP (official exchange rate)": {
+      "text": "$132.908 billion (2023 est.)",
+      "note": "<b>note:</b> data in current dollars at official exchange rate"
+    },
+    "Inflation rate (consumer prices)": {
+      "Inflation rate (consumer prices) 2023": {
+        "text": "10.53% (2023 est.)"
+      },
+      "Inflation rate (consumer prices) 2022": {
+        "text": "12.77% (2022 est.)"
+      },
+      "Inflation rate (consumer prices) 2021": {
+        "text": "3.15% (2021 est.)"
+      },
+      "note": "<b>note:</b> annual % change based on consumer prices"
+    },
+    "Credit ratings": {
+      "Fitch rating": {
+        "text": "A (2020)"
+      },
+      "Moody's rating": {
+        "text": "A2 (2012)"
+      },
+      "Standard & Poors rating": {
+        "text": "A+ (2015)"
+      },
+      "note": "<strong>note: </strong>The year refers to the year in which the current credit rating was first obtained."
+    },
+    "GDP - composition, by sector of origin": {
+      "agriculture": {
+        "text": "2% (2023 est.)"
+      },
+      "industry": {
+        "text": "32.9% (2023 est.)"
+      },
+      "services": {
+        "text": "56.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to non-allocated consumption not captured in sector-reported data"
+    },
+    "GDP - composition, by end use": {
+      "household consumption": {
+        "text": "58.9% (2023 est.)"
+      },
+      "government consumption": {
+        "text": "20.1% (2023 est.)"
+      },
+      "investment in fixed capital": {
+        "text": "22.3% (2023 est.)"
+      },
+      "investment in inventories": {
+        "text": "-3% (2023 est.)"
+      },
+      "exports of goods and services": {
+        "text": "91.9% (2023 est.)"
+      },
+      "imports of goods and services": {
+        "text": "-90.4% (2023 est.)"
+      },
+      "note": "<b>note:</b> figures may not total 100% due to rounding or gaps in data collection"
+    },
+    "Agricultural products": {
+      "text": "wheat, sugar beets, milk, maize, barley, rapeseed, sunflower seeds, potatoes, soybeans, pork (2022)",
+      "note": "<b>note:</b> top ten agricultural products based on tonnage"
+    },
+    "Industries": {
+      "text": "automobiles; metal and metal products; electricity, gas, coke, oil, nuclear fuel; chemicals, synthetic fibers, wood and paper products; machinery; earthenware and ceramics; textiles; electrical and optical apparatus; rubber products; food and beverages; pharmaceutical"
+    },
+    "Industrial production growth rate": {
+      "text": "15.03% (2023 est.)",
+      "note": "<b>note:</b> annual % change in industrial value added based on constant local currency"
+    },
+    "Labor force": {
+      "text": "2.814 million (2023 est.)",
+      "note": "<b>note:</b> number of people ages 15 or older who are employed or seeking work"
+    },
+    "Unemployment rate": {
+      "Unemployment rate 2023": {
+        "text": "5.84% (2023 est.)"
+      },
+      "Unemployment rate 2022": {
+        "text": "6.14% (2022 est.)"
+      },
+      "Unemployment rate 2021": {
+        "text": "6.89% (2021 est.)"
+      },
+      "note": "<b>note:</b> % of labor force seeking employment"
+    },
+    "Youth unemployment rate (ages 15-24)": {
+      "total": {
+        "text": "19.4% (2023 est.)"
+      },
+      "male": {
+        "text": "21.6% (2023 est.)"
+      },
+      "female": {
+        "text": "15.8% (2023 est.)"
+      },
+      "note": "<b>note:</b> % of labor force ages 15-24 seeking employment"
+    },
+    "Population below poverty line": {
+      "text": "13.7% (2021 est.)",
+      "note": "<b>note:</b> % of population with income below national poverty line"
+    },
+    "Gini Index coefficient - distribution of family income": {
+      "Gini Index coefficient - distribution of family income 2021": {
+        "text": "24.1 (2021 est.)"
+      },
+      "note": "<b>note:</b> index (0-100) of income distribution; higher values represent greater inequality"
+    },
+    "Average household expenditures": {
+      "on food": {
+        "text": "19.4% of household expenditures (2023 est.)"
+      },
+      "on alcohol and tobacco": {
+        "text": "4.9% of household expenditures (2023 est.)"
+      }
+    },
+    "Household income or consumption by percentage share": {
+      "lowest 10%": {
+        "text": "3.4% (2021 est.)"
+      },
+      "highest 10%": {
+        "text": "19.1% (2021 est.)"
+      },
+      "note": "<b>note:</b> % share of income accruing to lowest and highest 10% of population"
+    },
+    "Remittances": {
+      "Remittances 2023": {
+        "text": "1.8% of GDP (2023 est.)"
+      },
+      "Remittances 2022": {
+        "text": "2% of GDP (2022 est.)"
+      },
+      "Remittances 2021": {
+        "text": "2.01% of GDP (2021 est.)"
+      },
+      "note": "<b>note:</b> personal transfers and compensation between resident and non-resident individuals/households/entities"
+    },
+    "Budget": {
+      "revenues": {
+        "text": "$43.882 billion (2022 est.)"
+      },
+      "expenditures": {
+        "text": "$46.056 billion (2022 est.)"
+      },
+      "note": "<b>note:</b> central government revenues (excluding grants) and expenses converted to US dollars at average official exchange rate for year indicated"
+    },
+    "Public debt": {
+      "Public debt 2022": {
+        "text": "64.32% of GDP (2022 est.)"
+      },
+      "note": "<b>note:</b> central government debt as a % of GDP"
+    },
+    "Taxes and other revenues": {
+      "text": "19.44% (of GDP) (2022 est.)",
+      "note": "<b>note:</b> central government tax revenue as a % of GDP"
+    },
+    "Current account balance": {
+      "Current account balance 2023": {
+        "text": "-$2.23 billion (2023 est.)"
+      },
+      "Current account balance 2022": {
+        "text": "-$11.126 billion (2022 est.)"
+      },
+      "Current account balance 2021": {
+        "text": "-$5.776 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - net trade and primary/secondary income in current dollars"
+    },
+    "Exports": {
+      "Exports 2023": {
+        "text": "$121.008 billion (2023 est.)"
+      },
+      "Exports 2022": {
+        "text": "$114.519 billion (2022 est.)"
+      },
+      "Exports 2021": {
+        "text": "$109.237 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - exports of goods and services in current dollars"
+    },
+    "Exports - partners": {
+      "text": "Germany 20%, Czechia 11%, Hungary 9%, Poland 7%, France 6% (2022)",
+      "note": "<b>note:</b> top five export partners based on percentage share of exports"
+    },
+    "Exports - commodities": {
+      "text": "cars, vehicle parts/accessories, video displays, broadcasting equipment, electricity (2022)",
+      "note": "<b>note:</b> top five export commodities based on value in dollars"
+    },
+    "Imports": {
+      "Imports 2023": {
+        "text": "$119.666 billion (2023 est.)"
+      },
+      "Imports 2022": {
+        "text": "$121.473 billion (2022 est.)"
+      },
+      "Imports 2021": {
+        "text": "$109.891 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> balance of payments - imports of goods and services in current dollars"
+    },
+    "Imports - partners": {
+      "text": "Czechia 18%, Germany 15%, Poland 9%, Russia 7%, Austria 7% (2022)",
+      "note": "<b>note:</b> top five import partners based on percentage share of imports"
+    },
+    "Imports - commodities": {
+      "text": "vehicle parts/accessories, broadcasting equipment, natural gas, cars, electricity (2022)",
+      "note": "<b>note:</b> top five import commodities based on value in dollars"
+    },
+    "Reserves of foreign exchange and gold": {
+      "Reserves of foreign exchange and gold 2023": {
+        "text": "$11.288 billion (2023 est.)"
+      },
+      "Reserves of foreign exchange and gold 2022": {
+        "text": "$10.28 billion (2022 est.)"
+      },
+      "Reserves of foreign exchange and gold 2021": {
+        "text": "$9.61 billion (2021 est.)"
+      },
+      "note": "<b>note:</b> holdings of gold (year-end prices)/foreign exchange/special drawing rights in current dollars"
+    },
+    "Exchange rates": {
+      "Currency": {
+        "text": "euros (EUR) per US dollar -"
+      },
+      "Exchange rates 2023": {
+        "text": "0.925 (2023 est.)"
+      },
+      "Exchange rates 2022": {
+        "text": "0.95 (2022 est.)"
+      },
+      "Exchange rates 2021": {
+        "text": "0.845 (2021 est.)"
+      },
+      "Exchange rates 2020": {
+        "text": "0.876 (2020 est.)"
+      },
+      "Exchange rates 2019": {
+        "text": "0.893 (2019 est.)"
+      }
+    }
+  },
+  "Energy": {
+    "Electricity access": {
+      "electrification - total population": {
+        "text": "100% (2022 est.)"
+      }
+    },
+    "Electricity": {
+      "installed generating capacity": {
+        "text": "8.029 million kW (2022 est.)"
+      },
+      "consumption": {
+        "text": "26.372 billion kWh (2022 est.)"
+      },
+      "exports": {
+        "text": "15.336 billion kWh (2022 est.)"
+      },
+      "imports": {
+        "text": "16.709 billion kWh (2022 est.)"
+      },
+      "transmission/distribution losses": {
+        "text": "1.236 billion kWh (2022 est.)"
+      }
+    },
+    "Electricity generation sources": {
+      "fossil fuels": {
+        "text": "17.8% of total installed capacity (2022 est.)"
+      },
+      "nuclear": {
+        "text": "60.7% of total installed capacity (2022 est.)"
+      },
+      "solar": {
+        "text": "2.5% of total installed capacity (2022 est.)"
+      },
+      "hydroelectricity": {
+        "text": "11.8% of total installed capacity (2022 est.)"
+      },
+      "biomass and waste": {
+        "text": "7.2% of total installed capacity (2022 est.)"
+      }
+    },
+    "Nuclear energy": {
+      "Number of operational nuclear reactors": {
+        "text": "5 (2023)"
+      },
+      "Number of nuclear reactors under construction": {
+        "text": "1 (2023)"
+      },
+      "Net capacity of operational nuclear reactors": {
+        "text": "2.31GW (2023 est.)"
+      },
+      "Percent of total electricity production": {
+        "text": "61.3% (2023 est.)"
+      },
+      "Number of nuclear reactors permanently shut down": {
+        "text": "3 (2023)"
+      }
+    },
+    "Coal": {
+      "production": {
+        "text": "2.343 million metric tons (2022 est.)"
+      },
+      "consumption": {
+        "text": "5.794 million metric tons (2022 est.)"
+      },
+      "exports": {
+        "text": "20,000 metric tons (2022 est.)"
+      },
+      "imports": {
+        "text": "3.414 million metric tons (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "19 million metric tons (2022 est.)"
+      }
+    },
+    "Petroleum": {
+      "total petroleum production": {
+        "text": "7,000 bbl/day (2023 est.)"
+      },
+      "refined petroleum consumption": {
+        "text": "94,000 bbl/day (2023 est.)"
+      },
+      "crude oil estimated reserves": {
+        "text": "9 million barrels (2021 est.)"
+      }
+    },
+    "Natural gas": {
+      "production": {
+        "text": "52.556 million cubic meters (2022 est.)"
+      },
+      "consumption": {
+        "text": "60.424 million cubic meters (2022 est.)"
+      },
+      "imports": {
+        "text": "6.241 billion cubic meters (2022 est.)"
+      },
+      "proven reserves": {
+        "text": "14.158 billion cubic meters (2021 est.)"
+      }
+    },
+    "Carbon dioxide emissions": {
+      "total emissions": {
+        "text": "21.405 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from coal and metallurgical coke": {
+        "text": "9.253 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from petroleum and other liquids": {
+        "text": "12.033 million metric tonnes of CO2 (2022 est.)"
+      },
+      "from consumed natural gas": {
+        "text": "118,000 metric tonnes of CO2 (2022 est.)"
+      }
+    },
+    "Energy consumption per capita": {
+      "Total energy consumption per capita 2022": {
+        "text": "93.681 million Btu/person (2022 est.)"
+      }
+    }
+  },
+  "Communications": {
+    "Telephones - fixed lines": {
+      "total subscriptions": {
+        "text": "505,000 (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "9 (2023 est.)"
+      }
+    },
+    "Telephones - mobile cellular": {
+      "total subscriptions": {
+        "text": "7.63 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "132 (2022 est.)"
+      }
+    },
+    "Telecommunication systems": {
+      "general assessment": {
+        "text": "the broadband market has shown steady growth in recent years; fiber has become the principal platform for fixed broadband services, followed by DSL; the cable sector is a distant third in terms of subscribers, though cable is particularly strong in urban areas; mobile broadband access and content services are developing rapidly in line with operators having upgraded their networks; the regulator prepared the groundwork for 5G services in line with European Union requirements, with concessions in the 3.5GHz range followed by those in the 700MHz, 900MHz and 1800MHz bands; 5G was launched in late 2021 and is expected to cover about a fifth of the population by the end of 2022 (2024)"
+      },
+      "domestic": {
+        "text": "fixed-line is 10 per 100 and mobile-cellular is 132 per 100 tele density (2022)"
+      },
+      "international": {
+        "text": "country code - 421; 3 international exchanges (1 in Bratislava and 2 in Banska Bystrica) are available; Slovakia is participating in several international telecommunications projects that will increase the availability of external services; connects to DREAM cable (2017)"
+      }
+    },
+    "Broadcast media": {
+      "text": "state-owned public broadcaster, Radio and Television of Slovakia (RTVS), operates 2 national TV stations and multiple national and regional radio networks; roughly 50 privately owned TV stations operating nationally, regionally, and locally; about 40% of households are connected to multi-channel cable or satellite TV; 32 privately owned radio stations"
+    },
+    "Internet country code": {
+      "text": ".sk"
+    },
+    "Internet users": {
+      "percent of population": {
+        "text": "87% (2023 est.)"
+      }
+    },
+    "Broadband - fixed subscriptions": {
+      "total": {
+        "text": "1.83 million (2023 est.)"
+      },
+      "subscriptions per 100 inhabitants": {
+        "text": "33 (2023 est.)"
+      }
+    }
+  },
+  "Transportation": {
+    "National air transport system": {
+      "number of registered air carriers": {
+        "text": "4 (2020)"
+      },
+      "inventory of registered aircraft operated by air carriers": {
+        "text": "45"
+      }
+    },
+    "Civil aircraft registration country code prefix": {
+      "text": "OM"
+    },
+    "Airports": {
+      "text": "114 (2024)"
+    },
+    "Heliports": {
+      "text": "2 (2024)"
+    },
+    "Pipelines": {
+      "text": "2,270 km gas transmission pipelines, 6,278 km high-pressure gas distribution pipelines, 27,023 km mid- and low-pressure gas distribution pipelines (2016), 510 km oil (2015) (2016)"
+    },
+    "Railways": {
+      "total": {
+        "text": "3,627 km (2020) 1,585 km electrified"
+      }
+    },
+    "Roadways": {
+      "total": {
+        "text": "45,106 km (2022)"
+      }
+    },
+    "Waterways": {
+      "text": "172 km (2012) (on Danube River)"
+    }
+  },
+  "Military and Security": {
+    "Military and security forces": {
+      "text": "Armed Forces of the Slovak Republic (Ozbrojene Sily Slovenskej Republiky): Land Forces (Slovenské Pozemné Sily), Air Forces (Slovenské Vzdušné Sily), Special Operations Forces (Sily Pre Speciálne Operácie)<br><br>Ministry of Interior: Slovak Police Force (SPF or Policajný Zbor) (2024)",
+      "note": "<strong>note:</strong> the SPF has sole responsibility for internal and border security"
+    },
+    "Military expenditures": {
+      "Military Expenditures 2024": {
+        "text": "2% of GDP (2024 est.)"
+      },
+      "Military Expenditures 2023": {
+        "text": "2.1% of GDP (2023)"
+      },
+      "Military Expenditures 2022": {
+        "text": "1.8% of GDP (2022)"
+      },
+      "Military Expenditures 2021": {
+        "text": "1.7% of GDP (2021)"
+      },
+      "Military Expenditures 2020": {
+        "text": "1.9% of GDP (2020)"
+      }
+    },
+    "Military and security service personnel strengths": {
+      "text": "approximately 15,000 active-duty personnel (8,000 Land Forces; 4,000 Air Forces; 3,000 other, including staff, special operations, and support forces) (2024)"
+    },
+    "Military equipment inventories and acquisitions": {
+      "text": "the military's inventory consists mostly of Soviet-era platforms; in recent years it has imported limited quantities of more modern, NATO-compatible equipment, particularly from Italy and the US (2024)"
+    },
+    "Military service age and obligation": {
+      "text": "18-30 years of age for voluntary military service for men and women; conscription in peacetime suspended in 2004 (2023)",
+      "note": "<strong>note:</strong> as of 2021, women made up nearly 13% of the military's full-time personnel"
+    },
+    "Military deployments": {
+      "text": "240 Cyprus (UNFICYP); up to 150 Latvia (NATO) (2024)"
+    },
+    "Military - note": {
+      "text": "the Slovak military was created from the Czechoslovak Army after the dissolution of Czechoslovakia in January 1993; it is responsible for external defense and fulfilling Slovakia’s commitments to European and international security; Slovakia has been a member of both the EU and NATO since 2004; a key focus of the Slovak military is fulfilling the country’s security responsibilities to NATO, including modernizing and acquiring NATO-compatible equipment, participating in training exercises, and providing forces for security missions such as NATO’s Enhanced Forward Presence in the Baltic States; since 2022, Slovakia has hosted a NATO ground force battlegroup comprised of troops from Czechia, Germany, the Netherlands, Poland, Slovakia, Slovenia, and the US as part of the NATO effort to boost the defenses of Eastern Europe since the Russian invasion of Ukraine; Slovakia also contributes to EU and UN peacekeeping missions<br><br>the Slovak Air Force has only a handful of fighter aircraft and is assisted by NATO’s air policing mission over Slovakia, which includes fighter aircraft from Czechia and Poland; in 2022, Slovakia signed a defense agreement with the US that allows the US to use two Slovak military air bases (2024)"
+    }
+  },
+  "Space": {
+    "Space agency/agencies": {
+      "text": "no national government agency; the Slovak Space Office is responsible for inter-ministerial political coordination and multilateral international cooperation; it serves as the official national contact point for international cooperation between space agencies, offices, associations, businesses, and research entities, and is part of the Ministry of Education, Science, Research, and Sport (2023)"
+    },
+    "Space program overview": {
+      "text": "focused on the development of satellites, satellite subcomponents, and other space-related technologies; as a member state of the EU, it is actively involved in all key components of the EU space program, and Slovak researchers actively participate in a variety of EU and/or European Space Agency (ESA) space missions including the Galileo global navigational system program, Copernicus Earth observation satellite program, Rosetta comet probe, BepiColombo (Mercury planetary orbiter), and Jupiter Icy Moons Explorer (JUICE) mission; has more than 40 established companies actively involved in the space sector (2023)",
+      "note": "<strong>note:</strong> further details about the key activities, programs, and milestones of the country’s space program, as well as government spending estimates on the space sector, appear in the Space Programs reference guide"
+    }
+  },
+  "Transnational Issues": {
+    "Refugees and internally displaced persons": {
+      "refugees (country of origin)": {
+        "text": "117,265 (Ukraine) (as of 14 April 2024)"
+      },
+      "stateless persons": {
+        "text": "2,940 (2022)"
+      }
+    },
+    "Illicit drugs": {
+      "text": "transshipment point for Southwest Asian heroin bound for Western Europe; producer of synthetic drugs for regional market; consumer of MDMA (ecstasy)"
+    }
+  }
+}
