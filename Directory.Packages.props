@@ -14,7 +14,7 @@
     <!-- DuckDB-backed source reader (SqlFlow.DuckDb): the .Full variant bundles the native libduckdb per-RID,
          so self-contained / winget publishes carry the engine. Native dependency, isolated to this project. -->
     <PackageVersion Include="DuckDB.NET.Data.Full" Version="1.5.3" />
-    <PackageVersion Include="MySqlConnector" Version="2.6.0" />
+    <PackageVersion Include="MySqlConnector" Version="2.6.2" />
     <PackageVersion Include="Npgsql" Version="10.0.3" />
     <!-- Oracle's official cross-platform managed ADO.NET driver (SqlFlow.Providers): pure-managed, no native
          client install, targets modern .NET. Oracle is a SOURCE-only provider like MySQL and PostgreSQL. -->
