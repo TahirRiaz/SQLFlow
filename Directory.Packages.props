@@ -43,7 +43,7 @@
     <!-- The EF-managed shadow catalog (SqlFlow.Catalog): a read-model of the git/YAML estate + on-disk run logs,
          the backing store for the GUI/API tier. EF lives ONLY here, never in the engine. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.17" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.17" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.20" />
     <!-- The control plane (SqlFlow.ControlPlane): the enterprise API + coordination host over the shadow catalog.
          JWT bearer auth, the built-in .NET 9 OpenAPI document, and EF health-check probe for readiness. -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.17" />
