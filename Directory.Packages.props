@@ -20,7 +20,7 @@
          client install, targets modern .NET. Oracle is a SOURCE-only provider like MySQL and PostgreSQL. -->
     <PackageVersion Include="Oracle.ManagedDataAccess.Core" Version="23.26.200" />
     <!-- The ML health check (SqlFlow.HealthCheck): the same proven pair the legacy engine trained with. -->
-    <PackageVersion Include="Microsoft.ML" Version="4.0.2" />
+    <PackageVersion Include="Microsoft.ML" Version="5.0.0" />
     <PackageVersion Include="Microsoft.ML.AutoML" Version="0.22.2" />
     <PackageVersion Include="System.Text.Encoding.CodePages" Version="9.0.8" />
     <PackageVersion Include="Azure.Identity" Version="1.21.0" />
