@@ -60,7 +60,7 @@
          auth). Only the SMTP provider uses it; the Graph provider is plain HTTP against Microsoft Graph. -->
     <PackageVersion Include="MailKit" Version="4.17.0" />
     <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.17" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.17" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.20" />
     <!-- The Slack bot (SqlFlow.SlackBot): SlackNet is the Socket Mode + Web API client (no public inbound
          endpoint needed); the Azure AI Foundry agent is driven directly over the OpenAI Responses API
          (System.Net.Http + Azure.Identity for the managed-identity token), the surface current model
