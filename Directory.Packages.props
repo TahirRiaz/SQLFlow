@@ -47,7 +47,7 @@
     <!-- The control plane (SqlFlow.ControlPlane): the enterprise API + coordination host over the shadow catalog.
          JWT bearer auth, the built-in .NET 9 OpenAPI document, and EF health-check probe for readiness. -->
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.17" />
-    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.17" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.20" />
     <!-- Identity for the control plane's user store: PasswordHasher (PBKDF2) for local SQLFlow users, and the
          OpenID Connect protocol stack for validating Microsoft Entra ID tokens on the /auth/exchange endpoint.
          The OpenIdConnect version matches what JwtBearer already resolves transitively. -->
