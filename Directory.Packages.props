@@ -59,7 +59,7 @@
          .NET team recommends over the legacy System.Net.Mail.SmtpClient (which lacks implicit TLS and modern
          auth). Only the SMTP provider uses it; the Graph provider is plain HTTP against Microsoft Graph. -->
     <PackageVersion Include="MailKit" Version="4.17.0" />
-    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.17" />
+    <PackageVersion Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" Version="9.0.20" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="9.0.17" />
     <!-- The Slack bot (SqlFlow.SlackBot): SlackNet is the Socket Mode + Web API client (no public inbound
          endpoint needed); the Azure AI Foundry agent is driven directly over the OpenAI Responses API
@@ -70,13 +70,13 @@
          with the MCP connector calling the same SQLFlow MCP server). -->
     <PackageVersion Include="Anthropic" Version="12.35.1" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.9" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.9" />
-    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+    <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="10.0.12" />
   </ItemGroup>
 
   <!-- Test stack -->
