@@ -28,7 +28,7 @@
     <PackageVersion Include="Azure.ResourceManager" Version="1.14.0" />
     <PackageVersion Include="Azure.ResourceManager.DataFactory" Version="1.11.1" />
     <PackageVersion Include="Azure.ResourceManager.Automation" Version="1.1.2" />
-    <PackageVersion Include="Azure.Storage.Blobs" Version="12.24.0" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.29.2" />
     <!-- Generic API acquisition (SqlFlow.Acquire): the non-HTTP transports. SSH.NET for SFTP, the AWS S3 SDK for
          S3 object download, and Azure.Data.Tables for Azure Storage Table queries. HTTP uses the BCL HttpClient. -->
     <PackageVersion Include="SSH.NET" Version="2024.2.0" />
