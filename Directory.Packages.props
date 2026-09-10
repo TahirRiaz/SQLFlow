@@ -39,7 +39,7 @@
          commits and pushes the snapshot to a git remote (BitBucket app password or GitHub PAT over HTTPS). Both
          are fully managed and run on every platform .NET supports. -->
     <PackageVersion Include="Microsoft.SqlServer.SqlManagementObjects" Version="181.25.0" />
-    <PackageVersion Include="LibGit2Sharp" Version="0.31.0" />
+    <PackageVersion Include="LibGit2Sharp" Version="0.32.0" />
     <!-- The EF-managed shadow catalog (SqlFlow.Catalog): a read-model of the git/YAML estate + on-disk run logs,
          the backing store for the GUI/API tier. EF lives ONLY here, never in the engine. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.17" />
