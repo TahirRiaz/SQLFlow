@@ -65,7 +65,7 @@
          endpoint needed); the Azure AI Foundry agent is driven directly over the OpenAI Responses API
          (System.Net.Http + Azure.Identity for the managed-identity token), the surface current model
          deployments support the MCP tool through; Hosting provides the worker-service host. -->
-    <PackageVersion Include="SlackNet" Version="0.17.10" />
+    <PackageVersion Include="SlackNet" Version="0.18.0" />
     <!-- The official Anthropic SDK, for the Slack bot's Anthropic provider mode (Claude Messages API
          with the MCP connector calling the same SQLFlow MCP server). -->
     <PackageVersion Include="Anthropic" Version="12.35.1" />
