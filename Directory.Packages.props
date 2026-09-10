@@ -52,7 +52,7 @@
          OpenID Connect protocol stack for validating Microsoft Entra ID tokens on the /auth/exchange endpoint.
          The OpenIdConnect version matches what JwtBearer already resolves transitively. -->
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="9.0.8" />
-    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.22.0" />
     <!-- Cronos: standard-cron parsing with correct time-zone / DST handling, for the control-plane scheduler. -->
     <PackageVersion Include="Cronos" Version="0.13.0" />
     <!-- The control plane's notification email channel: MailKit is the maintained, fully-async SMTP client the
