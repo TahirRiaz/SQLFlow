@@ -16,7 +16,7 @@ namespace SqlFlow.ControlPlane.Background;
 /// </summary>
 /// <remarks>
 /// Hosted only when the automatic sweep is enabled (<c>ControlPlane:RunTrace:Enabled</c>), on every control-plane
-/// replica like <c>OrphanRunReaper</c>; the batched, join-gated delete is idempotent and safe under concurrency, so
+/// replica like the notification service; the batched, join-gated delete is idempotent and safe under concurrency, so
 /// multiple replicas sweeping at once never conflict. The retention is read fresh each sweep (it is operator-tunable
 /// from the GUI), and a null retention means keep forever, so the sweep does nothing. A sweep error (a transient
 /// database outage) is logged, secret-redacted, and retried on the next tick; it never stops the loop.

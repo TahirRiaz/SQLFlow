@@ -30,7 +30,9 @@ public sealed class ControlPlaneOptions
 
     public WorkerOptions Worker { get; set; } = new();
 
-    public ReaperOptions Reaper { get; set; } = new();
+    /// <summary>The in-memory dispatcher: leases, long polls, reconcile cadence, ownership. Bound from
+    /// <c>ControlPlane:Dispatch</c>.</summary>
+    public SqlFlow.Dispatch.DispatchOptions Dispatch { get; set; } = new();
 
     public ManagedSyncOptions ManagedSync { get; set; } = new();
 
@@ -83,9 +85,9 @@ public sealed class ControlPlaneOptions
             throw new InvalidOperationException("ControlPlane:Jwt:SessionMaxDays must be between 1 and 365.");
         }
 
-        if (RateLimit.PermitPerWindow < 1 || RateLimit.WindowSeconds < 1)
+        if (RateLimit.PermitPerWindow < 1 || RateLimit.WindowSeconds < 1 || RateLimit.NodePermitPerWindow < 1)
         {
-            throw new InvalidOperationException("ControlPlane:RateLimit:PermitPerWindow and WindowSeconds must be positive.");
+            throw new InvalidOperationException("ControlPlane:RateLimit:PermitPerWindow, NodePermitPerWindow and WindowSeconds must be positive.");
         }
 
         if (Scheduler.PollSeconds < 1)
@@ -98,27 +100,18 @@ public sealed class ControlPlaneOptions
             throw new InvalidOperationException("ControlPlane:Worker:MaxConcurrentRuns must be at least 1.");
         }
 
-        if (Worker.PollMilliseconds < 250)
+        if (Worker.MaxConcurrentComputeTasks < 1)
         {
-            throw new InvalidOperationException(
-                "ControlPlane:Worker:PollMilliseconds must be at least 250, so a misconfigured value cannot spin the drain loop against the catalog.");
+            throw new InvalidOperationException("ControlPlane:Worker:MaxConcurrentComputeTasks must be at least 1.");
         }
 
-        if (Reaper.PollSeconds < 1)
+        try
         {
-            throw new InvalidOperationException("ControlPlane:Reaper:PollSeconds must be positive.");
+            Dispatch.Validate();
         }
-
-        if (Reaper.StaleAfterSeconds < 60)
+        catch (InvalidOperationException ex)
         {
-            throw new InvalidOperationException(
-                "ControlPlane:Reaper:StaleAfterSeconds must be at least 60, comfortably larger than a node's heartbeat cadence, so a brief heartbeat gap never fails a live node's runs.");
-        }
-
-        if (Reaper.NodeRetentionHours < 0)
-        {
-            throw new InvalidOperationException(
-                "ControlPlane:Reaper:NodeRetentionHours must be zero or positive (0 disables pruning stale nodes from the fleet registry).");
+            throw new InvalidOperationException("ControlPlane:" + ex.Message, ex);
         }
 
         AzureAd.Validate();
@@ -375,6 +368,11 @@ public sealed class RateLimitOptions
 {
     public int PermitPerWindow { get; set; } = 120;
 
+    /// <summary>The per-node window for the node protocol, keyed by the node token's subject: a node long-polls
+    /// every few seconds, reports outcomes, and (with trace streaming) posts small batches several times a second
+    /// during a run, so its ceiling is far above a person's. Still bounded, so a misbehaving node cannot flood.</summary>
+    public int NodePermitPerWindow { get; set; } = 6000;
+
     public int WindowSeconds { get; set; } = 60;
 }
 
@@ -402,32 +400,9 @@ public sealed class WorkerOptions
     /// and leaves queued runs for other nodes. Minimum 1 (a strictly serial node).</summary>
     public int MaxConcurrentRuns { get; set; } = 4;
 
-    /// <summary>The drain loop's poll fallback in milliseconds. A triggered run starts at once via the in-process
-    /// nudge; this only bounds how long schedule- and other-node-enqueued runs (and recovery) wait to be picked
-    /// up. Minimum 250, so a misconfigured value cannot spin-loop the worker against the catalog.</summary>
-    public int PollMilliseconds { get; set; } = 2000;
-}
-
-/// <summary>The orphan-run reaper: the control plane sweeps for runs left <c>running</c> by a node that has stopped
-/// heartbeating and recovers them, releasing the run and the pipeline gate a dead node would otherwise hold
-/// forever. An orphan is requeued for another worker (failed only once it exhausts its attempt budget, cancelled
-/// when an operator cancel was already pending); see <c>RunQueueStore.ReapOrphanedRunningAsync</c>.
-/// <see cref="PollSeconds"/> is how often it sweeps. <see cref="StaleAfterSeconds"/> is how long a claiming node may
-/// be silent before its runs are declared orphaned; it must be comfortably larger than a node's heartbeat cadence
-/// (a few beats) so a transient catalog blip never disturbs a live node's work. The default gives several missed
-/// beats of margin over the 60s fleet online window.</summary>
-public sealed class ReaperOptions
-{
-    public int PollSeconds { get; set; } = 30;
-
-    public int StaleAfterSeconds { get; set; } = 180;
-
-    /// <summary>How long a node may be offline before the sweep prunes it from the fleet registry. Every worker pod
-    /// registers under a fresh name (each orchestrator revision, each autoscale-up), and the registry never removes
-    /// the ones that stopped heartbeating, so without a prune the fleet view grows a dead row per pod forever. The
-    /// default keeps a day of history for debugging a recent failure while clearing the long-dead clutter; 0 disables
-    /// the prune (rows then linger until deleted by hand).</summary>
-    public int NodeRetentionHours { get; set; } = 24;
+    /// <summary>How many compute tasks (interactive datasource inspections) this node executes at once, on a gate
+    /// separate from the run gate so a node saturated with long runs still answers an operator promptly.</summary>
+    public int MaxConcurrentComputeTasks { get; set; } = 2;
 }
 
 /// <summary>

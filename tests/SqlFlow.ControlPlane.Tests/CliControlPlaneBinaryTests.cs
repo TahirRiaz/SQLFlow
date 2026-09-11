@@ -1,7 +1,9 @@
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
 using SqlFlow.Cli.Remote;
@@ -836,6 +838,145 @@ public sealed class CliControlPlaneBinaryTests : IDisposable
     }
 
     // ---- seeding and cleanup ------------------------------------------------------------------------------
+
+    // ---- worker ---------------------------------------------------------------------------------------------
+
+    /// <summary>The whole fleet loop through real processes: a queued run routed to a pool only the standalone
+    /// worker serves, the compiled worker polling the compiled control plane over HTTP with a node token, executing
+    /// the flow file from the repo's root path, loading the sink, and reporting the outcome under the enqueued
+    /// run id. The control plane's own in-process node serves no pool, so it never takes the run.</summary>
+    [SkippableFact]
+    public async Task Worker_PollsTheControlPlane_ExecutesTheFlow_AndReportsSuccess()
+    {
+        var (dll, url, cs) = await RequireAsync();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoName = "cli_worker_" + suffix;
+        var repoId = FlowIdentity.FromName(repoName);
+        var flowName = "cli_worker_orders_" + suffix;
+        var pool = "cli-worker-" + suffix;
+        var table = "IT_CliWrk_" + suffix;
+        await DropTableAsync(cs, table);
+
+        // The repo's working tree on disk: the worker resolves an unpinned run from RootPath + RelativePath.
+        var root = Path.Combine(_dir, repoName);
+        Directory.CreateDirectory(Path.Combine(root, "flows"));
+        var csv = Path.Combine(root, "flows", "orders.csv");
+        File.WriteAllText(csv, "Id,Name\n1,Acme\n2,Globex\n");
+        File.WriteAllText(Path.Combine(root, "flows", flowName + ".flow.yaml"), $$"""
+            name: {{flowName}}
+            source:
+              type: csv
+              location: {{csv.Replace('\\', '/')}}
+            target:
+              connection: "${env:SQLFlowSinkConStr}"
+              schema: dbo
+              table: {{table}}
+            """);
+
+        Guid runId;
+        var now = DateTime.UtcNow;
+        await using (var db = CatalogDatabase.Create(cs))
+        {
+            db.Repos.Add(new CatalogRepo
+            {
+                Id = repoId,
+                Name = repoName,
+                RootPath = root,
+                FirstSeenUtc = now,
+                LastSyncUtc = now,
+            });
+            db.Pipelines.Add(new CatalogPipeline
+            {
+                Id = CatalogIdentity.Pipeline(repoId, flowName),
+                RepoId = repoId,
+                Name = flowName,
+                Kind = "file",
+                RelativePath = "flows/" + flowName + ".flow.yaml",
+                ContentHash = "0000000000000000000000000000000000000000000000000000000000000000",
+                Yaml = "name: " + flowName,
+                DefinitionJson = $$"""{"name":"{{flowName}}"}""",
+                Active = true,
+                Wave = 0,
+                FirstSeenUtc = now,
+                LastSeenUtc = now,
+            });
+            await db.SaveChangesAsync();
+            // Journaled straight into the catalog, bypassing the control plane's notify: the dispatcher's reconcile
+            // is what picks it up, which is the same path an enqueue on a passive replica takes.
+            runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "file", pool), now)).RunId;
+        }
+
+        var nodeToken = await MintBootstrapTokenAsync(url, ["node"]);
+        await using var worker = CliBinary.Start(
+            dll, ["worker", "--pool", pool, "--poll-seconds", "5"],
+            env: CliEnv(url, ("SQLFLOW_TOKEN", nodeToken), ("SQLFLOW_CATALOG_DB", cs), ("SQLFlowSinkConStr", cs)),
+            workingDirectory: _dir);
+        try
+        {
+            var banner = await worker.WaitForOutputLineAsync(
+                l => l.Contains("polling", StringComparison.Ordinal), TimeSpan.FromSeconds(30));
+            Assert.True(banner is not null, $"the worker never announced itself.\n{worker.StdOut}\n{worker.StdErr}");
+
+            // Reconcile runs every few seconds and the flow is tiny; 120s is generous headroom for a cold start.
+            var deadline = DateTime.UtcNow.AddSeconds(120);
+            string status;
+            do
+            {
+                await Task.Delay(1000);
+                await using var db = CatalogDatabase.Create(cs);
+                status = (await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId)).Status;
+            }
+            while (status is "queued" or "running" && DateTime.UtcNow < deadline);
+
+            Assert.True(status == "succeeded",
+                $"run ended '{status}'.\nworker stdout:\n{worker.StdOut}\nworker stderr:\n{worker.StdErr}");
+            Assert.Equal(2, await RowCountAsync(cs, table));
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
+                Assert.Equal(Environment.MachineName, run.ClaimedByNode);
+                Assert.Equal(1, run.Attempt);
+            }
+        }
+        finally
+        {
+            await DropTableAsync(cs, table);
+            await CleanupRepoAsync(cs, repoId);
+            await using var db = CatalogDatabase.Create(cs);
+            await db.Nodes.Where(n => n.Name == Environment.MachineName).ExecuteDeleteAsync();
+        }
+    }
+
+    private static async Task<string> MintBootstrapTokenAsync(string url, IReadOnlyList<string> scopes)
+    {
+        using var http = new HttpClient { BaseAddress = new Uri(url) };
+        using var response = await http.PostAsJsonAsync(
+            new Uri("/api/v1/auth/token", UriKind.Relative),
+            new { secret = ControlPlaneAppFactory.BootstrapSecret, scopes });
+        response.EnsureSuccessStatusCode();
+        // The bootstrap token endpoint answers in the API's camelCase shape (the RFC 8628 device grant is the one
+        // that uses snake_case); the CLI's own mirror record is deliberately not imported here.
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return body.RootElement.GetProperty("accessToken").GetString()!;
+    }
+
+    private static async Task DropTableAsync(string cs, string table)
+    {
+        await using var connection = new SqlConnection(cs);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"IF OBJECT_ID('dbo.[{table}]', 'U') IS NOT NULL DROP TABLE dbo.[{table}];";
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private static async Task<int> RowCountAsync(string cs, string table)
+    {
+        await using var connection = new SqlConnection(cs);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = $"SELECT COUNT(*) FROM dbo.[{table}];";
+        return (int)(await command.ExecuteScalarAsync() ?? 0);
+    }
 
     private static async Task<(string Username, string Password)> SeedOperatorAsync(string cs)
     {

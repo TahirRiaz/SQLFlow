@@ -1199,6 +1199,31 @@ public class CatalogNode
 }
 
 /// <summary>
+/// The single dispatch ownership lease: which control-plane replica runs the in-memory dispatcher right now. One
+/// row per lease name (only <c>dispatch</c> exists today). <see cref="Owner"/> identifies the process holding it,
+/// <see cref="ExpiresUtc"/> is when the hold lapses unless renewed, and <see cref="Epoch"/> advances on every
+/// takeover so a log line can tell one ownership period from the next. Acquired and renewed by one conditional
+/// update (see <c>DispatchLeaseStore</c>), never by a locking hint.
+/// </summary>
+public class CatalogDispatchLease
+{
+    /// <summary>The lease name; <c>dispatch</c> is the dispatcher's.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The process holding the lease (host name, process id and a random suffix).</summary>
+    public string Owner { get; set; } = string.Empty;
+
+    /// <summary>Advances on every change of owner; a renewal by the same owner keeps it.</summary>
+    public long Epoch { get; set; }
+
+    /// <summary>When the current owner first took the lease.</summary>
+    public DateTime AcquiredUtc { get; set; }
+
+    /// <summary>When the hold lapses unless renewed; a successor acquires at or after this moment.</summary>
+    public DateTime ExpiresUtc { get; set; }
+}
+
+/// <summary>
 /// The desired compute state for one worker pool, written by the control plane (the GUI's fleet controls) and read
 /// by the autoscaler. The pool autoscales on queue depth, but that alone cannot express "keep at least one worker
 /// warm" or "bring a worker up now even though nothing is queued", so this row carries those intents: the scaler's

@@ -13,10 +13,13 @@ using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Api;
 using SqlFlow.ControlPlane.Background;
 using SqlFlow.ControlPlane.Configuration;
+using SqlFlow.ControlPlane.Dispatch;
 using SqlFlow.ControlPlane.Infrastructure;
 using SqlFlow.ControlPlane.Notifications;
 using SqlFlow.ControlPlane.Proposals;
 using SqlFlow.ControlPlane.Security;
+using SqlFlow.Dispatch;
+using SqlFlow.Dispatch.Protocol;
 using SqlFlow.Execution;
 using SqlFlow.Node;
 using SqlFlow.SourceControl.Proposals;
@@ -32,6 +35,25 @@ builder.Services.AddOptions<ControlPlaneOptions>()
         "ControlPlane configuration is invalid; see the eager startup validation message for the specific field.")
     .ValidateOnStart();
 builder.Services.AddSingleton(TimeProvider.System);
+
+// Settings that no longer exist fail loudly rather than being silently ignored: a deployment still carrying the
+// orphan reaper's knobs or the worker's catalog poll interval would otherwise believe it had configured something.
+foreach (var (retired, replacement) in new[]
+{
+    ("ControlPlane:Reaper", "ControlPlane:Dispatch (node leases replaced the orphan reaper)"),
+    ("ControlPlane:Worker:PollMilliseconds", "ControlPlane:Dispatch:LongPollSeconds (nodes long-poll the dispatcher; there is no catalog poll)"),
+})
+{
+    if (builder.Configuration.GetSection(retired).Exists())
+    {
+        throw new InvalidOperationException($"{retired} is no longer a setting; use {replacement}.");
+    }
+}
+
+static bool HasScope(System.Security.Claims.ClaimsPrincipal user, string scope)
+    => user.FindFirst("scope")?.Value
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Contains(scope) == true;
 
 // ---- SqlFlow engine: the one shared composition (source readers, secret chain, connection registry, loaders,
 // the flow runner, and the DocumentExecutor). The control plane runs flows through the exact same engine wiring as
@@ -56,17 +78,26 @@ if (options.AzureAd.IsEnabled)
 // Retries in the background until the catalog is reachable, so start order (app before database) never matters.
 builder.Services.AddHostedService<BootstrapProvisioningService>();
 
-// ---- Run queue: the catalog's Run table is a durable work queue. The dispatcher enqueues a run (references only:
-// repo + flow name) and nudges the worker; the background worker atomically claims the oldest queued run, runs it
-// through the shared DocumentExecutor, and records the outcome under the same id the trigger returned. Durability,
-// ordering, and the queued/running/finished lifecycle live in the database, so runs survive a restart and are
-// visible to the read API from the moment they are queued.
-builder.Services.AddSingleton<RunQueueSignal>();
-builder.Services.AddSingleton<InProcessRunDispatcher>();
-builder.Services.AddSingleton<IRunDispatcher>(sp => sp.GetRequiredService<InProcessRunDispatcher>());
-// The shared node runtime (also run standalone by `sqlflow worker`); hosted here as a background service that
-// idles on the in-process nudge. API-only replicas (Worker:Enabled=false) skip hosting it so the HTTP tier can
-// scale on request load behind an ingress while compute scales on queue depth as separate worker processes.
+// ---- Dispatch: the run queue lives in this process. The dispatcher holds every queued and executing run and
+// compute task in memory, makes each placement decision (pool routing, wave order, group concurrency, one
+// execution per pipeline) under one lock, leases work to nodes that pull it, and journals every decision to the
+// catalog with plain conditional updates, so runs survive a restart and are visible to the read API from the
+// moment they are queued. Exactly one replica dispatches at a time: DispatchService arbitrates through the
+// catalog's ownership lease and drives the housekeeping ticks (lease expiry, reconcile, node flush) while active.
+// The API enqueues and cancels through IRunDispatcher, which journals first and then tells the dispatcher.
+builder.Services.AddSingleton<IDispatchLedger, CatalogDispatchLedger>();
+builder.Services.AddSingleton(sp => new Dispatcher(
+    sp.GetRequiredService<IDispatchLedger>(),
+    sp.GetRequiredService<IOptions<ControlPlaneOptions>>().Value.Dispatch,
+    sp.GetRequiredService<TimeProvider>(),
+    sp.GetRequiredService<ILogger<Dispatcher>>()));
+builder.Services.AddHostedService<DispatchService>();
+builder.Services.AddSingleton<IRunDispatcher, InProcessRunDispatcher>();
+// The shared node runtime (also run standalone by `sqlflow worker`), hosted here as a background service that
+// polls the dispatcher in-process, so a triggered run starts on this node the instant it is enqueued. API-only
+// replicas (Worker:Enabled=false) skip hosting it so the HTTP tier can scale on request load behind an ingress
+// while compute scales as separate worker processes speaking the same protocol over HTTP.
+builder.Services.AddSingleton<INodeTransport, InProcessNodeTransport>();
 builder.Services.AddSingleton<RunWorker>();
 if (options.Worker.Enabled)
 {
@@ -84,15 +115,6 @@ if (options.Worker.Enabled)
 // queue (one run path). Schedules come from git (YAML, synced) and the API (ad-hoc / pause-resume); firing
 // advances the next-fire atomically so multiple control-plane nodes never double-fire an occurrence.
 builder.Services.AddHostedService<SchedulerService>();
-
-// ---- Orphan reaper: a run is claimed by a node and flipped to 'running'; if that node dies without recording an
-// outcome (a crashed/evicted pod that never returns under the same name), the run would sit 'running' forever and
-// its pipeline gate would block every future run of that flow. This sweep fails such runs once their claiming node
-// has stopped heartbeating past the stale window. It is a control-plane responsibility independent of the
-// in-process worker, so it is hosted on every replica (including API-only ones); the per-run conditional update
-// makes concurrent reapers idempotent. It reads the same fleet heartbeat the Nodes page does, which is trustworthy
-// because a node heartbeats on a cadence independent of its draining (a busy node is never mistaken for a dead one).
-builder.Services.AddHostedService<OrphanRunReaper>();
 
 // ---- Run-trace retention: the two heaviest per-run tables (RunStatement, the full SQL of every generated
 // statement, and RunEvent) grow without bound and are almost never read once a run is old and green. This service
@@ -247,11 +269,6 @@ builder.Services
 
 builder.Services.AddAuthorization(authz =>
 {
-    static bool HasScope(System.Security.Claims.ClaimsPrincipal user, string scope)
-        => user.FindFirst("scope")?.Value
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Contains(scope) == true;
-
     // The privilege model has exactly two tiers: any authenticated user gets the whole operational product
     // (reading, running and cancelling flows, managing schedules and repo sources, scaling pools, and authoring
     // pull-request proposals), and only user administration (creating accounts and granting roles) is fenced off
@@ -263,6 +280,11 @@ builder.Services.AddAuthorization(authz =>
     authz.AddPolicy("admin", policy => policy
         .RequireAuthenticatedUser()
         .RequireAssertion(context => HasScope(context.User, "admin")));
+    // The node protocol is fleet traffic, not a person's session: only a credential minted with the node scope
+    // (an admin's personal access token, or a bootstrap token asking for it) may poll for and report work.
+    authz.AddPolicy(NodeProtocol.Scope, policy => policy
+        .RequireAuthenticatedUser()
+        .RequireAssertion(context => HasScope(context.User, NodeProtocol.Scope)));
 });
 
 // ---- Cross-cutting: problem details, OpenAPI, compression, health, rate limiting, CORS -----------------------
@@ -277,7 +299,24 @@ builder.Services.AddRateLimiter(rate =>
     rate.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     rate.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     {
-        var partitionKey = context.User.FindFirst("sub")?.Value
+        var subject = context.User.FindFirst("sub")?.Value;
+        // Node protocol calls (a long poll every few seconds per node, outcome reports, trace batches) are
+        // authenticated fleet traffic: each node token gets its own generous window, so a fleet of hundreds of
+        // nodes never trips the per-user limit meant for people and scripts. An unauthenticated hit on the node
+        // path stays under the normal per-IP limit, so a token cannot be brute-forced any faster there.
+        if (subject is not null
+            && context.Request.Path.StartsWithSegments(NodeProtocol.RoutePrefix)
+            && HasScope(context.User, NodeProtocol.Scope))
+        {
+            return RateLimitPartition.GetFixedWindowLimiter("node:" + subject, _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = options.RateLimit.NodePermitPerWindow,
+                Window = TimeSpan.FromSeconds(options.RateLimit.WindowSeconds),
+                QueueLimit = 0,
+            });
+        }
+
+        var partitionKey = subject
             ?? context.Connection.RemoteIpAddress?.ToString()
             ?? "anonymous";
         return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
@@ -378,6 +417,8 @@ v1.MapGroup(string.Empty).RequireAuthorization("read")
     .MapMeEndpoints()
     .MapNotificationEndpoints()
     .MapMaintenanceEndpoints()
+    // The dispatcher as it sees itself: every queued run with the gate holding it back, every lease, the fleet.
+    .MapDispatchEndpoints()
     // The GUI chat assistant: per-user conversations, streamed answers, per-user MCP authority.
     .MapChatEndpoints();
 
@@ -403,6 +444,11 @@ v1.MapGroup(string.Empty).RequireAuthorization("author")
 // token that requested it).
 v1.MapGroup(string.Empty).RequireAuthorization("admin")
     .MapUserEndpoints();
+
+// The node protocol: compute nodes poll for work and report outcomes here, under the "node" scope. This is the
+// only way work leaves the control plane; a node needs no catalog access to take or finish a run.
+v1.MapGroup("/node").RequireAuthorization(NodeProtocol.Scope)
+    .MapNodeProtocolEndpoints();
 
 app.Run();
 

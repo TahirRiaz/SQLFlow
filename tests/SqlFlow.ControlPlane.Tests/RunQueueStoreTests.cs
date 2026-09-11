@@ -1,18 +1,20 @@
 using System.Text.Json;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
 using SqlFlow.Core.Identity;
+using SqlFlow.Dispatch;
 using Xunit;
 
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The durable run queue (<see cref="RunQueueStore"/>) against the real catalog database: the queued -> running ->
-/// terminal lifecycle, the atomic claim (two workers never get the same run), cancellation of a queued run, fail,
-/// and crash recovery of orphaned running runs. The assembly runs serially (see AssemblyInfo), so the only queued
-/// run during a test is the one it enqueued, which is what the "claim returns my run" assertions rely on. Each test
-/// removes its own repo's rows. Gated on a reachable catalog database, like the other DB-backed tests.
+/// The run journal (<see cref="RunQueueStore"/>) against the real catalog database: the queued -> running ->
+/// terminal lifecycle as the dispatcher journals it, the hand-out write that is conditional on the row's status
+/// and attempt, the (node, attempt) fence on every outcome write, the dispositions of an interrupted run, the
+/// dispatch-state reads, cancellation on both sides of the hand-out, and the artifact projection. Placement itself
+/// is exercised without a database in the SqlFlow.Dispatch tests; this suite proves the journal keeps every
+/// promise the dispatcher relies on. The assembly runs serially (see AssemblyInfo). Each test removes its own
+/// repo's rows. Gated on a reachable catalog database, like the other DB-backed tests.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class RunQueueStoreTests
@@ -20,30 +22,29 @@ public sealed class RunQueueStoreTests
     private const string Node = "test-node";
 
     [SkippableFact]
-    public async Task Enqueue_Claim_Complete_MovesThroughTheLifecycle()
+    public async Task Enqueue_HandOut_Complete_MovesThroughTheLifecycle()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName) = NewIds();
-        var dir = NewTempDir();
 
         try
         {
             await using var db = CatalogDatabase.Create(cs);
 
             var enqueuedAt = DateTime.UtcNow;
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), enqueuedAt);
+            var enqueued = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), enqueuedAt);
+            var runId = enqueued.RunId;
+            // The placement row the dispatcher receives mirrors the journaled row exactly.
+            Assert.Equal((runId, CatalogIdentity.Pipeline(repoId, flowName), null, 0, false),
+                (enqueued.Placement.RunId, enqueued.Placement.PipelineId, enqueued.Placement.TargetPool, enqueued.Placement.Attempt, enqueued.Placement.CancelRequested));
 
             var queued = await Reload(db, runId);
             Assert.Equal(RunStatuses.Queued, queued.Status);
             Assert.Equal(enqueuedAt, queued.EnqueuedUtc);
             Assert.Null(queued.ClaimedByNode);
 
-            var claimed = await RunQueueStore.ClaimNextAsync(db, Node, [], DateTime.UtcNow);
-            Assert.NotNull(claimed);
-            Assert.Equal(runId, claimed.Value.RunId);
-            // The first claim consumes the first execution attempt, and that value is the claim's fencing token.
-            Assert.Equal(1, claimed.Value.Attempt);
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
 
             var running = await Reload(db, runId);
             Assert.Equal(RunStatuses.Running, running.Status);
@@ -51,204 +52,21 @@ public sealed class RunQueueStoreTests
             Assert.Equal(1, running.Attempt);
             Assert.NotNull(running.StartUtc);
 
-            // The queue is now empty, so a second claim returns null (the run is running, not queued).
-            Assert.Null(await ClaimId(db, Node, [], DateTime.UtcNow));
+            // A second hand-out of the same row is refused: it is running, not queued.
+            Assert.False(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, "other", DateTime.UtcNow));
+            Assert.False(await RunQueueStore.MarkHandedOutAsync(db, runId, 1, "other", DateTime.UtcNow));
 
-            var runJson = Path.Combine(dir, "run.json");
-            await File.WriteAllTextAsync(runJson, RunArtifact(runId, flowName, success: true, rowsLoaded: 5));
-            // Completion under the claim's own fence records normally.
-            var recorded = await RunQueueStore.CompleteFromArtifactAsync(
-                db, runId, repoId, runJson, DateTime.UtcNow, Node, claimed.Value.Attempt);
-            Assert.Equal(RunCompletionOutcome.Recorded, recorded);
+            var recorded = await RunQueueStore.RecordOutcomeAsync(
+                db, runId, Node, 1, RunOutcomeKind.Completed, null, RunArtifact(runId, flowName, success: true, rowsLoaded: 5), DateTime.UtcNow);
+            Assert.Equal(RunOutcomeStatus.Recorded, recorded.Status);
 
             var done = await Reload(db, runId);
             Assert.Equal(RunStatuses.Succeeded, done.Status);
             Assert.True(done.Success);
             Assert.Equal(5, done.RowsLoaded);
-            // The completion preserved the queue-only fields set at enqueue/claim.
+            // The completion preserved the queue-only fields set at enqueue and hand-out.
             Assert.Equal(enqueuedAt, done.EnqueuedUtc);
             Assert.Equal(Node, done.ClaimedByNode);
-        }
-        finally
-        {
-            await Cleanup(cs, repoId, dir);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ClaimNext_ConcurrentClaims_NeverGiveTheSameRunToTwoWorkers()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-
-        try
-        {
-            Guid runId;
-            await using (var seed = CatalogDatabase.Create(cs))
-            {
-                runId = await RunQueueStore.EnqueueAsync(seed, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            }
-
-            // Two independent contexts (separate connections) claim at the same time. READPAST plus the
-            // single-statement claim guarantee exactly one of them gets the run; the other gets null.
-            await using var a = CatalogDatabase.Create(cs);
-            await using var b = CatalogDatabase.Create(cs);
-            var results = await Task.WhenAll(
-                RunQueueStore.ClaimNextAsync(a, "node-a", [], DateTime.UtcNow),
-                RunQueueStore.ClaimNextAsync(b, "node-b", [], DateTime.UtcNow));
-
-            Assert.Equal(1, results.Count(c => c?.RunId == runId));
-            Assert.Equal(1, results.Count(c => c is null));
-        }
-        finally
-        {
-            await Cleanup(cs, repoId, null);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ClaimNext_SamePipeline_NeverRunsTwiceConcurrently()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-        var otherFlow = flowName + "_other";
-        var dir = NewTempDir();
-
-        try
-        {
-            await using var db = CatalogDatabase.Create(cs);
-
-            // Two queued runs of the SAME flow (a double-trigger) plus one run of a different flow.
-            var first = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            var duplicate = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            var unrelated = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, otherFlow, "ing"), DateTime.UtcNow);
-
-            // The oldest same-flow run is claimed; its duplicate is NOT claimable while it runs (each flow
-            // stages through one canonical work table, so executions must serialize), but the pipeline gate is
-            // per flow: the unrelated flow's run is handed out immediately.
-            Assert.Equal(first, await ClaimId(db, Node, [], DateTime.UtcNow));
-            Assert.Equal(unrelated, await ClaimId(db, Node, [], DateTime.UtcNow));
-            Assert.Null(await ClaimId(db, Node, [], DateTime.UtcNow));
-            Assert.Equal(RunStatuses.Queued, (await Reload(db, duplicate)).Status);
-
-            // Once the running execution reaches a terminal state, the duplicate becomes claimable.
-            var runJson = Path.Combine(dir, "run.json");
-            await File.WriteAllTextAsync(runJson, RunArtifact(first, flowName, success: true, rowsLoaded: 1));
-            Assert.Equal(RunCompletionOutcome.Recorded, await RunQueueStore.CompleteFromArtifactAsync(db, first, repoId, runJson, DateTime.UtcNow));
-            Assert.Equal(duplicate, await ClaimId(db, Node, [], DateTime.UtcNow));
-        }
-        finally
-        {
-            await Cleanup(cs, repoId, dir);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ClaimNext_ConcurrentClaimsOfOnePipeline_StartOnlyOneExecution()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-
-        try
-        {
-            Guid first, duplicate;
-            await using (var seed = CatalogDatabase.Create(cs))
-            {
-                // A double-trigger: two queued runs of one flow, exactly what a schedule firing over a still-running
-                // wave produces.
-                first = await RunQueueStore.EnqueueAsync(seed, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-                duplicate = await RunQueueStore.EnqueueAsync(seed, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            }
-
-            // Two nodes claim at the same instant. The claim's "no running sibling" gate is a read, so both can see
-            // a clear queue; the database is what keeps them apart. Whichever loses must come back empty rather than
-            // start a second execution of a flow whose staging table is shared.
-            await using var a = CatalogDatabase.Create(cs);
-            await using var b = CatalogDatabase.Create(cs);
-            var results = await Task.WhenAll(
-                RunQueueStore.ClaimNextAsync(a, "node-a", [], DateTime.UtcNow),
-                RunQueueStore.ClaimNextAsync(b, "node-b", [], DateTime.UtcNow));
-
-            Assert.Equal(1, results.Count(c => c is not null));
-            Assert.Equal(first, results.Single(c => c is not null)!.Value.RunId);
-
-            await using var verify = CatalogDatabase.Create(cs);
-            var pipelineId = (await Reload(verify, first)).PipelineId;
-            Assert.Equal(1, await verify.Runs.CountAsync(r => r.PipelineId == pipelineId && r.Status == RunStatuses.Running));
-            Assert.Equal(RunStatuses.Queued, (await Reload(verify, duplicate)).Status);
-        }
-        finally
-        {
-            await Cleanup(cs, repoId, null);
-        }
-    }
-
-    [SkippableFact]
-    public async Task RunningPipelineIndex_RefusesASecondRunningRunOfOnePipeline()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-
-        try
-        {
-            await using var db = CatalogDatabase.Create(cs);
-            var first = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            var duplicate = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            Assert.Equal(first, await ClaimId(db, Node, [], DateTime.UtcNow));
-
-            // The write the claim's gate is meant to make impossible, issued directly: the guarantee has to hold in
-            // the schema, not only in the statement that normally performs it. A race that slips past the gate takes
-            // exactly this shape, and the filtered unique index turns it into a duplicate-key error.
-            var conflict = await Assert.ThrowsAsync<SqlException>(() => db.Database.ExecuteSqlRawAsync(
-                "UPDATE [catalog].[Run] SET [Status] = 'running' WHERE [RunId] = {0};", duplicate));
-            Assert.Contains(conflict.Errors.Cast<SqlError>(), e => e.Number is 2601 or 2627);
-
-            // The refused write left the row exactly as it was: still queued, still claimable later.
-            Assert.Equal(RunStatuses.Queued, (await Reload(db, duplicate)).Status);
-        }
-        finally
-        {
-            await Cleanup(cs, repoId, null);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ClaimNext_RoutesByPool_OnlyAnEligibleNodeClaimsATargetedRun()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-        var pool = "pool_" + Guid.NewGuid().ToString("N")[..6];
-
-        try
-        {
-            Guid targetedRunId;
-            await using (var seed = CatalogDatabase.Create(cs))
-            {
-                targetedRunId = await RunQueueStore.EnqueueAsync(seed, new RunEnqueueRequest(repoId, flowName, "ing", pool), DateTime.UtcNow);
-            }
-
-            // A worker that does not serve the pool cannot claim the run (it is routed elsewhere).
-            await using (var other = CatalogDatabase.Create(cs))
-            {
-                Assert.NotEqual(targetedRunId, await ClaimId(other, "other-node", ["a-different-pool"], DateTime.UtcNow));
-            }
-
-            // An untargeted worker cannot claim it either.
-            await using (var untargeted = CatalogDatabase.Create(cs))
-            {
-                Assert.NotEqual(targetedRunId, await ClaimId(untargeted, "plain-node", [], DateTime.UtcNow));
-            }
-
-            // A worker serving the pool claims it.
-            await using (var pooled = CatalogDatabase.Create(cs))
-            {
-                Assert.Equal(targetedRunId, await ClaimId(pooled, "pool-node", [pool], DateTime.UtcNow));
-            }
         }
         finally
         {
@@ -257,7 +75,7 @@ public sealed class RunQueueStoreTests
     }
 
     [SkippableFact]
-    public async Task Cancel_QueuedRun_CancelsIt_AndItIsNeverClaimed()
+    public async Task MarkHandedOut_IsConditionalOnTheExpectedAttempt_SoAStaleDecisionNeverLands()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -266,360 +84,236 @@ public sealed class RunQueueStoreTests
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
 
-            Assert.Equal(CancelOutcome.Cancelled, await RunQueueStore.CancelAsync(db, runId, DateTime.UtcNow));
-            Assert.Equal(RunStatuses.Cancelled, (await Reload(db, runId)).Status);
+            // A dispatcher whose memory is behind (it believes the run is still at attempt 0 after a requeue
+            // advanced it) cannot hand it out on that stale knowledge.
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
+            Assert.True((await RunQueueStore.RequeueInterruptedAsync(db, runId, Node, 1, DateTime.UtcNow)).Applied);
+            Assert.False(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 1, Node, DateTime.UtcNow));
+            Assert.Equal(2, (await Reload(db, runId)).Attempt);
 
-            // A cancelled run is not queued, so the claim never returns it.
-            Assert.Null(await ClaimId(db, Node, [], DateTime.UtcNow));
-
-            // A second cancel of the same run is not cancellable; an unknown run is not found.
-            Assert.Equal(CancelOutcome.NotCancellable, await RunQueueStore.CancelAsync(db, runId, DateTime.UtcNow));
-            Assert.Equal(CancelOutcome.NotFound, await RunQueueStore.CancelAsync(db, Guid.NewGuid(), DateTime.UtcNow));
+            // Two dispatchers racing for one row (an ownership overlap): exactly one write applies.
+            var second = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName + "_b", "ing"), DateTime.UtcNow)).RunId;
+            await using var a = CatalogDatabase.Create(cs);
+            await using var b = CatalogDatabase.Create(cs);
+            var results = await Task.WhenAll(
+                RunQueueStore.MarkHandedOutAsync(a, second, 0, "node-a", DateTime.UtcNow),
+                RunQueueStore.MarkHandedOutAsync(b, second, 0, "node-b", DateTime.UtcNow));
+            Assert.Equal(1, results.Count(r => r));
         }
         finally
         {
-            await Cleanup(cs, repoId, null);
+            await Cleanup(cs, repoId);
         }
     }
 
     [SkippableFact]
-    public async Task Cancel_RunningRun_RequestsCancellation_ForTheOwningNodeToObserveAndRecord()
+    public async Task Cancel_QueuedRun_CancelsIt_AndAHandOutIsThenRefused()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName) = NewIds();
-        var node = "cancel-node-" + Guid.NewGuid().ToString("N")[..8];
 
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            Assert.Equal(runId, await ClaimId(db, node, [], DateTime.UtcNow));
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
 
-            // A running run cannot be cancelled out from under its worker: it is a durable request instead, stamped
-            // on the row for the owning node to observe. The run stays 'running' until the node records the outcome.
-            var requestedAt = DateTime.UtcNow;
-            Assert.Equal(CancelOutcome.CancelRequested, await RunQueueStore.CancelAsync(db, runId, requestedAt));
-            var requested = await Reload(db, runId);
-            Assert.Equal(RunStatuses.Running, requested.Status);
-            Assert.Equal(requestedAt, requested.CancelRequestedUtc);
+            Assert.Equal(CancelOutcome.Cancelled, await RunQueueStore.CancelAsync(db, runId, DateTime.UtcNow));
+            var cancelled = await Reload(db, runId);
+            Assert.Equal(RunStatuses.Cancelled, cancelled.Status);
+            Assert.NotNull(cancelled.EndUtc);
 
-            // A second cancel is idempotent (still a pending request) and does not move the original request time.
-            Assert.Equal(CancelOutcome.CancelRequested, await RunQueueStore.CancelAsync(db, runId, requestedAt.AddSeconds(5)));
-            Assert.Equal(requestedAt, (await Reload(db, runId)).CancelRequestedUtc);
+            // The dispatcher's hand-out write finds the row no longer queued and drops it.
+            Assert.False(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
+            Assert.Equal(CancelOutcome.NotCancellable, await RunQueueStore.CancelAsync(db, runId, DateTime.UtcNow));
+            Assert.Equal(CancelOutcome.NotFound, await RunQueueStore.CancelAsync(db, Guid.CreateVersion7(), DateTime.UtcNow));
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
 
-            // The owning node sees exactly this run in its cancel-requested set; a different node sees nothing.
-            Assert.Equal([runId], await RunQueueStore.ListCancelRequestedAsync(db, node));
-            Assert.Empty(await RunQueueStore.ListCancelRequestedAsync(db, "some-other-node"));
+    [SkippableFact]
+    public async Task Cancel_RunningRun_StampsARequest_WhichTheDispatchReadsSurface()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
 
-            // After the node aborts the in-flight statement it records the run cancelled; the request then clears
-            // from the set (the run is no longer 'running'), and a further cancel finds nothing to cancel.
-            Assert.Equal(1, await RunQueueStore.CancelRunningAsync(db, runId, DateTime.UtcNow));
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
+
+            Assert.Equal(CancelOutcome.CancelRequested, await RunQueueStore.CancelAsync(db, runId, DateTime.UtcNow));
+            // Idempotent: a second click does not move the stamp or change the answer.
+            var first = (await Reload(db, runId)).CancelRequestedUtc;
+            Assert.Equal(CancelOutcome.CancelRequested, await RunQueueStore.CancelAsync(db, runId, DateTime.UtcNow));
+            Assert.Equal(first, (await Reload(db, runId)).CancelRequestedUtc);
+
+            // Reconcile sees the flag on the running row, so a cancel stamped straight against the journal (the
+            // break-glass CLI path) still reaches the node.
+            var (_, running) = await RunQueueStore.ListActiveAsync(db);
+            Assert.Contains(running, r => r.RunId == runId && r.Node == Node && r.Attempt == 1 && r.CancelRequested);
+
+            // The node aborts and reports cancelled under its fence.
+            var outcome = await RunQueueStore.RecordOutcomeAsync(db, runId, Node, 1, RunOutcomeKind.Cancelled, null, null, DateTime.UtcNow);
+            Assert.Equal(RunOutcomeStatus.Recorded, outcome.Status);
             var cancelled = await Reload(db, runId);
             Assert.Equal(RunStatuses.Cancelled, cancelled.Status);
             Assert.False(cancelled.Success);
             Assert.NotNull(cancelled.EndUtc);
-            Assert.Empty(await RunQueueStore.ListCancelRequestedAsync(db, node));
-            Assert.Equal(CancelOutcome.NotCancellable, await RunQueueStore.CancelAsync(db, runId, DateTime.UtcNow));
         }
         finally
         {
-            await Cleanup(cs, repoId, null);
+            await Cleanup(cs, repoId);
         }
     }
 
     [SkippableFact]
-    public async Task CancelRunning_DoesNotOverwriteAnAlreadyCompletedRun()
+    public async Task Fence_DropsEveryOutcomeWriteFromASupersededHolder()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName) = NewIds();
-        var dir = NewTempDir();
+        const string zombie = "fence-zombie";
+        const string successor = "fence-successor";
 
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            await ClaimId(db, Node, [], DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
 
-            // The run finishes successfully in the same instant a late cancel lands: CancelRunningAsync is guarded on
-            // 'running', so it updates nothing and the recorded success stands.
-            var runJson = Path.Combine(dir, "run.json");
-            await File.WriteAllTextAsync(runJson, RunArtifact(runId, flowName, success: true, rowsLoaded: 3));
-            Assert.Equal(RunCompletionOutcome.Recorded, await RunQueueStore.CompleteFromArtifactAsync(db, runId, repoId, runJson, DateTime.UtcNow));
+            // The zombie's hand-out (attempt 1), its lease lapses and the dispatcher requeues; a successor is
+            // handed the run (attempt 2) and is still executing.
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, zombie, DateTime.UtcNow));
+            Assert.True((await RunQueueStore.RequeueInterruptedAsync(db, runId, zombie, 1, DateTime.UtcNow)).Applied);
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 1, successor, DateTime.UtcNow));
 
-            Assert.Equal(0, await RunQueueStore.CancelRunningAsync(db, runId, DateTime.UtcNow));
+            // The zombie was alive all along and now reports. Every kind of report is dropped by the fence.
+            var artifact = RunArtifact(runId, flowName, success: true, rowsLoaded: 99);
+            Assert.Equal(RunOutcomeStatus.StaleClaim, (await RunQueueStore.RecordOutcomeAsync(
+                db, runId, zombie, 1, RunOutcomeKind.Completed, null, artifact, DateTime.UtcNow)).Status);
+            Assert.Equal(RunOutcomeStatus.StaleClaim, (await RunQueueStore.RecordOutcomeAsync(
+                db, runId, zombie, 1, RunOutcomeKind.Failed, "zombie failure", null, DateTime.UtcNow)).Status);
+            Assert.Equal(RunOutcomeStatus.StaleClaim, (await RunQueueStore.RecordOutcomeAsync(
+                db, runId, zombie, 1, RunOutcomeKind.Cancelled, null, null, DateTime.UtcNow)).Status);
+            // So are the interrupted dispositions for the zombie's lease.
+            Assert.False((await RunQueueStore.RequeueInterruptedAsync(db, runId, zombie, 1, DateTime.UtcNow)).Applied);
+            Assert.False((await RunQueueStore.FailInterruptedAsync(db, runId, zombie, 1, DateTime.UtcNow)).Applied);
+            Assert.False((await RunQueueStore.CancelInterruptedAsync(db, runId, zombie, 1, DateTime.UtcNow)).Applied);
+
+            var untouched = await Reload(db, runId);
+            Assert.Equal(RunStatuses.Running, untouched.Status);
+            Assert.Equal(successor, untouched.ClaimedByNode);
+            Assert.Equal(2, untouched.Attempt);
+            Assert.Null(untouched.RowsLoaded);
+
+            // The successor's own fenced completion still lands: the fence blocks stale writers, not the owner.
+            Assert.Equal(RunOutcomeStatus.Recorded, (await RunQueueStore.RecordOutcomeAsync(
+                db, runId, successor, 2, RunOutcomeKind.Completed, null, artifact, DateTime.UtcNow)).Status);
             Assert.Equal(RunStatuses.Succeeded, (await Reload(db, runId)).Status);
         }
         finally
         {
-            await Cleanup(cs, repoId, dir);
+            await Cleanup(cs, repoId);
         }
     }
 
     [SkippableFact]
-    public async Task RecoverStuckRunning_RequeuesThisNodesOrphans_AndFailsOneOutOfAttempts()
+    public async Task InterruptedDispositions_RequeueKeepsTheAttempt_FailNamesTheNode_CancelHonorsTheOperator()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName) = NewIds();
-        var (repoId2, flowName2) = NewIds();
-        var node = "recover-node-" + Guid.NewGuid().ToString("N")[..8];
+        const string deadNode = "dead-node";
 
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            Assert.Equal(runId, await ClaimId(db, node, [], DateTime.UtcNow));
 
-            // A second run that has already consumed its whole attempt budget (each claim increments Attempt; the
-            // budget's exhaustion is simulated directly rather than through three real crash cycles).
-            var exhaustedRun = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId2, flowName2, "ing"), DateTime.UtcNow);
-            Assert.Equal(exhaustedRun, await ClaimId(db, node, [], DateTime.UtcNow));
-            await db.Runs.Where(r => r.RunId == exhaustedRun)
+            // Requeue: back to queued with the holder cleared and the consumed attempt kept.
+            var requeued = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName + "_r", "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, requeued, 0, deadNode, DateTime.UtcNow));
+            Assert.True((await RunQueueStore.RequeueInterruptedAsync(db, requeued, deadNode, 1, DateTime.UtcNow)).Applied);
+            var row = await Reload(db, requeued);
+            Assert.Equal((RunStatuses.Queued, (string?)null, (DateTime?)null, 1), (row.Status, row.ClaimedByNode, row.StartUtc, row.Attempt));
+
+            // Requeue refuses a run past its attempt budget, and the fail disposition names the node.
+            var exhausted = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName + "_x", "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, exhausted, 0, deadNode, DateTime.UtcNow));
+            await db.Runs.Where(r => r.RunId == exhausted)
                 .ExecuteUpdateAsync(s => s.SetProperty(r => r.Attempt, RunQueueStore.MaxExecutionAttempts));
-
-            var recovered = await RunQueueStore.RecoverStuckRunningAsync(db, node, DateTime.UtcNow);
-            Assert.Equal(1, recovered);
-
-            var requeued = await Reload(db, runId);
-            Assert.Equal(RunStatuses.Queued, requeued.Status);
-            Assert.Null(requeued.ClaimedByNode);
-            Assert.Null(requeued.StartUtc);
-
-            var failed = await Reload(db, exhaustedRun);
+            Assert.False((await RunQueueStore.RequeueInterruptedAsync(db, exhausted, deadNode, RunQueueStore.MaxExecutionAttempts, DateTime.UtcNow)).Applied);
+            Assert.True((await RunQueueStore.FailInterruptedAsync(db, exhausted, deadNode, RunQueueStore.MaxExecutionAttempts, DateTime.UtcNow)).Applied);
+            var failed = await Reload(db, exhausted);
             Assert.Equal(RunStatuses.Failed, failed.Status);
             Assert.False(failed.Success);
-            Assert.Contains("interrupted", failed.Error!, StringComparison.OrdinalIgnoreCase);
-        }
-        finally
-        {
-            await Cleanup(cs, repoId, null);
-            await Cleanup(cs, repoId2, null);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ReapOrphanedRunning_RequeuesRunsWhoseNodeHasStoppedHeartbeating()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-        var deadNode = "reap-dead-" + Guid.NewGuid().ToString("N")[..8];
-        var goneNode = "reap-gone-" + Guid.NewGuid().ToString("N")[..8];
-        var (repoId2, flowName2) = NewIds();
-
-        try
-        {
-            await using var db = CatalogDatabase.Create(cs);
-            var now = DateTime.UtcNow;
-
-            // A run claimed by a node whose last heartbeat is well before the stale cutoff (a crashed pod), and a
-            // second run claimed by a node with no registry row at all (it died without its heartbeat ever landing,
-            // or a Kubernetes replacement pod took a new name). Both are orphans.
-            var deadRun = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), now);
-            Assert.Equal(deadRun, await ClaimId(db, deadNode, [], now));
-            await NodeStore.HeartbeatAsync(db, deadNode, "1.0.0", now.AddMinutes(-10));
-
-            var goneRun = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId2, flowName2, "ing"), now);
-            Assert.Equal(goneRun, await ClaimId(db, goneNode, [], now));
-
-            // Losing a node is recoverable: both orphans go BACK TO THE QUEUE (claim cleared, ready for any
-            // worker), not to failed. Nothing about the pipeline is lost.
-            var staleBefore = now.AddMinutes(-3);
-            var reaped = await RunQueueStore.ReapOrphanedRunningAsync(db, staleBefore, now);
-            Assert.True(reaped.Requeued >= 2);
-
-            foreach (var runId in new[] { deadRun, goneRun })
-            {
-                var requeued = await Reload(db, runId);
-                Assert.Equal(RunStatuses.Queued, requeued.Status);
-                Assert.Null(requeued.ClaimedByNode);
-                Assert.Null(requeued.StartUtc);
-                Assert.Equal(1, requeued.Attempt); // the lost execution's attempt stays consumed
-            }
-
-            // A fresh worker claims the requeued run; the claim consumes the second attempt, which fences off any
-            // late write from the first execution's zombie.
-            var reclaimed = await RunQueueStore.ClaimNextAsync(db, "reap-successor", [], DateTime.UtcNow);
-            Assert.NotNull(reclaimed);
-            Assert.Equal(2, reclaimed.Value.Attempt);
-        }
-        finally
-        {
-            await DeleteNodes(cs, deadNode, goneNode, "reap-successor");
-            await Cleanup(cs, repoId, null);
-            await Cleanup(cs, repoId2, null);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ReapOrphanedRunning_FailsARunThatExhaustedItsAttempts()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-        var deadNode = "reap-cap-" + Guid.NewGuid().ToString("N")[..8];
-
-        try
-        {
-            await using var db = CatalogDatabase.Create(cs);
-            var now = DateTime.UtcNow;
-
-            // The run has already consumed its whole attempt budget (a poison run that killed its node each time).
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), now);
-            Assert.Equal(runId, await ClaimId(db, deadNode, [], now));
-            await db.Runs.Where(r => r.RunId == runId)
-                .ExecuteUpdateAsync(s => s.SetProperty(r => r.Attempt, RunQueueStore.MaxExecutionAttempts));
-
-            var reaped = await RunQueueStore.ReapOrphanedRunningAsync(db, now.AddMinutes(-3), now);
-            Assert.True(reaped.Failed >= 1);
-
-            var failed = await Reload(db, runId);
-            Assert.Equal(RunStatuses.Failed, failed.Status);
-            Assert.False(failed.Success);
-            Assert.NotNull(failed.EndUtc);
-            // The error names the node and the exhausted budget so an operator can see what happened and where.
             Assert.Contains(deadNode, failed.Error!, StringComparison.Ordinal);
             Assert.Contains("interrupted", failed.Error!, StringComparison.OrdinalIgnoreCase);
 
-            // A second sweep no longer sees it: the run is terminal.
-            var again = await RunQueueStore.ReapOrphanedRunningAsync(db, now.AddMinutes(-3), DateTime.UtcNow);
-            Assert.Equal(RunStatuses.Failed, (await Reload(db, runId)).Status);
-            _ = again; // other tests' orphans may exist; only this run's fate is asserted
+            // Cancel: an operator's pending cancel is honored, never resurrected.
+            var cancelled = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName + "_c", "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, cancelled, 0, deadNode, DateTime.UtcNow));
+            Assert.Equal(CancelOutcome.CancelRequested, await RunQueueStore.CancelAsync(db, cancelled, DateTime.UtcNow));
+            Assert.False((await RunQueueStore.RequeueInterruptedAsync(db, cancelled, deadNode, 1, DateTime.UtcNow)).Applied);
+            Assert.True((await RunQueueStore.CancelInterruptedAsync(db, cancelled, deadNode, 1, DateTime.UtcNow)).Applied);
+            Assert.Equal(RunStatuses.Cancelled, (await Reload(db, cancelled)).Status);
+
+            // Every disposition is terminal-respecting: a second pass changes nothing.
+            Assert.False((await RunQueueStore.FailInterruptedAsync(db, exhausted, deadNode, RunQueueStore.MaxExecutionAttempts, DateTime.UtcNow)).Applied);
+            Assert.False((await RunQueueStore.CancelInterruptedAsync(db, cancelled, deadNode, 1, DateTime.UtcNow)).Applied);
         }
         finally
         {
-            await DeleteNodes(cs, deadNode);
-            await Cleanup(cs, repoId, null);
+            await Cleanup(cs, repoId);
         }
     }
 
     [SkippableFact]
-    public async Task ReapOrphanedRunning_RecordsCancelled_WhenAnOperatorCancelWasPending()
+    public async Task DispatchStateReads_ReturnQueuedPlacements_RunningHolders_AndOnlyThoseStillActive()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName) = NewIds();
-        var deadNode = "reap-cancel-" + Guid.NewGuid().ToString("N")[..8];
+        var pool = "pool_" + Guid.NewGuid().ToString("N")[..6];
 
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var now = DateTime.UtcNow;
+            var queued = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing", pool), DateTime.UtcNow)).RunId;
+            var running = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName + "_b", "ing"), DateTime.UtcNow)).RunId;
+            var done = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName + "_c", "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, running, 0, Node, DateTime.UtcNow));
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, done, 0, Node, DateTime.UtcNow));
+            await RunQueueStore.RecordOutcomeAsync(db, done, Node, 1, RunOutcomeKind.Failed, "boom", null, DateTime.UtcNow);
 
-            // The operator asked to cancel while the run executed; the node died before observing the request.
-            // The cancel intent is authoritative: a requeue would resurrect work the operator explicitly killed.
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), now);
-            Assert.Equal(runId, await ClaimId(db, deadNode, [], now));
-            Assert.Equal(CancelOutcome.CancelRequested, await RunQueueStore.CancelAsync(db, runId, now));
+            var (queuedRows, runningRows) = await RunQueueStore.LoadDispatchStateAsync(db);
+            var placement = Assert.Single(queuedRows, r => r.RunId == queued);
+            Assert.Equal((pool, 0, false), (placement.TargetPool, placement.Attempt, placement.CancelRequested));
+            var holder = Assert.Single(runningRows, r => r.Run.RunId == running);
+            Assert.Equal((Node, 1), (holder.Node, holder.Run.Attempt));
+            Assert.DoesNotContain(queuedRows, r => r.RunId == done);
+            Assert.DoesNotContain(runningRows, r => r.Run.RunId == done);
 
-            var reaped = await RunQueueStore.ReapOrphanedRunningAsync(db, now.AddMinutes(-3), now);
-            Assert.True(reaped.Cancelled >= 1);
+            var (queuedIds, active) = await RunQueueStore.ListActiveAsync(db);
+            Assert.Contains(queued, queuedIds);
+            Assert.DoesNotContain(running, queuedIds);
+            Assert.Contains(active, a => a.RunId == running && a.Node == Node && a.Attempt == 1 && !a.CancelRequested);
 
-            var cancelled = await Reload(db, runId);
-            Assert.Equal(RunStatuses.Cancelled, cancelled.Status);
-            Assert.False(cancelled.Success);
-            Assert.NotNull(cancelled.EndUtc);
+            // Targeted loads answer only for rows still in the asked-for state.
+            Assert.Single(await RunQueueStore.LoadQueuedAsync(db, [queued, running, done]));
+            Assert.Single(await RunQueueStore.LoadRunningAsync(db, [queued, running, done]));
+            Assert.Empty(await RunQueueStore.LoadQueuedAsync(db, []));
         }
         finally
         {
-            await DeleteNodes(cs, deadNode);
-            await Cleanup(cs, repoId, null);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ClaimFence_DropsAZombiesLateWrites_AfterTheRunWasRequeuedAndReclaimed()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-        var zombieNode = "fence-zombie-" + Guid.NewGuid().ToString("N")[..8];
-        var successorNode = "fence-successor-" + Guid.NewGuid().ToString("N")[..8];
-        var dir = NewTempDir();
-
-        try
-        {
-            await using var db = CatalogDatabase.Create(cs);
-            var now = DateTime.UtcNow;
-
-            // The zombie's claim (attempt 1). Its node then "dies" (never heartbeats) and the reaper requeues the
-            // run; a successor claims it (attempt 2) and is still executing.
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), now);
-            var zombieClaim = await RunQueueStore.ClaimNextAsync(db, zombieNode, [], now);
-            Assert.Equal(1, zombieClaim!.Value.Attempt);
-            var reaped = await RunQueueStore.ReapOrphanedRunningAsync(db, now.AddMinutes(-3), now);
-            Assert.True(reaped.Requeued >= 1);
-            var successorClaim = await RunQueueStore.ClaimNextAsync(db, successorNode, [], DateTime.UtcNow);
-            Assert.Equal(runId, successorClaim!.Value.RunId);
-            Assert.Equal(2, successorClaim.Value.Attempt);
-
-            // The zombie was alive all along and now records its (stale) success. The fence drops the write: the
-            // row still belongs to the successor's execution, untouched.
-            var runJson = Path.Combine(dir, "run.json");
-            await File.WriteAllTextAsync(runJson, RunArtifact(runId, flowName, success: true, rowsLoaded: 99));
-            var outcome = await RunQueueStore.CompleteFromArtifactAsync(
-                db, runId, repoId, runJson, DateTime.UtcNow, zombieNode, zombieClaim.Value.Attempt);
-            Assert.Equal(RunCompletionOutcome.StaleClaim, outcome);
-
-            var afterComplete = await Reload(db, runId);
-            Assert.Equal(RunStatuses.Running, afterComplete.Status);
-            Assert.Equal(successorNode, afterComplete.ClaimedByNode);
-            Assert.Null(afterComplete.RowsLoaded);
-
-            // The zombie's late fail and late cancel are dropped by the same fence.
-            await RunQueueStore.FailAsync(db, runId, "zombie failure", DateTime.UtcNow, zombieNode, zombieClaim.Value.Attempt);
-            Assert.Equal(RunStatuses.Running, (await Reload(db, runId)).Status);
-            Assert.Equal(0, await RunQueueStore.CancelRunningAsync(db, runId, DateTime.UtcNow, zombieNode, zombieClaim.Value.Attempt));
-            Assert.Equal(RunStatuses.Running, (await Reload(db, runId)).Status);
-
-            // The successor's own fenced completion still lands: the fence blocks stale writers, not the owner.
-            var successorOutcome = await RunQueueStore.CompleteFromArtifactAsync(
-                db, runId, repoId, runJson, DateTime.UtcNow, successorNode, successorClaim.Value.Attempt);
-            Assert.Equal(RunCompletionOutcome.Recorded, successorOutcome);
-            Assert.Equal(RunStatuses.Succeeded, (await Reload(db, runId)).Status);
-        }
-        finally
-        {
-            await DeleteNodes(cs, zombieNode, successorNode);
-            await Cleanup(cs, repoId, dir);
-        }
-    }
-
-    [SkippableFact]
-    public async Task ReapOrphanedRunning_LeavesRunsOfALiveNodeAlone()
-    {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        var (repoId, flowName) = NewIds();
-        var liveNode = "reap-live-" + Guid.NewGuid().ToString("N")[..8];
-
-        try
-        {
-            await using var db = CatalogDatabase.Create(cs);
-            var now = DateTime.UtcNow;
-
-            // A busy node executing a long run still heartbeats on its independent cadence, so its last-seen stays
-            // fresh. The reaper must never fail its work, however long the run has been going.
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), now);
-            Assert.Equal(runId, await ClaimId(db, liveNode, [], now));
-            await NodeStore.HeartbeatAsync(db, liveNode, "1.0.0", now);
-
-            var reaped = await RunQueueStore.ReapOrphanedRunningAsync(db, now.AddMinutes(-3), now);
-            _ = reaped; // other tests' orphans may exist; only this run's fate is asserted
-
-            var stillRunning = await Reload(db, runId);
-            Assert.Equal(RunStatuses.Running, stillRunning.Status);
-            Assert.Equal(liveNode, stillRunning.ClaimedByNode);
-            Assert.Null(stillRunning.EndUtc);
-        }
-        finally
-        {
-            await DeleteNodes(cs, liveNode);
-            await Cleanup(cs, repoId, null);
+            await Cleanup(cs, repoId);
         }
     }
 
@@ -633,22 +327,50 @@ public sealed class RunQueueStoreTests
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            await ClaimId(db, Node, [], DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
 
-            await RunQueueStore.FailAsync(db, runId, "boom", DateTime.UtcNow);
+            var result = await RunQueueStore.FailAsync(db, runId, "boom", DateTime.UtcNow);
+            Assert.True(result.Applied);
             var failed = await Reload(db, runId);
             Assert.Equal(RunStatuses.Failed, failed.Status);
             Assert.False(failed.Success);
             Assert.Equal("boom", failed.Error);
 
             // A second fail must not overwrite the recorded terminal state.
-            await RunQueueStore.FailAsync(db, runId, "second", DateTime.UtcNow);
+            Assert.False((await RunQueueStore.FailAsync(db, runId, "second", DateTime.UtcNow)).Applied);
             Assert.Equal("boom", (await Reload(db, runId)).Error);
         }
         finally
         {
-            await Cleanup(cs, repoId, null);
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task CompleteFromArtifact_AnUnreadableArtifact_FailsTheRunSoItNeverLingers()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
+
+            var outcome = await RunQueueStore.RecordOutcomeAsync(
+                db, runId, Node, 1, RunOutcomeKind.Completed, null, "{ not json", DateTime.UtcNow);
+
+            Assert.Equal(RunOutcomeStatus.ArtifactUnreadable, outcome.Status);
+            var failed = await Reload(db, runId);
+            Assert.Equal(RunStatuses.Failed, failed.Status);
+            Assert.Contains("could not be recorded", failed.Error!, StringComparison.Ordinal);
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
         }
     }
 
@@ -676,13 +398,12 @@ public sealed class RunQueueStoreTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName) = NewIds();
-        var dir = NewTempDir();
 
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            await ClaimId(db, Node, [], DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
 
             // The node's live feed captured the run's whole trace as it executed: the same rows, ordinals, and
             // failure attribution the artifact carries. The trace stream has already delivered these under their
@@ -722,9 +443,8 @@ public sealed class RunQueueStoreTests
             var liveStatementIds = liveStatements.Select(s => s.Id).ToArray();
             var liveEventIds = liveEvents.Select(e => e.Id).ToArray();
 
-            var runJson = Path.Combine(dir, "run.json");
-            await File.WriteAllTextAsync(runJson, FailedArtifactWithTrace(runId, flowName));
-            Assert.Equal(RunCompletionOutcome.Recorded, await RunQueueStore.CompleteFromArtifactAsync(db, runId, repoId, runJson, DateTime.UtcNow));
+            Assert.Equal(RunOutcomeStatus.Recorded, (await RunQueueStore.CompleteFromArtifactAsync(
+                db, runId, FailedArtifactWithTrace(runId, flowName), DateTime.UtcNow, Node, 1)).Status);
 
             // No duplication and no re-issue: the very same live rows remain, under the very same ids.
             var statements = await db.RunStatements.AsNoTracking()
@@ -741,7 +461,7 @@ public sealed class RunQueueStoreTests
         }
         finally
         {
-            await Cleanup(cs, repoId, dir);
+            await Cleanup(cs, repoId);
         }
     }
 
@@ -751,13 +471,12 @@ public sealed class RunQueueStoreTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName) = NewIds();
-        var dir = NewTempDir();
 
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
-            await ClaimId(db, Node, [], DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runId, 0, Node, DateTime.UtcNow));
 
             // The live feed broke after the first statement and the first event: only the prefix reached the
             // catalog. Completion must preserve that prefix under its ids and append only the missing tail.
@@ -778,9 +497,8 @@ public sealed class RunQueueStoreTests
             var liveStatementId = liveStatement.Id;
             var liveEventId = liveEvent.Id;
 
-            var runJson = Path.Combine(dir, "run.json");
-            await File.WriteAllTextAsync(runJson, FailedArtifactWithTrace(runId, flowName));
-            Assert.Equal(RunCompletionOutcome.Recorded, await RunQueueStore.CompleteFromArtifactAsync(db, runId, repoId, runJson, DateTime.UtcNow));
+            Assert.Equal(RunOutcomeStatus.Recorded, (await RunQueueStore.CompleteFromArtifactAsync(
+                db, runId, FailedArtifactWithTrace(runId, flowName), DateTime.UtcNow, Node, 1)).Status);
 
             // The whole trace is present, exactly once: the prefix under its original id, the tail newly appended.
             var statements = await db.RunStatements.AsNoTracking()
@@ -804,7 +522,7 @@ public sealed class RunQueueStoreTests
         }
         finally
         {
-            await Cleanup(cs, repoId, dir);
+            await Cleanup(cs, repoId);
         }
     }
 
@@ -813,12 +531,6 @@ public sealed class RunQueueStoreTests
         var suffix = Guid.NewGuid().ToString("N")[..8];
         return (FlowIdentity.FromName("rq_" + suffix), "rq_flow_" + suffix);
     }
-
-    /// <summary>Claims the next eligible run and returns just its id (null when nothing is claimable), for the many
-    /// assertions that only care WHICH run was handed out. Tests exercising the fencing token call
-    /// <see cref="RunQueueStore.ClaimNextAsync"/> directly and keep the whole claim.</summary>
-    private static async Task<Guid?> ClaimId(CatalogDbContext db, string node, IReadOnlyList<string> pools, DateTime nowUtc)
-        => (await RunQueueStore.ClaimNextAsync(db, node, pools, nowUtc))?.RunId;
 
     private static async Task<CatalogRun> Reload(CatalogDbContext db, Guid runId)
     {
@@ -867,42 +579,15 @@ public sealed class RunQueueStoreTests
             }
             """;
 
-    private static string NewTempDir()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "sqlflow_rq_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
-    }
-
-    private static async Task DeleteNodes(string cs, params string[] names)
+    private static async Task Cleanup(string cs, Guid repoId)
     {
         await using var db = CatalogDatabase.Create(cs);
-        await db.Nodes.Where(n => names.Contains(n.Name)).ExecuteDeleteAsync();
-    }
-
-    private static async Task Cleanup(string cs, Guid repoId, string? dir = null)
-    {
-        await using (var db = CatalogDatabase.Create(cs))
-        {
-            await db.RunStatements.Where(s => s.RepoId == repoId).ExecuteDeleteAsync();
-            await db.RunEvents.Where(e => e.RepoId == repoId).ExecuteDeleteAsync();
-            await db.RunFiles.Where(f => f.RepoId == repoId).ExecuteDeleteAsync();
-            await db.RunAssertions.Where(a => a.RepoId == repoId).ExecuteDeleteAsync();
-            await db.RunSurrogateKeys.Where(k => k.RepoId == repoId).ExecuteDeleteAsync();
-            await db.RunHealthCheckMetrics.Where(m => m.RepoId == repoId).ExecuteDeleteAsync();
-            await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
-        }
-
-        if (dir is not null && Directory.Exists(dir))
-        {
-            try
-            {
-                Directory.Delete(dir, recursive: true);
-            }
-            catch (IOException)
-            {
-                // A transient lock on the temp file must not fail the test.
-            }
-        }
+        await db.RunStatements.Where(s => s.RepoId == repoId).ExecuteDeleteAsync();
+        await db.RunEvents.Where(e => e.RepoId == repoId).ExecuteDeleteAsync();
+        await db.RunFiles.Where(f => f.RepoId == repoId).ExecuteDeleteAsync();
+        await db.RunAssertions.Where(a => a.RepoId == repoId).ExecuteDeleteAsync();
+        await db.RunSurrogateKeys.Where(k => k.RepoId == repoId).ExecuteDeleteAsync();
+        await db.RunHealthCheckMetrics.Where(m => m.RepoId == repoId).ExecuteDeleteAsync();
+        await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
     }
 }

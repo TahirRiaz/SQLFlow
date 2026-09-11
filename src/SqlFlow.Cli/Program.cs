@@ -576,24 +576,20 @@ internal static class Program
     }
 
     /// <summary>
-    /// Runs this host as a self-hosted compute node: <c>sqlflow worker [--db &lt;ref&gt;] [--poll-seconds N]
-    /// [--drain-seconds N]</c>. It
-    /// drains the durable run queue in the shadow catalog - atomically claiming queued runs, executing them through
-    /// the same engine a direct CLI run uses, and recording each outcome under the id the trigger returned - so a
-    /// node inside a private network runs the flows the control plane queued without the control plane ever reaching
-    /// the node. The queue's atomic claim makes any number of workers safe to run at once. Every credential is
-    /// resolved from THIS node's own environment, so nothing sensitive travels through the queue. Runs until a stop
-    /// signal (Ctrl+C, or the SIGTERM an orchestrator sends when it reclaims the replica), which stops claiming and
-    /// then DRAINS: the runs already in flight keep executing and record their own outcomes, for up to
-    /// <c>--drain-seconds</c>.
+    /// Runs this host as a self-hosted compute node: <c>sqlflow worker --url &lt;control-plane&gt; [--token &lt;ref&gt;]
+    /// [--db &lt;ref&gt;] [--pool a,b] [--poll-seconds N] [--drain-seconds N]</c>. The node speaks the node protocol
+    /// to the control plane's dispatcher over HTTP (poll for work, report outcomes) with a bearer credential carrying
+    /// the <c>node</c> scope, and executes each handed-out run through the same engine as a direct CLI run on THIS
+    /// host, resolving every credential from its own environment. The catalog connection (<c>--db</c>, default
+    /// <c>${env:SQLFLOW_CATALOG_DB}</c>) is still needed to read the run's definition and stream its trace; no queue
+    /// operation touches it. Any number of nodes may run at once: placement is the dispatcher's.
     /// </summary>
     private static async Task<int> RunWorkerAsync(IServiceProvider provider, string[] args, bool verbose)
     {
-        var reference = GetOption(args, "--db") ?? "${env:SQLFLOW_CATALOG_DB}";
-        string catalogConnection;
+        Uri controlPlane;
         try
         {
-            catalogConnection = provider.GetRequiredService<ISecretResolver>().Resolve(reference);
+            controlPlane = Remote.RemoteVerbs.RequireUrl(args);
         }
         catch (SqlFlowException ex)
         {
@@ -601,18 +597,45 @@ internal static class Program
             return 1;
         }
 
-        var pollSeconds = Math.Max(1, ParseIntOption(args, 5, "--poll-seconds"));
-        // How long a stopping node keeps finishing the runs it already claimed before severing them. It must stay
+        var resolver = provider.GetRequiredService<ISecretResolver>();
+        var tokenReference = Remote.RemoteVerbs.ResolveToken(controlPlane, args);
+        if (string.IsNullOrWhiteSpace(tokenReference))
+        {
+            Console.Error.WriteLine(
+                "ERROR  no node credential: pass --token <ref> or set SQLFLOW_TOKEN to a personal access token minted with the " +
+                "'node' scope (a ${env:...}/${keyvault:...} reference is resolved here on the node).");
+            return 1;
+        }
+
+        var reference = GetOption(args, "--db") ?? "${env:SQLFLOW_CATALOG_DB}";
+        string catalogConnection;
+        string token;
+        try
+        {
+            catalogConnection = resolver.Resolve(reference);
+            token = resolver.Resolve(tokenReference);
+        }
+        catch (SqlFlowException ex)
+        {
+            Console.Error.WriteLine($"ERROR  {SecretHygiene.RedactedMessage(ex)}");
+            return 1;
+        }
+
+        // How long each poll asks the dispatcher to hold it when nothing is available (the node's heartbeat cadence
+        // while saturated); the server caps it at the protocol maximum.
+        var pollSeconds = Math.Clamp(ParseIntOption(args, 30, "--poll-seconds"), 1, SqlFlow.Dispatch.Protocol.NodeProtocol.MaxWaitSeconds);
+        // How long a stopping node keeps finishing the runs it already holds before severing them. It must stay
         // under the orchestrator's termination grace period, or the platform's kill lands mid-drain and severs the
-        // work anyway; zero severs at once (the pre-drain behavior).
+        // work anyway; zero severs at once.
         var drainSeconds = Math.Max(0, ParseIntOption(args, (int)RunWorker.DefaultDrainTimeout.TotalSeconds, "--drain-seconds"));
-        // The pools this node serves (comma-separated). Empty means it drains only untargeted runs.
+        // The pools this node serves (comma-separated). Empty means it takes only untargeted runs.
         var pools = (GetOption(args, "--pool") ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
         // A dedicated host for the node: the shared engine (so a worker run is byte-for-byte a CLI run), a scoped
-        // catalog context per claim, and the shared RunWorker drain loop. The DocumentExecutor gets the stderr
-        // warning sink exactly as the CLI's own runs do (a later registration wins over the engine's sink-less one).
+        // catalog context per run, the HTTP transport to the dispatcher, and the shared RunWorker loop. The
+        // DocumentExecutor gets the stderr warning sink exactly as the CLI's own runs do (a later registration wins
+        // over the engine's sink-less one).
         var services = new ServiceCollection();
         services.AddLogging(builder =>
         {
@@ -631,6 +654,7 @@ internal static class Program
         services.AddSingleton(sp => new DocumentExecutor(sp, Console.Error.WriteLine));
         services.AddSingleton(TimeProvider.System);
         services.AddScoped(_ => CatalogDatabase.Create(catalogConnection));
+        services.AddSingleton<INodeTransport>(_ => new HttpNodeTransport(controlPlane, token));
         services.AddSingleton<RunWorker>();
         await using var workerProvider = services.BuildServiceProvider();
 
@@ -640,19 +664,19 @@ internal static class Program
         // Stop signals. SIGTERM is the one that matters in production: it is what an autoscaler reclaiming this
         // replica, a revision swap, or a `docker stop` sends, and .NET's DEFAULT handling of it terminates the
         // process immediately. That default is what turns a routine scale-in into lost work - every run this node
-        // is executing dies mid-statement with no outcome recorded, so each is recovered only by the reaper's
-        // requeue, which consumes one of its execution attempts and repeats all of its work; a run caught by three
-        // such stops is failed outright and blamed for dying. Handling the signal (Cancel = true suppresses the
-        // default termination) hands control back here, where the worker stops claiming and drains what it holds
-        // within the orchestrator's termination grace period. SIGINT is the interactive Ctrl+C and drains the same
-        // way, rather than killing the process.
+        // is executing dies mid-statement with no outcome reported, so each is recovered only by the dispatcher's
+        // lease expiry, which consumes one of its execution attempts and repeats all of its work; a run caught by
+        // three such stops is failed outright and blamed for dying. Handling the signal (Cancel = true suppresses
+        // the default termination) hands control back here, where the worker stops taking work and drains what it
+        // holds within the orchestrator's termination grace period. SIGINT is the interactive Ctrl+C and drains the
+        // same way, rather than killing the process.
         var stopRequested = 0;
         void RequestStop(PosixSignalContext context)
         {
             // A SECOND signal means the sender is not willing to wait out the drain (an impatient operator, or an
             // orchestrator escalating). Leave Cancel false so the runtime terminates as it normally would: the
-            // severed runs stay 'running' and the reaper requeues them, which is the honest outcome of refusing the
-            // drain, and it keeps a worker from ever feeling unkillable.
+            // severed runs' leases lapse and the dispatcher requeues them, which is the honest outcome of refusing
+            // the drain, and it keeps a worker from ever feeling unkillable.
             if (Interlocked.Exchange(ref stopRequested, 1) != 0)
             {
                 return;
@@ -666,20 +690,25 @@ internal static class Program
         using var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, RequestStop);
 
         var poolLabel = pools.Length > 0 ? string.Join(", ", pools) : "untargeted runs only";
-        Console.WriteLine($"SQLFlow worker '{worker.NodeName}' draining the run queue (poll {pollSeconds}s, pools: {poolLabel}, drain {drainSeconds}s). Press Ctrl+C to stop, again to stop without draining.");
+        Console.WriteLine($"SQLFlow worker '{worker.NodeName}' polling {controlPlane} for work (poll {pollSeconds}s, pools: {poolLabel}, drain {drainSeconds}s). Press Ctrl+C to stop, again to stop without draining.");
         try
         {
-            // An operator restart request (observed on the heartbeat) trips the same token a stop signal does: the
-            // loop stops claiming, drains its in-flight work, and returns, the process exits cleanly, and the
-            // orchestrator recreates the replica.
+            // An operator restart request (relayed by the dispatcher on a poll) trips the same token a stop signal
+            // does: the loop stops taking work, drains its in-flight work, and returns, the process exits cleanly,
+            // and the orchestrator recreates the replica.
             await worker.RunAsync(
-                TimeSpan.FromSeconds(pollSeconds), pools, (timeout, ct) => Task.Delay(timeout, ct), cts.Token,
-                onRestartRequested: _ =>
+                new RunWorkerOptions
                 {
-                    cts.Cancel();
-                    return Task.CompletedTask;
+                    Pools = pools,
+                    PollWait = TimeSpan.FromSeconds(pollSeconds),
+                    DrainTimeout = TimeSpan.FromSeconds(drainSeconds),
+                    OnRestartRequested = _ =>
+                    {
+                        cts.Cancel();
+                        return Task.CompletedTask;
+                    },
                 },
-                drainTimeout: TimeSpan.FromSeconds(drainSeconds)).ConfigureAwait(false);
+                cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -2161,18 +2190,24 @@ internal static class Program
                                                  database, linking flows across repos through shared objects);
                                                  'status' lists applied vs pending migrations.
                                                  --db defaults to ${env:SQLFLOW_CATALOG_DB}.
-              sqlflow worker   [--db <conn-ref>] [--poll-seconds N] [--pool a,b] [--drain-seconds N]
-                                                 Run as a self-hosted compute node: drain the shadow catalog's
-                                                 durable run queue, executing queued/scheduled runs through the same
-                                                 engine on THIS host (resolving every credential from this node's own
-                                                 environment) and recording each outcome. The atomic claim makes any
-                                                 number of workers safe at once. Runs until Ctrl+C or SIGTERM, which
-                                                 stops claiming and then lets the in-flight runs finish and record
+              sqlflow worker   --url <control-plane> [--token <ref>] [--db <conn-ref>] [--pool a,b]
+                               [--poll-seconds N] [--drain-seconds N]
+                                                 Run as a self-hosted compute node: poll the control plane's
+                                                 dispatcher for work over HTTP (the node protocol, authenticated
+                                                 with a personal access token carrying the 'node' scope: --token or
+                                                 SQLFLOW_TOKEN, a ${env:...}/${keyvault:...} reference resolved
+                                                 here), execute each handed-out run through the same engine on THIS
+                                                 host (resolving every credential from this node's own environment)
+                                                 and report each outcome. Placement is the dispatcher's, so any
+                                                 number of nodes is safe at once. --url defaults to SQLFLOW_URL;
+                                                 --db (default ${env:SQLFLOW_CATALOG_DB}) reads run definitions and
+                                                 streams traces, never the queue. Runs until Ctrl+C or SIGTERM, which
+                                                 stops taking work and then lets the in-flight runs finish and report
                                                  their outcomes (--drain-seconds, default 540; keep it under the
-                                                 orchestrator's termination grace period). --pool sets the
-                                                 pools this node serves (it always drains untargeted runs; with
-                                                 --pool it also drains runs routed to those pools). --db defaults to
-                                                 ${env:SQLFLOW_CATALOG_DB}.
+                                                 orchestrator's termination grace period). --pool sets the pools this
+                                                 node serves (it always takes untargeted runs; with --pool it also
+                                                 takes runs routed to those pools). --poll-seconds (default 30) is how
+                                                 long each poll waits for work before returning empty.
               sqlflow runs cancel <runId> [--db <conn-ref>]
                                                  Cancel a run. With a control plane configured (--url/SQLFLOW_URL)
                                                  this goes through the API; with --db, or with no control plane

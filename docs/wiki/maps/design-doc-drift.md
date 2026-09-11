@@ -23,23 +23,26 @@ rawRefs:
   - docs/schema-evolution-design.md
   - docs/schema-sync-and-discovery-design.md
   - docs/flattener-memory-postmortem.md
+  - docs/dispatch-design.md
 referenceRefs:
   - concept-architecture-and-execution
+  - concept-control-plane
+  - cli-worker
   - concept-connections-and-secrets
   - concept-environment-variables
   - concept-ingestion-run-pipeline
 related:
   - wiki-string-first-landing
   - wiki-census-drift
-updated: 2026-09-09
+updated: 2026-09-11
 ---
 
 # Design document drift map: which docs under docs/ can still be trusted
 
-Eleven markdown documents sit directly under `docs/`, above the verified `docs/reference/` corpus.
+Twelve markdown documents sit directly under `docs/`, above the verified `docs/reference/` corpus.
 They are not equivalent to each other. Eight are pre-implementation design intent that the shipped
 code has moved away from, and each declares its own drift in a banner. Two are current prose. One is
-an incident record.
+an incident record. One is a phased design whose status line tracks which phases have shipped.
 
 The practical rule: **for behavior, go to `docs/reference/`. Come here only for intent and
 history.** A design document tells you what someone meant to build, which is genuinely useful when
@@ -80,6 +83,19 @@ against the engine rather than against the census, and therefore also documents 
 the census is missing (see [census-drift](census-drift.md)). `acquisition.md` remains useful as the
 design narrative for why the acquisition engine exists at all, and is no longer load-bearing for
 behaviour.
+
+## A phased design, tracked by its own status line
+
+[dispatch-design.md](../../dispatch-design.md) is the design for moving the run queue out of SQL
+Server into an in-memory dispatcher inside the control plane, with compute nodes pulling work over an
+HTTP node protocol. Unlike the historical documents above it was written on 2026-09-11 and
+implemented the same day: its status line records that phase 1 shipped (the queue, the node protocol,
+the ownership lease, the tests) and that phases 2 and 3 remain, and it names the two decisions that
+changed during implementation. Its sections 2 and 3 deliberately describe the state it replaced, so
+"today" there means the SQL-claim design, not what runs now; for the shipped behaviour go to
+[reference/concepts/control-plane.md](../../reference/concepts/control-plane.md) ("The dispatcher")
+and [reference/cli/worker.md](../../reference/cli/worker.md). Until phases 2 and 3 land, the status
+line is the authoritative statement of what is implemented.
 
 ## Incident record
 

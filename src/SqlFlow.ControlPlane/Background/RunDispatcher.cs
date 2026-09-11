@@ -1,12 +1,14 @@
 using SqlFlow.Catalog;
+using SqlFlow.Dispatch;
 
 namespace SqlFlow.ControlPlane.Background;
 
 /// <summary>
-/// Enqueues a flow run onto the durable queue and returns its newly minted id. The queue itself is the catalog's
-/// <see cref="CatalogRun"/> table (see <see cref="RunQueueStore"/>), so a queued run survives a restart, is visible to
-/// the read API immediately, and can be drained by more than one worker. This seam is where a future backend can
-/// route a run to a remote pool instead of the in-process worker; the endpoint depends only on the interface.
+/// The API's seam onto the run queue: enqueue and cancel runs and compute tasks. Every operation is ledger-first
+/// (the catalog row is written with the caller's context, so a run is visible to the read API and durable before
+/// anything else happens) and then notifies the in-memory dispatcher so placement happens at once. On a replica
+/// whose dispatcher is passive the notify is a no-op and the owner's reconcile picks the row up within its
+/// interval, so an API replica never needs to know which replica dispatches.
 /// </summary>
 public interface IRunDispatcher
 {
@@ -16,15 +18,13 @@ public interface IRunDispatcher
     Task<Guid> EnqueueAsync(CatalogDbContext catalog, RunEnqueueRequest request, CancellationToken ct = default);
 
     /// <summary>Enqueues a whole run group (a Node or Batch execution) as one wave-ordered set and returns the group
-    /// id with its member run ids, so the caller can point a client at the group view. Like a single enqueue this
-    /// nudges the worker so the first wave is picked up immediately.</summary>
+    /// id with its member run ids, so the caller can point a client at the group view.</summary>
     Task<RunGroupEnqueueResult> EnqueueGroupAsync(
         CatalogDbContext catalog, RunGroupEnqueueRequest request, CancellationToken ct = default);
 
     /// <summary>Cancels a run: a still-queued run is dequeued outright; a run already executing has a durable cancel
-    /// request stamped for its owning node to honor. Returns the precise <see cref="CancelOutcome"/> so the endpoint
-    /// can answer 200 / 202 / 404 / 409. Goes through the dispatcher (not the store directly) so the in-process
-    /// backend can also nudge the local worker to observe the request without waiting out its poll interval.</summary>
+    /// request stamped, which the dispatcher relays to its node on the node's next poll (woken at once). Returns the
+    /// precise <see cref="CancelOutcome"/> so the endpoint can answer 200 / 202 / 404 / 409.</summary>
     Task<CancelOutcome> CancelAsync(CatalogDbContext catalog, Guid runId, CancellationToken ct = default);
 
     /// <summary>Cancels a whole run group: every queued member is dequeued and every running member gets a durable
@@ -33,40 +33,35 @@ public interface IRunDispatcher
 
     /// <summary>Enqueues an ad-hoc datasource compute task (references only; the executing node resolves the
     /// credentials) and returns the minted task id, so the caller can point a client at
-    /// <c>GET /api/v1/datasources/tasks/{taskId}</c>. Nudges the worker like a run enqueue does.</summary>
+    /// <c>GET /api/v1/datasources/tasks/{taskId}</c>.</summary>
     Task<Guid> EnqueueComputeTaskAsync(CatalogDbContext catalog, ComputeTaskEnqueueRequest request, CancellationToken ct = default);
 
     /// <summary>Cancels a compute task: a still-queued task is dequeued outright; a running task gets a durable
-    /// cancel request stamped for its owning node, with a worker nudge so the abort happens at once.</summary>
+    /// cancel request relayed to its node.</summary>
     Task<CancelOutcome> CancelComputeTaskAsync(CatalogDbContext catalog, Guid taskId, CancellationToken ct = default);
 }
 
-/// <summary>
-/// The in-process backend: it writes the queued run through <see cref="RunQueueStore"/> and then nudges the local
-/// <see cref="RunExecutionWorker"/> via <see cref="RunQueueSignal"/> so a triggered run is picked up immediately
-/// rather than waiting for the worker's next poll. Durability and ordering live in the database; the signal is only
-/// a latency optimization, so a missed signal still means the run is drained on the next poll.
-/// </summary>
+/// <summary>The one implementation: journals through the stores, then tells the local <see cref="Dispatcher"/>.</summary>
 public sealed class InProcessRunDispatcher : IRunDispatcher
 {
-    private readonly RunQueueSignal _signal;
+    private readonly Dispatcher _dispatcher;
     private readonly TimeProvider _clock;
 
-    public InProcessRunDispatcher(RunQueueSignal signal, TimeProvider clock)
+    public InProcessRunDispatcher(Dispatcher dispatcher, TimeProvider clock)
     {
-        ArgumentNullException.ThrowIfNull(signal);
+        ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(clock);
-        _signal = signal;
+        _dispatcher = dispatcher;
         _clock = clock;
     }
 
     public async Task<Guid> EnqueueAsync(CatalogDbContext catalog, RunEnqueueRequest request, CancellationToken ct = default)
     {
-        var runId = await RunQueueStore
+        var result = await RunQueueStore
             .EnqueueAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
-        _signal.Signal();
-        return runId;
+        _dispatcher.NotifyRunsEnqueued([result.Placement]);
+        return result.RunId;
     }
 
     public async Task<RunGroupEnqueueResult> EnqueueGroupAsync(
@@ -75,7 +70,7 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
         var result = await RunQueueStore
             .EnqueueGroupAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
-        _signal.Signal();
+        _dispatcher.NotifyRunsEnqueued(result.Placements);
         return result;
     }
 
@@ -84,13 +79,9 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
         var outcome = await RunQueueStore
             .CancelAsync(catalog, runId, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
-
-        // A running run's cancel is observed by the worker's poll: nudge it so the abort happens at once rather than
-        // waiting out the poll interval. (A queued run is already gone; the worker has nothing to observe.) Like the
-        // enqueue nudge this is only a latency optimization - a missed signal still means the next poll honors it.
-        if (outcome == CancelOutcome.CancelRequested)
+        if (outcome is CancelOutcome.Cancelled or CancelOutcome.CancelRequested)
         {
-            _signal.Signal();
+            _dispatcher.NotifyRunCancelled(runId);
         }
 
         return outcome;
@@ -102,11 +93,9 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
         var result = await RunQueueStore
             .CancelGroupAsync(catalog, groupId, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
-
-        // Nudge the worker so any running members observe their cancel request at once (like the single-run path).
-        if (result.RequestedRunning > 0)
+        if (result.Found)
         {
-            _signal.Signal();
+            _dispatcher.NotifyGroupCancelled(groupId);
         }
 
         return result;
@@ -115,11 +104,11 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
     public async Task<Guid> EnqueueComputeTaskAsync(
         CatalogDbContext catalog, ComputeTaskEnqueueRequest request, CancellationToken ct = default)
     {
-        var taskId = await ComputeTaskStore
+        var result = await ComputeTaskStore
             .EnqueueAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
-        _signal.Signal();
-        return taskId;
+        _dispatcher.NotifyTaskEnqueued(result.Placement);
+        return result.TaskId;
     }
 
     public async Task<CancelOutcome> CancelComputeTaskAsync(
@@ -128,44 +117,11 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
         var outcome = await ComputeTaskStore
             .CancelAsync(catalog, taskId, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
-
-        // A running task's cancel is observed by the worker's poll: nudge it so the abort happens at once.
-        if (outcome == CancelOutcome.CancelRequested)
+        if (outcome is CancelOutcome.Cancelled or CancelOutcome.CancelRequested)
         {
-            _signal.Signal();
+            _dispatcher.NotifyTaskCancelled(taskId);
         }
 
         return outcome;
     }
-}
-
-/// <summary>
-/// A one-slot wake-up between the dispatcher (and scheduler) and the worker: signalling makes the worker's next
-/// wait return at once so a freshly queued run is drained without waiting out the poll interval. Coalesces, so any
-/// number of signals while the worker is busy collapse into a single immediate re-drain (which then drains the
-/// whole queue). It is purely an optimization layered over polling, never the source of truth.
-/// </summary>
-public sealed class RunQueueSignal : IDisposable
-{
-    private readonly SemaphoreSlim _semaphore = new(0, 1);
-
-    /// <summary>Wakes the worker if it is waiting, or marks that it should not wait next time. Idempotent while a
-    /// wake is already pending.</summary>
-    public void Signal()
-    {
-        try
-        {
-            _semaphore.Release();
-        }
-        catch (SemaphoreFullException)
-        {
-            // A wake is already pending; one re-drain handles any number of enqueues, so this is a no-op.
-        }
-    }
-
-    /// <summary>Waits until signalled or until <paramref name="timeout"/> elapses (the poll fallback). The return
-    /// value is irrelevant to the caller: the worker drains the queue on either path.</summary>
-    public Task WaitAsync(TimeSpan timeout, CancellationToken ct) => _semaphore.WaitAsync(timeout, ct);
-
-    public void Dispose() => _semaphore.Dispose();
 }

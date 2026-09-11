@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "3107366611164256148"
+      "templateHash": "9481125346398581200"
     }
   },
   "parameters": {
@@ -45,7 +45,20 @@
       "type": "string",
       "defaultValue": "sqlflow-catalog-db",
       "metadata": {
-        "description": "Key Vault secret name for the catalog ADO.NET connection string."
+        "description": "Key Vault secret name for the catalog ADO.NET connection string. The node still reads run definitions and streams traces through it; no queue operation touches it."
+      }
+    },
+    "controlPlaneUrl": {
+      "type": "string",
+      "metadata": {
+        "description": "The control plane base URL the node polls for work over the node protocol (https://<control-plane-fqdn>). Every call is outbound from the node."
+      }
+    },
+    "nodeTokenSecretName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Key Vault secret name holding a personal access token minted with the node scope, which the node presents to the control plane. Mint it after the control plane is up (an admin: POST /api/v1/me/tokens with scopes [\"node\"]) and store it under this name before deploying the worker; leave empty to deploy the worker without a credential (it then cannot take work until one is added)."
       }
     },
     "pool": {
@@ -158,9 +171,11 @@
         "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
       }
     ],
+    "nodeTokenSecrets": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'node-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('nodeTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
     "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
     "scalerSecrets": "[if(empty(parameters('scalerConnectionSecretName')), createArray(), createArray(createObject('name', 'catalog-scaler', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('scalerConnectionSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
     "scalerSecretRef": "[if(empty(parameters('scalerConnectionSecretName')), 'catalog-db', 'catalog-scaler')]",
+    "nodeTokenEnv": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_TOKEN', 'secretRef', 'node-token')))]",
     "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
     "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
     "queueDepthQuery": "[if(empty(parameters('pool')), format('SELECT (SELECT MAX(v) FROM (VALUES ((CAST(CEILING((SELECT COUNT(*) FROM [catalog].[Run] AS r WHERE r.[Status] = ''queued'' AND r.[TargetPool] IS NULL AND (r.[GroupId] IS NULL OR NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS s WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave] AND s.[Status] IN (''queued'', ''running''))) AND (r.[GroupMaxConcurrency] IS NULL OR (SELECT COUNT(*) FROM [catalog].[Run] AS w WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = ''running'') < r.[GroupMaxConcurrency]) AND NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS p WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = ''running'')) / {0}.0) AS int) + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME()) AND ([Pool] = N'''' OR [Pool] IS NULL)))), (ISNULL((SELECT [MinReplicas] FROM [catalog].[WorkerPool] WHERE [Pool] = N''''), 0)), (ISNULL((SELECT CASE WHEN [ManualUntilUtc] > SYSUTCDATETIME() THEN [ManualReplicas] ELSE 0 END FROM [catalog].[WorkerPool] WHERE [Pool] = N''''), 0))) AS t(v))', parameters('maxConcurrentRunsPerReplica')), format('SELECT (SELECT MAX(v) FROM (VALUES ((CAST(CEILING((SELECT COUNT(*) FROM [catalog].[Run] AS r WHERE r.[Status] = ''queued'' AND r.[TargetPool] = ''{0}'' AND (r.[GroupId] IS NULL OR NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS s WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave] AND s.[Status] IN (''queued'', ''running''))) AND (r.[GroupMaxConcurrency] IS NULL OR (SELECT COUNT(*) FROM [catalog].[Run] AS w WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = ''running'') < r.[GroupMaxConcurrency]) AND NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS p WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = ''running'')) / {1}.0) AS int) + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME()) AND [Pool] = N''{2}''))), (ISNULL((SELECT [MinReplicas] FROM [catalog].[WorkerPool] WHERE [Pool] = N''{3}''), 0)), (ISNULL((SELECT CASE WHEN [ManualUntilUtc] > SYSUTCDATETIME() THEN [ManualReplicas] ELSE 0 END FROM [catalog].[WorkerPool] WHERE [Pool] = N''{4}''), 0))) AS t(v))', parameters('pool'), parameters('maxConcurrentRunsPerReplica'), parameters('pool'), parameters('pool'), parameters('pool')))]"
@@ -217,7 +232,7 @@
         "configuration": {
           "activeRevisionsMode": "Single",
           "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
-          "secrets": "[concat(variables('baseSecrets'), variables('gitTokenSecrets'), variables('flowEnvSecrets'), variables('scalerSecrets'))]"
+          "secrets": "[concat(variables('baseSecrets'), variables('nodeTokenSecrets'), variables('gitTokenSecrets'), variables('flowEnvSecrets'), variables('scalerSecrets'))]"
         },
         "template": {
           "terminationGracePeriodSeconds": 600,
@@ -229,7 +244,7 @@
                 "cpu": "[json(parameters('cpu'))]",
                 "memory": "[parameters('memory')]"
               },
-              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('flowEnvVars'))]"
+              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_URL', 'value', parameters('controlPlaneUrl')), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('nodeTokenEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('flowEnvVars'))]"
             }
           ],
           "scale": {

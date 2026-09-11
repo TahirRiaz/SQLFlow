@@ -29,10 +29,10 @@ public sealed class ExecutionModeApiTests
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(
+            var runId = (await RunQueueStore.EnqueueAsync(
                 db,
                 new RunEnqueueRequest(repoId, flowName, "ing", Parameters: new RunParameters { AssertionsOnly = true }),
-                DateTime.UtcNow);
+                DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.True(run.AssertionsOnly);

@@ -9,10 +9,9 @@ namespace SqlFlow.Tests.Integration;
 /// <summary>
 /// The CLI verbs that talk to the shadow catalog directly (no control plane), through the compiled binary:
 /// 'db migrate/status/sync' (including the create guard that refuses to conjure a database without --create),
-/// 'runs cancel' dequeuing a queued run, 'user reset-password' with a piped password, and the 'worker' verb
-/// draining a queued run end to end: claim, execute the flow file from the repo's root path, load the sink,
-/// and record the outcome under the enqueued run id. That worker test is the full fleet loop with no control
-/// plane and no GUI involved.
+/// 'runs cancel' dequeuing a queued run (the break-glass path that works when the control plane is down; the
+/// dispatcher's reconcile picks the cancelled row up), and 'user reset-password' with a piped password. The
+/// 'worker' verb speaks to a control plane, so its end-to-end test lives in the control-plane suite.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class CliCatalogDbVerbTests : IDisposable
@@ -127,8 +126,8 @@ public sealed class CliCatalogDbVerbTests : IDisposable
         Guid runId;
         await using (var db = CatalogDatabase.Create(cs))
         {
-            runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(repoId, repoName + "_flow", "file"), DateTime.UtcNow);
+            runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, repoName + "_flow", "file"), DateTime.UtcNow)).RunId;
         }
 
         try
@@ -250,97 +249,6 @@ public sealed class CliCatalogDbVerbTests : IDisposable
 
         Assert.Equal(1, result.Exit);
         Assert.Contains("no user", result.StdErr, StringComparison.Ordinal);
-    }
-
-    // ---- worker -------------------------------------------------------------------------------------------------
-
-    [SkippableFact]
-    public async Task Worker_DrainsAQueuedRun_ExecutesTheFlow_AndRecordsSuccess()
-    {
-        var (dll, cs) = await RequireAsync();
-        var suffix = Suffix();
-        var repoName = "cli_worker_" + suffix;
-        var repoId = FlowIdentity.FromName(repoName);
-        var flowName = "cli_worker_orders_" + suffix;
-        var table = "IT_CliWrk_" + suffix;
-        await IntegrationDb.DropTableAsync(cs, table);
-
-        // The repo's working tree on disk: the worker resolves an unpinned run from RootPath + RelativePath.
-        var root = Path.Combine(_dir, repoName);
-        Directory.CreateDirectory(Path.Combine(root, "flows"));
-        var csv = Path.Combine(root, "flows", "orders.csv");
-        File.WriteAllText(csv, "Id,Name\n1,Acme\n2,Globex\n");
-        File.WriteAllText(Path.Combine(root, "flows", flowName + ".flow.yaml"), $$"""
-            name: {{flowName}}
-            source:
-              type: csv
-              location: {{csv.Replace('\\', '/')}}
-            target:
-              connection: "${env:SQLFlowSinkConStr}"
-              schema: dbo
-              table: {{table}}
-            """);
-
-        Guid runId;
-        var now = DateTime.UtcNow;
-        await using (var db = CatalogDatabase.Create(cs))
-        {
-            db.Repos.Add(new CatalogRepo
-            {
-                Id = repoId,
-                Name = repoName,
-                RootPath = root,
-                FirstSeenUtc = now,
-                LastSyncUtc = now,
-            });
-            db.Pipelines.Add(new CatalogPipeline
-            {
-                Id = CatalogIdentity.Pipeline(repoId, flowName),
-                RepoId = repoId,
-                Name = flowName,
-                Kind = "file",
-                RelativePath = "flows/" + flowName + ".flow.yaml",
-                ContentHash = "0000000000000000000000000000000000000000000000000000000000000000",
-                Yaml = "name: " + flowName,
-                DefinitionJson = $$"""{"name":"{{flowName}}"}""",
-                Active = true,
-                Wave = 0,
-                FirstSeenUtc = now,
-                LastSeenUtc = now,
-            });
-            await db.SaveChangesAsync();
-            runId = await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "file"), now);
-        }
-
-        await using var worker = CliBinary.Start(
-            dll, ["worker", "--poll-seconds", "1"],
-            env: [("SQLFLOW_CATALOG_DB", cs), ("SQLFlowSinkConStr", cs)], workingDirectory: _dir);
-        try
-        {
-            var banner = await worker.WaitForOutputLineAsync(
-                l => l.Contains("draining the run queue", StringComparison.Ordinal), TimeSpan.FromSeconds(30));
-            Assert.True(banner is not null, $"the worker never announced itself.\n{worker.StdOut}\n{worker.StdErr}");
-
-            // The queue's poll is 1s and the flow is tiny; 90s is generous headroom for a cold first claim.
-            var deadline = DateTime.UtcNow.AddSeconds(90);
-            string status;
-            do
-            {
-                await Task.Delay(1000);
-                await using var db = CatalogDatabase.Create(cs);
-                status = (await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId)).Status;
-            }
-            while (status is "queued" or "running" && DateTime.UtcNow < deadline);
-
-            Assert.True(status == "succeeded",
-                $"run ended '{status}'.\nworker stdout:\n{worker.StdOut}\nworker stderr:\n{worker.StdErr}");
-            Assert.Equal(2, await IntegrationDb.RowCountAsync(cs, table));
-        }
-        finally
-        {
-            await IntegrationDb.DropTableAsync(cs, table);
-            await CleanupRepoAsync(cs, repoId);
-        }
     }
 
     private static async Task CleanupRepoAsync(string cs, Guid repoId)

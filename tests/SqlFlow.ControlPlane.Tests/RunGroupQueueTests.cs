@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
 using SqlFlow.Core.Identity;
 using SqlFlow.Core.Runs;
+using SqlFlow.Dispatch;
 using Xunit;
 
 namespace SqlFlow.ControlPlane.Tests;
@@ -118,12 +119,11 @@ public sealed class RunGroupQueueTests
     }
 
     [SkippableFact]
-    public async Task Claim_GatesByWave_HigherWaveWaitsForLowerWaveToSucceed()
+    public async Task EnqueueGroup_PlacementsCarryTheWaveOrderAndCap_TheDispatcherGatesOn()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, suffix) = NewRepo();
-        var dir = NewTempDir();
 
         try
         {
@@ -134,21 +134,46 @@ public sealed class RunGroupQueueTests
                 new($"b_{suffix}", "ing", 1, CatalogPipeline.DefaultBatch),
             };
             var result = await RunQueueStore.EnqueueGroupAsync(
-                db, new RunGroupEnqueueRequest(repoId, RunGroupModes.Node, $"a_{suffix}", members), DateTime.UtcNow);
+                db, new RunGroupEnqueueRequest(repoId, RunGroupModes.Node, $"a_{suffix}", members, MaxConcurrency: 2), DateTime.UtcNow);
             var (runA, runB) = (result.RunIds[0], result.RunIds[1]);
 
-            // Only the wave-0 member is claimable; the wave-1 member is gated behind it.
-            Assert.Equal(runA, await ClaimId(db, Node, [], DateTime.UtcNow));
-            Assert.Null(await ClaimId(db, Node, [], DateTime.UtcNow));
+            // The placements handed to the dispatcher mirror the journaled rows: same group, waves, and cap.
+            Assert.Equal(2, result.Placements.Count);
+            var a = Assert.Single(result.Placements, p => p.RunId == runA);
+            var b = Assert.Single(result.Placements, p => p.RunId == runB);
+            Assert.Equal((result.GroupId, 0, 2), (a.GroupId, a.GroupWave, a.GroupMaxConcurrency));
+            Assert.Equal((result.GroupId, 1, 2), (b.GroupId, b.GroupWave, b.GroupMaxConcurrency));
+            var rowB = await Reload(db, runB);
+            Assert.Equal((result.GroupId, 1, 2), (rowB.GroupId, rowB.GroupWave, rowB.GroupMaxConcurrency));
+
+            // The journal's own reload reproduces exactly those placements, so a dispatcher rebuilt from it gates
+            // the same way as one told at enqueue time.
+            var (queued, _) = await RunQueueStore.LoadDispatchStateAsync(db);
+            Assert.Equal(a, Assert.Single(queued, p => p.RunId == runA));
+            Assert.Equal(b, Assert.Single(queued, p => p.RunId == runB));
+
+            // Wave order end to end through the in-memory gate: only the wave-0 member is handed out, and the
+            // wave-1 member follows once it is terminal.
+            var state = new DispatchState();
+            foreach (var placement in result.Placements)
+            {
+                state.AddQueuedRun(placement);
+            }
+
+            var pick = Assert.Single(state.ReserveRuns(Node, [], 10));
+            Assert.Equal(runA, pick.RunId);
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runA, pick.ExpectedAttempt, Node, DateTime.UtcNow));
+            state.ConfirmRunLease(runA, Node, 1, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(1));
+            Assert.Empty(state.ReserveRuns(Node, [], 10));
             Assert.Equal(RunStatuses.Queued, (await Reload(db, runB)).Status);
 
-            // Once wave 0 succeeds, the wave-1 member becomes claimable.
-            await CompleteSuccess(db, runA, repoId, $"a_{suffix}", dir);
-            Assert.Equal(runB, await ClaimId(db, Node, [], DateTime.UtcNow));
+            await CompleteSuccess(db, runA, $"a_{suffix}");
+            state.RemoveRun(runA);
+            Assert.Equal(runB, Assert.Single(state.ReserveRuns(Node, [], 10)).RunId);
         }
         finally
         {
-            await Cleanup(cs, repoId, dir);
+            await Cleanup(cs, repoId);
         }
     }
 
@@ -176,14 +201,17 @@ public sealed class RunGroupQueueTests
                 db, new RunGroupEnqueueRequest(repoId, RunGroupModes.Node, A, members), DateTime.UtcNow);
             var (runA, runB, runC) = (result.RunIds[0], result.RunIds[1], result.RunIds[2]);
 
-            Assert.Equal(runA, await ClaimId(db, Node, [], DateTime.UtcNow));
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runA, 0, Node, DateTime.UtcNow));
 
-            // A fails: its dependent B is skipped; the independent C stays queued and is now claimable.
-            await RunQueueStore.FailAsync(db, runA, "boom", DateTime.UtcNow);
+            // A fails: its dependent B is skipped (and reported, so the dispatcher drops it from memory); the
+            // independent C stays queued.
+            var failed = await RunQueueStore.FailAsync(db, runA, "boom", DateTime.UtcNow, Node, 1);
+            Assert.True(failed.Applied);
+            Assert.Equal([runB], failed.SkippedRunIds);
             Assert.Equal(RunStatuses.Failed, (await Reload(db, runA)).Status);
             Assert.Equal(RunStatuses.Skipped, (await Reload(db, runB)).Status);
             Assert.Equal(RunStatuses.Queued, (await Reload(db, runC)).Status);
-            Assert.Equal(runC, await ClaimId(db, Node, [], DateTime.UtcNow));
+            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runC, 0, Node, DateTime.UtcNow));
         }
         finally
         {
@@ -377,11 +405,9 @@ public sealed class RunGroupQueueTests
         await db.SaveChangesAsync();
     }
 
-    private static async Task CompleteSuccess(
-        CatalogDbContext db, Guid runId, Guid repoId, string flowName, string dir)
+    private static async Task CompleteSuccess(CatalogDbContext db, Guid runId, string flowName)
     {
-        var runJson = Path.Combine(dir, $"run_{runId:N}.json");
-        await File.WriteAllTextAsync(runJson, $$"""
+        var artifact = $$"""
             {
               "schemaVersion": 1,
               "flowKind": "ing",
@@ -391,25 +417,16 @@ public sealed class RunGroupQueueTests
               "writtenUtc": "2026-06-19T10:00:00Z",
               "result": { "rowsLoaded": 1, "durationSeconds": 1.0 }
             }
-            """);
-        Assert.Equal(RunCompletionOutcome.Recorded, await RunQueueStore.CompleteFromArtifactAsync(db, runId, repoId, runJson, DateTime.UtcNow));
+            """;
+        var outcome = await RunQueueStore.RecordOutcomeAsync(db, runId, Node, 1, RunOutcomeKind.Completed, null, artifact, DateTime.UtcNow);
+        Assert.Equal(RunOutcomeStatus.Recorded, outcome.Status);
     }
-
-    private static async Task<Guid?> ClaimId(CatalogDbContext db, string node, IReadOnlyList<string> pools, DateTime nowUtc)
-        => (await RunQueueStore.ClaimNextAsync(db, node, pools, nowUtc))?.RunId;
 
     private static async Task<CatalogRun> Reload(CatalogDbContext db, Guid runId)
     {
         var run = await db.Runs.AsNoTracking().FirstOrDefaultAsync(r => r.RunId == runId);
         Assert.NotNull(run);
         return run;
-    }
-
-    private static string NewTempDir()
-    {
-        var dir = Path.Combine(Path.GetTempPath(), "sqlflow_grp_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
-        return dir;
     }
 
     private static async Task Cleanup(string cs, Guid repoId, string? dir = null)

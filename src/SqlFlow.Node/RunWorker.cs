@@ -9,60 +9,88 @@ using SqlFlow.Core.Ingestion;
 using SqlFlow.Core.Model;
 using SqlFlow.Core.Runs;
 using SqlFlow.Core.Secrets;
+using SqlFlow.Dispatch;
+using SqlFlow.Dispatch.Protocol;
 using SqlFlow.Execution;
 using SqlFlow.Orchestration;
 using SqlFlow.Yaml;
 
 namespace SqlFlow.Node;
 
+/// <summary>How a node runs: the pools it serves, how much it executes at once, how long it parks a poll, how long
+/// a stop lets in-flight work finish, and what an operator restart request should do to the host.</summary>
+public sealed class RunWorkerOptions
+{
+    /// <summary>The pools this node serves alongside untargeted runs (an empty list = untargeted only).</summary>
+    public IReadOnlyList<string> Pools { get; init; } = [];
+
+    /// <summary>How many runs execute at once on this node (minimum 1).</summary>
+    public int MaxConcurrentRuns { get; init; } = RunWorker.DefaultMaxConcurrentRuns;
+
+    /// <summary>How many compute tasks execute at once on this node (minimum 1).</summary>
+    public int MaxConcurrentComputeTasks { get; init; } = RunWorker.DefaultMaxConcurrentComputeTasks;
+
+    /// <summary>How long each poll asks the dispatcher to hold it when nothing is available. Also the node's heartbeat
+    /// cadence while saturated, so it must stay well inside the dispatcher's lease.</summary>
+    public TimeSpan PollWait { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>How long a stopping node keeps executing the runs it already holds before severing them; zero severs
+    /// at once. Keep it under the orchestrator's termination grace period.</summary>
+    public TimeSpan DrainTimeout { get; init; } = RunWorker.DefaultDrainTimeout;
+
+    /// <summary>Invoked once when the dispatcher relays an operator's restart request: the host wires it to a
+    /// graceful stop (drain, then exit) so the orchestrator recreates the replica. Null means restarts are ignored.</summary>
+    public Func<CancellationToken, Task>? OnRestartRequested { get; init; }
+}
+
 /// <summary>
-/// The compute-node runtime: it drains the durable run queue by atomically claiming the oldest queued runs (so two
-/// nodes never run the same flow) and executing up to a bounded number of them concurrently, each on its own DI
-/// scope, resolving the flow file from the catalog (repo root + relative path), executing it through the shared
-/// <see cref="DocumentExecutor"/> (identical to a CLI run), and recording the outcome from the produced artifact
-/// under the run id the trigger already returned. The queue is the database, so the runtime is stateless and
-/// horizontally scalable: the control plane hosts it in-process, and a self-hosted <c>sqlflow worker</c> hosts the
-/// very same loop on a node inside a private network. Each node resolves every credential from its own
-/// environment, so nothing sensitive travels through the queue.
+/// The compute-node runtime: it polls the dispatcher for work through an <see cref="INodeTransport"/> (in-process on
+/// the control plane's own node, HTTP from a standalone <c>sqlflow worker</c>), executes up to a bounded number of
+/// handed-out runs concurrently, each on its own DI scope, through the shared <see cref="DocumentExecutor"/>
+/// (identical to a CLI run), and reports each outcome back under the hand-out's fence. The dispatcher owns
+/// placement; the node owns execution and never touches the queue. Each node resolves every credential from its own
+/// environment, so nothing sensitive travels through the protocol.
 /// </summary>
 /// <remarks>
 /// Robustness: one run's failure never tears down the loop or its sibling runs (per-run try/catch drives the run
-/// to a terminal state and continues); a poll/claim error (a transient database outage) is logged and retried next
-/// tick. On startup it requeues any run this node left <c>running</c> (an orphan from a previous incarnation that
-/// stopped mid-run). On shutdown it stops claiming and lets the in-flight runs finish, or, if cancelled, leaves
-/// them <c>running</c> for the next start to recover. All diagnostics are logged with secret-redacted messages.
+/// to a terminal outcome report and continues); a poll error (the control plane unreachable, a passive replica)
+/// is logged and retried with jittered backoff. Every poll renews the leases of what the node holds; a run whose
+/// lease the dispatcher revoked (it lapsed and was requeued) is aborted at once, since another node may be executing
+/// it. On shutdown the node stops polling for work and lets the in-flight runs finish, still polling to keep their
+/// leases alive, or, if the drain window expires, severs them and lets the dispatcher requeue them.
 /// </remarks>
-public sealed partial class RunWorker
+public sealed partial class RunWorker : IDisposable
 {
-    /// <summary>The default bound on how many claimed runs a node executes at once (see <see cref="RunAsync"/>).</summary>
+    /// <summary>The default bound on how many handed-out runs a node executes at once.</summary>
     public const int DefaultMaxConcurrentRuns = 4;
 
-    /// <summary>The default bound on how many claimed COMPUTE TASKS a node executes at once. Deliberately its
-    /// own small gate, separate from the run gate: compute tasks are interactive (an operator browsing a
-    /// datasource in the GUI), so a node saturated with long flow runs must still answer them promptly, and a
-    /// burst of browsing must never starve flow execution of its slots.</summary>
+    /// <summary>The default bound on how many COMPUTE TASKS a node executes at once. Deliberately its own small
+    /// gate, separate from the run gate: compute tasks are interactive (an operator browsing a datasource in the
+    /// GUI), so a node saturated with long flow runs must still answer them promptly, and a burst of browsing must
+    /// never starve flow execution of its slots.</summary>
     public const int DefaultMaxConcurrentComputeTasks = 2;
 
-    /// <summary>How often the node refreshes its fleet heartbeat, on a cadence independent of the drain loop (see
-    /// <see cref="HeartbeatLoopAsync"/>). Well under the control plane's 60s online window, so a node stays visibly
-    /// online across several beats even if one is missed, without heartbeating so often it is noise.</summary>
-    private static readonly TimeSpan HeartbeatInterval = TimeSpan.FromSeconds(15);
-
-    /// <summary>How long a stopping node keeps executing the work it has ALREADY claimed before severing it. A stop
-    /// is routine and frequent in an autoscaled fleet - the scaler reclaims a replica, a revision swaps, an operator
-    /// restarts a node - and it means "stop claiming and finish what you hold", never "drop it". Severing a run
-    /// records no outcome at all, so it is recovered only by the reaper's requeue, which consumes one of the run's
-    /// <see cref="RunQueueStore.MaxExecutionAttempts"/> executions and repeats all of its work; a run unlucky enough
-    /// to be caught by three stops is then failed outright and blamed for dying, though nothing was ever wrong with
-    /// it. Draining is what keeps a scale-in from manufacturing those failures. The default sits under the ten-minute
-    /// termination grace the worker's container app declares, so the drain ends on the node's own terms with an
-    /// outcome recorded, rather than being cut off mid-statement by the platform's kill.</summary>
+    /// <summary>How long a stopping node keeps executing the work it has ALREADY been handed before severing it. A
+    /// stop is routine and frequent in an autoscaled fleet - the scaler reclaims a replica, a revision swaps, an
+    /// operator restarts a node - and it means "stop taking work and finish what you hold", never "drop it".
+    /// Severing a run records no outcome at all, so it is recovered only by the dispatcher's lease expiry, which
+    /// consumes one of the run's <see cref="RunQueueStore.MaxExecutionAttempts"/> executions and repeats all of its
+    /// work; a run unlucky enough to be caught by three stops is then failed outright and blamed for dying, though
+    /// nothing was ever wrong with it. Draining is what keeps a scale-in from manufacturing those failures. The
+    /// default sits under the ten-minute termination grace the worker's container app declares, so the drain ends
+    /// on the node's own terms with an outcome recorded, rather than being cut off mid-statement by the platform's
+    /// kill.</summary>
     public static readonly TimeSpan DefaultDrainTimeout = TimeSpan.FromMinutes(9);
 
-    /// <summary>How often the drain re-checks its in-flight work, and re-polls operator cancels, while it waits.</summary>
+    /// <summary>How often the drain re-polls (renewing leases, observing cancels) while it waits.</summary>
     private static readonly TimeSpan DrainPollInterval = TimeSpan.FromSeconds(5);
 
+    /// <summary>The floor and ceiling of the jittered backoff between failed polls.</summary>
+    private static readonly TimeSpan MinBackoff = TimeSpan.FromSeconds(1);
+    private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(20);
+
     private readonly IServiceProvider _services;
+    private readonly INodeTransport _transport;
     private readonly DocumentExecutor _executor;
     private readonly TimeProvider _clock;
     private readonly ILogger<RunWorker> _logger;
@@ -70,168 +98,260 @@ public sealed partial class RunWorker
     private readonly string? _version = typeof(RunWorker).Assembly.GetName().Version?.ToString();
     private readonly GitMaterializer _materializer = new();
 
-    // The pool this node serves, stamped on its heartbeat so the fleet view can count workers online per pool. Empty
-    // string for an untargeted node (the default pool); the pool name for a pooled node. Set once in RunAsync.
-    private string _pool = string.Empty;
+    // The pools this node serves, set once in RunAsync and reported on every poll.
+    private IReadOnlyList<string> _pools = [];
 
-    // The moment this incarnation started draining, stamped once in RunAsync. An operator restart request is honored
-    // only when it is newer than this, so a stale request left on the node row by a previous incarnation never
-    // bounces this one and a same-name restart can never loop.
+    // The moment this incarnation started, stamped once in RunAsync and reported on every poll so the dispatcher
+    // relays only restart requests newer than it: a stale request left on the node row never bounces the
+    // replacement, and a same-name restart can never loop.
     private DateTime _startedUtc;
 
-    // Invoked once when this node observes a fresh restart request: the host wires it to a graceful stop (drain, then
-    // exit) so the orchestrator recreates the replica. Null in a caller that does not support restart (the observe
-    // path then does nothing).
     private Func<CancellationToken, Task>? _onRestartRequested;
 
-    // Set the first time a restart is initiated so the stop fires exactly once, even across the several heartbeats
-    // that may elapse while the drain completes.
+    // Set the first time a restart is initiated so the stop fires exactly once, even across the several polls that
+    // may elapse while the drain completes.
     private int _restartInitiated;
 
-    // The runs this node is currently executing, keyed by run id, each with its own cancellation source linked to
-    // the shutdown token. An operator cancel of a running run trips its source (see PollCancellationsAsync), which
-    // aborts the in-flight statement; ExecuteClaimedAsync registers a run here before it starts and removes it when
-    // it ends. Concurrent because the drain loop registers while executing tasks remove.
-    private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _running = new();
+    // The runs this node is executing, keyed by run id: each with its own cancellation source (linked to the abort
+    // token) and the attempt its hand-out carried (the fence every outcome report presents, and what the poll
+    // reports as held so the lease is renewed). An operator cancel or a revoked lease trips the source, which
+    // aborts the in-flight statement. Concurrent because the poll loop registers while executing tasks remove.
+    private readonly ConcurrentDictionary<Guid, HeldRunState> _running = new();
 
-    // The compute tasks this node is currently executing, with the same per-item cancellation discipline as
-    // _running. A separate map because run ids and task ids come from different tables and are cancelled through
-    // different store calls.
+    // The compute tasks this node is executing, with the same per-item cancellation discipline.
     private readonly ConcurrentDictionary<Guid, CancellationTokenSource> _runningTasks = new();
 
-    public RunWorker(IServiceProvider services, DocumentExecutor executor, TimeProvider clock, ILogger<RunWorker> logger)
+    // Released whenever a run or task slot frees, so a poll parked with no free slots is re-issued at once with
+    // the new capacity instead of waiting out its wait; one-slot because a single re-poll covers any number of
+    // frees.
+    private readonly SemaphoreSlim _slotFreed = new(0, 1);
+
+    public RunWorker(
+        IServiceProvider services, INodeTransport transport, DocumentExecutor executor, TimeProvider clock,
+        ILogger<RunWorker> logger)
     {
         ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(transport);
         ArgumentNullException.ThrowIfNull(executor);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(logger);
         _services = services;
+        _transport = transport;
         _executor = executor;
         _clock = clock;
         _logger = logger;
     }
 
-    /// <summary>This node's identity (its machine name), stamped on a claimed run so its work is attributable and
-    /// recoverable.</summary>
+    /// <summary>This node's identity (its machine name), stamped on every run it is handed so its work is
+    /// attributable and recoverable.</summary>
     public string NodeName => _node;
 
     /// <summary>
-    /// Runs the drain loop until <paramref name="stoppingToken"/> is cancelled: recover this node's orphans, then
-    /// repeatedly drain the queue and wait. <paramref name="waitForWork"/> is how the loop idles between drains - the
-    /// control plane passes its in-process nudge (so a triggered run starts within milliseconds), a standalone
-    /// worker passes a plain delay - and <paramref name="pollInterval"/> bounds that wait so schedule- and
-    /// other-node-enqueued runs (and recovery) are still picked up. <paramref name="pools"/> are the pools this node
-    /// serves: it claims untargeted runs plus runs routed to one of these (an empty list = untargeted only).
-    /// <paramref name="maxConcurrentRuns"/> bounds how many claimed runs execute at once on this node (minimum 1):
-    /// the queue's atomic claim already supports concurrent claimants, so the bound only sizes this node's own
-    /// in-flight work, and a saturated node stops claiming so queued runs stay available to other nodes.
-    /// <para><paramref name="stoppingToken"/> stops this node CLAIMING; it does not sever what the node is already
-    /// executing. Once it trips, the in-flight runs keep going (and the node keeps heartbeating, so the reaper does
-    /// not mistake a draining node for a dead one and requeue the very work it is finishing) for up to
-    /// <paramref name="drainTimeout"/>, defaulting to <see cref="DefaultDrainTimeout"/>. Only when that window
-    /// expires are the survivors cancelled and left <c>running</c> for recovery. Pass <see cref="TimeSpan.Zero"/> to
-    /// sever immediately.</para>
+    /// Runs the node until <paramref name="stoppingToken"/> is cancelled: poll the dispatcher, execute what it hands
+    /// out, report outcomes, repeat. <paramref name="stoppingToken"/> stops this node TAKING work; it does not sever
+    /// what the node is already executing. Once it trips, the in-flight runs keep going (and the node keeps polling
+    /// with no free slots, so their leases stay alive and the dispatcher never mistakes a draining node for a dead
+    /// one) for up to <see cref="RunWorkerOptions.DrainTimeout"/>. Only when that window expires are the survivors
+    /// cancelled and left for the dispatcher's lease expiry to requeue.
     /// </summary>
-    public async Task RunAsync(
-        TimeSpan pollInterval, IReadOnlyList<string> pools, Func<TimeSpan, CancellationToken, Task> waitForWork,
-        CancellationToken stoppingToken, int maxConcurrentRuns = DefaultMaxConcurrentRuns,
-        int maxConcurrentComputeTasks = DefaultMaxConcurrentComputeTasks,
-        Func<CancellationToken, Task>? onRestartRequested = null,
-        TimeSpan? drainTimeout = null)
+    public async Task RunAsync(RunWorkerOptions options, CancellationToken stoppingToken)
     {
-        ArgumentNullException.ThrowIfNull(pools);
-        ArgumentNullException.ThrowIfNull(waitForWork);
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxConcurrentRuns, 1);
-        ArgumentOutOfRangeException.ThrowIfLessThan(maxConcurrentComputeTasks, 1);
-        var drain = drainTimeout ?? DefaultDrainTimeout;
-        ArgumentOutOfRangeException.ThrowIfLessThan(drain, TimeSpan.Zero);
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentOutOfRangeException.ThrowIfLessThan(options.MaxConcurrentRuns, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(options.MaxConcurrentComputeTasks, 1);
+        ArgumentOutOfRangeException.ThrowIfLessThan(options.DrainTimeout, TimeSpan.Zero);
 
         _startedUtc = _clock.GetUtcNow().UtcDateTime;
-        _onRestartRequested = onRestartRequested;
-        // A node serves at most one pool in the one-app-per-pool topology; an empty pools list is the default
-        // (untargeted) pool. Stamped on every heartbeat so the fleet view attributes the node to its pool.
-        _pool = pools.Count > 0 ? pools[0] : string.Empty;
+        _onRestartRequested = options.OnRestartRequested;
+        _pools = options.Pools.Where(p => !string.IsNullOrWhiteSpace(p)).Select(p => p.Trim()).Distinct(StringComparer.Ordinal).ToList();
+        var pollWait = TimeSpan.FromSeconds(Math.Clamp((int)options.PollWait.TotalSeconds, 1, NodeProtocol.MaxWaitSeconds));
 
-        await RecoverOrphansAsync(stoppingToken).ConfigureAwait(false);
-
-        // The abort token for work this node has already claimed. Deliberately NOT linked to stoppingToken: a stop
-        // means "stop claiming", and the run keeps executing so it can record its own outcome. This source trips
-        // only when the drain window below expires (or at once when the caller granted no window), which is the one
-        // case where a run is abandoned mid-flight for the reaper to requeue.
+        // The abort token for work this node has already been handed. Deliberately NOT linked to stoppingToken: a
+        // stop means "stop taking work", and the run keeps executing so it can report its own outcome. This source
+        // trips only when the drain window below expires (or at once when the caller granted no window), which is
+        // the one case where a run is abandoned mid-flight for the dispatcher to requeue.
         using var abortCts = new CancellationTokenSource();
-
-        // The fleet heartbeat runs on its own cadence, decoupled from draining. A fully-saturated node blocks inside
-        // DrainAsync waiting for a concurrency slot and never returns to the top of this loop, so a heartbeat welded
-        // to the loop would stall for the whole of a long run and the node would falsely age out to "offline" while
-        // healthy and busy. Running it as an independent task keeps a node's liveness truthful under any load, which
-        // is also what lets the control-plane orphan reaper safely tell a dead node from a merely busy one. It
-        // observes the ABORT token, not stoppingToken, so a node that is draining keeps beating: a draining node is
-        // very much alive, and going silent for the drain would invite the reaper to requeue (and a sibling node to
-        // re-execute) the runs it is in the middle of finishing. It never throws (HeartbeatAsync is best-effort) and
-        // is awaited after the drain below.
-        var heartbeat = HeartbeatLoopAsync(abortCts.Token);
-
-        using var gate = new SemaphoreSlim(maxConcurrentRuns, maxConcurrentRuns);
-        using var computeGate = new SemaphoreSlim(maxConcurrentComputeTasks, maxConcurrentComputeTasks);
+        using var gate = new SemaphoreSlim(options.MaxConcurrentRuns, options.MaxConcurrentRuns);
+        using var computeGate = new SemaphoreSlim(options.MaxConcurrentComputeTasks, options.MaxConcurrentComputeTasks);
         var inFlight = new ConcurrentDictionary<Guid, Task>();
         var computeInFlight = new ConcurrentDictionary<Guid, Task>();
+        var backoff = MinBackoff;
 
         while (!stoppingToken.IsCancellationRequested)
         {
-            await PollCancellationsAsync(stoppingToken).ConfigureAwait(false);
-
+            var freeRuns = gate.CurrentCount;
+            var freeTasks = computeGate.CurrentCount;
             try
             {
-                // Compute tasks drain FIRST: they are interactive (an operator waiting in the GUI) and bounded by
-                // their own gate, so serving them ahead of the run queue costs flow throughput nothing.
-                await DrainComputeAsync(pools, computeGate, computeInFlight, stoppingToken, abortCts.Token).ConfigureAwait(false);
-                await DrainAsync(pools, gate, inFlight, stoppingToken, abortCts.Token).ConfigureAwait(false);
+                var response = await PollAsync(
+                    options, freeRuns, freeTasks, pollWait, allowSlotWake: freeRuns == 0 && freeTasks == 0, stoppingToken)
+                    .ConfigureAwait(false);
+                backoff = MinBackoff;
+                // Applying the answer sits inside the same guard as the poll: nothing that happens to one response
+                // (a signal for a run that finished in the meantime, a launch that fails) may ever end the loop,
+                // because on the control plane's own node this loop is a hosted service and its fault stops the host.
+                await ApplyAsync(response, gate, computeGate, inFlight, computeInFlight, abortCts.Token, stoppingToken)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 break;
+            }
+            catch (SlotFreedException)
+            {
+                continue; // a slot freed while a saturated poll was parked: re-poll with the new capacity at once
             }
             catch (Exception ex)
             {
-                // A poll/claim error (a transient database outage) must not end the worker; log and try next tick.
-                LogPollError(SecretHygiene.RedactedMessage(ex));
-            }
+                // The dispatcher is unreachable or not the owner right now (or an answer could not be applied):
+                // back off with jitter and try again. Held leases outlive several failed polls, so a brief
+                // control-plane blip never loses work.
+                LogPollError(SecretHygiene.RedactedMessage(ex), (int)backoff.TotalSeconds);
+                if (!await DelayAsync(backoff, stoppingToken).ConfigureAwait(false))
+                {
+                    break;
+                }
 
-            try
-            {
-                await waitForWork(pollInterval, stoppingToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                break;
+                backoff = TimeSpan.FromMilliseconds(Math.Min(MaxBackoff.TotalMilliseconds, backoff.TotalMilliseconds * 2));
             }
         }
 
-        // Shutdown: claiming has stopped; now DRAIN the work this node already holds so each run records its own
+        // Shutdown: no more work is taken; now DRAIN the work this node already holds so each run reports its own
         // outcome instead of being abandoned. The tasks never fault (the execute wrappers catch everything), so
         // this cannot throw, and it keeps both gates alive until every slot is released.
         var pending = inFlight.Values.Concat(computeInFlight.Values).ToArray();
         if (pending.Length > 0)
         {
-            await DrainInFlightAsync(pending, drain, abortCts).ConfigureAwait(false);
+            await DrainInFlightAsync(pending, options.DrainTimeout, abortCts).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>One poll with the node's current capacity and holdings. When <paramref name="allowSlotWake"/> is set
+    /// (the node reported no free slots, so the dispatcher cannot hand anything out on this call) a freed slot
+    /// cancels the parked poll and surfaces as <see cref="SlotFreedException"/>, so the loop re-polls with the new
+    /// capacity at once; a poll that reported free slots is never cancelled, because a hand-out may be in flight.</summary>
+    private async Task<NodePollResponse> PollAsync(
+        RunWorkerOptions options, int freeRuns, int freeTasks, TimeSpan pollWait, bool allowSlotWake, CancellationToken ct)
+    {
+        var request = BuildRequest(options, freeRuns, freeTasks, (int)pollWait.TotalSeconds);
+        if (!allowSlotWake)
+        {
+            return await _transport.PollAsync(request, ct).ConfigureAwait(false);
         }
 
-        // Every run is finished (or severed): stop the heartbeat and join it, so the node stops advertising itself
-        // as alive the moment it stops holding work, and no background task outlives the worker.
-        await abortCts.CancelAsync().ConfigureAwait(false);
-        await heartbeat.ConfigureAwait(false);
+        using var pollCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var poll = _transport.PollAsync(request, pollCts.Token);
+        var wake = _slotFreed.WaitAsync(pollCts.Token);
+        var first = await Task.WhenAny(poll, wake).ConfigureAwait(false);
+        if (first == poll)
+        {
+            await pollCts.CancelAsync().ConfigureAwait(false);
+            await ObserveAsync(wake).ConfigureAwait(false);
+            return await poll.ConfigureAwait(false);
+        }
+
+        await pollCts.CancelAsync().ConfigureAwait(false);
+        try
+        {
+            // The poll may still have answered in the same instant (with signals, never with work): honor it.
+            return await poll.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            throw new SlotFreedException();
+        }
+    }
+
+    private NodePollRequest BuildRequest(RunWorkerOptions options, int freeRuns, int freeTasks, int waitSeconds)
+        => new(
+            _node, _version, _pools, options.MaxConcurrentRuns, freeRuns, options.MaxConcurrentComputeTasks, freeTasks,
+            _running.Select(r => new HeldRun(r.Key, r.Value.Attempt)).ToList(),
+            _runningTasks.Keys.ToList(), _startedUtc, waitSeconds);
+
+    /// <summary>Acts on a poll's answer: trips the cancellation of every run or task the operator asked to cancel and
+    /// of every one whose lease was revoked, honors a restart request, and launches the handed-out work.</summary>
+    private async Task ApplyAsync(
+        NodePollResponse response, SemaphoreSlim gate, SemaphoreSlim computeGate,
+        ConcurrentDictionary<Guid, Task> inFlight, ConcurrentDictionary<Guid, Task> computeInFlight,
+        CancellationToken abortCt, CancellationToken stoppingToken)
+    {
+        foreach (var runId in response.CancelRuns)
+        {
+            if (_running.TryGetValue(runId, out var held))
+            {
+                LogCancelling(runId);
+                await TryCancelAsync(held.Cancellation).ConfigureAwait(false);
+            }
+        }
+
+        foreach (var runId in response.RevokedRuns)
+        {
+            if (_running.TryGetValue(runId, out var held))
+            {
+                LogRevoked(runId, held.Attempt);
+                held.Revoked = true;
+                await TryCancelAsync(held.Cancellation).ConfigureAwait(false);
+            }
+        }
+
+        foreach (var taskId in response.CancelTasks)
+        {
+            if (_runningTasks.TryGetValue(taskId, out var cts))
+            {
+                LogTaskCancelling(taskId);
+                await TryCancelAsync(cts).ConfigureAwait(false);
+            }
+        }
+
+        foreach (var taskId in response.RevokedTasks)
+        {
+            if (_runningTasks.TryGetValue(taskId, out var cts))
+            {
+                LogTaskRevoked(taskId);
+                await TryCancelAsync(cts).ConfigureAwait(false);
+            }
+        }
+
+        if (response.RestartRequested)
+        {
+            await MaybeHonorRestartAsync(stoppingToken).ConfigureAwait(false);
+        }
+
+        foreach (var task in response.Tasks)
+        {
+            // The dispatcher never hands out more than the free slots the poll reported, and only this loop takes
+            // slots, so the wait here is satisfied at once; it is a wait rather than a check so a miscount could
+            // never execute over capacity.
+            await computeGate.WaitAsync(abortCt).ConfigureAwait(false);
+            var execution = ExecuteHandedTaskAsync(task.TaskId, computeGate, abortCt);
+            computeInFlight[task.TaskId] = execution;
+            _ = execution.ContinueWith(
+                _ => computeInFlight.TryRemove(task.TaskId, out Task? _),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
+
+        foreach (var run in response.Runs)
+        {
+            await gate.WaitAsync(abortCt).ConfigureAwait(false);
+            var execution = ExecuteHandedRunAsync(run, gate, abortCt);
+            inFlight[run.RunId] = execution;
+            _ = execution.ContinueWith(
+                _ => inFlight.TryRemove(run.RunId, out Task? _),
+                CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+        }
     }
 
     /// <summary>
-    /// Waits out the work this node already claimed after claiming has stopped, so a routine stop (an autoscaler
+    /// Waits out the work this node already holds after it stopped taking new work, so a routine stop (an autoscaler
     /// reclaiming the replica, a revision swap, an operator restart) costs no run its progress: each in-flight run
-    /// finishes and records its own outcome. The node keeps heartbeating throughout, so the orphan reaper leaves the
-    /// draining work alone rather than requeueing runs that are about to complete.
+    /// finishes and reports its own outcome. The node keeps polling throughout (with no free slots), so its leases
+    /// stay alive and the dispatcher leaves the draining work alone rather than requeueing runs that are about to
+    /// complete.
     /// <para>Bounded by <paramref name="drainTimeout"/>: a node cannot drain forever, because the platform that asked
     /// it to stop will eventually kill it outright, and a run severed by that kill is strictly worse off than one
     /// cancelled here (the same requeue, minus the log line saying why). When the window expires the survivors are
-    /// cancelled through <paramref name="abort"/> and left <c>running</c> for recovery. Operator cancels are still
-    /// polled while waiting, so a drain can never trap a run an operator has asked to kill.</para>
+    /// cancelled through <paramref name="abort"/> and left for the dispatcher's lease expiry. Operator cancels are
+    /// still observed while waiting, so a drain can never trap a run an operator has asked to kill.</para>
     /// </summary>
     /// <param name="pending">The in-flight run and compute-task executions to wait on. They never fault (their
     /// execute wrappers catch everything), so this never throws.</param>
@@ -264,79 +384,70 @@ public sealed partial class RunWorker
             // so nothing here may abandon the wait early.
             var slice = remaining < DrainPollInterval ? remaining : DrainPollInterval;
             await Task.WhenAny(all, Task.Delay(slice, CancellationToken.None)).ConfigureAwait(false);
-            await PollCancellationsAsync(abort.Token).ConfigureAwait(false);
+            await HeartbeatAsync(abort.Token).ConfigureAwait(false);
         }
 
         await all.ConfigureAwait(false);
         LogDrained();
     }
 
-    /// <summary>Refreshes the fleet heartbeat on <see cref="HeartbeatInterval"/>, independent of the drain loop, until
-    /// shutdown. Beats once immediately so a freshly started node is visible at once, then on the interval. Never
-    /// throws: <see cref="HeartbeatAsync"/> is best-effort (a transient catalog error is logged and retried next
-    /// beat), and the inter-beat delay ends quietly on shutdown.</summary>
-    private async Task HeartbeatLoopAsync(CancellationToken ct)
+    /// <summary>A poll that takes no work: renews the leases of what this node holds and observes cancels and
+    /// revocations. Best-effort, never throws (a failed poll is logged; the next one retries), and skipped while the
+    /// node holds nothing.</summary>
+    private async Task HeartbeatAsync(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
-        {
-            var restartRequestedUtc = await HeartbeatAsync(ct).ConfigureAwait(false);
-            await MaybeHonorRestartAsync(restartRequestedUtc, ct).ConfigureAwait(false);
-            try
-            {
-                await Task.Delay(HeartbeatInterval, ct).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (ct.IsCancellationRequested)
-            {
-                break;
-            }
-        }
-    }
-
-    /// <summary>Beats once and returns the node's pending restart request (null when none), so the loop can honor it
-    /// on the same cadence. Best-effort: a transient catalog error is logged and treated as "no request" for this
-    /// beat.</summary>
-    private async Task<DateTime?> HeartbeatAsync(CancellationToken ct)
-    {
-        try
-        {
-            await using var scope = _services.CreateAsyncScope();
-            var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-            // The beat carries how many runs this node is executing right now: the autoscaler's scale-in signal
-            // (a busy node holds its replica; only idle ones are surplus). Count from the live registration map,
-            // which is exact: runs register before execution starts and deregister when they reach an end state.
-            return await NodeStore.HeartbeatAsync(
-                catalog, _node, _version, _clock.GetUtcNow().UtcDateTime, _pool, _running.Count, ct).ConfigureAwait(false);
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            return null; // Shutting down; nothing to do.
-        }
-        catch (Exception ex)
-        {
-            // The fleet heartbeat is best-effort: a failure must never affect draining; the next poll retries it.
-            LogPollError(SecretHygiene.RedactedMessage(ex));
-            return null;
-        }
-    }
-
-    /// <summary>Honors an operator's restart request observed on the heartbeat: when the request is newer than this
-    /// incarnation's start (so a stale request never bounces the replacement and a same-name restart cannot loop) and
-    /// a stop has not already begun, logs and invokes the host's graceful-stop callback exactly once. The callback
-    /// drives the same shutdown a SIGTERM would, so the drain loop finishes its in-flight work and exits, after which
-    /// the orchestrator recreates the replica. A caller that supplied no callback simply never restarts.</summary>
-    private async Task MaybeHonorRestartAsync(DateTime? requestedUtc, CancellationToken ct)
-    {
-        if (requestedUtc is not { } requested || requested <= _startedUtc || _onRestartRequested is null)
+        if (_running.IsEmpty && _runningTasks.IsEmpty)
         {
             return;
         }
 
-        if (Interlocked.Exchange(ref _restartInitiated, 1) != 0)
+        try
         {
-            return; // already initiated on an earlier beat
+            var request = new NodePollRequest(
+                _node, _version, _pools, 0, 0, 0, 0,
+                _running.Select(r => new HeldRun(r.Key, r.Value.Attempt)).ToList(),
+                _runningTasks.Keys.ToList(), _startedUtc, 0);
+            var response = await _transport.PollAsync(request, ct).ConfigureAwait(false);
+            foreach (var runId in response.CancelRuns.Concat(response.RevokedRuns))
+            {
+                if (_running.TryGetValue(runId, out var held))
+                {
+                    LogCancelling(runId);
+                    await TryCancelAsync(held.Cancellation).ConfigureAwait(false);
+                }
+            }
+
+            foreach (var taskId in response.CancelTasks.Concat(response.RevokedTasks))
+            {
+                if (_runningTasks.TryGetValue(taskId, out var cts))
+                {
+                    LogTaskCancelling(taskId);
+                    await TryCancelAsync(cts).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // The drain window expired; nothing more to renew.
+        }
+        catch (Exception ex)
+        {
+            LogPollError(SecretHygiene.RedactedMessage(ex), (int)DrainPollInterval.TotalSeconds);
+        }
+    }
+
+    /// <summary>Honors an operator's restart request relayed by the dispatcher: logs and invokes the host's
+    /// graceful-stop callback exactly once. The callback drives the same shutdown a SIGTERM would, so the loop stops
+    /// taking work, drains its in-flight runs and exits, after which the orchestrator recreates the replica. A caller
+    /// that supplied no callback simply never restarts.</summary>
+    private async Task MaybeHonorRestartAsync(CancellationToken ct)
+    {
+        if (_onRestartRequested is null || Interlocked.Exchange(ref _restartInitiated, 1) != 0)
+        {
+            return;
         }
 
-        LogRestartRequested(requested);
+        LogRestartRequested();
         try
         {
             await _onRestartRequested(ct).ConfigureAwait(false);
@@ -347,237 +458,111 @@ public sealed partial class RunWorker
         }
         catch (Exception ex)
         {
-            LogPollError(SecretHygiene.RedactedMessage(ex));
+            LogPollError(SecretHygiene.RedactedMessage(ex), 0);
         }
     }
 
-    /// <summary>Observes operator cancel requests for the runs this node is executing and trips each matching run's
-    /// cancellation token, which aborts its in-flight statement (SqlClient sends an attention to the server) and
-    /// drives it to <c>cancelled</c>. Best-effort like the heartbeat: it only queries when this node has in-flight
-    /// runs, and a transient catalog error is logged and retried on the next poll rather than stopping the loop.</summary>
-    private async Task PollCancellationsAsync(CancellationToken ct)
+    /// <summary>Trips an in-flight item's cancellation, tolerating the item having finished in the meantime: the
+    /// execute wrapper removes the item from its map and then disposes the source, and a poll answer composed a
+    /// moment earlier can still name it. A finished item has nothing left to abort, so that is not an error.</summary>
+    private static async Task TryCancelAsync(CancellationTokenSource cancellation)
     {
-        if (_running.IsEmpty && _runningTasks.IsEmpty)
+        if (cancellation.IsCancellationRequested)
         {
             return;
         }
 
         try
         {
-            await using var scope = _services.CreateAsyncScope();
-            var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-            if (!_running.IsEmpty)
-            {
-                var requested = await RunQueueStore.ListCancelRequestedAsync(catalog, _node, ct).ConfigureAwait(false);
-                foreach (var runId in requested)
-                {
-                    if (_running.TryGetValue(runId, out var cts) && !cts.IsCancellationRequested)
-                    {
-                        LogCancelling(runId);
-                        cts.Cancel();
-                    }
-                }
-            }
-
-            if (!_runningTasks.IsEmpty)
-            {
-                var requested = await ComputeTaskStore.ListCancelRequestedAsync(catalog, _node, ct).ConfigureAwait(false);
-                foreach (var taskId in requested)
-                {
-                    if (_runningTasks.TryGetValue(taskId, out var cts) && !cts.IsCancellationRequested)
-                    {
-                        LogTaskCancelling(taskId);
-                        cts.Cancel();
-                    }
-                }
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // Shutting down; nothing to do.
-        }
-        catch (Exception ex)
-        {
-            // Observing cancels is best-effort: a failure must never affect draining; the next poll retries it.
-            LogPollError(SecretHygiene.RedactedMessage(ex));
-        }
-    }
-
-    private async Task RecoverOrphansAsync(CancellationToken ct)
-    {
-        try
-        {
-            await using var scope = _services.CreateAsyncScope();
-            var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-            var recovered = await RunQueueStore.RecoverStuckRunningAsync(catalog, _node, _clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
-            if (recovered > 0)
-            {
-                LogRecovered(recovered);
-            }
-
-            var recoveredTasks = await ComputeTaskStore.RecoverStuckRunningAsync(catalog, _node, ct).ConfigureAwait(false);
-            if (recoveredTasks > 0)
-            {
-                LogRecoveredTasks(recoveredTasks);
-            }
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            // Shutting down during startup recovery; nothing to do.
+            await cancellation.CancelAsync().ConfigureAwait(false);
         }
         catch (ObjectDisposedException)
         {
-            // Host teardown disposed the DI container and the loggers before startup recovery finished. Bail quietly:
-            // logging would itself throw (the disposed Windows EventLog provider) and there is nothing left to recover.
-        }
-        catch (Exception ex)
-        {
-            // Recovery is best-effort: if the catalog is briefly unreachable at startup, the next poll retries the
-            // claim path anyway. Do not let it stop the worker from starting.
-            LogPollError(SecretHygiene.RedactedMessage(ex));
+            // The item ended between the lookup and this cancel.
         }
     }
 
-    /// <param name="pools">The pools this node serves, alongside untargeted runs.</param>
-    /// <param name="gate">The node's run-concurrency gate; a slot is held before each claim.</param>
-    /// <param name="inFlight">The executing runs, for the shutdown drain to wait on.</param>
-    /// <param name="ct">Stops CLAIMING: a tripped token ends this loop at once, leaving queued runs for other nodes.</param>
-    /// <param name="abortCt">The token the claimed run executes under, tripped only when the drain window expires.</param>
-    private async Task DrainAsync(
-        IReadOnlyList<string> pools, SemaphoreSlim gate, ConcurrentDictionary<Guid, Task> inFlight, CancellationToken ct,
-        CancellationToken abortCt)
+    private static async Task<bool> DelayAsync(TimeSpan backoff, CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
+        // Jitter spreads a fleet's retries after a control-plane restart, so hundreds of nodes do not stampede the
+        // successor in the same instant.
+        var jittered = backoff + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500));
+        try
         {
-            // A concurrency slot must be free before claiming: a claim flips the run to 'running', so a node must
-            // never claim more than it can execute (a saturated node leaves queued runs claimable by other nodes).
-            // Waiting on the gate here also hands a finishing run's slot straight to the next queued run, with no
-            // poll-interval gap in between.
-            await gate.WaitAsync(ct).ConfigureAwait(false);
-
-            var slotOwnedByRun = false;
-            try
-            {
-                ClaimedRun? claim;
-                await using (var scope = _services.CreateAsyncScope())
-                {
-                    var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-                    claim = await RunQueueStore.ClaimNextAsync(catalog, _node, pools, _clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
-                }
-
-                if (claim is not { } claimed)
-                {
-                    return; // queue drained
-                }
-
-                // Each claimed run executes on its own task with its own DI scope (a scope and its CatalogDbContext
-                // are never shared across tasks). From here the task owns the slot and releases it when the run
-                // reaches its end state; the continuation only prunes the in-flight map used by shutdown. It runs
-                // under the abort token, never the claim loop's: a stop must not sever a run this node just started.
-                var task = ExecuteClaimedAsync(claimed, gate, abortCt);
-                slotOwnedByRun = true;
-                inFlight[claimed.RunId] = task;
-                _ = task.ContinueWith(
-                    _ => inFlight.TryRemove(claimed.RunId, out Task? _),
-                    CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            }
-            finally
-            {
-                // A failed or cancelled claim (or an empty queue) never launched a run, so the slot goes back.
-                if (!slotOwnedByRun)
-                {
-                    gate.Release();
-                }
-            }
+            await Task.Delay(jittered, ct).ConfigureAwait(false);
+            return true;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            return false;
         }
     }
 
-    /// <summary>Executes one claimed run on its own DI scope and releases the concurrency slot when the run reaches
-    /// its end state. Never throws: an abort (the drain window expired) leaves the run <c>running</c> for recovery,
-    /// and every other failure has already been driven terminal (best-effort) by
-    /// <see cref="RunClaimedAsync"/>, so one run can never kill the drain loop or a sibling run.</summary>
-    /// <param name="claim">The claimed run's id and the claim's attempt (the fencing token for its outcome write).</param>
-    /// <param name="gate">The node's run-concurrency gate; this run's slot is released when it ends.</param>
-    /// <param name="abortCt">Trips only when a stopping node's drain window expires, never merely because the node
-    /// was asked to stop; see <see cref="DrainInFlightAsync"/>.</param>
-    private async Task ExecuteClaimedAsync(ClaimedRun claim, SemaphoreSlim gate, CancellationToken abortCt)
+    private static async Task ObserveAsync(Task task)
     {
-        // A per-run source linked to the abort token: an operator cancel trips only this one (aborting just this
-        // run), while an expired drain trips every run through the link. Registered before execution so a cancel
-        // arriving the instant after the claim is still observed. Disposed only after the run ends, so a late cancel
-        // never races a disposed source.
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // The wake wait was cancelled because the poll answered first; nothing to observe.
+        }
+    }
+
+    private void SignalSlotFreed()
+    {
+        try
+        {
+            _slotFreed.Release();
+        }
+        catch (SemaphoreFullException)
+        {
+            // A re-poll is already pending; one covers any number of freed slots.
+        }
+    }
+
+    // ------------------------------------------------------------------------------------------ execution -------
+
+    /// <summary>Executes one handed-out run on its own DI scope and releases the concurrency slot when the run
+    /// reaches its end state. Never throws: an abort (the drain window expired) leaves the run for the dispatcher's
+    /// lease expiry, and every other failure has already been reported (best-effort) by <see cref="RunHandedAsync"/>,
+    /// so one run can never kill the loop or a sibling run.</summary>
+    private async Task ExecuteHandedRunAsync(RunHandout handout, SemaphoreSlim gate, CancellationToken abortCt)
+    {
+        // A per-run source linked to the abort token: an operator cancel or a revoked lease trips only this one
+        // (aborting just this run), while an expired drain trips every run through the link. Registered before
+        // execution so a cancel arriving the instant after the hand-out is still observed. Disposed only after the
+        // run ends, so a late cancel never races a disposed source.
         using var runCts = CancellationTokenSource.CreateLinkedTokenSource(abortCt);
-        _running[claim.RunId] = runCts;
+        var held = new HeldRunState(handout.Attempt, runCts);
+        _running[handout.RunId] = held;
         try
         {
             await using var scope = _services.CreateAsyncScope();
             var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-            await RunClaimedAsync(scope.ServiceProvider, catalog, claim, abortCt, runCts.Token).ConfigureAwait(false);
+            await RunHandedAsync(scope.ServiceProvider, catalog, handout, held, abortCt, runCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (abortCt.IsCancellationRequested)
         {
-            // The drain window expired and severed this run mid-flight: it stays 'running' so recovery requeues it.
+            // The drain window expired and severed this run mid-flight: its lease lapses and the dispatcher requeues it.
         }
         catch (Exception ex)
         {
-            // RunClaimedAsync drives run failures (and operator cancels) terminal itself; this guards the scope
-            // plumbing around it.
-            LogRunError(claim.RunId, SecretHygiene.RedactedMessage(ex));
+            // RunHandedAsync reports run failures (and operator cancels) itself; this guards the scope plumbing around it.
+            LogRunError(handout.RunId, SecretHygiene.RedactedMessage(ex));
         }
         finally
         {
-            _running.TryRemove(claim.RunId, out _);
+            _running.TryRemove(handout.RunId, out _);
             gate.Release();
+            SignalSlotFreed();
         }
     }
 
-    /// <summary>Drains the compute-task queue exactly like <see cref="DrainAsync"/> drains runs: claim only while
-    /// a slot is free (a saturated node leaves queued tasks claimable by other nodes), execute each claimed task on
-    /// its own task with its own DI scope, and hand a finishing task's slot straight to the next one.</summary>
-    private async Task DrainComputeAsync(
-        IReadOnlyList<string> pools, SemaphoreSlim gate, ConcurrentDictionary<Guid, Task> inFlight, CancellationToken ct,
-        CancellationToken abortCt)
-    {
-        while (!ct.IsCancellationRequested)
-        {
-            await gate.WaitAsync(ct).ConfigureAwait(false);
-
-            var slotOwnedByTask = false;
-            try
-            {
-                Guid? taskId;
-                await using (var scope = _services.CreateAsyncScope())
-                {
-                    var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-                    taskId = await ComputeTaskStore.ClaimNextAsync(catalog, _node, pools, _clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
-                }
-
-                if (taskId is null)
-                {
-                    return; // queue drained
-                }
-
-                var task = ExecuteClaimedTaskAsync(taskId.Value, gate, abortCt);
-                slotOwnedByTask = true;
-                inFlight[taskId.Value] = task;
-                _ = task.ContinueWith(
-                    _ => inFlight.TryRemove(taskId.Value, out Task? _),
-                    CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
-            }
-            finally
-            {
-                if (!slotOwnedByTask)
-                {
-                    gate.Release();
-                }
-            }
-        }
-    }
-
-    /// <summary>Executes one claimed compute task on its own DI scope and releases the slot when it reaches its
-    /// end state. Never throws, mirroring <see cref="ExecuteClaimedAsync"/>: an abort (the drain window expired)
-    /// leaves the task <c>running</c> for recovery; every other failure is driven terminal here.</summary>
-    private async Task ExecuteClaimedTaskAsync(Guid taskId, SemaphoreSlim gate, CancellationToken abortCt)
+    /// <summary>Executes one handed-out compute task on its own DI scope and releases the slot when it reaches its
+    /// end state. Never throws, mirroring <see cref="ExecuteHandedRunAsync"/>.</summary>
+    private async Task ExecuteHandedTaskAsync(Guid taskId, SemaphoreSlim gate, CancellationToken abortCt)
     {
         using var taskCts = CancellationTokenSource.CreateLinkedTokenSource(abortCt);
         _runningTasks[taskId] = taskCts;
@@ -585,11 +570,11 @@ public sealed partial class RunWorker
         {
             await using var scope = _services.CreateAsyncScope();
             var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-            await RunClaimedTaskAsync(scope.ServiceProvider, catalog, taskId, abortCt, taskCts.Token).ConfigureAwait(false);
+            await RunHandedTaskAsync(scope.ServiceProvider, catalog, taskId, abortCt, taskCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (abortCt.IsCancellationRequested)
         {
-            // The drain window expired and severed the task: it stays 'running' so recovery requeues it.
+            // The drain window expired and severed the task: its lease lapses and the dispatcher requeues it.
         }
         catch (Exception ex)
         {
@@ -599,17 +584,17 @@ public sealed partial class RunWorker
         {
             _runningTasks.TryRemove(taskId, out _);
             gate.Release();
+            SignalSlotFreed();
         }
     }
 
-    /// <param name="scope">The claimed task's own DI scope, never shared with another task.</param>
+    /// <param name="scope">The task's own DI scope, never shared with another task.</param>
     /// <param name="catalog">The catalog context resolved from <paramref name="scope"/>.</param>
-    /// <param name="taskId">The claimed compute task's id.</param>
-    /// <param name="shutdownCt">The abort token: a trip (the drain window expired) leaves the task <c>running</c>
-    /// for recovery.</param>
+    /// <param name="taskId">The handed-out compute task's id.</param>
+    /// <param name="shutdownCt">The abort token: a trip (the drain window expired) leaves the task to the dispatcher.</param>
     /// <param name="taskCt">The per-task token (linked to shutdown): an operator cancel trips this alone, aborting
-    /// the in-flight query so the task records <c>cancelled</c> rather than requeued.</param>
-    private async Task RunClaimedTaskAsync(
+    /// the in-flight query so the task reports <c>cancelled</c> rather than lapsing.</param>
+    private async Task RunHandedTaskAsync(
         IServiceProvider scope, CatalogDbContext catalog, Guid taskId, CancellationToken shutdownCt, CancellationToken taskCt)
     {
         var ct = shutdownCt;
@@ -621,7 +606,8 @@ public sealed partial class RunWorker
                 .FirstOrDefaultAsync(ct).ConfigureAwait(false);
             if (row is null)
             {
-                return; // removed between claim and load; nothing to run
+                await TryReportTaskAsync(taskId, TaskOutcomeKind.Failed, "the task is no longer in the catalog.", null).ConfigureAwait(false);
+                return;
             }
 
             LogTaskStarting(taskId, row.Operation, row.SourceRef);
@@ -635,82 +621,81 @@ public sealed partial class RunWorker
             }
             catch (SqlFlowException ex)
             {
-                await ComputeTaskStore.FailAsync(
-                    catalog, taskId, SecretHygiene.RedactedMessage(ex), _clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
+                await TryReportTaskAsync(taskId, TaskOutcomeKind.Failed, SecretHygiene.RedactedMessage(ex), null).ConfigureAwait(false);
                 return;
             }
 
             var executor = scope.GetRequiredService<ComputeTaskExecutor>();
             // The executor runs under the per-task token so an operator cancel aborts only the in-flight query,
-            // while the completion write below stays on the shutdown token (a late cancel never corrupts it).
+            // while the outcome report below stays on the shutdown token (a late cancel never corrupts it).
             var resultJson = await executor.ExecuteAsync(payload, taskCt).ConfigureAwait(false);
 
-            await ComputeTaskStore.CompleteAsync(catalog, taskId, resultJson, _clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
-            LogTaskSucceeded(taskId, row.Operation);
+            var recorded = await _transport
+                .ReportTaskOutcomeAsync(taskId, new TaskOutcomeRequest(_node, TaskOutcomeKind.Succeeded, null, resultJson), ct)
+                .ConfigureAwait(false);
+            if (recorded)
+            {
+                LogTaskSucceeded(taskId, row.Operation);
+            }
+            else
+            {
+                LogTaskStale(taskId);
+            }
         }
         catch (OperationCanceledException) when (shutdownCt.IsCancellationRequested)
         {
-            // Shutdown: leave the task 'running' so the next start's recovery requeues it.
+            // Shutdown: the task is left for the dispatcher's lease expiry to requeue.
             throw;
         }
         catch (Exception) when (taskCt.IsCancellationRequested && !shutdownCt.IsCancellationRequested)
         {
-            // The operator cancelled: the per-task token tripped and aborted the in-flight query (surfaced as
-            // OperationCanceledException or a provider exception). Record 'cancelled', not 'failed'.
+            // The operator cancelled (or the lease was revoked): the per-task token tripped and aborted the in-flight
+            // query (surfaced as OperationCanceledException or a provider exception). Report 'cancelled', not 'failed'.
             LogTaskCancelled(taskId);
-            await TryCancelRunningTaskAsync(catalog, taskId).ConfigureAwait(false);
+            await TryReportTaskAsync(taskId, TaskOutcomeKind.Cancelled, null, null).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            // A failed task (unreachable source, bad object, provider error) must never kill the worker: drive it
+            // A failed task (unreachable source, bad object, provider error) must never kill the node: report it
             // terminal (best-effort) and continue.
             LogTaskError(taskId, SecretHygiene.RedactedMessage(ex));
-            await TryFailTaskAsync(catalog, taskId, SecretHygiene.RedactedMessage(ex)).ConfigureAwait(false);
+            await TryReportTaskAsync(taskId, TaskOutcomeKind.Failed, SecretHygiene.RedactedMessage(ex), null).ConfigureAwait(false);
         }
     }
 
-    private async Task TryFailTaskAsync(CatalogDbContext catalog, Guid taskId, string error)
+    private async Task TryReportTaskAsync(Guid taskId, TaskOutcomeKind outcome, string? error, string? resultJson)
     {
         try
         {
-            // The original token may be tripped (or the failure a database blip): a short independent deadline
-            // still drives the task terminal where the catalog is reachable (mirrors TryFailAsync for runs).
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            await ComputeTaskStore.FailAsync(catalog, taskId, error, _clock.GetUtcNow().UtcDateTime, cts.Token).ConfigureAwait(false);
+            // The original token may be tripped (or the failure a control-plane blip): a short independent deadline
+            // still reports the task terminal where the dispatcher is reachable.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            await _transport
+                .ReportTaskOutcomeAsync(taskId, new TaskOutcomeRequest(_node, outcome, error, resultJson), cts.Token)
+                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            LogPollError(SecretHygiene.RedactedMessage(ex));
+            LogPollError(SecretHygiene.RedactedMessage(ex), 0);
         }
     }
 
-    private async Task TryCancelRunningTaskAsync(CatalogDbContext catalog, Guid taskId)
-    {
-        try
-        {
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            await ComputeTaskStore.CancelRunningAsync(catalog, taskId, _clock.GetUtcNow().UtcDateTime, cts.Token).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            LogPollError(SecretHygiene.RedactedMessage(ex));
-        }
-    }
-
-    /// <param name="scope">The claimed run's own DI scope, never shared with another run.</param>
+    /// <param name="scope">The run's own DI scope, never shared with another run.</param>
     /// <param name="catalog">The catalog context resolved from <paramref name="scope"/>.</param>
-    /// <param name="claim">The claimed run's id (the orchestrator-assigned id the trigger returned) and the claim's
-    /// attempt: the fencing token every outcome write below presents, so if crash recovery requeues this run out
-    /// from under a node presumed dead, that node's late writes are dropped instead of clobbering the successor
-    /// execution's outcome.</param>
+    /// <param name="handout">The run's id (the orchestrator-assigned id the trigger returned) and the hand-out's
+    /// attempt: the fencing token every outcome report presents, so if the lease lapses and the dispatcher requeues
+    /// this run out from under a node presumed dead, that node's late report is dropped instead of clobbering the
+    /// successor execution's outcome.</param>
+    /// <param name="held">The node's registration of the run, which records whether its lease was revoked.</param>
     /// <param name="shutdownCt">The abort token: it trips only when a stopping node's drain window expired, and the
-    /// run is then left <c>running</c> for recovery (never recorded terminal), so severed work is never lost.</param>
+    /// run is then left for the lease expiry (never reported terminal), so severed work is never lost.</param>
     /// <param name="runCt">The per-run token (linked to shutdown): an operator cancel trips this alone, aborting the
-    /// flow's in-flight statement so the run is recorded <c>cancelled</c> rather than requeued.</param>
-    private async Task RunClaimedAsync(
-        IServiceProvider scope, CatalogDbContext catalog, ClaimedRun claim, CancellationToken shutdownCt, CancellationToken runCt)
+    /// flow's in-flight statement so the run is reported <c>cancelled</c> rather than requeued.</param>
+    private async Task RunHandedAsync(
+        IServiceProvider scope, CatalogDbContext catalog, RunHandout handout, HeldRunState held,
+        CancellationToken shutdownCt, CancellationToken runCt)
     {
-        var (runId, attempt) = claim;
+        var (runId, attempt) = (handout.RunId, handout.Attempt);
         var ct = shutdownCt;
         try
         {
@@ -750,12 +735,13 @@ public sealed partial class RunWorker
                 .FirstOrDefaultAsync(ct).ConfigureAwait(false);
             if (run is null)
             {
-                return; // cancelled/removed between claim and load; nothing to run
+                await FailAsync(runId, attempt, "the run is no longer in the catalog.", ct).ConfigureAwait(false);
+                return;
             }
 
             if (run.RepoId is not { } repoId)
             {
-                await FailAsync(catalog, runId, attempt, "the run is not attributed to a repository.", ct).ConfigureAwait(false);
+                await FailAsync(runId, attempt, "the run is not attributed to a repository.", ct).ConfigureAwait(false);
                 return;
             }
 
@@ -763,7 +749,7 @@ public sealed partial class RunWorker
             // only mean the left join found no row: the repo or pipeline has since left the catalog.
             if (run.RepoName is not { } repoName || run.PipelineRelativePath is not { } relativePath)
             {
-                await FailAsync(catalog, runId, attempt, "the run's repository or pipeline is no longer in the catalog.", ct).ConfigureAwait(false);
+                await FailAsync(runId, attempt, "the run's repository or pipeline is no longer in the catalog.", ct).ConfigureAwait(false);
                 return;
             }
 
@@ -789,7 +775,7 @@ public sealed partial class RunWorker
                 // and works even on a node with no locally synced copy of this flow).
                 if (string.IsNullOrWhiteSpace(run.RepoRemoteUrl))
                 {
-                    await FailAsync(catalog, runId, attempt,
+                    await FailAsync(runId, attempt,
                         $"run is pinned to commit '{run.CommitSha}' but repository '{repoName}' has no remote URL to materialize from.", ct).ConfigureAwait(false);
                     return;
                 }
@@ -811,7 +797,7 @@ public sealed partial class RunWorker
                 // Unpinned: run from the node's locally synced repo path (the default).
                 if (string.IsNullOrWhiteSpace(run.RepoRootPath))
                 {
-                    await FailAsync(catalog, runId, attempt, $"repository '{repoName}' has no synced root path on this node.", ct).ConfigureAwait(false);
+                    await FailAsync(runId, attempt, $"repository '{repoName}' has no synced root path on this node.", ct).ConfigureAwait(false);
                     return;
                 }
 
@@ -821,7 +807,7 @@ public sealed partial class RunWorker
             var flowFile = Path.GetFullPath(Path.Combine(flowRoot, relativePath));
             if (!File.Exists(flowFile))
             {
-                await FailAsync(catalog, runId, attempt, $"the flow file for '{run.FlowName}' was not found on this node.", ct).ConfigureAwait(false);
+                await FailAsync(runId, attempt, $"the flow file for '{run.FlowName}' was not found on this node.", ct).ConfigureAwait(false);
                 return;
             }
 
@@ -830,10 +816,10 @@ public sealed partial class RunWorker
             var documents = scope.GetRequiredService<YamlDocumentLoader>();
             var document = DocumentLoader.Load(documents, flowFile, message => LogHygiene(runId, message));
 
-            // The claimed run id is the orchestrator-assigned id: the engine stamps it on the run and its artifact,
-            // so the run records under exactly the id the trigger returned. Run-log echo stays null (server side).
-            // The run's substitution parameters (the built-in backfill) travel from the queue row into the engine
-            // here: the one handoff point, shared by every flow kind.
+            // The handed-out run id is the orchestrator-assigned id: the engine stamps it on the run and its
+            // artifact, so the run records under exactly the id the trigger returned. Run-log echo stays null
+            // (server side). The run's substitution parameters (the built-in backfill) travel from the queue row
+            // into the engine here: the one handoff point, shared by every flow kind.
             var parameters = new RunParameters
             {
                 FullLoad = run.FullLoad,
@@ -903,8 +889,8 @@ public sealed partial class RunWorker
             // read, a resolved watermark, a stage summary) a CatalogRunEvent row is written, each on its sink's
             // own scope/context, so the Statements and Events views update while the run is still running and
             // both streams survive even a mid-run crash. The sinks are disposed at the end of this block
-            // (draining every queued write) BEFORE the completion write-back below, which deletes these live
-            // rows and re-projects them from run.json: the artifact stays authoritative.
+            // (draining every queued write) BEFORE the outcome report below, whose projection keeps these live
+            // rows and appends only the tail they missed: the artifact stays authoritative.
             DocumentExecutionResult exec;
             await using (var statementSink = new CatalogRunStatementSink(_services, runId, repoId, _logger))
             await using (var eventSink = new CatalogRunEventSink(_services, runId, repoId, _logger))
@@ -913,36 +899,42 @@ public sealed partial class RunWorker
                 {
                     RunId = runId, Echo = null, Parameters = parameters, StatementSink = statementSink,
                     EventSink = eventSink, WatermarkSourceTable = watermarkSourceTable, LandingReset = landingReset,
-                    // The claimed run's flow name selects WHICH flow of the document executes: for an ingestion
+                    // The handed-out run's flow name selects WHICH flow of the document executes: for an ingestion
                     // document with an embedded healthCheck: block, the derived hc pipeline runs from the same file.
                     FlowName = run.FlowName,
                 };
                 // The executor runs under the per-run token: an operator cancel aborts the in-flight statement here
                 // (and only here), while the surrounding bookkeeping stays on the shutdown token so a late cancel
-                // never corrupts the completion write.
+                // never corrupts the outcome report.
                 exec = await _executor.ExecuteAsync(document, flowFile, options, runCt).ConfigureAwait(false);
             }
 
-            var now = _clock.GetUtcNow().UtcDateTime;
             if (exec.RunDirectory is { } runDirectory)
             {
                 var runJson = Path.Combine(runDirectory, "run.json");
-                var outcome = await RunQueueStore.CompleteFromArtifactAsync(
-                    catalog, runId, repoId, runJson, now, _node, attempt, ct).ConfigureAwait(false);
-                if (outcome == RunCompletionOutcome.StaleClaim)
+                var artifact = await ReadArtifactAsync(runJson, ct).ConfigureAwait(false);
+                var status = artifact.Json is not null
+                    ? await _transport
+                        .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Completed, null, artifact.Json), ct)
+                        .ConfigureAwait(false)
+                    : await _transport
+                        .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Failed,
+                            $"the run executed but its result could not be recorded: {artifact.Error}.", null), ct)
+                        .ConfigureAwait(false);
+                if (status == RunOutcomeStatus.StaleClaim)
                 {
-                    // This node was presumed dead and the run was requeued (and possibly re-claimed) out from under
-                    // it: the fence dropped this write, the successor execution's outcome is authoritative, and the
-                    // flow's idempotent load makes the double execution harmless. Loud in the log because it means
-                    // this node's heartbeats went unseen for the reaper's whole stale window.
+                    // The lease lapsed and the run was requeued (and possibly handed out again) out from under this
+                    // node while it executed: the fence dropped this report, the successor execution's outcome is
+                    // authoritative, and the flow's idempotent load makes the double execution harmless. Loud in
+                    // the log because it means this node's polls went unanswered for the whole lease.
                     LogStaleClaim(runId, attempt);
                 }
             }
             else
             {
-                // No artifact was written (an IO failure while writing the run history): record the outcome directly
-                // so the run still reaches a terminal state.
-                await FailAsync(catalog, runId, attempt, SecretHygiene.RedactedMessage(exec.Error ?? "the run produced no artifact."), ct).ConfigureAwait(false);
+                // No artifact was written (an IO failure while writing the run history): report the outcome
+                // directly so the run still reaches a terminal state.
+                await FailAsync(runId, attempt, SecretHygiene.RedactedMessage(exec.Error ?? "the run produced no artifact."), ct).ConfigureAwait(false);
             }
 
             if (exec.Success)
@@ -956,23 +948,51 @@ public sealed partial class RunWorker
         }
         catch (OperationCanceledException) when (shutdownCt.IsCancellationRequested)
         {
-            // Shutdown cancelled this run mid-flight: leave it 'running' so the next start's recovery requeues it.
+            // Shutdown cancelled this run mid-flight: leave it for the dispatcher's lease expiry to requeue.
             throw;
         }
         catch (Exception) when (runCt.IsCancellationRequested && !shutdownCt.IsCancellationRequested)
         {
+            if (held.Revoked)
+            {
+                // The dispatcher revoked the lease (it lapsed and the run was requeued): there is nothing to report,
+                // because the fence would drop it; the successor execution is authoritative.
+                LogRevokedAborted(runId, attempt);
+                return;
+            }
+
             // The operator cancelled this run: the per-run token tripped and aborted the in-flight statement (which
             // SqlClient may surface as OperationCanceledException or a SqlException), so its transaction rolled back.
-            // Record it 'cancelled' - not 'failed' - and continue to the next claim.
+            // Report it 'cancelled' - not 'failed' - and continue.
             LogCancelled(runId);
-            await TryCancelRunningAsync(catalog, runId, attempt).ConfigureAwait(false);
+            await TryReportRunAsync(runId, attempt, RunOutcomeKind.Cancelled, null).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            // A failed run (bad flow, unreachable database, IO) must never kill the worker: drive it to a terminal
-            // state (best-effort) and continue to the next claim.
+            // A failed run (bad flow, unreachable database, IO) must never kill the node: report it terminal
+            // (best-effort) and continue.
             LogRunError(runId, SecretHygiene.RedactedMessage(ex));
-            await TryFailAsync(catalog, runId, attempt, SecretHygiene.RedactedMessage(ex)).ConfigureAwait(false);
+            await TryReportRunAsync(runId, attempt, RunOutcomeKind.Failed, SecretHygiene.RedactedMessage(ex)).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>Reads the run's artifact for the outcome report, refusing one over the protocol's size bound with a
+    /// precise reason rather than shipping it.</summary>
+    private static async Task<(string? Json, string? Error)> ReadArtifactAsync(string runJsonPath, CancellationToken ct)
+    {
+        try
+        {
+            var length = new FileInfo(runJsonPath).Length;
+            if (length > NodeProtocol.MaxArtifactBytes)
+            {
+                return (null, $"the run artifact is {length} bytes, over the {NodeProtocol.MaxArtifactBytes}-byte limit");
+            }
+
+            return (await File.ReadAllTextAsync(runJsonPath, ct).ConfigureAwait(false), null);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return (null, SecretHygiene.RedactedMessage(ex));
         }
     }
 
@@ -1269,39 +1289,61 @@ public sealed partial class RunWorker
         };
     }
 
-    // Every outcome write below presents the claim fence (this node's name + the claim's attempt): if crash
-    // recovery has requeued the run in the meantime (this node was presumed dead), the write silently misses and
-    // the successor execution's outcome stands - a stale write must lose to the fence, never race it.
-    private Task FailAsync(CatalogDbContext catalog, Guid runId, int attempt, string error, CancellationToken ct)
-        => RunQueueStore.FailAsync(catalog, runId, error, _clock.GetUtcNow().UtcDateTime, _node, attempt, ct);
-
-    private async Task TryFailAsync(CatalogDbContext catalog, Guid runId, int attempt, string error)
+    // Every outcome report below presents the hand-out's fence (this node's name + the attempt): if the lease lapsed
+    // and the dispatcher requeued the run in the meantime (this node was presumed dead), the report is dropped and the
+    // successor execution's outcome stands - a stale report must lose to the fence, never race it.
+    private async Task FailAsync(Guid runId, int attempt, string error, CancellationToken ct)
     {
-        try
+        var status = await _transport
+            .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Failed, error, null), ct)
+            .ConfigureAwait(false);
+        if (status == RunOutcomeStatus.StaleClaim)
         {
-            // The original cancellation token may be tripped (or the failure may have been a database blip): use a
-            // short independent deadline so the run is still driven terminal where the catalog is reachable.
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            await RunQueueStore.FailAsync(catalog, runId, error, _clock.GetUtcNow().UtcDateTime, _node, attempt, cts.Token).ConfigureAwait(false);
-        }
-        catch (Exception ex)
-        {
-            LogPollError(SecretHygiene.RedactedMessage(ex));
+            LogStaleClaim(runId, attempt);
         }
     }
 
-    private async Task TryCancelRunningAsync(CatalogDbContext catalog, Guid runId, int attempt)
+    private async Task TryReportRunAsync(Guid runId, int attempt, RunOutcomeKind outcome, string? error)
     {
         try
         {
-            // The per-run token that triggered this is already tripped, so record the outcome on a short independent
-            // deadline (mirroring TryFailAsync) - the run must still reach 'cancelled' rather than linger 'running'.
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
-            await RunQueueStore.CancelRunningAsync(catalog, runId, _clock.GetUtcNow().UtcDateTime, _node, attempt, cts.Token).ConfigureAwait(false);
+            // The original cancellation token may be tripped (or the failure may have been a transport blip): use a
+            // short independent deadline so the run is still reported terminal where the dispatcher is reachable.
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            var status = await _transport
+                .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, outcome, error, null), cts.Token)
+                .ConfigureAwait(false);
+            if (status == RunOutcomeStatus.StaleClaim)
+            {
+                LogStaleClaim(runId, attempt);
+            }
         }
         catch (Exception ex)
         {
-            LogPollError(SecretHygiene.RedactedMessage(ex));
+            LogPollError(SecretHygiene.RedactedMessage(ex), 0);
+        }
+    }
+
+    public void Dispose() => _slotFreed.Dispose();
+
+    /// <summary>A run this node holds: the attempt its hand-out carried, its cancellation, and whether the dispatcher
+    /// revoked its lease (so an abort is not reported as an operator cancel).</summary>
+    private sealed class HeldRunState(int attempt, CancellationTokenSource cancellation)
+    {
+        public int Attempt { get; } = attempt;
+
+        public CancellationTokenSource Cancellation { get; } = cancellation;
+
+        public bool Revoked { get; set; }
+    }
+
+    /// <summary>Raised inside the poll loop when a slot freed while a saturated poll was parked, so the loop re-polls
+    /// with the new capacity at once. Never escapes <see cref="RunAsync"/>.</summary>
+    private sealed class SlotFreedException : Exception
+    {
+        public SlotFreedException()
+            : base("a slot freed while the poll was parked.")
+        {
         }
     }
 
@@ -1335,35 +1377,35 @@ public sealed partial class RunWorker
     [LoggerMessage(Level = LogLevel.Information, Message = "Run {RunId}: operator cancel observed; aborting the in-flight statement.")]
     private partial void LogCancelling(Guid runId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Run {RunId} cancelled by operator; recorded cancelled.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: lease at attempt {Attempt} revoked by the dispatcher (it lapsed and the run was requeued); aborting this execution.")]
+    private partial void LogRevoked(Guid runId, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: execution at attempt {Attempt} aborted after its lease was revoked; no outcome reported, the successor execution is authoritative.")]
+    private partial void LogRevokedAborted(Guid runId, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Run {RunId} cancelled by operator; reported cancelled.")]
     private partial void LogCancelled(Guid runId);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Run {RunId} threw and was driven to failed: {Error}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Run {RunId} threw and was reported failed: {Error}")]
     private partial void LogRunError(Guid runId, string error);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Run queue poll error: {Error}")]
-    private partial void LogPollError(string error);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Dispatcher poll error: {Error} (retrying in about {BackoffSeconds}s)")]
+    private partial void LogPollError(string error, int backoffSeconds);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Recovered {Count} run(s) left running by a previous worker incarnation; requeued.")]
-    private partial void LogRecovered(int count);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Stopping: no longer claiming; draining {Count} in-flight item(s) so each records its own outcome (up to {DrainSeconds}s).")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Stopping: no longer taking work; draining {Count} in-flight item(s) so each reports its own outcome (up to {DrainSeconds}s).")]
     private partial void LogDraining(int count, int drainSeconds);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Drained: every in-flight item finished and recorded its outcome.")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Drained: every in-flight item finished and reported its outcome.")]
     private partial void LogDrained();
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Drain window of {DrainSeconds}s expired with work still in flight; cancelling it. Each severed run stays 'running' and is requeued by the reaper, which consumes one of its execution attempts. Raise the drain window, or the platform's termination grace period, if this recurs.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Drain window of {DrainSeconds}s expired with work still in flight; cancelling it. Each severed run's lease lapses and the dispatcher requeues it, which consumes one of its execution attempts. Raise the drain window, or the platform's termination grace period, if this recurs.")]
     private partial void LogDrainTimedOut(int drainSeconds);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: outcome write dropped by the claim fence (attempt {Attempt}): the run was requeued out from under this node while it executed, so the successor execution's outcome is authoritative. This node's heartbeats went unseen for the reaper's whole stale window; check for catalog connectivity gaps or a paused container.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: outcome report dropped by the fence (attempt {Attempt}): the run was requeued out from under this node while it executed, so the successor execution's outcome is authoritative. This node's polls went unanswered for the whole lease; check for control-plane connectivity gaps or a paused container.")]
     private partial void LogStaleClaim(Guid runId, int attempt);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Restart requested at {RequestedUtc:o}; draining in-flight work and exiting so the orchestrator recreates this node.")]
-    private partial void LogRestartRequested(DateTime requestedUtc);
-
-    [LoggerMessage(Level = LogLevel.Information, Message = "Recovered {Count} compute task(s) left running by a previous worker incarnation; requeued.")]
-    private partial void LogRecoveredTasks(int count);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Restart requested by an operator; draining in-flight work and exiting so the orchestrator recreates this node.")]
+    private partial void LogRestartRequested();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Compute task {TaskId} starting: {Operation} against {SourceRef}.")]
     private partial void LogTaskStarting(Guid taskId, string operation, string sourceRef);
@@ -1371,13 +1413,19 @@ public sealed partial class RunWorker
     [LoggerMessage(Level = LogLevel.Information, Message = "Compute task {TaskId} succeeded ({Operation}).")]
     private partial void LogTaskSucceeded(Guid taskId, string operation);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Compute task {TaskId}: outcome report dropped; the task no longer belonged to this node.")]
+    private partial void LogTaskStale(Guid taskId);
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Compute task {TaskId}: operator cancel observed; aborting the in-flight query.")]
     private partial void LogTaskCancelling(Guid taskId);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Compute task {TaskId} cancelled by operator; recorded cancelled.")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Compute task {TaskId}: lease revoked by the dispatcher; aborting this execution.")]
+    private partial void LogTaskRevoked(Guid taskId);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Compute task {TaskId} cancelled by operator; reported cancelled.")]
     private partial void LogTaskCancelled(Guid taskId);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Compute task {TaskId} threw and was driven to failed: {Error}")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Compute task {TaskId} threw and was reported failed: {Error}")]
     private partial void LogTaskError(Guid taskId, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: {Message}")]

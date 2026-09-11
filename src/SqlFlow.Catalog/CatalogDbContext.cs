@@ -68,6 +68,9 @@ public sealed class CatalogDbContext : DbContext
 
     public DbSet<CatalogWorkerPoolDesired> WorkerPools => Set<CatalogWorkerPoolDesired>();
 
+    /// <summary>The dispatch ownership lease rows (one per lease name).</summary>
+    public DbSet<CatalogDispatchLease> DispatchLeases => Set<CatalogDispatchLease>();
+
     public DbSet<CatalogRepoSource> RepoSources => Set<CatalogRepoSource>();
 
     public DbSet<CatalogActivityEvent> ActivityEvents => Set<CatalogActivityEvent>();
@@ -177,14 +180,13 @@ public sealed class CatalogDbContext : DbContext
             // WHERE GroupId = @g AND GroupWave < @w AND Status IN ('queued','running'). This composite makes that
             // a seek, and also serves the group-detail board (a group's members by wave) and the groupId filter.
             entity.HasIndex(r => new { r.GroupId, r.GroupWave, r.Status });
-            // At most ONE running execution per pipeline, enforced by the database instead of by the claim's own
-            // check. The claim's "no running sibling of this pipeline" gate is a plain read under READ COMMITTED,
-            // so two nodes claiming two different queued runs of the SAME pipeline can each observe no running
-            // sibling and both claim it (write skew: neither read sees the other's uncommitted flip). That matters
-            // because the engine names a flow's work tables per FLOW, not per run, so two overlapping executions
-            // share (and drop) one staging table. This filtered unique index makes the gate atomic: the loser's
-            // claim fails with a duplicate key, which ClaimNextAsync reads as "another node just took this
-            // pipeline" and answers by moving on to the next candidate run.
+            // At most ONE running execution per pipeline, as defense in depth behind the dispatcher. The control
+            // plane's in-memory dispatcher is the single authority that hands runs out, and its pipeline gate is
+            // exact under one lock; this filtered unique index is what turns a bug in that authority (or two
+            // dispatchers briefly overlapping during an ownership hand-over) into a loud duplicate-key failure on
+            // the hand-out's journal write instead of two overlapping executions. That matters because the engine
+            // names a flow's work tables per FLOW, not per run, so two overlapping executions would share (and
+            // drop) one staging table.
             entity.HasIndex(r => r.PipelineId, "UX_Run_RunningPipeline")
                 .IsUnique()
                 .HasFilter($"[Status] = '{RunStatuses.Running}'");
@@ -510,6 +512,14 @@ public sealed class CatalogDbContext : DbContext
             // The fleet view lists nodes most-recently-seen first, and counts online nodes per pool.
             entity.HasIndex(n => n.LastSeenUtc);
             entity.HasIndex(n => n.Pool);
+        });
+
+        modelBuilder.Entity<CatalogDispatchLease>(entity =>
+        {
+            entity.ToTable("DispatchLease");
+            entity.HasKey(l => l.Name);
+            entity.Property(l => l.Name).HasMaxLength(64);
+            entity.Property(l => l.Owner).HasMaxLength(256).IsRequired();
         });
 
         modelBuilder.Entity<CatalogWorkerPoolDesired>(entity =>

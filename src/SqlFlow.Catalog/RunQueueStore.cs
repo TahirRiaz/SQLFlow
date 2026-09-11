@@ -1,10 +1,8 @@
-using System.Data.Common;
 using System.Text.Json;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 using SqlFlow.Core.Runs;
 using SqlFlow.Core.Secrets;
+using SqlFlow.Dispatch;
 
 namespace SqlFlow.Catalog;
 
@@ -38,8 +36,8 @@ public sealed record RunEnqueueRequest(
 /// the target's high-water mark). A member absent from the map runs with default parameters, so an ordinary group (or
 /// a schedule fire) passes no map and every member runs as defined.</para>
 /// <para><paramref name="MaxConcurrency"/> bounds how many members may execute at once (null = unbounded, the
-/// historical behavior). It is stamped onto every member run and applied by the queue's claim gate; because waves are
-/// gated, it is effectively the width of the running wave.</para></summary>
+/// historical behavior). It is stamped onto every member run and applied by the dispatcher's group gate; because
+/// waves are gated, it is effectively the width of the running wave.</para></summary>
 public sealed record RunGroupEnqueueRequest(
     Guid RepoId, string Mode, string Anchor, IReadOnlyList<RunScopeMember> Members,
     string? TargetPool = null, string? CommitSha = null,
@@ -47,42 +45,21 @@ public sealed record RunGroupEnqueueRequest(
     int? MaxConcurrency = null, string TriggerSource = RunTriggerSources.Manual,
     Guid? TriggerScheduleId = null);
 
-/// <summary>The outcome of enqueuing a group: the new group id and the ids of every member run, in wave order.</summary>
-public sealed record RunGroupEnqueueResult(Guid GroupId, IReadOnlyList<Guid> RunIds);
+/// <summary>The outcome of enqueuing a single run: its new id and its placement row, which the caller hands to the
+/// dispatcher so memory learns of the run the ledger already holds.</summary>
+public sealed record RunEnqueueResult(Guid RunId, DispatchRun Placement);
+
+/// <summary>The outcome of enqueuing a group: the new group id, the ids of every member run in wave order, and the
+/// members' placement rows for the dispatcher.</summary>
+public sealed record RunGroupEnqueueResult(Guid GroupId, IReadOnlyList<Guid> RunIds, IReadOnlyList<DispatchRun> Placements);
 
 /// <summary>The outcome of cancelling a run group: whether the group existed, how many queued members were cancelled
-/// outright, and how many running members had a cancel request stamped (the latter drives a worker nudge).</summary>
+/// outright, and how many running members had a cancel request stamped.</summary>
 public sealed record GroupCancelResult(bool Found, int CancelledQueued, int RequestedRunning);
 
-/// <summary>A successful claim: the run to execute and the claim's <see cref="CatalogRun.Attempt"/> value, which is
-/// the fencing token the claiming node presents on every outcome write (complete / fail / cancel). A write whose
-/// token no longer matches the row is a stale write from a superseded execution and is dropped.</summary>
-public readonly record struct ClaimedRun(Guid RunId, int Attempt);
-
-/// <summary>How a completion write-back ended, so the worker can log the difference between a recorded outcome, a
-/// run driven <c>failed</c> because its artifact could not be read, and a write dropped by the claim fence.</summary>
-public enum RunCompletionOutcome
-{
-    /// <summary>The outcome was recorded from a valid artifact.</summary>
-    Recorded,
-
-    /// <summary>The artifact was missing or corrupt; the run was driven to <c>failed</c> so it never lingers.</summary>
-    ArtifactUnreadable,
-
-    /// <summary>The row no longer carries the caller's claim (it was requeued by crash recovery, re-claimed by
-    /// another execution, or driven terminal by someone else), so nothing was written: this caller is a superseded
-    /// execution and the row's current owner is authoritative.</summary>
-    StaleClaim,
-}
-
-/// <summary>The orphan reaper's outcome for one sweep: how many interrupted runs went back to the queue for another
-/// execution, how many had exhausted their attempts and were failed, and how many were recorded cancelled because
-/// an operator's cancel was already pending when the node died.</summary>
-public readonly record struct OrphanReapResult(int Requeued, int Failed, int Cancelled)
-{
-    /// <summary>Whether the sweep changed anything at all.</summary>
-    public bool Any => Requeued > 0 || Failed > 0 || Cancelled > 0;
-}
+/// <summary>The outcome of a terminal write (fail, cancel-running): whether it applied, and which still-queued group
+/// members were skipped as a consequence, so the dispatcher can drop them from memory too.</summary>
+public sealed record RunTerminalResult(bool Applied, IReadOnlyList<Guid> SkippedRunIds);
 
 /// <summary>The result of a cancel request, so the API can answer 200 / 202 / 404 / 409 precisely.</summary>
 public enum CancelOutcome
@@ -102,107 +79,31 @@ public enum CancelOutcome
 }
 
 /// <summary>
-/// The durable run queue: the <see cref="CatalogRun"/> table IS the queue, so queued and running work survives a
-/// host restart, is visible to the read API, and (with the atomic claim below) can be drained by more than one
-/// worker without ever double-running a flow. A control-plane trigger or a schedule enqueues a run; a worker claims
-/// the oldest queued run, executes it through the shared engine, then records the outcome from its on-disk
-/// artifact. This is distinct from <see cref="CatalogSync"/>, which maps already-finished on-disk runs into the
-/// catalog; both share the run.json projection and the retriable-transaction helper, so there is one mapping path.
-/// Stateless (pure operations over the supplied context and clock), like <see cref="CatalogProjection"/>.
+/// The run journal: the <see cref="CatalogRun"/> table records every run from <c>queued</c> through terminal, so
+/// runs survive a restart and are visible to the read API from the moment they are queued. Placement (who executes
+/// what, in which order, under which gates) is decided by the control plane's in-memory dispatcher; this store only
+/// journals those decisions with plain conditional updates, each fenced on the (node, attempt) pair the hand-out
+/// recorded, so a write from a superseded holder affects nothing. Nothing here depends on a database feature beyond
+/// conditional UPDATE, INSERT and SELECT. This is distinct from <see cref="CatalogSync"/>, which maps
+/// already-finished on-disk runs into the catalog; both share the run.json projection, so there is one mapping
+/// path. Stateless (pure operations over the supplied context and clock), like <see cref="CatalogProjection"/>.
 /// </summary>
 public static class RunQueueStore
 {
-    // The reliable single-statement claim: atomically pick the oldest queued run and flip it to running, returning
-    // its id. UPDLOCK takes the update lock up front (no lock-upgrade race), READPAST skips rows another worker has
-    // already locked (so concurrent workers each get a different run instead of blocking), ROWLOCK keeps the lock
-    // granular. Because it is one statement it is atomic on its own - no surrounding transaction is needed - which
-    // is exactly what makes it safe for many workers to call at once.
-    //
-    // The leading SET pins READ COMMITTED for this batch: READPAST is only valid under READ COMMITTED / REPEATABLE
-    // READ, and a pooled connection can carry a leftover SERIALIZABLE level from a prior transaction (SQL Server
-    // does not reliably reset the session isolation level on connection reuse), which would otherwise make the hint
-    // illegal. READ COMMITTED is also the engine default, so this only ever restores it.
-    // {POOL_PREDICATE} is replaced with a parameterized pool filter (the pool NAMES are bound as parameters, never
-    // interpolated, so the IN list is injection-safe).
-    //
-    // The group-gating clause enforces wave order within a run group without any external coordinator: a member of a
-    // group is claimable only once every same-group member in a LOWER wave is terminal (no sibling with a smaller
-    // GroupWave is still queued or running). A standalone run (GroupId IS NULL) short-circuits the clause and is
-    // claimable exactly as before. Because a blocked member simply is not selected (rather than locked), READPAST
-    // still lets a worker move straight to the next eligible run - a not-yet-ready wave never stalls the queue.
-    //
-    // The pipeline-gating clause serializes executions of the SAME flow: a run is claimable only while no other run
-    // of its pipeline is executing, so a double-trigger (or a schedule firing while the previous run is still going)
-    // queues behind the running one instead of racing it. This is load-bearing for ingestion: each flow stages
-    // through one canonical work table ([raw].[<schema>_<table>_<flowId>]), which two overlapping executions of the
-    // flow would clobber. Like the group gate, a blocked duplicate is simply not selected, so the worker moves on to
-    // the next eligible run; node-restart recovery (RecoverStuckRunningAsync) requeues orphaned running rows, so a
-    // crashed run cannot wedge its pipeline.
-    //
-    // That clause alone is only advisory across a fleet: it is a read under READ COMMITTED, holding no lock on the
-    // sibling rows, so two nodes claiming two different queued runs of one pipeline can both see no running sibling
-    // and both claim (write skew). The unique filtered index UX_Run_RunningPipeline
-    // (catalog.Run(PipelineId) WHERE Status = 'running') is what makes the gate atomic: the loser's write fails with
-    // a duplicate key, which ClaimNextAsync answers by trying the next-eligible run. The clause stays because it is
-    // the cheap, ordering-preserving filter that keeps the conflict rare; the index is the guarantee.
-    //
-    // The trailing [Status] = @queued on the UPDATE is the same defence for the row itself: the subquery picks a
-    // queued run under UPDLOCK, and this keeps the write conditional on that state so no path can flip a run that
-    // has meanwhile been claimed, cancelled, or requeued.
-    //
-    // The group-concurrency clause bounds how WIDE a fire runs: a member carrying a GroupMaxConcurrency (stamped from
-    // the firing schedule at enqueue) is claimable only while fewer than that many of its siblings are running. Since
-    // the wave gate above already means only one wave is eligible at a time, this is the width of the running wave.
-    // A null bound (every standalone run, and any group whose schedule set none) short-circuits to the historical
-    // unbounded behavior. Like the other gates it filters rather than locks, so a node that finds the wave saturated
-    // moves on to other eligible work instead of blocking.
-    //
-    // The bound is exact per node, because a node's drain loop claims strictly one run at a time (RunWorker.DrainAsync
-    // awaits its concurrency slot, then claims), so its own count is never stale. Across a multi-node fleet two nodes
-    // can pass the check on the same free slot and overshoot by at most (claiming nodes - 1): making that exact would
-    // need a range lock over the group on every claim, serializing the fleet's hot path to bound a soft resource
-    // limit. Treat it as "about this many", which is what protecting an upstream connection budget actually needs.
-    // The claim increments [Attempt] and returns it alongside the id: the incremented value is the claiming node's
-    // fencing token, which every outcome write is conditional on (see the fenced overloads below), and doubles as
-    // the execution counter that bounds crash-recovery requeues.
-    /// <summary>How many times one <see cref="ClaimNextAsync"/> call re-runs its claim after losing the
-    /// UX_Run_RunningPipeline race. Three covers a realistic fleet (the loser only retries when another node
-    /// claimed the very pipeline it picked, and the retry then picks a different run) without letting one poll
-    /// hammer a contended queue: exhausting the budget simply reports nothing claimable this tick.</summary>
-    private const int ClaimRaceAttempts = 3;
+    /// <summary>The largest run artifact a completion accepts; larger ones are recorded as unreadable so a runaway
+    /// trace can never stall the control plane. The same bound the artifact sync and the node protocol apply.</summary>
+    public const long MaxArtifactBytes = Dispatch.Protocol.NodeProtocol.MaxArtifactBytes;
 
-    // SQL Server's two duplicate-key errors: 2601 from a unique index, 2627 from a unique constraint. The claim
-    // statement writes one column set on [catalog].[Run] and never touches a key column, so the only uniqueness it
-    // can violate is the filtered UX_Run_RunningPipeline index - a lost race for the pipeline, not a fault. Matching
-    // on the numbers alone keeps the check independent of the server's message language.
-    private const int DuplicateKeyInIndex = 2601;
-    private const int DuplicateKeyInConstraint = 2627;
-
-    private const string ClaimSqlTemplate = """
-        SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
-        UPDATE [catalog].[Run]
-        SET [Status] = @running, [ClaimedByNode] = @node, [StartUtc] = @now, [Attempt] = [Attempt] + 1
-        OUTPUT inserted.[RunId], inserted.[Attempt]
-        WHERE [RunId] = (
-            SELECT TOP (1) r.[RunId] FROM [catalog].[Run] AS r WITH (UPDLOCK, READPAST, ROWLOCK)
-            WHERE r.[Status] = @queued AND {POOL_PREDICATE}
-              AND (r.[GroupId] IS NULL OR NOT EXISTS (
-                  SELECT 1 FROM [catalog].[Run] AS s
-                  WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave]
-                    AND s.[Status] IN (@queued, @running)))
-              AND (r.[GroupMaxConcurrency] IS NULL OR (
-                  SELECT COUNT(*) FROM [catalog].[Run] AS w
-                  WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = @running) < r.[GroupMaxConcurrency])
-              AND NOT EXISTS (
-                  SELECT 1 FROM [catalog].[Run] AS p
-                  WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = @running)
-            ORDER BY r.[EnqueuedUtc], r.[RunId])
-          AND [Status] = @queued;
-        """;
+    /// <summary>How many times a run may be handed out before an interrupted attempt is failed instead of requeued.
+    /// Interruption here means the executing node went silent without recording an outcome (a reclaimed pod, a
+    /// crash, an eviction); a run that FAILS records its failure normally and is never retried by this machinery.
+    /// The cap is what stops a poison run (one that reliably kills its node, e.g. by exhausting memory) from
+    /// crash-looping the fleet forever: three executions distinguishes "unlucky twice" from "the run is the cause".</summary>
+    public const int MaxExecutionAttempts = 3;
 
     /// <summary>Enqueues a run: inserts a <c>queued</c> <see cref="CatalogRun"/> row and returns its newly minted
-    /// (time-ordered) id. The caller hands that id back to the trigger's caller, and the run is recorded under it,
-    /// so <c>GET /runs/{id}</c> reflects the run from the moment it is queued.
+    /// (time-ordered) id with the placement row the dispatcher needs. The caller hands the id back to the trigger's
+    /// caller, and the run is recorded under it, so <c>GET /runs/{id}</c> reflects the run from the moment it is queued.
     /// <para>
     /// Commit pinning: an explicit <see cref="RunEnqueueRequest.CommitSha"/> is honored verbatim. When it is
     /// omitted, the run is pinned to the repo's last successfully synced commit (the managed-sync source's
@@ -220,7 +121,7 @@ public static class RunQueueStore
     /// empty stored YAML, or a flow that embeds a literal credential (whose stored YAML is the redacted form, not
     /// the committed bytes) is not snapshotted: the run keeps the git materialization path above.
     /// </para></summary>
-    public static async Task<Guid> EnqueueAsync(
+    public static async Task<RunEnqueueResult> EnqueueAsync(
         CatalogDbContext catalog, RunEnqueueRequest request, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
@@ -232,6 +133,7 @@ public static class RunQueueStore
 
         var runId = Guid.CreateVersion7();
         var pipelineId = CatalogIdentity.Pipeline(request.RepoId, request.FlowName);
+        var targetPool = string.IsNullOrWhiteSpace(request.TargetPool) ? null : request.TargetPool.Trim();
 
         // Resolve the commit this run executes and whether the catalog snapshot is a faithful copy of it. The
         // snapshot in CatalogFlowVersion holds the CURRENTLY SYNCED version (what CatalogPipeline.Yaml reflects),
@@ -245,7 +147,7 @@ public static class RunQueueStore
             ? await EnsureFlowVersionAsync(catalog, pipelineId, nowUtc, ct).ConfigureAwait(false)
             : null;
 
-        return await CatalogTransaction.InSerializableAsync(catalog, () =>
+        await CatalogTransaction.InSerializableAsync(catalog, () =>
         {
             catalog.Runs.Add(new CatalogRun
             {
@@ -254,7 +156,7 @@ public static class RunQueueStore
                 RepoId = request.RepoId,
                 FlowName = request.FlowName,
                 FlowKind = string.IsNullOrWhiteSpace(request.FlowKind) ? "unknown" : request.FlowKind,
-                TargetPool = string.IsNullOrWhiteSpace(request.TargetPool) ? null : request.TargetPool.Trim(),
+                TargetPool = targetPool,
                 CommitSha = commitSha,
                 FlowVersionHash = flowVersionHash,
                 FullLoad = parameters.FullLoad,
@@ -274,16 +176,19 @@ public static class RunQueueStore
                 Success = false,
             });
             return Task.FromResult(runId);
-        }, ct);
+        }, ct).ConfigureAwait(false);
+
+        return new RunEnqueueResult(
+            runId, new DispatchRun(runId, pipelineId, targetPool, null, 0, null, nowUtc, 0, false));
     }
 
     /// <summary>Enqueues a whole run group (a Node or Batch execution) atomically: inserts one
     /// <see cref="CatalogRunGroup"/> header and one <c>queued</c> <see cref="CatalogRun"/> per member, each stamped
-    /// with the shared <see cref="CatalogRun.GroupId"/> and its own <see cref="CatalogRun.GroupWave"/> so the claim
-    /// runs them in wave order. Every member is pinned to the same resolved commit (so the whole set executes one
-    /// consistent version) and carries default run parameters (backfill is single-flow only). Returns the group id
-    /// and the member run ids in wave order. Members are validated non-empty by the caller (an empty scope is a
-    /// request error, not something to enqueue).</summary>
+    /// with the shared <see cref="CatalogRun.GroupId"/> and its own <see cref="CatalogRun.GroupWave"/> so the
+    /// dispatcher runs them in wave order. Every member is pinned to the same resolved commit (so the whole set
+    /// executes one consistent version) and carries default run parameters (backfill is single-flow only). Returns
+    /// the group id, the member run ids in wave order, and their placement rows. Members are validated non-empty by
+    /// the caller (an empty scope is a request error, not something to enqueue).</summary>
     public static async Task<RunGroupEnqueueResult> EnqueueGroupAsync(
         CatalogDbContext catalog, RunGroupEnqueueRequest request, DateTime nowUtc, CancellationToken ct = default)
     {
@@ -298,6 +203,9 @@ public static class RunQueueStore
 
         var groupId = Guid.CreateVersion7();
         var targetPool = string.IsNullOrWhiteSpace(request.TargetPool) ? null : request.TargetPool.Trim();
+        // A non-positive bound would leave every member unclaimable forever, so it collapses to unbounded here as
+        // a last line of defence; the YAML loaders already reject one with a warning.
+        var maxConcurrency = request.MaxConcurrency is { } max && max >= 1 ? max : (int?)null;
 
         // Per-member parameters for a node backfill (the caller routed each member to the window or to
         // reprocess-from-source-min); a member absent from the map runs with defaults. Each is validated here, at the
@@ -334,8 +242,10 @@ public static class RunQueueStore
             }
         }
 
-        return await CatalogTransaction.InSerializableAsync(catalog, () =>
+        var placements = new List<DispatchRun>(request.Members.Count);
+        var runIds = await CatalogTransaction.InSerializableAsync(catalog, () =>
         {
+            placements.Clear();
             catalog.RunGroups.Add(new CatalogRunGroup
             {
                 GroupId = groupId,
@@ -347,13 +257,15 @@ public static class RunQueueStore
                 EnqueuedUtc = nowUtc,
             });
 
-            var runIds = new List<Guid>(request.Members.Count);
+            var ids = new List<Guid>(request.Members.Count);
             foreach (var member in request.Members)
             {
                 var runId = Guid.CreateVersion7();
-                runIds.Add(runId);
+                ids.Add(runId);
                 var pipelineId = CatalogIdentity.Pipeline(request.RepoId, member.FlowName);
                 var memberParameters = MemberParameters(member);
+                // A negative (uncomputed) wave collapses to 0 so an un-analyzed set runs as one parallel wave.
+                var wave = member.Wave < 0 ? 0 : member.Wave;
                 catalog.Runs.Add(new CatalogRun
                 {
                     RunId = runId,
@@ -365,11 +277,8 @@ public static class RunQueueStore
                     CommitSha = commitSha,
                     FlowVersionHash = flowVersionByPipeline.GetValueOrDefault(pipelineId),
                     GroupId = groupId,
-                    // A negative (uncomputed) wave collapses to 0 so an un-analyzed set runs as one parallel wave.
-                    GroupWave = member.Wave < 0 ? 0 : member.Wave,
-                    // A non-positive bound would leave every member unclaimable forever, so it collapses to
-                    // unbounded here as a last line of defence; the YAML loaders already reject one with a warning.
-                    GroupMaxConcurrency = request.MaxConcurrency is { } max && max >= 1 ? max : null,
+                    GroupWave = wave,
+                    GroupMaxConcurrency = maxConcurrency,
                     FullLoad = memberParameters.FullLoad,
                     BackfillFrom = memberParameters.BackfillFrom,
                     BackfillTo = memberParameters.BackfillTo,
@@ -384,10 +293,13 @@ public static class RunQueueStore
                     WrittenUtc = nowUtc,
                     Success = false,
                 });
+                placements.Add(new DispatchRun(runId, pipelineId, targetPool, groupId, wave, maxConcurrency, nowUtc, 0, false));
             }
 
-            return Task.FromResult(new RunGroupEnqueueResult(groupId, runIds));
-        }, ct);
+            return Task.FromResult(ids);
+        }, ct).ConfigureAwait(false);
+
+        return new RunGroupEnqueueResult(groupId, runIds, placements);
     }
 
     /// <summary>
@@ -395,8 +307,7 @@ public static class RunQueueStore
     /// The repo row and its source row are joined by name, which is the managed-sync invariant (the sync records
     /// the repo under the source's name; see RepoSyncService). The pin is only usable when the repo has a remote
     /// URL for workers to materialize from, so a repo synced from a bare local path never produces a pin a worker
-    /// could not honor. Runs inside the enqueue transaction, so the pin and the queued row are one consistent
-    /// snapshot.
+    /// could not honor.
     /// </summary>
     private static async Task<string?> ResolveSyncedShaAsync(
         CatalogDbContext catalog, Guid repoId, CancellationToken ct)
@@ -492,135 +403,142 @@ public static class RunQueueStore
         return pipeline.ContentHash;
     }
 
-    /// <summary>Atomically claims the oldest queued run this node is eligible for, flipping it to <c>running</c> and
-    /// returning its id and claim attempt (the fencing token the node must present on every outcome write), or null
-    /// when there is none. Eligibility: an untargeted run (no pool) is claimable by any node; a pooled run only by a
-    /// node that serves that pool (<paramref name="pools"/>); a run whose pipeline already has a running execution
-    /// waits its turn (same-flow runs never overlap, protecting the flow's canonical staging table). Safe to call
-    /// concurrently from many workers: each claim takes a different run (or none). The one-execution-per-pipeline
-    /// rule is guaranteed by the database (the filtered unique index UX_Run_RunningPipeline), not merely checked
-    /// here, so a claim that loses that race to another node retries against the next-eligible run instead of
-    /// producing a second concurrent execution of one flow.</summary>
-    public static async Task<ClaimedRun?> ClaimNextAsync(
-        CatalogDbContext catalog, string node, IReadOnlyList<string> pools, DateTime nowUtc, CancellationToken ct = default)
+    // ------------------------------------------------------------------------------------- dispatcher journal ----
+
+    /// <summary>Every queued run's placement row and every running run with its recorded holder, for rebuilding the
+    /// dispatcher's memory at activation.</summary>
+    public static async Task<(IReadOnlyList<DispatchRun> Queued, IReadOnlyList<RunningRunRecord> Running)> LoadDispatchStateAsync(
+        CatalogDbContext catalog, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        var queued = await PlacementQuery(catalog.Runs.AsNoTracking().Where(r => r.Status == RunStatuses.Queued))
+            .ToListAsync(ct).ConfigureAwait(false);
+        var running = await RunningQuery(catalog.Runs.AsNoTracking().Where(r => r.Status == RunStatuses.Running))
+            .ToListAsync(ct).ConfigureAwait(false);
+        return (queued.Select(ToDispatchRun).ToList(), running.Select(ToRunningRecord).OfType<RunningRunRecord>().ToList());
+    }
+
+    /// <summary>The ids of every queued run and the holder of every running run, the cheap read reconcile diffs
+    /// against the dispatcher's memory.</summary>
+    public static async Task<(IReadOnlyList<Guid> QueuedIds, IReadOnlyList<ActiveRunRef> Running)> ListActiveAsync(
+        CatalogDbContext catalog, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        var queued = await catalog.Runs.AsNoTracking()
+            .Where(r => r.Status == RunStatuses.Queued)
+            .Select(r => r.RunId)
+            .ToListAsync(ct).ConfigureAwait(false);
+        var running = await catalog.Runs.AsNoTracking()
+            .Where(r => r.Status == RunStatuses.Running)
+            .Select(r => new { r.RunId, r.ClaimedByNode, r.Attempt, Cancel = r.CancelRequestedUtc != null })
+            .ToListAsync(ct).ConfigureAwait(false);
+        return (queued, running.Select(r => new ActiveRunRef(r.RunId, r.ClaimedByNode, r.Attempt, r.Cancel)).ToList());
+    }
+
+    /// <summary>The placement rows of the given runs that are still queued.</summary>
+    public static async Task<IReadOnlyList<DispatchRun>> LoadQueuedAsync(
+        CatalogDbContext catalog, IReadOnlyCollection<Guid> runIds, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(runIds);
+        if (runIds.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = runIds.ToList();
+        var rows = await PlacementQuery(catalog.Runs.AsNoTracking()
+                .Where(r => r.Status == RunStatuses.Queued && ids.Contains(r.RunId)))
+            .ToListAsync(ct).ConfigureAwait(false);
+        return rows.Select(ToDispatchRun).ToList();
+    }
+
+    /// <summary>The placement rows and holders of the given runs that are still running under a recorded node.</summary>
+    public static async Task<IReadOnlyList<RunningRunRecord>> LoadRunningAsync(
+        CatalogDbContext catalog, IReadOnlyCollection<Guid> runIds, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(runIds);
+        if (runIds.Count == 0)
+        {
+            return [];
+        }
+
+        var ids = runIds.ToList();
+        var rows = await RunningQuery(catalog.Runs.AsNoTracking()
+                .Where(r => r.Status == RunStatuses.Running && ids.Contains(r.RunId)))
+            .ToListAsync(ct).ConfigureAwait(false);
+        return rows.Select(ToRunningRecord).OfType<RunningRunRecord>().ToList();
+    }
+
+    /// <summary>Journals a hand-out: the run goes from <c>queued</c> to <c>running</c> under <paramref name="node"/>,
+    /// with <see cref="CatalogRun.Attempt"/> advanced from <paramref name="expectedAttempt"/> to one more. The write is
+    /// conditional on the row still being queued at exactly that attempt, so a run cancelled or requeued directly in
+    /// the meantime is never handed out on stale knowledge. Returns whether the row was written.</summary>
+    public static async Task<bool> MarkHandedOutAsync(
+        CatalogDbContext catalog, Guid runId, int expectedAttempt, string node, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
-        ArgumentNullException.ThrowIfNull(pools);
 
-        // A worker with no pools claims only untargeted runs; a pooled worker also claims runs routed to one of its
-        // pools. The pool names are bound as parameters (only the @poolN placeholders are interpolated), so the IN
-        // list cannot be an injection vector.
-        var poolPredicate = "r.[TargetPool] IS NULL";
-        if (pools.Count > 0)
-        {
-            var placeholders = string.Join(", ", pools.Select((_, i) => $"@pool{i}"));
-            poolPredicate = $"(r.[TargetPool] IS NULL OR r.[TargetPool] IN ({placeholders}))";
-        }
-
-        var sql = ClaimSqlTemplate.Replace("{POOL_PREDICATE}", poolPredicate, StringComparison.Ordinal);
-
-        // Losing the race for a pipeline is an ordinary outcome, not an error: the run stays queued and becomes
-        // claimable the moment the winner finishes. Each retry re-runs the whole claim, so it evaluates the gates
-        // afresh and takes the next-eligible run (usually a different pipeline). The attempt budget bounds the work
-        // a heavily contended queue can cause in one poll; exhausting it answers "nothing claimable right now", and
-        // the drain loop's next nudge or poll picks the work up.
-        for (var attempt = 1; attempt <= ClaimRaceAttempts; attempt++)
-        {
-            try
-            {
-                return await ClaimOnceAsync(catalog, sql, node, pools, nowUtc, ct).ConfigureAwait(false);
-            }
-            catch (SqlException ex) when (IsRunningPipelineConflict(ex))
-            {
-                // Another node claimed this pipeline between this claim's gate check and its write.
-            }
-        }
-
-        return null;
+        var attempt = expectedAttempt + 1;
+        var written = await catalog.Runs
+            .Where(r => r.RunId == runId && r.Status == RunStatuses.Queued && r.Attempt == expectedAttempt)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, RunStatuses.Running)
+                .SetProperty(r => r.ClaimedByNode, node)
+                .SetProperty(r => r.StartUtc, nowUtc)
+                .SetProperty(r => r.Attempt, attempt), ct)
+            .ConfigureAwait(false);
+        return written > 0;
     }
 
-    /// <summary>The claim's single database round trip: runs <see cref="ClaimSqlTemplate"/> (already pool-expanded)
-    /// and materializes the claimed run, or null when nothing was eligible. Separated from
-    /// <see cref="ClaimNextAsync"/> so the lost-race retry re-enters through a fresh execution strategy, which is
-    /// what the strategy contract requires of a retried operation.</summary>
-    private static async Task<ClaimedRun?> ClaimOnceAsync(
-        CatalogDbContext catalog, string sql, string node, IReadOnlyList<string> pools, DateTime nowUtc,
-        CancellationToken ct)
+    /// <summary>Records a run's outcome as its node reported it, under the fence: completion from the artifact
+    /// (which decides success or failure), a failure with a reason, or an honored operator cancel.</summary>
+    public static async Task<RunOutcomeRecord> RecordOutcomeAsync(
+        CatalogDbContext catalog, Guid runId, string node, int attempt, RunOutcomeKind outcome, string? failure,
+        string? artifactJson, DateTime nowUtc, CancellationToken ct = default)
     {
-        var strategy = catalog.Database.CreateExecutionStrategy();
-        return await strategy.ExecuteAsync(async () =>
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+
+        switch (outcome)
         {
-            var connection = catalog.Database.GetDbConnection();
-            await catalog.Database.OpenConnectionAsync(ct).ConfigureAwait(false);
-            try
-            {
-                await using var command = connection.CreateCommand();
-                command.CommandText = sql;
-                // Enlist in the context's current transaction if one is open (there is none on the standalone claim
-                // path, but this keeps the command correct if a caller ever wraps it).
-                if (catalog.Database.CurrentTransaction is { } tx)
+            case RunOutcomeKind.Completed:
+                return await CompleteFromArtifactAsync(catalog, runId, artifactJson, nowUtc, node, attempt, ct).ConfigureAwait(false);
+            case RunOutcomeKind.Failed:
                 {
-                    command.Transaction = tx.GetDbTransaction();
+                    var reason = string.IsNullOrWhiteSpace(failure) ? "the run failed without a recorded reason." : failure;
+                    var result = await FailAsync(catalog, runId, reason, nowUtc, node, attempt, ct).ConfigureAwait(false);
+                    return new RunOutcomeRecord(
+                        result.Applied ? RunOutcomeStatus.Recorded : RunOutcomeStatus.StaleClaim, result.SkippedRunIds);
                 }
 
-                AddParameter(command, "@running", RunStatuses.Running);
-                AddParameter(command, "@queued", RunStatuses.Queued);
-                AddParameter(command, "@node", node);
-                AddParameter(command, "@now", nowUtc);
-                for (var i = 0; i < pools.Count; i++)
+            default:
                 {
-                    AddParameter(command, $"@pool{i}", pools[i]);
+                    var result = await CancelRunningAsync(catalog, runId, nowUtc, node, attempt, ct).ConfigureAwait(false);
+                    return new RunOutcomeRecord(
+                        result.Applied ? RunOutcomeStatus.Recorded : RunOutcomeStatus.StaleClaim, result.SkippedRunIds);
                 }
-
-                await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
-                if (!await reader.ReadAsync(ct).ConfigureAwait(false))
-                {
-                    return (ClaimedRun?)null;
-                }
-
-                return new ClaimedRun(reader.GetGuid(0), reader.GetInt32(1));
-            }
-            finally
-            {
-                await catalog.Database.CloseConnectionAsync().ConfigureAwait(false);
-            }
-        }).ConfigureAwait(false);
-    }
-
-    /// <summary>True when a failed claim is the database refusing a second running run for one pipeline (see
-    /// <see cref="DuplicateKeyInIndex"/>). Every other SqlException is a real failure and propagates to the worker's
-    /// poll-error handling. A batch can carry several errors, so the whole collection is inspected.</summary>
-    private static bool IsRunningPipelineConflict(SqlException ex)
-    {
-        foreach (SqlError error in ex.Errors)
-        {
-            if (error.Number is DuplicateKeyInIndex or DuplicateKeyInConstraint)
-            {
-                return true;
-            }
         }
-
-        return false;
     }
 
-    /// <summary>Records a claimed run's outcome from its on-disk <c>run.json</c>: copies the result fields onto the
-    /// existing row, flips it to the terminal <c>succeeded</c>/<c>failed</c> state, and inserts the drill-down
-    /// detail. If the artifact is missing or corrupt the run is still moved to <c>failed</c> (with the reason) so it
-    /// never lingers in <c>running</c>.
-    /// <para>The claim fence: a worker passes the <paramref name="claimedByNode"/> / <paramref name="claimAttempt"/>
-    /// its claim returned, and the write applies only while the row still carries exactly that claim (still
-    /// <c>running</c>, same node, same attempt). A row that was requeued by crash recovery (and possibly re-claimed
-    /// for a later attempt) no longer matches, so a zombie worker (presumed dead, actually alive) that finishes
-    /// late writes nothing: the current execution is authoritative, and this one's result is dropped as
-    /// <see cref="RunCompletionOutcome.StaleClaim"/>. Passing no fence (the artifact-sync path, which records
-    /// finished CLI runs that were never claimed) applies unconditionally as before.</para></summary>
-    public static Task<RunCompletionOutcome> CompleteFromArtifactAsync(
-        CatalogDbContext catalog, Guid runId, Guid repoId, string runJsonPath, DateTime nowUtc,
+    /// <summary>Records a claimed run's outcome from its <c>run.json</c> artifact text: copies the result fields onto
+    /// the existing row, flips it to the terminal <c>succeeded</c>/<c>failed</c> state, and inserts the drill-down
+    /// detail. If the artifact is missing, oversized or corrupt the run is still moved to <c>failed</c> (with the
+    /// reason) so it never lingers in <c>running</c>.
+    /// <para>The fence: a node passes the <paramref name="claimedByNode"/> / <paramref name="claimAttempt"/> its
+    /// hand-out carried, and the write applies only while the row still carries exactly that claim (still
+    /// <c>running</c>, same node, same attempt). A row that was requeued after its lease lapsed (and possibly handed
+    /// out again for a later attempt) no longer matches, so a node presumed dead that finishes late writes nothing:
+    /// the current execution is authoritative, and this one's result is dropped as
+    /// <see cref="RunOutcomeStatus.StaleClaim"/>. Passing no fence (the artifact-sync path, which records finished
+    /// CLI runs that were never handed out) applies unconditionally.</para></summary>
+    public static Task<RunOutcomeRecord> CompleteFromArtifactAsync(
+        CatalogDbContext catalog, Guid runId, string? artifactJson, DateTime nowUtc,
         string? claimedByNode = null, int? claimAttempt = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
-        ArgumentException.ThrowIfNullOrWhiteSpace(runJsonPath);
 
         return CatalogTransaction.InSerializableAsync(catalog, async () =>
         {
@@ -631,26 +549,37 @@ public static class RunQueueStore
                 .FirstOrDefaultAsync(r => r.RunId == runId, ct).ConfigureAwait(false);
 
             // The fence check runs inside the same serializable transaction as the write, so "still mine" and the
-            // completion commit atomically: a reaper requeue between them would deadlock/retry, never interleave.
+            // completion commit atomically: a requeue between them would deadlock/retry, never interleave.
             if (claimedByNode is not null && (existing is null
                 || existing.Status != RunStatuses.Running
                 || existing.ClaimedByNode != claimedByNode
                 || existing.Attempt != claimAttempt))
             {
-                return RunCompletionOutcome.StaleClaim;
+                return new RunOutcomeRecord(RunOutcomeStatus.StaleClaim, []);
             }
 
-            string? readError = null;
-            try
+            if (existing is null)
             {
-                var length = new FileInfo(runJsonPath).Length;
-                if (length > CatalogSync.MaxRunJsonBytes)
+                // Nothing to record against and nothing to fail: an unfenced completion for an unknown run is only
+                // possible from a caller that did not enqueue, which the artifact sync handles on its own path.
+                return new RunOutcomeRecord(RunOutcomeStatus.ArtifactUnreadable, []);
+            }
+
+            var repoId = existing.RepoId ?? Guid.Empty;
+            string? readError = null;
+            if (string.IsNullOrWhiteSpace(artifactJson))
+            {
+                readError = "no run artifact was reported";
+            }
+            else if (artifactJson.Length > MaxArtifactBytes)
+            {
+                readError = $"the run artifact is {artifactJson.Length} characters, over the {MaxArtifactBytes}-byte limit";
+            }
+            else
+            {
+                try
                 {
-                    readError = $"the run artifact is {length} bytes, over the {CatalogSync.MaxRunJsonBytes}-byte limit";
-                }
-                else
-                {
-                    using var document = JsonDocument.Parse(await File.ReadAllTextAsync(runJsonPath, ct).ConfigureAwait(false));
+                    using var document = JsonDocument.Parse(artifactJson);
                     var projected = CatalogProjection.RunFromJson(document.RootElement, repoId);
                     if (projected is null)
                     {
@@ -658,12 +587,7 @@ public static class RunQueueStore
                     }
                     else
                     {
-                        var target = existing ?? new CatalogRun { RunId = runId };
-                        ApplyCompletion(target, projected, nowUtc);
-                        if (existing is null)
-                        {
-                            catalog.Runs.Add(target);
-                        }
+                        ApplyCompletion(existing, projected, nowUtc);
 
                         // The node streamed this run's statements and canonical events into the catalog live as it
                         // executed: each is an immutable, append-only row the trace stream already delivered under a
@@ -671,57 +595,49 @@ public static class RunQueueStore
                         // id, and the live tail (which forwards rows past the client's id cursor) would re-stream the
                         // whole trace. Instead append only the tail the live feed did not write: nothing in the
                         // normal case (the feed captured everything), or the gap after the point a best-effort feed
-                        // broke, taken from the authoritative run.json. CLI and full-sync runs have no live rows, so
-                        // the whole detail is inserted. Atomic with the rest of the completion in this serializable
-                        // transaction.
+                        // broke, taken from the authoritative run.json. Atomic with the rest of the completion in
+                        // this serializable transaction.
                         var maxEventOrdinal = await catalog.RunEvents.Where(e => e.RunId == runId)
                             .Select(e => (int?)e.Ordinal).MaxAsync(ct).ConfigureAwait(false) ?? 0;
                         var maxStatementOrdinal = await catalog.RunStatements.Where(s => s.RunId == runId)
                             .Select(s => (int?)s.Ordinal).MaxAsync(ct).ConfigureAwait(false) ?? 0;
                         CatalogSync.AddRunDetail(
                             catalog, document.RootElement, runId, repoId, maxEventOrdinal, maxStatementOrdinal,
-                            target.PipelineId);
+                            existing.PipelineId);
                         // A failed group member strands its dependents: skip them in the same transaction so the
                         // completion and its consequences commit together (a no-op for a standalone or succeeded run).
-                        if (!projected.Success)
-                        {
-                            await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
-                        }
-
-                        return RunCompletionOutcome.Recorded;
+                        var skipped = projected.Success
+                            ? []
+                            : await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
+                        return new RunOutcomeRecord(RunOutcomeStatus.Recorded, skipped);
                     }
                 }
-            }
-            catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
-            {
-                readError = SecretHygiene.RedactedMessage(ex);
+                catch (JsonException ex)
+                {
+                    readError = SecretHygiene.RedactedMessage(ex);
+                }
             }
 
             // The artifact could not be read: still drive the run to a terminal state so it is never stuck. Under a
             // fence the row is proven above to still be this caller's running claim, so the write is safe here too.
-            if (existing is not null)
-            {
-                existing.Status = RunStatuses.Failed;
-                existing.Success = false;
-                existing.EndUtc = nowUtc;
-                existing.WrittenUtc = nowUtc;
-                existing.Error = $"the run executed but its result could not be recorded: {readError}.";
-                // An unrecordable run is still a failed group member: strand its dependents like any other failure.
-                await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
-            }
-
-            return RunCompletionOutcome.ArtifactUnreadable;
+            existing.Status = RunStatuses.Failed;
+            existing.Success = false;
+            existing.EndUtc = nowUtc;
+            existing.WrittenUtc = nowUtc;
+            existing.Error = $"the run executed but its result could not be recorded: {readError}.";
+            // An unrecordable run is still a failed group member: strand its dependents like any other failure.
+            var stranded = await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
+            return new RunOutcomeRecord(RunOutcomeStatus.ArtifactUnreadable, stranded);
         }, ct);
     }
 
     /// <summary>Drives a run to <c>failed</c> with a reason when execution could not even produce an artifact (the
     /// flow file was missing, failed to load, or the worker threw): a no-op if the run is already terminal, so a
-    /// late failure never overwrites a recorded success. A worker failing its OWN claimed run passes the
-    /// <paramref name="claimedByNode"/> / <paramref name="claimAttempt"/> fence its claim returned; the write then
-    /// applies only while the row still carries exactly that claim, so a zombie's late failure can never clobber a
-    /// run that crash recovery has requeued (or another execution now owns). Unfenced callers (the control plane
-    /// failing a queued run) apply on the lifecycle guard alone, as before.</summary>
-    public static async Task FailAsync(
+    /// late failure never overwrites a recorded success. A node failing its OWN run passes the
+    /// <paramref name="claimedByNode"/> / <paramref name="claimAttempt"/> fence its hand-out carried; the write then
+    /// applies only while the row still carries exactly that claim, so a late failure from a superseded holder can
+    /// never clobber a run another execution now owns. Unfenced callers apply on the lifecycle guard alone.</summary>
+    public static async Task<RunTerminalResult> FailAsync(
         CatalogDbContext catalog, Guid runId, string error, DateTime nowUtc,
         string? claimedByNode = null, int? claimAttempt = null, CancellationToken ct = default)
     {
@@ -739,19 +655,21 @@ public static class RunQueueStore
                 .SetProperty(r => r.WrittenUtc, nowUtc), ct)
             .ConfigureAwait(false);
 
-        if (failed > 0)
+        if (failed == 0)
         {
-            await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
+            return new RunTerminalResult(false, []);
         }
+
+        return new RunTerminalResult(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
     }
 
     /// <summary>Cancels a run, honoring its lifecycle. A still-queued run is cancelled outright (it never ran). A
-    /// run already <c>running</c> cannot be cancelled out from under its worker here; instead a durable cancel
-    /// request is stamped (<see cref="CatalogRun.CancelRequestedUtc"/>) for the owning node to observe, abort the
-    /// in-flight statement, and record the run cancelled (see <see cref="ListCancelRequestedAsync"/> /
-    /// <see cref="CancelRunningAsync"/>). Each step is a single atomic conditional update, so a run that is claimed
-    /// between the queued check and the running check is caught by the second step rather than lost. Requesting a
-    /// cancel on a run that already has one pending is idempotent (still <see cref="CancelOutcome.CancelRequested"/>).</summary>
+    /// run already <c>running</c> cannot be cancelled out from under its node here; instead a durable cancel
+    /// request is stamped (<see cref="CatalogRun.CancelRequestedUtc"/>) for the dispatcher to relay to the owning
+    /// node, which aborts the in-flight statement and records the run cancelled (see
+    /// <see cref="CancelRunningAsync"/>). Each step is a single atomic conditional update, so a run that is handed
+    /// out between the queued check and the running check is caught by the second step rather than lost. Requesting
+    /// a cancel on a run that already has one pending is idempotent (still <see cref="CancelOutcome.CancelRequested"/>).</summary>
     public static async Task<CancelOutcome> CancelAsync(
         CatalogDbContext catalog, Guid runId, DateTime nowUtc, CancellationToken ct = default)
     {
@@ -801,8 +719,7 @@ public static class RunQueueStore
     /// member already <c>running</c> gets a durable cancel request stamped for its owning node to honor, exactly as
     /// the single-run <see cref="CancelAsync"/> does. No per-member dependent-skipping is needed here: the entire
     /// group is being cancelled, so there is nothing left to strand. Returns whether the group existed and how many
-    /// members were affected, so the endpoint can answer 404 for an unknown group and the dispatcher can nudge the
-    /// worker when a running member must observe its request.</summary>
+    /// members were affected, so the endpoint can answer 404 for an unknown group.</summary>
     public static async Task<GroupCancelResult> CancelGroupAsync(
         CatalogDbContext catalog, Guid groupId, DateTime nowUtc, CancellationToken ct = default)
     {
@@ -831,28 +748,12 @@ public static class RunQueueStore
         return new GroupCancelResult(true, cancelledQueued, requestedRunning);
     }
 
-    /// <summary>The ids of runs this node is executing that an operator has asked to cancel: <c>running</c>, claimed
-    /// by <paramref name="node"/>, with a pending <see cref="CatalogRun.CancelRequestedUtc"/>. The worker polls this
-    /// to trip the matching run's cancellation token. Scoped to the node so a worker only ever cancels its own
-    /// in-flight work.</summary>
-    public static Task<List<Guid>> ListCancelRequestedAsync(
-        CatalogDbContext catalog, string node, CancellationToken ct = default)
-    {
-        ArgumentNullException.ThrowIfNull(catalog);
-        ArgumentException.ThrowIfNullOrWhiteSpace(node);
-
-        return catalog.Runs.AsNoTracking()
-            .Where(r => r.Status == RunStatuses.Running && r.ClaimedByNode == node && r.CancelRequestedUtc != null)
-            .Select(r => r.RunId)
-            .ToListAsync(ct);
-    }
-
     /// <summary>Records a running run as <c>cancelled</c> after its owning node has aborted the in-flight statement.
     /// Conditional on the run still being <c>running</c>, so a run that finished on its own (succeeded/failed) in the
     /// same instant is never overwritten by a late cancel; with the optional <paramref name="claimedByNode"/> /
     /// <paramref name="claimAttempt"/> fence, also conditional on the row still carrying the caller's claim, so a
-    /// zombie's late cancel never lands on a requeued or re-claimed execution.</summary>
-    public static async Task<int> CancelRunningAsync(
+    /// superseded holder's late cancel never lands on a requeued or re-handed-out execution.</summary>
+    public static async Task<RunTerminalResult> CancelRunningAsync(
         CatalogDbContext catalog, Guid runId, DateTime nowUtc,
         string? claimedByNode = null, int? claimAttempt = null, CancellationToken ct = default)
     {
@@ -869,194 +770,95 @@ public static class RunQueueStore
                 .SetProperty(r => r.WrittenUtc, nowUtc), ct)
             .ConfigureAwait(false);
 
-        if (cancelled > 0)
+        if (cancelled == 0)
         {
-            await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
+            return new RunTerminalResult(false, []);
         }
 
-        return cancelled;
+        return new RunTerminalResult(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
     }
 
-    /// <summary>How many times a run may be claimed for execution before an interrupted attempt is failed instead of
-    /// requeued. Interruption here means the executing process died without recording an outcome (a reclaimed pod, a
-    /// crash, an eviction); a run that FAILS records its failure normally and is never retried by this machinery.
-    /// The cap is what stops a poison run (one that reliably kills its node, e.g. by exhausting memory) from
-    /// crash-looping the fleet forever: three executions distinguishes "unlucky twice" from "the run is the cause".</summary>
-    public const int MaxExecutionAttempts = 3;
-
     private static string InterruptedTerminalError(string node, int attempt) =>
-        $"Run interrupted: its claiming node '{node}' stopped without recording an outcome, and this was execution "
+        $"Run interrupted: its node '{node}' stopped without recording an outcome, and this was execution "
         + $"attempt {attempt} of {MaxExecutionAttempts}, so it is not requeued again (a run that repeatedly dies "
         + "mid-flight is treated as the cause). Re-trigger the flow to run it once more.";
 
-    /// <summary>Recovers runs left <c>running</c> by this node: on worker startup they are orphans from a previous
-    /// incarnation that stopped mid-run. Each goes back to <c>queued</c> to be executed again, unless it has already
-    /// consumed <see cref="MaxExecutionAttempts"/> claims, in which case it is failed (with its dependents skipped)
-    /// exactly as the liveness reaper would: a run that keeps dying with its node is the cause, not the victim.
-    /// Returns the number requeued.</summary>
-    public static async Task<int> RecoverStuckRunningAsync(
-        CatalogDbContext catalog, string node, DateTime nowUtc, CancellationToken ct = default)
+    /// <summary>Puts an interrupted run (its node's lease lapsed without an outcome) back to <c>queued</c> for another
+    /// node to execute, with the holder cleared and the consumed attempt kept, so the next hand-out advances the
+    /// attempt and fences off this attempt's late writes. Losing a node is recoverable, not terminal: flows are
+    /// idempotent (keyed merges, content-addressed landing), so a half-finished attempt re-runs clean. Fenced on the
+    /// expired lease's node and attempt, and on the attempt budget, so no interleaving can requeue a run past its
+    /// budget or a run its node completed in the same instant.</summary>
+    public static async Task<InterruptedRunRecord> RequeueInterruptedAsync(
+        CatalogDbContext catalog, Guid runId, string node, int attempt, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
 
-        // An interrupted run the operator had already asked to cancel is recorded cancelled, never requeued: the
-        // cancel intent is authoritative, and a requeue would resurrect work the operator explicitly killed.
-        var pendingCancels = await catalog.Runs.AsNoTracking()
-            .Where(r => r.Status == RunStatuses.Running && r.ClaimedByNode == node && r.CancelRequestedUtc != null)
-            .Select(r => r.RunId)
-            .ToListAsync(ct).ConfigureAwait(false);
-        foreach (var runId in pendingCancels)
-        {
-            await CancelRunningAsync(catalog, runId, nowUtc, ct: ct).ConfigureAwait(false);
-        }
-
-        // Fail the attempt-exhausted ones next (each needs its group descendants skipped, so per-run), then bulk
-        // requeue the rest. Both writes are guarded on the row still being this node's running claim, so a
-        // concurrent liveness reaper doing the same recovery is idempotent, not doubled. The bulk requeue repeats
-        // the under-cap predicate rather than trusting the loops above to have consumed every excluded row, so no
-        // interleaving can ever requeue a run past its attempt budget or against a pending cancel.
-        var exhausted = await catalog.Runs.AsNoTracking()
-            .Where(r => r.Status == RunStatuses.Running && r.ClaimedByNode == node && r.Attempt >= MaxExecutionAttempts)
-            .Select(r => new { r.RunId, r.Attempt })
-            .ToListAsync(ct).ConfigureAwait(false);
-        foreach (var run in exhausted)
-        {
-            var failed = await catalog.Runs
-                .Where(r => r.RunId == run.RunId && r.Status == RunStatuses.Running && r.ClaimedByNode == node)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(r => r.Status, RunStatuses.Failed)
-                    .SetProperty(r => r.Success, false)
-                    .SetProperty(r => r.Error, InterruptedTerminalError(node, run.Attempt))
-                    .SetProperty(r => r.EndUtc, nowUtc)
-                    .SetProperty(r => r.WrittenUtc, nowUtc), ct)
-                .ConfigureAwait(false);
-            if (failed > 0)
-            {
-                await SkipGroupDescendantsAsync(catalog, run.RunId, nowUtc, ct).ConfigureAwait(false);
-            }
-        }
-
-        return await catalog.Runs
-            .Where(r => r.Status == RunStatuses.Running && r.ClaimedByNode == node
+        var requeued = await catalog.Runs
+            .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
+                && r.ClaimedByNode == node && r.Attempt == attempt
                 && r.Attempt < MaxExecutionAttempts && r.CancelRequestedUtc == null)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.Status, RunStatuses.Queued)
                 .SetProperty(r => r.ClaimedByNode, (string?)null)
-                .SetProperty(r => r.StartUtc, (DateTime?)null), ct)
+                .SetProperty(r => r.StartUtc, (DateTime?)null)
+                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
             .ConfigureAwait(false);
+        return new InterruptedRunRecord(requeued > 0, []);
     }
 
-    /// <summary>Recovers runs left <c>running</c> by a node that is no longer alive. A run is an orphan when its
-    /// <c>ClaimedByNode</c> has no fleet heartbeat at or after <paramref name="staleBefore"/> (its registry row is
-    /// absent or its last-seen is older than the cutoff), or when no claimant is recorded at all: in every case the
-    /// process that was executing it is gone and no outcome will ever be recorded, so the run would otherwise sit
-    /// <c>running</c> forever and block every future run of its pipeline (the claim's pipeline gate). Unlike
-    /// <see cref="RecoverStuckRunningAsync"/>, which recovers a node's OWN restart orphans by name, this reclaims any
-    /// node's orphans by liveness, so a crashed pod that never returns under the same name is still cleared.
-    /// <para>Losing a worker is recoverable, not terminal, so the default disposition is REQUEUE: the run goes back
-    /// to <c>queued</c> (claim cleared, attempt count already consumed by the claim) and the next eligible worker
-    /// executes it again; flows are idempotent (keyed merges, content-addressed landing), so a half-finished attempt
-    /// re-runs clean. Two cases do not requeue: a run whose operator cancel was already pending is recorded
-    /// <c>cancelled</c> (the cancel intent is authoritative), and a run that has consumed
-    /// <see cref="MaxExecutionAttempts"/> claims is failed, because a run that repeatedly dies with its node is the
-    /// cause rather than the victim (the poison-run bound).</para>
-    /// <para>Every write is a conditional update guarded on the row still carrying the exact orphaned claim (still
-    /// <c>running</c>, same node, same attempt), so a run its real node completes in the same instant is never
-    /// overwritten and concurrent reapers on multiple control-plane replicas are idempotent; a failed or cancelled
-    /// group member skips its still-queued dependents, exactly as an operator cancel does. The liveness signal is
-    /// only safe to act on because a node heartbeats on a cadence independent of its draining
-    /// (<c>RunWorker.HeartbeatLoopAsync</c>), so a busy node is never mistaken for a dead one; the caller sets
-    /// <paramref name="staleBefore"/> comfortably older than that cadence.</para></summary>
-    public static async Task<OrphanReapResult> ReapOrphanedRunningAsync(
-        CatalogDbContext catalog, DateTime staleBefore, DateTime nowUtc, CancellationToken ct = default)
+    /// <summary>Fails an interrupted run that has consumed its whole attempt budget: a run that repeatedly dies with
+    /// its node is the cause, not the victim (the poison-run bound). Its dependents are skipped. Fenced.</summary>
+    public static async Task<InterruptedRunRecord> FailInterruptedAsync(
+        CatalogDbContext catalog, Guid runId, string node, int attempt, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
 
-        // Candidate orphans: running rows with no live node backing them, resolved server-side as one indexed
-        // anti-join against the fleet registry. A healthy fleet returns nothing, so the steady-state cost is a
-        // single cheap read.
-        var orphans = await catalog.Runs.AsNoTracking()
-            .Where(r => r.Status == RunStatuses.Running)
-            .Where(r => r.ClaimedByNode == null
-                || !catalog.Nodes.Any(n => n.Name == r.ClaimedByNode && n.LastSeenUtc >= staleBefore))
-            .Select(r => new { r.RunId, r.ClaimedByNode, r.Attempt, r.CancelRequestedUtc })
-            .ToListAsync(ct).ConfigureAwait(false);
-        if (orphans.Count == 0)
+        var failed = await catalog.Runs
+            .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
+                && r.ClaimedByNode == node && r.Attempt == attempt)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, RunStatuses.Failed)
+                .SetProperty(r => r.Success, false)
+                .SetProperty(r => r.Error, InterruptedTerminalError(node, attempt))
+                .SetProperty(r => r.EndUtc, nowUtc)
+                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+            .ConfigureAwait(false);
+        if (failed == 0)
         {
-            return default;
+            return new InterruptedRunRecord(false, []);
         }
 
-        var result = default(OrphanReapResult);
-        foreach (var orphan in orphans)
+        return new InterruptedRunRecord(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
+    }
+
+    /// <summary>Records an interrupted run cancelled: the operator already asked for its death before its node went
+    /// silent, and the cancel intent is authoritative (a requeue would resurrect work the operator explicitly
+    /// killed). Its dependents are skipped. Fenced.</summary>
+    public static async Task<InterruptedRunRecord> CancelInterruptedAsync(
+        CatalogDbContext catalog, Guid runId, string node, int attempt, DateTime nowUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+
+        var cancelled = await catalog.Runs
+            .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
+                && r.ClaimedByNode == node && r.Attempt == attempt)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(r => r.Status, RunStatuses.Cancelled)
+                .SetProperty(r => r.Success, false)
+                .SetProperty(r => r.Error, "The run was cancelled by an operator; its node stopped before recording the cancellation.")
+                .SetProperty(r => r.EndUtc, nowUtc)
+                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+            .ConfigureAwait(false);
+        if (cancelled == 0)
         {
-            var node = orphan.ClaimedByNode ?? "(unclaimed)";
-
-            // The operator already asked for this run's death before its node died: record the cancel, never a
-            // resurrection. The claim fence (node + attempt) keeps this from touching a row the real node is
-            // completing, or that another reaper replica has already moved on.
-            if (orphan.CancelRequestedUtc is not null)
-            {
-                var cancelled = await catalog.Runs
-                    .Where(r => r.RunId == orphan.RunId && r.Status == RunStatuses.Running
-                        && r.ClaimedByNode == orphan.ClaimedByNode && r.Attempt == orphan.Attempt)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(r => r.Status, RunStatuses.Cancelled)
-                        .SetProperty(r => r.Success, false)
-                        .SetProperty(r => r.Error,
-                            "The run was cancelled by an operator; its node died before recording the cancellation.")
-                        .SetProperty(r => r.EndUtc, nowUtc)
-                        .SetProperty(r => r.WrittenUtc, nowUtc), ct)
-                    .ConfigureAwait(false);
-                if (cancelled > 0)
-                {
-                    await SkipGroupDescendantsAsync(catalog, orphan.RunId, nowUtc, ct).ConfigureAwait(false);
-                    result = result with { Cancelled = result.Cancelled + 1 };
-                }
-
-                continue;
-            }
-
-            if (orphan.Attempt < MaxExecutionAttempts)
-            {
-                // Requeue: back to the queue with the claim cleared, for any eligible worker to claim (which
-                // increments Attempt again, fencing off this attempt's zombie writes). The under-cap predicate is
-                // repeated in the WHERE so no interleaving can requeue a run past its budget.
-                var requeued = await catalog.Runs
-                    .Where(r => r.RunId == orphan.RunId && r.Status == RunStatuses.Running
-                        && r.ClaimedByNode == orphan.ClaimedByNode && r.Attempt == orphan.Attempt
-                        && r.Attempt < MaxExecutionAttempts)
-                    .ExecuteUpdateAsync(s => s
-                        .SetProperty(r => r.Status, RunStatuses.Queued)
-                        .SetProperty(r => r.ClaimedByNode, (string?)null)
-                        .SetProperty(r => r.StartUtc, (DateTime?)null), ct)
-                    .ConfigureAwait(false);
-                if (requeued > 0)
-                {
-                    result = result with { Requeued = result.Requeued + 1 };
-                }
-
-                continue;
-            }
-
-            var failed = await catalog.Runs
-                .Where(r => r.RunId == orphan.RunId && r.Status == RunStatuses.Running
-                    && r.ClaimedByNode == orphan.ClaimedByNode && r.Attempt == orphan.Attempt)
-                .ExecuteUpdateAsync(s => s
-                    .SetProperty(r => r.Status, RunStatuses.Failed)
-                    .SetProperty(r => r.Success, false)
-                    .SetProperty(r => r.Error, InterruptedTerminalError(node, orphan.Attempt))
-                    .SetProperty(r => r.EndUtc, nowUtc)
-                    .SetProperty(r => r.WrittenUtc, nowUtc), ct)
-                .ConfigureAwait(false);
-            if (failed > 0)
-            {
-                await SkipGroupDescendantsAsync(catalog, orphan.RunId, nowUtc, ct).ConfigureAwait(false);
-                result = result with { Failed = result.Failed + 1 };
-            }
+            return new InterruptedRunRecord(false, []);
         }
 
-        return result;
+        return new InterruptedRunRecord(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
     }
 
     /// <summary>When a group member reaches a non-success terminal state (failed / cancelled), marks every member
@@ -1064,8 +866,9 @@ public static class RunQueueStore
     /// downstream, while independent branches of the group keep running. A no-op for a standalone run (no group), a
     /// succeeded run, or a run whose dependents have all already started. Idempotent (guarded on <c>queued</c>), so
     /// two failures in the same group each skip their own cone without fighting. The reachable set is computed over
-    /// the group's own members only, so a dependent outside this run group is never touched.</summary>
-    private static async Task SkipGroupDescendantsAsync(
+    /// the group's own members only, so a dependent outside this run group is never touched. Returns the ids of the
+    /// members skipped, so the dispatcher drops them from its memory.</summary>
+    private static async Task<IReadOnlyList<Guid>> SkipGroupDescendantsAsync(
         CatalogDbContext catalog, Guid runId, DateTime nowUtc, CancellationToken ct)
     {
         var run = await catalog.Runs.AsNoTracking()
@@ -1075,14 +878,14 @@ public static class RunQueueStore
         if (run is null || run.GroupId is not { } groupId || run.RepoId is not { } repoId
             || run.Status == RunStatuses.Succeeded)
         {
-            return;
+            return [];
         }
 
-        var memberIds = (await catalog.Runs.AsNoTracking()
-                .Where(r => r.GroupId == groupId)
-                .Select(r => r.PipelineId)
-                .ToListAsync(ct).ConfigureAwait(false))
-            .ToHashSet();
+        var members = await catalog.Runs.AsNoTracking()
+            .Where(r => r.GroupId == groupId)
+            .Select(r => new { r.RunId, r.PipelineId, r.Status })
+            .ToListAsync(ct).ConfigureAwait(false);
+        var memberIds = members.Select(m => m.PipelineId).ToHashSet();
 
         var edges = await catalog.FlowDependencies.AsNoTracking()
             .Where(d => d.RepoId == repoId)
@@ -1101,7 +904,7 @@ public static class RunQueueStore
 
             if (!outgoing.TryGetValue(edge.FromPipelineId, out var to))
             {
-                to = new List<Guid>();
+                to = [];
                 outgoing[edge.FromPipelineId] = to;
             }
 
@@ -1130,13 +933,23 @@ public static class RunQueueStore
 
         if (dependents.Count == 0)
         {
-            return;
+            return [];
         }
 
-        var dependentIds = dependents.ToList();
+        // The rows to skip are decided here, then written by id, so the caller learns exactly which members left the
+        // queue (the guard on 'queued' stays in the write, so a member that started meanwhile is untouched).
+        var candidateIds = members
+            .Where(m => m.Status == RunStatuses.Queued && dependents.Contains(m.PipelineId))
+            .Select(m => m.RunId)
+            .ToList();
+        if (candidateIds.Count == 0)
+        {
+            return [];
+        }
+
         var reason = $"skipped: an upstream dependency ('{run.FlowName}') did not succeed.";
-        await catalog.Runs
-            .Where(r => r.GroupId == groupId && r.Status == RunStatuses.Queued && dependentIds.Contains(r.PipelineId))
+        var skipped = await catalog.Runs
+            .Where(r => r.GroupId == groupId && r.Status == RunStatuses.Queued && candidateIds.Contains(r.RunId))
             .ExecuteUpdateAsync(s => s
                 .SetProperty(r => r.Status, RunStatuses.Skipped)
                 .SetProperty(r => r.Success, false)
@@ -1144,13 +957,23 @@ public static class RunQueueStore
                 .SetProperty(r => r.EndUtc, nowUtc)
                 .SetProperty(r => r.WrittenUtc, nowUtc), ct)
             .ConfigureAwait(false);
+        if (skipped == candidateIds.Count)
+        {
+            return candidateIds;
+        }
+
+        // Some candidates started between the read and the write: report only those actually skipped.
+        return await catalog.Runs.AsNoTracking()
+            .Where(r => candidateIds.Contains(r.RunId) && r.Status == RunStatuses.Skipped)
+            .Select(r => r.RunId)
+            .ToListAsync(ct).ConfigureAwait(false);
     }
 
     private static void ApplyCompletion(CatalogRun target, CatalogRun projected, DateTime nowUtc)
     {
         // Identity fields are the same whether the row was enqueued or is being inserted fresh (RunFromJson derives
         // PipelineId from repo + flow name, exactly as enqueue did); the queue-only fields (EnqueuedUtc,
-        // ClaimedByNode, the run parameters FullLoad/BackfillFrom/BackfillTo/FilePattern) and the claim's
+        // ClaimedByNode, the run parameters FullLoad/BackfillFrom/BackfillTo/FilePattern) and the hand-out's
         // StartUtc are preserved by simply not assigning them here.
         target.PipelineId = projected.PipelineId;
         target.RepoId = projected.RepoId;
@@ -1180,11 +1003,21 @@ public static class RunQueueStore
         target.TriggerSource ??= projected.TriggerSource;
     }
 
-    private static void AddParameter(DbCommand command, string name, object value)
-    {
-        var parameter = command.CreateParameter();
-        parameter.ParameterName = name;
-        parameter.Value = value;
-        command.Parameters.Add(parameter);
-    }
+    private sealed record PlacementRow(
+        Guid RunId, Guid PipelineId, string? TargetPool, Guid? GroupId, int GroupWave, int? GroupMaxConcurrency,
+        DateTime? EnqueuedUtc, DateTime WrittenUtc, int Attempt, DateTime? CancelRequestedUtc, string? ClaimedByNode);
+
+    private static IQueryable<PlacementRow> PlacementQuery(IQueryable<CatalogRun> runs)
+        => runs.Select(r => new PlacementRow(
+            r.RunId, r.PipelineId, r.TargetPool, r.GroupId, r.GroupWave, r.GroupMaxConcurrency,
+            r.EnqueuedUtc, r.WrittenUtc, r.Attempt, r.CancelRequestedUtc, r.ClaimedByNode));
+
+    private static IQueryable<PlacementRow> RunningQuery(IQueryable<CatalogRun> runs) => PlacementQuery(runs);
+
+    private static DispatchRun ToDispatchRun(PlacementRow row) => new(
+        row.RunId, row.PipelineId, row.TargetPool, row.GroupId, row.GroupWave, row.GroupMaxConcurrency,
+        row.EnqueuedUtc ?? row.WrittenUtc, row.Attempt, row.CancelRequestedUtc != null);
+
+    private static RunningRunRecord? ToRunningRecord(PlacementRow row)
+        => string.IsNullOrWhiteSpace(row.ClaimedByNode) ? null : new RunningRunRecord(ToDispatchRun(row), row.ClaimedByNode);
 }

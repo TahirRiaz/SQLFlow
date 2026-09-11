@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.EntityFrameworkCore;
 using Xunit;
 
 namespace SqlFlow.ControlPlane.Tests;
@@ -38,6 +39,14 @@ public sealed class ControlPlaneProcessFixture : IAsyncLifetime
                 return BaseUrl;
             }
 
+            if (_process is { HasExited: true } dead)
+            {
+                // A child that died between tests is restarted, but never silently: the exit and the log of the
+                // dead incarnation are kept so a test that fails against the replacement can explain itself.
+                LastExit = $"the previous control plane child (pid {dead.Id}) exited with code {dead.ExitCode}; its output is in {LogPath}";
+                CloseLog();
+            }
+
             var dll = ControlPlaneDllPath();
             Assert.True(dll is not null, "Built control plane not found; run 'dotnet build -c Release' first.");
             await Catalog.CatalogDatabase.MigrateAsync(catalogConnection);
@@ -67,10 +76,20 @@ public sealed class ControlPlaneProcessFixture : IAsyncLifetime
             psi.Environment["ControlPlane__Scheduler__PollSeconds"] = "1";
             psi.Environment["ControlPlane__ManagedSync__PollSeconds"] = "1";
             _process = Process.Start(psi)!;
-            // Drain the streams so the child never blocks on a full pipe; the content is only interesting on a
-            // failed start, where WaitForLiveAsync surfaces it.
-            _process.OutputDataReceived += (_, _) => { };
-            _process.ErrorDataReceived += (_, e) => { if (e.Data is not null) { _startupErrors.Enqueue(e.Data); } };
+            // Drain the streams so the child never blocks on a full pipe, and keep every line in a per-incarnation
+            // log file: a child that dies mid-suite is otherwise invisible (the next test simply cannot connect).
+            LogPath = Path.Combine(Path.GetTempPath(), $"sqlflow-controlplane-child-{_process.Id}.log");
+            _log = new StreamWriter(LogPath, append: false) { AutoFlush = true };
+            _process.OutputDataReceived += (_, e) => Record("out", e.Data);
+            _process.ErrorDataReceived += (_, e) =>
+            {
+                if (e.Data is not null)
+                {
+                    _startupErrors.Enqueue(e.Data);
+                }
+
+                Record("err", e.Data);
+            };
             _process.BeginOutputReadLine();
             _process.BeginErrorReadLine();
 
@@ -84,6 +103,37 @@ public sealed class ControlPlaneProcessFixture : IAsyncLifetime
     }
 
     private readonly System.Collections.Concurrent.ConcurrentQueue<string> _startupErrors = new();
+    private readonly Lock _logGate = new();
+    private StreamWriter? _log;
+
+    /// <summary>Where the current child's stdout and stderr are being written, line by line.</summary>
+    public string LogPath { get; private set; } = string.Empty;
+
+    /// <summary>Set when a child was found dead and replaced: which pid exited with what code, and where its log
+    /// is. A test that cannot reach the control plane should quote this.</summary>
+    public string? LastExit { get; private set; }
+
+    private void Record(string stream, string? line)
+    {
+        if (line is null)
+        {
+            return;
+        }
+
+        lock (_logGate)
+        {
+            _log?.WriteLine($"[{DateTime.UtcNow:HH:mm:ss.fff}] {stream}: {line}");
+        }
+    }
+
+    private void CloseLog()
+    {
+        lock (_logGate)
+        {
+            _log?.Dispose();
+            _log = null;
+        }
+    }
 
     private async Task WaitForLiveAsync()
     {
@@ -151,7 +201,7 @@ public sealed class ControlPlaneProcessFixture : IAsyncLifetime
 
     public Task InitializeAsync() => Task.CompletedTask;
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         if (_process is { HasExited: false })
         {
@@ -159,8 +209,19 @@ public sealed class ControlPlaneProcessFixture : IAsyncLifetime
         }
 
         _process?.Dispose();
+        CloseLog();
         _gate.Dispose();
-        return Task.CompletedTask;
+
+        // A killed child never releases the dispatch ownership lease it held, so the next in-memory host in the
+        // run would wait out the lease's TTL before it could dispatch. Expire the lease here, as the child would
+        // have done on a graceful stop, so the suite does not pay a crash's recovery time after every collection.
+        if (CatalogConnection.Length > 0)
+        {
+            await using var catalog = Catalog.CatalogDatabase.Create(CatalogConnection);
+            await catalog.DispatchLeases
+                .Where(l => l.Name == Catalog.DispatchLeaseStore.DispatchLeaseName)
+                .ExecuteUpdateAsync(s => s.SetProperty(l => l.ExpiresUtc, DateTime.UtcNow.AddSeconds(-1)));
+        }
     }
 }
 

@@ -26,8 +26,14 @@ param image string
 @description('Name of an existing Key Vault holding the catalog connection (and any flow) secrets.')
 param keyVaultName string
 
-@description('Key Vault secret name for the catalog ADO.NET connection string.')
+@description('Key Vault secret name for the catalog ADO.NET connection string. The node still reads run definitions and streams traces through it; no queue operation touches it.')
 param catalogConnectionSecretName string = 'sqlflow-catalog-db'
+
+@description('The control plane base URL the node polls for work over the node protocol (https://<control-plane-fqdn>). Every call is outbound from the node.')
+param controlPlaneUrl string
+
+@description('Key Vault secret name holding a personal access token minted with the node scope, which the node presents to the control plane. Mint it after the control plane is up (an admin: POST /api/v1/me/tokens with scopes ["node"]) and store it under this name before deploying the worker; leave empty to deploy the worker without a credential (it then cannot take work until one is added).')
+param nodeTokenSecretName string = ''
 
 @description('The pool this deployment serves (single pool name, used for both SQLFLOW_WORKER_POOL and the scale query). Empty drains untargeted runs only.')
 param pool string = ''
@@ -118,6 +124,14 @@ var baseSecrets = [
   }
 ]
 
+var nodeTokenSecrets = empty(nodeTokenSecretName) ? [] : [
+  {
+    name: 'node-token'
+    keyVaultUrl: '${vaultUri}secrets/${nodeTokenSecretName}'
+    identity: identity.id
+  }
+]
+
 var gitTokenSecrets = empty(gitTokenSecretName) ? [] : [
   {
     name: 'git-token'
@@ -148,6 +162,11 @@ var baseEnv = [
     name: 'SQLFLOW_CATALOG_DB'
     secretRef: 'catalog-db'
   }
+  // The dispatcher the node polls for work; the run queue lives there, never in the catalog.
+  {
+    name: 'SQLFLOW_URL'
+    value: controlPlaneUrl
+  }
   // Empty = untargeted runs only, matching the scale query below.
   {
     name: 'SQLFLOW_WORKER_POOL'
@@ -161,6 +180,13 @@ var baseEnv = [
   {
     name: 'AZURE_CLIENT_ID'
     value: identity.properties.clientId
+  }
+]
+
+var nodeTokenEnv = empty(nodeTokenSecretName) ? [] : [
+  {
+    name: 'SQLFLOW_TOKEN'
+    secretRef: 'node-token'
   }
 ]
 
@@ -241,7 +267,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           identity: identity.id
         }
       ]
-      secrets: concat(baseSecrets, gitTokenSecrets, flowEnvSecrets, scalerSecrets)
+      secrets: concat(baseSecrets, nodeTokenSecrets, gitTokenSecrets, flowEnvSecrets, scalerSecrets)
     }
     template: {
       // Let an in-flight run finish on scale-in or revision swap; an interrupted one is requeued anyway.
@@ -254,7 +280,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          env: concat(baseEnv, gitTokenEnv, gitUsernameEnv, flowEnvVars)
+          env: concat(baseEnv, nodeTokenEnv, gitTokenEnv, gitUsernameEnv, flowEnvVars)
         }
       ]
       scale: {

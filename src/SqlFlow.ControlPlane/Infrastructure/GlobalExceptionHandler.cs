@@ -36,10 +36,20 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
         var correlationId = httpContext.Items.TryGetValue(CorrelationIdMiddleware.HeaderName, out var id) ? id?.ToString() : httpContext.TraceIdentifier;
         var isClientError = exception is SqlFlowException;
-        var status = isClientError ? StatusCodes.Status400BadRequest : StatusCodes.Status500InternalServerError;
+        // A node call reaching a replica whose dispatcher is not the owner is neither a client error nor a fault:
+        // it is answered 503 with a retry hint, and the node's next attempt lands on the owner.
+        var isInactiveDispatcher = exception is SqlFlow.Dispatch.DispatchInactiveException;
+        var status = isInactiveDispatcher
+            ? StatusCodes.Status503ServiceUnavailable
+            : isClientError ? StatusCodes.Status400BadRequest : StatusCodes.Status500InternalServerError;
         var redacted = SecretHygiene.RedactedMessage(exception);
 
-        if (isClientError)
+        if (isInactiveDispatcher)
+        {
+            httpContext.Response.Headers.RetryAfter = "2";
+            _logger.LogDebug("Request {CorrelationId} deferred: {Message}", correlationId, redacted);
+        }
+        else if (isClientError)
         {
             _logger.LogWarning("Request {CorrelationId} rejected: {Message}", correlationId, redacted);
         }

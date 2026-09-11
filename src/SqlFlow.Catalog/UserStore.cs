@@ -125,8 +125,13 @@ public static class UserStore
 
         return CatalogTransaction.InSerializableAsync(catalog, async () =>
         {
-            var exists = await catalog.Roles.AnyAsync(r => r.Name == name, ct).ConfigureAwait(false);
-            if (!exists)
+            // Seeding ensures existence and guarantees the code-defined scopes are present; it never manages
+            // drift the other way. A scope an operator ADDED to a built-in role survives re-seeding, and a scope
+            // the definition gained later (a new surface such as the node protocol) is appended to an existing row,
+            // so a catalog seeded before that scope existed does not need it granted by hand.
+            var existing = await catalog.Roles.AsTracking()
+                .FirstOrDefaultAsync(r => r.Name == name, ct).ConfigureAwait(false);
+            if (existing is null)
             {
                 catalog.Roles.Add(new CatalogRole
                 {
@@ -135,9 +140,19 @@ public static class UserStore
                     Description = description,
                     CreatedUtc = nowUtc,
                 });
+                return false;
             }
 
-            return exists;
+            var current = existing.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+            var missing = scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(s => !current.Contains(s, StringComparer.Ordinal))
+                .ToList();
+            if (missing.Count > 0)
+            {
+                existing.Scopes = string.Join(' ', current.Concat(missing));
+            }
+
+            return true;
         }, ct);
     }
 

@@ -20,6 +20,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+    <!-- The dispatcher's ledger port and placement records: the catalog journals the control plane's in-memory
+         placement decisions, so it implements the port the dispatcher defines. -->
+    <ProjectReference Include="..\SqlFlow.Dispatch\SqlFlow.Dispatch.csproj" />
     <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
     <ProjectReference Include="..\SqlFlow.Lineage\SqlFlow.Lineage.csproj" />
   </ItemGroup>

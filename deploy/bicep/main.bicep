@@ -72,6 +72,10 @@ param adminPassword string
 @description('Token for private git remotes: managed sync on the control plane fetches with it, workers materialize with it. Leave empty when every registered repo is public.')
 param gitToken string = ''
 
+@description('A personal access token minted with the node scope, which the worker pool presents to the control plane\'s dispatcher. The control plane must be running to mint one (an admin: POST /api/v1/me/tokens with scopes ["node"]), so a first deployment leaves this empty and re-runs with it once the control plane is up; until then the worker deploys without a credential and takes no work.')
+@secure()
+param nodeToken string = ''
+
 @description('Username paired with gitToken when the host requires one: a Bitbucket app password takes the account username, a Bitbucket repository access token takes x-token-auth; GitHub ignores it. Empty sends the token alone.')
 param gitUsername string = ''
 
@@ -226,6 +230,7 @@ var dwhConnectionSecretName = 'sqlflow-dwh-db'
 var jwtSigningKeySecretName = 'sqlflow-jwt-signing-key'
 var adminPasswordSecretName = 'sqlflow-admin-password'
 var gitTokenSecretName = 'sqlflow-git-token'
+var nodeTokenSecretName = 'sqlflow-node-token'
 var slackAppTokenSecretName = 'sqlflow-slack-app-token'
 var slackBotTokenSecretName = 'sqlflow-slack-bot-token'
 var slackBotSqlflowTokenSecretName = 'sqlflow-slack-bot-access-token'
@@ -432,6 +437,14 @@ resource gitTokenSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!em
   }
 }
 
+resource nodeTokenSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(nodeToken)) {
+  parent: keyVault
+  name: nodeTokenSecretName
+  properties: {
+    value: nodeToken
+  }
+}
+
 resource slackAppTokenSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (slackBotEnabled) {
   parent: keyVault
   name: slackAppTokenSecretName
@@ -564,6 +577,8 @@ module worker 'worker.bicep' = {
     keyVaultName: keyVault.name
     catalogConnectionSecretName: catalogConnectionSecretName
     pool: workerPool
+    controlPlaneUrl: 'https://${controlPlaneFqdn}'
+    nodeTokenSecretName: empty(nodeToken) ? '' : nodeTokenSecretName
     gitTokenSecretName: empty(gitToken) ? '' : gitTokenSecretName
     gitUsername: gitUsername
     flowEnv: concat(builtInFlowEnv, workerFlowEnv)
@@ -578,6 +593,7 @@ module worker 'worker.bicep' = {
     preDbSecret
     dwhDbSecret
     gitTokenSecret
+    nodeTokenSecret
     catalogDatabase
     preDatabase
     dwhDatabase

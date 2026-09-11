@@ -118,8 +118,8 @@ public sealed class DeploymentReadinessTests
             Guid runId;
             await using (var db = CatalogDatabase.Create(cs))
             {
-                runId = await RunQueueStore.EnqueueAsync(
-                    db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow);
+                runId = (await RunQueueStore.EnqueueAsync(
+                    db, new RunEnqueueRequest(repoId, flowName, "ing"), DateTime.UtcNow)).RunId;
             }
 
             await Task.Delay(TimeSpan.FromSeconds(5));

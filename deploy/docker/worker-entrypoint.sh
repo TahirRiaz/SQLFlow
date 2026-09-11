@@ -1,6 +1,7 @@
 #!/bin/sh
-# Composes the `sqlflow worker` invocation from the container's environment. The catalog connection itself is the
-# CLI default (${env:SQLFLOW_CATALOG_DB}), so it never appears on the command line or in `ps` output.
+# Composes the `sqlflow worker` invocation from the container's environment. The control plane URL and the node
+# token come from SQLFLOW_URL and SQLFLOW_TOKEN, and the catalog connection from SQLFLOW_CATALOG_DB, all read by the
+# CLI itself, so none of them ever appears on the command line or in `ps` output.
 set -e
 
 set -- worker

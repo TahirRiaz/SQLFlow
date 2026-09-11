@@ -823,7 +823,7 @@ internal static partial class RemoteVerbs
 
     /// <summary>The control-plane URL from <c>--url</c> or <c>SQLFLOW_URL</c>; absolute http(s) only, so a
     /// mistyped host fails here with guidance instead of as a DNS error three calls later.</summary>
-    private static Uri RequireUrl(string[] args)
+    internal static Uri RequireUrl(string[] args)
     {
         var raw = Program.GetOption(args, "--url") ?? Environment.GetEnvironmentVariable("SQLFLOW_URL");
         if (string.IsNullOrWhiteSpace(raw))
@@ -840,14 +840,19 @@ internal static partial class RemoteVerbs
         return url;
     }
 
+    /// <summary>The bearer credential for a control-plane URL: <c>--token</c>, then <c>SQLFLOW_TOKEN</c>, then the
+    /// credential <c>sqlflow login</c> stored for that URL; null when none is configured.</summary>
+    internal static string? ResolveToken(Uri url, string[] args)
+        => Program.GetOption(args, "--token")
+           ?? Environment.GetEnvironmentVariable("SQLFLOW_TOKEN")
+           ?? CredentialStore.Load(url)?.Token;
+
     /// <summary>A client carrying the resolved bearer credential: <c>--token</c>, then <c>SQLFLOW_TOKEN</c>,
     /// then the stored credential for the URL. No credential is not an error here; the server's 401 (decorated
     /// with sign-in guidance) is the single authoritative rejection path.</summary>
     private static ControlPlaneClient CreateAuthenticatedClient(Uri url, string[] args)
     {
-        var token = Program.GetOption(args, "--token")
-                    ?? Environment.GetEnvironmentVariable("SQLFLOW_TOKEN")
-                    ?? CredentialStore.Load(url)?.Token;
+        var token = ResolveToken(url, args);
         if (string.IsNullOrWhiteSpace(token))
         {
             Console.Error.WriteLine($"NOTE  no credential for {url} (no --token, no SQLFLOW_TOKEN, nothing stored); the request will be anonymous.");

@@ -20,6 +20,8 @@
   <ItemGroup>
     <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
     <ProjectReference Include="..\SqlFlow.Catalog\SqlFlow.Catalog.csproj" />
+    <!-- The node protocol (poll, outcome) and the in-process dispatcher the control plane's own node talks to. -->
+    <ProjectReference Include="..\SqlFlow.Dispatch\SqlFlow.Dispatch.csproj" />
     <ProjectReference Include="..\SqlFlow.Execution\SqlFlow.Execution.csproj" />
     <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />
     <ProjectReference Include="..\SqlFlow.Orchestration\SqlFlow.Orchestration.csproj" />

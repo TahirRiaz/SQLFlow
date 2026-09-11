@@ -32,8 +32,15 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/NodeEndpoints.cs
   - src/SqlFlow.Catalog/RepoSourceStore.cs
   - src/SqlFlow.Catalog/RunQueueStore.cs
+  - src/SqlFlow.Catalog/DispatchLeaseStore.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - src/SqlFlow.Node/GitMaterializer.cs
+  - src/SqlFlow.Dispatch/Dispatcher.cs
+  - src/SqlFlow.Dispatch/DispatchState.cs
+  - src/SqlFlow.Dispatch/DispatchOptions.cs
+  - src/SqlFlow.ControlPlane/Dispatch/DispatchService.cs
+  - src/SqlFlow.ControlPlane/Dispatch/NodeProtocolEndpoints.cs
+  - src/SqlFlow.ControlPlane/Dispatch/DispatchEndpoints.cs
 ---
 
 # The control plane: API surface, configuration, bootstrap, managed sync
@@ -48,8 +55,8 @@ It exists so that a team has one place to observe the estate (repos, pipelines, 
 
 - Configuration is bound from the `ControlPlane` section and validated eagerly at startup (`options.Validate()` plus `ValidateOnStart()`), so a misconfigured deployment never starts serving.
 - The catalog is read through a pooled `CatalogDbContext` with `NoTracking` query behavior and `EnableRetryOnFailure`.
-- Background services host bootstrap provisioning (`BootstrapProvisioningService`), the run worker (`RunExecutionWorker`, only when `Worker:Enabled` is true), the schedule scanner (`SchedulerService`), and the managed git sync (`RepoSyncService`).
-- The run queue is the catalog's `Run` table itself: the trigger endpoint enqueues a `queued` row through `IRunDispatcher`, a worker claims the oldest queued run atomically (single-statement `UPDATE ... WITH (UPDLOCK, READPAST, ROWLOCK)` in src/SqlFlow.Catalog/RunQueueStore.cs), and the outcome is recorded under the same id the trigger returned. Runs survive a restart and are visible to the read API from the moment they are queued.
+- Background services host bootstrap provisioning (`BootstrapProvisioningService`), the dispatcher (`DispatchService`), the in-process node (`RunExecutionWorker`, only when `Worker:Enabled` is true), the schedule scanner (`SchedulerService`), and the managed git sync (`RepoSyncService`).
+- The run queue lives in this process: the trigger endpoint journals a `queued` row through `IRunDispatcher` and tells the in-memory dispatcher, which hands work to nodes that poll for it and journals every placement with plain conditional updates (see "The dispatcher" below). Runs survive a restart (the dispatcher rebuilds from the journal) and are visible to the read API from the moment they are queued.
 - Every response passes through `CorrelationIdMiddleware`, and errors are surfaced as RFC problem details (`AddProblemDetails` plus a `GlobalExceptionHandler`).
 - OpenAPI is mapped at `/openapi/v1.json` via `MapOpenApi()`.
 
@@ -57,13 +64,16 @@ It exists so that a team has one place to observe the estate (repos, pipelines, 
 
 JWT bearer validation pins the algorithm to HS256 only (`ValidAlgorithms = [HmacSha256]`), validates issuer, audience, lifetime, and signing key, uses a 30 second `ClockSkew`, and sets `MapInboundClaims = false` so the `sub` and `scope` claim types stay as issued.
 
-Three authorization policies gate the surface, driven by a space-delimited `scope` claim:
+Four authorization policies gate the surface, driven by a space-delimited `scope` claim:
 
 | Policy | Requirement |
 | --- | --- |
 | `read` | Any authenticated user |
-| `operate` | `scope` claim contains `operate` |
+| `operate` | Any authenticated user (see below) |
 | `admin` | `scope` claim contains `admin` |
+| `node` | `scope` claim contains `node`; the node protocol under `/api/v1/node` only |
+
+The privilege model has two tiers for people: any authenticated user gets the operational product, and only user administration is fenced behind `admin`. The `node` scope is fleet traffic, not a person's session: it is carried by the personal access token a compute node presents, and the built-in `admin` role holds it so an admin can mint one.
 
 The sign-in surface under `/api/v1/auth` maps `GET /auth/providers` and `POST /auth/login` always, `POST /auth/exchange` only when `AzureAd:Enabled` is true, and the break-glass `POST /auth/token` only when `Jwt:BootstrapSecret` is set. See ./authentication-and-identity.md for token issuance, local users, and Entra SSO.
 
@@ -135,13 +145,19 @@ Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/act
 
 ### Fleet visibility
 
-`GET /nodes` (src/SqlFlow.ControlPlane/Api/NodeEndpoints.cs) lists workers that have heartbeated into the catalog, most recently seen first. A node is reported `online` when its last heartbeat is within the last 60 seconds, computed at read time. Each heartbeat also carries the node's `BusyRuns` (how many runs it is executing), which the KEDA autoscaler reads so occupied workers hold their replicas while idle ones remain the reclaimable surplus.
+`GET /nodes` (src/SqlFlow.ControlPlane/Api/NodeEndpoints.cs) lists workers the dispatcher has heard from, most recently seen first. A node is reported `online` when its last poll is within the last 60 seconds, computed at read time. The dispatcher keeps the fleet in memory and flushes each node's last poll (build, pool, `BusyRuns`) to the catalog's `Node` table every `Dispatch:NodeFlushSeconds`, so a fleet of hundreds costs the catalog a few dozen updates a minute rather than one per heartbeat; `BusyRuns` is what the KEDA autoscaler reads so occupied workers hold their replicas while idle ones remain the reclaimable surplus. `GET /dispatch` returns the dispatcher's own view: every queued run with the gate holding it back (`pipeline-busy`, `wave-gated`, `group-cap`, `no-eligible-node`), every lease with its node and expiry, the fleet, ownership, and the last housekeeping passes.
 
-### The orphan-run reaper
+### The dispatcher
 
-A background sweep (`OrphanRunReaper`, src/SqlFlow.ControlPlane/Background/OrphanRunReaper.cs) recovers runs left `running` by a node that stopped heartbeating for `ControlPlane:Reaper:StaleAfterSeconds` (default 180): the executing process is gone, so no outcome will ever be recorded, and the stuck row would otherwise block every future run of its pipeline. Losing a worker is recoverable, not terminal: an orphan is requeued for another worker to execute (its claim cleared), recorded `cancelled` when an operator cancel was already pending, and failed only once it has consumed its whole attempt budget (`RunQueueStore.MaxExecutionAttempts`, 3 claims), which is the bound that stops a poison run from crash-looping the fleet. Every claim increments the run's `Attempt`, which doubles as a fencing token: a zombie node's late outcome writes present a stale attempt and are dropped, so the successor execution's result is authoritative. The same sweep prunes fleet-registry rows for nodes offline longer than `NodeRetentionHours`.
+The dispatcher (`Dispatcher` in src/SqlFlow.Dispatch/Dispatcher.cs, hosted by `DispatchService` in src/SqlFlow.ControlPlane/Dispatch/DispatchService.cs) holds every queued and executing run and compute task in memory and makes each placement decision under one lock: an untargeted run goes to any node and a pooled run only to a node serving that pool; a run group member is eligible only when every lower wave is terminal and while fewer than its group's cap are executing; and no two runs of one pipeline ever execute at once, because each flow stages through one canonical work table. Eligible runs are handed out oldest first, and a run a gate holds back never blocks a later run that is eligible.
 
-A **stopping** node is not an orphaned one, and the two must not be confused. When a worker is asked to stop (a SIGTERM from an autoscaler reclaiming the replica, a revision swap, an operator restart) it stops claiming but keeps executing the runs it already holds, and it keeps heartbeating for the whole drain precisely so this sweep leaves that work alone (src/SqlFlow.Node/RunWorker.cs). Were a draining node to go silent, the reaper would declare it dead within `StaleAfterSeconds`, requeue its runs, and a sibling node would re-execute work that was about to finish while the draining node's own outcome writes lost to the claim fence. Only when a node's drain window expires does it sever what remains, and those runs then become genuine orphans for this sweep to requeue.
+Memory is authoritative for placement; the catalog is the journal. An enqueue writes the `Run` row before the dispatcher learns of it; a hand-out is reserved in memory, journaled (`queued` to `running`, the attempt advanced, conditional on the row still being queued at that attempt), and only then handed to the node; an outcome is journaled under the fence and then dropped from memory. Nothing in that journal is more than a plain conditional `UPDATE`, so no locking hint or provider-specific feature is involved. At activation the dispatcher rebuilds from the journal: queued rows are queued, running rows are leased to their recorded node under a grace lease so a node still executing them reattaches on its next poll. A reconcile pass every `Dispatch:ReconcileSeconds` diffs memory against the journal and heals anything that bypassed the in-process notify (a run cancelled straight against the catalog by `sqlflow runs cancel --db`, an enqueue on a passive replica), acting on additions at once and on removals only when they persist across two passes.
+
+Nodes pull work through the node protocol under `/api/v1/node` (src/SqlFlow.ControlPlane/Dispatch/NodeProtocolEndpoints.cs), authenticated with the `node` scope: `POST /node/poll` is the heartbeat, the lease renewal, the cancel channel and the hand-out in one long-polled call (held for up to `Dispatch:LongPollSeconds` when nothing is available, answered the instant something is), and `POST /node/runs/{runId}/outcome` and `POST /node/tasks/{taskId}/outcome` report results. Every hand-out is a lease (`Dispatch:LeaseSeconds`, default 90) renewed by each poll that reports the run held; a lapsed lease is dispositioned exactly as a dead node's runs always were: requeued while attempts remain (`RunQueueStore.MaxExecutionAttempts`, 3), recorded `cancelled` when an operator cancel was already pending, failed once the budget is exhausted (its group dependents skipped). Every hand-out increments the run's `Attempt`, which is the fencing token: a node whose lease lapsed and whose run was handed out again presents a stale attempt on its outcome report, which is dropped, so the successor execution's result is authoritative. The node protocol has its own rate-limit partition (`RateLimit:NodePermitPerWindow`, per node token), so a fleet of hundreds never trips the per-user limit meant for people.
+
+Exactly one replica dispatches at a time. `DispatchService` acquires the `DispatchLease` row (src/SqlFlow.Catalog/DispatchLeaseStore.cs) with one conditional update, renews it every `Dispatch:OwnershipRenewSeconds`, releases it on a graceful stop so a revision swap hands over within one renew interval, and deactivates the dispatcher if the lease cannot be renewed before its TTL. A replica that does not own dispatch still serves the API and journals enqueues (the owner's reconcile picks them up); its node routes answer 503 with `Retry-After: 2`, and a node's client retries until it lands on the owner. In a single-app deployment the control plane is the only replica and always the owner.
+
+A **stopping** node is not a dead one, and the two must not be confused. When a worker is asked to stop (a SIGTERM from an autoscaler reclaiming the replica, a revision swap, an operator restart) it stops taking work but keeps executing the runs it already holds, and it keeps polling with no free slots for the whole drain precisely so its leases stay alive (src/SqlFlow.Node/RunWorker.cs). Were a draining node to go silent, its leases would lapse, its runs would be requeued, and a sibling node would re-execute work that was about to finish while the draining node's own outcome reports lost to the fence. Only when a node's drain window expires does it sever what remains, and those runs' leases then lapse for the dispatcher to requeue.
 
 Because a requeue consumes an execution attempt, anything that severs runs routinely will eventually exhaust the budget of a healthy run and fail it with "a run that repeatedly dies mid-flight is treated as the cause". In an autoscaled fleet the usual culprit is not the flow but the platform: replicas are reclaimed on a cadence, and a termination grace period shorter than the worker's drain window turns every scale-in into a severed run. See [`sqlflow worker`](../cli/worker.md) for the drain contract and the grace-period requirement.
 
@@ -167,10 +183,20 @@ All settings bind from the `ControlPlane` configuration section (environment var
 | `Bootstrap:DemoRepo` | unset | `Name` and `RemoteUrl` required when configured; `Branch` default `main`; `SyncIntervalSeconds` default `300` |
 | `Cors:AllowedOrigins` | `[]` | Empty means same-origin only |
 | `RateLimit:PermitPerWindow` / `RateLimit:WindowSeconds` | `120` / `60` | Both must be positive |
+| `RateLimit:NodePermitPerWindow` | `6000` | The per-node-token window for the node protocol; must be positive |
 | `Scheduler:PollSeconds` | `15` | Schedule scan cadence; must be positive |
 | `ManagedSync:PollSeconds` | `30` | Repo-source scan cadence |
-| `Worker:Enabled` | `true` | `false` makes the replica API-only (no in-process worker) |
-| `Worker:Pools` | `[]` | Empty claims only untargeted runs |
+| `Worker:Enabled` | `true` | `false` makes the replica API-only (no in-process node) |
+| `Worker:Pools` | `[]` | Empty takes only untargeted runs |
+| `Worker:MaxConcurrentRuns` / `Worker:MaxConcurrentComputeTasks` | `4` / `2` | The in-process node's slots; both at least 1 |
+| `Dispatch:LeaseSeconds` | `90` | How long a hand-out lasts without a renewing poll; at least twice `LongPollSeconds` |
+| `Dispatch:LongPollSeconds` | `30` | The longest a node's poll is held open; 1 to 60 |
+| `Dispatch:ReconcileSeconds` | `5` | How often memory is diffed against the journal |
+| `Dispatch:NodeFlushSeconds` | `5` | How often the fleet registry is flushed to the catalog |
+| `Dispatch:NodeRetentionHours` | `24` | How long a silent node stays in the registry; `0` never prunes |
+| `Dispatch:TaskQueuedExpiryMinutes` / `Dispatch:TaskRunningExpiryHours` | `15` / `6` | When an unclaimed or overlong compute task is failed with a hint |
+| `Dispatch:MaxExecutionAttempts` | `3` | Hand-outs a run may consume before an interrupted attempt is failed |
+| `Dispatch:OwnershipTtlSeconds` / `Dispatch:OwnershipRenewSeconds` | `30` / `10` | The dispatch ownership lease; the TTL is at least twice the renew interval |
 | `Proxy:Enabled` | `false` | See proxy section above; `ForwardLimit` default `1` |
 | `DataOps:Enabled` | `false` | The kill switch for the data-operations surface: ad-hoc business queries, the duplicate-key check and the old-versus-new baseline comparison. All are read-only, and both are refused with a 403 naming this setting while it is off. The four warehouse-health DMV probes are a separate, older feature and are NOT gated by it (concept-data-operations) |
 | `DataOps:Comparison:LinkedServers` | `[]` | The linked servers a baseline comparison may name. A linked-server name becomes an identifier in generated SQL and a route into another estate, so it is configuration, never something a request chooses; an unlisted name is refused |
@@ -186,7 +212,7 @@ Before provisioning anything, the service applies the `Bootstrap:AllowCreate` gu
 Order of operations, all idempotent:
 
 1. Apply pending EF catalog migrations when `Bootstrap:ApplyMigrations` is true (the default). With it false, pending migrations are logged as a warning: "Apply them out of band; parts of the API may fail until then."
-2. Seed the built-in roles: `admin` (scopes `read operate admin author`), `operator` (`read operate author`), `viewer` (`read`). Existing role rows are kept as-is (`EnsureRoleAsync` inserts only when the role is absent, so a catalog seeded before `author` existed needs the scope granted by hand).
+2. Seed the built-in roles: `admin` (scopes `read operate admin author node`), `operator` (`read operate author`), `viewer` (`read`). Seeding ensures existence and guarantees the code-defined scopes are present: a scope an operator added to a built-in role survives re-seeding, and a scope the definition gained later (such as `node`) is appended to an existing row, so an older catalog never needs it granted by hand (`EnsureRoleAsync`).
 3. Create the initial admin from `Bootstrap:AdminUsername` and `Bootstrap:AdminPasswordReference` (resolved through the secret resolver) when the user is absent. An existing admin's password is never reset. An empty or too-short resolved password logs an error and skips creation rather than provisioning a weak credential.
 4. Register the optional demo repo source (`Bootstrap:DemoRepo`) as an upsert, so configuration stays the desired state across restarts.
 
@@ -267,8 +293,8 @@ Every query is read-only (`AsNoTracking`), projected to DTOs (raw EF entities ne
 ## Configuration touchpoints
 
 - Configuration section: `ControlPlane` (env form `ControlPlane__...`), documented in the table above; src/SqlFlow.ControlPlane/appsettings.json carries the non-secret defaults.
-- Environment variables: `SQLFLOW_CATALOG_DB` (the default catalog connection reference), `SQLFLOW_GIT_TOKEN` and `SQLFLOW_GIT_USERNAME` (managed-sync and worker git credentials).
-- CLI: `sqlflow db sync [path] [--repo <name>] [--repo-url <url>] [--connect]` runs the same `CatalogSync` a managed source runs; `sqlflow worker` runs the same node runtime the control plane hosts in-process (src/SqlFlow.Cli/Program.cs).
+- Environment variables: `SQLFLOW_CATALOG_DB` (the default catalog connection reference), `SQLFLOW_GIT_TOKEN` and `SQLFLOW_GIT_USERNAME` (managed-sync and worker git credentials), `SQLFLOW_URL` and `SQLFLOW_TOKEN` (a standalone worker's control plane and node token).
+- CLI: `sqlflow db sync [path] [--repo <name>] [--repo-url <url>] [--connect]` runs the same `CatalogSync` a managed source runs; `sqlflow worker` runs the same node runtime the control plane hosts in-process, over HTTP instead of in-process (src/SqlFlow.Cli/Program.cs).
 
 ## Example: compose deployment
 
@@ -290,6 +316,8 @@ services:
 
   worker:
     environment:
+      SQLFLOW_URL: http://controlplane:8080
+      SQLFLOW_TOKEN: ${SQLFLOW_NODE_TOKEN}
       SQLFLOW_CATALOG_DB: "Server=mssql;Database=SqlFlowCatalog;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       SQLFLOW_GIT_TOKEN: ${SQLFLOW_GIT_TOKEN:-}
 ```

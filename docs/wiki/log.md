@@ -112,3 +112,16 @@ fan-in to one target starves every writer but the furthest ahead unless each sco
 counts reveal it.
 
 The lint's `sourceRefs` tripwire caught two invented paths in this pass before they shipped.
+
+## [2026-09-11] ingest | Dispatch design document
+
+Ingested `docs/dispatch-design.md`, written and implemented the same day: the run queue leaves SQL
+Server for an in-memory dispatcher inside the control plane, journaled to the catalog with plain
+conditional updates, with compute nodes pulling work over an HTTP node protocol under a `node` scope
+and holding leases instead of claiming rows. Updated the design-doc drift map with a section for a
+phased design whose status line tracks what has shipped (phase 1 as of this entry), so a reader does
+not mistake its "what exists today" sections for the current code. The reference pages that carry the
+shipped behaviour (`concepts/control-plane.md`, `cli/worker.md`, `concepts/architecture-and-execution.md`,
+`concepts/environment-variables.md`, `guides/deployment.md`) were rewritten in the same change and the
+manifest rebuilt; no new wiki page was written for the decision itself yet (that is the design's
+phase 3), so the map is the only wiki pointer to it for now.

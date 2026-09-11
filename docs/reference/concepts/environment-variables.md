@@ -51,7 +51,9 @@ All conventional names are strictly UPPERCASE because environment variables are 
 | `SQLFLOW_AZURE_AUTH` | every Azure access path | Selects the Azure credential mode (see below). |
 | `SQLFLOW_TEST_DB` | this repository's integration tests | The integration-test sink database; the legacy name `SQLFlowSinkConStr` is honored as a fallback in the tests. |
 | `SQLFLOW_WORKER_POOL` | `Dockerfile.worker` entrypoint only | Comma-separated pools the container serves; translated to `--pool`. |
-| `SQLFLOW_WORKER_POLL_SECONDS` | `Dockerfile.worker` entrypoint only | Queue poll cadence; translated to `--poll-seconds`. |
+| `SQLFLOW_WORKER_POLL_SECONDS` | `Dockerfile.worker` entrypoint only | How long each poll waits for work; translated to `--poll-seconds`. |
+| `SQLFLOW_URL` | `worker` and every control-plane verb | The control plane base URL (`--url`). A worker polls it for work. |
+| `SQLFLOW_TOKEN` | `worker` and every control-plane verb | The bearer credential (`--token`); a worker's must carry the `node` scope. |
 
 ### SQLFLOW_CONN_&lt;NAME&gt;: the bare-alias convention
 
@@ -104,9 +106,11 @@ Caveat: DuckDB cloud reads support only a system-assigned managed identity. Comb
 
 The worker container (`Dockerfile.worker`) is configured through environment only; `deploy/docker/worker-entrypoint.sh` composes the `sqlflow worker` invocation:
 
-- `SQLFLOW_CATALOG_DB` (required): the catalog connection. It is deliberately NOT put on the command line; the CLI default `${env:SQLFLOW_CATALOG_DB}` picks it up so it never appears in `ps` output.
-- `SQLFLOW_WORKER_POOL` (optional): comma-separated pools, passed as `--pool`. Empty means the node drains untargeted runs only.
-- `SQLFLOW_WORKER_POLL_SECONDS` (optional): passed as `--poll-seconds`; the CLI default is 5.
+- `SQLFLOW_URL` (required): the control plane the node polls for work; the CLI default picks it up so it never appears on the command line.
+- `SQLFLOW_TOKEN` (required): a personal access token with the `node` scope, or a `${env:...}`/`${keyvault:...}` reference to one.
+- `SQLFLOW_CATALOG_DB` (required): the catalog connection, for run definitions and trace streaming. It is deliberately NOT put on the command line; the CLI default `${env:SQLFLOW_CATALOG_DB}` picks it up so it never appears in `ps` output.
+- `SQLFLOW_WORKER_POOL` (optional): comma-separated pools, passed as `--pool`. Empty means the node takes untargeted runs only.
+- `SQLFLOW_WORKER_POLL_SECONDS` (optional): passed as `--poll-seconds`; the CLI default is 30.
 - `SQLFLOW_GIT_TOKEN` (optional): private-remote materialization.
 - Plus every `${env:...}` reference the flows themselves use (source and target connection strings).
 

@@ -102,22 +102,26 @@ The 32-byte minimums for the signing key and bootstrap secret are enforced at st
 
 `Dockerfile.worker` publishes `src/SqlFlow.Cli/SqlFlow.Cli.csproj` (framework-dependent, inside the Linux SDK image so the linux-x64 native assets for LibGit2Sharp and the DuckDB reader ship under `runtimes/linux-x64`) and installs `libssl3` on the Debian runtime image because LibGit2Sharp's bundled native git needs OpenSSL for HTTPS remotes.
 
-The entrypoint, `deploy/docker/worker-entrypoint.sh`, composes the `sqlflow worker` invocation from the environment. The catalog connection is the CLI default (`${env:SQLFLOW_CATALOG_DB}`), so it never appears on the command line or in `ps` output. Configuration is environment-only, matching the worker's "credentials live on the node" model:
+The entrypoint, `deploy/docker/worker-entrypoint.sh`, composes the `sqlflow worker` invocation from the environment. The control plane URL, the node token and the catalog connection are the CLI's own environment defaults (`SQLFLOW_URL`, `SQLFLOW_TOKEN`, `${env:SQLFLOW_CATALOG_DB}`), so none of them appears on the command line or in `ps` output. Configuration is environment-only, matching the worker's "credentials live on the node" model:
 
 | Variable | Required | Maps to | Meaning |
 |---|---|---|---|
-| `SQLFLOW_CATALOG_DB` | yes | the CLI's default `--db` reference | Catalog database connection string. |
+| `SQLFLOW_URL` | yes | the CLI's default `--url` | The control plane the node polls for work over the node protocol. |
+| `SQLFLOW_TOKEN` | yes | the CLI's default `--token` | A personal access token minted with the `node` scope (or a `${env:...}`/`${keyvault:...}` reference to one). |
+| `SQLFLOW_CATALOG_DB` | yes | the CLI's default `--db` reference | Catalog database connection string, for run definitions and trace streaming; no queue operation touches it. |
 | `SQLFLOW_WORKER_POOL` | no | `--pool` | Comma-separated pools this node serves; empty means untargeted runs only. |
-| `SQLFLOW_WORKER_POLL_SECONDS` | no | `--poll-seconds` | Queue poll cadence; the CLI default is 5. |
-| `SQLFLOW_WORKER_DRAIN_SECONDS` | no | `--drain-seconds` | How long a stopping node finishes the runs it already claimed; the CLI default is 540. Must stay below the platform's termination grace period (see below). |
+| `SQLFLOW_WORKER_POLL_SECONDS` | no | `--poll-seconds` | How long each poll waits for work before returning empty; the CLI default is 30. |
+| `SQLFLOW_WORKER_DRAIN_SECONDS` | no | `--drain-seconds` | How long a stopping node finishes the runs it already holds; the CLI default is 540. Must stay below the platform's termination grace period (see below). |
 | `SQLFLOW_GIT_TOKEN` | no | (read by git materialization) | Token for private git remotes. |
 | every `${env:...}` reference the flows use | per estate | secret resolver | Source and target connection strings resolve on the node, never in the control plane. |
 
-The underlying CLI command is `sqlflow worker [--db <conn-ref>] [--poll-seconds N] [--pool a,b] [--drain-seconds N]` (see `src/SqlFlow.Cli/Program.cs`). The queue's atomic claim makes any number of concurrent workers safe.
+The underlying CLI command is `sqlflow worker --url <control-plane> [--token <ref>] [--db <conn-ref>] [--poll-seconds N] [--pool a,b] [--drain-seconds N]` (see `src/SqlFlow.Cli/Program.cs`). Placement is the control plane dispatcher's, so any number of concurrent workers is safe.
+
+The node token can only be minted once the control plane is running: sign in as the admin and call `POST /api/v1/me/tokens` with scopes `["node"]` (or use the GUI's token page), then place the secret where the worker's environment reads it (`.env` for compose, the `sqlflow-secrets` key `node-token` on Kubernetes, the Key Vault secret `sqlflow-node-token` on Azure). A first deployment therefore brings up the control plane first and adds the worker once the token exists; a worker deployed without one starts, logs that it has no credential, and takes no work.
 
 ### Scale-in must not sever runs: the grace period is not optional
 
-Workers are scaled in routinely, and the platform picks its victims blindly: a replica executing a six-minute bulk copy is as likely to be reclaimed as an idle one. The worker handles SIGTERM by draining (it stops claiming and lets the runs it already holds finish and record their outcomes), but that only works if the orchestrator actually waits.
+Workers are scaled in routinely, and the platform picks its victims blindly: a replica executing a six-minute bulk copy is as likely to be reclaimed as an idle one. The worker handles SIGTERM by draining (it stops taking work and lets the runs it already holds finish and report their outcomes, polling throughout so their leases stay alive), but that only works if the orchestrator actually waits.
 
 **Set the termination grace period above `--drain-seconds` on every worker workload.** Both Kubernetes and Container Apps default to 30 seconds, which is shorter than most real loads:
 
@@ -171,7 +175,7 @@ Secrets stay on the tier that uses them: the control plane gets the catalog conn
 
 ### Control plane: API-only replicas on an HPA
 
-`deploy/k8s/controlplane.yaml` runs 2 to 10 stateless replicas scaled on CPU (70% target). Multi-replica is safe by construction: token validation is stateless (shared signing key), and the scheduler, managed sync, and run queue all claim work atomically in the catalog. Key environment:
+`deploy/k8s/controlplane.yaml` runs 2 to 10 stateless replicas scaled on CPU (70% target). Multi-replica is safe by construction: token validation is stateless (shared signing key), the scheduler and managed sync claim work by compare-and-swap in the catalog, and the run queue is owned by exactly one replica at a time through the dispatch ownership lease (`catalog.DispatchLease`): the others serve the API, journal enqueues for the owner's reconcile to pick up, and answer node polls with 503 and a retry hint so a worker lands on the owner within a retry or two. Key environment:
 
 - `ControlPlane__Worker__Enabled=false`: compute is the worker deployments' job.
 - `ControlPlane__Proxy__Enabled=true` plus `ControlPlane__Proxy__KnownNetworks__0` set to your cluster's ingress/pod CIDR: `X-Forwarded-For`/`X-Forwarded-Proto` are honored only from the listed proxies, so clients cannot spoof their address, and rate limiting and login throttling key on the real client instead of the ingress IP. `ControlPlaneOptions.Validate()` refuses to start when proxy support is enabled but no `KnownNetworks` or `KnownProxies` are set, and rejects malformed CIDRs and IPs by name.
@@ -207,10 +211,15 @@ spec:
         name: sqlflow-catalog-auth
 ```
 
-`minReplicaCount: 0` means an idle pool costs nothing. Because runs are pinned to the repo's synced commit at enqueue, a cold-started worker needs only its environment: it claims, materializes the pinned commit from git, executes, and reports back. The worker Deployment mounts one env entry per `${env:...}` connection reference the pool's flows use:
+`minReplicaCount: 0` means an idle pool costs nothing. Because runs are pinned to the repo's synced commit at enqueue, a cold-started worker needs only its environment: it polls the control plane, stages the snapshotted YAML (or materializes the pinned commit from git), executes, and reports back. The worker Deployment reaches the control plane Service and mounts one env entry per `${env:...}` connection reference the pool's flows use:
 
 ```yaml
 env:
+  - name: SQLFLOW_URL
+    value: http://sqlflow-controlplane
+  - name: SQLFLOW_TOKEN
+    valueFrom:
+      secretKeyRef: { name: sqlflow-secrets, key: node-token }
   - name: SQLFLOW_CATALOG_DB
     valueFrom:
       secretKeyRef: { name: sqlflow-secrets, key: catalog-connection }

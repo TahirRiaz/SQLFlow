@@ -26,6 +26,14 @@ spec:
         - name: worker
           image: sqlflow-worker:latest # replace with your registry tag
           env:
+            # The node polls the control plane's dispatcher for work over the node protocol; the run queue lives
+            # there, never in the catalog. The token is a personal access token minted with the 'node' scope.
+            - name: SQLFLOW_URL
+              value: http://sqlflow-controlplane
+            - name: SQLFLOW_TOKEN
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: node-token }
+            # Still needed to read run definitions and stream traces; no queue operation touches the catalog.
             - name: SQLFLOW_CATALOG_DB
               valueFrom:
                 secretKeyRef: { name: sqlflow-secrets, key: catalog-connection }

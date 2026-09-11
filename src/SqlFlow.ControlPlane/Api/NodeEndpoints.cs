@@ -196,7 +196,7 @@ public static class NodeEndpoints
     }
 
     private static async Task<Results<Ok, ProblemHttpResult>> RestartNodeAsync(
-        string name, CatalogDbContext db, TimeProvider clock, CancellationToken ct)
+        string name, CatalogDbContext db, TimeProvider clock, SqlFlow.Dispatch.Dispatcher dispatcher, CancellationToken ct)
     {
         var found = await WorkerPoolStore.RequestNodeRestartAsync(db, name, clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
@@ -207,6 +207,9 @@ public static class NodeEndpoints
                 statusCode: StatusCodes.Status404NotFound, title: "Not found");
         }
 
+        // The request itself reaches the dispatcher on its next node flush (which reads it back from the row);
+        // waking the node's parked poll now means it hears it on that flush rather than a long-poll later.
+        dispatcher.NotifyNodeRestartRequested(name);
         return TypedResults.Ok();
     }
 

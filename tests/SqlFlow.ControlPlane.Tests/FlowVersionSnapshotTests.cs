@@ -35,10 +35,10 @@ public sealed class FlowVersionSnapshotTests
             var repoId = await SeedRepoAsync(db, name);
             await SeedPipelineAsync(db, repoId, "flow-a", yaml, hash);
 
-            var firstRunId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow);
-            var secondRunId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow);
+            var firstRunId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow)).RunId;
+            var secondRunId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow)).RunId;
 
             var first = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == firstRunId);
             var second = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == secondRunId);
@@ -78,8 +78,8 @@ public sealed class FlowVersionSnapshotTests
             var repoId = await SeedRepoAsync(db, name);
             await SeedPipelineAsync(db, repoId, "flow-a", yaml, hash);
 
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Null(run.FlowVersionHash);
@@ -110,8 +110,8 @@ public sealed class FlowVersionSnapshotTests
             var repoId = await SeedRepoAsync(db, name);
             await SeedPipelineAsync(db, repoId, "flow-a", yaml, hash);
 
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(repoId, "flow-a", "ing", CommitSha: otherSha), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, "flow-a", "ing", CommitSha: otherSha), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Equal(otherSha, run.CommitSha);
@@ -139,8 +139,8 @@ public sealed class FlowVersionSnapshotTests
             await SeedPipelineAsync(db, repoId, "flow-a", yaml, hash);
 
             // An explicit pin that equals the synced commit is the same content as the snapshot, so the DB path stands.
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(repoId, "flow-a", "ing", CommitSha: SyncedSha), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, "flow-a", "ing", CommitSha: SyncedSha), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Equal(SyncedSha, run.CommitSha);
@@ -164,8 +164,8 @@ public sealed class FlowVersionSnapshotTests
             await using var db = CatalogDatabase.Create(cs);
             var repoId = await SeedRepoAsync(db, name);
 
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(repoId, "flow-a", "ing"), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Null(run.FlowVersionHash);

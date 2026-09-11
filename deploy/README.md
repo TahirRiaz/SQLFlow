@@ -6,7 +6,7 @@ Three core images, plus two optional ones for the Slack assistant:
 |---|---|---|---|
 | `sqlflow-control-plane` | `Dockerfile` | request load (HPA) | yes, under `/api` |
 | `sqlflow-gui` | `gui/Dockerfile` | trivially (static) | yes, under `/` |
-| `sqlflow-worker` | `Dockerfile.worker` | queue depth (KEDA) | never (pull model, no inbound surface) |
+| `sqlflow-worker` | `Dockerfile.worker` | queue depth (KEDA) | never (pull model: it polls the control plane for work, no inbound surface) |
 | `sqlflow-mcp` (optional) | `Dockerfile.mcp` | pinned to 1 (in-memory MCP sessions) | own ingress, bearer-gated `/mcp` |
 | `sqlflow-slack-bot` (optional) | `Dockerfile.slackbot` | pinned to 1 (Socket Mode dials out) | never |
 
@@ -25,6 +25,18 @@ cd deploy/compose
 cp .env.example .env    # set the secrets
 docker compose up -d --build
 docker compose up -d --scale worker=3   # more compute, nothing else changes
+```
+
+Workers take work from the control plane's dispatcher over HTTP, authenticated with a personal access token
+minted with the `node` scope. That token can only be minted once the control plane is running, so a first
+start is two steps: bring up everything but the worker, sign in as the admin and mint the token
+(`POST /api/v1/me/tokens` with scopes `["node"]`, or the GUI's token page), set it as `SQLFLOW_NODE_TOKEN` in
+`.env`, then start the worker:
+
+```bash
+docker compose up -d mssql controlplane gui
+# mint the node token, put it in .env as SQLFLOW_NODE_TOKEN
+docker compose up -d worker
 ```
 
 GUI at http://localhost:8081, API at http://localhost:5000. Bootstrap provisioning creates the catalog database,

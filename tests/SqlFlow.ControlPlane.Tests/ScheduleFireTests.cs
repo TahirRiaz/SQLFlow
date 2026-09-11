@@ -225,8 +225,8 @@ public sealed class ScheduleFireTests
     /// the control plane's in-process signalling, which needs a hosted worker.</summary>
     private sealed class RecordingDispatcher : IRunDispatcher
     {
-        public Task<Guid> EnqueueAsync(CatalogDbContext catalog, RunEnqueueRequest request, CancellationToken ct = default)
-            => RunQueueStore.EnqueueAsync(catalog, request, DateTime.UtcNow, ct);
+        public async Task<Guid> EnqueueAsync(CatalogDbContext catalog, RunEnqueueRequest request, CancellationToken ct = default)
+            => (await RunQueueStore.EnqueueAsync(catalog, request, DateTime.UtcNow, ct)).RunId;
 
         public Task<RunGroupEnqueueResult> EnqueueGroupAsync(
             CatalogDbContext catalog, RunGroupEnqueueRequest request, CancellationToken ct = default)

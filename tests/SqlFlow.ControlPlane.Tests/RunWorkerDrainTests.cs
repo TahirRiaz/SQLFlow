@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using SqlFlow.Dispatch;
+using SqlFlow.Dispatch.Protocol;
 using SqlFlow.Execution;
 using SqlFlow.Node;
 using Xunit;
@@ -25,7 +27,20 @@ public sealed class RunWorkerDrainTests
     {
         var provider = new ServiceCollection().BuildServiceProvider();
         return new RunWorker(
-            provider, new DocumentExecutor(provider), TimeProvider.System, NullLogger<RunWorker>.Instance);
+            provider, new IdleTransport(), new DocumentExecutor(provider), TimeProvider.System, NullLogger<RunWorker>.Instance);
+    }
+
+    /// <summary>A dispatcher with nothing to say: the drain's heartbeat polls it and gets an empty answer.</summary>
+    private sealed class IdleTransport : INodeTransport
+    {
+        public Task<NodePollResponse> PollAsync(NodePollRequest request, CancellationToken ct)
+            => Task.FromResult(NodePollResponse.Empty(90));
+
+        public Task<RunOutcomeStatus> ReportRunOutcomeAsync(Guid runId, RunOutcomeRequest request, CancellationToken ct)
+            => Task.FromResult(RunOutcomeStatus.Recorded);
+
+        public Task<bool> ReportTaskOutcomeAsync(Guid taskId, TaskOutcomeRequest request, CancellationToken ct)
+            => Task.FromResult(true);
     }
 
     [Fact]

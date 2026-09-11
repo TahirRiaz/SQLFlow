@@ -321,7 +321,7 @@ public sealed class UserStoreTests
     }
 
     [SkippableFact]
-    public async Task EnsureRole_SeedsOnce_AndNeverOverwritesAnEditedRole()
+    public async Task EnsureRole_SeedsOnce_KeepsOperatorAdditions_AndAddsScopesTheDefinitionGained()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -336,12 +336,17 @@ public sealed class UserStoreTests
             Assert.NotNull(seeded);
             Assert.Equal("read", seeded.Scopes);
 
-            // An operator edit survives re-seeding (seeding ensures existence, it does not manage drift).
+            // An operator's addition survives re-seeding (seeding ensures existence, it never removes a scope).
             await db.Roles.Where(r => r.Name == roleName)
                 .ExecuteUpdateAsync(r => r.SetProperty(x => x.Scopes, "read operate"));
             await UserStore.EnsureRoleAsync(db, roleName, "read", "A test role.", DateTime.UtcNow);
             var kept = await UserStore.FindRoleAsync(db, roleName);
             Assert.Equal("read operate", kept!.Scopes);
+
+            // A scope the definition gained later is appended, so an older catalog does not need it granted by hand.
+            await UserStore.EnsureRoleAsync(db, roleName, "read node", "A test role.", DateTime.UtcNow);
+            var grown = await UserStore.FindRoleAsync(db, roleName);
+            Assert.Equal("read operate node", grown!.Scopes);
         }
         finally
         {

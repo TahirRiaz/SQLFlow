@@ -32,7 +32,7 @@ namespace SqlFlow.ControlPlane.Api;
 /// </summary>
 public static class AuthEndpoints
 {
-    private static readonly string[] BootstrapAllowedScopes = ["read", "operate", "author", "admin"];
+    private static readonly string[] BootstrapAllowedScopes = ["read", "operate", "author", "admin", "node"];
 
     /// <summary>A hash verified for sign-in attempts against unknown/ineligible accounts, so the response time
     /// does not reveal whether a username exists. Computed once from ephemeral random material.</summary>

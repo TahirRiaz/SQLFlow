@@ -32,8 +32,8 @@ public sealed class RunPinningTests
             await using var db = CatalogDatabase.Create(cs);
             await SeedRepoAsync(db, name, remoteUrl: "https://example.test/repo.git", lastSyncedSha: SyncedSha);
 
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing"), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing"), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Equal(SyncedSha, run.CommitSha);
@@ -57,8 +57,8 @@ public sealed class RunPinningTests
             await using var db = CatalogDatabase.Create(cs);
             await SeedRepoAsync(db, name, remoteUrl: "https://example.test/repo.git", lastSyncedSha: SyncedSha);
 
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing", CommitSha: explicitSha), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing", CommitSha: explicitSha), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Equal(explicitSha, run.CommitSha);
@@ -81,8 +81,8 @@ public sealed class RunPinningTests
             await using var db = CatalogDatabase.Create(cs);
             await SeedRepoAsync(db, name, remoteUrl: "https://example.test/repo.git", lastSyncedSha: null);
 
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing"), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing"), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Null(run.CommitSha);
@@ -107,8 +107,8 @@ public sealed class RunPinningTests
             // (the worker materializes from repo.RemoteUrl), so the run must stay unpinned.
             await SeedRepoAsync(db, name, remoteUrl: null, lastSyncedSha: SyncedSha);
 
-            var runId = await RunQueueStore.EnqueueAsync(
-                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing"), DateTime.UtcNow);
+            var runId = (await RunQueueStore.EnqueueAsync(
+                db, new RunEnqueueRequest(RepoId(name), "flow-a", "ing"), DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.Null(run.CommitSha);

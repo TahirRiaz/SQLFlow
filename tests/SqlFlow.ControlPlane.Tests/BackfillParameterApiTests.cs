@@ -31,7 +31,7 @@ public sealed class BackfillParameterApiTests
         try
         {
             await using var db = CatalogDatabase.Create(cs);
-            var runId = await RunQueueStore.EnqueueAsync(
+            var runId = (await RunQueueStore.EnqueueAsync(
                 db,
                 new RunEnqueueRequest(repoId, flowName, "file", Parameters: new RunParameters
                 {
@@ -39,7 +39,7 @@ public sealed class BackfillParameterApiTests
                     BackfillTo = to,
                     FilePattern = "orders*.csv",
                 }),
-                DateTime.UtcNow);
+                DateTime.UtcNow)).RunId;
 
             var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
             Assert.False(run.FullLoad);
