@@ -39,7 +39,7 @@ source:
     urlAllowlist: ["api.github.com"]
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/github/issues
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/github/issues
   pathTemplate: "history/{yyyy}/{MM}/issues_{window.from:yyyyMMdd}"
   format: json
   compression: gzip

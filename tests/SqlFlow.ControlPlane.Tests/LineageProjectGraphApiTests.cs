@@ -10,7 +10,7 @@ namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
 /// The project-scoped, cross-repo lineage graph end to end against the real shadow catalog. The test seeds two
-/// repos wired so a flow in one repo's project ("Baatbooking") writes a table that a flow in a DIFFERENT repo reads
+/// repos wired so a flow in one repo's project ("Boatbooking") writes a table that a flow in a DIFFERENT repo reads
 /// and re-publishes, which a third flow reads again. It then asserts that <c>/lineage/projects</c> lists the
 /// (repo, project) pairs, that <c>/lineage/project-graph</c> seeded on the project returns the whole downstream
 /// closure across the repo boundary, that a hop-depth cap stops the walk and reports the cut object as a frontier,
@@ -42,7 +42,7 @@ public sealed class LineageProjectGraphApiTests
         var pOther = Guid.NewGuid();
 
         var source = "file|baat/" + suffix + "/source.csv";
-        var o1 = $"{serverRef}|dw|dbo|baatbooking_trans";
+        var o1 = $"{serverRef}|dw|dbo|boatbooking_trans";
         var o2 = $"{serverRef}|dw|mart|sales";
         var o3 = $"{serverRef}|dw|mart|sales_daily";
         var ox = $"{serverRef}|dw|dbo|unrelated_src";
@@ -56,20 +56,20 @@ public sealed class LineageProjectGraphApiTests
                 db.Repos.Add(new CatalogRepo { Id = repoA, Name = repoAName, FirstSeenUtc = now, LastSyncUtc = now });
                 db.Repos.Add(new CatalogRepo { Id = repoB, Name = repoBName, FirstSeenUtc = now, LastSyncUtc = now });
 
-                db.Objects.Add(SeedTable(o1, serverRef, "DW", "dbo", "Baatbooking_trans", now));
+                db.Objects.Add(SeedTable(o1, serverRef, "DW", "dbo", "Boatbooking_trans", now));
                 db.Objects.Add(SeedTable(o2, serverRef, "DW", "mart", "Sales", now));
                 db.Objects.Add(SeedTable(o3, serverRef, "DW", "mart", "Sales_daily", now));
 
-                db.Pipelines.Add(SeedPipeline(p1, repoA, "BB_Baatbooking_00_cpy", "cpy", "Baatbooking/pre/cpy.flow.yaml", 1, now));
+                db.Pipelines.Add(SeedPipeline(p1, repoA, "BB_Boatbooking_00_cpy", "cpy", "Boatbooking/pre/cpy.flow.yaml", 1, now));
                 db.Pipelines.Add(SeedPipeline(p2, repoB, "Sales_load", "ing", "Sales/pre/load.flow.yaml", 1, now));
                 db.Pipelines.Add(SeedPipeline(p4, repoB, "Sales_daily_agg", "ing", "Sales/pre/agg.flow.yaml", 2, now));
                 db.Pipelines.Add(SeedPipeline(pOther, repoA, "Other_flow", "ing", "Other/pre/x.flow.yaml", 1, now));
 
                 // The chain: P1 reads a source file and writes O1 (repo A) -> P2 reads O1 and writes O2 (repo B) ->
                 // P4 reads O2 and writes O3 (repo B). The unrelated flow touches only its own two objects.
-                db.LineageEdges.Add(Edge(repoA, p1, "BB_Baatbooking_00_cpy", "Reads", source, "source.csv"));
-                db.LineageEdges.Add(Edge(repoA, p1, "BB_Baatbooking_00_cpy", "Writes", o1, "Baatbooking_trans"));
-                db.LineageEdges.Add(Edge(repoB, p2, "Sales_load", "Reads", o1, "Baatbooking_trans"));
+                db.LineageEdges.Add(Edge(repoA, p1, "BB_Boatbooking_00_cpy", "Reads", source, "source.csv"));
+                db.LineageEdges.Add(Edge(repoA, p1, "BB_Boatbooking_00_cpy", "Writes", o1, "Boatbooking_trans"));
+                db.LineageEdges.Add(Edge(repoB, p2, "Sales_load", "Reads", o1, "Boatbooking_trans"));
                 db.LineageEdges.Add(Edge(repoB, p2, "Sales_load", "Writes", o2, "Sales"));
                 db.LineageEdges.Add(Edge(repoB, p4, "Sales_daily_agg", "Reads", o2, "Sales"));
                 db.LineageEdges.Add(Edge(repoB, p4, "Sales_daily_agg", "Writes", o3, "Sales_daily"));
@@ -82,16 +82,16 @@ public sealed class LineageProjectGraphApiTests
             var token = await IssueReadTokenAsync(client);
 
             // The scope picker lists every (repo, project) pair with its active-flow count. Our repos contribute
-            // Baatbooking (1), Other (1) in repo A and Sales (2) in repo B.
+            // Boatbooking (1), Other (1) in repo A and Sales (2) in repo B.
             var projects = await GetJsonAsync<IReadOnlyList<LineageProjectDto>>(client, token, "/api/v1/lineage/projects");
-            Assert.Equal(1, projects.Single(p => p.RepoId == repoA && p.Project == "Baatbooking").FlowCount);
+            Assert.Equal(1, projects.Single(p => p.RepoId == repoA && p.Project == "Boatbooking").FlowCount);
             Assert.Equal(1, projects.Single(p => p.RepoId == repoA && p.Project == "Other").FlowCount);
             Assert.Equal(2, projects.Single(p => p.RepoId == repoB && p.Project == "Sales").FlowCount);
 
             // Full closure seeded on the project: the seed flow plus every downstream flow, crossing into repo B,
             // and NOT the unrelated flow. The cross-repo nodes carry their own repo name.
             var full = await GetJsonAsync<ProjectGraphDto>(
-                client, token, $"/api/v1/lineage/project-graph?repoId={repoA}&project=Baatbooking");
+                client, token, $"/api/v1/lineage/project-graph?repoId={repoA}&project=Boatbooking");
             var ids = full.Pipelines.Select(p => p.Id).ToHashSet();
             Assert.Contains(p1, ids);
             Assert.Contains(p2, ids);
@@ -119,7 +119,7 @@ public sealed class LineageProjectGraphApiTests
             // One hop only: the seed and its immediate consumer, but not the flow two hops down. The object whose
             // downstream was cut is reported as a frontier the client can expand.
             var capped = await GetJsonAsync<ProjectGraphDto>(
-                client, token, $"/api/v1/lineage/project-graph?repoId={repoA}&project=Baatbooking&depth=1");
+                client, token, $"/api/v1/lineage/project-graph?repoId={repoA}&project=Boatbooking&depth=1");
             var cappedIds = capped.Pipelines.Select(p => p.Id).ToHashSet();
             Assert.Contains(p1, cappedIds);
             Assert.Contains(p2, cappedIds);

@@ -1514,7 +1514,7 @@ and fix every finding first."
     #[tool(
         description = "SEARCH WHAT CHANGED IN A MANAGED DATABASE (tables, views, procedures, functions). Use \
             this for questions about DATABASE OBJECTS: 'what changed in the warehouse last week', 'when did \
-            this column appear', 'was anything dropped from arc', 'has pre.v_Bysykkel_Trips been edited'. \
+            this column appear', 'was anything dropped from arc', 'has pre.v_Citybikes_Trips been edited'. \
             Returns one row per object per change: database, category (Table/View/StoredProcedure/...), \
             schema, name, changeType (Added|Changed|Deleted), the commit that holds the DDL diff, and \
             occurredUtc. Filter with database, changeType, since (ISO instant), and search (matches the \
@@ -1603,7 +1603,7 @@ and fix every finding first."
 
     #[tool(
         description = "SEARCH WHAT CHANGED IN THE PIPELINE DEFINITIONS (the flow YAML in git). Use this for \
-            questions about ETL CODE: 'what pipelines changed this week', 'who edited the citybike flows', \
+            questions about ETL CODE: 'what pipelines changed this week', 'who edited the cyclehire flows', \
             'which commits mention watermark', 'what changed under the apc folder'. Returns commits newest \
             first: sha, shortSha, author name and email, committedUtc, the message, and the paths each \
             commit touched. Filter with path (a repo-relative file or folder prefix), author, message \
@@ -2718,7 +2718,7 @@ pub struct ObjectCompareInput {
 pub struct FlowHistoryInput {
     #[serde(rename = "repoId")]
     pub repo_id: Option<String>,
-    /// A repo-relative file or folder prefix, e.g. "citybike" or "citybike/citybike_00_api.yaml".
+    /// A repo-relative file or folder prefix, e.g. "cyclehire" or "cyclehire/cyclehire_00_api.yaml".
     pub path: Option<String>,
     /// Substring match on the commit author's name or email.
     pub author: Option<String>,

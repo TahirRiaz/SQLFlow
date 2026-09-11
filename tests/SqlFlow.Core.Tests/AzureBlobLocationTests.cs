@@ -99,14 +99,14 @@ public sealed class AzureBlobLocationTests
     [Theory]
     // The abfss authority form and the https REST form for the same container path collapse to one identity,
     // so a cpy/sftp target and a file ingestion reading it back bind on a single lineage node.
-    [InlineData("abfss://datalakev2@acct.dfs.core.windows.net/raw/baatbooking/history/detail")]
-    [InlineData("https://acct.dfs.core.windows.net/datalakev2/raw/baatbooking/history/detail/")]
-    [InlineData("https://acct.blob.core.windows.net/datalakev2/raw/baatbooking/history/detail")]
-    [InlineData("abfss://DataLakeV2@ACCT.dfs.core.windows.net/raw/baatbooking/history/detail")]
+    [InlineData("abfss://datalakev2@acct.dfs.core.windows.net/raw/boatbooking/history/detail")]
+    [InlineData("https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/detail/")]
+    [InlineData("https://acct.blob.core.windows.net/datalakev2/raw/boatbooking/history/detail")]
+    [InlineData("abfss://DataLakeV2@ACCT.dfs.core.windows.net/raw/boatbooking/history/detail")]
     public void CanonicalIdentity_UnifiesUriShapesForOneContainerPath(string uri)
     {
         Assert.Equal(
-            "az://acct/datalakev2/raw/baatbooking/history/detail",
+            "az://acct/datalakev2/raw/boatbooking/history/detail",
             AzureBlobLocation.CanonicalIdentity(uri));
     }
 

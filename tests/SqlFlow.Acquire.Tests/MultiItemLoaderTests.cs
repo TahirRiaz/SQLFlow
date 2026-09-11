@@ -17,22 +17,22 @@ public sealed class MultiItemLoaderTests
 
     private const string TwoItems = """
         flowType: api
-        name: citybike_00_api
-        batch: Citybike
+        name: cyclehire_00_api
+        batch: Cyclehire
         source:
-          baseUrl: https://api.kolumbus.citybike.cloud
+          baseUrl: https://api.cyclehire.example
           auth:
             type: bearer
-            secretRef: ${keyvault:sqlflow-v3-secrets/citybike-token}
+            secretRef: ${keyvault:sqlflow-v3-secrets/cyclehire-token}
           reliability:
             rateLimitRps: 8
-            urlAllowlist: ["*.citybike.cloud"]
+            urlAllowlist: ["*.cyclehire.example"]
         items:
           - name: bikes
             request: { method: GET, path: /api/Bikes }
             landing:
-              target: abfss://datalakev2@acct.dfs.core.windows.net/raw/citybike/api/bikes
-              pathTemplate: "history/{yyyy}/citybike_bikes_{yyyyMMdd}"
+              target: abfss://datalakev2@acct.dfs.core.windows.net/raw/cyclehire/api/bikes
+              pathTemplate: "history/{yyyy}/cyclehire_bikes_{yyyyMMdd}"
               format: json
           - name: alert
             request: { method: GET, path: /api/alert }
@@ -43,8 +43,8 @@ public sealed class MultiItemLoaderTests
                 from: now-3d
                 to: now
             landing:
-              target: abfss://datalakev2@acct.dfs.core.windows.net/raw/citybike/api/alert
-              pathTemplate: "history/{yyyy}/citybike_alerts_{yyyyMMdd}"
+              target: abfss://datalakev2@acct.dfs.core.windows.net/raw/cyclehire/api/alert
+              pathTemplate: "history/{yyyy}/cyclehire_alerts_{yyyyMMdd}"
               format: json
         """;
 
@@ -53,19 +53,19 @@ public sealed class MultiItemLoaderTests
     {
         var flow = Parse(TwoItems);
 
-        Assert.Equal("citybike_00_api", flow.Name);
-        Assert.Equal("Citybike", flow.Batch);
+        Assert.Equal("cyclehire_00_api", flow.Name);
+        Assert.Equal("Cyclehire", flow.Batch);
         Assert.Equal(2, flow.Items.Count);
 
         // The shared connection envelope is applied to every item's source: same transport, base URL, auth, reliability.
         foreach (var item in flow.Items)
         {
             Assert.Equal(AcquireTransport.Http, item.Source.Transport);
-            Assert.Equal("https://api.kolumbus.citybike.cloud", item.Source.BaseUrl);
+            Assert.Equal("https://api.cyclehire.example", item.Source.BaseUrl);
             Assert.Equal(AcquireAuthType.Bearer, item.Source.Auth.Type);
-            Assert.Equal("${keyvault:sqlflow-v3-secrets/citybike-token}", item.Source.Auth.SecretRef);
+            Assert.Equal("${keyvault:sqlflow-v3-secrets/cyclehire-token}", item.Source.Auth.SecretRef);
             Assert.Equal(8, item.Source.Reliability.RateLimitRps);
-            Assert.Contains("*.citybike.cloud", item.Source.Reliability.UrlAllowlist);
+            Assert.Contains("*.cyclehire.example", item.Source.Reliability.UrlAllowlist);
         }
 
         // Each item carries its own request, pagination, fan-out, and landing.
@@ -73,7 +73,7 @@ public sealed class MultiItemLoaderTests
         Assert.Equal("bikes", bikes.Name);
         Assert.Equal("/api/Bikes", bikes.Source.Request!.Path);
         Assert.Empty(bikes.Source.Iterations);
-        Assert.Equal("abfss://datalakev2@acct.dfs.core.windows.net/raw/citybike/api/bikes", bikes.Landing.Target);
+        Assert.Equal("abfss://datalakev2@acct.dfs.core.windows.net/raw/cyclehire/api/bikes", bikes.Landing.Target);
 
         var alert = flow.Items[1];
         Assert.Equal("alert", alert.Name);

@@ -28,8 +28,8 @@ public sealed class SchemaChangeProjectionTests
           "result": {
             "dryRun": false,
             "commitSha": "abcdef1234567890",
-            "addedObjects": [ "dw-dwh-prod/Table/arc.Citybike_Bikes.sql" ],
-            "changedObjects": [ "dw-dwh-prod/View/pre.v_Bysykkel_Trips.sql", "dw-dwh-prod/Schema/arc.sql" ],
+            "addedObjects": [ "dw-dwh-prod/Table/arc.Cyclehire_Bikes.sql" ],
+            "changedObjects": [ "dw-dwh-prod/View/pre.v_Citybikes_Trips.sql", "dw-dwh-prod/Schema/arc.sql" ],
             "deletedObjects": [ "dw-dwh-prod/StoredProcedure/dbo.usp_Old.sql" ]
           }
         }
@@ -54,7 +54,7 @@ public sealed class SchemaChangeProjectionTests
         var added = Assert.Single(changes, c => c.ChangeType == SchemaChangeKinds.Added);
         Assert.Equal("Table", added.Category);
         Assert.Equal("arc", added.Schema);
-        Assert.Equal("Citybike_Bikes", added.Name);
+        Assert.Equal("Cyclehire_Bikes", added.Name);
 
         var dropped = Assert.Single(changes, c => c.ChangeType == SchemaChangeKinds.Deleted);
         Assert.Equal("StoredProcedure", dropped.Category);
@@ -126,7 +126,7 @@ public sealed class SchemaChangeProjectionTests
     }
 
     [Theory]
-    [InlineData("dw-dwh-prod/Table/arc.Citybike_Bikes.sql")]
+    [InlineData("dw-dwh-prod/Table/arc.Cyclehire_Bikes.sql")]
     [InlineData("dw-dwh-prod/Schema/arc.sql")]
     [InlineData("dw-pre-prod/View/pre.APC_Dalane_Calls.sql")]
     [InlineData("dw-dwh-prod/Table/dbo.Order.Detail.sql")]

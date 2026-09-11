@@ -53,7 +53,7 @@ public sealed record StreamPointDto(
 /// </summary>
 public sealed record DataStreamDto(
     Guid PipelineId, string FlowName, string FlowKind, string? Batch, bool Active, string? TargetObject,
-    // The data SOURCE this stream belongs to (Citybike, Fara, Baatbooking), from the repository layout or
+    // The data SOURCE this stream belongs to (Cyclehire, Fara, Boatbooking), from the repository layout or
     // schedule membership rather than from the flow's name. One source routinely has fifty objects, so
     // without it a board is a flat wall of tables with no way to see that forty rows are one vendor. Not the
     // same thing as Batch, which groups the flows of one DATASET inside a source.

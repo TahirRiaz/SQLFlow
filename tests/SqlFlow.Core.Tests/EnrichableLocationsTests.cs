@@ -29,13 +29,13 @@ public sealed class EnrichableLocationsTests
     [Fact]
     public void QualifiedAndDatabaselessTwin_ShareOneLocation_AndBothAreEnrichable()
     {
-        var qualified = Node("dw-pre-prod", "pre", "Baatbooking_detail");
-        var twin = Node(null, "pre", "Baatbooking_detail");
+        var qualified = Node("dw-pre-prod", "pre", "Boatbooking_detail");
+        var twin = Node(null, "pre", "Boatbooking_detail");
 
         var map = CatalogSync.EnrichableLocations([qualified, twin]);
 
         var entry = Assert.Single(map);
-        Assert.Equal(NodeKey.For(Server, null, "pre", "Baatbooking_detail"), entry.Key);
+        Assert.Equal(NodeKey.For(Server, null, "pre", "Boatbooking_detail"), entry.Key);
         Assert.Equal(2, entry.Value.Count);
         Assert.Contains(qualified.Key, entry.Value);
         Assert.Contains(twin.Key, entry.Value);

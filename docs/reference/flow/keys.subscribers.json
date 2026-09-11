@@ -83,7 +83,7 @@
       "type": "string (connection alias)",
       "required": false,
       "default": "the subscriber's 'server'",
-      "description": "The connection alias this query runs against (legacy srcServer). It is what pins the query's two-part object names to the right server and database, so a subscriber reading arc.Bysykkel_Bikes lands on the same node the ingestion flow writes. A query with neither this nor a subscriber default is ignored; an alias the 'connections:' block does not declare is refused, because its objects would otherwise build a second, wrong graph.",
+      "description": "The connection alias this query runs against (legacy srcServer). It is what pins the query's two-part object names to the right server and database, so a subscriber reading arc.Citybikes_Bikes lands on the same node the ingestion flow writes. A query with neither this nor a subscriber default is ignored; an alias the 'connections:' block does not declare is refused, because its objects would otherwise build a second, wrong graph.",
       "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs"
     },
     {

@@ -46,7 +46,7 @@ one production flow.
 | `source.pagination.keysetIdHeader` | next keyset id read from a response header, for non-JSON bodies | `entur/` |
 | `source.pagination.pageVariable` | binds the page number as a template variable | `questback/` |
 | `source.iterate[].idBindings` | binds several fields per discovered id, not just the id | `questback/` |
-| `source.iterate[].overlapMinutes` | re-reads a tail of the previous window | `citybike/` |
+| `source.iterate[].overlapMinutes` | re-reads a tail of the previous window | `cyclehire/` |
 | `source.request.responseCharset` | forces response decoding for a mislabelled charset | `kommunedata/`, `svv/` |
 | `incremental.connection` | the connection the SQL watermark probe reads | `questback/` |
 | `incremental.query` | the verbatim scalar query supplying the resume point | `questback/` |

@@ -21,12 +21,12 @@ sourceRefs:
   - src/SqlFlow.Copy/LocalCopyEndpoint.cs
   - src/SqlFlow.Copy/AzureBlobCopyEndpoint.cs
   - src/SqlFlow.Yaml/YamlCopyFlowLoader.cs
-  - samples/copy/baatbooking-storage-to-lake.flow.yaml
+  - samples/copy/boatbooking-storage-to-lake.flow.yaml
 ---
 
 # Copy flow (flowType: cpy)
 
-A `cpy` flow copies files **byte-for-byte** between two storage endpoints, in any direction: Azure Blob/ADLS Gen2 to/from another account, local disk to/from Azure, or local to local. It performs no parsing; it optionally bundles the matched files into one `.zip` (`operation: zip`, a zip-only run) or extracts archives (`operation: unzip`). It replaces the estate's lake-to-lake / drop-zone copy runbooks (e.g. baatbooking). SFTP is a separate flow type (`sftp`), not a copy endpoint.
+A `cpy` flow copies files **byte-for-byte** between two storage endpoints, in any direction: Azure Blob/ADLS Gen2 to/from another account, local disk to/from Azure, or local to local. It performs no parsing; it optionally bundles the matched files into one `.zip` (`operation: zip`, a zip-only run) or extracts archives (`operation: unzip`). It replaces the estate's lake-to-lake / drop-zone copy runbooks (e.g. boatbooking). SFTP is a separate flow type (`sftp`), not a copy endpoint.
 
 ## Minimal example
 
@@ -91,17 +91,17 @@ One `cpy` pipeline copies as many file sets as it lists, so a whole source syste
 
 ```yaml
 flowType: cpy
-name: BB_Baatbooking_00_cpy
+name: BB_Boatbooking_00_cpy
 batch: BB
 operation: copy
 options:
   overwrite: true
   preserveStructure: true
 items:
-  - source: { location: abfss://baatbooking@dwstoragebaatbookingprod.dfs.core.windows.net/DETAIL, pattern: "*.json", modifiedWithinDays: 14 }
-    target: { location: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/baatbooking/history/detail }
-  - source: { location: abfss://baatbooking@dwstoragebaatbookingprod.dfs.core.windows.net/SESS, pattern: "*.json", modifiedWithinDays: 14 }
-    target: { location: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/baatbooking/history/sess }
+  - source: { location: abfss://boatbooking@dwstorageboatbookingprod.dfs.core.windows.net/DETAIL, pattern: "*.json", modifiedWithinDays: 14 }
+    target: { location: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/boatbooking/history/detail }
+  - source: { location: abfss://boatbooking@dwstorageboatbookingprod.dfs.core.windows.net/SESS, pattern: "*.json", modifiedWithinDays: 14 }
+    target: { location: abfss://datalakev2@dwacct.dfs.core.windows.net/raw/boatbooking/history/sess }
 ```
 
 The run reports one aggregated result (files matched and written across all steps). Lineage is computed from the items: each step's source is a read node and its target a written node the downstream ingestion reads, so every landed folder binds to its load and all the loads run after the one copy. Scaling to a hundred file sets is a hundred `items` entries, not a hundred pipelines.

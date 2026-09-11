@@ -158,7 +158,7 @@
       "path": "source.auth.token.discoveryUrl",
       "type": "string",
       "required": false,
-      "description": "An OIDC .well-known/openid-configuration URL; its token_endpoint field supplies the token URL (the frida/Nordicport pattern). Takes precedence over url when set.",
+      "description": "An OIDC .well-known/openid-configuration URL; its token_endpoint field supplies the token URL (the fleetreg pattern). Takes precedence over url when set.",
       "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (ResolveTokenUrlAsync)"
     },
     {
@@ -200,7 +200,7 @@
       "path": "source.auth.token.rawBody",
       "type": "string (secret reference allowed)",
       "required": false,
-      "description": "A pre-formed body sent verbatim, e.g. a Key Vault secret already holding the full urlencoded form (the Kolumbus citybike token pattern). When set, body is ignored. Content type follows bodyKind.",
+      "description": "A pre-formed body sent verbatim, e.g. a Key Vault secret already holding the full urlencoded form (the Contoso cyclehire token pattern). When set, body is ignored. Content type follows bodyKind.",
       "definedIn": "src/SqlFlow.Acquire/Runtime/AuthResolver.cs (BuildTokenRequest)"
     },
     {

@@ -34,7 +34,7 @@ public sealed class SqlServerDdlGeneratorTests
     [Fact]
     public void Generate_CreateTable_EnsuresNonDefaultSchemaFirst()
     {
-        var target = new TargetSpec { Connection = "x", Schema = "pre", Table = "Baatbooking_detail" };
+        var target = new TargetSpec { Connection = "x", Schema = "pre", Table = "Boatbooking_detail" };
         var delta = new SchemaDelta
         {
             CreateTable = true,
@@ -45,7 +45,7 @@ public sealed class SqlServerDdlGeneratorTests
 
         Assert.Equal(2, sql.Count);
         Assert.Equal("IF SCHEMA_ID(N'pre') IS NULL EXEC(N'CREATE SCHEMA [pre]');", sql[0]);
-        Assert.Contains("CREATE TABLE [pre].[Baatbooking_detail]", sql[1], StringComparison.Ordinal);
+        Assert.Contains("CREATE TABLE [pre].[Boatbooking_detail]", sql[1], StringComparison.Ordinal);
     }
 
     [Fact]

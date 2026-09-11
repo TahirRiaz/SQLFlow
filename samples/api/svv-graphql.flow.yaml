@@ -19,6 +19,6 @@ source:
     urlAllowlist: ["*.vegvesen.no"]
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/trafikkregpkt
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/trafikkregpkt
   pathTemplate: "{yyyy}/registreringspkt_{yyyy-MM-dd}"
   format: json

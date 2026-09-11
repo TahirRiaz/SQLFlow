@@ -112,6 +112,6 @@ Two specific cautions from the estate:
 | --- | --- |
 | `fara/` | `initLoad` chunked first load plus `load.threads` |
 | `apc/`, `fara/` | `source.incrementalClause` for a non-trivial incremental predicate |
-| `bysykkelforhold/` | `source.filter` with `filterIsAppend` |
+| `cyclehiresrel/` | `source.filter` with `filterIsAppend` |
 | `apc/`, `kommunedata/`, `mpc/` | `source.ignoreColumns` |
 | 30 folders | `incremental.overlapDays` as the default posture |

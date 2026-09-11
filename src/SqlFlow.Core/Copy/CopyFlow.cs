@@ -7,7 +7,7 @@ namespace SqlFlow.Core.Copy;
 /// A validated file-copy flow (<c>flowType: cpy</c>): moves files between endpoints, byte-for-byte, in any
 /// direction - storage account to storage account, local disk to storage, storage to local disk, local to local.
 /// It performs no parsing or reshaping; it optionally zips the matched files into one archive or unzips archives on
-/// the way through. It consolidates the estate's lake-to-lake / drop-zone copy runbooks (e.g. baatbooking) into one
+/// the way through. It consolidates the estate's lake-to-lake / drop-zone copy runbooks (e.g. boatbooking) into one
 /// declarative, testable, schedulable engine, the copy counterpart to the acquisition (<c>acq</c>) engine that
 /// fetches from third parties. SFTP is a separate flow type (<c>sftp</c>), not a copy endpoint.
 /// </summary>

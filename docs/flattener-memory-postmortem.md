@@ -1,7 +1,7 @@
 # Postmortem: the record flattener's memory profile
 
 **Date:** 2026-08-20 / 2026-08-21
-**Surfaced as:** `System.OutOfMemoryException` in `target.load`, flow `bysykkelforhold_batchinfo_01_xml`,
+**Surfaced as:** `System.OutOfMemoryException` in `target.load`, flow `cyclehiresrel_batchinfo_01_xml`,
 after 20m14s with 0 rows loaded.
 **Scope:** `XmlPathFlattener` and `JsonPathFlattener` in `SqlFlow.Sources`. Any flow with more than one
 explode path, or one explode over a large collection, was affected.

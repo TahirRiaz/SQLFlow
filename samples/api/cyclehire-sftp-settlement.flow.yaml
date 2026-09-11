@@ -1,0 +1,20 @@
+# Ports the settlement SFTP runbook: an SFTP source. Lists the remote directory, keeps files modified in the last
+# 3 days, and lands each XML file verbatim (the downstream xml flow parses it).
+flowType: api
+name: Cyclehire_Settlement
+batch: cyclehire
+
+source:
+  transport: sftp
+  baseUrl: sftp://sftp.example.com:22
+  options:
+    username: cyclehire-sftp
+    password: ${keyvault:dw-keyvault-prod/cyclehire-sftp-settlement-password}
+    remotePath: /outbound
+    pattern: "*.xml"
+    modifiedWithinDays: "3"
+
+landing:
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/sftp/settlement
+  pathTemplate: "history/{yyyy}/{filename}"
+  format: xml

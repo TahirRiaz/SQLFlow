@@ -1,22 +1,22 @@
-# Ports frida_vehicles.py: OAuth2 client-credentials with OIDC discovery (the token endpoint is resolved from
+# Ports the vehicle-registry runbook: OAuth2 client-credentials with OIDC discovery (the token endpoint is resolved from
 # the .well-known document), plus page-number pagination.
 flowType: api
-name: Frida_Vehicles
-batch: frida
+name: Fleetreg_Vehicles
+batch: fleetreg
 
 source:
   transport: http
-  baseUrl: https://kolumbus.frida.nordicport.se
+  baseUrl: https://tenant.fleetreg.example
   auth:
     type: oauth2_client_credentials
     token:
-      discoveryUrl: https://login.frida.nordicport.se/realms/kolumbus/.well-known/openid-configuration
+      discoveryUrl: https://login.fleetreg.example/realms/tenant/.well-known/openid-configuration
       bodyKind: form
       body:
         grant_type: client_credentials
-        client_id: kolumbus-internal-datavarehus-1
-        client_secret: ${keyvault:dw-keyvault-prod/frida-client-secret}
-        scope: fridaApi
+        client_id: tenant-internal-dwh-1
+        client_secret: ${keyvault:dw-keyvault-prod/fleetreg-client-secret}
+        scope: fleetregApi
       tokenPath: access_token
   request:
     method: GET
@@ -31,9 +31,9 @@ source:
     maxPages: 200
   reliability:
     rateLimitRps: 10
-    urlAllowlist: ["*.nordicport.se"]
+    urlAllowlist: ["*.fleetreg.example"]
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/kolumbus/frida
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/contoso/fleetreg
   pathTemplate: "history/{yyyy}/vehicles_{yyyyMMdd}_{page}"
   format: json

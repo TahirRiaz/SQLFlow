@@ -33,15 +33,15 @@ public sealed class YamlTranslateFlowLoaderTests
           per: row
           nulls: omit
         template:
-          id: "kolumbus:dataset--File.Generic:{DatasetId}"
+          id: "contoso:dataset--File.Generic:{DatasetId}"
           kind: osdu:wks:dataset--File.Generic:1.1.0
           acl:
             owners:
               $forEach: owners
               $item: "{Principal}"
-            viewers: [ "data.default.viewers@kolumbus.osdu.com" ]
+            viewers: [ "data.default.viewers@contoso.osdu.example" ]
           legal:
-            legaltags: [ "kolumbus-public" ]
+            legaltags: [ "contoso-public" ]
             otherRelevantDataCountries: [ "NO" ]
             status: compliant
           data:

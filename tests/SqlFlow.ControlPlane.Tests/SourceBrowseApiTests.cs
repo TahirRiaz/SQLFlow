@@ -32,7 +32,7 @@ public sealed class SourceBrowseApiTests
         // One file per origin kind, plus a non-file object that must NOT appear in the file tree. The file
         // NAME is the clean canonical identity; the KEY is the node identity 'file|||<name>' the catalog
         // actually stores (server-reference-prefixed), so the test exercises parsing the Name, not the Key.
-        var azureName = $"az://{account}/raw/baatbooking/history/detail";
+        var azureName = $"az://{account}/raw/boatbooking/history/detail";
         var azureRootName = $"az://{account}/landing/orders.csv";
         var sftpName = $"sftp://{host}/exports/daily/orders.csv";
         var localName = $"data_{suffix}/incoming/orders.csv";
@@ -77,7 +77,7 @@ public sealed class SourceBrowseApiTests
             Assert.Equal("AzureStorage", azure.OriginKind);
             Assert.Equal(account, azure.Origin);
             Assert.Equal("raw", azure.Container);
-            Assert.Equal("baatbooking/history", azure.Path);
+            Assert.Equal("boatbooking/history", azure.Path);
             Assert.Equal("detail", azure.Name);
 
             var azureRoot = tree.Single(n => n.Key == azureRootKey);

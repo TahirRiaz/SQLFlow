@@ -162,7 +162,7 @@ public sealed class CsvSourceReader : FileSourceReaderBase
     /// <summary>
     /// Names the columns of a headerless file. Such a file names its columns positionally
     /// (<c>Column1..ColumnN</c>), so N is the width of its WIDEST row, not of its first. Ragged files are
-    /// normal in this shape: the Nets settlement export interleaves record types of different widths, and its
+    /// normal in this shape: the settlement export interleaves record types of different widths, and its
     /// first row is a narrow 28-field header record while the transaction rows that follow carry 30. Sizing
     /// the schema from row one would drop every cell past the 28th, silently losing two columns of every
     /// transaction. So the whole file is scanned once for its maximum width. That costs one extra sequential
@@ -281,7 +281,7 @@ public sealed class CsvSourceReader : FileSourceReaderBase
     /// <summary>
     /// Resolves the declared source encoding. Beyond the Unicode family it accepts any code page .NET knows by
     /// name or number (Latin1/ISO-8859-1, windows-1252, 1252, ...), which is what legacy CSV feeds are delivered
-    /// in: the Nets settlement files are Latin1, and reading them as UTF-8 mangles every Norwegian character.
+    /// in: the settlement files are Latin1, and reading them as UTF-8 mangles every Norwegian character.
     /// An encoding the runtime cannot resolve is an authoring error, so it fails loudly rather than silently
     /// falling back to UTF-8 and corrupting the landed text.
     /// </summary>

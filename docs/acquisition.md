@@ -17,29 +17,29 @@ replayable, and means a schema change downstream never requires touching the int
 
 ## One flow, many endpoints (`items:`)
 
-A source system is rarely one endpoint. Citybike, for example, was **11 separate runbooks** all hitting
-`api.kolumbus.citybike.cloud` under one token: bikes, alerts, inventory, issue reports, repair orders, and so on.
+A source system is rarely one endpoint. Cyclehire, for example, was **11 separate runbooks** all hitting
+`api.cyclehire.example` under one token: bikes, alerts, inventory, issue reports, repair orders, and so on.
 Rather than 11 flow files, one `api` flow declares a shared connection envelope under `source` (transport, base
 URL, auth, reliability) and an **`items:`** list, one entry per endpoint, each with its own `request`,
 `pagination`, `iterate`, and `landing`. This mirrors how a `cpy` copy flow declares multiple `items:`.
 
 ```yaml
 flowType: api
-name: citybike_00_api
-batch: Citybike
+name: cyclehire_00_api
+batch: Cyclehire
 source:                       # shared envelope: applied to every item
-  baseUrl: https://api.kolumbus.citybike.cloud
+  baseUrl: https://api.cyclehire.example
   auth:
     type: token_exchange
-    token: { url: https://api.kolumbus.citybike.cloud/api/token, rawBody: "${keyvault:sqlflow-v3-secrets/citybike-token}", tokenPath: access_token }
-  reliability: { rateLimitRps: 8, urlAllowlist: ["*.citybike.cloud"] }
+    token: { url: https://api.cyclehire.example/api/token, rawBody: "${keyvault:sqlflow-v3-secrets/cyclehire-token}", tokenPath: access_token }
+  reliability: { rateLimitRps: 8, urlAllowlist: ["*.cyclehire.example"] }
 items:
   - name: bikes
     request: { path: /api/Bikes }
-    landing: { target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/citybike/api/bikes, pathTemplate: "history/{yyyy}/{MM}/citybike_bikes_{yyyyMMdd}", format: json }
+    landing: { target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/bikes, pathTemplate: "history/{yyyy}/{MM}/cyclehire_bikes_{yyyyMMdd}", format: json }
   - name: inventory
     request: { path: /api/Inventory }
-    landing: { target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/citybike/api/inventory, pathTemplate: "history/{yyyy}/citybike_inventory_{yyyyMMdd}", format: json }
+    landing: { target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/inventory, pathTemplate: "history/{yyyy}/cyclehire_inventory_{yyyyMMdd}", format: json }
 ```
 
 The engine resolves the HTTP client and the token **once per run**, then fetches every item in order,
@@ -88,12 +88,12 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 | API key header, custom name (App Insights `X-Api-Key`) | `auth.type: api_key_header` + `headerName` |
 | Token as query param (Skynet `?token=`) | `auth.type: api_key_query` + `paramName` |
 | Non-standard bearer header (easypark `X-Authorization`) | `token.applyHeaderName` + `applyPrefix` |
-| OAuth2 client-credentials, form body (Voi, frida) | `auth.type: oauth2_client_credentials`, `token.bodyKind: form` |
+| OAuth2 client-credentials, form body (Voi, fleetreg) | `auth.type: oauth2_client_credentials`, `token.bodyKind: form` |
 | OAuth2 client-credentials, JSON body + audience (Entur) | `token.bodyKind: json`, `token.body` |
 | OAuth2 Basic-auth client (Voi id:secret) | `token.basicAuthClient: true` |
 | OAuth2 refresh-token exchange (easypark) | `auth.type: oauth2_refresh_token` |
-| OIDC discovery for the token endpoint (frida) | `token.discoveryUrl` |
-| Custom token exchange, pre-formed form body in KV (Citybike) | `auth.type: token_exchange`, `token.rawBody` |
+| OIDC discovery for the token endpoint (fleetreg) | `token.discoveryUrl` |
+| Custom token exchange, pre-formed form body in KV (Cyclehire) | `auth.type: token_exchange`, `token.rawBody` |
 | Per-window token refresh (Voi) | `token.refreshPerIteration: true` |
 | GET / POST | `request.method` |
 | GraphQL POST (SVV) | `request.bodyKind: graphql` |
@@ -102,7 +102,7 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 | Path + query templating with date/id tokens | `{placeholder}`, `{yyyyMMdd}`, `{window.from:fmt}` |
 | Rolling boundary inside a request, with no fan-out (Questback's closed-quest window) | `{now-6mo:yyyy-MM-dd}`, `{startOfMonth:yyyy-MM-dd}` |
 | Credentials inside the request body rather than a header (SOAP `<Password>`) | `${keyvault:...}` in `request.body` (resolved per item) |
-| Page-number pagination (Questback, frida) | `pagination.strategy: page` |
+| Page-number pagination (Questback, fleetreg) | `pagination.strategy: page` |
 | Page number carried in the request BODY, not the query (SOAP `<PageNo>`) | `pagination.pageVariable` + the `{token}` in `request.body` |
 | Offset/limit pagination | `pagination.strategy: offset` |
 | Cursor-in-body pagination | `pagination.strategy: cursor_body` + `cursorPath` |
@@ -115,7 +115,7 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 | Ids from a prior call (bikes -> alerts/sessions) | `iterate: ids_from` + `idRequest` + `idPath` |
 | Ids out of an XML/SOAP discovery response (Questback quests) | `ids_from` with an XPath `idPath` (namespaces stripped) |
 | Fan-out needing more than the id per record (Questback `questId` + `securityLock`) | `ids_from` + `idBindings` (variable -> path, relative to each record) |
-| Many endpoints of one system consolidated (Citybike's 11 runbooks) | `items:` list, one entry per endpoint over the shared `source` |
+| Many endpoints of one system consolidated (Cyclehire's 11 runbooks) | `items:` list, one entry per endpoint over the shared `source` |
 | Batched-id chunking, max N per request (svv 50 ids) | `ids_from` + `batchSize` + `batchSeparator` |
 | Retry with backoff (shiplog, norled, questback) | `reliability.retry` |
 | Honor Retry-After, retry 408/425/429/5xx | built in (`retry.honorRetryAfter`) |
@@ -131,7 +131,7 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 | Incremental resume from lake state (Entur lastReportId) | `incremental` + keyset |
 | Resume from what was LOADED, not from a run record (survives redeploys) | `incremental.source: sql` + `connection` + `query` |
 | Per-entity high-water marks, so one lagging entity does not refetch them all | two-column watermark `query` + `keyVariable` |
-| SFTP download, modified-within window (Citybike/Nets, Ferde) | `transport: sftp` |
+| SFTP download, modified-within window (Cyclehire settlement, Ferde) | `transport: sftp` |
 | Azure Storage Table query (fjord1, apc) | `transport: azuretable` + OData `filter` |
 | Secrets from Key Vault, never inline | `${keyvault:vault/secret}` refs |
 | SSRF safety (block metadata/private IPs) | `reliability.urlAllowlist` + built-in IP guard |
@@ -139,7 +139,7 @@ the patterns; the engine is verified against public APIs and a deterministic tes
 ### Residual runbooks (not API integrations)
 
 Three runbooks are not third-party integrations and stay outside this engine: the two Azure Automation job-status
-log exports (`Fail_jobs`, `Maintenance`) read the Azure control plane, and `baatbooking`/`Z_ebk_test_72` copy
+log exports (`Fail_jobs`, `Maintenance`) read the Azure control plane, and `boatbooking`/`Z_ebk_test_72` copy
 lake-to-lake. The first two are platform observability; the copy is an ingestion concern, not an acquisition one.
 
 ## Debugging

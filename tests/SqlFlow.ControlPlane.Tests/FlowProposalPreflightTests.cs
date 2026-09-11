@@ -135,36 +135,36 @@ public sealed class FlowProposalPreflightTests
     {
         // A schedule with neither cron, interval, nor after is silently dropped by the sync; the preflight
         // surfaces the library loader's own warning instead of misreading the file as a broken flow.
-        var library = "schedules:\n  citybike_daily:\n    enabled: false\n";
+        var library = "schedules:\n  cyclehire_daily:\n    enabled: false\n";
         var result = Run([new ProposalFile("flows/schedules.yaml", library)]);
 
         Assert.Empty(result.Errors);
         var warning = Assert.Single(result.Warnings);
-        Assert.Contains("citybike_daily", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("cyclehire_daily", warning.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public void FileFlowRevisionThatRepointsTheSourceLocation_Warns()
     {
         const string fileFlow = """
-            name: citybike-bikes-pre
+            name: cyclehire-bikes-pre
             source:
               type: json
-              location: https://lake.example/raw/citybike/history/bikes/
+              location: https://lake.example/raw/cyclehire/history/bikes/
             target:
               connection: ${env:SQLFLOW_DW}
               schema: pre
-              table: Citybike_Bikes
+              table: Cyclehire_Bikes
             """;
-        var revised = fileFlow.Replace("raw/citybike", "raw/voi", StringComparison.Ordinal);
+        var revised = fileFlow.Replace("raw/cyclehire", "raw/voi", StringComparison.Ordinal);
         var result = Run(
-            [new ProposalFile("Citybike/citybike_bikes_01_jsn.yaml", revised)],
+            [new ProposalFile("Cyclehire/cyclehire_bikes_01_jsn.yaml", revised)],
             new FlowProposalPreflight.ExistingPipeline(
-                "citybike-bikes-pre", "Citybike/citybike_bikes_01_jsn.yaml", fileFlow));
+                "cyclehire-bikes-pre", "Cyclehire/cyclehire_bikes_01_jsn.yaml", fileFlow));
 
         Assert.Empty(result.Errors);
         var warning = Assert.Single(result.Warnings);
-        Assert.Contains("raw/citybike", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("raw/cyclehire", warning.Message, StringComparison.Ordinal);
         Assert.Contains("raw/voi", warning.Message, StringComparison.Ordinal);
     }
 

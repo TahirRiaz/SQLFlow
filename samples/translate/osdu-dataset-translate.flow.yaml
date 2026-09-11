@@ -56,7 +56,7 @@ documents:
 # documents.per: resultSet). A "{Column}" scalar that is exactly one token keeps the column's
 # native JSON type; anything else renders as a string.
 template:
-  id: "kolumbus:dataset--File.Generic:{DatasetGuid}"
+  id: "contoso:dataset--File.Generic:{DatasetGuid}"
   kind: osdu:wks:dataset--File.Generic:1.1.0
   acl:
     owners:
@@ -66,11 +66,11 @@ template:
       $forEach: viewers
       $item: "{Principal}"
   legal:
-    legaltags: [ "kolumbus-public" ]
+    legaltags: [ "contoso-public" ]
     otherRelevantDataCountries: [ "NO" ]
     status: compliant
   data:
-    Source: Kolumbus DWH
+    Source: Contoso DWH
     Name: "{FileName}"
     Description: { $column: Description, $whenNull: omit }
     TotalSize: { $column: FileSizeBytes, $type: string }        # OSDU carries sizes as strings
@@ -103,7 +103,7 @@ invoke:
   url: https://osdu.example.com/api/storage/v2/records
   method: PUT
   headers:
-    data-partition-id: kolumbus
+    data-partition-id: contoso
   envelopeKey: records       # wrap each request's documents as {"records": [...]}
   # batchSize: 25            # documents per request (filePerDocument/jsonLines)
   auth:

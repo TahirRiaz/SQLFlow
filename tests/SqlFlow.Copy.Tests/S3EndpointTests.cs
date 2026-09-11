@@ -58,7 +58,7 @@ public sealed class S3EndpointTests
     [Theory]
     // A flat key prefix stays verbatim (no forced trailing slash) so it matches S3's literal-prefix listing:
     // 'export_orders' selects 'export_orders_2021_...'.
-    [InlineData("s3://elasticsearch-export-kolumbus/export_orders", "elasticsearch-export-kolumbus", "export_orders")]
+    [InlineData("s3://elasticsearch-export-contoso/export_orders", "elasticsearch-export-contoso", "export_orders")]
     [InlineData("s3://bucket/a/b/c", "bucket", "a/b/c")]
     [InlineData("s3://bucket/folder/", "bucket", "folder")]
     [InlineData("s3://bucket", "bucket", "")]

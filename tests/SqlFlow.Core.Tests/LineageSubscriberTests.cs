@@ -35,16 +35,16 @@ public sealed class LineageSubscriberTests : IDisposable
     /// <summary>An ingestion that writes the table the report below reads: the producing half of the graph.</summary>
     private static string Ingestion => string.Join('\n',
         "flowType: ing",
-        "name: citybike_bikes_02_ing",
+        "name: cyclehire_bikes_02_ing",
         "connections:",
         "  pre: ${env:SQLFLOW_CONN_PRE}",
         $"  ods: {Ods}",
         "source:",
         "  server: pre",
-        "  object: \"[PreDb].[pre].[v_Bysykkel_Bikes]\"",
+        "  object: \"[PreDb].[pre].[v_Citybikes_Bikes]\"",
         "target:",
         "  server: ods",
-        "  object: \"[OdsDb].[arc].[Bysykkel_Bikes]\"",
+        "  object: \"[OdsDb].[arc].[Citybikes_Bikes]\"",
         "load:",
         "  keyColumns: [id]",
         "schedule:",
@@ -54,9 +54,9 @@ public sealed class LineageSubscriberTests : IDisposable
         "connections:",
         $"  dwh: {Ods}",
         "subscribers:",
-        "  Analyse_Bysykkel:",
+        "  Analyse_Citybikes:",
         $"    type: {type}",
-        "    owner: analyse@kolumbus.no",
+        "    owner: analyse@contoso.example",
         "    description: City bike usage dashboard",
         "    url: https://app.powerbi.com/groups/me/reports/abc",
         "    server: dwh",
@@ -69,12 +69,12 @@ public sealed class LineageSubscriberTests : IDisposable
     public void SubscriberQuery_IsParsed_IntoReadEdgesOnTheProducedTable()
     {
         Write("10_ing.yaml", Ingestion);
-        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];"));
+        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes];"));
 
         var report = Build();
 
-        var subscriberKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Bysykkel");
-        var tableKey = NodeKey.For(Ods, "OdsDb", "arc", "Bysykkel_Bikes");
+        var subscriberKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Citybikes");
+        var tableKey = NodeKey.For(Ods, "OdsDb", "arc", "Citybikes_Bikes");
 
         // The consumption edge is module-attributed, exactly like a view body's: no flow, ViaModule = the
         // subscriber, so "what reads this table" is one edge query across producers and consumers alike.
@@ -84,26 +84,26 @@ public sealed class LineageSubscriberTests : IDisposable
 
         // The table the ingestion writes and the table the report reads are ONE node, which is the whole point.
         Assert.Contains(report.Edges, e =>
-            e.Flow == "citybike_bikes_02_ing" && e.Relation == LineageRelation.Writes && e.ObjectKey == tableKey);
+            e.Flow == "cyclehire_bikes_02_ing" && e.Relation == LineageRelation.Writes && e.ObjectKey == tableKey);
     }
 
     [Fact]
     public void Subscriber_BecomesItsOwnNode_WithMetadataAndQueryEvidence()
     {
         Write("10_ing.yaml", Ingestion);
-        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];"));
+        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes];"));
 
         var report = Build();
 
-        var subscriberKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Bysykkel");
+        var subscriberKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Citybikes");
         var node = Assert.Single(report.Objects, o => o.Key == subscriberKey);
         Assert.Equal(LineageNodeKind.Subscriber, node.Kind);
-        Assert.Equal("Analyse_Bysykkel", node.Name);
+        Assert.Equal("Analyse_Citybikes", node.Name);
 
         var subscriber = Assert.Single(report.Subscribers);
-        Assert.Equal("Analyse_Bysykkel", subscriber.Name);
+        Assert.Equal("Analyse_Citybikes", subscriber.Name);
         Assert.Equal("PowerBI", subscriber.Type);
-        Assert.Equal("analyse@kolumbus.no", subscriber.Owner);
+        Assert.Equal("analyse@contoso.example", subscriber.Owner);
         Assert.Equal("subscribers.yaml", subscriber.File);
         Assert.Equal(subscriberKey, subscriber.ObjectKey);
 
@@ -111,7 +111,7 @@ public sealed class LineageSubscriberTests : IDisposable
         // links the report to the table rather than only that some query does.
         var query = Assert.Single(subscriber.Queries);
         Assert.Equal("Turer", query.Name);
-        Assert.Equal(NodeKey.For(Ods, "OdsDb", "arc", "Bysykkel_Bikes"), Assert.Single(query.ObjectKeys));
+        Assert.Equal(NodeKey.For(Ods, "OdsDb", "arc", "Citybikes_Bikes"), Assert.Single(query.ObjectKeys));
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public sealed class LineageSubscriberTests : IDisposable
             "connections:",
             $"  dwh: {Ods}",
             "subscribers:",
-            "  Analyse_Bysykkel:",
+            "  Analyse_Citybikes:",
             "    type: PowerBI",
             "    description: City bike usage dashboard",
             "    notes: |",
@@ -136,7 +136,7 @@ public sealed class LineageSubscriberTests : IDisposable
             "    queries:",
             "      - name: Turer",
             "        sql: |",
-            "          SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];") + '\n');
+            "          SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes];") + '\n');
 
         var subscriber = Assert.Single(Build().Subscribers);
 
@@ -153,7 +153,7 @@ public sealed class LineageSubscriberTests : IDisposable
     public void Subscriber_WithoutNotes_LeavesThemNull()
     {
         Write("10_ing.yaml", Ingestion);
-        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];"));
+        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes];"));
 
         Assert.Null(Assert.Single(Build().Subscribers).Notes);
     }
@@ -162,15 +162,15 @@ public sealed class LineageSubscriberTests : IDisposable
     public void Subscriber_IsNotAFlow_AndNeverEntersTheExecutionPlan()
     {
         Write("10_ing.yaml", Ingestion);
-        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];"));
+        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes];"));
 
         var report = Build();
 
         // A subscriber runs nothing. If it leaked into the flow set it would sit in a wave forever pending, and
         // a batch expanding "everything in this repo" would try to execute a Power BI report.
-        Assert.DoesNotContain(report.Flows, f => f.Name == "Analyse_Bysykkel");
-        Assert.DoesNotContain(report.ExecutionPlan.Waves.SelectMany(w => w.Flows), f => f == "Analyse_Bysykkel");
-        Assert.DoesNotContain(report.ExecutionPlan.Unordered, f => f == "Analyse_Bysykkel");
+        Assert.DoesNotContain(report.Flows, f => f.Name == "Analyse_Citybikes");
+        Assert.DoesNotContain(report.ExecutionPlan.Waves.SelectMany(w => w.Flows), f => f == "Analyse_Citybikes");
+        Assert.DoesNotContain(report.ExecutionPlan.Unordered, f => f == "Analyse_Citybikes");
 
         // Nor does the subscriber library file get reported as an unparseable flow document.
         Assert.DoesNotContain(report.Warnings, w => w.Contains("subscribers.yaml: skipped", StringComparison.Ordinal));
@@ -182,12 +182,12 @@ public sealed class LineageSubscriberTests : IDisposable
         // A report almost never reads a base table directly; it reads the reporting view. The view node must be
         // the same one the ingestion reads, or the consumption side detaches into a parallel graph.
         Write("10_ing.yaml", Ingestion);
-        Write("subscribers.yaml", Subscribers("SELECT b.id FROM [PreDb].[pre].[v_Bysykkel_Bikes] AS b;"));
+        Write("subscribers.yaml", Subscribers("SELECT b.id FROM [PreDb].[pre].[v_Citybikes_Bikes] AS b;"));
 
         var report = Build();
 
-        var subscriberKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Bysykkel");
-        var viewKey = NodeKey.For(Ods, "PreDb", "pre", "v_Bysykkel_Bikes");
+        var subscriberKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Citybikes");
+        var viewKey = NodeKey.For(Ods, "PreDb", "pre", "v_Citybikes_Bikes");
         Assert.Contains(report.Edges, e =>
             e.Flow is null && e.ViaModule == subscriberKey
             && e.Relation == LineageRelation.Reads && e.ObjectKey == viewKey);
@@ -200,13 +200,13 @@ public sealed class LineageSubscriberTests : IDisposable
         // warehouse view's are: a report is evidence of how the business actually relates these tables.
         Write("10_ing.yaml", Ingestion);
         Write("subscribers.yaml", Subscribers(
-            "SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes] b "
-            + "INNER JOIN [OdsDb].[arc].[Bysykkel_Stations] s ON s.station_id = b.station_id;"));
+            "SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes] b "
+            + "INNER JOIN [OdsDb].[arc].[Citybikes_Stations] s ON s.station_id = b.station_id;"));
 
         var report = Build();
 
-        var bikes = NodeKey.For(Ods, "OdsDb", "arc", "Bysykkel_Bikes");
-        var stations = NodeKey.For(Ods, "OdsDb", "arc", "Bysykkel_Stations");
+        var bikes = NodeKey.For(Ods, "OdsDb", "arc", "Citybikes_Bikes");
+        var stations = NodeKey.For(Ods, "OdsDb", "arc", "Citybikes_Stations");
         Assert.Contains(report.Relationships, r =>
             (r.FromObjectKey == bikes && r.ToObjectKey == stations)
             || (r.FromObjectKey == stations && r.ToObjectKey == bikes));
@@ -221,12 +221,12 @@ public sealed class LineageSubscriberTests : IDisposable
             "connections:",
             $"  dwh: {Ods}",
             "subscribers:",
-            "  Analyse_Bysykkel:",
+            "  Analyse_Citybikes:",
             "    type: PowerBI",
             "    server: warehouse",
             "    queries:",
             "      - name: Turer",
-            "        sql: SELECT 1 FROM [OdsDb].[arc].[Bysykkel_Bikes];") + '\n');
+            "        sql: SELECT 1 FROM [OdsDb].[arc].[Citybikes_Bikes];") + '\n');
 
         var report = Build();
 
@@ -244,16 +244,16 @@ public sealed class LineageSubscriberTests : IDisposable
         // of INDEPENDENT nodes, never into a combined one; a report's edges must stay its own.
         Directory.CreateDirectory(Path.Combine(_root, "subscribers"));
         Write("10_ing.yaml", Ingestion);
-        Write(Path.Combine("subscribers", "analyse_bysykkel.subscribers.yaml"), string.Join('\n',
+        Write(Path.Combine("subscribers", "analyse_citybikes.subscribers.yaml"), string.Join('\n',
             "connections:",
             $"  dwh: {Ods}",
             "subscribers:",
-            "  Analyse_Bysykkel:",
+            "  Analyse_Citybikes:",
             "    type: PowerBI",
             "    server: dwh",
             "    queries:",
             "      - name: Turer",
-            "        sql: SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];") + '\n');
+            "        sql: SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes];") + '\n');
         Write(Path.Combine("subscribers", "drift_rapport.subscribers.yaml"), string.Join('\n',
             "connections:",
             $"  dwh: {Ods}",
@@ -263,36 +263,36 @@ public sealed class LineageSubscriberTests : IDisposable
             "    server: dwh",
             "    queries:",
             "      - name: Stasjoner",
-            "        sql: SELECT * FROM [OdsDb].[arc].[Bysykkel_Stations];") + '\n');
+            "        sql: SELECT * FROM [OdsDb].[arc].[Citybikes_Stations];") + '\n');
 
         var report = Build();
 
         Assert.Equal(2, report.Subscribers.Count);
         Assert.Equal(
-            ["subscribers/analyse_bysykkel.subscribers.yaml", "subscribers/drift_rapport.subscribers.yaml"],
+            ["subscribers/analyse_citybikes.subscribers.yaml", "subscribers/drift_rapport.subscribers.yaml"],
             report.Subscribers.Select(s => s.File).OrderBy(f => f, StringComparer.Ordinal));
 
         // Two nodes, and each one's read edges belong to it alone.
-        var bysykkelKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Bysykkel");
+        var citybikesKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Analyse_Citybikes");
         var driftKey = NodeKey.For(ServerIdentity.Subscriber, null, null, "Drift_Rapport");
-        Assert.Contains(report.Objects, o => o.Key == bysykkelKey && o.Kind == LineageNodeKind.Subscriber);
+        Assert.Contains(report.Objects, o => o.Key == citybikesKey && o.Kind == LineageNodeKind.Subscriber);
         Assert.Contains(report.Objects, o => o.Key == driftKey && o.Kind == LineageNodeKind.Subscriber);
 
-        var bikes = NodeKey.For(Ods, "OdsDb", "arc", "Bysykkel_Bikes");
-        var stations = NodeKey.For(Ods, "OdsDb", "arc", "Bysykkel_Stations");
-        Assert.Contains(report.Edges, e => e.ViaModule == bysykkelKey && e.ObjectKey == bikes);
-        Assert.DoesNotContain(report.Edges, e => e.ViaModule == bysykkelKey && e.ObjectKey == stations);
+        var bikes = NodeKey.For(Ods, "OdsDb", "arc", "Citybikes_Bikes");
+        var stations = NodeKey.For(Ods, "OdsDb", "arc", "Citybikes_Stations");
+        Assert.Contains(report.Edges, e => e.ViaModule == citybikesKey && e.ObjectKey == bikes);
+        Assert.DoesNotContain(report.Edges, e => e.ViaModule == citybikesKey && e.ObjectKey == stations);
         Assert.Contains(report.Edges, e => e.ViaModule == driftKey && e.ObjectKey == stations);
         Assert.DoesNotContain(report.Edges, e => e.ViaModule == driftKey && e.ObjectKey == bikes);
 
         // A per-subscriber file is still not a flow document.
-        Assert.DoesNotContain(report.Flows, f => f.Name is "Analyse_Bysykkel" or "Drift_Rapport");
+        Assert.DoesNotContain(report.Flows, f => f.Name is "Analyse_Citybikes" or "Drift_Rapport");
     }
 
     [Fact]
     public void Subscriber_DeclaredTwice_KeepsTheFirstAndWarns()
     {
-        Write("a.subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];"));
+        Write("a.subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Citybikes_Bikes];"));
         Write("b.subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Other];", type: "Tableau"));
 
         var report = Build();
@@ -300,6 +300,6 @@ public sealed class LineageSubscriberTests : IDisposable
         var subscriber = Assert.Single(report.Subscribers);
         Assert.Equal("PowerBI", subscriber.Type);
         Assert.Contains(report.Warnings, w =>
-            w.Contains("subscriber 'Analyse_Bysykkel' is already declared", StringComparison.Ordinal));
+            w.Contains("subscriber 'Analyse_Citybikes' is already declared", StringComparison.Ordinal));
     }
 }

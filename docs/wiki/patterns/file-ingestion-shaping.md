@@ -116,7 +116,7 @@ common way a ported filter silently changes meaning; see
 
 | Flow folder | Shape |
 | --- | --- |
-| `citybike/`, `fjord1/`, `billettapp/` | `explodePaths` + `pathAliases` on nested trip documents |
+| `cyclehire/`, `fjord1/`, `ticketapp/` | `explodePaths` + `pathAliases` on nested trip documents |
 | `hentmeg/`, `voi/`, `ryde/` | `schema.overrides` pinning nested blobs and geometry to text |
 | `entur/`, `ferde/`, `reisefrihet_nets/` | positional and dialect CSV with explicit header handling |
 | 9 folders | `fileDate.from` deriving the covered date from the file name |

@@ -1,19 +1,19 @@
-# Ports the citybike_alerts.ps1 pattern: a custom token exchange (a pre-formed urlencoded form body held whole
+# Ports the cyclehire_alerts.ps1 pattern: a custom token exchange (a pre-formed urlencoded form body held whole
 # in Key Vault), then a two-phase fetch - discover bike ids from /api/Bikes and fetch alerts per bike over a
 # 3-day window. Lands raw JSON per bike.
 flowType: api
-name: Citybike_Alerts
-batch: citybike
+name: Cyclehire_Alerts
+batch: cyclehire
 
 source:
   transport: http
-  baseUrl: https://api.kolumbus.citybike.cloud
+  baseUrl: https://api.cyclehire.example
   auth:
     type: token_exchange
     token:
-      url: https://api.kolumbus.citybike.cloud/api/token
+      url: https://api.cyclehire.example/api/token
       bodyKind: form
-      rawBody: ${keyvault:dw-keyvault-prod/citybike-token}
+      rawBody: ${keyvault:dw-keyvault-prod/cyclehire-token}
       headers:
         Content-Type: application/x-www-form-urlencoded
       tokenPath: access_token
@@ -41,9 +41,9 @@ source:
       idPath: $[*].BikeId
   reliability:
     rateLimitRps: 8
-    urlAllowlist: ["*.citybike.cloud"]
+    urlAllowlist: ["*.cyclehire.example"]
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/citybike/api/alert
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/api/alert
   pathTemplate: "history/{window.from:yyyy}/alerts_{window.from:yyyyMMdd}_bike{bikeId}"
   format: json

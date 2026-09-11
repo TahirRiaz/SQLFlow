@@ -43,8 +43,8 @@ public sealed record BaselineComparisonRequest
     /// <summary>The schema on the OLD side when it differs; defaults to <see cref="Schema"/>.</summary>
     public string? BaselineSchema { get; init; }
 
-    /// <summary>The object on the OLD side when the name differs (arc.Bysykkel_Trips versus
-    /// arc.Citybike_Trips); defaults to <see cref="ObjectName"/>.</summary>
+    /// <summary>The object on the OLD side when the name differs (arc.Citybikes_Trips versus
+    /// arc.Cyclehire_Trips); defaults to <see cref="ObjectName"/>.</summary>
     public string? BaselineObjectName { get; init; }
 
     /// <summary>

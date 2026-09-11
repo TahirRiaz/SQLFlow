@@ -23,7 +23,7 @@ public sealed class RunHistoryReaderTests : IDisposable
 
     public RunHistoryReaderTests() => Directory.CreateDirectory(_dir);
 
-    private const string Flow = "BB_Baatbooking_sess_pre";
+    private const string Flow = "BB_Boatbooking_sess_pre";
 
     private void WriteRun(bool success, params DateTimeOffset?[] modified)
     {
