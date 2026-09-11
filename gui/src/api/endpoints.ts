@@ -6,7 +6,7 @@ import type {
   AccessToken, AllSearchResult, Attention, AuthProviders,
   ChatAskRequest, ChatCapabilities, ChatConversation, ChatMessage, ChatTranscription,
   ColumnHit, ComputeTask, ComputeTaskAccepted, ComputeTaskRequest,
-  DataStream, DataStreams,
+  DataStream, DataStreams, DispatchSnapshot,
   ComputeTaskSummary, CreateAccessTokenRequest, CreateNotificationSubscriptionRequest, CreateScheduleRequest, CreatedAccessToken,
   CreateUserRequest, Dashboard, Datasource, DefinitionHit, DiscoveredFlow,
   FlowInsights, Recommendations, StepInsights,
@@ -341,6 +341,14 @@ export const nodeApi = {
   delete: (name: string) => del<void>(`/api/v1/nodes/${encodeURIComponent(name)}`),
   /** Drop every offline node from the fleet registry at once; returns how many entries were removed. */
   purgeOffline: () => del<NodePurgeResult>("/api/v1/nodes/offline"),
+};
+
+// ---- Dispatch -----------------------------------------------------------------------------------------------------------------
+
+export const dispatchApi = {
+  /** The dispatcher's own view of the queue: every queued run with the gate holding it back, every lease, the fleet,
+   *  ownership and the last housekeeping passes. */
+  snapshot: () => get<DispatchSnapshot>("/api/v1/dispatch"),
 };
 
 // ---- Datasources and ad-hoc compute ---------------------------------------------------------------------------------

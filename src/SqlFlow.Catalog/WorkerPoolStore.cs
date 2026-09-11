@@ -95,39 +95,25 @@ public static class WorkerPoolStore
         }
     }
 
-    /// <summary>The replica target for a pool given its live queue depth and desired state: the greatest of the
-    /// queued-run count, the always-on floor, and the manual override while its window is open. This is the one
-    /// authoritative definition of the scaler's target, mirrored by the KEDA mssql query in the deploy manifests, so
-    /// the control plane, the list view, tests, and the autoscaler all agree rather than each re-deriving it. Pure, so
-    /// a caller that already holds the queue count and desired row (the fleet list) computes the target without
-    /// another round trip.</summary>
-    public static int ResolveTarget(int queuedRuns, CatalogWorkerPoolDesired? desired, DateTime nowUtc)
+    /// <summary>Combines a pool's demanded replicas with its desired state: the greatest of the demand, the always-on
+    /// floor, and the manual override while its window is open. The demand itself (eligible backlog over a node's
+    /// slots, plus busy nodes) is computed by <see cref="ScaleTargetStore"/>, the one definition of the target the
+    /// fleet page and the autoscaler's scale-target endpoint both read. Pure, so a caller that already holds the
+    /// demand and the desired row combines them without another round trip.</summary>
+    public static int ResolveTarget(int demandedReplicas, CatalogWorkerPoolDesired? desired, DateTime nowUtc)
     {
         if (desired is null)
         {
-            return queuedRuns;
+            return demandedReplicas;
         }
 
         var manual = desired.ManualUntilUtc is { } until && until > nowUtc ? desired.ManualReplicas : 0;
-        return Math.Max(queuedRuns, Math.Max(desired.MinReplicas, manual));
-    }
-
-    /// <summary>The replica target the autoscaler should hold for a pool right now, resolved against the live catalog:
-    /// counts the pool's queued runs (the default pool matches a null <c>TargetPool</c>), reads its desired row, and
-    /// combines them via <see cref="ResolveTarget"/>.</summary>
-    public static async Task<int> ResolveReplicaTargetAsync(
-        CatalogDbContext catalog, string? pool, DateTime nowUtc, CancellationToken ct = default)
-    {
-        ArgumentNullException.ThrowIfNull(catalog);
-        var key = PoolKey(pool);
-        var queued = await CountQueuedAsync(catalog, key, ct).ConfigureAwait(false);
-        var desired = await catalog.WorkerPools.AsNoTracking()
-            .FirstOrDefaultAsync(p => p.Pool == key, ct).ConfigureAwait(false);
-        return ResolveTarget(queued, desired, nowUtc);
+        return Math.Max(demandedReplicas, Math.Max(desired.MinReplicas, manual));
     }
 
     /// <summary>Counts the runs queued for a pool key (the empty-string default pool matches a null
-    /// <c>TargetPool</c>), the queue-depth term the scaler target is built from.</summary>
+    /// <c>TargetPool</c>): the backlog the fleet page shows beside the target. The target's own demand term counts
+    /// only the eligible part of it (see <see cref="ScaleTargetStore"/>).</summary>
     public static Task<int> CountQueuedAsync(CatalogDbContext catalog, string poolKey, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);

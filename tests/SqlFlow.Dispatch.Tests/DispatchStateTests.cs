@@ -467,4 +467,36 @@ public sealed class DispatchStateTests
         Assert.Equal((3, 2, 1, 2), (defaultPool.QueuedRuns, defaultPool.LeasedRuns, defaultPool.OnlineNodes, defaultPool.FreeRunSlots));
         Assert.Single(snapshot.Pools, p => p.Pool == "nobody" && p.QueuedRuns == 1);
     }
+    [Fact]
+    public void CountEligibleQueuedRuns_CountsOnlyWhatANodeCouldTakeNow_PerPool()
+    {
+        var state = new DispatchState();
+        var pipeline = Guid.NewGuid();
+        var group = Guid.NewGuid();
+        var free = Make.Run(At(0), pool: "etl");
+        var busyPipeline = Make.Run(At(1), pipeline: pipeline, pool: "etl");
+        var wave0 = Make.Run(At(2), pool: "etl", group: group, wave: 0, cap: 1);
+        var wave0Sibling = Make.Run(At(3), pool: "etl", group: group, wave: 0, cap: 1);
+        var wave1 = Make.Run(At(4), pool: "etl", group: group, wave: 1, cap: 1);
+        var untargeted = Make.Run(At(5));
+        foreach (var run in new[] { free, busyPipeline, wave0, wave0Sibling, wave1, untargeted })
+        {
+            state.AddQueuedRun(run);
+        }
+
+        // The pipeline is executing on some node: its queued run is gated. Wave 1 waits for wave 0; the cap only
+        // bites once a wave-0 member is executing, so both wave-0 members are eligible right now.
+        state.AddLeasedRun(Make.Run(At(0), pipeline: pipeline), "n9", T0, T0.AddMinutes(1));
+
+        Assert.Equal(3, state.CountEligibleQueuedRuns("etl"));
+        Assert.Equal(1, state.CountEligibleQueuedRuns(string.Empty));
+        Assert.Equal(0, state.CountEligibleQueuedRuns("nobody"));
+
+        // A node serving the pool takes its eligible work (and the untargeted run, which every node serves): the
+        // cap now holds the sibling, so nothing is left eligible anywhere.
+        var picks = state.ReserveRuns("n1", ["etl"], 10);
+        Assert.Equal([free.RunId, wave0.RunId, untargeted.RunId], picks.Select(p => p.RunId));
+        Assert.Equal(0, state.CountEligibleQueuedRuns("etl"));
+        Assert.Equal(0, state.CountEligibleQueuedRuns(string.Empty));
+    }
 }

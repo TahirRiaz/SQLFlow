@@ -1185,9 +1185,15 @@ public class CatalogNode
     /// <summary>How many runs this node was executing at its last heartbeat. The autoscaler's scale-in signal: the
     /// replica target counts nodes that are busy (this &gt; 0 and recently heartbeated) alongside the queued
     /// backlog, so occupied workers hold their replicas while idle ones remain the reclaimable surplus. Refreshed
-    /// on every heartbeat; a stale row is excluded by the same liveness window the orphan reaper uses, so a dead
-    /// node's last busy count can never pin a replica.</summary>
+    /// on every heartbeat; a stale row is excluded by the liveness window, so a dead node's last busy count can
+    /// never pin a replica.</summary>
     public int BusyRuns { get; set; }
+
+    /// <summary>How many runs this node executes at once, as it reported on its last heartbeat. The replica target
+    /// divides a pool's eligible backlog by this, so the fleet is sized by what its nodes actually offer rather
+    /// than by a deployment parameter that had to be kept in step with the node's constant by hand. Zero on a row
+    /// written before nodes reported it; the resolver then falls back to the node runtime's default.</summary>
+    public int RunSlots { get; set; }
 
     /// <summary>When set, an operator has asked this node to restart. The worker observes it on its heartbeat cadence,
     /// stops claiming, drains its in-flight work, and exits, after which the orchestrator (Container Apps / K8s)

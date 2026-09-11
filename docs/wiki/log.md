@@ -140,3 +140,18 @@ document says whether the flow participates). The reference pages that carry the
 (`cli/worker.md` rewritten, `concepts/control-plane.md`, `concepts/architecture-and-execution.md`,
 `concepts/environment-variables.md`, `concepts/shadow-catalog.md`, `guides/deployment.md`) were
 updated in the same change and the manifest rebuilt. The wiki decision page still waits for phase 3.
+
+## [2026-09-11] ingest | Dispatch design phase 3 and the decision page
+
+Ingested the completed `docs/dispatch-design.md` after phase 3 shipped: the KEDA scaler reads a
+pool's replica target from the control plane's own `GET /api/v1/node/scale-target` endpoint with the
+node token, computed from the journal on every replica by loading the queued and running rows into
+the dispatcher's own in-memory state (so the gates are evaluated by one code path) and dividing the
+eligible backlog by the slot count the nodes report, which removed the mssql scaler, its Go-driver
+catalog secret and the `maxConcurrentRunsPerReplica` parameter; the Nodes page gained the
+dispatcher's panel. Wrote the decision page
+[decisions/dispatch-in-control-plane.md](decisions/dispatch-in-control-plane.md) (the why, the four
+rejected alternatives, the four decisions that changed while it shipped, what generalizes), indexed
+it, and updated the drift map's phased-design section to point at it. Reference pages
+(`concepts/control-plane.md`, `guides/deployment.md`, `cli/worker.md`) updated in the same change;
+manifest rebuilt.

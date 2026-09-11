@@ -48,7 +48,7 @@ SQLFlow ships as three container images with three distinct scaling behaviors:
 |---|---|---|---|
 | `sqlflow-control-plane` | `Dockerfile` (repo root) | request load (HPA) | yes, under `/api` |
 | `sqlflow-gui` | `gui/Dockerfile` | trivially (static SPA) | yes, under `/` |
-| `sqlflow-worker` | `Dockerfile.worker` | queue depth (KEDA) | never (pull model, no inbound surface) |
+| `sqlflow-worker` | `Dockerfile.worker` | the control plane's replica target (KEDA) | never (pull model, no inbound surface) |
 
 ```bash
 docker build -t sqlflow-control-plane:latest .
@@ -56,7 +56,7 @@ docker build -f Dockerfile.worker -t sqlflow-worker:latest .
 docker build -t sqlflow-gui:latest gui/
 ```
 
-The split matters because the two tiers have opposite traffic shapes. The control plane is an HTTP API: it scales on request load and sits behind the ingress. Workers are compute nodes that pull work from the durable run queue over outbound SQL only; they expose nothing, never sit behind an ingress, and scale on queue depth. `ControlPlane__Worker__Enabled=false` is the switch that keeps the two independent: it turns off the control plane's in-process worker so API replicas do API work only (see `src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs`, `WorkerOptions`; the default is `true`, which is the single-node mode).
+The split matters because the two tiers have opposite traffic shapes. The control plane is an HTTP API: it scales on request load and sits behind the ingress. Workers are compute nodes that pull work from the control plane's dispatcher over outbound HTTP only; they expose nothing, never sit behind an ingress, and scale on the replica target the control plane computes from its backlog and its fleet. `ControlPlane__Worker__Enabled=false` is the switch that keeps the two independent: it turns off the control plane's in-process worker so API replicas do API work only (see `src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs`, `WorkerOptions`; the default is `true`, which is the single-node mode).
 
 ## Local / single host: docker compose
 
@@ -182,9 +182,20 @@ Secrets stay on the tier that uses them: the control plane gets the catalog conn
 
 ### Workers: one Deployment plus one KEDA ScaledObject per pool
 
-`deploy/k8s/worker-pool.yaml` is the template for one pool. Copy it per pool, setting `SQLFLOW_WORKER_POOL` and the ScaledObject query's `TargetPool` predicate. KEDA's mssql scaler counts queued runs and scales the Deployment 1:1 with queue depth:
+`deploy/k8s/worker-pool.yaml` is the template for one pool. Copy it per pool, setting `SQLFLOW_WORKER_POOL` in the Deployment and `?pool=<name>` in the ScaledObject's URL. KEDA's `metrics-api` scaler reads the pool's replica target from the control plane itself, `GET /api/v1/node/scale-target?pool=<name>` (node scope), and holds the Deployment at exactly that number; the scaler presents the same node token the workers use, through a bearer `TriggerAuthentication`, so no catalog credential exists on the compute tier at all:
 
 ```yaml
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: sqlflow-node-auth
+  namespace: sqlflow
+spec:
+  secretTargetRef:
+    - parameter: token
+      name: sqlflow-secrets
+      key: node-token
+---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -193,22 +204,22 @@ metadata:
 spec:
   scaleTargetRef:
     name: sqlflow-worker-default
-  minReplicaCount: 0   # scale to zero when nothing is queued and no node is busy
+  minReplicaCount: 0   # scale to zero when nothing is eligible and no node is busy
   maxReplicaCount: 10
   cooldownPeriod: 300  # keep a warm worker for five minutes after the work drains
   pollingInterval: 15
   triggers:
-    - type: mssql
+    - type: metrics-api
       metadata:
-        # Queued runs (capacity to start) plus busy nodes (capacity occupied; each worker heartbeats its BusyRuns
-        # count). A queued-only count reads zero while the fleet is still executing, and KEDA would then scale in
-        # and terminate pods carrying live runs. For a pooled copy change [TargetPool] and the Node [Pool] filter
-        # to the pool's name.
-        query: "SELECT (SELECT COUNT(*) FROM [catalog].[Run] WHERE [Status] = 'queued' AND [TargetPool] IS NULL) + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME()) AND ([Pool] = N'' OR [Pool] IS NULL))"
+        url: "http://sqlflow-controlplane/api/v1/node/scale-target?pool="
+        valueLocation: "replicas"
         targetValue: "1"
+        authMode: "bearer"
       authenticationRef:
-        name: sqlflow-catalog-auth
+        name: sqlflow-node-auth
 ```
+
+The target is the greatest of three terms (src/SqlFlow.Catalog/ScaleTargetStore.cs): the demand, the pool's always-on floor, and an active manual override, so the GUI's fleet controls steer the pool without the control plane ever calling the orchestrator. Demand is the pool's eligible queued runs (a member behind a lower wave, a group at its cap, or a run of a pipeline already executing asks for no replica, because no node could take it) divided by what one node of the pool executes at once (the nodes report it on every poll, so nothing in the manifest has to match a constant in the node runtime), plus the nodes currently busy (a queued-only count reads zero the moment the fleet takes a batch, which would let KEDA scale in mid-execution and kill pods carrying live runs). It is computed from the catalog journal, so every control-plane replica answers the same number.
 
 `minReplicaCount: 0` means an idle pool costs nothing. Because runs are pinned to the repo's synced commit at enqueue, a cold-started worker needs only its environment: it polls the control plane, stages the snapshotted YAML (or materializes the pinned commit from git), executes, and reports back. The worker Deployment reaches the control plane Service and mounts one env entry per `${env:...}` connection reference the pool's flows use:
 
@@ -262,7 +273,7 @@ How the Kubernetes layout maps onto Container Apps:
 
 - **Two origins instead of a path split.** Every Container App has its own ingress FQDN, so `main.bicep` computes both hostnames up front, points the GUI's `SQLFLOW_API_BASE_URL` at the control plane URL, and CORS-lists the GUI origin on the control plane (`corsAllowedOrigins`). Restoring the one-host layout means putting Front Door or Application Gateway in front of both apps, then blanking both settings.
 - **The control plane runs API-only** (`workerEnabled: false` in the module call), scaled `controlPlaneMinReplicas..controlPlaneMaxReplicas`; compute belongs to the worker app, exactly as in the k8s split.
-- **KEDA is built in.** `worker.bicep` scales `0..maxReplicas` on the same mssql queue-depth query as `worker-pool.yaml` (pool predicate included when `pool` is set), authenticated with the same Key Vault backed catalog-connection secret the container reads, and keeps `terminationGracePeriodSeconds: 600` so an in-flight run can finish on scale-in.
+- **KEDA is built in.** `worker.bicep` scales `0..maxReplicas` on the same scale-target endpoint as `worker-pool.yaml` (`?pool=` set from the `pool` parameter), a custom `metrics-api` rule authenticated with the Key Vault backed node token the container also presents, and keeps `terminationGracePeriodSeconds: 600` so an in-flight run can finish on scale-in. The worker app holds no catalog secret at all; without a node token it is deployed unscaled and takes no work until one is added.
 - **Secrets live in Key Vault, read by user-assigned managed identity.** The deployment writes them, and each app identity gets Key Vault Secrets User plus AcrPull when `acrName` names a same-group registry. The deploying principal therefore needs to create role assignments (Owner or User Access Administrator) and to write vault secrets (Key Vault Secrets Officer, since the vault uses RBAC authorization). The same identities resolve `${keyvault:...}` references at run time (`SQLFLOW_AZURE_AUTH=mi`, `AZURE_CLIENT_ID`). The three estate databases are wired for free: flows reach staging and the warehouse as `${env:SQLFLOW_CONN_PRE}` and `${env:SQLFLOW_CONN_DWH}`, fixed names in every estate, so a document moves from test to prod unchanged (only the secrets' values differ). Data-source references land on the worker only, via `workerFlowEnv`: one `{ name, secretName }` entry per reference, naming an existing vault secret to wire to that environment variable. Data-source credentials are created in the vault out of band and never pass through the template.
 - **The catalog is an Azure SQL database** (`sqlDatabaseSku`, default S1: the catalog is metadata plus the run queue, but it is polled continuously, so serverless auto-pause is the wrong shape). The ADO.NET connection string exists only as the `sqlflow-catalog-db` vault secret. The server admits Azure-service traffic (the consumption plan has no fixed egress address for a narrower rule); the hardening path is a VNet-integrated environment with a private endpoint to SQL and least-privilege or Entra credentials in place of the SQL admin, all behind that one secret.
 - **Proxy trust stays off by default.** Container Apps ingress terminates TLS in front of the app, and the platform's forwarding hops have no contractual CIDR on the consumption plan; per-client rate limiting therefore keys on the ingress hop. For a VNet-integrated environment whose infrastructure subnet is known, pass it as `proxyKnownNetworks` on `control-plane.bicep` to key on real client addresses.

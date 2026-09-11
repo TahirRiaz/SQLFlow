@@ -1,11 +1,12 @@
-# Compute: `sqlflow worker` pods scaled on QUEUE DEPTH by KEDA, not on traffic (workers expose nothing and never
-# sit behind the ingress). This manifest is the template for ONE pool: copy it per pool, set SQLFLOW_WORKER_POOL
-# and the ScaledObject query's pool predicate. A freshly scaled pod needs no pre-synced state and no catalog
+# Compute: `sqlflow worker` pods scaled on the control plane's replica target by KEDA, not on traffic (workers
+# expose nothing and never sit behind the ingress). This manifest is the template for ONE pool: copy it per pool,
+# set SQLFLOW_WORKER_POOL and the ScaledObject's ?pool= query parameter. A freshly scaled pod needs no pre-synced state and no catalog
 # connection: it polls the control plane, is handed a run with its definition, fetches the snapshotted YAML (or
 # materializes the pinned commit from git), executes, streams the trace, and reports back over the node protocol.
 #
-# Requires KEDA installed in the cluster (https://keda.sh): the mssql scaler polls the catalog for queued runs
-# (the scaler is the only consumer of the catalog-connection secret on this tier).
+# Requires KEDA installed in the cluster (https://keda.sh): the metrics-api scaler reads the pool's replica target
+# from the control plane (GET /api/v1/node/scale-target), authenticated with the same node token the workers use,
+# so no catalog credential reaches this tier at all.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,8 +36,8 @@ spec:
             - name: SQLFLOW_TOKEN
               valueFrom:
                 secretKeyRef: { name: sqlflow-secrets, key: node-token }
-            # Empty = untargeted runs only. For a pooled worker set the pool name(s) here AND in the
-            # ScaledObject query below.
+            # Empty = untargeted runs only. For a pooled worker set the pool name here AND in the ScaledObject's
+            # ?pool= parameter below.
             - name: SQLFLOW_WORKER_POOL
               value: ""
             - name: SQLFLOW_GIT_TOKEN
@@ -54,13 +55,15 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: sqlflow-catalog-auth
+  name: sqlflow-node-auth
   namespace: sqlflow
 spec:
   secretTargetRef:
-    - parameter: connectionString
+    # The node token: the workers' credential to the control plane, reused by the scaler for the scale-target
+    # endpoint (node scope). Mint it once the control plane is up and add it to sqlflow-secrets.
+    - parameter: token
       name: sqlflow-secrets
-      key: catalog-connection
+      key: node-token
 ---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
@@ -70,60 +73,26 @@ metadata:
 spec:
   scaleTargetRef:
     name: sqlflow-worker-default
-  minReplicaCount: 0   # scale to zero when the queue is dry
+  minReplicaCount: 0   # scale to zero when nothing is eligible and no node is busy
   maxReplicaCount: 10
-  cooldownPeriod: 300  # keep a warm worker for five minutes after the queue drains
+  cooldownPeriod: 300  # keep a warm worker for five minutes after the work drains
   pollingInterval: 15
   triggers:
-    - type: mssql
+    - type: metrics-api
       metadata:
-        # The replica target is the GREATEST of three catalog-driven terms, so the GUI's fleet controls steer this
-        # pool without the control plane ever calling the orchestrator (it only writes catalog rows; KEDA, which
-        # already queries the catalog, reads them):
-        #   1. demanded work - queued runs (capacity to start) PLUS busy nodes (heartbeat reports BusyRuns > 0
-        #      within the 60s liveness window; capacity already occupied). A queued-only count read zero the
-        #      moment the fleet claimed a batch, which let KEDA scale in mid-execution and kill pods carrying
-        #      live runs; counting busy NODES (not running runs) keeps the target honest when one node executes
-        #      several runs at once, and the liveness window means a dead node's last busy count never pins a
-        #      replica (the orphan reaper requeues its runs, which re-enter the queued term).
-        #   2. the always-on floor - [catalog].[WorkerPool].[MinReplicas] ("keep >=1 warm"),
-        #   3. an active manual override - [ManualReplicas] while [ManualUntilUtc] is in the future
-        #      (a spawn-from-zero or temporary scale-up that reverts on its own).
-        # A pool with no WorkerPool row (ISNULL -> 0) still scales to zero once nothing is queued and no node is
-        # busy. REQUIRES the WorkerPool table and [Node].[BusyRuns] (catalog migrations
-        # WorkerPoolDesiredAndNodeRestart + RunAttemptFencingAndNodeBusyRuns): deploy the control plane first so
-        # both migrations land, then apply this. For a pooled copy of this manifest, change the run predicate to
-        # [TargetPool] = '<pool>', the Node predicate to [Pool] = N'<pool>' (dropping the IS NULL alternative),
-        # and the two WorkerPool lookups to [Pool] = N'<pool>'.
-        # The queued term is divided by the node's own run concurrency (RunWorker.DefaultMaxConcurrentRuns, 4),
-        # since a replica drains four runs at once: one replica per queued run spawned four times the fleet a
-        # schedule wave needed, and the surplus pods found nothing left to claim. Busy nodes are NOT divided;
-        # they each hold one replica's worth of occupied capacity. Keep the 4.0 in step with that constant.
-        # It also counts only CLAIMABLE queued runs, mirroring the three gates in RunQueueStore.ClaimSqlTemplate
-        # (wave order within a run group, the group's max concurrency, one execution per pipeline). Counting every
-        # queued row asked for replicas that no worker was permitted to claim: a 51-member wave-ordered group sat
-        # queued for hours behind its first wave while the rule kept ordering pods that claimed nothing.
-        query: |-
-          SELECT (SELECT MAX(v) FROM (VALUES
-            ((CAST(CEILING((SELECT COUNT(*) FROM [catalog].[Run] AS r
-                            WHERE r.[Status] = 'queued' AND r.[TargetPool] IS NULL
-                              AND (r.[GroupId] IS NULL OR NOT EXISTS (
-                                  SELECT 1 FROM [catalog].[Run] AS s
-                                  WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave]
-                                    AND s.[Status] IN ('queued', 'running')))
-                              AND (r.[GroupMaxConcurrency] IS NULL OR (
-                                  SELECT COUNT(*) FROM [catalog].[Run] AS w
-                                  WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = 'running') < r.[GroupMaxConcurrency])
-                              AND NOT EXISTS (
-                                  SELECT 1 FROM [catalog].[Run] AS p
-                                  WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = 'running')) / 4.0) AS int)
-              + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0
-                 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME())
-                 AND ([Pool] = N'' OR [Pool] IS NULL)))),
-            (ISNULL((SELECT [MinReplicas] FROM [catalog].[WorkerPool] WHERE [Pool] = N''), 0)),
-            (ISNULL((SELECT CASE WHEN [ManualUntilUtc] > SYSUTCDATETIME() THEN [ManualReplicas] ELSE 0 END
-                     FROM [catalog].[WorkerPool] WHERE [Pool] = N''), 0))
-          ) AS t(v))
+        # The control plane answers the pool's replica target itself: the GREATEST of demanded work, the pool's
+        # always-on floor, and an active manual override, so the GUI's fleet controls steer this pool without the
+        # control plane ever calling the orchestrator. Demand is the pool's ELIGIBLE queued runs (a member behind a
+        # lower wave, a group at its cap, or a run of a pipeline already executing asks for no replica, because no
+        # node could take it) divided by what one node of the pool executes at once (the nodes report it on every
+        # poll, so nothing here has to match a constant in the node runtime), plus the nodes currently busy (a
+        # queued-only count reads zero the moment the fleet takes a batch, which would let KEDA scale in
+        # mid-execution and kill pods carrying live runs). The endpoint is computed from the catalog journal, so
+        # every control-plane replica answers the same number. For a pooled copy of this manifest, set
+        # ?pool=<pool> in the url and SQLFLOW_WORKER_POOL in the Deployment above.
+        url: "http://sqlflow-controlplane/api/v1/node/scale-target?pool="
+        valueLocation: "replicas"
         targetValue: "1"
+        authMode: "bearer"
       authenticationRef:
-        name: sqlflow-catalog-auth
+        name: sqlflow-node-auth

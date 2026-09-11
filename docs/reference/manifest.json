@@ -3397,9 +3397,48 @@
       ],
       "related": [
         "wiki-string-first-landing",
-        "wiki-census-drift"
+        "wiki-census-drift",
+        "wiki-dispatch-in-control-plane"
       ],
       "sourceRefs": []
+    },
+    {
+      "id": "wiki-dispatch-in-control-plane",
+      "corpus": "wiki",
+      "path": "decisions/dispatch-in-control-plane.md",
+      "title": "The run queue lives in the control plane, and a node speaks only to it",
+      "type": "decision",
+      "summary": "Why the run queue moved out of SQL Server into an in-memory dispatcher inside the control plane, what was rejected (portable SQL, a broker, per-replica queue...",
+      "keywords": [
+        "dispatcher",
+        "run queue",
+        "node protocol",
+        "lease",
+        "fence",
+        "journal",
+        "ownership lease",
+        "scale target",
+        "KEDA",
+        "portability"
+      ],
+      "related": [
+        "wiki-design-doc-drift"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Dispatch/Dispatcher.cs",
+        "src/SqlFlow.Dispatch/DispatchState.cs",
+        "src/SqlFlow.Dispatch/IDispatchLedger.cs",
+        "src/SqlFlow.Dispatch/Protocol/NodeProtocol.cs",
+        "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.Catalog/DispatchLeaseStore.cs",
+        "src/SqlFlow.Catalog/RunContextStore.cs",
+        "src/SqlFlow.Catalog/RunTraceStore.cs",
+        "src/SqlFlow.Catalog/ScaleTargetStore.cs",
+        "src/SqlFlow.Node/RunWorker.cs",
+        "src/SqlFlow.Node/NodeTraceFeed.cs",
+        "src/SqlFlow.ControlPlane/Dispatch/NodeProtocolEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Dispatch/DispatchService.cs"
+      ]
     },
     {
       "id": "wiki-file-ingestion-shaping",

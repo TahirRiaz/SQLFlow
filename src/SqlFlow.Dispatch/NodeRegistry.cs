@@ -90,7 +90,7 @@ public sealed class NodeRegistry
                 state.Dirty = false;
                 beats.Add(new NodeHeartbeat(
                     state.Name, state.Version, state.PoolKeys.Count > 0 ? state.PoolKeys[0] : string.Empty,
-                    state.BusyRuns, state.LastSeenUtc));
+                    state.BusyRuns, state.RunSlots, state.LastSeenUtc));
             }
 
             return beats;

@@ -26,7 +26,9 @@ const headClass = "h-8 whitespace-nowrap px-3 text-xs font-medium text-muted-for
 const cellClass = "whitespace-nowrap px-3 py-1.5 text-[13px]";
 
 /** Per-pool desired-compute controls: the always-on floor, a bounded manual scale-up, and a one-click spawn, all of
- *  which the control plane applies by writing a catalog row the autoscaler reads (no orchestrator calls). */
+ *  which the control plane applies by writing a catalog row that its own scale-target endpoint folds into the
+ *  replica target the autoscaler reads (no orchestrator calls). The target shown is exactly what the scaler is
+ *  answered with, and the columns beside it are the terms it was built from. */
 export function WorkerPoolsPanel() {
   const { hasScope } = useAuth();
   const canOperate = hasScope("operate");
@@ -41,8 +43,9 @@ export function WorkerPoolsPanel() {
       <div className="flex flex-col gap-1 p-4 pb-3">
         <h2 className="text-base font-medium">Worker pools</h2>
         <p className="text-[13px] text-muted-foreground">
-          The autoscaler runs each pool at the greatest of its queued work, an always-on floor, and any active manual
-          override. Keep a worker warm, scale a pool up for a window, or spawn one when the pool is at zero.
+          The autoscaler runs each pool at the greatest of its demand (the queued runs a node could take right now,
+          divided by what one worker executes at once, plus the workers already busy), an always-on floor, and any
+          active manual override. Keep a worker warm, scale a pool up for a window, or spawn one when the pool is at zero.
         </p>
       </div>
 
@@ -67,6 +70,8 @@ export function WorkerPoolsPanel() {
             <TableRow className="hover:bg-transparent">
               <TableHead className={headClass}>Pool</TableHead>
               <TableHead className={cn(headClass, "text-right")}>Queued</TableHead>
+              <TableHead className={cn(headClass, "text-right")}>Eligible</TableHead>
+              <TableHead className={cn(headClass, "text-right")}>Busy</TableHead>
               <TableHead className={cn(headClass, "text-right")}>Target</TableHead>
               <TableHead className={cn(headClass, "text-right")}>Workers</TableHead>
               <TableHead className={headClass}>State</TableHead>
@@ -115,6 +120,27 @@ function WorkerPoolRow({ pool, canOperate }: { pool: WorkerPool; canOperate: boo
         </div>
       </TableCell>
       <TableCell className={cn(cellClass, "text-right font-mono tabular-nums")}>{pool.queuedRuns}</TableCell>
+      <TableCell className={cn(cellClass, "text-right font-mono tabular-nums")}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>{pool.eligibleQueuedRuns}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            Queued runs no gate holds back: a run behind a busy pipeline, a lower wave or a full group cap asks for
+            no worker. One worker here executes {pool.runSlotsPerNode} at once.
+          </TooltipContent>
+        </Tooltip>
+      </TableCell>
+      <TableCell className={cn(cellClass, "text-right font-mono tabular-nums")}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>{pool.busyNodes}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs">
+            Online workers holding at least one run; each keeps its replica until it is idle.
+          </TooltipContent>
+        </Tooltip>
+      </TableCell>
       <TableCell className={cn(cellClass, "text-right font-mono font-medium tabular-nums")}>
         {pool.replicaTarget}
       </TableCell>

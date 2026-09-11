@@ -357,6 +357,60 @@ public sealed class NodeProtocolApiTests
         }
     }
 
+    [SkippableFact]
+    public async Task ScaleTarget_IsAnsweredFromTheJournal_OnAnyReplica_ForTheNodeScopeOnly()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+        var pool = "np-pool-" + flowName;
+
+        try
+        {
+            using var factory = NewFactory(cs);
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["node", "read"]);
+            await WaitForActiveDispatcherAsync(client, token);
+
+            var dispatcher = factory.Services.GetRequiredService<IRunDispatcher>();
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await dispatcher.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "ing", pool));
+                await dispatcher.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName + "_b", "ing", pool));
+            }
+
+            // Two eligible runs, no node has ever served the pool: one replica of the runtime's default four slots.
+            var target = await ReadScaleTargetAsync(client, token, pool);
+            Assert.Equal((pool, 2, 0, 4, 1), (target.Pool, target.EligibleQueuedRuns, target.BusyNodes, target.RunSlotsPerNode, target.Replicas));
+            Assert.Equal(0, (await ReadScaleTargetAsync(client, token, "np-nobody-" + flowName)).Replicas);
+
+            // The scaler presents the node credential; a person's token is refused.
+            var operate = await IssueTokenAsync(client, ["operate", "read"]);
+            using var forbidden = await client.SendAsync(Authorized(
+                HttpMethod.Get, NodeProtocol.RoutePrefix + "/scale-target?pool=" + Uri.EscapeDataString(pool), operate));
+            Assert.Equal(HttpStatusCode.Forbidden, forbidden.StatusCode);
+
+            // A replica that does not own dispatch answers the same number: the journal, not the owner's memory,
+            // is the source, so the scaler never depends on which replica it reached.
+            factory.Services.GetRequiredService<Dispatcher>().Deactivate();
+            Assert.Equal(1, (await ReadScaleTargetAsync(client, token, pool)).Replicas);
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId);
+        }
+    }
+
+    private static async Task<ScaleTarget> ReadScaleTargetAsync(HttpClient client, string token, string pool)
+    {
+        using var response = await client.SendAsync(Authorized(
+            HttpMethod.Get, NodeProtocol.RoutePrefix + "/scale-target?pool=" + Uri.EscapeDataString(pool), token));
+        response.EnsureSuccessStatusCode();
+        var target = await response.Content.ReadFromJsonAsync<ScaleTarget>();
+        Assert.NotNull(target);
+        return target;
+    }
+
     // ---- plumbing ------------------------------------------------------------------------------------------------
 
     private static ControlPlaneAppFactory NewFactory(string cs)

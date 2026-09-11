@@ -94,7 +94,8 @@ public sealed class CatalogDispatchLedger : IDispatchLedger
     {
         ArgumentNullException.ThrowIfNull(heartbeat);
         return WithCatalogAsync(catalog => NodeStore.HeartbeatAsync(
-            catalog, heartbeat.Name, heartbeat.Version, heartbeat.LastSeenUtc, heartbeat.Pool, heartbeat.BusyRuns, ct));
+            catalog, heartbeat.Name, heartbeat.Version, heartbeat.LastSeenUtc, heartbeat.Pool, heartbeat.BusyRuns,
+            heartbeat.RunSlots, ct));
     }
 
     public Task<int> PruneNodesAsync(DateTime olderThanUtc, CancellationToken ct)

@@ -1,9 +1,11 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.HttpResults;
+using SqlFlow.Catalog;
 using SqlFlow.Core.Runs;
 using SqlFlow.Dispatch;
 using SqlFlow.Dispatch.Protocol;
+using SqlFlow.Node;
 
 namespace SqlFlow.ControlPlane.Dispatch;
 
@@ -16,7 +18,9 @@ namespace SqlFlow.ControlPlane.Dispatch;
 /// the live trace in batches; and <c>POST /runs/{id}/outcome</c> and <c>POST /tasks/{id}/outcome</c> report results,
 /// every per-run call under the hand-out's fence. A replica whose dispatcher is not the owner answers 503 with a
 /// retry hint (see <see cref="Infrastructure.GlobalExceptionHandler"/>), so a node behind a load balancer lands on
-/// the owner within a retry or two.
+/// the owner within a retry or two. <c>GET /scale-target</c> is the one call here made not by a node but by the
+/// fleet's autoscaler, with the same node credential: the replica target for a pool, answered by every replica
+/// alike because it is computed from the journal rather than from the owner's memory.
 /// </summary>
 public static class NodeProtocolEndpoints
 {
@@ -40,7 +44,22 @@ public static class NodeProtocolEndpoints
         group.MapPost("/runs/{runId:guid}/trace", RunTraceAsync).WithTags("Node").WithName("NodeRunTrace");
         group.MapPost("/runs/{runId:guid}/outcome", RunOutcomeAsync).WithTags("Node").WithName("NodeRunOutcome");
         group.MapPost("/tasks/{taskId:guid}/outcome", TaskOutcomeAsync).WithTags("Node").WithName("NodeTaskOutcome");
+        group.MapGet("/scale-target", ScaleTargetAsync).WithTags("Node").WithName("NodeScaleTarget");
         return group;
+    }
+
+    /// <summary>The replica target an autoscaler holds a pool's worker deployment at (<c>replicas</c>), with every
+    /// term it was built from. <c>pool</c> names the pool; omitted or blank is the default (untargeted) pool. KEDA's
+    /// metrics-api scaler reads <c>replicas</c> against a target value of 1, so the fleet is sized to exactly this
+    /// number: demand from the eligible backlog and the busy nodes, or the always-on floor, or an active manual
+    /// override, whichever is greatest.</summary>
+    private static async Task<Ok<ScaleTarget>> ScaleTargetAsync(
+        string? pool, CatalogDbContext catalog, TimeProvider clock, CancellationToken ct)
+    {
+        var target = await ScaleTargetStore
+            .ResolveAsync(catalog, pool, RunWorker.DefaultMaxConcurrentRuns, clock.GetUtcNow().UtcDateTime, ct)
+            .ConfigureAwait(false);
+        return TypedResults.Ok(target);
     }
 
     private static async Task<Results<Ok<NodePollResponse>, ProblemHttpResult>> PollAsync(

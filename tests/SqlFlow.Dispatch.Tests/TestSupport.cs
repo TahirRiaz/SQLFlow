@@ -482,7 +482,7 @@ internal sealed class FakeLedger : IDispatchLedger
 
     public void RequestRestart(string node, DateTime requestedUtc)
     {
-        var beat = Nodes.TryGetValue(node, out var existing) ? existing.Beat : new NodeHeartbeat(node, null, null, 0, requestedUtc);
+        var beat = Nodes.TryGetValue(node, out var existing) ? existing.Beat : new NodeHeartbeat(node, null, null, 0, 0, requestedUtc);
         Nodes[node] = (beat, requestedUtc);
     }
 

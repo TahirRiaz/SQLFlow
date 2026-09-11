@@ -922,6 +922,31 @@ public sealed class DispatchState
         }
     }
 
+    /// <summary>How many queued runs of a pool a node could take right now: those no gate holds back (the pipeline
+    /// is idle, every lower wave of the group is terminal, the group is under its cap). This is the demand term of
+    /// an autoscaler's replica target, and it deliberately ignores whether any node is online: the absence of nodes
+    /// is exactly what the target exists to correct, while a run a gate blocks would occupy no node even if one
+    /// appeared.</summary>
+    public int CountEligibleQueuedRuns(string poolKey)
+    {
+        ArgumentNullException.ThrowIfNull(poolKey);
+        lock (_gate)
+        {
+            var eligible = 0;
+            foreach (var entry in _runs.Values)
+            {
+                if (entry.State == EntryState.Queued
+                    && string.Equals(entry.PoolKey, poolKey, StringComparison.Ordinal)
+                    && IsEligibleLocked(entry))
+                {
+                    eligible++;
+                }
+            }
+
+            return eligible;
+        }
+    }
+
     // ------------------------------------------------------------------------------------------- internals -------
 
     private bool IsEligibleLocked(RunEntry entry)

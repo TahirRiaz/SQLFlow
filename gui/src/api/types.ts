@@ -681,6 +681,12 @@ export interface Node {
   online: boolean;
   /** When set, a restart was requested and is pending until the node observes it on its next heartbeat. */
   restartRequestedUtc: string | null;
+  /** The pool the node serves; empty or null is the default (untargeted) pool. */
+  pool: string | null;
+  /** How many runs the node executes at once, as it reported on its last poll. */
+  runSlots: number;
+  /** How many runs the node was executing at its last poll. */
+  busyRuns: number;
 }
 
 /** The outcome of purging the fleet registry's offline nodes: how many dead entries were removed. */
@@ -689,8 +695,9 @@ export interface NodePurgeResult {
 }
 
 /** One worker pool's desired compute state and its live resolution. `pool` is the empty string for the default
- *  (untargeted) pool. `replicaTarget` is the count the autoscaler holds: max of queued runs, the always-on floor,
- *  and the manual override while active. */
+ *  (untargeted) pool. `replicaTarget` is the count the autoscaler holds, exactly what the control plane answers the
+ *  scaler with: the greatest of the demand (`eligibleQueuedRuns` over `runSlotsPerNode`, rounded up, plus
+ *  `busyNodes`), the always-on floor, and the manual override while active. */
 export interface WorkerPool {
   pool: string;
   minReplicas: number;
@@ -703,6 +710,109 @@ export interface WorkerPool {
   onlineNodes: number;
   updatedUtc: string | null;
   updatedBy: string | null;
+  /** The part of the backlog a node could take right now: queued runs no gate holds back. */
+  eligibleQueuedRuns: number;
+  /** Online workers of the pool that hold at least one run. */
+  busyNodes: number;
+  /** What one worker of the pool executes at once, as the workers report it. */
+  runSlotsPerNode: number;
+}
+
+// ---- Dispatch ---------------------------------------------------------------------------------------------------------
+
+/** Per-pool counts as the dispatcher sees them: the backlog, what is executing, and what capacity is online. */
+export interface DispatchPoolView {
+  pool: string;
+  queuedRuns: number;
+  leasedRuns: number;
+  queuedTasks: number;
+  leasedTasks: number;
+  onlineNodes: number;
+  freeRunSlots: number;
+}
+
+/** Why a queued run is not being handed out right now; the empty string means it is eligible. */
+export type DispatchBlockReason = "" | "pipeline-busy" | "wave-gated" | "group-cap" | "no-eligible-node";
+
+/** One queued run and the gate holding it back, if any. */
+export interface QueuedRunView {
+  runId: string;
+  pipelineId: string;
+  pool: string;
+  groupId: string | null;
+  groupWave: number;
+  groupMaxConcurrency: number | null;
+  enqueuedUtc: string;
+  attempt: number;
+  cancelRequested: boolean;
+  blocked: DispatchBlockReason;
+}
+
+/** One run handed to a node: who holds it, under which attempt, and until when unless renewed. `state` is `leased`,
+ *  `reserved` (a hand-out whose journal write is in flight) or `expiring` (the lease lapsed and its disposition is
+ *  in flight). */
+export interface LeasedRunView {
+  runId: string;
+  pipelineId: string;
+  pool: string;
+  groupId: string | null;
+  node: string | null;
+  attempt: number;
+  leasedUtc: string | null;
+  leaseExpiresUtc: string | null;
+  cancelRequested: boolean;
+  state: string;
+}
+
+export interface QueuedTaskView {
+  taskId: string;
+  pool: string;
+  enqueuedUtc: string;
+  blocked: DispatchBlockReason;
+}
+
+export interface LeasedTaskView {
+  taskId: string;
+  pool: string;
+  node: string | null;
+  leasedUtc: string | null;
+  leaseExpiresUtc: string | null;
+  cancelRequested: boolean;
+  state: string;
+}
+
+/** One node as the dispatcher's registry last heard from it. */
+export interface DispatchNodeView {
+  name: string;
+  version: string | null;
+  pools: string[];
+  runSlots: number;
+  freeRunSlots: number;
+  taskSlots: number;
+  freeTaskSlots: number;
+  firstSeenUtc: string;
+  lastSeenUtc: string;
+  startedUtc: string;
+  restartRequestedUtc: string | null;
+  online: boolean;
+}
+
+/** The dispatcher as it sees itself: ownership, the last housekeeping passes, and the whole queue with every gate
+ *  and lease explained. A replica that does not own dispatch reports `active: false` with an empty queue. */
+export interface DispatchSnapshot {
+  active: boolean;
+  owner: string | null;
+  activatedUtc: string | null;
+  lastReconcileUtc: string | null;
+  lastTickUtc: string | null;
+  /** Node polls currently parked waiting for work or a signal. */
+  waiters: number;
+  pools: DispatchPoolView[];
+  queuedRuns: QueuedRunView[];
+  leasedRuns: LeasedRunView[];
+  queuedTasks: QueuedTaskView[];
+  leasedTasks: LeasedTaskView[];
+  nodes: DispatchNodeView[];
 }
 
 /** A change to a pool's desired state. Every field is optional: send `minReplicas` to set/clear the always-on

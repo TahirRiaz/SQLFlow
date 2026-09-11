@@ -84,6 +84,7 @@ public sealed record RunOutcomeRecord(RunOutcomeStatus Status, IReadOnlyList<Gui
 /// row still carried the expired lease so the write applied, plus any dependents skipped.</summary>
 public sealed record InterruptedRunRecord(bool Applied, IReadOnlyList<Guid> SkippedRunIds);
 
-/// <summary>A node's heartbeat as the registry flushes it to the ledger: the node's name, build, pool, and how many
-/// runs it is executing, stamped with when the node was last heard from.</summary>
-public sealed record NodeHeartbeat(string Name, string? Version, string? Pool, int BusyRuns, DateTime LastSeenUtc);
+/// <summary>A node's heartbeat as the registry flushes it to the ledger: the node's name, build, pool, how many runs
+/// it is executing and how many it can execute at once (the replica-sizing terms an autoscaler reads back from the
+/// fleet registry), stamped with when the node was last heard from.</summary>
+public sealed record NodeHeartbeat(string Name, string? Version, string? Pool, int BusyRuns, int RunSlots, DateTime LastSeenUtc);

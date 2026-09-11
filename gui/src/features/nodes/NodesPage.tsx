@@ -6,6 +6,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
 import { OnlineBadge } from "../../components/StatusBadge";
+import { DispatchPanel } from "./DispatchPanel";
 import { NodeRestartButton } from "./NodeRestartButton";
 import { NodeDeleteButton } from "./NodeDeleteButton";
 import { PurgeOfflineNodesButton } from "./PurgeOfflineNodesButton";
@@ -18,6 +19,21 @@ const columns: Column<Node>[] = [
     render: (row) => <span className="font-mono text-[12px] font-medium">{row.name}</span>,
   },
   { id: "status", header: "Status", render: (row) => <OnlineBadge online={row.online} /> },
+  {
+    id: "pool",
+    header: "Pool",
+    render: (row) => <Mono>{row.pool === null || row.pool.length === 0 ? "default" : row.pool}</Mono>,
+  },
+  {
+    id: "runs",
+    header: "Runs",
+    align: "right",
+    render: (row) => (
+      <span className="font-mono tabular-nums" title="runs executing / runs the node executes at once">
+        {row.busyRuns} / {row.runSlots}
+      </span>
+    ),
+  },
   { id: "version", header: "Version", render: (row) => <Mono>{row.version ?? "-"}</Mono> },
   { id: "firstSeen", header: "First seen", render: (row) => <RelativeTime value={row.firstSeenUtc} /> },
   { id: "lastSeen", header: "Last seen", render: (row) => <RelativeTime value={row.lastSeenUtc} /> },
@@ -34,18 +50,21 @@ const columns: Column<Node>[] = [
 ];
 
 /** The worker fleet: which nodes exist, which are heartbeating, and what they run, plus per-pool compute controls
- *  (always-on floor, manual scale, spawn), a per-node restart, and a purge of the offline entries the fleet
+ *  (always-on floor, manual scale, spawn), the dispatcher's own view of the queue (every queued run with the gate
+ *  holding it back, every lease with its node), a per-node restart, and a purge of the offline entries the fleet
  *  accumulates as pods come and go. */
 export default function NodesPage() {
   return (
     <Page data-testid="page-nodes">
       <PageHeader
         title="Nodes"
-        subtitle="A node is online when it heartbeated within the last minute; anything older shows as offline."
+        subtitle="A node is online when it polled within the last minute; anything older shows as offline."
         actions={<PurgeOfflineNodesButton />}
       />
 
       <WorkerPoolsPanel />
+
+      <DispatchPanel />
 
       <PagedTable
         queryKey={["nodes", "list"]}

@@ -4,23 +4,29 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
+using SqlFlow.Dispatch;
+using SqlFlow.Node;
 
 namespace SqlFlow.ControlPlane.Api;
 
 /// <summary>A compute node in the fleet: when it was first and last heard from, its build, whether it is currently
-/// online (last heartbeat within the liveness window, computed at read time), and whether a restart it was asked to
-/// perform is still pending (the worker honors it on its next heartbeat).</summary>
+/// online (last heartbeat within the liveness window, computed at read time), whether a restart it was asked to
+/// perform is still pending (the worker honors it on its next heartbeat), the pool it serves, and how many runs it
+/// executes at once against how many it was executing at its last heartbeat.</summary>
 public sealed record NodeDto(
     string Name, DateTime FirstSeenUtc, DateTime LastSeenUtc, string? Version, bool Online,
-    DateTime? RestartRequestedUtc);
+    DateTime? RestartRequestedUtc, string? Pool, int RunSlots, int BusyRuns);
 
 /// <summary>One worker pool's desired compute state and its live resolution: the always-on floor, the (time-bounded)
-/// manual override, how many runs are queued for the pool right now, and the resulting replica target the autoscaler
-/// holds. <see cref="Pool"/> is the empty string for the default (untargeted) pool. <see cref="ManualActive"/> is
-/// whether the manual override applies at read time (its window is open).</summary>
+/// manual override, how many runs are queued for the pool right now (and how many of those a node could take at
+/// once, the eligible part), how many of its nodes are busy, what one node executes at once, and the resulting
+/// replica target the autoscaler holds, which is exactly what the scale-target endpoint answers the scaler with.
+/// <see cref="Pool"/> is the empty string for the default (untargeted) pool. <see cref="ManualActive"/> is whether
+/// the manual override applies at read time (its window is open).</summary>
 public sealed record WorkerPoolDto(
     string Pool, int MinReplicas, int ManualReplicas, DateTime? ManualUntilUtc, bool ManualActive,
-    int QueuedRuns, int ReplicaTarget, int OnlineNodes, DateTime? UpdatedUtc, string? UpdatedBy);
+    int QueuedRuns, int ReplicaTarget, int OnlineNodes, DateTime? UpdatedUtc, string? UpdatedBy,
+    int EligibleQueuedRuns, int BusyNodes, int RunSlotsPerNode);
 
 /// <summary>The outcome of purging the fleet registry's offline nodes: how many dead entries were removed.</summary>
 public sealed record NodePurgeResult(int Removed);
@@ -39,15 +45,15 @@ public sealed record WorkerPoolScaleRequest(
 /// state and resolved replica target. Controls (<c>operate</c> scope): <c>PUT /api/v1/nodes/pools/scale</c> sets a
 /// pool's always-on floor and manual override, <c>POST /api/v1/nodes/{name}/restart</c> asks a node to restart, and
 /// <c>DELETE /api/v1/nodes/{name}</c> / <c>DELETE /api/v1/nodes/offline</c> drop one dead entry or every offline one.
-/// The control plane never calls the orchestrator: both controls only write catalog rows, which the worker (restart)
-/// and the autoscaler (scale, which already queries the catalog) read, so influencing compute needs no
-/// infrastructure credentials.
+/// The control plane never calls the orchestrator: both controls only write catalog rows, which the worker (restart,
+/// relayed by the dispatcher) and the autoscaler (scale, read back through the control plane's own scale-target
+/// endpoint) observe, so influencing compute needs no infrastructure credentials.
 /// </summary>
 public static class NodeEndpoints
 {
-    // A node heartbeats every poll (a few seconds); treat it as online if heard from within the last minute, which
-    // tolerates a slow poll or a brief hiccup without flapping.
-    private static readonly TimeSpan OnlineWindow = TimeSpan.FromSeconds(60);
+    // A node polls at least every long-poll interval; treat it as online if heard from within the dispatcher's own
+    // liveness window, so the fleet page and the dispatcher never disagree about who is online.
+    private static readonly TimeSpan OnlineWindow = NodeRegistry.OnlineWindow;
 
     // Guards against absurd desired values (a fat-fingered replica count or an unbounded warm window); the real
     // ceiling on replicas is the autoscaler's own maxReplicaCount, and a spawn window longer than a day should be a
@@ -87,7 +93,8 @@ public static class NodeEndpoints
         var items = await ordered
             .Skip((p - 1) * size).Take(size)
             .Select(n => new NodeDto(
-                n.Name, n.FirstSeenUtc, n.LastSeenUtc, n.Version, n.LastSeenUtc >= staleBefore, n.RestartRequestedUtc))
+                n.Name, n.FirstSeenUtc, n.LastSeenUtc, n.Version, n.LastSeenUtc >= staleBefore, n.RestartRequestedUtc,
+                n.Pool, n.RunSlots, n.BusyRuns))
             .ToListAsync(ct).ConfigureAwait(false);
         return TypedResults.Ok(new PagedResult<NodeDto>(items, p, size, total));
     }
@@ -96,7 +103,6 @@ public static class NodeEndpoints
         CatalogDbContext db, TimeProvider clock, CancellationToken ct)
     {
         var now = clock.GetUtcNow().UtcDateTime;
-        var onlineSince = now - OnlineWindow;
 
         // The pools worth showing: the default pool (always), every pool with a desired row, and every pool that has
         // in-flight (queued or running) work right now, so a pool the operator routes to appears even before it is
@@ -123,24 +129,34 @@ public static class NodeEndpoints
         var result = new List<WorkerPoolDto>(keys.Count);
         foreach (var key in keys)
         {
-            var row = byPool.GetValueOrDefault(key);
-            var queued = await WorkerPoolStore.CountQueuedAsync(db, key, ct).ConfigureAwait(false);
-            var online = await NodeStore.CountOnlineInPoolAsync(db, key, onlineSince, ct).ConfigureAwait(false);
-            var manualActive = row?.ManualUntilUtc is { } until && until > now;
-            result.Add(new WorkerPoolDto(
-                key,
-                row?.MinReplicas ?? 0,
-                row?.ManualReplicas ?? 0,
-                row?.ManualUntilUtc,
-                manualActive,
-                queued,
-                WorkerPoolStore.ResolveTarget(queued, row, now),
-                online,
-                row is null ? null : row.UpdatedUtc,
-                row?.UpdatedBy));
+            result.Add(await DescribePoolAsync(db, key, byPool.GetValueOrDefault(key), now, ct).ConfigureAwait(false));
         }
 
         return TypedResults.Ok<IReadOnlyList<WorkerPoolDto>>(result);
+    }
+
+    /// <summary>One pool's row for the fleet page: the raw backlog beside the very target the autoscaler is being
+    /// answered with (the same resolution the scale-target endpoint performs), so what an operator sees is what
+    /// the platform is asked for.</summary>
+    private static async Task<WorkerPoolDto> DescribePoolAsync(
+        CatalogDbContext db, string key, CatalogWorkerPoolDesired? row, DateTime now, CancellationToken ct)
+    {
+        var queued = await WorkerPoolStore.CountQueuedAsync(db, key, ct).ConfigureAwait(false);
+        var target = await ScaleTargetStore.ResolveAsync(db, key, RunWorker.DefaultMaxConcurrentRuns, now, ct).ConfigureAwait(false);
+        return new WorkerPoolDto(
+            key,
+            row?.MinReplicas ?? 0,
+            row?.ManualReplicas ?? 0,
+            row?.ManualUntilUtc,
+            target.ManualActive,
+            queued,
+            target.Replicas,
+            target.OnlineNodes,
+            row is null ? null : row.UpdatedUtc,
+            row?.UpdatedBy,
+            target.EligibleQueuedRuns,
+            target.BusyNodes,
+            target.RunSlotsPerNode);
     }
 
     private static async Task<Results<Ok<WorkerPoolDto>, ProblemHttpResult>> ScalePoolAsync(
@@ -185,14 +201,8 @@ public static class NodeEndpoints
         await WorkerPoolStore.SaveScaleAsync(db, key, min, manualReplicas, manualUntil, updatedBy, now, ct)
             .ConfigureAwait(false);
 
-        var queued = await WorkerPoolStore.CountQueuedAsync(db, key, ct).ConfigureAwait(false);
-        var online = await NodeStore.CountOnlineInPoolAsync(db, key, now - OnlineWindow, ct).ConfigureAwait(false);
         var saved = await WorkerPoolStore.GetDesiredAsync(db, key, ct).ConfigureAwait(false);
-        var manualActive = saved?.ManualUntilUtc is { } u && u > now;
-        return TypedResults.Ok(new WorkerPoolDto(
-            key, saved?.MinReplicas ?? min, saved?.ManualReplicas ?? manualReplicas, saved?.ManualUntilUtc,
-            manualActive, queued, WorkerPoolStore.ResolveTarget(queued, saved, now), online,
-            saved is null ? now : saved.UpdatedUtc, saved?.UpdatedBy));
+        return TypedResults.Ok(await DescribePoolAsync(db, key, saved, now, ct).ConfigureAwait(false));
     }
 
     private static async Task<Results<Ok, ProblemHttpResult>> RestartNodeAsync(

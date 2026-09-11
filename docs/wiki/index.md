@@ -80,6 +80,9 @@ to narrow a search to one kind of page.
 
 - [Landing is string-first](decisions/string-first-landing.md) - why every non-Parquet source lands
   as strings and typing is deferred, and what the alternative would have cost.
+- [The run queue lives in the control plane](decisions/dispatch-in-control-plane.md) - why the
+  queue left SQL Server for an in-memory dispatcher journaled to the catalog, why a node speaks only
+  to the control plane, what was rejected, and the decisions that changed while it shipped.
 
 ### Incidents
 

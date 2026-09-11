@@ -1,16 +1,18 @@
 // Deploys one SQLFlow worker pool as a Container App: `sqlflow worker`, the pull-based drain loop over the
 // control plane's dispatcher. Workers expose nothing (no ingress; outbound HTTPS to the control plane, outbound
-// SQL to the data their flows touch, and outbound git for a pinned run without a snapshot) and scale 0..N on
-// QUEUE DEPTH through the built-in KEDA mssql scaler, so an idle pool costs nothing. A cold-started replica needs
-// only its environment and no catalog connection: it polls, is handed a run with its definition, fetches the
-// snapshotted YAML (or materializes the pinned commit), executes, streams the trace, and reports back.
+// SQL to the data their flows touch, and outbound git for a pinned run without a snapshot) and scale 0..N on the
+// control plane's own replica target through the built-in KEDA metrics-api scaler, so an idle pool costs nothing
+// and no catalog credential reaches this tier at all. A cold-started replica needs only its environment: it
+// polls, is handed a run with its definition, fetches the snapshotted YAML (or materializes the pinned commit),
+// executes, streams the trace, and reports back.
 //
 // This is the Container Apps mirror of deploy/k8s/worker-pool.yaml: deploy one copy per pool (set name and
 // pool together). Secrets come from an existing Key Vault, read by the app's user-assigned managed identity;
 // that same identity resolves ${keyvault:...} references at run time (SQLFLOW_AZURE_AUTH=mi).
 //
 //   az deployment group create -g <rg> -f worker.bicep \
-//     -p managedEnvironmentId=<env-id> image=<registry>/sqlflow-worker:latest keyVaultName=<kv>
+//     -p managedEnvironmentId=<env-id> image=<registry>/sqlflow-worker:latest keyVaultName=<kv> \
+//        controlPlaneUrl=https://<control-plane-fqdn> nodeTokenSecretName=sqlflow-node-token
 
 @description('Azure region. Defaults to the resource group location.')
 param location string = resourceGroup().location
@@ -27,16 +29,13 @@ param image string
 @description('Name of an existing Key Vault holding the node token (and any flow) secrets.')
 param keyVaultName string
 
-@description('Key Vault secret name for the catalog ADO.NET connection string. The node itself never connects to the catalog (it speaks only the node protocol); this secret exists for the KEDA scale rule alone, as the fallback when scalerConnectionSecretName is empty.')
-param catalogConnectionSecretName string = 'sqlflow-catalog-db'
-
-@description('The control plane base URL the node polls for work over the node protocol (https://<control-plane-fqdn>). Every call is outbound from the node.')
+@description('The control plane base URL the node polls for work over the node protocol (https://<control-plane-fqdn>). Every call is outbound from the node, and the scale rule reads the pool\'s replica target from the same host.')
 param controlPlaneUrl string
 
-@description('Key Vault secret name holding a personal access token minted with the node scope, which the node presents to the control plane. Mint it after the control plane is up (an admin: POST /api/v1/me/tokens with scopes ["node"]) and store it under this name before deploying the worker; leave empty to deploy the worker without a credential (it then cannot take work until one is added).')
+@description('Key Vault secret name holding a personal access token minted with the node scope, which the node presents to the control plane and the scale rule presents to the scale-target endpoint. Mint it after the control plane is up (an admin: POST /api/v1/me/tokens with scopes ["node"]) and store it under this name before deploying the worker; leave empty to deploy the worker without a credential (it then cannot take work, and it is not scaled, until one is added).')
 param nodeTokenSecretName string = ''
 
-@description('The pool this deployment serves (single pool name, used for both SQLFLOW_WORKER_POOL and the scale query). Empty drains untargeted runs only.')
+@description('The pool this deployment serves (single pool name, used for both SQLFLOW_WORKER_POOL and the scale-target query). Empty drains untargeted runs only.')
 param pool string = ''
 
 @description('Key Vault secret name for a token for private git remotes (SHA-pinned materialization). Leave empty when remotes are public.')
@@ -54,16 +53,9 @@ param acrName string = ''
 @description('Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set.')
 param acrLoginServer string = ''
 
-@description('Key Vault secret name for a Go-driver-compatible catalog connection string used ONLY by the KEDA scale rule (a go-mssqldb URL, sqlserver://user:urlencoded-pw@host:port?database=...). The KEDA mssql scaler is not .NET SqlClient: it does not strip the single quotes an ADO.NET connection string puts around a password, so the .NET catalog connection cannot be reused for the scaler. Leave empty to reuse catalogConnectionSecretName for the scaler (correct only when that password needs no quoting).')
-param scalerConnectionSecretName string = ''
-
-@description('Upper bound for queue-depth scale out.')
+@description('Upper bound for scale out.')
 @minValue(1)
 param maxReplicas int = 10
-
-@description('How many runs one replica executes at once. MUST match the node\'s own concurrency (SqlFlow.Node RunWorker.DefaultMaxConcurrentRuns, 4), because the scale rule divides queued work by it to size the fleet. Setting it higher than the node\'s value starves the queue; lower spawns replicas that find nothing left to claim.')
-@minValue(1)
-param maxConcurrentRunsPerReplica int = 4
 
 @description('vCPU per replica, as a string for exact decimals. Must form a valid Container Apps consumption pair with memory.')
 param cpu string = '1.0'
@@ -115,17 +107,9 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!emp
 var vaultUri = 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/'
 var registryServer = !empty(acrName) ? acr.properties.loginServer : acrLoginServer
 
-// Secrets are pulled from Key Vault by the app's managed identity; their values never appear here. The catalog
-// connection is held ONLY for the KEDA scale rule (its fallback when no scaler-specific secret is given); it is
-// never exposed to the container, because the node has no use for it.
-var baseSecrets = [
-  {
-    name: 'catalog-db'
-    keyVaultUrl: '${vaultUri}secrets/${catalogConnectionSecretName}'
-    identity: identity.id
-  }
-]
-
+// Secrets are pulled from Key Vault by the app's managed identity; their values never appear here. The node token
+// is the only credential this tier needs towards SQLFlow itself: the node presents it on every node-protocol call,
+// and the scale rule presents it to the scale-target endpoint.
 var nodeTokenSecrets = empty(nodeTokenSecretName) ? [] : [
   {
     name: 'node-token'
@@ -148,17 +132,6 @@ var flowEnvSecrets = [for (entry, i) in flowEnv: {
   identity: identity.id
 }]
 
-// A distinct secret for the KEDA scale rule when the scaler needs a different (Go-driver) connection string
-// than the .NET container. When unset, the scaler falls back to the container's catalog-db secret.
-var scalerSecrets = empty(scalerConnectionSecretName) ? [] : [
-  {
-    name: 'catalog-scaler'
-    keyVaultUrl: '${vaultUri}secrets/${scalerConnectionSecretName}'
-    identity: identity.id
-  }
-]
-var scalerSecretRef = empty(scalerConnectionSecretName) ? 'catalog-db' : 'catalog-scaler'
-
 var baseEnv = [
   // The dispatcher the node polls for work; the run queue lives there, never in the catalog, and everything a
   // run needs (its definition, YAML, lineage context) and produces (its trace, its outcome) travels through it.
@@ -166,7 +139,7 @@ var baseEnv = [
     name: 'SQLFLOW_URL'
     value: controlPlaneUrl
   }
-  // Empty = untargeted runs only, matching the scale query below.
+  // Empty = untargeted runs only, matching the scale-target query below.
   {
     name: 'SQLFLOW_WORKER_POOL'
     value: pool
@@ -209,42 +182,39 @@ var flowEnvVars = [for (entry, i) in flowEnv: {
   secretRef: 'flow-env-${i}'
 }]
 
-// The replica target is the GREATEST of demanded work, the always-on floor, and an active manual override, all read
-// from the catalog, so the GUI's fleet controls steer scaling without the control plane ever calling the
-// orchestrator (it only writes [catalog].[WorkerPool] rows; KEDA, which already queries the catalog, reads them).
-// The same query shape as deploy/k8s/worker-pool.yaml. A pool with no WorkerPool row (ISNULL -> 0) still scales to
-// zero once nothing is queued and no node is busy. REQUIRES the WorkerPool table AND [Node].[BusyRuns] (catalog
-// migrations WorkerPoolDesiredAndNodeRestart + RunAttemptFencingAndNodeBusyRuns): deploy the control plane first
-// so both migrations land, then this revision.
-//
-// The demanded-work term is queued runs PLUS busy nodes (nodes whose heartbeat reports BusyRuns > 0 within the
-// 60s liveness window). Queued runs ask for capacity to start; busy nodes hold the capacity they occupy, so
-// scale-in only ever reclaims idle replicas' worth of target. A queued-only count read zero the moment the fleet
-// claimed the batch, which let KEDA scale in mid-execution and terminate pods carrying live runs. Counting nodes
-// (not running runs) keeps the target honest when one node executes several runs at once, and the liveness window
-// means a dead node's last busy count can never pin a replica: the orphan reaper requeues its runs, which
-// re-enter the queued term until a live node claims them. The platform still picks scale-in victims blindly, so a
-// busy pod can be condemned in the claim/scale-in race; terminationGracePeriodSeconds lets it drain, and the
-// reaper's requeue makes even a severed run recoverable.
-//
-// The queued term is DIVIDED by maxConcurrentRunsPerReplica, because a replica is not worth one run: the node
-// drains up to RunWorker.DefaultMaxConcurrentRuns (4) at once. Asking for one replica per queued run made a
-// schedule wave spawn four times the fleet it needed, and the surplus pods found nothing left to claim by the
-// time they had pulled the image and started polling: over one 24h window 79 of 150 pods executed zero runs and
-// were reclaimed at the scaler's cooldown floor. Only the queued term is divided; busy nodes still count one
-// each, since dividing occupied capacity would ask the platform to reclaim pods that are executing runs.
-//
-// That term also counts only CLAIMABLE runs, mirroring the three gates in RunQueueStore.ClaimSqlTemplate: a
-// member of a wave-ordered group waits for every lower wave to go terminal, a member carrying a
-// GroupMaxConcurrency waits for a free slot in its group, and a run whose pipeline is already executing waits its
-// turn. A plain COUNT of queued rows asks for capacity no worker is permitted to take: one schedule fire enqueued
-// 51 wave-ordered members at once, the group then sat queued for four hours behind its wave-1 acquisition, and
-// the rule kept ordering replicas that started, claimed nothing, and died at the cooldown floor. Demand has to
-// mean work a node could pick up right now. Keep these predicates in step with the claim statement; the scaler
-// evaluates them over queued rows only, which is the same small set every node's claim poll already scans.
-var queueDepthQuery = empty(pool)
-  ? 'SELECT (SELECT MAX(v) FROM (VALUES ((CAST(CEILING((SELECT COUNT(*) FROM [catalog].[Run] AS r WHERE r.[Status] = \'queued\' AND r.[TargetPool] IS NULL AND (r.[GroupId] IS NULL OR NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS s WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave] AND s.[Status] IN (\'queued\', \'running\'))) AND (r.[GroupMaxConcurrency] IS NULL OR (SELECT COUNT(*) FROM [catalog].[Run] AS w WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = \'running\') < r.[GroupMaxConcurrency]) AND NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS p WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = \'running\')) / ${maxConcurrentRunsPerReplica}.0) AS int) + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME()) AND ([Pool] = N\'\' OR [Pool] IS NULL)))), (ISNULL((SELECT [MinReplicas] FROM [catalog].[WorkerPool] WHERE [Pool] = N\'\'), 0)), (ISNULL((SELECT CASE WHEN [ManualUntilUtc] > SYSUTCDATETIME() THEN [ManualReplicas] ELSE 0 END FROM [catalog].[WorkerPool] WHERE [Pool] = N\'\'), 0))) AS t(v))'
-  : 'SELECT (SELECT MAX(v) FROM (VALUES ((CAST(CEILING((SELECT COUNT(*) FROM [catalog].[Run] AS r WHERE r.[Status] = \'queued\' AND r.[TargetPool] = \'${pool}\' AND (r.[GroupId] IS NULL OR NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS s WHERE s.[GroupId] = r.[GroupId] AND s.[GroupWave] < r.[GroupWave] AND s.[Status] IN (\'queued\', \'running\'))) AND (r.[GroupMaxConcurrency] IS NULL OR (SELECT COUNT(*) FROM [catalog].[Run] AS w WHERE w.[GroupId] = r.[GroupId] AND w.[Status] = \'running\') < r.[GroupMaxConcurrency]) AND NOT EXISTS (SELECT 1 FROM [catalog].[Run] AS p WHERE p.[PipelineId] = r.[PipelineId] AND p.[Status] = \'running\')) / ${maxConcurrentRunsPerReplica}.0) AS int) + (SELECT COUNT(*) FROM [catalog].[Node] WHERE [BusyRuns] > 0 AND [LastSeenUtc] >= DATEADD(second, -60, SYSUTCDATETIME()) AND [Pool] = N\'${pool}\'))), (ISNULL((SELECT [MinReplicas] FROM [catalog].[WorkerPool] WHERE [Pool] = N\'${pool}\'), 0)), (ISNULL((SELECT CASE WHEN [ManualUntilUtc] > SYSUTCDATETIME() THEN [ManualReplicas] ELSE 0 END FROM [catalog].[WorkerPool] WHERE [Pool] = N\'${pool}\'), 0))) AS t(v))'
+// The replica target is answered by the control plane itself (GET /api/v1/node/scale-target?pool=..., node
+// scope): the GREATEST of demanded work, the pool's always-on floor, and an active manual override, so the GUI's
+// fleet controls steer scaling without the control plane ever calling the orchestrator. Demand is the pool's
+// ELIGIBLE queued runs (those no gate holds back: a member behind a lower wave, a group at its cap, or a run of a
+// pipeline that is already executing asks for no replica, because no node could take it) divided by what one node
+// of the pool executes at once (reported by the nodes themselves on every poll, so nothing here has to match a
+// constant in the node runtime), plus the nodes currently busy (a queued-only count reads zero the moment the fleet
+// takes a batch, which would let the platform scale in mid-execution and kill replicas carrying live runs; busy
+// nodes hold the capacity they occupy, so scale-in only ever reclaims idle replicas' worth of target). The
+// endpoint is computed from the catalog journal, so every control-plane replica answers the same number and the
+// rule never depends on which replica it reached. KEDA's metrics-api scaler reads `replicas` against a target of 1,
+// so the fleet is held at exactly that number. The rule needs the node token; without one the app is deployed
+// unscaled (and, with no credential, takes no work either) until the token is added.
+var scaleRules = empty(nodeTokenSecretName) ? [] : [
+  {
+    name: 'replica-target'
+    custom: {
+      type: 'metrics-api'
+      metadata: {
+        url: '${controlPlaneUrl}/api/v1/node/scale-target?pool=${uriComponent(pool)}'
+        valueLocation: 'replicas'
+        targetValue: '1'
+        authMode: 'bearer'
+      }
+      auth: [
+        {
+          secretRef: 'node-token'
+          triggerParameter: 'token'
+        }
+      ]
+    }
+  }
+]
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
@@ -266,7 +236,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           identity: identity.id
         }
       ]
-      secrets: concat(baseSecrets, nodeTokenSecrets, gitTokenSecrets, flowEnvSecrets, scalerSecrets)
+      secrets: concat(nodeTokenSecrets, gitTokenSecrets, flowEnvSecrets)
     }
     template: {
       // Let an in-flight run finish on scale-in or revision swap; an interrupted one is requeued anyway.
@@ -285,24 +255,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
       scale: {
         minReplicas: 0
         maxReplicas: maxReplicas
-        rules: [
-          {
-            name: 'queue-depth'
-            custom: {
-              type: 'mssql'
-              metadata: {
-                query: queueDepthQuery
-                targetValue: '1'
-              }
-              auth: [
-                {
-                  secretRef: scalerSecretRef
-                  triggerParameter: 'connectionString'
-                }
-              ]
-            }
-          }
-        ]
+        rules: scaleRules
       }
     }
   }

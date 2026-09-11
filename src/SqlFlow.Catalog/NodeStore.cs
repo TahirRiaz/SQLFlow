@@ -9,18 +9,20 @@ namespace SqlFlow.Catalog;
 /// </summary>
 public static class NodeStore
 {
-    /// <summary>Records a node's heartbeat: refreshes its last-seen (and version, and how many runs it is executing,
-    /// the autoscaler's busy signal), inserting the node the first time it is heard from, and returns the node's
-    /// current <see cref="CatalogNode.RestartRequestedUtc"/> so the caller can honor an operator's restart request
-    /// on the same cadence it heartbeats (null when none is pending). A freshly inserted node has no pending
-    /// request, so its first heartbeat always returns null. Idempotent and safe to call on every poll.</summary>
+    /// <summary>Records a node's heartbeat: refreshes its last-seen (and version, how many runs it is executing, the
+    /// autoscaler's busy signal, and how many it can execute at once, the autoscaler's sizing term), inserting the
+    /// node the first time it is heard from, and returns the node's current
+    /// <see cref="CatalogNode.RestartRequestedUtc"/> so the caller can honor an operator's restart request on the
+    /// same cadence it heartbeats (null when none is pending). A freshly inserted node has no pending request, so
+    /// its first heartbeat always returns null. Idempotent and safe to call on every poll.</summary>
     public static async Task<DateTime?> HeartbeatAsync(
         CatalogDbContext catalog, string name, string? version, DateTime nowUtc, string? pool = null,
-        int busyRuns = 0, CancellationToken ct = default)
+        int busyRuns = 0, int runSlots = 0, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentOutOfRangeException.ThrowIfNegative(busyRuns);
+        ArgumentOutOfRangeException.ThrowIfNegative(runSlots);
 
         // The steady-state path is a single UPDATE; only a node's very first heartbeat falls through to an insert.
         var updated = await catalog.Nodes
@@ -29,7 +31,8 @@ public static class NodeStore
                 .SetProperty(n => n.LastSeenUtc, nowUtc)
                 .SetProperty(n => n.Version, version)
                 .SetProperty(n => n.Pool, pool)
-                .SetProperty(n => n.BusyRuns, busyRuns), ct)
+                .SetProperty(n => n.BusyRuns, busyRuns)
+                .SetProperty(n => n.RunSlots, runSlots), ct)
             .ConfigureAwait(false);
         if (updated > 0)
         {
@@ -44,6 +47,7 @@ public static class NodeStore
         catalog.Nodes.Add(new CatalogNode
         {
             Name = name, FirstSeenUtc = nowUtc, LastSeenUtc = nowUtc, Version = version, Pool = pool, BusyRuns = busyRuns,
+            RunSlots = runSlots,
         });
         try
         {

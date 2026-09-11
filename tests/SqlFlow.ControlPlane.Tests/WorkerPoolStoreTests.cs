@@ -5,22 +5,23 @@ using Xunit;
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The desired-compute surface (<see cref="WorkerPoolStore"/>): the pure replica-target resolution the autoscaler
-/// mirrors, the per-pool desired-state upsert, and the per-node restart request. The DB-backed cases are gated on a
+/// The desired-compute surface (<see cref="WorkerPoolStore"/>): the pure combination of demand, floor and override
+/// behind the replica target, the per-pool desired-state upsert (resolved through <see cref="ScaleTargetStore"/>, the
+/// same path the autoscaler reads), and the per-node restart request. The DB-backed cases are gated on a
 /// reachable catalog like the other integration tests and clean up their own pool/node rows.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class WorkerPoolStoreTests
 {
     [Fact]
-    public void ResolveTarget_IsGreatestOfQueuedFloorAndActiveManual()
+    public void ResolveTarget_IsGreatestOfDemandFloorAndActiveManual()
     {
         var now = new DateTime(2026, 7, 15, 12, 0, 0, DateTimeKind.Utc);
 
-        // No desired row: the target is pure queue depth.
+        // No desired row: the target is the demand alone.
         Assert.Equal(3, WorkerPoolStore.ResolveTarget(3, null, now));
 
-        // Floor lifts an idle pool; queue depth still wins when it is higher.
+        // Floor lifts an idle pool; demand still wins when it is higher.
         var floor = new CatalogWorkerPoolDesired { MinReplicas = 1 };
         Assert.Equal(1, WorkerPoolStore.ResolveTarget(0, floor, now));
         Assert.Equal(4, WorkerPoolStore.ResolveTarget(4, floor, now));
@@ -39,7 +40,7 @@ public sealed class WorkerPoolStoreTests
     }
 
     [SkippableFact]
-    public async Task SaveScale_UpsertsFacetsAndResolvesTargetAgainstQueueDepth()
+    public async Task SaveScale_UpsertsFacetsAndResolvesTargetAgainstDemand()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -53,13 +54,13 @@ public sealed class WorkerPoolStoreTests
             // Always-on floor of 2, no queued work: the resolved target is the floor.
             await WorkerPoolStore.SaveScaleAsync(db, pool, minReplicas: 2, manualReplicas: 0, manualUntilUtc: null,
                 updatedBy: "tester", nowUtc: now);
-            Assert.Equal(2, await WorkerPoolStore.ResolveReplicaTargetAsync(db, pool, now));
+            Assert.Equal(2, (await ScaleTargetStore.ResolveAsync(db, pool, 4, now)).Replicas);
 
             // A bounded manual override lifts it further while its window is open, then lapses.
             await WorkerPoolStore.SaveScaleAsync(db, pool, minReplicas: 2, manualReplicas: 5,
                 manualUntilUtc: now.AddMinutes(10), updatedBy: "tester", nowUtc: now);
-            Assert.Equal(5, await WorkerPoolStore.ResolveReplicaTargetAsync(db, pool, now));
-            Assert.Equal(2, await WorkerPoolStore.ResolveReplicaTargetAsync(db, pool, now.AddMinutes(11)));
+            Assert.Equal(5, (await ScaleTargetStore.ResolveAsync(db, pool, 4, now)).Replicas);
+            Assert.Equal(2, (await ScaleTargetStore.ResolveAsync(db, pool, 4, now.AddMinutes(11))).Replicas);
 
             // The upsert is idempotent by pool key and the last write wins.
             await WorkerPoolStore.SaveScaleAsync(db, pool, minReplicas: 0, manualReplicas: 0, manualUntilUtc: null,
@@ -68,7 +69,7 @@ public sealed class WorkerPoolStoreTests
             Assert.NotNull(saved);
             Assert.Equal(0, saved!.MinReplicas);
             Assert.Equal("tester2", saved.UpdatedBy);
-            Assert.Equal(0, await WorkerPoolStore.ResolveReplicaTargetAsync(db, pool, now));
+            Assert.Equal(0, (await ScaleTargetStore.ResolveAsync(db, pool, 4, now)).Replicas);
         }
         finally
         {
