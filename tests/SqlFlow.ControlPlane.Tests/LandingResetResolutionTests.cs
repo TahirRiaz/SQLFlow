@@ -1,13 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
 using SqlFlow.Core.Runs;
-using SqlFlow.Node;
 using Xunit;
 
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The node's landing-reset verdict (<see cref="RunWorker.ResolveLandingResetAsync"/>): may the engine truncate a
+/// The node's landing-reset verdict (<see cref="RunContextStore.ResolveLandingResetAsync"/>): may the engine truncate a
 /// chained landing (bronze) table before the next load? The contract under test is one hop only: the reset is
 /// authorized exactly when every flow DIRECTLY reading the landing's typed view has completed a successful run
 /// that started after the landing flow's last successful load ended; anything further downstream never enters the
@@ -76,7 +75,7 @@ public sealed class LandingResetResolutionTests
         await CatalogDatabase.MigrateAsync(cs);
         await using var db = CatalogDatabase.Create(cs);
 
-        var verdict = await RunWorker.ResolveLandingResetAsync(
+        var verdict = await RunContextStore.ResolveLandingResetAsync(
             db, Guid.NewGuid(), Guid.NewGuid(), "pre", "T_none_" + Guid.NewGuid().ToString("N")[..8], RunParameters.None, CancellationToken.None);
 
         Assert.Null(verdict);
@@ -96,7 +95,7 @@ public sealed class LandingResetResolutionTests
             db.Runs.Add(Run(graph.ConsumerId, graph.ConsumerFlow, success: true, loadEnd.AddMinutes(10), loadEnd.AddMinutes(15)));
             await db.SaveChangesAsync();
 
-            var verdict = await RunWorker.ResolveLandingResetAsync(
+            var verdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, RunParameters.None, CancellationToken.None);
 
             Assert.NotNull(verdict);
@@ -127,20 +126,20 @@ public sealed class LandingResetResolutionTests
             await db.SaveChangesAsync();
 
             var windowed = RunParameters.None with { BackfillFrom = DateTime.UtcNow.AddYears(-1) };
-            var verdict = await RunWorker.ResolveLandingResetAsync(
+            var verdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, windowed, CancellationToken.None);
             Assert.NotNull(verdict);
             Assert.False(verdict.Authorized);
             Assert.Contains("backfill", verdict.Reason, StringComparison.Ordinal);
 
             var patterned = RunParameters.None with { FilePattern = "orders_2023*.csv" };
-            var patternVerdict = await RunWorker.ResolveLandingResetAsync(
+            var patternVerdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, patterned, CancellationToken.None);
             Assert.NotNull(patternVerdict);
             Assert.False(patternVerdict.Authorized);
 
             var full = RunParameters.None with { FullLoad = true };
-            var fullVerdict = await RunWorker.ResolveLandingResetAsync(
+            var fullVerdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, full, CancellationToken.None);
             Assert.NotNull(fullVerdict);
             Assert.True(fullVerdict.Authorized);
@@ -168,7 +167,7 @@ public sealed class LandingResetResolutionTests
             db.Runs.Add(Run(graph.ConsumerId, graph.ConsumerFlow, success: false, loadEnd.AddMinutes(30), loadEnd.AddMinutes(35)));
             await db.SaveChangesAsync();
 
-            var verdict = await RunWorker.ResolveLandingResetAsync(
+            var verdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, RunParameters.None, CancellationToken.None);
 
             Assert.NotNull(verdict);
@@ -195,7 +194,7 @@ public sealed class LandingResetResolutionTests
             db.Runs.Add(Run(graph.ConsumerId, graph.ConsumerFlow, success: true, DateTime.UtcNow.AddMinutes(-10), DateTime.UtcNow.AddMinutes(-5)));
             await db.SaveChangesAsync();
 
-            var verdict = await RunWorker.ResolveLandingResetAsync(
+            var verdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, RunParameters.None, CancellationToken.None);
 
             Assert.NotNull(verdict);
@@ -228,7 +227,7 @@ public sealed class LandingResetResolutionTests
             db.Runs.Add(Run(graph.ConsumerId, graph.ConsumerFlow, success: true, loadEnd.AddMinutes(10), loadEnd.AddMinutes(15)));
             await db.SaveChangesAsync();
 
-            var verdict = await RunWorker.ResolveLandingResetAsync(
+            var verdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, RunParameters.None, CancellationToken.None);
 
             Assert.NotNull(verdict);
@@ -271,7 +270,7 @@ public sealed class LandingResetResolutionTests
             db.Runs.Add(Run(secondConsumerId, secondConsumerFlow, success: true, loadEnd.AddHours(-3), loadEnd.AddHours(-2.5)));
             await db.SaveChangesAsync();
 
-            var verdict = await RunWorker.ResolveLandingResetAsync(
+            var verdict = await RunContextStore.ResolveLandingResetAsync(
                 db, graph.RepoId, graph.ProducerId, graph.Schema, graph.Table, RunParameters.None, CancellationToken.None);
 
             Assert.NotNull(verdict);

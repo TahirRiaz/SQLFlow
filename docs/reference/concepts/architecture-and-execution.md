@@ -58,19 +58,18 @@ The trigger contract is references-only. `POST /api/v1/runs` (src/SqlFlow.Contro
 A worker node is just the CLI in a poll loop:
 
 ```bash
-sqlflow worker --url <control-plane> [--token <ref>] [--db <conn-ref>] [--pool a,b] [--poll-seconds N]
+sqlflow worker --url <control-plane> [--token <ref>] [--pool a,b] [--poll-seconds N]
 ```
 
-`RunWorkerAsync` in src/SqlFlow.Cli/Program.cs composes the same `AddSqlFlowEngine` services plus a scoped catalog context, an `HttpNodeTransport` to the control plane, and the shared `RunWorker` loop, so a worker run is byte for byte a CLI run. Behavior verified in code:
+`RunWorkerAsync` in src/SqlFlow.Cli/Program.cs composes the same `AddSqlFlowEngine` services plus an `HttpNodeTransport` to the control plane and the shared `RunWorker` loop, so a worker run is byte for byte a CLI run. The node opens no catalog connection: each hand-out carries the run's definition, and the snapshotted YAML, the lineage context and the live trace travel over the same protocol. Behavior verified in code:
 
 - `--url` defaults to `SQLFLOW_URL`; `--token` to `SQLFLOW_TOKEN` (then the credential `sqlflow login` stored), and must be a personal access token carrying the `node` scope.
-- `--db` defaults to `${env:SQLFLOW_CATALOG_DB}`; the node reads run definitions and streams traces through it, never the queue.
 - `--poll-seconds` defaults to 30 and is clamped to 1..60: how long the dispatcher holds a poll when nothing is available.
 - `--pool` is a comma-separated list of the pools this node serves. A worker always takes untargeted runs; with `--pool` it additionally takes runs routed to those pools.
 - Placement is the dispatcher's, so any number of concurrent workers is safe; each holds a lease on what it executes and reports outcomes under that lease's fence.
 - The worker runs until Ctrl+C or SIGTERM, both intercepted to drain to a clean stop rather than killing the in-flight run.
 
-The container image wraps the same command: deploy/docker/worker-entrypoint.sh translates `SQLFLOW_WORKER_POOL`, `SQLFLOW_WORKER_POLL_SECONDS` and `SQLFLOW_WORKER_DRAIN_SECONDS` into flags, leaving the control plane URL, the node token and the catalog connection to the CLI's own environment defaults so none of them appears in `ps` output. deploy/compose/docker-compose.yml runs one scalable `worker` service (`docker compose up -d --scale worker=3`); deploy/k8s/worker-pool.yaml scales worker pods with KEDA (one manifest per pool, scale-to-zero when the queue is dry).
+The container image wraps the same command: deploy/docker/worker-entrypoint.sh translates `SQLFLOW_WORKER_POOL`, `SQLFLOW_WORKER_POLL_SECONDS` and `SQLFLOW_WORKER_DRAIN_SECONDS` into flags, leaving the control plane URL and the node token to the CLI's own environment defaults so neither appears in `ps` output. deploy/compose/docker-compose.yml runs one scalable `worker` service (`docker compose up -d --scale worker=3`); deploy/k8s/worker-pool.yaml scales worker pods with KEDA (one manifest per pool, scale-to-zero when the queue is dry).
 
 ## DocumentExecutor: the single execution pathway
 
@@ -123,8 +122,8 @@ Contract details, all verifiable in the source:
 
 ## Configuration touchpoints
 
-- **CLI commands:** `sqlflow run <pipeline.yaml>` (with `--full`, `--from`, `--to`, `--file-pattern` backfill parameters, `--json`, `--show-sql`, `--log-level info|debug|trace`), `sqlflow worker` (`--url`, `--token`, `--db`, `--poll-seconds`, `--pool`), `sqlflow db migrate|sync|status` for the shadow catalog.
-- **Environment variables:** `SQLFLOW_URL` and `SQLFLOW_TOKEN` (a worker's control plane and node token), `SQLFLOW_CATALOG_DB` (the default catalog connection for `worker` and `db`), `SQLFLOW_CONN_<NAME>` (a bare connection alias in a document resolves this canonical family), `SQLFLOW_AZURE_AUTH` (the Azure auth mode behind the one credential factory). Container deployments add `SQLFLOW_WORKER_POOL` and `SQLFLOW_WORKER_POLL_SECONDS`, which the worker entrypoint maps to the CLI flags.
+- **CLI commands:** `sqlflow run <pipeline.yaml>` (with `--full`, `--from`, `--to`, `--file-pattern` backfill parameters, `--json`, `--show-sql`, `--log-level info|debug|trace`), `sqlflow worker` (`--url`, `--token`, `--poll-seconds`, `--pool`), `sqlflow db migrate|sync|status` for the shadow catalog.
+- **Environment variables:** `SQLFLOW_URL` and `SQLFLOW_TOKEN` (a worker's control plane and node token), `SQLFLOW_CATALOG_DB` (the default catalog connection for `db` and the control plane), `SQLFLOW_CONN_<NAME>` (a bare connection alias in a document resolves this canonical family), `SQLFLOW_AZURE_AUTH` (the Azure auth mode behind the one credential factory). Container deployments add `SQLFLOW_WORKER_POOL` and `SQLFLOW_WORKER_POLL_SECONDS`, which the worker entrypoint maps to the CLI flags.
 - **YAML:** connection references in flow documents use `${env:NAME}` or `${keyvault:vault/secret}` forms, or a bare alias resolving `${env:SQLFLOW_CONN_<NAME>}`. Secrets never rest in the document; `sqlflow validate` and `sqlflow run` print a hygiene warning whenever a document embeds a `Password=`-style literal, without echoing the value.
 - **API:** `POST /api/v1/runs` triggers a run (requires the `operate` scope); `POST /api/v1/runs/{runId}/cancel` cancels one; `GET /api/v1/runs/{runId}` reflects it from queued through terminal.
 

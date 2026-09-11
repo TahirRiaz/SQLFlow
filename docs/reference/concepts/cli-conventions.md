@@ -61,7 +61,7 @@ Options in this set can be placed anywhere on the command line; the positional e
 
 **Placement.** The set is comprehensive: the run backfill parameters (`--from`, `--to`, `--file-pattern`), the auth `--scope`, the worker `--poll-seconds` and `--pool`, and the detect-unique-key `--sample`, `--max-columns`, and `--max-candidates` are all in `ValueTakingOptions`, so their values are consumed as option values rather than leaking into the positional list. There is no positional-ordering constraint on them: `sqlflow run --from 2023-01-15 pipelines/orders.yaml` and `sqlflow run pipelines/orders.yaml --from 2023-01-15` parse identically, because the parser skips `--from`'s value wherever the flag sits.
 
-`worker` is a genuine no-file exemption: `Program.Main`'s positional-count gate exempts `worker` alongside `healthcheck`, `auth`, `db`, and the rest (src/SqlFlow.Cli/Program.cs), so a bare `sqlflow worker` (with only the default `--db`) runs the queue drain loop directly. It needs no second positional token and never prints usage or exits 1 for a missing one. `sqlflow worker --db '${env:SQLFLOW_CATALOG_DB}'` starts normally.
+`worker` is a genuine no-file exemption: `Program.Main`'s positional-count gate exempts `worker` alongside `healthcheck`, `auth`, `db`, and the rest (src/SqlFlow.Cli/Program.cs), so a bare `sqlflow worker` (with `SQLFLOW_URL` and `SQLFLOW_TOKEN` in the environment) runs the drain loop directly. It needs no second positional token and never prints usage or exits 1 for a missing one. `sqlflow worker --url https://sqlflow.example.com` starts normally.
 
 ## Option value resolution
 
@@ -117,7 +117,7 @@ Command-specific notes:
 ## Configuration touchpoints
 
 - CLI flags: `-v`/`--verbose`, `-h`/`--help`, `-o`/`--out`, `--json`, `--log-level`, `--fail-on-anomaly`, `--strict`.
-- Environment: the git-ignored `.sqlflow/env` file (searched from the flow document's directory upward) supplies local values for `${env:...}` references before any command resolves; the process environment always wins. `SQLFLOW_CATALOG_DB` is the default `--db` reference for `db` and `worker`; `SQLFLOW_AZURE_AUTH` selects the auth mode `auth` reports.
+- Environment: the git-ignored `.sqlflow/env` file (searched from the flow document's directory upward) supplies local values for `${env:...}` references before any command resolves; the process environment always wins. `SQLFLOW_CATALOG_DB` is the default `--db` reference for `db` and `runs cancel` (a `worker` never reads it); `SQLFLOW_AZURE_AUTH` selects the auth mode `auth` reports.
 - YAML: none. Argument parsing and exit codes are host behavior; flow documents do not configure them.
 
 ## Examples

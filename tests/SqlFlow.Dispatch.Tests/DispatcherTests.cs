@@ -1,3 +1,5 @@
+using SqlFlow.Core.Ingestion;
+using SqlFlow.Core.Runs;
 using SqlFlow.Dispatch;
 using SqlFlow.Dispatch.Protocol;
 using Xunit;
@@ -571,6 +573,110 @@ public sealed class DispatcherTests
         Assert.Equal([task.TaskId], zombie.RevokedTasks);
         Assert.False(await dispatcher.RecordTaskOutcomeAsync(
             task.TaskId, new TaskOutcomeRequest("n1", TaskOutcomeKind.Succeeded, null, "{}"), CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task Poll_HandsOutTheExecutionSpec_ReadFromTheLedgerAsPartOfTheJournaling()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var run = Make.Run(T0);
+        var row = ledger.AddQueued(run);
+        row.Spec = Make.Spec("customers_02_ing", "feedbeef");
+        var task = Make.Task(T0);
+        ledger.AddQueuedTask(task).Spec = new TaskSpec("listObjects", "@dwh", """{"schema":"dbo"}""");
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+
+        var poll = await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1, freeTasks: 1), CancellationToken.None);
+
+        var handout = Assert.Single(poll.Runs);
+        Assert.Same(row.Spec, handout.Spec);
+        Assert.Equal(
+            ("customers_02_ing", "feedbeef", "flows/customers_02_ing.flow.yaml", "${env:GIT_TOKEN}"),
+            (handout.Spec.FlowName, handout.Spec.FlowVersionHash, handout.Spec.PipelineRelativePath, handout.Spec.CredentialReference));
+        Assert.True(handout.Spec.Parameters.IsDefault);
+        var taskHandout = Assert.Single(poll.Tasks);
+        Assert.Equal(("listObjects", "@dwh"), (taskHandout.Spec.Operation, taskHandout.Spec.SourceRef));
+    }
+
+    [Fact]
+    public async Task FlowVersion_IsServedFromTheLedger_AndRefusedWhilePassive()
+    {
+        var ledger = new FakeLedger();
+        ledger.FlowVersions["abc123"] = "name: orders_01_ing\n";
+        var clock = ManualClock.At();
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock);
+
+        Assert.Equal("name: orders_01_ing\n", await dispatcher.LoadFlowVersionAsync("abc123", CancellationToken.None));
+        Assert.Null(await dispatcher.LoadFlowVersionAsync("missing", CancellationToken.None));
+
+        dispatcher.Deactivate();
+        await Assert.ThrowsAsync<DispatchInactiveException>(() => dispatcher.LoadFlowVersionAsync("abc123", CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task RunContext_IsAnsweredOnlyForTheHolder_AndNotHeldForAStaleOrUnknownLease()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var run = Make.Run(T0);
+        var row = ledger.AddQueued(run);
+        row.Context = new RunContextResponse(
+            true,
+            new RelationalObject { Database = "dwh", Schema = "ods", Name = "Orders" },
+            new LandingReset { Authorized = true, Reason = "every consumer caught up" });
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, Make.Options(leaseSeconds: 60, longPollSeconds: 10));
+        var handout = Assert.Single((await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1), CancellationToken.None)).Runs);
+
+        var request = new RunContextRequest("n1", handout.Attempt, "pre", "Orders", true, true);
+        var answer = await dispatcher.ResolveRunContextAsync(run.RunId, request, CancellationToken.None);
+
+        Assert.True(answer.Held);
+        Assert.Equal("[dwh].[ods].[Orders]", answer.WatermarkSourceTable!.QualifiedName);
+        Assert.True(answer.LandingReset!.Authorized);
+        Assert.Contains($"context:{run.RunId}:n1:1", ledger.Calls);
+
+        // A stale attempt, another node, or an unknown run is refused in memory: the ledger is never asked.
+        var asked = ledger.Calls.Count(c => c.StartsWith("context:", StringComparison.Ordinal));
+        Assert.False((await dispatcher.ResolveRunContextAsync(run.RunId, request with { Attempt = 2 }, CancellationToken.None)).Held);
+        Assert.False((await dispatcher.ResolveRunContextAsync(run.RunId, request with { Node = "n2" }, CancellationToken.None)).Held);
+        Assert.False((await dispatcher.ResolveRunContextAsync(Guid.NewGuid(), request, CancellationToken.None)).Held);
+        Assert.Equal(asked, ledger.Calls.Count(c => c.StartsWith("context:", StringComparison.Ordinal)));
+
+        // Once the lease lapses and the run is requeued, the old holder is refused too.
+        clock.Advance(TimeSpan.FromSeconds(61));
+        await dispatcher.TickAsync(CancellationToken.None);
+        Assert.False((await dispatcher.ResolveRunContextAsync(run.RunId, request, CancellationToken.None)).Held);
+    }
+
+    [Fact]
+    public async Task Trace_IsAppendedUnderTheFence_AndRefusedOnceTheLeaseIsGone()
+    {
+        var ledger = new FakeLedger();
+        var clock = ManualClock.At();
+        var run = Make.Run(T0);
+        var row = ledger.AddQueued(run);
+        using var dispatcher = await Make.ActiveDispatcherAsync(ledger, clock, Make.Options(leaseSeconds: 60, longPollSeconds: 10));
+        var handout = Assert.Single((await dispatcher.PollAsync(Make.Poll("n1", freeRuns: 1), CancellationToken.None)).Runs);
+
+        Assert.True(await dispatcher.AppendRunTraceAsync(run.RunId, Make.Trace("n1", handout.Attempt), CancellationToken.None));
+        Assert.True(await dispatcher.AppendRunTraceAsync(run.RunId, Make.Trace("n1", handout.Attempt, ordinal: 2), CancellationToken.None));
+        Assert.Equal([1, 2], row.Trace.Select(b => b.Statements[0].Ordinal));
+
+        // A superseded or foreign holder's batch is refused in memory and never reaches the journal.
+        var writes = ledger.WriteCount;
+        Assert.False(await dispatcher.AppendRunTraceAsync(run.RunId, Make.Trace("n1", handout.Attempt + 1), CancellationToken.None));
+        Assert.False(await dispatcher.AppendRunTraceAsync(run.RunId, Make.Trace("n2", handout.Attempt), CancellationToken.None));
+        Assert.Equal(writes, ledger.WriteCount);
+        Assert.Equal(2, row.Trace.Count);
+
+        // The lease lapses: the run is requeued and the old holder's stream ends; the successor's is accepted.
+        clock.Advance(TimeSpan.FromSeconds(61));
+        await dispatcher.TickAsync(CancellationToken.None);
+        Assert.False(await dispatcher.AppendRunTraceAsync(run.RunId, Make.Trace("n1", handout.Attempt, ordinal: 3), CancellationToken.None));
+        var successor = Assert.Single((await dispatcher.PollAsync(Make.Poll("n2", freeRuns: 1), CancellationToken.None)).Runs);
+        Assert.True(await dispatcher.AppendRunTraceAsync(run.RunId, Make.Trace("n2", successor.Attempt), CancellationToken.None));
+        Assert.Equal(("n2", 2), (row.Trace[^1].Node, row.Trace[^1].Attempt));
     }
 
     [Fact]

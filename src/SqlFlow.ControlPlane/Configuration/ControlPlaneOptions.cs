@@ -368,9 +368,10 @@ public sealed class RateLimitOptions
 {
     public int PermitPerWindow { get; set; } = 120;
 
-    /// <summary>The per-node window for the node protocol, keyed by the node token's subject: a node long-polls
-    /// every few seconds, reports outcomes, and (with trace streaming) posts small batches several times a second
-    /// during a run, so its ceiling is far above a person's. Still bounded, so a misbehaving node cannot flood.</summary>
+    /// <summary>The per-node window for the node protocol, keyed by the node token's subject plus the node name
+    /// each call carries (so a fleet sharing one token still gets a window per node): a node long-polls every few
+    /// seconds, reports outcomes, and streams trace batches several times a second per executing run, so its
+    /// ceiling is far above a person's. Still bounded, so a misbehaving node cannot flood.</summary>
     public int NodePermitPerWindow { get; set; } = 6000;
 
     public int WindowSeconds { get; set; } = 60;

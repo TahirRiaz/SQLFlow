@@ -6,7 +6,9 @@ namespace SqlFlow.Node;
 /// <summary>
 /// How a node reaches the dispatcher. The control plane's own node calls the dispatcher in-process
 /// (<see cref="InProcessNodeTransport"/>); a standalone <c>sqlflow worker</c> speaks the node protocol over HTTP
-/// (<see cref="HttpNodeTransport"/>). One drain loop, two transports, one protocol.
+/// (<see cref="HttpNodeTransport"/>). One drain loop, two transports, one protocol. Everything a run needs beyond
+/// the hand-out (the snapshotted flow version, the lineage context, the live trace) travels through here too, so
+/// a node needs no catalog connection of its own.
 /// </summary>
 public interface INodeTransport
 {
@@ -15,6 +17,19 @@ public interface INodeTransport
     /// <see cref="NodeTransportException"/> (or <see cref="DispatchInactiveException"/> in-process) when the
     /// dispatcher cannot be reached or is not the owner; the caller retries with backoff.</summary>
     Task<NodePollResponse> PollAsync(NodePollRequest request, CancellationToken ct);
+
+    /// <summary>The YAML text of a snapshotted flow version by its content hash, or null when the control plane
+    /// has no such version (the node then falls back to git or its local checkout).</summary>
+    Task<string?> GetFlowVersionAsync(string contentHash, CancellationToken ct);
+
+    /// <summary>Resolves the lineage facts a handed-out run's execution depends on, under the hand-out's fence.
+    /// The answer's <see cref="RunContextResponse.Held"/> is false when the run no longer carries this node's
+    /// lease.</summary>
+    Task<RunContextResponse> ResolveRunContextAsync(Guid runId, RunContextRequest request, CancellationToken ct);
+
+    /// <summary>Posts one batch of a run's live trace under the hand-out's fence. Returns whether the dispatcher
+    /// accepted it (false when the run no longer carries this node's lease, after which the feed stops).</summary>
+    Task<bool> ReportTraceAsync(Guid runId, RunTraceBatch batch, CancellationToken ct);
 
     /// <summary>Reports a run's outcome under the hand-out's fence.</summary>
     Task<RunOutcomeStatus> ReportRunOutcomeAsync(Guid runId, RunOutcomeRequest request, CancellationToken ct);
@@ -55,4 +70,10 @@ public sealed class NodeTransportException : Exception
 
     /// <summary>Whether a retry is the right response.</summary>
     public bool Retryable { get; } = true;
+
+    /// <summary>Whether an exception a transport call raised means the dispatcher was momentarily unreachable or
+    /// not the owner, so the same call may simply be repeated: a retryable transport failure over HTTP, or the
+    /// in-process dispatcher reporting itself passive during an ownership hand-over.</summary>
+    public static bool IsRetryable(Exception exception)
+        => exception is NodeTransportException { Retryable: true } or DispatchInactiveException;
 }

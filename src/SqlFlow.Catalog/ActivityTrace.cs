@@ -4,8 +4,9 @@ using SqlFlow.Core.Runs;
 namespace SqlFlow.Catalog;
 
 /// <summary>
-/// Writes a control-plane <em>activity</em> trace: the general-purpose, reusable counterpart to the node's
-/// <c>CatalogRunEventSink</c>. Any long-running operation (a repository sync, a lineage computation, and so on)
+/// Writes a control-plane <em>activity</em> trace: the general-purpose, reusable counterpart to a run's live
+/// trace feed (<see cref="RunTraceStore.AppendLiveAsync"/>). Any long-running operation (a repository sync, a
+/// lineage computation, and so on)
 /// constructs one of these for its (<c>kind</c>, <c>subjectKey</c>) and calls
 /// <see cref="InfoAsync"/>/<see cref="WarnAsync"/>/<see cref="ErrorAsync"/> as it progresses, then
 /// <see cref="CompleteAsync"/> at its terminal outcome. Each call appends one <see cref="CatalogActivityEvent"/>

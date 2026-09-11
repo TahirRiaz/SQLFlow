@@ -10,10 +10,12 @@ namespace SqlFlow.Node;
 
 /// <summary>
 /// The node protocol over HTTP: a standalone worker's transport to the control plane's dispatcher. Every call is
-/// outbound from the node with a bearer credential carrying the <c>node</c> scope. The poll's request timeout is
-/// budgeted from the wait it asks for (the server may hold it that long), outcome reports get a fixed budget, and
-/// a 503 (a passive replica, or the owner still rebuilding) is reported as retryable so the drain loop backs off
-/// and tries again rather than failing.
+/// outbound from the node with a bearer credential carrying the <c>node</c> scope and the node's name in the
+/// <see cref="NodeProtocol.NodeHeader"/> header (so the control plane rate-limits per node, not per shared token).
+/// The poll's request timeout is budgeted from the wait it asks for (the server may hold it that long), outcome
+/// reports get a fixed budget sized for a large artifact, the smaller calls a run makes while executing (a flow
+/// version, its lineage context, a trace batch) a shorter one, and a 503 (a passive replica, or the owner still
+/// rebuilding) is reported as retryable so every caller backs off and tries again rather than failing.
 /// </summary>
 public sealed class HttpNodeTransport : INodeTransport, IDisposable
 {
@@ -25,11 +27,15 @@ public sealed class HttpNodeTransport : INodeTransport, IDisposable
     /// <summary>The budget for an outcome report, which may carry a large artifact.</summary>
     private static readonly TimeSpan OutcomeTimeout = TimeSpan.FromMinutes(2);
 
+    /// <summary>The budget for the calls a run makes while executing: a flow version, its context, a trace batch.</summary>
+    private static readonly TimeSpan SupportTimeout = TimeSpan.FromSeconds(60);
+
     private readonly HttpClient _http;
 
-    /// <summary>Creates a transport aimed at <paramref name="baseUrl"/> presenting <paramref name="bearerToken"/>.
-    /// <paramref name="handler"/> lets a test host substitute its in-memory server; production passes none.</summary>
-    public HttpNodeTransport(Uri baseUrl, string bearerToken, HttpMessageHandler? handler = null)
+    /// <summary>Creates a transport aimed at <paramref name="baseUrl"/> presenting <paramref name="bearerToken"/>
+    /// on behalf of <paramref name="nodeName"/> (this machine's name when omitted). <paramref name="handler"/> lets
+    /// a test host substitute its in-memory server; production passes none.</summary>
+    public HttpNodeTransport(Uri baseUrl, string bearerToken, HttpMessageHandler? handler = null, string? nodeName = null)
     {
         ArgumentNullException.ThrowIfNull(baseUrl);
         ArgumentException.ThrowIfNullOrWhiteSpace(bearerToken);
@@ -39,6 +45,8 @@ public sealed class HttpNodeTransport : INodeTransport, IDisposable
         _http.BaseAddress = baseUrl;
         _http.Timeout = Timeout.InfiniteTimeSpan;
         _http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
+        _http.DefaultRequestHeaders.Add(
+            NodeProtocol.NodeHeader, string.IsNullOrWhiteSpace(nodeName) ? Environment.MachineName : nodeName.Trim());
     }
 
     public async Task<NodePollResponse> PollAsync(NodePollRequest request, CancellationToken ct)
@@ -47,6 +55,48 @@ public sealed class HttpNodeTransport : INodeTransport, IDisposable
         var budget = TimeSpan.FromSeconds(Math.Max(0, request.WaitSeconds)) + PollGrace;
         using var response = await PostAsync(NodeProtocol.RoutePrefix + "/poll", request, budget, ct).ConfigureAwait(false);
         return await ReadAsync<NodePollResponse>(response, ct).ConfigureAwait(false);
+    }
+
+    public async Task<string?> GetFlowVersionAsync(string contentHash, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+        var path = NodeProtocol.RoutePrefix + "/flow-versions/" + Uri.EscapeDataString(contentHash);
+        using var request = new HttpRequestMessage(HttpMethod.Get, new Uri(path, UriKind.Relative));
+        using var response = await SendAsync(request, path, SupportTimeout, ct).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        var body = await ReadAsync<FlowVersionResponse>(response, ct).ConfigureAwait(false);
+        return body.Yaml;
+    }
+
+    public async Task<RunContextResponse> ResolveRunContextAsync(Guid runId, RunContextRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var path = string.Create(CultureInfo.InvariantCulture, $"{NodeProtocol.RoutePrefix}/runs/{runId}/context");
+        using var response = await PostAsync(path, request, SupportTimeout, ct).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return RunContextResponse.NotHeld;
+        }
+
+        return await ReadAsync<RunContextResponse>(response, ct).ConfigureAwait(false);
+    }
+
+    public async Task<bool> ReportTraceAsync(Guid runId, RunTraceBatch batch, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+        var path = string.Create(CultureInfo.InvariantCulture, $"{NodeProtocol.RoutePrefix}/runs/{runId}/trace");
+        using var response = await PostAsync(path, batch, SupportTimeout, ct).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        var body = await ReadAsync<RunTraceResponse>(response, ct).ConfigureAwait(false);
+        return body.Accepted;
     }
 
     public async Task<RunOutcomeStatus> ReportRunOutcomeAsync(Guid runId, RunOutcomeRequest request, CancellationToken ct)
@@ -79,14 +129,21 @@ public sealed class HttpNodeTransport : INodeTransport, IDisposable
 
     private async Task<HttpResponseMessage> PostAsync<T>(string path, T payload, TimeSpan budget, CancellationToken ct)
     {
+        using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(path, UriKind.Relative))
+        {
+            Content = JsonContent.Create(payload, options: Json),
+        };
+        return await SendAsync(request, path, budget, ct).ConfigureAwait(false);
+    }
+
+    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, string path, TimeSpan budget, CancellationToken ct)
+    {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(budget);
         HttpResponseMessage response;
         try
         {
-            response = await _http
-                .PostAsJsonAsync(new Uri(path, UriKind.Relative), payload, Json, timeout.Token)
-                .ConfigureAwait(false);
+            response = await _http.SendAsync(request, HttpCompletionOption.ResponseContentRead, timeout.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {

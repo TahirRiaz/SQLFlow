@@ -169,6 +169,21 @@ public sealed class DispatchState
         }
     }
 
+    /// <summary>Whether the given node holds the run under a live lease at the given attempt: the in-memory half of
+    /// the fence every per-run node call (a context request, a trace batch) presents. A lease already taken for
+    /// expiry does not count, so a node presumed dead is refused from the moment its run is being dispositioned.</summary>
+    public bool IsRunHeldBy(Guid runId, string node, int attempt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        lock (_gate)
+        {
+            return _runs.TryGetValue(runId, out var entry)
+                && entry.State == EntryState.Leased
+                && string.Equals(entry.Node, node, StringComparison.Ordinal)
+                && entry.Attempt == attempt;
+        }
+    }
+
     /// <summary>Removes a run only if the given node holds it at the given attempt: the outcome write for it was
     /// dropped by the ledger's fence, so memory's view of the holder was stale and reconcile will re-derive it.</summary>
     public bool RemoveRunIfHeldBy(Guid runId, string node, int attempt)

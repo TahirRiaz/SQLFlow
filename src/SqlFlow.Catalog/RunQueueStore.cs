@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SqlFlow.Core.Runs;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Dispatch;
+using SqlFlow.Dispatch.Protocol;
 
 namespace SqlFlow.Catalog;
 
@@ -472,14 +473,22 @@ public static class RunQueueStore
     }
 
     /// <summary>Journals a hand-out: the run goes from <c>queued</c> to <c>running</c> under <paramref name="node"/>,
-    /// with <see cref="CatalogRun.Attempt"/> advanced from <paramref name="expectedAttempt"/> to one more. The write is
-    /// conditional on the row still being queued at exactly that attempt, so a run cancelled or requeued directly in
-    /// the meantime is never handed out on stale knowledge. Returns whether the row was written.</summary>
-    public static async Task<bool> MarkHandedOutAsync(
+    /// with <see cref="CatalogRun.Attempt"/> advanced from <paramref name="expectedAttempt"/> to one more, and returns
+    /// the execution spec the node needs (see <see cref="LoadSpecAsync"/>). The spec is read first, so a read that
+    /// fails leaves the run queued with no attempt consumed; the write is then conditional on the row still being
+    /// queued at exactly that attempt, so a run cancelled or requeued directly in the meantime is never handed out on
+    /// stale knowledge. Returns null when the row is gone or the write did not apply.</summary>
+    public static async Task<RunSpec?> MarkHandedOutAsync(
         CatalogDbContext catalog, Guid runId, int expectedAttempt, string node, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
+
+        var spec = await LoadSpecAsync(catalog, runId, ct).ConfigureAwait(false);
+        if (spec is null)
+        {
+            return null;
+        }
 
         var attempt = expectedAttempt + 1;
         var written = await catalog.Runs
@@ -490,7 +499,79 @@ public static class RunQueueStore
                 .SetProperty(r => r.StartUtc, nowUtc)
                 .SetProperty(r => r.Attempt, attempt), ct)
             .ConfigureAwait(false);
-        return written > 0;
+        return written > 0 ? spec : null;
+    }
+
+    /// <summary>Everything a node needs to execute the run, in one joined projection: the run row, its repo and
+    /// pipeline, and the repo's managed source (whose credential REFERENCE a SHA-pinned run resolves on the node).
+    /// Left joins keep the missing cases distinguishable, so the node's failure message stays precise when a repo or
+    /// pipeline has left the catalog since the enqueue. Null when the run row itself is gone.</summary>
+    public static async Task<RunSpec?> LoadSpecAsync(CatalogDbContext catalog, Guid runId, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+
+        var row = await (
+                from r in catalog.Runs.AsNoTracking()
+                where r.RunId == runId
+                join repoRow in catalog.Repos.AsNoTracking() on r.RepoId equals (Guid?)repoRow.Id into repoRows
+                from repo in repoRows.DefaultIfEmpty()
+                join pipelineRow in catalog.Pipelines.AsNoTracking() on r.PipelineId equals pipelineRow.Id into pipelineRows
+                from pipeline in pipelineRows.DefaultIfEmpty()
+                join sourceRow in catalog.RepoSources.AsNoTracking() on repo.Name equals sourceRow.Name into sourceRows
+                from source in sourceRows.DefaultIfEmpty()
+                select new
+                {
+                    r.RepoId,
+                    r.PipelineId,
+                    r.FlowName,
+                    r.CommitSha,
+                    r.FlowVersionHash,
+                    r.FullLoad,
+                    r.BackfillFrom,
+                    r.BackfillTo,
+                    r.FilePattern,
+                    r.SourceFilter,
+                    r.AssertionsOnly,
+                    r.ReprocessFromSourceMin,
+                    RepoName = repo != null ? repo.Name : null,
+                    RepoRemoteUrl = repo != null ? repo.RemoteUrl : null,
+                    RepoRootPath = repo != null ? repo.RootPath : null,
+                    PipelineRelativePath = pipeline != null ? pipeline.RelativePath : null,
+                    CredentialReference = source != null ? source.CredentialReference : null,
+                    CredentialUsername = source != null ? source.CredentialUsername : null,
+                })
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (row is null)
+        {
+            return null;
+        }
+
+        return new RunSpec(
+            row.RepoId, row.PipelineId, row.FlowName, row.RepoName, row.RepoRemoteUrl, row.RepoRootPath,
+            row.PipelineRelativePath, row.CommitSha, row.FlowVersionHash,
+            new RunParameters
+            {
+                FullLoad = row.FullLoad,
+                BackfillFrom = row.BackfillFrom,
+                BackfillTo = row.BackfillTo,
+                FilePattern = row.FilePattern,
+                SourceFilter = row.SourceFilter,
+                AssertionsOnly = row.AssertionsOnly,
+                ReprocessFromSourceMin = row.ReprocessFromSourceMin,
+            },
+            row.CredentialReference, row.CredentialUsername);
+    }
+
+    /// <summary>The YAML text of the snapshotted flow version with the given content hash, served to a node staging
+    /// a handed-out run; null when no such version is staged.</summary>
+    public static Task<string?> LoadFlowVersionAsync(CatalogDbContext catalog, string contentHash, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+        return catalog.FlowVersions.AsNoTracking()
+            .Where(v => v.ContentHash == contentHash)
+            .Select(v => v.Yaml)
+            .FirstOrDefaultAsync(ct);
     }
 
     /// <summary>Records a run's outcome as its node reported it, under the fence: completion from the artifact
@@ -789,23 +870,38 @@ public static class RunQueueStore
     /// idempotent (keyed merges, content-addressed landing), so a half-finished attempt re-runs clean. Fenced on the
     /// expired lease's node and attempt, and on the attempt budget, so no interleaving can requeue a run past its
     /// budget or a run its node completed in the same instant.</summary>
-    public static async Task<InterruptedRunRecord> RequeueInterruptedAsync(
+    public static Task<InterruptedRunRecord> RequeueInterruptedAsync(
         CatalogDbContext catalog, Guid runId, string node, int attempt, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
 
-        var requeued = await catalog.Runs
-            .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
-                && r.ClaimedByNode == node && r.Attempt == attempt
-                && r.Attempt < MaxExecutionAttempts && r.CancelRequestedUtc == null)
-            .ExecuteUpdateAsync(s => s
-                .SetProperty(r => r.Status, RunStatuses.Queued)
-                .SetProperty(r => r.ClaimedByNode, (string?)null)
-                .SetProperty(r => r.StartUtc, (DateTime?)null)
-                .SetProperty(r => r.WrittenUtc, nowUtc), ct)
-            .ConfigureAwait(false);
-        return new InterruptedRunRecord(requeued > 0, []);
+        return CatalogTransaction.InSerializableAsync(catalog, async () =>
+        {
+            var requeued = await catalog.Runs
+                .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
+                    && r.ClaimedByNode == node && r.Attempt == attempt
+                    && r.Attempt < MaxExecutionAttempts && r.CancelRequestedUtc == null)
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.Status, RunStatuses.Queued)
+                    .SetProperty(r => r.ClaimedByNode, (string?)null)
+                    .SetProperty(r => r.StartUtc, (DateTime?)null)
+                    .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+                .ConfigureAwait(false);
+            if (requeued == 0)
+            {
+                return new InterruptedRunRecord(false, []);
+            }
+
+            // The interrupted attempt's live trace is discarded with it: the next execution starts from scratch
+            // and streams its own trace from ordinal 1, and the run's trace must be that execution's, not the two
+            // interleaved (the completion's tail append keys on the highest ordinal present, so leftover rows from a
+            // dead attempt would also hide the successor's rows beneath that ordinal). Atomic with the requeue, so
+            // no window exists in which the row is queued but still carries a stale trace.
+            await catalog.RunStatements.Where(s => s.RunId == runId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.RunEvents.Where(e => e.RunId == runId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            return new InterruptedRunRecord(true, []);
+        }, ct);
     }
 
     /// <summary>Fails an interrupted run that has consumed its whole attempt budget: a run that repeatedly dies with

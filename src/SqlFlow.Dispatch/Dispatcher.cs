@@ -253,11 +253,11 @@ public sealed partial class Dispatcher : IDisposable
         var handed = new List<RunHandout>(reservations.Count);
         foreach (var reservation in reservations)
         {
-            bool journaled;
+            RunSpec? spec;
             var now = _clock.GetUtcNow().UtcDateTime;
             try
             {
-                journaled = await _ledger
+                spec = await _ledger
                     .MarkRunHandedOutAsync(reservation.RunId, reservation.ExpectedAttempt, node, now, ct)
                     .ConfigureAwait(false);
             }
@@ -277,7 +277,7 @@ public sealed partial class Dispatcher : IDisposable
                 continue;
             }
 
-            if (!journaled)
+            if (spec is null)
             {
                 // The ledger no longer holds the row as queued at this attempt (cancelled or removed directly):
                 // memory was stale for this run, so drop it; reconcile re-adds it if it is in fact still queued.
@@ -294,7 +294,7 @@ public sealed partial class Dispatcher : IDisposable
                 LogHandOutUnconfirmed(reservation.RunId, node);
             }
 
-            handed.Add(new RunHandout(reservation.RunId, attempt));
+            handed.Add(new RunHandout(reservation.RunId, attempt, spec));
         }
 
         return handed;
@@ -317,11 +317,11 @@ public sealed partial class Dispatcher : IDisposable
         var handed = new List<TaskHandout>(reservations.Count);
         foreach (var taskId in reservations)
         {
-            bool journaled;
+            TaskSpec? spec;
             var now = _clock.GetUtcNow().UtcDateTime;
             try
             {
-                journaled = await _ledger.MarkTaskHandedOutAsync(taskId, node, now, ct).ConfigureAwait(false);
+                spec = await _ledger.MarkTaskHandedOutAsync(taskId, node, now, ct).ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -335,7 +335,7 @@ public sealed partial class Dispatcher : IDisposable
                 continue;
             }
 
-            if (!journaled)
+            if (spec is null)
             {
                 Queue.RemoveTask(taskId);
                 LogHandOutDropped(taskId, node);
@@ -347,10 +347,54 @@ public sealed partial class Dispatcher : IDisposable
                 LogHandOutUnconfirmed(taskId, node);
             }
 
-            handed.Add(new TaskHandout(taskId));
+            handed.Add(new TaskHandout(taskId, spec));
         }
 
         return handed;
+    }
+
+    // ------------------------------------------------------------------------------------- execution support ----
+
+    /// <summary>The snapshotted YAML of a flow version, for a node staging a handed-out run's document into its
+    /// local version cache; null when no such version is staged.</summary>
+    public Task<string?> LoadFlowVersionAsync(string contentHash, CancellationToken ct)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentHash);
+        EnsureActive();
+        return _ledger.LoadFlowVersionAsync(contentHash, ct);
+    }
+
+    /// <summary>Resolves the lineage facts a run's execution depends on, for the node holding it. The fence is
+    /// checked against memory first (a lease already lapsed is refused without a journal read) and again by the
+    /// ledger, so a node presumed dead never receives an answer it could act on.</summary>
+    public Task<RunContextResponse> ResolveRunContextAsync(Guid runId, RunContextRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Node);
+        EnsureActive();
+        if (!Queue.IsRunHeldBy(runId, request.Node, request.Attempt))
+        {
+            LogContextRefused(runId, request.Node, request.Attempt);
+            return Task.FromResult(RunContextResponse.NotHeld);
+        }
+
+        return _ledger.ResolveRunContextAsync(runId, request, ct);
+    }
+
+    /// <summary>Appends a batch of the live trace a node streams for a run it holds. Fenced in memory and in the
+    /// ledger; a refused batch is dropped and the node's feed for that run ends.</summary>
+    public Task<bool> AppendRunTraceAsync(Guid runId, RunTraceBatch batch, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(batch);
+        ArgumentException.ThrowIfNullOrWhiteSpace(batch.Node);
+        EnsureActive();
+        if (!Queue.IsRunHeldBy(runId, batch.Node, batch.Attempt))
+        {
+            LogTraceRefused(runId, batch.Node, batch.Attempt);
+            return Task.FromResult(false);
+        }
+
+        return _ledger.AppendRunTraceAsync(runId, batch, ct);
     }
 
     // -------------------------------------------------------------------------------------------- outcomes -------
@@ -749,6 +793,12 @@ public sealed partial class Dispatcher : IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: outcome from node '{Node}' at attempt {Attempt} dropped by the fence; the run was requeued after its lease lapsed and the current holder is authoritative.")]
     private partial void LogStaleOutcome(Guid runId, string node, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: context request from node '{Node}' at attempt {Attempt} refused; the run no longer carries that lease.")]
+    private partial void LogContextRefused(Guid runId, string node, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: trace batch from node '{Node}' at attempt {Attempt} refused; the run no longer carries that lease, so its feed ends here.")]
+    private partial void LogTraceRefused(Guid runId, string node, int attempt);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: lease held by '{Node}' lapsed with a cancel pending; recorded cancelled (applied: {Applied}).")]
     private partial void LogLeaseExpiredCancelled(Guid runId, string node, bool applied);

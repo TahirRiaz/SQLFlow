@@ -1,12 +1,16 @@
-# A SQLFlow compute node as a container: runs `sqlflow worker`, the pull-based drain loop over the durable run
-# queue. It needs OUTBOUND SQL to the catalog database and (for SHA-pinned runs) outbound git to the repo remotes;
-# it exposes nothing, so it never sits behind an ingress. Scale it on queue depth (see deploy/k8s for the KEDA
-# setup), not on traffic.
+# A SQLFlow compute node as a container: runs `sqlflow worker`, the pull-based drain loop over the control plane's
+# dispatcher. It needs OUTBOUND HTTPS to the control plane, outbound SQL to the data its flows touch, and (for a
+# pinned run without a snapshot) outbound git to the repo remotes; it never connects to the catalog and exposes
+# nothing, so it never sits behind an ingress. Scale it on queue depth (see deploy/k8s for the KEDA setup), not on
+# traffic.
 #
 # Configuration is environment-only, matching the worker's "credentials live on the node" model:
-#   SQLFLOW_CATALOG_DB            the catalog connection string (required)
+#   SQLFLOW_URL                   the control plane base URL (required)
+#   SQLFLOW_TOKEN                 a personal access token with the node scope, or a ${env:...}/${keyvault:...}
+#                                 reference to one (required)
 #   SQLFLOW_WORKER_POOL           comma-separated pools this node serves (optional; empty = untargeted runs only)
-#   SQLFLOW_WORKER_POLL_SECONDS   queue poll cadence (optional; default 5)
+#   SQLFLOW_WORKER_POLL_SECONDS   how long each poll waits for work (optional; default 30)
+#   SQLFLOW_WORKER_DRAIN_SECONDS  how long a stopping node finishes what it holds (optional; default 540)
 #   SQLFLOW_GIT_TOKEN             token for private git remotes (optional)
 #   plus every ${env:...} reference the flows themselves use (source/target connection strings).
 #

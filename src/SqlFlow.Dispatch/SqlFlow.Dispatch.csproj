@@ -11,6 +11,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The execution spec a hand-out carries reuses the engine's own contracts (run parameters, the landing-reset
+         verdict, a relational object) rather than restating them on the wire. -->
+    <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="SqlFlow.Dispatch.Tests" />
     <InternalsVisibleTo Include="SqlFlow.ControlPlane.Tests" />
   </ItemGroup>

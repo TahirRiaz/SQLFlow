@@ -125,3 +125,18 @@ shipped behaviour (`concepts/control-plane.md`, `cli/worker.md`, `concepts/archi
 `concepts/environment-variables.md`, `guides/deployment.md`) were rewritten in the same change and the
 manifest rebuilt; no new wiki page was written for the decision itself yet (that is the design's
 phase 3), so the map is the only wiki pointer to it for now.
+
+## [2026-09-11] ingest | Dispatch design phase 2: the node needs only the control plane
+
+Re-ingested `docs/dispatch-design.md` after its phase 2 shipped: every hand-out now carries the run's
+execution spec (read from the catalog before the hand-out is journaled, so a failed read consumes no
+attempt), the snapshotted YAML is fetched by hash, the watermark table and landing-reset verdict are
+resolved by a context call the node makes after parsing the document, and the live trace streams in
+batches, all over the node protocol, so `SqlFlow.Node` no longer references the catalog and
+`sqlflow worker` no longer takes `--db`. Updated the drift map's phased-design section (phases 1 and
+2 shipped, phase 3 owed, three decisions changed during implementation, the third being that the
+lineage facts are resolved on a separate call rather than at hand-out time, because only the parsed
+document says whether the flow participates). The reference pages that carry the shipped behaviour
+(`cli/worker.md` rewritten, `concepts/control-plane.md`, `concepts/architecture-and-execution.md`,
+`concepts/environment-variables.md`, `concepts/shadow-catalog.md`, `guides/deployment.md`) were
+updated in the same change and the manifest rebuilt. The wiki decision page still waits for phase 3.

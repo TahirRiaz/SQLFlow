@@ -580,9 +580,10 @@ internal static class Program
     /// [--db &lt;ref&gt;] [--pool a,b] [--poll-seconds N] [--drain-seconds N]</c>. The node speaks the node protocol
     /// to the control plane's dispatcher over HTTP (poll for work, report outcomes) with a bearer credential carrying
     /// the <c>node</c> scope, and executes each handed-out run through the same engine as a direct CLI run on THIS
-    /// host, resolving every credential from its own environment. The catalog connection (<c>--db</c>, default
-    /// <c>${env:SQLFLOW_CATALOG_DB}</c>) is still needed to read the run's definition and stream its trace; no queue
-    /// operation touches it. Any number of nodes may run at once: placement is the dispatcher's.
+    /// host, resolving every credential from its own environment. The node needs nothing but the control plane:
+    /// each hand-out carries the run's definition, the snapshotted YAML, the lineage context and the live trace all
+    /// travel over the same protocol, and no catalog connection is opened here. Any number of nodes may run at once:
+    /// placement is the dispatcher's.
     /// </summary>
     private static async Task<int> RunWorkerAsync(IServiceProvider provider, string[] args, bool verbose)
     {
@@ -607,12 +608,9 @@ internal static class Program
             return 1;
         }
 
-        var reference = GetOption(args, "--db") ?? "${env:SQLFLOW_CATALOG_DB}";
-        string catalogConnection;
         string token;
         try
         {
-            catalogConnection = resolver.Resolve(reference);
             token = resolver.Resolve(tokenReference);
         }
         catch (SqlFlowException ex)
@@ -632,8 +630,9 @@ internal static class Program
         var pools = (GetOption(args, "--pool") ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-        // A dedicated host for the node: the shared engine (so a worker run is byte-for-byte a CLI run), a scoped
-        // catalog context per run, the HTTP transport to the dispatcher, and the shared RunWorker loop. The
+        // A dedicated host for the node: the shared engine (so a worker run is byte-for-byte a CLI run), the HTTP
+        // transport to the dispatcher (which is also where the run's definition, its lineage context and its live
+        // trace travel, so the node opens no catalog connection), and the shared RunWorker loop. The
         // DocumentExecutor gets the stderr warning sink exactly as the CLI's own runs do (a later registration wins
         // over the engine's sink-less one).
         var services = new ServiceCollection();
@@ -653,7 +652,6 @@ internal static class Program
         services.AddSqlFlowEngine();
         services.AddSingleton(sp => new DocumentExecutor(sp, Console.Error.WriteLine));
         services.AddSingleton(TimeProvider.System);
-        services.AddScoped(_ => CatalogDatabase.Create(catalogConnection));
         services.AddSingleton<INodeTransport>(_ => new HttpNodeTransport(controlPlane, token));
         services.AddSingleton<RunWorker>();
         await using var workerProvider = services.BuildServiceProvider();
@@ -796,7 +794,7 @@ internal static class Program
 
     /// <summary>
     /// Local-user administration straight against the shadow catalog: <c>sqlflow user reset-password &lt;username&gt;
-    /// [--db &lt;ref&gt;]</c>. Like <c>db</c>, <c>worker</c>, and <c>runs</c>, it talks to the catalog directly (no
+    /// [--db &lt;ref&gt;]</c>. Like <c>db</c> and <c>runs cancel</c>, it talks to the catalog directly (no
     /// control-plane HTTP hop, no bearer token), so it works from any host that can reach the catalog database and
     /// needs only database access, not a running control plane. That makes it the recovery path when no admin can
     /// sign in, and it removes the reason to keep a break-glass bootstrap secret enabled: the new password is read
@@ -2190,7 +2188,7 @@ internal static class Program
                                                  database, linking flows across repos through shared objects);
                                                  'status' lists applied vs pending migrations.
                                                  --db defaults to ${env:SQLFLOW_CATALOG_DB}.
-              sqlflow worker   --url <control-plane> [--token <ref>] [--db <conn-ref>] [--pool a,b]
+              sqlflow worker   --url <control-plane> [--token <ref>] [--pool a,b]
                                [--poll-seconds N] [--drain-seconds N]
                                                  Run as a self-hosted compute node: poll the control plane's
                                                  dispatcher for work over HTTP (the node protocol, authenticated
@@ -2198,10 +2196,11 @@ internal static class Program
                                                  SQLFLOW_TOKEN, a ${env:...}/${keyvault:...} reference resolved
                                                  here), execute each handed-out run through the same engine on THIS
                                                  host (resolving every credential from this node's own environment)
-                                                 and report each outcome. Placement is the dispatcher's, so any
-                                                 number of nodes is safe at once. --url defaults to SQLFLOW_URL;
-                                                 --db (default ${env:SQLFLOW_CATALOG_DB}) reads run definitions and
-                                                 streams traces, never the queue. Runs until Ctrl+C or SIGTERM, which
+                                                 and report each outcome. The node needs no catalog connection: the
+                                                 run's definition, its snapshotted YAML, its lineage context and its
+                                                 live trace all travel over the same protocol. Placement is the
+                                                 dispatcher's, so any number of nodes is safe at once. --url defaults
+                                                 to SQLFLOW_URL. Runs until Ctrl+C or SIGTERM, which
                                                  stops taking work and then lets the in-flight runs finish and report
                                                  their outcomes (--drain-seconds, default 540; keep it under the
                                                  orchestrator's termination grace period). --pool sets the pools this

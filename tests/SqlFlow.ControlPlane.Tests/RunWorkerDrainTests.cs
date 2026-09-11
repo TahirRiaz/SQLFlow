@@ -11,12 +11,12 @@ namespace SqlFlow.ControlPlane.Tests;
 /// <summary>
 /// The stopping node's drain (<see cref="RunWorker.DrainInFlightAsync"/>). A stop signal is routine in an autoscaled
 /// fleet - the scaler reclaims a replica, a revision swaps, an operator restarts a node - and it must mean "stop
-/// claiming and finish what you hold", never "sever it". A severed run records no outcome at all, so it is recovered
-/// only by the orphan reaper's requeue, which consumes one of its
-/// <see cref="SqlFlow.Catalog.RunQueueStore.MaxExecutionAttempts"/> executions and repeats all of its work; three
-/// such stops fail the run outright and blame it for dying though nothing was ever wrong with it. These tests pin
-/// both halves of the contract: a stop lets in-flight work finish, and the drain is nonetheless bounded so a node
-/// never outstays the termination grace period it was given.
+/// taking work and finish what you hold", never "sever it". A severed run records no outcome at all, so it is
+/// recovered only by the dispatcher's lease expiry, which consumes one of its
+/// <see cref="DispatchOptions.MaxExecutionAttempts"/> executions and repeats all of its work; three such stops fail
+/// the run outright and blame it for dying though nothing was ever wrong with it. These tests pin both halves of
+/// the contract: a stop lets in-flight work finish, and the drain is nonetheless bounded so a node never outstays
+/// the termination grace period it was given.
 /// </summary>
 public sealed class RunWorkerDrainTests
 {
@@ -35,6 +35,15 @@ public sealed class RunWorkerDrainTests
     {
         public Task<NodePollResponse> PollAsync(NodePollRequest request, CancellationToken ct)
             => Task.FromResult(NodePollResponse.Empty(90));
+
+        public Task<string?> GetFlowVersionAsync(string contentHash, CancellationToken ct)
+            => Task.FromResult<string?>(null);
+
+        public Task<RunContextResponse> ResolveRunContextAsync(Guid runId, RunContextRequest request, CancellationToken ct)
+            => Task.FromResult(new RunContextResponse(true, null, null));
+
+        public Task<bool> ReportTraceAsync(Guid runId, RunTraceBatch batch, CancellationToken ct)
+            => Task.FromResult(true);
 
         public Task<RunOutcomeStatus> ReportRunOutcomeAsync(Guid runId, RunOutcomeRequest request, CancellationToken ct)
             => Task.FromResult(RunOutcomeStatus.Recorded);

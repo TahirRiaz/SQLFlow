@@ -102,20 +102,19 @@ The 32-byte minimums for the signing key and bootstrap secret are enforced at st
 
 `Dockerfile.worker` publishes `src/SqlFlow.Cli/SqlFlow.Cli.csproj` (framework-dependent, inside the Linux SDK image so the linux-x64 native assets for LibGit2Sharp and the DuckDB reader ship under `runtimes/linux-x64`) and installs `libssl3` on the Debian runtime image because LibGit2Sharp's bundled native git needs OpenSSL for HTTPS remotes.
 
-The entrypoint, `deploy/docker/worker-entrypoint.sh`, composes the `sqlflow worker` invocation from the environment. The control plane URL, the node token and the catalog connection are the CLI's own environment defaults (`SQLFLOW_URL`, `SQLFLOW_TOKEN`, `${env:SQLFLOW_CATALOG_DB}`), so none of them appears on the command line or in `ps` output. Configuration is environment-only, matching the worker's "credentials live on the node" model:
+The entrypoint, `deploy/docker/worker-entrypoint.sh`, composes the `sqlflow worker` invocation from the environment. The control plane URL and the node token are the CLI's own environment defaults (`SQLFLOW_URL`, `SQLFLOW_TOKEN`), so neither appears on the command line or in `ps` output. A worker needs no catalog connection at all: the run's definition, its snapshotted YAML, its lineage context and its live trace travel over the node protocol, so the only things a node reaches are the control plane, the data its flows touch, and (for a pinned run without a snapshot) the git remote. Configuration is environment-only, matching the worker's "credentials live on the node" model:
 
 | Variable | Required | Maps to | Meaning |
 |---|---|---|---|
 | `SQLFLOW_URL` | yes | the CLI's default `--url` | The control plane the node polls for work over the node protocol. |
 | `SQLFLOW_TOKEN` | yes | the CLI's default `--token` | A personal access token minted with the `node` scope (or a `${env:...}`/`${keyvault:...}` reference to one). |
-| `SQLFLOW_CATALOG_DB` | yes | the CLI's default `--db` reference | Catalog database connection string, for run definitions and trace streaming; no queue operation touches it. |
 | `SQLFLOW_WORKER_POOL` | no | `--pool` | Comma-separated pools this node serves; empty means untargeted runs only. |
 | `SQLFLOW_WORKER_POLL_SECONDS` | no | `--poll-seconds` | How long each poll waits for work before returning empty; the CLI default is 30. |
 | `SQLFLOW_WORKER_DRAIN_SECONDS` | no | `--drain-seconds` | How long a stopping node finishes the runs it already holds; the CLI default is 540. Must stay below the platform's termination grace period (see below). |
 | `SQLFLOW_GIT_TOKEN` | no | (read by git materialization) | Token for private git remotes. |
 | every `${env:...}` reference the flows use | per estate | secret resolver | Source and target connection strings resolve on the node, never in the control plane. |
 
-The underlying CLI command is `sqlflow worker --url <control-plane> [--token <ref>] [--db <conn-ref>] [--poll-seconds N] [--pool a,b] [--drain-seconds N]` (see `src/SqlFlow.Cli/Program.cs`). Placement is the control plane dispatcher's, so any number of concurrent workers is safe.
+The underlying CLI command is `sqlflow worker --url <control-plane> [--token <ref>] [--poll-seconds N] [--pool a,b] [--drain-seconds N]` (see `src/SqlFlow.Cli/Program.cs`). Placement is the control plane dispatcher's, so any number of concurrent workers is safe.
 
 The node token can only be minted once the control plane is running: sign in as the admin and call `POST /api/v1/me/tokens` with scopes `["node"]` (or use the GUI's token page), then place the secret where the worker's environment reads it (`.env` for compose, the `sqlflow-secrets` key `node-token` on Kubernetes, the Key Vault secret `sqlflow-node-token` on Azure). A first deployment therefore brings up the control plane first and adds the worker once the token exists; a worker deployed without one starts, logs that it has no credential, and takes no work.
 
@@ -220,9 +219,6 @@ env:
   - name: SQLFLOW_TOKEN
     valueFrom:
       secretKeyRef: { name: sqlflow-secrets, key: node-token }
-  - name: SQLFLOW_CATALOG_DB
-    valueFrom:
-      secretKeyRef: { name: sqlflow-secrets, key: catalog-connection }
   - name: SQLFLOW_WORKER_POOL
     value: ""          # empty = untargeted runs only; set the pool name(s) for a pooled copy
   - name: SQLFLOW_GIT_TOKEN

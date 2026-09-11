@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using SqlFlow.Dispatch.Protocol;
 
 namespace SqlFlow.Catalog;
 
@@ -12,13 +13,20 @@ public sealed record RunTraceStorageSummary(
     int PrunableRuns);
 
 /// <summary>
-/// Retention for the per-run <b>SQL statements</b> (<see cref="CatalogRunStatement"/>): the generated SQL a run
-/// captures. That SQL is near-identical on every execution of a flow (it only changes when a table's schema does),
-/// so keeping a fresh copy per run is almost all duplication, and it is the heaviest per-run data. This reclaims it.
+/// The per-run trace tables: the live append a node's feed writes while a run executes, and retention for the
+/// per-run <b>SQL statements</b> (<see cref="CatalogRunStatement"/>) afterwards.
 /// <para>
-/// Run <b>events</b> (<see cref="CatalogRunEvent"/>) are deliberately out of scope: they carry the rows affected and
-/// when each run executed, which stays useful for run history and analytics, so nothing here ever deletes an event.
-/// The <see cref="CatalogRun"/> header (stats and error message) is likewise never touched.
+/// The live append (<see cref="AppendLiveAsync"/>) is what makes the Statements and Events views stream while a run
+/// is still executing and keeps the trace durable even if the node dies before its <c>run.json</c> is written. The
+/// rows are immutable and append-only: the completion projection keeps them under their stable ids and appends only
+/// the tail the feed missed, so the trace stream delivers each entry exactly once.
+/// </para>
+/// <para>
+/// Retention reclaims the generated SQL. That SQL is near-identical on every execution of a flow (it only changes
+/// when a table's schema does), so keeping a fresh copy per run is almost all duplication, and it is the heaviest
+/// per-run data. Run <b>events</b> (<see cref="CatalogRunEvent"/>) are deliberately out of scope: they carry the rows
+/// affected and when each run executed, which stays useful for run history and analytics, so nothing here ever
+/// deletes an event. The <see cref="CatalogRun"/> header (stats and error message) is likewise never touched.
 /// </para>
 /// A run's statements are prunable when the run finished successfully (or was cancelled/skipped, never failed), is
 /// older than the grace window, and is not its pipeline's most recent run, so each pipeline keeps the statements of
@@ -31,6 +39,98 @@ public static class RunTraceStore
     // The DELETE TOP (N) batch size: large enough that draining a big backlog is a handful of round-trips, small
     // enough that each delete's transaction and lock footprint stays modest and never escalates to a table lock.
     private const int DeleteBatchSize = 5000;
+
+    /// <summary>The Step columns of both trace tables are capped at 128 (see <see cref="CatalogDbContext"/>); a
+    /// longer step name is cut to fit, exactly as the artifact projection cuts it.</summary>
+    private const int MaxStepLength = 128;
+
+    /// <summary>
+    /// Appends one batch of a run's live trace, fenced on the (node, attempt) pair the batch presents: the rows are
+    /// written only while the run is still executing under exactly that lease, so a node presumed dead (its run
+    /// requeued and possibly handed to a successor) can never interleave its rows with the successor's. Statements
+    /// and events are inserted in the batch's own order in one save; a statement failure is then stamped onto the
+    /// row it names, which the node's ordering guarantees was inserted by this batch or an earlier one (a failure
+    /// naming an ordinal the feed never wrote is a no-op). Returns false, writing nothing, when the fence refuses.
+    /// </summary>
+    public static async Task<bool> AppendLiveAsync(
+        CatalogDbContext catalog, Guid runId, RunTraceBatch batch, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(batch);
+        ArgumentException.ThrowIfNullOrWhiteSpace(batch.Node);
+
+        var run = await catalog.Runs.AsNoTracking()
+            .Where(r => r.RunId == runId && r.Status == RunStatuses.Running
+                && r.ClaimedByNode == batch.Node && r.Attempt == batch.Attempt)
+            .Select(r => new { r.RepoId })
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (run is null)
+        {
+            return false;
+        }
+
+        if (batch.IsEmpty)
+        {
+            return true;
+        }
+
+        if (batch.Statements.Count > 0 || batch.Events.Count > 0)
+        {
+            // The control plane's pooled context is no-tracking by default and long-lived per request; add, save,
+            // and clear so the rows never accumulate in the tracker across a run's many batches.
+            catalog.ChangeTracker.Clear();
+            foreach (var statement in batch.Statements)
+            {
+                catalog.RunStatements.Add(new CatalogRunStatement
+                {
+                    RunId = runId,
+                    RepoId = run.RepoId,
+                    Ordinal = statement.Ordinal,
+                    TimestampUtc = statement.TimestampUtc,
+                    Step = Cap(statement.Step),
+                    Sql = statement.Sql,
+                    Error = statement.Error,
+                });
+            }
+
+            foreach (var runEvent in batch.Events)
+            {
+                catalog.RunEvents.Add(new CatalogRunEvent
+                {
+                    RunId = runId,
+                    RepoId = run.RepoId,
+                    Ordinal = runEvent.Ordinal,
+                    TimestampUtc = runEvent.TimestampUtc,
+                    Level = runEvent.Level,
+                    Step = runEvent.Step is { } step ? Cap(step) : null,
+                    Message = runEvent.Message,
+                    Rows = runEvent.Rows,
+                    ElapsedMs = runEvent.ElapsedMs,
+                });
+            }
+
+            try
+            {
+                await catalog.SaveChangesAsync(ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                catalog.ChangeTracker.Clear();
+            }
+        }
+
+        foreach (var failure in batch.StatementFailures)
+        {
+            await catalog.RunStatements
+                .Where(s => s.RunId == runId && s.Ordinal == failure.Ordinal)
+                .ExecuteUpdateAsync(s => s.SetProperty(x => x.Error, failure.Error), ct)
+                .ConfigureAwait(false);
+        }
+
+        return true;
+    }
+
+    private static string Cap(string step) => step.Length > MaxStepLength ? step[..MaxStepLength] : step;
 
     /// <summary>The run ids whose SQL statements are prunable at <paramref name="supersededBeforeUtc"/> (a terminal,
     /// non-failed run, older than the grace instant, that is not its pipeline's latest). A composable query, so the

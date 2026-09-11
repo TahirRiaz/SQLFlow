@@ -44,6 +44,16 @@ internal sealed class FakeLedger : IDispatchLedger
 
         public string? ArtifactJson { get; set; }
 
+        /// <summary>The execution spec a hand-out of this run carries; the test's stand-in for the catalog join.</summary>
+        public RunSpec Spec { get; set; } = Make.Spec();
+
+        /// <summary>The lineage facts the ledger answers a context request with (the test's stand-in for the
+        /// lineage walk).</summary>
+        public RunContextResponse Context { get; set; } = new(true, null, null);
+
+        /// <summary>Every trace batch the fence let through, in arrival order.</summary>
+        public List<RunTraceBatch> Trace { get; } = [];
+
         /// <summary>The member ids that must be skipped when this run ends unsuccessfully (the test's stand-in for
         /// the lineage walk the catalog store performs).</summary>
         public List<Guid> Dependents { get; } = [];
@@ -64,7 +74,13 @@ internal sealed class FakeLedger : IDispatchLedger
         public string? ResultJson { get; set; }
 
         public DateTime? StartUtc { get; set; }
+
+        /// <summary>The spec a hand-out of this task carries.</summary>
+        public TaskSpec Spec { get; set; } = new("listDatabases", "${env:SRC}", "{}");
     }
+
+    /// <summary>The snapshotted flow versions the ledger serves, by content hash.</summary>
+    public ConcurrentDictionary<string, string> FlowVersions { get; } = new(StringComparer.Ordinal);
 
     public ConcurrentDictionary<Guid, RunRow> Runs { get; } = new();
 
@@ -209,7 +225,7 @@ internal sealed class FakeLedger : IDispatchLedger
         }
     }
 
-    public async Task<bool> MarkRunHandedOutAsync(Guid runId, int expectedAttempt, string node, DateTime nowUtc, CancellationToken ct)
+    public async Task<RunSpec?> MarkRunHandedOutAsync(Guid runId, int expectedAttempt, string node, DateTime nowUtc, CancellationToken ct)
     {
         await WriteGateAsync(ct);
         Calls.Enqueue($"handout:{runId}:{node}:{expectedAttempt}");
@@ -217,12 +233,48 @@ internal sealed class FakeLedger : IDispatchLedger
         {
             if (!Runs.TryGetValue(runId, out var row) || row.Status != "queued" || row.Attempt != expectedAttempt)
             {
-                return false;
+                return null;
             }
 
             row.Status = "running";
             row.Node = node;
             row.Attempt = expectedAttempt + 1;
+            return row.Spec;
+        }
+    }
+
+    public Task<string?> LoadFlowVersionAsync(string contentHash, CancellationToken ct)
+    {
+        Calls.Enqueue($"flow-version:{contentHash}");
+        return Task.FromResult(FlowVersions.GetValueOrDefault(contentHash));
+    }
+
+    public Task<RunContextResponse> ResolveRunContextAsync(Guid runId, RunContextRequest request, CancellationToken ct)
+    {
+        Calls.Enqueue($"context:{runId}:{request.Node}:{request.Attempt}");
+        lock (_gate)
+        {
+            if (!Runs.TryGetValue(runId, out var row) || row.Status != "running" || row.Node != request.Node || row.Attempt != request.Attempt)
+            {
+                return Task.FromResult(RunContextResponse.NotHeld);
+            }
+
+            return Task.FromResult(row.Context);
+        }
+    }
+
+    public async Task<bool> AppendRunTraceAsync(Guid runId, RunTraceBatch batch, CancellationToken ct)
+    {
+        await WriteGateAsync(ct);
+        Calls.Enqueue($"trace:{runId}:{batch.Node}:{batch.Attempt}");
+        lock (_gate)
+        {
+            if (!Runs.TryGetValue(runId, out var row) || row.Status != "running" || row.Node != batch.Node || row.Attempt != batch.Attempt)
+            {
+                return false;
+            }
+
+            row.Trace.Add(batch);
             return true;
         }
     }
@@ -333,7 +385,7 @@ internal sealed class FakeLedger : IDispatchLedger
         }
     }
 
-    public async Task<bool> MarkTaskHandedOutAsync(Guid taskId, string node, DateTime nowUtc, CancellationToken ct)
+    public async Task<TaskSpec?> MarkTaskHandedOutAsync(Guid taskId, string node, DateTime nowUtc, CancellationToken ct)
     {
         await WriteGateAsync(ct);
         Calls.Enqueue($"task-handout:{taskId}:{node}");
@@ -341,13 +393,13 @@ internal sealed class FakeLedger : IDispatchLedger
         {
             if (!Tasks.TryGetValue(taskId, out var row) || row.Status != "queued")
             {
-                return false;
+                return null;
             }
 
             row.Status = "running";
             row.Node = node;
             row.StartUtc = nowUtc;
-            return true;
+            return row.Spec;
         }
     }
 
@@ -531,4 +583,19 @@ internal static class Make
     public const string Artifact = """{ "schemaVersion": 1, "success": true }""";
 
     public const string FailedArtifact = """{ "schemaVersion": 1, "success": false }""";
+
+    /// <summary>A plausible execution spec: an unpinned run of a snapshotted flow in a repo with a remote.</summary>
+    public static RunSpec Spec(string flowName = "orders_01_ing", string? flowVersionHash = "abc123")
+        => new(
+            Guid.NewGuid(), Guid.NewGuid(), flowName, "pipelines", "https://example.invalid/pipelines.git", null,
+            $"flows/{flowName}.flow.yaml", "0123456789abcdef0123456789abcdef01234567", flowVersionHash,
+            SqlFlow.Core.Runs.RunParameters.None, "${env:GIT_TOKEN}", null);
+
+    /// <summary>A trace batch with one statement and one event under the given fence.</summary>
+    public static RunTraceBatch Trace(string node, int attempt, int ordinal = 1)
+        => new(
+            node, attempt,
+            [new TraceStatement(ordinal, new DateTime(2026, 9, 11, 12, 0, 0, DateTimeKind.Utc), "staging.create", "CREATE TABLE #s (x int)", null)],
+            [],
+            [new TraceEvent(ordinal, new DateTime(2026, 9, 11, 12, 0, 0, DateTimeKind.Utc), "info", "source.open", "opened the source", 7, 12.5)]);
 }

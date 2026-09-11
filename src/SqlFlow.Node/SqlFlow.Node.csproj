@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>SqlFlow.Node</RootNamespace>
-    <Description>The compute-node runtime: the durable-queue drain loop (atomically claim a run, execute it through the shared engine, record the outcome) shared by the control-plane background worker and the standalone `sqlflow worker` agent. One node runtime, so a run executes identically whether it runs in-process in the control plane or on a self-hosted worker reachable from inside a private network.</Description>
+    <Description>The compute-node runtime: the drain loop that polls the control plane's dispatcher for work, executes each handed-out run through the shared engine, streams its trace, and reports the outcome under the hand-out's fence, shared by the control-plane background worker and the standalone `sqlflow worker` agent. One node runtime, so a run executes identically whether it runs in-process in the control plane or on a self-hosted worker reachable from inside a private network; a node speaks only the node protocol and opens no catalog connection.</Description>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
@@ -19,8 +19,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
-    <ProjectReference Include="..\SqlFlow.Catalog\SqlFlow.Catalog.csproj" />
-    <!-- The node protocol (poll, outcome) and the in-process dispatcher the control plane's own node talks to. -->
+    <!-- The node protocol (poll, spec, flow version, context, trace, outcome) and the in-process dispatcher the
+         control plane's own node talks to. The catalog is deliberately NOT referenced: everything a run needs
+         reaches the node through the protocol. -->
     <ProjectReference Include="..\SqlFlow.Dispatch\SqlFlow.Dispatch.csproj" />
     <ProjectReference Include="..\SqlFlow.Execution\SqlFlow.Execution.csproj" />
     <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />

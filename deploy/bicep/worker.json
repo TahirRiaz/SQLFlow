@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "9481125346398581200"
+      "templateHash": "6069489709436574213"
     }
   },
   "parameters": {
@@ -38,14 +38,14 @@
     "keyVaultName": {
       "type": "string",
       "metadata": {
-        "description": "Name of an existing Key Vault holding the catalog connection (and any flow) secrets."
+        "description": "Name of an existing Key Vault holding the node token (and any flow) secrets."
       }
     },
     "catalogConnectionSecretName": {
       "type": "string",
       "defaultValue": "sqlflow-catalog-db",
       "metadata": {
-        "description": "Key Vault secret name for the catalog ADO.NET connection string. The node still reads run definitions and streams traces through it; no queue operation touches it."
+        "description": "Key Vault secret name for the catalog ADO.NET connection string. The node itself never connects to the catalog (it speaks only the node protocol); this secret exists for the KEDA scale rule alone, as the fallback when scalerConnectionSecretName is empty."
       }
     },
     "controlPlaneUrl": {
@@ -244,7 +244,7 @@
                 "cpu": "[json(parameters('cpu'))]",
                 "memory": "[parameters('memory')]"
               },
-              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_URL', 'value', parameters('controlPlaneUrl')), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('nodeTokenEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('flowEnvVars'))]"
+              "env": "[concat(createArray(createObject('name', 'SQLFLOW_URL', 'value', parameters('controlPlaneUrl')), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('nodeTokenEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('flowEnvVars'))]"
             }
           ],
           "scale": {

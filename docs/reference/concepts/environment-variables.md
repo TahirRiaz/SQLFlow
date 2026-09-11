@@ -44,7 +44,7 @@ All conventional names are strictly UPPERCASE because environment variables are 
 | `SQLFLOW_CONN_<NAME>` | secret resolver | The value of a connection declared as a bare alias `<NAME>` in a document's `connections:` block. |
 | `SQLFLOW_SOURCE` | `healthcheck`, `detect-unique-key`, `catalog scaffold` | The conventional default source connection. |
 | `SQLFLOW_DW` | `catalog scaffold` | The conventional explicit target reference; the scaffold embeds `${env:SQLFLOW_DW}` as the target placeholder. |
-| `SQLFLOW_CATALOG_DB` | `db`, `worker`, run write-back, control plane, EF tooling | The shadow-catalog database connection. |
+| `SQLFLOW_CATALOG_DB` | `db`, run write-back, control plane, EF tooling | The shadow-catalog database connection. A `worker` never reads it: a node needs only the control plane. |
 | `SQLFLOW_REPO` | post-run catalog write-back | Repo attribution for recorded runs when `--repo` is not passed. |
 | `SQLFLOW_GIT_TOKEN` | workers, control plane | Token for cloning private git remotes during SHA-pinned materialization. Unset means anonymous access (public or local-path remotes). |
 | `SQLFLOW_GIT_USERNAME` | workers, control plane | Optional username paired with `SQLFLOW_GIT_TOKEN`; when blank, GitHub's conventional placeholder `x-access-token` is used. |
@@ -70,9 +70,9 @@ connections:
 
 ### SQLFLOW_CATALOG_DB
 
-Four consumers, one variable:
+Four consumers, one variable (and one deliberate non-consumer: `sqlflow worker` opens no catalog connection, so a compute node's environment never holds it):
 
-- `sqlflow db migrate|sync|status` and `sqlflow worker` default `--db` to the reference `${env:SQLFLOW_CATALOG_DB}`.
+- `sqlflow db migrate|sync|status` and `sqlflow runs cancel` default `--db` to the reference `${env:SQLFLOW_CATALOG_DB}`.
 - The automatic post-run catalog write-back activates only when `--db` is passed or `SQLFLOW_CATALOG_DB` is set; otherwise the run is a pure file/YAML operation and the catalog is simply absent (no error, no output). `--no-db-sync` disables the write-back even when the variable is set. A write-back failure is a warning only; the run's own outcome is never affected, and `sqlflow db sync` backfills later.
 - The control plane's catalog connection (`ControlPlane:Catalog:ConnectionReference`) defaults to `${env:SQLFLOW_CATALOG_DB}`.
 - The EF design-time factory (`CatalogDbContextFactory` in src/SqlFlow.Catalog/CatalogDatabase.cs) reads it when `dotnet ef` tooling needs a real database; when unset it falls back to a LocalDB connection string.
@@ -107,8 +107,7 @@ Caveat: DuckDB cloud reads support only a system-assigned managed identity. Comb
 The worker container (`Dockerfile.worker`) is configured through environment only; `deploy/docker/worker-entrypoint.sh` composes the `sqlflow worker` invocation:
 
 - `SQLFLOW_URL` (required): the control plane the node polls for work; the CLI default picks it up so it never appears on the command line.
-- `SQLFLOW_TOKEN` (required): a personal access token with the `node` scope, or a `${env:...}`/`${keyvault:...}` reference to one.
-- `SQLFLOW_CATALOG_DB` (required): the catalog connection, for run definitions and trace streaming. It is deliberately NOT put on the command line; the CLI default `${env:SQLFLOW_CATALOG_DB}` picks it up so it never appears in `ps` output.
+- `SQLFLOW_TOKEN` (required): a personal access token with the `node` scope, or a `${env:...}`/`${keyvault:...}` reference to one. Neither the URL nor the token is put on the command line, so nothing sensitive appears in `ps` output. No catalog connection is needed: the run's definition, its snapshotted YAML, its lineage context and its live trace all travel over the node protocol.
 - `SQLFLOW_WORKER_POOL` (optional): comma-separated pools, passed as `--pool`. Empty means the node takes untargeted runs only.
 - `SQLFLOW_WORKER_POLL_SECONDS` (optional): passed as `--poll-seconds`; the CLI default is 30.
 - `SQLFLOW_GIT_TOKEN` (optional): private-remote materialization.

@@ -1,8 +1,9 @@
 // Deploys one SQLFlow worker pool as a Container App: `sqlflow worker`, the pull-based drain loop over the
-// durable run queue. Workers expose nothing (no ingress; outbound SQL to the catalog plus outbound git for
-// SHA-pinned materialization) and scale 0..N on QUEUE DEPTH through the built-in KEDA mssql scaler, so an idle
-// pool costs nothing. Because runs are pinned to the repo's synced commit at enqueue, a cold-started replica
-// needs only its environment: it claims, materializes the pinned commit, executes, and reports back.
+// control plane's dispatcher. Workers expose nothing (no ingress; outbound HTTPS to the control plane, outbound
+// SQL to the data their flows touch, and outbound git for a pinned run without a snapshot) and scale 0..N on
+// QUEUE DEPTH through the built-in KEDA mssql scaler, so an idle pool costs nothing. A cold-started replica needs
+// only its environment and no catalog connection: it polls, is handed a run with its definition, fetches the
+// snapshotted YAML (or materializes the pinned commit), executes, streams the trace, and reports back.
 //
 // This is the Container Apps mirror of deploy/k8s/worker-pool.yaml: deploy one copy per pool (set name and
 // pool together). Secrets come from an existing Key Vault, read by the app's user-assigned managed identity;
@@ -23,10 +24,10 @@ param managedEnvironmentId string
 @description('Container image reference, e.g. myregistry.azurecr.io/sqlflow-worker:latest')
 param image string
 
-@description('Name of an existing Key Vault holding the catalog connection (and any flow) secrets.')
+@description('Name of an existing Key Vault holding the node token (and any flow) secrets.')
 param keyVaultName string
 
-@description('Key Vault secret name for the catalog ADO.NET connection string. The node still reads run definitions and streams traces through it; no queue operation touches it.')
+@description('Key Vault secret name for the catalog ADO.NET connection string. The node itself never connects to the catalog (it speaks only the node protocol); this secret exists for the KEDA scale rule alone, as the fallback when scalerConnectionSecretName is empty.')
 param catalogConnectionSecretName string = 'sqlflow-catalog-db'
 
 @description('The control plane base URL the node polls for work over the node protocol (https://<control-plane-fqdn>). Every call is outbound from the node.')
@@ -114,8 +115,9 @@ resource acrPull 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!emp
 var vaultUri = 'https://${keyVaultName}${environment().suffixes.keyvaultDns}/'
 var registryServer = !empty(acrName) ? acr.properties.loginServer : acrLoginServer
 
-// Secrets are pulled from Key Vault by the app's managed identity; their values never appear here. The KEDA
-// scaler reads the same Key Vault backed secret for its connection.
+// Secrets are pulled from Key Vault by the app's managed identity; their values never appear here. The catalog
+// connection is held ONLY for the KEDA scale rule (its fallback when no scaler-specific secret is given); it is
+// never exposed to the container, because the node has no use for it.
 var baseSecrets = [
   {
     name: 'catalog-db'
@@ -158,11 +160,8 @@ var scalerSecrets = empty(scalerConnectionSecretName) ? [] : [
 var scalerSecretRef = empty(scalerConnectionSecretName) ? 'catalog-db' : 'catalog-scaler'
 
 var baseEnv = [
-  {
-    name: 'SQLFLOW_CATALOG_DB'
-    secretRef: 'catalog-db'
-  }
-  // The dispatcher the node polls for work; the run queue lives there, never in the catalog.
+  // The dispatcher the node polls for work; the run queue lives there, never in the catalog, and everything a
+  // run needs (its definition, YAML, lineage context) and produces (its trace, its outcome) travels through it.
   {
     name: 'SQLFLOW_URL'
     value: controlPlaneUrl

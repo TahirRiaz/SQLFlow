@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Dispatch;
+using SqlFlow.Dispatch.Protocol;
 
 namespace SqlFlow.Catalog;
 
@@ -125,13 +126,25 @@ public static class ComputeTaskStore
             .ToList();
     }
 
-    /// <summary>Journals a hand-out: <c>queued</c> to <c>running</c> under <paramref name="node"/>. Conditional on the
-    /// row still being queued, so a task cancelled directly in the meantime is never handed out.</summary>
-    public static async Task<bool> MarkHandedOutAsync(
+    /// <summary>Journals a hand-out: <c>queued</c> to <c>running</c> under <paramref name="node"/>, and returns the
+    /// spec the node executes (the operation, the connection reference to resolve on the node, the validated
+    /// payload). The spec is read first, so a read that fails leaves the task queued; the write is conditional on the
+    /// row still being queued, so a task cancelled directly in the meantime is never handed out. Null when the row
+    /// is gone or the write did not apply.</summary>
+    public static async Task<TaskSpec?> MarkHandedOutAsync(
         CatalogDbContext catalog, Guid taskId, string node, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
+
+        var row = await catalog.ComputeTasks.AsNoTracking()
+            .Where(t => t.TaskId == taskId)
+            .Select(t => new { t.Operation, t.SourceRef, t.ArgumentsJson })
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (row is null)
+        {
+            return null;
+        }
 
         var written = await catalog.ComputeTasks
             .Where(t => t.TaskId == taskId && t.Status == RunStatuses.Queued)
@@ -140,7 +153,7 @@ public static class ComputeTaskStore
                 .SetProperty(t => t.ClaimedByNode, node)
                 .SetProperty(t => t.StartUtc, nowUtc), ct)
             .ConfigureAwait(false);
-        return written > 0;
+        return written > 0 ? new TaskSpec(row.Operation, row.SourceRef, row.ArgumentsJson) : null;
     }
 
     /// <summary>Records a task's outcome as its node reported it, fenced on the node: the result document on success,

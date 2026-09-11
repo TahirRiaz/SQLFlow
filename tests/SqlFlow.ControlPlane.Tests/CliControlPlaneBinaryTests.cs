@@ -842,9 +842,10 @@ public sealed class CliControlPlaneBinaryTests : IDisposable
     // ---- worker ---------------------------------------------------------------------------------------------
 
     /// <summary>The whole fleet loop through real processes: a queued run routed to a pool only the standalone
-    /// worker serves, the compiled worker polling the compiled control plane over HTTP with a node token, executing
-    /// the flow file from the repo's root path, loading the sink, and reporting the outcome under the enqueued
-    /// run id. The control plane's own in-process node serves no pool, so it never takes the run.</summary>
+    /// worker serves, the compiled worker polling the compiled control plane over HTTP with a node token and NO
+    /// catalog connection, executing the flow file from the repo's root path (carried in the hand-out's spec),
+    /// loading the sink, streaming the trace, and reporting the outcome under the enqueued run id. The control
+    /// plane's own in-process node serves no pool, so it never takes the run.</summary>
     [SkippableFact]
     public async Task Worker_PollsTheControlPlane_ExecutesTheFlow_AndReportsSuccess()
     {
@@ -909,7 +910,7 @@ public sealed class CliControlPlaneBinaryTests : IDisposable
         var nodeToken = await MintBootstrapTokenAsync(url, ["node"]);
         await using var worker = CliBinary.Start(
             dll, ["worker", "--pool", pool, "--poll-seconds", "5"],
-            env: CliEnv(url, ("SQLFLOW_TOKEN", nodeToken), ("SQLFLOW_CATALOG_DB", cs), ("SQLFlowSinkConStr", cs)),
+            env: CliEnv(url, ("SQLFLOW_TOKEN", nodeToken), ("SQLFlowSinkConStr", cs)),
             workingDirectory: _dir);
         try
         {
@@ -936,6 +937,10 @@ public sealed class CliControlPlaneBinaryTests : IDisposable
                 var run = await db.Runs.AsNoTracking().SingleAsync(r => r.RunId == runId);
                 Assert.Equal(Environment.MachineName, run.ClaimedByNode);
                 Assert.Equal(1, run.Attempt);
+                // The worker was started with no catalog connection at all, so the run's live trace can only have
+                // reached the catalog over the node protocol: its statements and events are there under the run.
+                Assert.True(await db.RunStatements.AsNoTracking().AnyAsync(s => s.RunId == runId), "no live statements reached the catalog");
+                Assert.True(await db.RunEvents.AsNoTracking().AnyAsync(e => e.RunId == runId), "no live events reached the catalog");
             }
         }
         finally

@@ -162,7 +162,7 @@ public sealed class RunGroupQueueTests
 
             var pick = Assert.Single(state.ReserveRuns(Node, [], 10));
             Assert.Equal(runA, pick.RunId);
-            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runA, pick.ExpectedAttempt, Node, DateTime.UtcNow));
+            Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, runA, pick.ExpectedAttempt, Node, DateTime.UtcNow));
             state.ConfirmRunLease(runA, Node, 1, DateTime.UtcNow, DateTime.UtcNow.AddMinutes(1));
             Assert.Empty(state.ReserveRuns(Node, [], 10));
             Assert.Equal(RunStatuses.Queued, (await Reload(db, runB)).Status);
@@ -201,7 +201,7 @@ public sealed class RunGroupQueueTests
                 db, new RunGroupEnqueueRequest(repoId, RunGroupModes.Node, A, members), DateTime.UtcNow);
             var (runA, runB, runC) = (result.RunIds[0], result.RunIds[1], result.RunIds[2]);
 
-            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runA, 0, Node, DateTime.UtcNow));
+            Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, runA, 0, Node, DateTime.UtcNow));
 
             // A fails: its dependent B is skipped (and reported, so the dispatcher drops it from memory); the
             // independent C stays queued.
@@ -211,7 +211,7 @@ public sealed class RunGroupQueueTests
             Assert.Equal(RunStatuses.Failed, (await Reload(db, runA)).Status);
             Assert.Equal(RunStatuses.Skipped, (await Reload(db, runB)).Status);
             Assert.Equal(RunStatuses.Queued, (await Reload(db, runC)).Status);
-            Assert.True(await RunQueueStore.MarkHandedOutAsync(db, runC, 0, Node, DateTime.UtcNow));
+            Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, runC, 0, Node, DateTime.UtcNow));
         }
         finally
         {

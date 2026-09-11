@@ -300,15 +300,18 @@ builder.Services.AddRateLimiter(rate =>
     rate.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
     {
         var subject = context.User.FindFirst("sub")?.Value;
-        // Node protocol calls (a long poll every few seconds per node, outcome reports, trace batches) are
-        // authenticated fleet traffic: each node token gets its own generous window, so a fleet of hundreds of
-        // nodes never trips the per-user limit meant for people and scripts. An unauthenticated hit on the node
-        // path stays under the normal per-IP limit, so a token cannot be brute-forced any faster there.
+        // Node protocol calls (a long poll every few seconds per node, outcome reports, trace batches several times
+        // a second per executing run) are authenticated fleet traffic: each NODE gets its own generous window, keyed
+        // by the token's subject plus the node name the transport stamps on every call, so a fleet of hundreds of
+        // nodes sharing one node token never trips a limit meant for people and scripts, and one misbehaving node
+        // cannot starve its siblings. An unauthenticated hit on the node path stays under the normal per-IP limit,
+        // so a token cannot be brute-forced any faster there.
         if (subject is not null
             && context.Request.Path.StartsWithSegments(NodeProtocol.RoutePrefix)
             && HasScope(context.User, NodeProtocol.Scope))
         {
-            return RateLimitPartition.GetFixedWindowLimiter("node:" + subject, _ => new FixedWindowRateLimiterOptions
+            var nodeName = context.Request.Headers[NodeProtocol.NodeHeader].ToString();
+            return RateLimitPartition.GetFixedWindowLimiter("node:" + subject + "/" + nodeName, _ => new FixedWindowRateLimiterOptions
             {
                 PermitLimit = options.RateLimit.NodePermitPerWindow,
                 Window = TimeSpan.FromSeconds(options.RateLimit.WindowSeconds),

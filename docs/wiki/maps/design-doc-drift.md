@@ -89,13 +89,15 @@ behaviour.
 [dispatch-design.md](../../dispatch-design.md) is the design for moving the run queue out of SQL
 Server into an in-memory dispatcher inside the control plane, with compute nodes pulling work over an
 HTTP node protocol. Unlike the historical documents above it was written on 2026-09-11 and
-implemented the same day: its status line records that phase 1 shipped (the queue, the node protocol,
-the ownership lease, the tests) and that phases 2 and 3 remain, and it names the two decisions that
-changed during implementation. Its sections 2 and 3 deliberately describe the state it replaced, so
-"today" there means the SQL-claim design, not what runs now; for the shipped behaviour go to
+implemented the same day: its status line records that phases 1 and 2 shipped (the queue, the node
+protocol, the ownership lease, the tests; then the execution spec in every hand-out and the
+flow-version, context and trace calls that let a node run with no catalog connection) and that
+phase 3 remains, and it names the three decisions that changed during implementation. Its sections 2
+and 3 deliberately describe the state it replaced, so "today" there means the SQL-claim design, not
+what runs now; for the shipped behaviour go to
 [reference/concepts/control-plane.md](../../reference/concepts/control-plane.md) ("The dispatcher")
-and [reference/cli/worker.md](../../reference/cli/worker.md). Until phases 2 and 3 land, the status
-line is the authoritative statement of what is implemented.
+and [reference/cli/worker.md](../../reference/cli/worker.md). Until phase 3 lands, the status line
+is the authoritative statement of what is implemented.
 
 ## Incident record
 

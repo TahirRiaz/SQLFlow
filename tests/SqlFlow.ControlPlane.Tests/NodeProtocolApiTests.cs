@@ -16,10 +16,12 @@ namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
 /// The node protocol end to end through the in-memory host and a real <see cref="HttpNodeTransport"/>: a node
-/// polls for work, is handed a run the API enqueued, reports its outcome under the fence (and a stale report is
-/// dropped), hears an operator's cancel on its next poll, loses a lease it stops renewing (and a successor takes
-/// the run at the next attempt), and is refused without the node scope or while the replica's dispatcher is not
-/// the owner (503 with a retry hint, retried automatically once ownership returns). The host's own in-process
+/// polls for work, is handed a run the API enqueued together with its execution spec, fetches the snapshotted
+/// flow version by its hash, resolves the run's context and streams its trace under the fence (each refused for a
+/// stale attempt), reports its outcome under the fence (and a stale report is dropped), hears an operator's
+/// cancel on its next poll, loses a lease it stops renewing (and a successor takes the run at the next attempt),
+/// and is refused without the node scope or while the replica's dispatcher is not the owner (503 with a retry
+/// hint, retried automatically once ownership returns). The host's own in-process
 /// node is switched off so the test is the only node. Gated on a reachable catalog database.
 /// </summary>
 [Trait("Category", "Integration")]
@@ -225,6 +227,134 @@ public sealed class NodeProtocolApiTests
         request.Content = new StringContent("{ not json", System.Text.Encoding.UTF8, "application/json");
         using var malformed = await client.SendAsync(request);
         Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
+    }
+
+    [SkippableFact]
+    public async Task HandOut_CarriesTheExecutionSpec_AndTheSnapshottedVersionIsServedByItsHash()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+        var pipelineId = CatalogIdentity.Pipeline(repoId, flowName);
+        var yaml = $"name: {flowName}\nsource:\n  type: csv\n  location: https://lake.invalid/orders/\ntarget:\n  connection: ${{env:DWH}}\n  schema: dbo\n  table: Orders\n";
+        var hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(yaml)));
+
+        try
+        {
+            var now = DateTime.UtcNow;
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Repos.Add(new CatalogRepo { Id = repoId, Name = "np_repo_" + flowName, RootPath = @"C:\estate\pipelines", RemoteUrl = "https://git.invalid/pipelines.git", FirstSeenUtc = now, LastSyncUtc = now });
+                db.Pipelines.Add(new CatalogPipeline
+                {
+                    Id = pipelineId, RepoId = repoId, Name = flowName, Kind = "file", RelativePath = "flows/" + flowName + ".flow.yaml",
+                    ContentHash = hash, Yaml = yaml, DefinitionJson = "{}", Active = true, Wave = 0, FirstSeenUtc = now, LastSeenUtc = now,
+                });
+                await db.SaveChangesAsync();
+            }
+
+            using var factory = NewFactory(cs);
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["node", "read"]);
+            using var transport = NewTransport(factory, token);
+            await WaitForActiveDispatcherAsync(client, token);
+
+            var runId = await EnqueueAsync(factory, cs, repoId, flowName);
+            var handout = Assert.Single((await transport.PollAsync(Poll(freeRuns: 1), CancellationToken.None)).Runs);
+
+            // The spec is the catalog join the node used to make itself: repo, pipeline, version, parameters.
+            var spec = handout.Spec;
+            Assert.Equal(repoId, spec.RepoId);
+            Assert.Equal((pipelineId, flowName), (spec.PipelineId, spec.FlowName));
+            Assert.Equal(("np_repo_" + flowName, "https://git.invalid/pipelines.git", @"C:\estate\pipelines"), (spec.RepoName, spec.RepoRemoteUrl, spec.RepoRootPath));
+            Assert.Equal("flows/" + flowName + ".flow.yaml", spec.PipelineRelativePath);
+            Assert.Equal(hash, spec.FlowVersionHash);
+            Assert.True(spec.Parameters.IsDefault);
+            Assert.Null(spec.CredentialReference);
+
+            // The version the enqueue staged is served by its hash; an unknown hash is a miss, a non-hash a 400.
+            Assert.Equal(yaml, await transport.GetFlowVersionAsync(hash, CancellationToken.None));
+            Assert.Null(await transport.GetFlowVersionAsync(Convert.ToHexStringLower(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32)), CancellationToken.None));
+            using var malformed = await client.SendAsync(Authorized(HttpMethod.Get, NodeProtocol.RoutePrefix + "/flow-versions/not-a-hash!", token));
+            Assert.Equal(HttpStatusCode.BadRequest, malformed.StatusCode);
+
+            Assert.Equal(RunOutcomeStatus.Recorded, await transport.ReportRunOutcomeAsync(
+                runId, new RunOutcomeRequest(NodeName, handout.Attempt, RunOutcomeKind.Completed, null, Artifact(runId, flowName)), CancellationToken.None));
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId);
+            await using var db = CatalogDatabase.Create(cs);
+            await db.FlowVersions.Where(v => v.ContentHash == hash).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.Id == pipelineId).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
+        }
+    }
+
+    [SkippableFact]
+    public async Task Context_AndTrace_AreAnsweredForTheHolder_AndRefusedForAStaleAttempt()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, flowName) = NewIds();
+
+        try
+        {
+            using var factory = NewFactory(cs);
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["node", "read"]);
+            using var transport = NewTransport(factory, token);
+            await WaitForActiveDispatcherAsync(client, token);
+
+            var runId = await EnqueueAsync(factory, cs, repoId, flowName);
+            var handout = Assert.Single((await transport.PollAsync(Poll(freeRuns: 1), CancellationToken.None)).Runs);
+
+            // No lineage is recorded for this flow, so both facts come back empty, but the run is held.
+            var request = new RunContextRequest(NodeName, handout.Attempt, "pre", "Orders", true, true);
+            var context = await transport.ResolveRunContextAsync(runId, request, CancellationToken.None);
+            Assert.True(context.Held);
+            Assert.Null(context.WatermarkSourceTable);
+            Assert.Null(context.LandingReset);
+            Assert.False((await transport.ResolveRunContextAsync(runId, request with { Attempt = handout.Attempt + 1 }, CancellationToken.None)).Held);
+            Assert.False((await transport.ResolveRunContextAsync(runId, request with { Node = "someone-else" }, CancellationToken.None)).Held);
+
+            // The live trace lands under the run, a later failure stamps the statement it names, and a batch under
+            // a stale attempt writes nothing.
+            var now = DateTime.UtcNow;
+            var batch = new RunTraceBatch(
+                NodeName, handout.Attempt,
+                [new TraceStatement(1, now, "staging.create", "CREATE TABLE #stage (Id int)", null)],
+                [],
+                [new TraceEvent(1, now, "info", "source.open", "opened the source", 3, 1.5)]);
+            Assert.True(await transport.ReportTraceAsync(runId, batch, CancellationToken.None));
+            Assert.True(await transport.ReportTraceAsync(
+                runId, new RunTraceBatch(NodeName, handout.Attempt, [], [new TraceStatementFailure(1, "boom")], []), CancellationToken.None));
+            Assert.False(await transport.ReportTraceAsync(
+                runId, new RunTraceBatch(NodeName, handout.Attempt + 1, [new TraceStatement(2, now, "late", "SELECT 2", null)], [], []), CancellationToken.None));
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                var statement = await db.RunStatements.AsNoTracking().SingleAsync(s => s.RunId == runId);
+                Assert.Equal((1, "staging.create", "CREATE TABLE #stage (Id int)", "boom", repoId), (statement.Ordinal, statement.Step, statement.Sql, statement.Error, statement.RepoId));
+                var runEvent = await db.RunEvents.AsNoTracking().SingleAsync(e => e.RunId == runId);
+                Assert.Equal((1, "info", "source.open", "opened the source", 3L, 1.5), (runEvent.Ordinal, runEvent.Level, runEvent.Step, runEvent.Message, runEvent.Rows, runEvent.ElapsedMs));
+            }
+
+            // A batch missing its lists, or carrying a level the run event log does not know, is refused as invalid.
+            using var missingLists = await client.SendAsync(Authorized(
+                HttpMethod.Post, $"{NodeProtocol.RoutePrefix}/runs/{runId}/trace", token, new { node = NodeName, attempt = handout.Attempt }));
+            Assert.Equal(HttpStatusCode.BadRequest, missingLists.StatusCode);
+            using var badLevel = await client.SendAsync(Authorized(
+                HttpMethod.Post, $"{NodeProtocol.RoutePrefix}/runs/{runId}/trace", token,
+                new RunTraceBatch(NodeName, handout.Attempt, [], [], [new TraceEvent(2, now, "loud", null, "shout", null, null)])));
+            Assert.Equal(HttpStatusCode.BadRequest, badLevel.StatusCode);
+
+            Assert.Equal(RunOutcomeStatus.Recorded, await transport.ReportRunOutcomeAsync(
+                runId, new RunOutcomeRequest(NodeName, handout.Attempt, RunOutcomeKind.Completed, null, Artifact(runId, flowName)), CancellationToken.None));
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId);
+        }
     }
 
     // ---- plumbing ------------------------------------------------------------------------------------------------

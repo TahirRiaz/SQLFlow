@@ -40,14 +40,14 @@ public sealed class ComputeTaskStoreTests
             Assert.Equal("tester", queued.RequestedBy);
             Assert.Null(queued.ClaimedByNode);
 
-            Assert.True(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
+            Assert.NotNull(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
             var running = await Reload(db, taskId);
             Assert.Equal(RunStatuses.Running, running.Status);
             Assert.Equal(Node, running.ClaimedByNode);
             Assert.NotNull(running.StartUtc);
 
             // A second hand-out finds the row running, not queued.
-            Assert.False(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, "other", DateTime.UtcNow));
+            Assert.Null(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, "other", DateTime.UtcNow));
 
             Assert.True(await ComputeTaskStore.RecordOutcomeAsync(
                 db, taskId, Node, TaskOutcomeKind.Succeeded, null, """{"items":[]}""", DateTime.UtcNow));
@@ -78,7 +78,7 @@ public sealed class ComputeTaskStoreTests
                 db, new ComputeTaskEnqueueRequest("listDatabases", sourceRef, null, "{}", TargetPool: "onprem"), DateTime.UtcNow)).TaskId;
             var running = (await ComputeTaskStore.EnqueueAsync(
                 db, new ComputeTaskEnqueueRequest("listDatabases", sourceRef, null, "{}"), DateTime.UtcNow)).TaskId;
-            Assert.True(await ComputeTaskStore.MarkHandedOutAsync(db, running, Node, DateTime.UtcNow));
+            Assert.NotNull(await ComputeTaskStore.MarkHandedOutAsync(db, running, Node, DateTime.UtcNow));
 
             var (queued, holders) = await ComputeTaskStore.LoadDispatchStateAsync(db);
             Assert.Equal("onprem", Assert.Single(queued, t => t.TaskId == routed).TargetPool);
@@ -112,12 +112,12 @@ public sealed class ComputeTaskStoreTests
                 db, new ComputeTaskEnqueueRequest("listObjects", sourceRef, null, "{}"), DateTime.UtcNow)).TaskId;
             Assert.Equal(CancelOutcome.Cancelled, await ComputeTaskStore.CancelAsync(db, queuedTask, DateTime.UtcNow));
             Assert.Equal(RunStatuses.Cancelled, (await Reload(db, queuedTask)).Status);
-            Assert.False(await ComputeTaskStore.MarkHandedOutAsync(db, queuedTask, Node, DateTime.UtcNow));
+            Assert.Null(await ComputeTaskStore.MarkHandedOutAsync(db, queuedTask, Node, DateTime.UtcNow));
 
             // Running: a durable request reconcile surfaces to the dispatcher; repeating it stays CancelRequested.
             var runningTask = (await ComputeTaskStore.EnqueueAsync(
                 db, new ComputeTaskEnqueueRequest("listObjects", sourceRef, null, "{}"), DateTime.UtcNow)).TaskId;
-            Assert.True(await ComputeTaskStore.MarkHandedOutAsync(db, runningTask, Node, DateTime.UtcNow));
+            Assert.NotNull(await ComputeTaskStore.MarkHandedOutAsync(db, runningTask, Node, DateTime.UtcNow));
             Assert.Equal(CancelOutcome.CancelRequested, await ComputeTaskStore.CancelAsync(db, runningTask, DateTime.UtcNow));
             Assert.Equal(CancelOutcome.CancelRequested, await ComputeTaskStore.CancelAsync(db, runningTask, DateTime.UtcNow));
             var (_, active) = await ComputeTaskStore.ListActiveAsync(db);
@@ -149,7 +149,7 @@ public sealed class ComputeTaskStoreTests
             await using var db = CatalogDatabase.Create(cs);
             var taskId = (await ComputeTaskStore.EnqueueAsync(
                 db, new ComputeTaskEnqueueRequest("listObjects", sourceRef, null, "{}"), DateTime.UtcNow)).TaskId;
-            Assert.True(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
+            Assert.NotNull(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
 
             // Another node's report (a superseded holder after a requeue) is dropped.
             Assert.False(await ComputeTaskStore.RecordOutcomeAsync(db, taskId, "other", TaskOutcomeKind.Succeeded, null, "{}", DateTime.UtcNow));
@@ -183,7 +183,7 @@ public sealed class ComputeTaskStoreTests
             await using var db = CatalogDatabase.Create(cs);
             var taskId = (await ComputeTaskStore.EnqueueAsync(
                 db, new ComputeTaskEnqueueRequest("listObjects", sourceRef, null, "{}"), DateTime.UtcNow)).TaskId;
-            Assert.True(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
+            Assert.NotNull(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
 
             // Another node's lease is never requeued by this node's expiry.
             Assert.False(await ComputeTaskStore.RequeueInterruptedAsync(db, taskId, "other-node", DateTime.UtcNow));
@@ -196,7 +196,7 @@ public sealed class ComputeTaskStoreTests
             Assert.Null(requeued.StartUtc);
 
             // A pending operator cancel is honored instead of resurrecting the task.
-            Assert.True(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
+            Assert.NotNull(await ComputeTaskStore.MarkHandedOutAsync(db, taskId, Node, DateTime.UtcNow));
             Assert.Equal(CancelOutcome.CancelRequested, await ComputeTaskStore.CancelAsync(db, taskId, DateTime.UtcNow));
             Assert.False(await ComputeTaskStore.RequeueInterruptedAsync(db, taskId, Node, DateTime.UtcNow));
             Assert.Equal(RunStatuses.Cancelled, (await Reload(db, taskId)).Status);
@@ -232,7 +232,7 @@ public sealed class ComputeTaskStoreTests
             var staleRunning = (await ComputeTaskStore.EnqueueAsync(
                 db, new ComputeTaskEnqueueRequest("listObjects", sourceRef, null, "{}"),
                 now - runningExpiry - TimeSpan.FromHours(1))).TaskId;
-            Assert.True(await ComputeTaskStore.MarkHandedOutAsync(
+            Assert.NotNull(await ComputeTaskStore.MarkHandedOutAsync(
                 db, staleRunning, "dead-node", now - runningExpiry - TimeSpan.FromMinutes(30)));
 
             var expired = await ComputeTaskStore.ExpireAsync(db, now - queuedExpiry, now - runningExpiry, now);

@@ -213,8 +213,9 @@ The layout and the reasoning behind it:
   are pinned to the repo's synced commit at enqueue, a cold-started worker needs only its environment: it
   materializes the exact commit from git and executes.
 - **Secrets stay on the tier that uses them**: the control plane gets the catalog connection and JWT material;
-  workers additionally get the git token and every `${env:...}` connection their pool's flows reference. Nothing
-  data-plane ever passes through the control plane.
+  workers get a node token, the git token and every `${env:...}` connection their pool's flows reference, and
+  never the catalog connection (a node speaks only the node protocol; the KEDA scaler's own catalog credential is
+  the one exception until the metrics scaler replaces it). Nothing data-plane ever passes through the control plane.
 
 ## Placement reminder
 

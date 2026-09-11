@@ -74,8 +74,8 @@ services:
       # personal access token minted with the 'node' scope (an admin: POST /api/v1/me/tokens with scopes ["node"]).
       SQLFLOW_URL: http://controlplane:8080
       SQLFLOW_TOKEN: ${SQLFLOW_NODE_TOKEN:?mint a node-scoped token from the control plane and set SQLFLOW_NODE_TOKEN in .env}
-      # Still needed to read run definitions and stream traces; no queue operation touches the catalog.
-      SQLFLOW_CATALOG_DB: "Server=mssql;Database=SqlFlowCatalog;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      # No catalog connection: the run's definition, its YAML, its lineage context and its trace all travel over
+      # the node protocol. The node reaches only the control plane and the data its flows touch.
       SQLFlowSinkConStr: "Server=mssql;Database=SqlFlowDemo;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       # Serve a pool by listing it here; empty drains untargeted runs only.
       SQLFLOW_WORKER_POOL: ${SQLFLOW_WORKER_POOL:-}

@@ -1,9 +1,11 @@
 # Compute: `sqlflow worker` pods scaled on QUEUE DEPTH by KEDA, not on traffic (workers expose nothing and never
 # sit behind the ingress). This manifest is the template for ONE pool: copy it per pool, set SQLFLOW_WORKER_POOL
-# and the ScaledObject query's pool predicate. The pin-to-synced-commit default means a freshly scaled pod needs
-# no pre-synced state: it claims, materializes the pinned commit from git, executes, and reports back.
+# and the ScaledObject query's pool predicate. A freshly scaled pod needs no pre-synced state and no catalog
+# connection: it polls the control plane, is handed a run with its definition, fetches the snapshotted YAML (or
+# materializes the pinned commit from git), executes, streams the trace, and reports back over the node protocol.
 #
-# Requires KEDA installed in the cluster (https://keda.sh): the mssql scaler polls the catalog for queued runs.
+# Requires KEDA installed in the cluster (https://keda.sh): the mssql scaler polls the catalog for queued runs
+# (the scaler is the only consumer of the catalog-connection secret on this tier).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -33,10 +35,6 @@ spec:
             - name: SQLFLOW_TOKEN
               valueFrom:
                 secretKeyRef: { name: sqlflow-secrets, key: node-token }
-            # Still needed to read run definitions and stream traces; no queue operation touches the catalog.
-            - name: SQLFLOW_CATALOG_DB
-              valueFrom:
-                secretKeyRef: { name: sqlflow-secrets, key: catalog-connection }
             # Empty = untargeted runs only. For a pooled worker set the pool name(s) here AND in the
             # ScaledObject query below.
             - name: SQLFLOW_WORKER_POOL
