@@ -240,6 +240,9 @@ public sealed class McpOptions
         "propose_pipelines",
         // Scans a live location and generates YAML; an authoring step, not a question.
         "discover_source",
+        // Introspects a source and generates ing-flow YAML; the required lead-in to propose_pipelines,
+        // so it is excluded for the same reason: authoring, not a question.
+        "scaffold_ingestion_flow",
         // Session and transport plumbing, inert or meaningless over HTTP with a forwarded bearer.
         "login", "logout", "check_auth_status", "set_access_token", "set_control_plane_url",
         // Git history and schema-diff readers reachable through the GUI, kept off the chat surface to bound

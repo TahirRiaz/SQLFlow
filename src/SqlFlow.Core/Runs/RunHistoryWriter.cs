@@ -76,13 +76,24 @@ public static class RunHistoryWriter
         }
     }
 
+    /// <summary>Characters treated as invalid in a flow's safe folder name, independent of the host OS.
+    /// <see cref="Path.GetInvalidFileNameChars"/> varies by platform (Linux allows almost everything a
+    /// Windows filesystem forbids), but a flow's folder name must sanitize identically everywhere so the
+    /// same flow produces the same on-disk name whether the control plane runs on Windows or Linux.
+    /// This is the union of the Windows-reserved characters, ASCII control characters, and whatever the
+    /// current platform itself forbids.</summary>
+    private static readonly char[] InvalidNameChars = Path.GetInvalidFileNameChars()
+        .Concat(['<', '>', ':', '"', '|', '?', '*', '\\', '/'])
+        .Concat(Enumerable.Range(0, 32).Select(c => (char)c))
+        .Distinct()
+        .ToArray();
+
     /// <summary>The filesystem-safe folder name of a flow. Public because every per-flow folder under
     /// <c>.sqlflow</c> (runs/ here, state/ for stored models) must use the one naming rule, so a flow's
     /// artifacts always line up across subfolders.</summary>
     public static string SafeName(string flowName)
     {
-        var invalid = Path.GetInvalidFileNameChars();
-        var safe = new string(flowName.Trim().Select(c => invalid.Contains(c) ? '_' : c).ToArray());
+        var safe = new string(flowName.Trim().Select(c => InvalidNameChars.Contains(c) ? '_' : c).ToArray());
         return safe.Length == 0 ? "flow" : safe;
     }
 }

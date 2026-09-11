@@ -28,7 +28,13 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
 
     public const string Audience = "sqlflow-tests";
 
-    private const string PlaceholderConnection = "Server=unused;Database=unused;TrustServerCertificate=True";
+    /// <summary>The stand-in catalog connection for tests that never reach a database. Endpoints that query the
+    /// catalog past their authorization boundary (cancel-run, for instance) do issue a real connection attempt
+    /// against it, and the catalog enables EF Core connection resiliency, so an unresolvable host name would be
+    /// retried as transient for roughly a minute before the call gave up. A closed port on the loopback address
+    /// is refused outright, which the retry strategy treats as non-transient, so those endpoints fail at once.</summary>
+    private const string PlaceholderConnection =
+        "Server=127.0.0.1,1;Database=unused;TrustServerCertificate=True;Connect Timeout=1;ConnectRetryCount=0";
 
     private string _catalogConnection = PlaceholderConnection;
 
