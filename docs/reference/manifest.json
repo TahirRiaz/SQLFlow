@@ -792,6 +792,45 @@
       ]
     },
     {
+      "id": "concept-data-stream-detection",
+      "corpus": "reference",
+      "path": "concepts/data-stream-detection.md",
+      "title": "Data stream detection: which tables stopped receiving data, and why a verdict says what it says",
+      "type": "concept",
+      "summary": "The estate-wide detector behind the Data streams board and the detect_stream_anomalies tool: what it reads, the six detectors and their size floors, how verd...",
+      "keywords": [
+        "data streams",
+        "stream anomaly",
+        "stalled table",
+        "missing data",
+        "less data than usual",
+        "level shift",
+        "silence detector",
+        "null days",
+        "reprocessing trim",
+        "delivery cycle",
+        "detect_stream_anomalies",
+        "false positive"
+      ],
+      "related": [
+        "concept-healthcheck-engine",
+        "concept-control-plane",
+        "flow-hc"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.HealthCheck/StreamAnomaly.cs",
+        "src/SqlFlow.HealthCheck/StreamAnomalyDetector.cs",
+        "src/SqlFlow.HealthCheck/CycleEstimator.cs",
+        "src/SqlFlow.HealthCheck/PeltDetector.cs",
+        "src/SqlFlow.HealthCheck/EsdDetector.cs",
+        "src/SqlFlow.HealthCheck/HealthCheckEngine.cs",
+        "src/SqlFlow.ControlPlane/Api/DataStreamEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "tools/sqlflow-mcp/src/server.rs",
+        "gui/src/features/datastreams/DataStreamsPage.tsx"
+      ]
+    },
+    {
       "id": "concept-environment-variables",
       "corpus": "reference",
       "path": "concepts/environment-variables.md",
@@ -955,7 +994,8 @@
       "related": [
         "flow-hc",
         "cli-healthcheck",
-        "concept-run-artifacts"
+        "concept-run-artifacts",
+        "concept-data-stream-detection"
       ],
       "sourceRefs": [
         "src/SqlFlow.HealthCheck/HealthCheckFlowRunner.cs",

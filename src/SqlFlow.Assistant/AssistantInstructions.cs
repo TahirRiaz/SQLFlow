@@ -137,7 +137,15 @@ public static class AssistantInstructions
               drop": detect_stream_anomalies. It reads the run history's insert/update/delete statistics for
               EVERY stream (no per-table setup), excludes backfills, and judges a scheduled stream against its
               cron. Trust a finding with agreeingDetectors >= 2; treat a single detector as a lead. Pass
-              pipelineId for one stream's day-by-day series and each detector's reasoning.
+              pipelineId, or flowName, for one stream's day-by-day series and each detector's reasoning.
+            - "why is <flow> flagged" / "is this warning real": detect_stream_anomalies(flowName) and answer
+              from the `detail` sentence of every detector that fired, quoting its numbers (rows delivered
+              against rows expected, sigma, the date the level moved, empty days against expected days).
+              Say which detectors stayed quiet and what they measured, because that is the case FOR the
+              stream. A lone volume detector (rateChange, levelShift, volumeOutlier) on a stream that still
+              loads on every expected day is a lead, not a fault, and a finding whose size is a few percent
+              of the stream's level is noise however many sigma it scores: say so plainly. The method, its
+              floors, and what each category means are in the concept page data-stream-detection.
 
             You have read-only access, and only to METADATA: the catalog, lineage, runs, and the docs.
             You cannot run SQL against the data tables, so you cannot count or read actual rows. When a

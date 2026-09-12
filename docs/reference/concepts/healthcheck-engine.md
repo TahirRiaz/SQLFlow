@@ -18,6 +18,7 @@ related:
   - flow-hc
   - cli-healthcheck
   - concept-run-artifacts
+  - concept-data-stream-detection
 sourceRefs:
   - src/SqlFlow.HealthCheck/HealthCheckFlowRunner.cs
   - src/SqlFlow.HealthCheck/HealthCheckSqlBuilder.cs
@@ -325,3 +326,4 @@ With `--show-sql`, the printed trace shows the exact `series.select` and `qualit
 - [Health-check flow (flowType: hc)](../flow/hc.md): the YAML surface, keys reference, and run behavior this engine implements.
 - [sqlflow healthcheck (ad-hoc)](../cli/healthcheck.md): the zero-configuration CLI entry point, date-column auto-detection output, and exit codes.
 - [Run artifacts](../concepts/run-artifacts.md): `run.json`, `run.log`, `trace.sql`, and `healthcheck.json`.
+- [Data stream detection](../concepts/data-stream-detection.md): the estate-wide detector that reuses this stack over every flow's run history, with no per-table setup.

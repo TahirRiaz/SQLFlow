@@ -396,6 +396,11 @@ pub struct StreamAnomalyInput {
     /// full day-by-day series and every detector's reasoning.
     #[serde(rename = "pipelineId")]
     pub pipeline_id: Option<String>,
+    /// The flow's NAME (for example "apc_norgesbuss_calls_02_ing") to drill into, for when the question names
+    /// the flow rather than its id: resolved to the pipeline server-side, so "why is this flow flagged" is
+    /// one call. Ignored when pipelineId is given.
+    #[serde(rename = "flowName")]
+    pub flow_name: Option<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -1989,18 +1994,37 @@ and fix every finding first."
             \
             Six detectors vote. Three are PRIMARY and can raise a finding alone: silence (no data now), \
             nullDays (more empty days than the median week explains), cadence (the flow stopped running). \
-            Three measure volume and corroborate: rateChange (overdispersion-adjusted count rate), \
-            levelShift (PELT change point: halved and STAYED halved), volumeOutlier (generalized ESD). \
-            Trust a finding with agreeingDetectors >= 2; treat a lone one as a lead. Each stream also \
-            carries its learned PATTERN (shape, load weekdays, typical row band, reliability) and its \
-            averages per run. \
+            Three measure volume and corroborate: rateChange (the last 7 days against the baseline rate, \
+            overdispersion-adjusted, and it must ALSO move 50% of expected volume), levelShift (PELT change \
+            point over the residuals: halved and STAYED halved, and it must ALSO move 10% of the stream\'s \
+            level), volumeOutlier (generalized ESD over the residuals, and a day must ALSO deviate 10%). \
+            Those size floors are deliberate: sigma is the stream\'s OWN noise, so a very steady feed makes a \
+            hundred-row wobble on a hundred thousand \"4 sigma\"; significance without size is not a fault. \
+            Trust a finding with agreeingDetectors >= 2; a lone detector is a lead, and a lone VOLUME \
+            detector on a stream that still loads every day is nearly always noise worth saying so about. \
             \
-            Pass pipelineId to drill one stream down to its day-by-day series and every detector\'s \
-            reasoning. Use insights_attention for run FAILURES and durations; use this for whether the \
-            DATA is arriving."
+            Every detector, fired or quiet, returns a `detail` sentence carrying its evidence with the \
+            numbers in it (rows delivered against rows expected, sigma, the date a level moved, how many \
+            expected days went empty and whether the flow ran on them). Each stream also carries its \
+            learned PATTERN (shape, load weekdays, typical row band, reliability, any recurring delivery \
+            cycle) and a PROFILE (expected days, missed days split into ran-empty and no-run, predicted \
+            misses, trend, averages per run, days trimmed as reprocessing). \
+            \
+            Pass pipelineId, or flowName, to drill one stream down to its day-by-day series (rows written, \
+            expected, sigma severity, flagged and why) and every detector\'s reasoning: that is the answer to \
+            \"why is this table flagged\". The method is documented in the concept page \
+            data-stream-detection (search_docs). Use insights_attention for run FAILURES and durations; \
+            use this for whether the DATA is arriving."
     )]
     async fn detect_stream_anomalies(&self, Parameters(i): Parameters<StreamAnomalyInput>) -> String {
-        if let Some(id) = i.pipeline_id.as_deref().filter(|s| !s.is_empty()) {
+        let pipeline_id = match self
+            .resolve_stream_pipeline(i.pipeline_id.as_deref(), i.flow_name.as_deref())
+            .await
+        {
+            Ok(id) => id,
+            Err(e) => return format!("Error: {e:#}"),
+        };
+        if let Some(id) = pipeline_id {
             let q = vec![
                 ("days", i.days.map(|n| n.to_string()).unwrap_or_default()),
                 ("includeBackfills", i.include_backfills.map(|b| b.to_string()).unwrap_or_default()),
@@ -2023,6 +2047,66 @@ and fix every finding first."
         ];
         self.get_about("/api/v1/datastreams", &q, ("board", "datastreams"),
             json!({ "page": self.links.datastreams() })).await
+    }
+
+    /// Which single stream a caller means, or none for the board: the pipeline id they gave, else the flow
+    /// whose NAME they gave, resolved through the pipeline list. The list filters by substring, so the exact
+    /// name wins when it is among the hits, a single hit is taken as the answer, and anything else is
+    /// reported with the candidates rather than guessed, because the drill-down of the wrong stream reads
+    /// exactly like the drill-down of the right one.
+    async fn resolve_stream_pipeline(
+        &self,
+        pipeline_id: Option<&str>,
+        flow_name: Option<&str>,
+    ) -> anyhow::Result<Option<String>> {
+        if let Some(id) = pipeline_id.map(str::trim).filter(|s| !s.is_empty()) {
+            return Ok(Some(id.to_string()));
+        }
+
+        let Some(name) = flow_name.map(str::trim).filter(|s| !s.is_empty()) else {
+            return Ok(None);
+        };
+
+        let page = self
+            .cp
+            .get("/api/v1/pipelines", &[("name", name.to_string()), ("pageSize", "50".to_string())])
+            .await?;
+        let items: Vec<&Value> = page["items"].as_array().into_iter().flatten().collect();
+        let exact: Vec<&Value> = items
+            .iter()
+            .copied()
+            .filter(|p| p["name"].as_str().is_some_and(|n| n.eq_ignore_ascii_case(name)))
+            .collect();
+        let chosen = match (exact.len(), items.len()) {
+            (1, _) => exact[0],
+            (0, 1) => items[0],
+            (0, 0) => anyhow::bail!(
+                "No pipeline is named '{name}'. Try search_flows with a fragment of the name, then pass pipelineId."
+            ),
+            _ => {
+                let candidates = if exact.is_empty() { &items } else { &exact };
+                let listed: Vec<String> = candidates
+                    .iter()
+                    .map(|p| {
+                        format!(
+                            "{} ({})",
+                            p["name"].as_str().unwrap_or("?"),
+                            p["id"].as_str().unwrap_or("?")
+                        )
+                    })
+                    .collect();
+                anyhow::bail!(
+                    "'{name}' matches {} pipelines: {}. Pass pipelineId to choose one.",
+                    listed.len(),
+                    listed.join(", ")
+                );
+            }
+        };
+
+        chosen["id"]
+            .as_str()
+            .map(|id| Some(id.to_string()))
+            .ok_or_else(|| anyhow::anyhow!("The pipeline list returned no id for '{name}'."))
     }
 
     #[tool(
