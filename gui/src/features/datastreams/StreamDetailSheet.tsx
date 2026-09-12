@@ -12,7 +12,7 @@ import {
   YAxis,
   type TooltipProps,
 } from "recharts";
-import { CircleCheck, CircleSlash } from "lucide-react";
+import { CircleCheck, CircleSlash, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,6 +21,7 @@ import { dataStreamApi } from "../../api/endpoints";
 import type { StreamPoint, StreamSignal } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
+import { RelativeTime } from "../../components/RelativeTime";
 import { useChartInk, detectorLabels, detectorMethods, formatRows, formatDays, whatIsWrong } from "./streamPresentation";
 import { StreamStatusBadge } from "./StreamStatusBadge";
 
@@ -162,7 +163,24 @@ export function StreamDetailSheet({
                   {stream.agreeingDetectors} of {stream.signals.length} detectors agree
                   {stream.agreeingDetectors > 0 && `, confidence ${(stream.confidence * 100).toFixed(0)}%`}
                 </span>
+                {/* The verdict is recomputed from run history on every request, so after landing data by hand
+                    this is the one control that answers "did that fix it" without waiting for the poll. */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="ml-auto"
+                  onClick={() => void query.refetch()}
+                  disabled={query.isFetching}
+                  aria-label="Recheck this stream"
+                  data-testid="datastream-detail-recheck"
+                >
+                  <RefreshCw className={query.isFetching ? "animate-spin" : undefined} />
+                  Recheck
+                </Button>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                Checked <RelativeTime value={new Date(query.dataUpdatedAt).toISOString()} absolute={false} />
+              </p>
               <p className="text-[13px] leading-5">{stream.summary}</p>
 
               {/* The learned pattern: the reference the verdict above is stated against. Without it,

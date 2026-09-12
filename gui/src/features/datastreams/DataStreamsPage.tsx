@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Activity } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Activity, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -15,6 +16,7 @@ import { EmptyState } from "../../components/EmptyState";
 import { KpiCard } from "../../components/KpiCard";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
+import { RelativeTime } from "../../components/RelativeTime";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { pollingInterval } from "../../hooks/usePolling";
 import { StreamDetailSheet } from "./StreamDetailSheet";
@@ -128,6 +130,7 @@ export default function DataStreamsPage() {
     useLocalStorageState<boolean>("datastreams.includeUnscheduled", false);
   const [includeBackfills, setIncludeBackfills] = useLocalStorageState<boolean>("datastreams.includeBackfills", false);
   const [drill, setDrill] = useState<{ pipelineId: string; flowName: string } | null>(null);
+  const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: ["datastreams", days, status, scope, includeBackfills, includeUnscheduled],
@@ -141,6 +144,17 @@ export default function DataStreamsPage() {
     }),
     refetchInterval: pollingInterval(120_000),
   });
+
+  /**
+   * Re-run the analysis against the catalog as it stands right now. Every verdict on this page is computed
+   * from run history on each request, so a load that landed since the last poll is invisible until something
+   * asks again, and the two-minute poll is far too slow for the "I just ran it, did it help" loop. Invalidating
+   * the whole "datastreams" key deliberately takes the open detail sheet with it: a board that says one thing
+   * and a sheet that says another is worse than either alone.
+   */
+  const recheck = () => {
+    void queryClient.invalidateQueries({ queryKey: ["datastreams"] });
+  };
 
   const columns = useMemo<Column<DataStream>[]>(() => [
     {
@@ -285,6 +299,17 @@ export default function DataStreamsPage() {
 
   const controls = (
     <div className="flex flex-wrap items-center gap-4">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={recheck}
+        disabled={query.isFetching}
+        aria-label="Recheck data streams"
+        data-testid="datastreams-recheck"
+      >
+        <RefreshCw className={query.isFetching ? "animate-spin" : undefined} />
+        Recheck
+      </Button>
       <div className="flex items-center gap-2">
         <Switch
           id="include-backfills"
@@ -355,15 +380,21 @@ export default function DataStreamsPage() {
     <Page data-testid="page-datastreams">
       <PageHeader
         title="Data streams"
-        subtitle={
-          (board.scope === "source"
-            ? "Has the vendor delivered? Data arriving from outside the estate"
-            : board.scope === "internal"
-              ? "Have we processed it? Tables we derive from the archive onwards"
-              : "Vendor deliveries and our own processing together") +
-          `, over the last ${days} days` +
-          (board.includeBackfills ? " (backfills counted as normal traffic)" : "")
-        }
+        subtitle={(
+          <>
+            {(board.scope === "source"
+              ? "Has the vendor delivered? Data arriving from outside the estate"
+              : board.scope === "internal"
+                ? "Have we processed it? Tables we derive from the archive onwards"
+                : "Vendor deliveries and our own processing together") +
+              `, over the last ${days} days` +
+              (board.includeBackfills ? " (backfills counted as normal traffic)" : "")}
+            {/* When the verdicts were computed, because "this is stale" is otherwise indistinguishable from
+                "nothing changed" after a run. */}
+            {" · checked "}
+            <RelativeTime value={board.asOfUtc} absolute={false} />
+          </>
+        )}
         actions={controls}
       />
 
