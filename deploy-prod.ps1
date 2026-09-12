@@ -364,8 +364,17 @@ function Wait-RunTerminal {
 }
 
 function Set-AppImage {
-    param([string] $ResourceName, [string] $Image)
-    $res = Invoke-Az @('containerapp', 'update', '-n', $ResourceName, '-g', $Rg, '--image', $Image, '-o', 'none')
+    <#
+        Points the app at an image, in one revision. With -MaxReplicas the same update also pins the
+        app's scale, so a setting the estate must converge to travels with every deploy of that app.
+    #>
+    param([string] $ResourceName, [string] $Image, [int] $MinReplicas = 0, [int] $MaxReplicas = 0)
+    $azArgs = @('containerapp', 'update', '-n', $ResourceName, '-g', $Rg, '--image', $Image)
+    if ($MaxReplicas -gt 0) {
+        $azArgs += @('--min-replicas', "$MinReplicas", '--max-replicas', "$MaxReplicas")
+    }
+    $azArgs += @('-o', 'none')
+    $res = Invoke-Az $azArgs
     if ($res.ExitCode -ne 0) {
         Write-Host ($res.Output | Out-String)
         throw "az containerapp update failed for $ResourceName (exit $($res.ExitCode))."
@@ -492,7 +501,18 @@ foreach ($a in $Apps) {
     $newImage = "$Acr.azurecr.io/sqlflow-v3-${a}:$Tag"
     Write-Host "--- $($rec.Name) -> :$Tag ---"
 
-    Set-AppImage -ResourceName $rec.Name -Image $newImage
+    if ($a -eq 'control-plane') {
+        # The run queue lives in the control plane and is owned by exactly one replica (the dispatch lease), so
+        # a second replica adds no dispatch capacity and refuses every node call that lands on it (a 503 the
+        # nodes retry, which only slows hand-outs). The tier is therefore pinned to ONE replica on every deploy,
+        # so an estate created before that decision converges to it; deploy/bicep and deploy/k8s carry the same
+        # pin. Raise it only once passive replicas forward node calls to the owner.
+        Write-Host '   control plane pinned to one replica (dispatch has one owner)'
+        Set-AppImage -ResourceName $rec.Name -Image $newImage -MinReplicas 1 -MaxReplicas 1
+    }
+    else {
+        Set-AppImage -ResourceName $rec.Name -Image $newImage
+    }
 
     if (Test-Serving -ResourceName $rec.Name -Image $newImage) {
         Write-Host "   $($rec.Name): serving $Tag" -ForegroundColor Green
