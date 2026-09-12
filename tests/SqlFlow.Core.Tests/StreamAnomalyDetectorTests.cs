@@ -95,6 +95,77 @@ public sealed class StreamAnomalyDetectorTests
         Assert.Equal(StreamStatus.Healthy, analysis.Status);
     }
 
+    /// <summary>
+    /// A production feed as the catalog recorded it (arc.APC_Calls, August to September 2026): the same
+    /// four weekday levels every week, thirty rows of noise, and from 09-01 a Tuesday-to-Friday level about
+    /// eighty rows lower. Two of its days were painted red at 12 sigma and a level shift fired at 4.2 sigma,
+    /// on a change of a twelfth of a percent that no reader of the chart could see.
+    /// </summary>
+    private static List<StreamBucket> SteadyApcCalls()
+    {
+        long[] rows =
+        [
+            106_550, 109_015, 65_470, 37_347, 107_309, 107_329, 107_363,
+            107_394, 109_767, 65_357, 37_311, 107_315, 107_327, 107_355,
+            107_394, 109_771, 65_463, 37_351, 107_203, 107_228, 107_260,
+            107_282, 109_660, 65_337, 37_267, 107_207, 107_237, 107_303,
+            107_317, 0,
+        ];
+        var first = new DateTime(2026, 8, 14);
+        return rows.Select((r, i) => Day(first.AddDays(i), r, runs: 2)).ToList();
+    }
+
+    private static StreamAnalysis AnalyzeApcCalls()
+    {
+        var asOf = new DateTime(2026, 9, 12, 9, 0, 0, DateTimeKind.Utc);
+        return StreamAnomalyDetector.Analyze(
+            SteadyApcCalls(), asOf.Date.AddDays(-29), asOf, new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 });
+    }
+
+    [Fact]
+    public void VerySteadyStream_WithAnEightyRowLevelChange_IsHealthy()
+    {
+        // Significance without size. Sigma is the stream's own noise, and this stream has almost none, so
+        // any drift at all is many sigma. The floor is operational: a shift has to be a share of what the
+        // stream delivers before it is a finding.
+        var analysis = AnalyzeApcCalls();
+
+        Assert.Equal(StreamStatus.Healthy, analysis.Status);
+        var shift = analysis.Signals.Single(s => s.Detector == StreamDetector.LevelShift);
+        Assert.False(shift.Fired, shift.Detail);
+        Assert.Contains("too small", shift.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VerySteadyStream_NeverHasASubPercentDayPaintedRed()
+    {
+        // 08-14 was 809 rows (0.75%) under its weekday level, which on thirty rows of noise is 12.7 sigma:
+        // enough to waive the shared tagging's relative floor. On the board the floor is not waivable.
+        var analysis = AnalyzeApcCalls();
+
+        Assert.DoesNotContain(analysis.Series, p => p.Anomaly);
+        Assert.False(analysis.Signals.Single(s => s.Detector == StreamDetector.VolumeOutlier).Fired);
+    }
+
+    [Fact]
+    public void StreamThatHalved_StillReportsTheLevelShift_WithItsSizeInRows()
+    {
+        // The floor must not cost the test its reason to exist: a genuine regime change is both many sigma
+        // and a large share of the level, and the sentence now says how large.
+        var buckets = Daily(60, 10_000);
+        for (var i = 0; i < 14; i++)
+        {
+            var index = buckets.Count - 1 - i;
+            buckets[index] = Day(buckets[index].Date, 5_000);
+        }
+
+        var shift = Analyze(buckets).Signals.Single(s => s.Detector == StreamDetector.LevelShift);
+
+        Assert.True(shift.Fired, shift.Detail);
+        Assert.Equal(StreamDirection.Below, shift.Direction);
+        Assert.Contains("% of its", shift.Detail, StringComparison.Ordinal);
+    }
+
     // ---- Reprocessing must not become the baseline --------------------------------------------------------
 
     [Fact]

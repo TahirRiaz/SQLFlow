@@ -151,6 +151,33 @@ public sealed record StreamAnomalyOptions
     /// <summary>The robust-sigma magnitude a PELT level shift must reach to count as a regime change.</summary>
     public double LevelShiftSigma { get; init; } = 3.0;
 
+    /// <summary>
+    /// The share of the stream's level a shift must also amount to, in percent, before it is a finding.
+    /// <para>
+    /// Sigma alone cannot carry this test, because sigma is the stream's OWN noise and a steady stream has
+    /// almost none. A feed that writes 107,300 rows every weekday give or take thirty moved to 107,220 one
+    /// Tuesday and stayed there: eighty rows, a twelfth of a percent, and 4.2 sigma. That is a fact about how
+    /// regular the vendor is, not a fault, and reporting it teaches the operator that this surface cries
+    /// wolf. Ten percent is far below anything that reads as "less data than usual" on a chart and far above
+    /// the drift a steady feed shows between its regimes, which is the same floor the point test uses.
+    /// </para>
+    /// </summary>
+    public double LevelShiftMinPercent { get; init; } = 10.0;
+
+    /// <summary>
+    /// The share of the expected volume a single day must deviate by, in percent, before it can be flagged
+    /// as an outlying day, whatever its sigma.
+    /// <para>
+    /// The shared tagging already carries a relative floor, but waives it once a point is overwhelmingly
+    /// significant, and on a steady stream everything is: with thirty rows of noise a day that is 800 rows
+    /// (0.75%) short of its 107,000 scores 12.7 sigma, passes the waiver, and is painted red. For a
+    /// monitoring board the floor is absolute. A sub-ten-percent day is never the reason anyone opens a
+    /// stream, and the sustained version of the same drift is the level-shift test's job, with its own
+    /// floor above.
+    /// </para>
+    /// </summary>
+    public double VolumeOutlierMinPercent { get; init; } = 10.0;
+
     /// <summary>Trailing days whose data may still be arriving: scored and charted, never flagged.</summary>
     public int MaturityDays { get; init; } = 1;
 

@@ -609,7 +609,39 @@ public static class StreamAnomalyDetector
         }
 
         HealthCheckEngine.TagAnomalies(series, options.AnomalyThreshold, options.EsdAlpha, options.MaxAnomalyFraction);
+        SuppressTrivialOutliers(series, options);
         return (series, cycle);
+    }
+
+    /// <summary>
+    /// Untags the statistically flagged days whose deviation is too small to matter, per
+    /// <see cref="StreamAnomalyOptions.VolumeOutlierMinPercent"/>. The severity stays on the row, because it
+    /// is still what the point measured; only the verdict is withdrawn. Days tagged for having no data at all
+    /// are not deviations of a size and are left alone: an empty day is judged by the null-day model.
+    /// </summary>
+    private static void SuppressTrivialOutliers(IReadOnlyList<SeriesRow> series, StreamAnomalyOptions options)
+    {
+        foreach (var row in series)
+        {
+            if (!row.AnomalyDetected || row.AnomalyReason is null or "Missing Data")
+            {
+                continue;
+            }
+
+            if (DeviationPercent(row.BaseValue, row.PredictedValue) < options.VolumeOutlierMinPercent)
+            {
+                row.AnomalyDetected = false;
+                row.AnomalyReason = null;
+            }
+        }
+    }
+
+    /// <summary>The size of a deviation as a share of the larger of the two values, in percent, so a surge
+    /// and a shortfall of the same proportion read the same and a zero on either side is 100%.</summary>
+    private static double DeviationPercent(double actual, double expected)
+    {
+        var scale = Math.Max(Math.Abs(actual), Math.Abs(expected));
+        return scale > 0 ? Math.Abs(actual - expected) / scale * 100 : 0;
     }
 
     /// <summary>
@@ -939,17 +971,35 @@ public static class StreamAnomalyDetector
         var recentCutoff = observedMature.Count - Math.Max(14, observedMature.Count / 3);
         var isRecent = last.Index >= recentCutoff;
         var down = last.MedianAfter < last.MedianBefore;
-        var fired = isRecent && last.MagnitudeSigma >= options.LevelShiftSigma && (down || options.FlagIncreases);
+        var significant = last.MagnitudeSigma >= options.LevelShiftSigma;
+
+        // The shift in the stream's own units, against the level it was expected to hold over the new regime:
+        // the residual medians are what PELT segmented, and the expectation is what they are residuals of. A
+        // stream expected at 107,000 whose residual median moved from +40 to -45 shifted 85 rows, and that is
+        // the number that decides whether anyone should care (see LevelShiftMinPercent).
+        var shiftRows = Math.Abs(last.MedianAfter - last.MedianBefore);
+        var regime = observedMature.Skip(last.Index).Select(r => (double)r.PredictedValue).ToList();
+        var level = regime.Count > 0 ? Math.Abs(RobustStatistics.Median(regime)) : 0;
+        var shiftPercent = level > 0 ? shiftRows / level * 100 : 100;
+        var material = shiftPercent >= options.LevelShiftMinPercent;
+
+        var fired = isRecent && significant && material && (down || options.FlagIncreases);
         var date = observedMature[Math.Min(last.Index, observedMature.Count - 1)].Date;
         var magnitude = last.MagnitudeSigma.ToString("0.#", CultureInfo.InvariantCulture);
+        var size = $"{Rows(shiftRows)} ({shiftPercent.ToString("0.#", CultureInfo.InvariantCulture)}% of its {Rows(level)} level)";
+
+        var detail = fired
+            ? $"The stream shifted {(down ? "down" : "up")} to a new level on {date:yyyy-MM-dd}: by {size}, {magnitude} sigma, and has stayed there."
+            : !isRecent
+                ? $"The newest regime change ({date:yyyy-MM-dd}, {magnitude} sigma) is old enough to be the current normal."
+                : significant && !material
+                    ? $"The level moved {(down ? "down" : "up")} on {date:yyyy-MM-dd} by {size}: {magnitude} sigma against this " +
+                        "stream's very steady history, but far too small to be a change in what it delivers."
+                    : $"The newest regime change ({date:yyyy-MM-dd}, {magnitude} sigma) is too small to call.";
 
         return Signal(StreamDetector.LevelShift, fired,
             fired ? Saturate((last.MagnitudeSigma - options.LevelShiftSigma) / options.LevelShiftSigma) : 0,
-            fired
-                ? $"The stream shifted {(down ? "down" : "up")} to a new level on {date:yyyy-MM-dd} ({magnitude} sigma) and has stayed there."
-                : $"The newest regime change ({date:yyyy-MM-dd}, {magnitude} sigma) is " +
-                    (isRecent ? "too small to call." : "old enough to be the current normal."),
-            down ? StreamDirection.Below : StreamDirection.Above);
+            detail, down ? StreamDirection.Below : StreamDirection.Above);
     }
 
     /// <summary>
