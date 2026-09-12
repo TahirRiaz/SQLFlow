@@ -34,7 +34,13 @@ public sealed record StreamCycleDto(
 /// larger (or smaller) delivery on top of that rhythm, null for a stream that has none.</summary>
 public sealed record StreamPatternDto(
     string Shape, IReadOnlyList<string> LoadDays, double TypicalRows, double LowRows, double HighRows,
-    double Reliability, StreamCycleDto? Cycle, string Description);
+    double Reliability,
+    // True for a table that writes only when its SOURCE changes rather than on every run: a reference or
+    // dimension table read every morning that changes a handful of times a year. Nothing about such a stream
+    // may be judged against its schedule's firing interval, because the cron says how often we ask, not how
+    // often the answer differs.
+    bool ChangeDriven,
+    StreamCycleDto? Cycle, string Description);
 
 /// <summary>A stream's measured normal: how much it writes, how often, and where it is trending. These are the
 /// averages an operator checks a verdict against, and what every detector is calibrated on.</summary>
@@ -46,6 +52,9 @@ public sealed record StreamProfileDto(
     long TotalRowsInserted, long TotalRowsUpdated, long TotalRowsDeleted,
     double AvgRowsInsertedPerRun, double AvgRowsUpdatedPerRun, double AvgRowsDeletedPerRun,
     double AvgRowsWrittenPerLoadedDay, double MedianRowsWrittenPerLoadedDay, double TrendRowsPerDay,
+    // Of the mature days the flow ran and at least one run succeeded, the share that actually wrote rows: the
+    // evidence behind ChangeDriven, and the answer to "does running this flow produce data".
+    double DeliveryShare,
     // The days the stream was expected to load on, so a client can state the missed count as "3 of 30".
     int ExpectedDays, int UnexpectedNullDays, int EmptyRunDays, int NoRunDays, double PredictedNullDays,
     int TrimmedLoadDays, double TrimFence);
@@ -164,6 +173,13 @@ public static class DataStreamEndpoints
     public const int MaxStreams = 1000;
 
     public const int MaxResults = 500;
+
+    /// <summary>
+    /// How many windows of history before the analysed one are read to judge whether a stream that loaded
+    /// nothing inside the window is dead or merely static. Three is enough for the question (did running this
+    /// flow ever produce data) and bounds a query that would otherwise walk a stream's whole life.
+    /// </summary>
+    private const int PriorHistoryWindows = 3;
 
     /// <summary>The days a board row's sparkline covers. Two weeks is long enough for a weekly stream to show
     /// two loads and for a shortfall to read as a shape, and short enough that a row stays a row.</summary>
@@ -379,6 +395,28 @@ public static class DataStreamEndpoints
                 .Select(g => new { PipelineId = g.Key, LastLoadUtc = g.Max(r => r.WrittenUtc) })
                 .ToDictionaryAsync(x => x.PipelineId, x => x.LastLoadUtc, ct).ConfigureAwait(false);
 
+        // For those same streams: how often running them USED to produce data. A window with no loads in it
+        // cannot tell a table that died from a table that simply does not change, because both run, succeed,
+        // and write nothing. The history before the window can: a stream that delivered on nearly every run
+        // and has delivered on none since is an outage, while one that delivered on two runs in three hundred
+        // is a reference table whose quiet is its normal.
+        var priorFrom = fromUtc.AddDays(-PriorHistoryWindows * windowDays);
+        var priorDelivery = silentIds.Count == 0
+            ? []
+            : await db.Runs.AsNoTracking()
+                .Where(r => silentIds.Contains(r.PipelineId)
+                    && r.WrittenUtc >= priorFrom
+                    && r.WrittenUtc < fromUtc
+                    && r.Status == RunStatuses.Succeeded)
+                .GroupBy(r => r.PipelineId)
+                .Select(g => new PriorDelivery(
+                    g.Key,
+                    g.Count(),
+                    g.Count(r => (r.RowsInserted ?? 0) + (r.RowsUpdated ?? 0) + (r.RowsDeleted ?? 0) > 0
+                        || (r.RowsInserted == null && r.RowsUpdated == null && r.RowsDeleted == null
+                            && (r.RowsLoaded ?? 0) > 0))))
+                .ToDictionaryAsync(x => x.PipelineId, ct).ConfigureAwait(false);
+
         // The candidates, newest activity first, so a capped sweep keeps the streams whose state is current.
         var ordered = candidateIds
             .Where(id => batchFilter is null
@@ -427,6 +465,8 @@ public static class DataStreamEndpoints
                 {
                     ExpectedGapDaysOverride = schedule?.ExpectedGapDays,
                     LastKnownLoadUtc = lastLoadBeforeWindow.TryGetValue(id, out var seen) ? seen : null,
+                    PriorSuccessfulRuns = priorDelivery.GetValueOrDefault(id)?.Runs ?? 0,
+                    PriorLoadingRuns = priorDelivery.GetValueOrDefault(id)?.LoadingRuns ?? 0,
                 });
 
             var pipeline = meta.GetValueOrDefault(id);
@@ -473,6 +513,10 @@ public static class DataStreamEndpoints
             ranked.Count(s => s.Status == "insufficient-history"),
             ranked);
     }
+
+    /// <summary>How often running one stream produced data over the history BEFORE the analysed window: the
+    /// evidence that separates a dead feed from a table nobody ever changes.</summary>
+    private sealed record PriorDelivery(Guid PipelineId, int Runs, int LoadingRuns);
 
     /// <summary>Backfill runs on one day of one stream, counted but never analysed.</summary>
     private sealed record ExcludedDay(Guid PipelineId, DateTime Day, int Runs);
@@ -824,7 +868,8 @@ public static class DataStreamEndpoints
             profile.Pattern.Shape,
             profile.Pattern.LoadDays.Select(d => d.ToString()).ToList(),
             profile.Pattern.TypicalRows, profile.Pattern.LowRows, profile.Pattern.HighRows,
-            profile.Pattern.Reliability, ToDto(profile.Pattern.Cycle), profile.Pattern.Description),
+            profile.Pattern.Reliability, profile.Pattern.ChangeDriven, ToDto(profile.Pattern.Cycle),
+            profile.Pattern.Description),
         profile.Cadence.ToString().ToLowerInvariant(), profile.ExpectedGapDays, profile.CadenceSource,
         profile.MaxObservedGapDays, profile.LastLoadUtc, profile.LastRunUtc,
         Finite(profile.DaysSinceLastLoad), Finite(profile.DaysSinceLastRun),
@@ -832,7 +877,7 @@ public static class DataStreamEndpoints
         profile.TotalRowsInserted, profile.TotalRowsUpdated, profile.TotalRowsDeleted,
         profile.AvgRowsInsertedPerRun, profile.AvgRowsUpdatedPerRun, profile.AvgRowsDeletedPerRun,
         profile.AvgRowsWrittenPerLoadedDay, profile.MedianRowsWrittenPerLoadedDay, profile.TrendRowsPerDay,
-        profile.ExpectedDays, profile.UnexpectedNullDays, profile.EmptyRunDays, profile.NoRunDays,
+        profile.DeliveryShare, profile.ExpectedDays, profile.UnexpectedNullDays, profile.EmptyRunDays, profile.NoRunDays,
         profile.PredictedNullDays,
         profile.TrimmedLoadDays, profile.TrimFence);
 

@@ -145,6 +145,12 @@ export function finding(stream: DataStream): string {
       return volumeFinding(stream, "Less data than usual", "below");
     case "more-than-normal":
       return volumeFinding(stream, "More data than usual", "above");
+    case "rarely-changes":
+      // Not a fault and not a shrug: this table writes only when its source changes, and the last change is
+      // the fact a reader wants. An empty chart beside it is the table at rest, not a gap.
+      return days === null
+        ? "Changes rarely, no change recorded yet"
+        : `Changes rarely, last change ${formatDays(days).toLowerCase()}`;
     case "never-loaded":
       return "Has never loaded";
     case "insufficient-history":
@@ -224,6 +230,12 @@ export function howOftenItLoads(pattern: StreamPattern, expectedGapDays: number)
 /** The rhythm as the caption under a "last data" age: "expected every day", "expected weekdays only", or
  * "no fixed rhythm" for the stream nothing can be expected of. */
 export function expectedRhythm(pattern: StreamPattern, expectedGapDays: number): string {
+  // A change-driven table has no delivery rhythm to expect: saying "expected every day" of a reference table
+  // read every morning is the claim that produced the false findings in the first place.
+  if (pattern.changeDriven) {
+    return "changes rarely";
+  }
+
   const often = howOftenItLoads(pattern, expectedGapDays);
   if (pattern.shape === "sporadic") {
     return "no fixed rhythm";

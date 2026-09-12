@@ -1981,8 +1981,17 @@ and fix every finding first."
             A zero-row day is judged against what the table normally does on THAT KIND OF DAY: reliability \
             is learned per weekday, and how often it delivers is the median week rather than the mean day, \
             so a feed that never loads at weekends is not reported every Saturday and an outage cannot \
-            teach the detector that outages are normal. Where the stream joins a schedule, the cadence \
-            comes from its cron instead. \
+            teach the detector that outages are normal. \
+            \
+            A cron says how often the platform ASKS the source, not how often the answer differs, and the \
+            two part company on reference and dimension tables: a twenty-five row account list read every \
+            morning that changes twice a year delivers on a few percent of its runs. A stream that delivers \
+            on under half the days its flow ran and succeeded is CHANGE-DRIVEN (pattern.changeDriven, and \
+            profile.deliveryShare is the evidence): its empty days are its normal, its silence is measured \
+            against its own changes or not at all, and a quiet one is category rarely-changes at OK rather \
+            than a stalled outage. Its flow is still held to the cron by the cadence detector, which is the \
+            failure that can actually befall such a table. Where a stream does deliver per fire, the cron \
+            remains the delivery cadence exactly as before. \
             \
             Only streams on an ENABLED schedule are analysed by default: a flow nothing schedules has no \
             say in whether data is delivered. The answer reports how many were left out for that reason. \

@@ -131,6 +131,53 @@ public sealed record StreamAnomalyOptions
     /// and on a monthly stream two months, so one constant fits every cadence.</summary>
     public double SilenceTolerance { get; init; } = 2.0;
 
+    /// <summary>
+    /// The share of its successful run days a stream must actually deliver rows on before its DECLARED
+    /// schedule is read as a delivery promise rather than merely an execution one.
+    /// <para>
+    /// A cron says how often we ASK the source, not how often the answer differs. Most feeds make the two the
+    /// same, which is why the schedule is such good evidence for them. A reference table does not: a
+    /// twenty-five row account list is read every morning at 07:03 and changes twice a year, so measuring it
+    /// against "fires every 1 day" reports a perfectly healthy table as a critical outage every day between
+    /// changes. Half is the line because it is the plain meaning of the claim: below it, running this flow
+    /// more often than not produces nothing, so the schedule is not predicting delivery.
+    /// </para>
+    /// </summary>
+    public double DeliveryPerRunThreshold { get; init; } = 0.5;
+
+    /// <summary>Days on which the flow ran and at least one run succeeded, below which the delivery share
+    /// above is too small a sample to reclassify anything on and the declared schedule keeps the benefit of
+    /// the doubt.</summary>
+    public int MinRunDaysForDeliveryShare { get; init; } = 10;
+
+    /// <summary>Changes a change-driven stream must have made before its own gaps may set a silence bar. Below
+    /// this there is no gap distribution: one change says nothing about when the next is due, and the honest
+    /// verdict is that nothing is overdue because nothing is due.</summary>
+    public int MinLoadsForDeliveryCadence { get; init; } = 3;
+
+    /// <summary>
+    /// Days of learning era needed before a stream's OVERALL load rate may declare every weekday one it loads
+    /// on. The fallback exists so a young dense stream is not called shapeless, but the era runs only through
+    /// the last load, so a stream that has loaded once has an era of one day and that day loaded: without a
+    /// floor it concludes a daily rhythm from a single observation and then reports every day since as
+    /// missing data.
+    /// </summary>
+    public int MinEraDaysForRhythm { get; init; } = 7;
+
+    /// <summary>
+    /// Successful runs recorded BEFORE the analysed window, and how many of them wrote rows. Supplied by the
+    /// caller for the streams that loaded nothing inside the window, where the window alone cannot tell a
+    /// table that died from a table that simply does not change: both run, succeed, and write nothing for as
+    /// long as you look. A stream that used to deliver on nearly every run is the outage this surface exists
+    /// to catch; one that delivered on two runs in three hundred is a reference table behaving exactly as it
+    /// always has. Zero means the caller supplied no prior history, and the analysis keeps its worst-case
+    /// reading rather than inventing a reassurance.
+    /// </summary>
+    public int PriorSuccessfulRuns { get; init; }
+
+    /// <summary>See <see cref="PriorSuccessfulRuns"/>: how many of those runs actually wrote rows.</summary>
+    public int PriorLoadingRuns { get; init; }
+
     /// <summary>The trailing slice the rate test compares against the rest of the window.</summary>
     public int RecentWindowDays { get; init; } = 7;
 
@@ -362,6 +409,14 @@ public sealed record StreamPattern
     /// weekly rates and leaves the middle one where it was.</summary>
     public required double Reliability { get; init; }
 
+    /// <summary>
+    /// True when this table writes only when its SOURCE changes rather than on every run: a reference or
+    /// dimension table whose flow is scheduled daily and which changes a handful of times a year. Its empty
+    /// days are its normal, so nothing about it may be judged against the schedule's firing interval, and the
+    /// question "has it stopped" is answered from its own change history or not at all.
+    /// </summary>
+    public required bool ChangeDriven { get; init; }
+
     /// <summary>The recurring delivery cycle on top of the rhythm, when the stream has one that its weekday
     /// pattern cannot express: the vendor who ships a bigger refill every fortnight, the month-end file. Null
     /// for the streams that simply deliver the same kind of load every time.</summary>
@@ -484,6 +539,11 @@ public sealed record StreamProfile
 
     /// <summary>The Theil-Sen slope in rows per day: a growing stream's growth is expectation, not anomaly.</summary>
     public required double TrendRowsPerDay { get; init; }
+
+    /// <summary>Of the mature days the flow RAN and at least one run SUCCEEDED, the share that actually wrote
+    /// rows, in [0, 1]. The ground truth behind <see cref="StreamPattern.ChangeDriven"/>: it says whether
+    /// running this flow produces data, which is the question a cron cannot answer.</summary>
+    public required double DeliveryShare { get; init; }
 
     /// <summary>Days in the window the stream was expected to load on: every mature day whose weekday its
     /// learned reliability cleared the threshold for. This is the denominator <see cref="UnexpectedNullDays"/>

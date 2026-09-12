@@ -580,6 +580,198 @@ public sealed class StreamAnomalyDetectorTests
         Assert.False(signals[StreamDetector.VolumeOutlier]);
     }
 
+    // ---- Tables the source changes, rather than the schedule ---------------------------------------------
+
+    /// <summary>
+    /// trapeze_biaccount_02_ing as the catalog recorded it: a twenty-five row account reference table whose
+    /// flow is read every morning at 07:03 and which changed on exactly one day in seven weeks (three updated
+    /// rows on 2026-08-20). Before the delivery split it was reported Stopped at critical severity with two
+    /// detectors agreeing, which put a perfectly healthy table at the very top of the board.
+    /// </summary>
+    private static List<StreamBucket> Biaccount()
+    {
+        string[] allRunsFailed = ["07-29", "08-04", "08-05", "08-09", "08-12", "08-13", "08-14"];
+        var buckets = new List<StreamBucket>();
+        for (var date = new DateTime(2026, 7, 29); date <= BiaccountAsOf.Date; date = date.AddDays(1))
+        {
+            var key = date.ToString("MM-dd", CultureInfo.InvariantCulture);
+            var failed = allRunsFailed.Contains(key);
+            if (date < new DateTime(2026, 8, 20) && !failed)
+            {
+                continue; // no run recorded that day
+            }
+
+            buckets.Add(new StreamBucket
+            {
+                Date = date,
+                Runs = 1,
+                Failures = failed ? 1 : 0,
+                ExcludedBackfillRuns = 0,
+                RowsInserted = 0,
+                RowsUpdated = key == "08-20" ? 3 : 0,
+                RowsDeleted = 0,
+            });
+        }
+
+        return buckets;
+    }
+
+    private static readonly DateTime BiaccountAsOf = new(2026, 9, 12, 12, 0, 0, DateTimeKind.Utc);
+
+    private static StreamAnalysis AnalyzeBiaccount(IReadOnlyList<StreamBucket> buckets, int windowDays)
+        => StreamAnomalyDetector.Analyze(
+            buckets, BiaccountAsOf.Date.AddDays(-(windowDays - 1)), BiaccountAsOf,
+            new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 });
+
+    [Theory]
+    [InlineData(30)]
+    [InlineData(60)]
+    public void AReferenceTableReadDailyThatChangesTwiceAYear_IsHealthy(int windowDays)
+    {
+        // A cron says how often we ASK the source, not how often the answer differs. Judging this table
+        // against "fires every 1 day" reported it as a critical outage on every day between changes, and the
+        // window it was read over decided whether it came out Stopped or too new, which is its own tell.
+        var analysis = AnalyzeBiaccount(Biaccount(), windowDays);
+
+        Assert.Equal(StreamStatus.Healthy, analysis.Status);
+        Assert.Equal("rarely-changes", analysis.Category);
+        Assert.True(analysis.Profile.Pattern.ChangeDriven);
+        Assert.All(analysis.Signals, s => Assert.False(s.Fired, $"{s.Detector}: {s.Detail}"));
+
+        // The empty days are not misses, so there is no denominator to count them against and nothing to
+        // report: 22 of 23 "missing" days was the old reading, and every one of them was the table at rest.
+        Assert.Equal(0, analysis.Profile.ExpectedDays);
+        Assert.Equal(0, analysis.Profile.UnexpectedNullDays);
+        Assert.Equal(1, analysis.Profile.LoadedDays);
+    }
+
+    [Fact]
+    public void AReferenceTableWhoseFlowStopsRunning_IsStillReported()
+    {
+        // What the surface must NOT lose by excusing the empty days. Nothing can go wrong with a table nobody
+        // changes except that we stop asking, so the cadence detector is the whole watch on it, and it is
+        // still held to the schedule it declares.
+        var buckets = Biaccount();
+        buckets.RemoveAll(b => b.Date > new DateTime(2026, 9, 2));
+
+        var analysis = AnalyzeBiaccount(buckets, 30);
+
+        Assert.True(analysis.Signals.Single(s => s.Detector == StreamDetector.Cadence).Fired);
+        Assert.Equal("not-running", analysis.Category);
+    }
+
+    [Fact]
+    public void AChangeDrivenTableWithEnoughChanges_IsJudgedAgainstItsOwnGaps()
+    {
+        // Once a table has changed enough times to have a gap distribution, the silence test comes back, held
+        // to what the table actually does rather than to the cron: quiet at a fortnight, loud at two months.
+        static List<StreamBucket> Fortnightly(int silentDaysAtTheEnd)
+        {
+            var buckets = new List<StreamBucket>();
+            for (var i = 89; i >= 0; i--)
+            {
+                var date = AsOf.Date.AddDays(-i);
+                var changed = i > silentDaysAtTheEnd && (89 - i) % 14 == 0;
+                buckets.Add(Day(date, changed ? 4_000 : 0));
+            }
+
+            return buckets;
+        }
+
+        var options = new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 };
+        var settled = StreamAnomalyDetector.Analyze(
+            Fortnightly(10), AsOf.Date.AddDays(-89), AsOf, options);
+        var overdue = StreamAnomalyDetector.Analyze(
+            Fortnightly(60), AsOf.Date.AddDays(-89), AsOf, options);
+
+        Assert.True(settled.Profile.Pattern.ChangeDriven);
+        Assert.False(settled.Signals.Single(s => s.Detector == StreamDetector.Silence).Fired);
+        Assert.True(overdue.Signals.Single(s => s.Detector == StreamDetector.Silence).Fired);
+    }
+
+    [Fact]
+    public void AStreamThatDeliversOnEveryRun_KeepsItsDeclaredCadence()
+    {
+        // The rule the split must not weaken: where the schedule IS evidence about delivery, a drought is
+        // still measured against it, and a stream that has delivered every day for weeks is stalled after two.
+        var buckets = Daily(60, 10_000, endsDaysAgo: 4);
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 });
+
+        Assert.False(analysis.Profile.Pattern.ChangeDriven);
+        Assert.Equal(StreamStatus.Stalled, analysis.Status);
+        Assert.True(analysis.Signals.Single(s => s.Detector == StreamDetector.Silence).Fired);
+    }
+
+    [Fact]
+    public void ARarelyChangingTableWhoseLastChangePredatesTheWindow_IsNotAnOutage()
+    {
+        // The same table a month later, when its one change has fallen out of the window entirely. Inside the
+        // window it is indistinguishable from a dead feed, so the verdict rests on what it did before: two
+        // loads in three hundred runs is a reference table, not an outage.
+        var buckets = new List<StreamBucket>();
+        for (var i = 59; i >= 0; i--)
+        {
+            buckets.Add(Day(AsOf.Date.AddDays(-i), 0));
+        }
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions
+        {
+            ExpectedGapDaysOverride = 1,
+            LastKnownLoadUtc = AsOf.Date.AddDays(-95),
+            PriorSuccessfulRuns = 300,
+            PriorLoadingRuns = 2,
+        });
+
+        Assert.Equal(StreamStatus.Healthy, analysis.Status);
+        Assert.Equal("rarely-changes", analysis.Category);
+        Assert.Equal("info", analysis.Severity);
+    }
+
+    [Fact]
+    public void ADailyFeedThatDiedBeforeTheWindow_IsStillCritical()
+    {
+        // The blind spot that must stay closed. Same empty window, opposite history: this stream delivered on
+        // nearly every run it ever made, so its silence is the most broken thing the surface can find.
+        var buckets = new List<StreamBucket>();
+        for (var i = 59; i >= 0; i--)
+        {
+            buckets.Add(Day(AsOf.Date.AddDays(-i), 0));
+        }
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions
+        {
+            ExpectedGapDaysOverride = 1,
+            LastKnownLoadUtc = AsOf.Date.AddDays(-95),
+            PriorSuccessfulRuns = 300,
+            PriorLoadingRuns = 295,
+        });
+
+        Assert.Equal(StreamStatus.Stalled, analysis.Status);
+        Assert.Equal("critical", analysis.Severity);
+    }
+
+    [Fact]
+    public void ASilentWindowWithNoPriorHistory_KeepsTheWorstCaseReading()
+    {
+        // No prior evidence either way, so the analysis must not invent a reassurance: an unexplained silence
+        // longer than the whole window stays the outage it has always been reported as.
+        var buckets = new List<StreamBucket>();
+        for (var i = 59; i >= 0; i--)
+        {
+            buckets.Add(Day(AsOf.Date.AddDays(-i), 0));
+        }
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions
+        {
+            ExpectedGapDaysOverride = 1,
+            LastKnownLoadUtc = AsOf.Date.AddDays(-95),
+        });
+
+        Assert.Equal(StreamStatus.Stalled, analysis.Status);
+        Assert.Equal("critical", analysis.Severity);
+    }
+
     // ---- The recurring delivery a weekday model cannot express --------------------------------------------
 
     /// <summary>A deterministic wobble in [-1, 1], so a series built "with realistic noise" is the same series
@@ -726,10 +918,13 @@ public sealed class StreamAnomalyDetectorTests
     }
 
     [Fact]
-    public void ADailyStreamWithAlmostNoLoads_IsStillHeldBack()
+    public void ADailyFlowThatAlmostNeverLoads_IsAChangeDrivenTable_NotAnUnjudgeableOne()
     {
-        // The guard the split must not lose: a daily stream that has only ever loaded twice, most recently
-        // yesterday, is not a slow rhythm. Nothing about it can be judged, and saying so is the honest answer.
+        // This used to be reported as too new to judge, on the reasoning that two loads are not a rhythm. They
+        // are not, but the sample is not thin: we watched the flow run sixty times and produce data twice, and
+        // that is a fact about the TABLE rather than a shortage of evidence. Saying "rarely changes" is what
+        // the history actually supports; saying nothing hides a table we understand behind the label for one
+        // we do not.
         var buckets = new List<StreamBucket>
         {
             Day(AsOf.Date.AddDays(-30), 10_000),
@@ -746,7 +941,29 @@ public sealed class StreamAnomalyDetectorTests
 
         var analysis = Analyze(buckets, new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 });
 
+        Assert.Equal(StreamStatus.Healthy, analysis.Status);
+        Assert.Equal("rarely-changes", analysis.Category);
+        Assert.True(analysis.Profile.Pattern.ChangeDriven);
+    }
+
+    [Fact]
+    public void AStreamWithTooFewRunDaysToJudge_IsStillHeldBack()
+    {
+        // The guard that genuinely matters: below a sample of run days, "it rarely delivers" and "we have
+        // barely watched it" are the same picture, and the second must not be reported as the first.
+        var buckets = new List<StreamBucket> { Day(AsOf.Date.AddDays(-2), 10_000) };
+        for (var i = 4; i >= 0; i--)
+        {
+            if (i != 2)
+            {
+                buckets.Add(Day(AsOf.Date.AddDays(-i), 0));
+            }
+        }
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 });
+
         Assert.Equal(StreamStatus.InsufficientHistory, analysis.Status);
+        Assert.False(analysis.Profile.Pattern.ChangeDriven);
     }
 
     [Fact]

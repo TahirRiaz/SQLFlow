@@ -2085,6 +2085,10 @@ export interface StreamPattern {
   highRows: number;
   /** How often it NORMALLY delivers on a day it loads on, in [0, 1]: the median week, not the mean day. */
   reliability: number;
+  /** True for a table that writes only when its SOURCE changes rather than on every run: a reference or
+   * dimension table read every morning that changes a handful of times a year. Its empty days are its normal,
+   * so nothing about it is judged against the schedule's firing interval. */
+  changeDriven: boolean;
   /** The recurring larger (or smaller) delivery on top of the rhythm, null for a stream that has none. */
   cycle: StreamCycle | null;
   description: string;
@@ -2116,6 +2120,9 @@ export interface StreamProfile {
   avgRowsWrittenPerLoadedDay: number;
   medianRowsWrittenPerLoadedDay: number;
   trendRowsPerDay: number;
+  /** Of the mature days the flow ran and at least one run succeeded, the share that actually wrote rows: the
+   * evidence behind changeDriven, and the answer to "does running this flow produce data". */
+  deliveryShare: number;
   /** Days in the window it was expected to load on: the denominator unexpectedNullDays is read against, so a
    * board can say "3 of 30" rather than a bare "3". Zero for a stream with no rhythm the history supports. */
   expectedDays: number;

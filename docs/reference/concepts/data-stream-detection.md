@@ -13,6 +13,9 @@ keywords:
   - silence detector
   - null days
   - reprocessing trim
+  - reference table
+  - change-driven
+  - delivery cadence
   - delivery cycle
   - detect_stream_anomalies
   - false positive
@@ -59,8 +62,57 @@ It is exposed in three places, all computing the same analysis on each request (
 2. **Cadence.** The expected gap between loads is the schedule's cron when the stream has one (`cadenceSource: schedule`), otherwise the median gap between loading days (`observed`). A declared cadence is strictly better evidence: a stream silent for three weeks teaches an inferred detector that three-week gaps are normal.
 3. **Scoring the volumes.** On the trimmed loading days: a Theil-Sen robust trend, then the weekday-median baseline of what the trend leaves, then (when `DetectDeliveryCycles` is on) a sparse recurring delivery cycle the weekday model cannot express (a bigger refill every fortnight, a month-end file), fitted jointly with the weekday model by backfitting both orders and keeping the decomposition with the fewer departing parts. `expected` for a day is trend plus weekday plus cycle. Generalized ESD then tags point anomalies over the residuals, exactly as in the health-check engine, and the trailing `MaturityDays` (1) are scored but never flagged.
 4. **The size floor on points.** The shared tagging waives its 10% relative floor once a point is overwhelmingly significant. On a very steady stream everything is: with thirty rows of noise a day 800 rows (0.75%) short of its 107,000 scores 12.7 sigma. The stream detector therefore untags any flagged day whose deviation is under `VolumeOutlierMinPercent` (10) of the larger of actual and expected. The sigma severity stays on the point; only the verdict is withdrawn.
-5. **Level shifts.** PELT over the residuals of the mature observed days, as in the health-check engine.
-6. **Readiness.** The volume tests need a sample: `MinObservedDays` (7) loading days, below which they report themselves held back and only whether data is still ARRIVING is tested. The presence tests need only a rhythm that accounts for the sample: the loads made plus the loads the current drought swallowed must reach half of what the cadence implies for the window, so a monthly feed is judged on two loads while a daily feed that has only ever loaded twice is not. A stream failing both bars is reported `insufficient-history` ("Too new" on the board), charted and never flagged.
+5. **Does running the flow produce data?** Of the mature days the flow RAN with at least one run SUCCEEDING
+   (`deliveryShare`), how many wrote rows. A day whose every run failed says nothing about the source and a day
+   the flow never ran on says less, so both are out of the denominator. Below `DeliveryPerRunThreshold` (0.5)
+   over at least `MinRunDaysForDeliveryShare` (10) such days, the stream is **change-driven** and the schedule
+   stops being evidence about delivery. See the section below.
+6. **Level shifts.** PELT over the residuals of the mature observed days, as in the health-check engine.
+7. **Readiness.** The volume tests need a sample: `MinObservedDays` (7) loading days, below which they report themselves held back and only whether data is still ARRIVING is tested. The presence tests need only a rhythm that accounts for the sample: the loads made plus the loads the current drought swallowed must reach half of what the cadence implies for the window, so a monthly feed is judged on two loads while a daily feed that has only ever loaded twice is not. A stream failing both bars is reported `insufficient-history` ("Too new" on the board), charted and never flagged.
+
+## Run cadence and delivery cadence are different questions
+
+A cron says how often the platform **asks** the source, not how often the answer **differs**. For most feeds
+the two coincide, which is what makes a declared schedule such good evidence: a daily sales feed that has not
+delivered for three days is three days late, and no amount of quiet history should argue that away.
+
+A reference table breaks the equivalence completely. `arc.TP_biAccount` holds twenty-five accounts, its flow
+is read every morning at 07:03, and the source changes perhaps twice a year. Measured against "fires every 1
+day" it is silent past its tolerance on the second day after every change and stays that way until the next
+one, so a healthy table is reported Stopped at critical severity for months at a time. On this estate 143 of
+382 scheduled streams deliver on a third or fewer of the days their flow runs, so this is not a corner case.
+
+The detector therefore separates the two cadences and keeps both:
+
+- **`expectedGapDays` / `cadenceSource` remain the RUN cadence**, taken from the cron. The `cadence` detector
+  still holds the flow to it, which matters more for a reference table than for anything else: nothing can go
+  wrong with a table nobody changes except that the platform stops asking, and that is still caught.
+- **The delivery expectation is learned separately** from `deliveryShare`. For a stream that delivers on most
+  of its runs, it IS the cron and everything behaves as before. For a change-driven stream it is the median gap
+  between the stream's own changes, and the silence bar must also clear the longest quiet spell the table has
+  already survived. With fewer than `MinLoadsForDeliveryCadence` (3) changes there is no gap distribution at
+  all, and the silence test reports exactly that: nothing is overdue because nothing is due.
+
+Two supporting rules fall out of the same principle:
+
+- **The learned rhythm may not come from the cron either.** `pattern.shape` for a change-driven stream is
+  derived from its own change gaps, or is `sporadic` when it has too few, and the description leads with
+  "Changes rarely: it wrote rows on 1 of the 23 day(s) its flow ran and succeeded" instead of claiming it
+  "loads every day (its schedule says so)".
+- **A one-day era may not teach a daily rhythm.** The weekday reliability model learns from the era through
+  the LAST load, which stops a drought erasing its own evidence. For a table whose last load is its only load
+  that era is a single day, and that day loaded, so the overall-rate fallback used to conclude the stream loads
+  every weekday and then report every day since as a missed one. The fallback now needs
+  `MinEraDaysForRhythm` (7) days of era before it may declare a shape.
+
+**When the last change predates the window.** A stream that loaded nothing at all inside the window is
+analysed by a separate path, and from inside that window a static table and a dead feed are identical: both
+run, succeed, and write nothing for as long as anyone looks. The verdict therefore rests on evidence the
+window does not contain. The control plane reads the stream's runs over the `PriorHistoryWindows` (3) windows
+before this one and passes `PriorSuccessfulRuns` and `PriorLoadingRuns`; a stream that delivered on nearly
+every prior run and has delivered on none since is the outage the branch exists to catch and stays critical,
+while one that delivered on two runs in three hundred is reported `rarely-changes` at info. With no prior
+history supplied the worst-case reading stands, so the analysis never invents a reassurance.
 
 ## The six detectors
 
@@ -68,7 +120,7 @@ Three are PRIMARY and may raise a finding alone; three measure volume and corrob
 
 | Detector | Primary | Fires when | Floors and knobs |
 |---|---|---|---|
-| `silence` (No data now) | yes | Days since the last load exceed the expected gap times `SilenceTolerance` (2); with an inferred cadence it must also exceed the longest gap the stream has survived, plus one day. | A declared cron ignores past gaps: a ten-day gap in the past was an incident, not a licence. |
+| `silence` (No data now) | yes | Days since the last load exceed the DELIVERY gap times `SilenceTolerance` (2); with an inferred cadence it must also exceed the longest gap the stream has survived, plus one day. Quiet, always, for a change-driven stream with too few changes to have a delivery cadence. | A declared cron ignores past gaps: a ten-day gap in the past was an incident, not a licence. It supplies the delivery gap only for a stream that delivers per fire. |
 | `nullDays` (Missing days) | yes | Unexpected null days exceed what the learned reliability predicts by `NullDayZ` (3) standard deviations of that count. | Judged per weekday, so a feed that never loads at weekends is not reported every Saturday. |
 | `cadence` (Not running) | yes | The flow itself has not RUN for longer than its cadence tolerates, whatever it would have loaded. | Kept apart from `silence`: a flow that stopped running is a scheduling or worker problem, a flow that runs and writes nothing is an upstream one. |
 | `rateChange` (Volume rate) | no | The last `RecentWindowDays` (7) moved against the baseline rate by `RateCollapseZ` (4) quasi-Poisson sigma AND by `RateCollapseDropPercent` (50%) of expected volume, with the baseline expecting at least `RateCollapseMinExpected` (30) rows. | Both directions; a rise is information. |
@@ -90,6 +142,7 @@ The fired detectors are turned into one finding, ranked by what an operator must
 | `idle-days` | Every empty day had a run that succeeded and wrote nothing: the flow reporting there was nothing new, not data going missing. | `watch` (Worth a look) | info |
 | `less-than-normal` | Data still arrives on schedule, in less volume. | `degraded` with two detectors, else `watch` | warning with two detectors, else info |
 | `more-than-normal` | More volume than usual. | `watch` | info |
+| `rarely-changes` | Every detector quiet on a table that writes only when its source changes: its empty days are its normal. | `healthy` (OK) | info |
 | `healthy` | Every detector quiet. | `healthy` (OK) | info |
 | `insufficient-history` | Too few loads to judge. | `insufficient-history` (Too new) | info |
 
@@ -100,11 +153,22 @@ The confirmation rule: `ConfirmationThreshold` = 2 independent detectors must ag
 The single-stream response (`pipelineId` or `flowName` on the tool, the detail sheet in the GUI) carries everything the verdict rests on:
 
 - `signals`: all six detectors with `fired`, `score`, `direction`, `primary`, and the `detail` sentence. The quiet ones say what they measured, which is the case FOR the stream.
-- `profile`: the learned pattern (`shape`, `loadDays`, `typicalRows` with its `lowRows` to `highRows` band, `reliability`, any `cycle` with its period, size and next due date, and a `description` sentence), the cadence and where it came from, `expectedDays`, `unexpectedNullDays` split into `emptyRunDays` and `noRunDays`, `predictedNullDays`, `trimmedLoadDays` and the `trimFence`, the trend, and the averages per run and per loading day.
+- `profile`: the learned pattern (`shape`, `loadDays`, `typicalRows` with its `lowRows` to `highRows` band, `reliability`, `changeDriven`, any `cycle` with its period, size and next due date, and a `description` sentence), the run cadence and where it came from, `deliveryShare`, `expectedDays`, `unexpectedNullDays` split into `emptyRunDays` and `noRunDays`, `predictedNullDays`, `trimmedLoadDays` and the `trimFence`, the trend, and the averages per run and per loading day.
 - `series`: one point per calendar day with `rowsWritten` (and the insert/update/delete split), `expected`, `severity` (the robust sigma of the residual), `anomaly` and `reason`, `unexpectedNull`, `imputed`, `immature`, `trimmed`, and the excluded backfill runs.
 - `sparkline` (board rows too): the last 14 days as parallel arrays, with the positions of flagged and missed days.
 
 A worked example. A vendor feed wrote 107,309 to 107,394 rows every Tuesday to Friday for weeks, then 107,203 to 107,317 from one Tuesday on, with about thirty rows of variation inside a weekday. Before the size floors, `levelShift` fired at 4.2 sigma ("shifted down to a new level on 2026-09-01") and two ordinary days were flagged at 12 sigma; nothing else fired, every expected day had loaded, and the stream was `watch` / `less-than-normal`. The right reading was already in the payload: one non-primary detector, `nullDays` quiet on all 29 expected days, `rateChange` within normal variation, and a shift of 85 rows on a 107,000 level. With the floors the shift's detail now reads "moved down by 85 row(s) (0.1% of its 107,253 row(s) level): 4.2 sigma against this stream's very steady history, but far too small to be a change in what it delivers", no day is flagged, and the stream is healthy. When a finding rests on one volume detector and the stream still loads on every expected day, that is the shape to expect, and the answer to "why is this flagged" is the `detail` sentence with its numbers.
+
+A second example, of the other kind. `trapeze_biaccount_02_ing` writes `arc.TP_biAccount`, twenty-five rows of
+account reference data. Over seven weeks its flow ran every morning, succeeded, and wrote rows on exactly one
+day: three updated rows on 2026-08-20. Read over thirty days it came out Stopped, critical, confidence 1.0,
+with `silence` and `nullDays` both firing and a pattern that read "Loads every day (its schedule says so) ... it
+has delivered on 4% of the 23 days it was expected to". Read over sixty days the same table came out
+`insufficient-history`, which is its own tell: a verdict that flips on the window it is read over is not
+measuring the table. Both readings trace to the cron, once through the silence bar and once through a weekday
+model that learned "daily" from the single day in its era. It now reads Healthy / `rarely-changes` at both
+windows, with no expected days to miss, and the sentence "This table changes when its source does, not when its
+flow runs: it wrote rows on 1 of the 23 day(s) its flow ran and succeeded".
 
 ## Configuration touchpoints
 

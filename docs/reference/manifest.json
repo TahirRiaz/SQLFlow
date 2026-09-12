@@ -808,6 +808,9 @@
         "silence detector",
         "null days",
         "reprocessing trim",
+        "reference table",
+        "change-driven",
+        "delivery cadence",
         "delivery cycle",
         "detect_stream_anomalies",
         "false positive"
