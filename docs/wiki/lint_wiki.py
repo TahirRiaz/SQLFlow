@@ -155,9 +155,26 @@ def check_frontmatter(path, data, report):
             "id '{0}' should be '{1}' to match the filename".format(data["id"], expected_id),
         )
 
+    # YAML reads unquoted null, ~, true, false, yes, no and bare numbers as non-strings, and the MCP server
+    # refuses to start on a manifest carrying one. sourceRefs and rawRefs entries are checked in check_refs_exist.
+    for key in ("id", "title", "type", "summary"):
+        if data.get(key) is not None and not isinstance(data[key], str):
+            report.error(where, "frontmatter key '{0}' must be a string, got {1!r}".format(key, data[key]))
+
     for key in LIST_KEYS:
-        if key in data and not isinstance(data[key], list):
+        if key not in data:
+            continue
+        if not isinstance(data[key], list):
             report.error(where, "frontmatter key '{0}' must be a list".format(key))
+            continue
+        if key in ("sourceRefs", "rawRefs"):
+            continue
+        for item in data[key]:
+            if not isinstance(item, str):
+                report.error(
+                    where,
+                    "frontmatter key '{0}' entry {1!r} is not a string; quote it".format(key, item),
+                )
 
     updated = data.get("updated")
     if updated is not None and not isinstance(updated, datetime.date):

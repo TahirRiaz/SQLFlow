@@ -69,6 +69,28 @@ def parse_frontmatter(path):
     return fm, text
 
 
+def type_errors(entry):
+    """Every value in a manifest entry that the MCP server could not deserialize, as messages.
+
+    tools/sqlflow-mcp/src/docs.rs reads these fields as strings and lists of strings and refuses to start on
+    anything else. YAML silently turns unquoted null, ~, true, false, yes, no and bare numbers into non-strings,
+    so a keyword written as `- null` would otherwise yield a manifest that builds into a server that cannot boot.
+    """
+    errors = []
+    for key in ("id", "path", "title", "type", "summary", "yamlPath", "cliCommand"):
+        if key in entry and not isinstance(entry[key], str):
+            errors.append(f"'{key}' must be a string, got {entry[key]!r}; quote it in the frontmatter")
+    for key in ("keywords", "related", "sourceRefs"):
+        value = entry[key]
+        if not isinstance(value, list):
+            errors.append(f"'{key}' must be a list, got {value!r}")
+            continue
+        for item in value:
+            if not isinstance(item, str):
+                errors.append(f"'{key}' entry {item!r} is not a string; quote it in the frontmatter")
+    return errors
+
+
 def derive_summary(body_text):
     after_fm = FM_RE.sub("", body_text, count=1)
     lines = [l.strip() for l in after_fm.splitlines()]
@@ -83,6 +105,7 @@ def main():
     pages = find_pages()
     docs = []
     issues = []
+    errors = []
     seen_ids = {}
 
     parsed = []
@@ -132,7 +155,7 @@ def main():
             derived = derive_summary(text)
             issues.append(f"{label}: missing 'summary'; derived one from body text")
             summary = derived
-        elif len(summary) > 160:
+        elif isinstance(summary, str) and len(summary) > 160:
             issues.append(f"{label}: 'summary' exceeds 160 chars; truncated for manifest only (source file left untouched)")
             summary = summary[:157] + "..."
         if not keywords:
@@ -160,7 +183,17 @@ def main():
         entry["related"] = pruned_related
         entry["sourceRefs"] = fm.get("sourceRefs") or []
 
+        entry_errors = type_errors(entry)
+        if entry_errors:
+            errors.extend(f"{label}: {e}" for e in entry_errors)
+            continue
         docs.append(entry)
+
+    if errors:
+        for e in errors:
+            print(f"ERROR: {e}")
+        print("manifest.json NOT written: the MCP server cannot load a manifest carrying these values.")
+        return 1
 
     docs.sort(key=lambda d: d["id"])
 

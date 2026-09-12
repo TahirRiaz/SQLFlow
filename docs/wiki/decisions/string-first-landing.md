@@ -11,7 +11,7 @@ keywords:
   - pre-ingestion transform
   - parquet
   - empty string
-  - null
+  - "null"
 sourceRefs:
   - src/SqlFlow.Sources/FileSourceReaderBase.cs
   - src/SqlFlow.Core/Engine/TypeInferencer.cs

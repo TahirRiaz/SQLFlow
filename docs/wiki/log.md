@@ -155,3 +155,13 @@ rejected alternatives, the four decisions that changed while it shipped, what ge
 it, and updated the drift map's phased-design section to point at it. Reference pages
 (`concepts/control-plane.md`, `guides/deployment.md`, `cli/worker.md`) updated in the same change;
 manifest rebuilt.
+
+## [2026-09-11] lint | An unquoted null keyword crash-looped the MCP server
+
+The `40312a0` MCP image built cleanly and then exited at startup: `decisions/string-first-landing.md`
+listed the keyword `null` unquoted, YAML read it as a null, `build_manifest.py` wrote it into the
+manifest, and `DocMeta` in `tools/sqlflow-mcp/src/docs.rs` refuses a non-string keyword. Quoted it and
+rebuilt the manifest. So the next one fails before a deploy rather than in a container: the manifest
+builder now refuses to write an entry carrying a non-string value, `lint_wiki.py` reports non-string
+frontmatter scalars and list entries, and `tools/sqlflow-mcp/build.rs` validates every entry's
+field types so a bad manifest fails `cargo build` and therefore the image build.
