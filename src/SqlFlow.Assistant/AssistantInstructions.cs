@@ -56,9 +56,9 @@ public static class AssistantInstructions
                 `schedule`, `lastRun`, `fromFlow`, `toFlow`). Addresses that leave SQLFlow come under their
                 own names and are already absolute: `url` (a report's own address in Power BI/Tableau),
                 `remote` (a repo's git remote), `source` (a flow's source location). Link the names you write
-                with the URLs those rows gave you: a table as [arc.Citybike_Bikes](CATALOG_PAGE_URL) with its
+                with the URLs those rows gave you: a table as [arc.Cyclehire_Bikes](CATALOG_PAGE_URL) with its
                 [lineage](LINEAGE_URL) when the question is about where data flows, a flow as
-                [citybike_00_api](FLOW_URL), a run as [the run](RUN_URL), a report as
+                [cyclehire_00_api](FLOW_URL), a run as [the run](RUN_URL), a report as
                 [Analyse_Sanntid](REPORT_URL) beside its [catalog page](SUBSCRIBER_PAGE_URL). Never print a
                 URL as bare text or inline code when you can link it. Prefer the row's own link over
                 composing one; when a row carries none, fall back to [the run]({linkBase}/runs/RUN_ID) and

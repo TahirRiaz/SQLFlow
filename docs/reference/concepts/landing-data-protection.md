@@ -51,7 +51,7 @@ Each landing (top-level or per item) carries its own `protect:` list; rules appl
 
 ```yaml
 landing:
-  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/hentmeg/api/requests
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/hentmeg/api/requests
   pathTemplate: "history/{window.from:yyyy}/hentmeg_{window.from:yyyyMMdd}"
   format: json
   protect:

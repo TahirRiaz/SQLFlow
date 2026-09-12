@@ -113,5 +113,5 @@ when the default `{page}` discriminator is not the shape you want.
 | `entur/` | `keyset` + `keysetIdHeader` + `stopOnStatus` | binary XLSX bodies, id only in a header |
 | `svv/` | `keyset` with `cursorPath` | monotonic ids in the body |
 | `hentmeg/` | `offset` | classic offset/limit REST |
-| `frida/` | `page` with `startPage` | page-numbered feed |
+| `fleetreg/` | `page` with `startPage` | page-numbered feed |
 | `questback/` | `page` with `pageVariable` | page number needed in the landing path |

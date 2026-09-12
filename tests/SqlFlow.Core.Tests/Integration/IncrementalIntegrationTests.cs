@@ -184,7 +184,7 @@ public sealed class IncrementalIntegrationTests : IDisposable
     {
         // Silver/ods tables carried over from legacy layers store FileDate_DW as a NUMERIC yyyyMMddHHmmss stamp
         // (decimal), not a string. The file-date probe must accept it, else downstream anchoring silently falls
-        // back on every real legacy silver table. Mirrors the Baatbooking arc.* case.
+        // back on every real legacy silver table. Mirrors the Boatbooking arc.* case.
         var cs = IntegrationDb.Require();
         var db = new SqlConnectionStringBuilder(cs).InitialCatalog;
         var pre = "IT_DwnNum_" + Guid.NewGuid().ToString("N")[..8];

@@ -1,17 +1,17 @@
-# Ports citybike-sftp-nets.ps1 as its own flow type: downloads the vendor's settlement files from an
+# Ports the settlement SFTP runbook as its own flow type: downloads the vendor's settlement files from an
 # SFTP server into the data lake, verbatim, keeping only files modified in the last 3 days. The
 # downstream xml file-flow parses what it lands. The password is a Key Vault reference, never inline.
 flowType: sftp
-name: Citybike_Nets_Settlement
-batch: citybike
+name: Cyclehire_Settlement
+batch: cyclehire
 direction: download
 server:
-  host: 91.102.25.29
+  host: sftp.example.com
   port: 22
-  username: Bysykkelen
-  passwordRef: ${keyvault:dw-keyvault-prod/citybike-sftp-nets-password}
+  username: cyclehire-sftp
+  passwordRef: ${keyvault:dw-keyvault-prod/cyclehire-sftp-settlement-password}
 remotePath: /outbound
-local: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/citybike/sftp/nets
+local: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/cyclehire/sftp/settlement
 pattern: "*.xml"
 recursive: true
 modifiedWithinDays: 3

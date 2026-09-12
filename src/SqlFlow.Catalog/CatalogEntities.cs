@@ -402,7 +402,7 @@ public class CatalogRunGroup
     public string Mode { get; set; } = string.Empty;
 
     /// <summary>What the set was expanded from: the anchor flow name for a Node run, the batch label for a Batch
-    /// run. Kept for display and audit ("Node run of Orders", "Batch run of Baatbooking").</summary>
+    /// run. Kept for display and audit ("Node run of Orders", "Batch run of Boatbooking").</summary>
     public string Anchor { get; set; } = string.Empty;
 
     /// <summary>How many flow members were enqueued in this group.</summary>

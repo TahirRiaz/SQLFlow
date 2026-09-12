@@ -52,7 +52,7 @@ source:
   server: dwh
   query: SELECT DatasetId, FileName, FileSizeBytes FROM DW.edw.DatasetFile
 template:
-  id: "kolumbus:dataset--File.Generic:{DatasetId}"
+  id: "contoso:dataset--File.Generic:{DatasetId}"
   kind: osdu:wks:dataset--File.Generic:1.1.0
   data:
     Name: "{FileName}"
@@ -152,7 +152,7 @@ invoke:
   url: https://osdu.example.com/api/storage/v2/records
   method: PUT
   headers:
-    data-partition-id: kolumbus
+    data-partition-id: contoso
   envelopeKey: records
   auth:
     type: bearer

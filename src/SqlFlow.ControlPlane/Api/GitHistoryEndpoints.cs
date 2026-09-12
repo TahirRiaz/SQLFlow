@@ -491,7 +491,7 @@ public static class GitHistoryEndpoints
     /// The commit log, newest first, filtered. Path matching is done against each commit's own changed-file set
     /// rather than through LibGit2Sharp's <c>Commits.QueryBy</c>: that API resolves an exact blob path only (a
     /// folder prefix matches nothing) and throws on some merge topologies, whereas an estate browses by folder
-    /// ("what changed under citybike") as often as by file.
+    /// ("what changed under cyclehire") as often as by file.
     ///
     /// The walk is bounded by <see cref="MaxScannedCommits"/>, so a path that has not been touched in a very long
     /// time stops the search rather than reading an entire repository's history on one request.

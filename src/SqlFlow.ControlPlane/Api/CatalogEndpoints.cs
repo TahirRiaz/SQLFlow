@@ -494,7 +494,7 @@ public static class CatalogEndpoints
     /// <summary>
     /// The estate's schema history, newest first: every object a source-control snapshot found added, changed, or
     /// dropped. Filters narrow it to one database, one kind of change, or a time window, and a free-text term
-    /// matches the object's schema, name, or category so "where did Bysykkel_Trips change" is one query. This is
+    /// matches the object's schema, name, or category so "where did Citybikes_Trips change" is one query. This is
     /// a read of what the snapshots already recorded; it touches no database being tracked.
     /// </summary>
     private static async Task<Ok<PagedResult<SchemaChangeDto>>> ListSchemaChangesAsync(

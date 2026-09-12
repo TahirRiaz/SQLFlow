@@ -1676,7 +1676,7 @@
         "src/SqlFlow.Copy/LocalCopyEndpoint.cs",
         "src/SqlFlow.Copy/AzureBlobCopyEndpoint.cs",
         "src/SqlFlow.Yaml/YamlCopyFlowLoader.cs",
-        "samples/copy/baatbooking-storage-to-lake.flow.yaml"
+        "samples/copy/boatbooking-storage-to-lake.flow.yaml"
       ]
     },
     {
@@ -2306,7 +2306,7 @@
         "src/SqlFlow.Core/Sftp/SftpFlow.cs",
         "src/SqlFlow.Sftp/SftpEngine.cs",
         "src/SqlFlow.Yaml/YamlSftpFlowLoader.cs",
-        "samples/sftp/citybike-nets-download.flow.yaml"
+        "samples/sftp/cyclehire-settlement-download.flow.yaml"
       ]
     },
     {

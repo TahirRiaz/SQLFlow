@@ -52,23 +52,23 @@ connections:
   dwh: ${env:SQLFLOW_CONN_DWH}
 
 subscribers:
-  Analyse_Bysykkel:
+  Analyse_Citybikes:
     type: PowerBI
-    owner: analyse@kolumbus.no
+    owner: analyse@contoso.example
     description: City bike usage and station occupancy
     notes: |
-      Not refreshed since April 2024; owner asked whether it is superseded by Analyse_Bysykkel_statistikk.
+      Not refreshed since April 2024; owner asked whether it is superseded by Analyse_Citybikes_statistikk.
     url: https://app.powerbi.com/groups/me/reports/abc123
     server: dwh
     queries:
       - name: Turer
         sql: |
           SELECT t.TripId, t.StartedAt, s.StationName
-          FROM   arc.Bysykkel_Trips AS t
-          JOIN   arc.Bysykkel_Stations AS s ON s.StationId = t.StartStationId
+          FROM   arc.Citybikes_Trips AS t
+          JOIN   arc.Citybikes_Stations AS s ON s.StationId = t.StartStationId
       - name: Stasjoner
         sql: |
-          SELECT * FROM pre.v_Bysykkel_Stations
+          SELECT * FROM pre.v_Citybikes_Stations
 ```
 
 ## Where the file lives
@@ -80,7 +80,7 @@ A subscriber library is any file named `subscribers.yaml` or ending in `.subscri
 ```
 subscribers/analyse_sanntid.subscribers.yaml
 subscribers/dashboard_mpc.subscribers.yaml
-subscribers/baatbooking_report.subscribers.yaml
+subscribers/boatbooking_report.subscribers.yaml
 ```
 
 A consumer is an independently owned thing: it is added, retired, and re-pointed on its own schedule, by whoever owns the report rather than by whoever owns the estate. One file per subscriber keeps that ownership legible in the diff, and keeps a change to one report out of everyone else's blame. Each file is parsed on its own, so each declares its own `connections:` block. A single file holding several subscribers still works and is the right shape for a handful of them.
@@ -152,7 +152,7 @@ It is searched alongside the name, owner, description, and notes, which is what 
 
 Each `sql` goes through the same `TSqlLineageExtractor` a stored-procedure body, a document hook, and a generated transform view go through. The resulting facts are attributed as MODULE facts: `Flow` is null and `ViaModule` is the subscriber's node key. That is precisely what a subscriber is to the graph, a body of SQL that reads objects but runs no pipeline, so nothing in the edge model, the execution plan, or the wave computation needed changing to hold it.
 
-Because the identities go through the same completion (default database from the connection, identity unification, synonym follow) as every other fact, a report reading `arc.Bysykkel_Trips` lands on the SAME node the ingestion flow writes. A report reading a view lands on the same view node the flows read, and the view's own module edges continue the chain down to its base tables.
+Because the identities go through the same completion (default database from the connection, identity unification, synonym follow) as every other fact, a report reading `arc.Citybikes_Trips` lands on the SAME node the ingestion flow writes. A report reading a view lands on the same view node the flows read, and the view's own module edges continue the chain down to its base tables.
 
 The subscriber itself becomes an object node of kind `Subscriber` on the synthetic server identity `subscriber`. It is the only node kind that lives outside the databases SQLFlow moves data between, and the only one no database inventory can supply.
 

@@ -70,14 +70,14 @@ public sealed class GitHistoryTests
         {
             Repository.Init(dir);
             using var repo = new Repository(dir);
-            Commit(repo, "citybike/citybike_00_api.yaml", "v1", "add citybike acquisition", "ada");
+            Commit(repo, "cyclehire/cyclehire_00_api.yaml", "v1", "add cyclehire acquisition", "ada");
             Commit(repo, "apc/apc_calls_02_ing.yaml", "v1", "add apc load", "grace");
 
             var log = GitHistoryEndpoints.Log(repo, path: null, author: null, message: null, since: null, until: null, limit: null);
 
             Assert.Equal(2, log.Count);
             Assert.Equal("add apc load", log[0].Message);
-            Assert.Equal("add citybike acquisition", log[1].Message);
+            Assert.Equal("add cyclehire acquisition", log[1].Message);
             Assert.Contains("apc/apc_calls_02_ing.yaml", log[0].ChangedPaths);
             Assert.Equal(8, log[0].ShortSha.Length);
         }
@@ -95,15 +95,15 @@ public sealed class GitHistoryTests
         {
             Repository.Init(dir);
             using var repo = new Repository(dir);
-            Commit(repo, "citybike/citybike_00_api.yaml", "v1", "add citybike", "ada");
+            Commit(repo, "cyclehire/cyclehire_00_api.yaml", "v1", "add cyclehire", "ada");
             Commit(repo, "apc/apc_calls_02_ing.yaml", "v1", "add apc", "grace");
-            Commit(repo, "citybike/citybike_00_api.yaml", "v2", "retune citybike watermark", "ada");
+            Commit(repo, "cyclehire/cyclehire_00_api.yaml", "v2", "retune cyclehire watermark", "ada");
 
             var log = GitHistoryEndpoints.Log(
-                repo, "citybike/citybike_00_api.yaml", author: null, message: null, since: null, until: null, limit: null);
+                repo, "cyclehire/cyclehire_00_api.yaml", author: null, message: null, since: null, until: null, limit: null);
 
             Assert.Equal(2, log.Count);
-            Assert.All(log, c => Assert.Contains("citybike", c.Message, StringComparison.OrdinalIgnoreCase));
+            Assert.All(log, c => Assert.Contains("cyclehire", c.Message, StringComparison.OrdinalIgnoreCase));
         }
         finally
         {
@@ -223,7 +223,7 @@ public sealed class GitHistoryTests
     // ---- The window comparison (the schema page's before/after drill-down) --------------------------------
 
     /// <summary>One table's snapshot path, in the layout an scm flow commits.</summary>
-    private const string TablePath = "dw-dwh-prod/Table/arc.Citybike_Bikes.sql";
+    private const string TablePath = "dw-dwh-prod/Table/arc.Cyclehire_Bikes.sql";
 
     private static readonly DateTimeOffset LongBefore = new(2026, 7, 1, 3, 30, 0, TimeSpan.Zero);
     private static readonly DateTimeOffset InsideWindow = new(2026, 8, 20, 3, 30, 0, TimeSpan.Zero);
@@ -241,16 +241,16 @@ public sealed class GitHistoryTests
         {
             Repository.Init(dir);
             using var repo = new Repository(dir);
-            Commit(repo, TablePath, "CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", "snapshot", "scm", LongBefore);
-            Commit(repo, TablePath, "CREATE TABLE arc.Citybike_Bikes (BikeId int, Lat decimal(9,6));\n", "snapshot", "scm", InsideWindow);
-            var tip = Commit(repo, TablePath, "CREATE TABLE arc.Citybike_Bikes (BikeId int, Lat decimal(9,6), Lon decimal(9,6));\n", "snapshot", "scm", Latest);
+            Commit(repo, TablePath, "CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", "snapshot", "scm", LongBefore);
+            Commit(repo, TablePath, "CREATE TABLE arc.Cyclehire_Bikes (BikeId int, Lat decimal(9,6));\n", "snapshot", "scm", InsideWindow);
+            var tip = Commit(repo, TablePath, "CREATE TABLE arc.Cyclehire_Bikes (BikeId int, Lat decimal(9,6), Lon decimal(9,6));\n", "snapshot", "scm", Latest);
 
             var comparison = GitHistoryEndpoints.Compare(repo, TablePath, WindowStart);
 
             Assert.NotNull(comparison);
             // Two snapshots moved the table inside the window; the answer is still ONE before and ONE after.
-            Assert.Equal("CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", comparison!.BeforeText);
-            Assert.Equal("CREATE TABLE arc.Citybike_Bikes (BikeId int, Lat decimal(9,6), Lon decimal(9,6));\n", comparison.AfterText);
+            Assert.Equal("CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", comparison!.BeforeText);
+            Assert.Equal("CREATE TABLE arc.Cyclehire_Bikes (BikeId int, Lat decimal(9,6), Lon decimal(9,6));\n", comparison.AfterText);
             Assert.Equal(tip.Sha, comparison.After.Sha);
             Assert.NotNull(comparison.Before);
             Assert.Equal(LongBefore.UtcDateTime, comparison.Before!.CommittedUtc);
@@ -273,7 +273,7 @@ public sealed class GitHistoryTests
         {
             Repository.Init(dir);
             using var repo = new Repository(dir);
-            Commit(repo, TablePath, "CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", "snapshot", "scm", LongBefore);
+            Commit(repo, TablePath, "CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", "snapshot", "scm", LongBefore);
 
             // An all-time window has no earlier side to compare against, which is what "since this estate began
             // snapshotting" means; the object must not read as unchanged just because nothing precedes it.
@@ -282,7 +282,7 @@ public sealed class GitHistoryTests
             Assert.NotNull(comparison);
             Assert.Null(comparison!.Before);
             Assert.Null(comparison.BeforeText);
-            Assert.Equal("CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", comparison.AfterText);
+            Assert.Equal("CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", comparison.AfterText);
             Assert.Equal(1, comparison.LinesAdded);
             Assert.Equal(0, comparison.LinesDeleted);
         }
@@ -301,7 +301,7 @@ public sealed class GitHistoryTests
             Repository.Init(dir);
             using var repo = new Repository(dir);
             var baseCommit = Commit(repo, "dw-dwh-prod/Table/arc.Other.sql", "CREATE TABLE arc.Other (Id int);\n", "snapshot", "scm", LongBefore);
-            Commit(repo, TablePath, "CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", "snapshot", "scm", Latest);
+            Commit(repo, TablePath, "CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", "snapshot", "scm", Latest);
 
             var comparison = GitHistoryEndpoints.Compare(repo, TablePath, WindowStart);
 
@@ -309,7 +309,7 @@ public sealed class GitHistoryTests
             // The window HAS a base commit; the object simply was not in it, which is an add, not a missing base.
             Assert.Equal(baseCommit.Sha, comparison!.Before?.Sha);
             Assert.Null(comparison.BeforeText);
-            Assert.Equal("CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", comparison.AfterText);
+            Assert.Equal("CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", comparison.AfterText);
         }
         finally
         {
@@ -325,7 +325,7 @@ public sealed class GitHistoryTests
         {
             Repository.Init(dir);
             using var repo = new Repository(dir);
-            Commit(repo, TablePath, "CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", "snapshot", "scm", LongBefore);
+            Commit(repo, TablePath, "CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", "snapshot", "scm", LongBefore);
             Commit(repo, "dw-dwh-prod/Table/arc.Other.sql", "CREATE TABLE arc.Other (Id int);\n", "snapshot", "scm", LongBefore);
             Drop(repo, TablePath, "snapshot", Latest);
 
@@ -334,7 +334,7 @@ public sealed class GitHistoryTests
             Assert.NotNull(comparison);
             // A dropped object is the one nobody should scroll past: its last known script is what makes the
             // deletion reviewable, so it survives on the before side.
-            Assert.Equal("CREATE TABLE arc.Citybike_Bikes (BikeId int);\n", comparison!.BeforeText);
+            Assert.Equal("CREATE TABLE arc.Cyclehire_Bikes (BikeId int);\n", comparison!.BeforeText);
             Assert.Null(comparison.AfterText);
             Assert.Equal(1, comparison.LinesDeleted);
         }

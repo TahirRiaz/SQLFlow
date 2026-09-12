@@ -84,11 +84,11 @@ sends them as `Authorization: Basic base64(id:secret)` on the token request inst
 **The whole request body is itself the secret.** Some vendors hand over a pre-formed urlencoded
 body. Putting it in Key Vault whole and referencing it with `token.rawBody` avoids splitting it
 into fields that must then be reassembled exactly. When `rawBody` is set, `body` is ignored.
-Exemplars: `citybike/`, `frida/`.
+Exemplars: `cyclehire/`, `fleetreg/`.
 
 **There is no token URL, only a discovery document.** Set `token.discoveryUrl` to the
 `.well-known/openid-configuration` endpoint; its `token_endpoint` supplies the URL. It takes
-precedence over `url`. Exemplar: `frida/`.
+precedence over `url`. Exemplar: `fleetreg/`.
 
 **The token is scoped to the window being fetched.** An issuer that mints a token valid only for
 the period you asked about breaks a run that acquires one token and then fans out over thirty days.
@@ -118,8 +118,8 @@ response shape, and whether the issuer scopes the token per window.
 | --- | --- |
 | `entur/` | `oauth2_client_credentials`, JSON body with `audience` |
 | `voi/` | `basicAuthClient`, `refreshPerIteration` |
-| `citybike/`, `frida/` | `rawBody` held whole in Key Vault; `frida` also uses `discoveryUrl` |
+| `cyclehire/`, `fleetreg/` | `rawBody` held whole in Key Vault; `fleetreg` also uses `discoveryUrl` |
 | `easypark/` | `token_exchange` with a refresh token, applied to `X-Authorization` |
-| `billettapp/` | `oauth2_client_credentials`, form body |
+| `ticketapp/` | `oauth2_client_credentials`, form body |
 | `hjh_bedrifter/` | `api_key_query` |
 | `Norled/`, `fjord1/`, `hentmeg/` | `bearer` with a single `secretRef` |

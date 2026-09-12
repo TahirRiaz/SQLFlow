@@ -124,5 +124,5 @@ recording why in the flow.
 | --- | --- |
 | `hentmeg/` | `protect` scrubbing rider PII at the acquisition boundary |
 | `questback/` | `protect` on survey responses; per-entity landing paths |
-| `billettapp/` | `skipEmpty` on a feed with frequent empty windows |
+| `ticketapp/` | `skipEmpty` on a feed with frequent empty windows |
 | 8 folders | `skipUnchanged` on rolling-window feeds |

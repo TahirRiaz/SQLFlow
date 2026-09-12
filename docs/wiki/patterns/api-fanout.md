@@ -59,7 +59,7 @@ also causes the stored watermark to be ignored so the window can actually reach 
 a watermarked flow would stay pinned at its last position and a backfill could never move.
 
 `overlapMinutes` re-reads a small tail of the previous window, for feeds that commit records slightly
-late. Exemplar: `citybike/`.
+late. Exemplar: `cyclehire/`.
 
 ## list: a known set
 
@@ -120,6 +120,6 @@ in practice means an archive or the prior system, backfilled separately.
 | --- | --- |
 | `voi/`, `ryde/` | `date_window` hourly, to dodge per-response row caps |
 | `svv/` | `date_window` monthly re-read, plus `ids_from` with `batchSize: 50` |
-| `citybike/` | `ids_from` (bikes then per-bike sessions), `overlapMinutes` |
+| `cyclehire/` | `ids_from` (bikes then per-bike sessions), `overlapMinutes` |
 | `questback/` | `ids_from` with `idBindings` carrying a per-entity lock |
 | `Norled/`, `easypark/` | `list` over a fixed operator or route set |

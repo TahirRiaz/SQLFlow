@@ -39,7 +39,7 @@ source:
     urlAllowlist: ["*.easyparksystem.net"]
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/easypark/parkering
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/easypark/parkering
   pathTemplate: "history/{window.from:yyyy}/parkings_{window.from:yyyyMMdd}_{operatorId}"
   format: json
   skipEmpty: true

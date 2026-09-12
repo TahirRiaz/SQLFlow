@@ -117,6 +117,6 @@ meaning: a new column is cheap, a retyped column is not.
 | Flow folder | Pattern |
 | --- | --- |
 | `svv/` | `versioning.temporal` with hidden period columns |
-| `citybike/`, `fara/`, `kommunedata/`, `questback/` | `surrogateKeys` (+ `postProcess` in `svv/`) |
+| `cyclehire/`, `fara/`, `kommunedata/`, `questback/` | `surrogateKeys` (+ `postProcess` in `svv/`) |
 | 13 folders | `load.batchUpsert` with an explicit row count |
 | 10 folders | `target.truncateBeforeLoad` for current-state dimensions |

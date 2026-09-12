@@ -139,7 +139,7 @@ Because the expansion is what actually runs, only the anchor declares the schedu
 
 ```yaml
 # The source's one schedule, on its wave-1 acquisition flow.
-name: baatbooking_00_cpy
+name: boatbooking_00_cpy
 batch: BB
 schedule:
   scope: batch          # copy (wave 1) -> pre loads (wave 2) -> ods merges (wave 3)

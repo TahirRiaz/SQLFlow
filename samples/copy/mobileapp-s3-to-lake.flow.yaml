@@ -1,0 +1,34 @@
+# Ports the mobileapp.ps1 AWS S3 pattern as a copy: one flow lists four dataset prefixes in the shared Contoso
+# elasticsearch-export bucket (objects modified in the last 10 days) and copies each into its own lake folder,
+# byte-for-byte. S3 has no ambient identity, so the access-key/secret-key pair is a secret reference on each source;
+# the lake target uses the ambient managed identity. The keys select flat objects by literal prefix, so each object
+# lands flat by its own name (preserveStructure: false).
+flowType: cpy
+name: Mobileapp_S3_00_cpy
+batch: mobileapp
+operation: copy
+options:
+  overwrite: true
+  preserveStructure: false
+items:
+  - source:
+      location: s3://elasticsearch-export-contoso/export_orders
+      pattern: "*"
+      modifiedWithinDays: 10
+      accessKeyRef: ${keyvault:sqlflow-v3-secrets/aws-contoso-export-access-key}
+      secretKeyRef: ${keyvault:sqlflow-v3-secrets/aws-contoso-export-secret-key}
+      region: eu-west-1
+    target:
+      location: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/mobileapp/history/orders
+  - source:
+      location: s3://elasticsearch-export-contoso/export_payments
+      pattern: "*"
+      modifiedWithinDays: 10
+      accessKeyRef: ${keyvault:sqlflow-v3-secrets/aws-contoso-export-access-key}
+      secretKeyRef: ${keyvault:sqlflow-v3-secrets/aws-contoso-export-secret-key}
+      region: eu-west-1
+    target:
+      location: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/mobileapp/history/payments
+
+schedule:
+  cron: "0 5 * * *"

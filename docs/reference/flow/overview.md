@@ -333,7 +333,7 @@ source:
   connection: ${env:SQLFLOW_DW}
   query: SELECT DatasetId, FileName FROM DW.edw.DatasetFile
 template:
-  id: "kolumbus:dataset--File.Generic:{DatasetId}"
+  id: "contoso:dataset--File.Generic:{DatasetId}"
   kind: osdu:wks:dataset--File.Generic:1.1.0
   data:
     Name: "{FileName}"

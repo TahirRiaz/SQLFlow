@@ -101,8 +101,8 @@ Not every step is an ingestion. The estate's non-ingestion flow kinds each cover
 | Flow kind | Purpose | Exemplar |
 | --- | --- | --- |
 | `cpy` | copy files between stores, one flow with many `items` | 21 folders |
-| `sftp` | pull a vendor drop, with `output` declared for lineage | `ferde/`, `bysykkelforhold/` |
-| `sp` | run a stored procedure, with runtime `procedure.parameters` | `fara/`, `citybike/` |
+| `sftp` | pull a vendor drop, with `output` declared for lineage | `ferde/`, `cyclehiresrel/` |
+| `sp` | run a stored procedure, with runtime `procedure.parameters` | `fara/`, `cyclehire/` |
 | `inv` | trigger an external pipeline (ADF) via a service principal | `poweranalyze/` |
 | `cal` | generate a calendar dimension | `calendar/` |
 | `scm` | schema-level operations | `datanorge/` |

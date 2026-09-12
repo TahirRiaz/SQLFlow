@@ -145,10 +145,10 @@ On the run that creates the target, an `NCI_ReloadColumn` nonclustered index is 
 ```yaml
 source:
   server: dwpre
-  object: dw-pre-prod.pre.vBaatbooking_sess   # the typed view; carries FileName_DW (full path)
+  object: dw-pre-prod.pre.vBoatbooking_sess   # the typed view; carries FileName_DW (full path)
 target:
   server: dwh
-  object: dw-dwh-prod.arc.Baatbooking_sess
+  object: dw-dwh-prod.arc.Boatbooking_sess
 load:
   reloadColumn: FileName_DW
   keyColumns: [SESS_ID]        # optional: dedups within a file

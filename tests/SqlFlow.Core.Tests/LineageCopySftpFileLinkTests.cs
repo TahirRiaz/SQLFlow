@@ -125,9 +125,9 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
         => report.ExecutionPlan.Waves.Single(w => w.Flows.Contains(flow)).Wave;
 
     // The vendor drop the copy reads and the lake target it writes, and the https form the ingestion reads it back in.
-    private const string Vendor = "abfss://baatbooking@dwstoragebaatbookingprod.dfs.core.windows.net/DETAIL";
-    private const string LakeAbfss = "abfss://datalakev2@acct.dfs.core.windows.net/raw/baatbooking/history/detail";
-    private const string LakeHttps = "https://acct.dfs.core.windows.net/datalakev2/raw/baatbooking/history/detail/";
+    private const string Vendor = "abfss://boatbooking@dwstorageboatbookingprod.dfs.core.windows.net/DETAIL";
+    private const string LakeAbfss = "abfss://datalakev2@acct.dfs.core.windows.net/raw/boatbooking/history/detail";
+    private const string LakeHttps = "https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/detail/";
 
     [Fact]
     public void Copy_BindsToIngestion_AcrossUriShapes()
@@ -141,7 +141,7 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
         // Both sides meet on exactly one canonical lake node (the two URI shapes collapsed).
         var node = Assert.Single(report.Objects, o =>
             o.Kind == LineageNodeKind.File && o.Key.Contains("history/detail"));
-        Assert.Equal("az://acct/datalakev2/raw/baatbooking/history/detail", node.Name);
+        Assert.Equal("az://acct/datalakev2/raw/boatbooking/history/detail", node.Name);
         Assert.Contains(report.Edges, e => e.Flow == "bb-cpy-detail" && e.Relation == LineageRelation.Writes && e.ObjectKey == node.Key);
         Assert.Contains(report.Edges, e => e.Flow == "bb-load-detail" && e.Relation == LineageRelation.Reads && e.ObjectKey == node.Key);
     }
@@ -173,7 +173,7 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
     public void Copy_NoBind_DifferentContainerPath()
     {
         Write("00_cpy.flow.yaml", Copy("bb-cpy-detail", Vendor,
-            "abfss://datalakev2@acct.dfs.core.windows.net/raw/baatbooking/history/sess"));
+            "abfss://datalakev2@acct.dfs.core.windows.net/raw/boatbooking/history/sess"));
         Write("01_jsn.flow.yaml", FileIngestion("bb-load-detail", "json", LakeHttps, srcFile: "*.json"));
 
         var report = Build();
@@ -181,23 +181,23 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
         Assert.False(DependsOn(report, "bb-cpy-detail", "bb-load-detail"));
         // The copy still records its own distinct target node.
         Assert.Contains(report.Edges, e => e.Flow == "bb-cpy-detail" && e.Relation == LineageRelation.Writes
-            && report.Objects.Any(o => o.Key == e.ObjectKey && o.Name == "az://acct/datalakev2/raw/baatbooking/history/sess"));
+            && report.Objects.Any(o => o.Key == e.ObjectKey && o.Name == "az://acct/datalakev2/raw/boatbooking/history/sess"));
     }
 
-    private const string Lake = "abfss://datalakev2@acct.dfs.core.windows.net/raw/baatbooking/history";
+    private const string Lake = "abfss://datalakev2@acct.dfs.core.windows.net/raw/boatbooking/history";
 
     [Fact]
     public void Copy_MultiItemPipeline_EachStepBindsToItsLoad()
     {
-        // One copy pipeline lists two object copies (the Baatbooking shape); lineage is computed from the items, so
+        // One copy pipeline lists two object copies (the Boatbooking shape); lineage is computed from the items, so
         // each landed folder binds to its own load and every load runs after the single copy.
         Write("00_cpy.flow.yaml", CopyItems("bb-cpy",
-            ("abfss://baatbooking@vendor.dfs.core.windows.net/DETAIL", $"{Lake}/detail"),
-            ("abfss://baatbooking@vendor.dfs.core.windows.net/SESS", $"{Lake}/sess")));
+            ("abfss://boatbooking@vendor.dfs.core.windows.net/DETAIL", $"{Lake}/detail"),
+            ("abfss://boatbooking@vendor.dfs.core.windows.net/SESS", $"{Lake}/sess")));
         Write("01_detail.flow.yaml", FileIngestion("load-detail", "json",
-            "https://acct.dfs.core.windows.net/datalakev2/raw/baatbooking/history/detail/", srcFile: "*.json", table: "Detail"));
+            "https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/detail/", srcFile: "*.json", table: "Detail"));
         Write("01_sess.flow.yaml", FileIngestion("load-sess", "json",
-            "https://acct.dfs.core.windows.net/datalakev2/raw/baatbooking/history/sess/", srcFile: "*.json", table: "Sess"));
+            "https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/sess/", srcFile: "*.json", table: "Sess"));
 
         var report = Build();
 
@@ -210,7 +210,7 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
     [Fact]
     public void Copy_SubfolderDrops_BindToParentFolderLoad()
     {
-        // The converted-source shape (billettapp): one copy lands each dataset into its own subfolder under history/,
+        // The converted-source shape (ticketapp): one copy lands each dataset into its own subfolder under history/,
         // while a single load reads the parent folder recursively (searchSubDirectories). No drop folder equals the
         // watched folder - each is beneath it - so this binds only when folder containment is honored across the
         // abfss/https URI shapes. The load must run after the copy.
@@ -218,7 +218,7 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
             ("abfss://export@vendor.dfs.core.windows.net/appinstances", $"{Lake}/appinstances"),
             ("abfss://export@vendor.dfs.core.windows.net/orders", $"{Lake}/orders")));
         Write("01_csv.flow.yaml", FileIngestion("src-load", "csv",
-            "https://acct.dfs.core.windows.net/datalakev2/raw/baatbooking/history/", srcFile: "src*.csv"));
+            "https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/", srcFile: "src*.csv"));
 
         var report = Build();
 
@@ -226,7 +226,7 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
         Assert.True(WaveOf(report, "src-cpy") < WaveOf(report, "src-load"));
         // Both meet on the single parent-folder node the load watches; the per-dataset drops collapse onto it.
         Assert.Contains(report.Edges, e => e.Flow == "src-cpy" && e.Relation == LineageRelation.Writes
-            && report.Objects.Any(o => o.Key == e.ObjectKey && o.Name == "az://acct/datalakev2/raw/baatbooking/history"));
+            && report.Objects.Any(o => o.Key == e.ObjectKey && o.Name == "az://acct/datalakev2/raw/boatbooking/history"));
     }
 
     [Fact]
@@ -238,9 +238,9 @@ public sealed class LineageCopySftpFileLinkTests : IDisposable
             ($"{Lake}/detail", "*.json", null),
             ($"{Lake}/sess", "*.json", null)));
         Write("01_detail.flow.yaml", FileIngestion("load-detail", "json",
-            "https://acct.dfs.core.windows.net/datalakev2/raw/baatbooking/history/detail/", srcFile: "*.json", table: "Detail"));
+            "https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/detail/", srcFile: "*.json", table: "Detail"));
         Write("01_sess.flow.yaml", FileIngestion("load-sess", "json",
-            "https://acct.dfs.core.windows.net/datalakev2/raw/baatbooking/history/sess/", srcFile: "*.json", table: "Sess"));
+            "https://acct.dfs.core.windows.net/datalakev2/raw/boatbooking/history/sess/", srcFile: "*.json", table: "Sess"));
 
         var report = Build();
 

@@ -1,6 +1,6 @@
 //! GUI deep links attached to online tool results.
 //!
-//! Answers get read by people, and "arc.Citybike_Bikes is stale" is worth more when the table name
+//! Answers get read by people, and "arc.Cyclehire_Bikes is stale" is worth more when the table name
 //! can be clicked through to its catalog page and its lineage graph. The control plane's JSON carries
 //! identities (a global object key, a pipeline id, a run id) but, with two exceptions, no URLs, so this
 //! module maps those identities onto the GUI's routes and decorates every read result with a `links`
@@ -471,16 +471,16 @@ mod tests {
     #[test]
     fn object_rows_link_to_the_catalog_and_the_graph() {
         let links = GuiLinks::new("https://sqlflow.example.com/");
-        let mut payload = json!([{ "key": "dw.arc.citybike_bikes", "kind": "Table", "serverRef": "dw" }]);
+        let mut payload = json!([{ "key": "dw.arc.cyclehire_bikes", "kind": "Table", "serverRef": "dw" }]);
         links.decorate(&mut payload);
 
         assert_eq!(
             links_of(&payload, "/0/links/page"),
-            json!("https://sqlflow.example.com/catalog?node=obj%3Adw.arc.citybike_bikes")
+            json!("https://sqlflow.example.com/catalog?node=obj%3Adw.arc.cyclehire_bikes")
         );
         assert_eq!(
             links_of(&payload, "/0/links/lineage"),
-            json!("https://sqlflow.example.com/lineage?focus=dw.arc.citybike_bikes")
+            json!("https://sqlflow.example.com/lineage?focus=dw.arc.cyclehire_bikes")
         );
     }
 
@@ -496,7 +496,7 @@ mod tests {
     fn pipeline_rows_link_to_the_flow_and_its_graph() {
         let links = GuiLinks::new("");
         let mut payload = json!({
-            "items": [{ "id": "p-1", "repoId": "r-1", "name": "citybike_00_api", "kind": "api" }],
+            "items": [{ "id": "p-1", "repoId": "r-1", "name": "cyclehire_00_api", "kind": "api" }],
             "page": 1, "pageSize": 50, "total": 1
         });
         links.decorate(&mut payload);
@@ -512,7 +512,7 @@ mod tests {
         let links = GuiLinks::new("");
         let mut payload = json!([{
             "wave": 1,
-            "pipelines": [{ "id": "8f14e45f-ceea-467a-9575-0b1a2b3c4d5e", "name": "citybike_00_api", "kind": "api" }]
+            "pipelines": [{ "id": "8f14e45f-ceea-467a-9575-0b1a2b3c4d5e", "name": "cyclehire_00_api", "kind": "api" }]
         }]);
         links.decorate(&mut payload);
 
@@ -529,7 +529,7 @@ mod tests {
         let links = GuiLinks::new("");
         let mut payload = json!([{
             "runId": "run-1", "pipelineId": "p-1", "repoId": "r-1", "groupId": "g-1",
-            "flowName": "citybike_bikes_01_jsn", "status": "Succeeded"
+            "flowName": "cyclehire_bikes_01_jsn", "status": "Succeeded"
         }]);
         links.decorate(&mut payload);
 
@@ -561,8 +561,8 @@ mod tests {
         let links = GuiLinks::new("");
         // An insights row and a flow-column hit are both ABOUT a flow.
         let mut payload = json!([
-            { "pipelineId": "p-1", "flowName": "citybike_00_api", "runs": 30, "failures": 2 },
-            { "pipelineId": "p-2", "flowName": "citybike_bikes_02_ing", "repoId": "r-1", "kind": "declared",
+            { "pipelineId": "p-1", "flowName": "cyclehire_00_api", "runs": 30, "failures": 2 },
+            { "pipelineId": "p-2", "flowName": "cyclehire_bikes_02_ing", "repoId": "r-1", "kind": "declared",
               "columnName": "bike_id" }
         ]);
         links.decorate(&mut payload);
@@ -576,14 +576,14 @@ mod tests {
         let links = GuiLinks::new("");
         let mut payload = json!({
             "key": "dw.dwh.fact_trips", "kind": "Table",
-            "upstream": [{ "depth": 1, "objectKey": "dw.arc.citybike_trips", "pipelineId": "p-2", "flowName": "f" }]
+            "upstream": [{ "depth": 1, "objectKey": "dw.arc.cyclehire_trips", "pipelineId": "p-2", "flowName": "f" }]
         });
         links.decorate(&mut payload);
 
         assert_eq!(links_of(&payload, "/links/page"), json!("/catalog?node=obj%3Adw.dwh.fact_trips"));
         assert_eq!(
             links_of(&payload, "/upstream/0/links/objectLineage"),
-            json!("/lineage?focus=dw.arc.citybike_trips")
+            json!("/lineage?focus=dw.arc.cyclehire_trips")
         );
         // The step is about the object it reached, so the flow that wrote it stays a reference.
         assert_eq!(links_of(&payload, "/upstream/0/links/flow"), json!("/pipelines/p-2"));
@@ -594,7 +594,7 @@ mod tests {
     fn a_subscriber_gains_a_page_and_a_link_to_the_report_itself() {
         let links = GuiLinks::new("");
         let mut payload = json!([{
-            "key": "powerbi:analyse_bysykkel", "name": "Analyse_Bysykkel_statistikk",
+            "key": "powerbi:analyse_citybikes", "name": "Analyse_Citybikes_statistikk",
             "type": "PowerBI", "url": "https://app.powerbi.com/report"
         }]);
         links.decorate(&mut payload);
@@ -602,7 +602,7 @@ mod tests {
         assert_eq!(links_of(&payload, "/0/url"), json!("https://app.powerbi.com/report"));
         assert_eq!(
             links_of(&payload, "/0/links/page"),
-            json!("/subscribers?key=powerbi%3Aanalyse_bysykkel")
+            json!("/subscribers?key=powerbi%3Aanalyse_citybikes")
         );
         // External, so it is carried through verbatim rather than rebased on the GUI.
         assert_eq!(links_of(&payload, "/0/links/url"), json!("https://app.powerbi.com/report"));
@@ -661,15 +661,15 @@ mod tests {
     fn a_file_source_links_to_its_catalog_node_and_graph() {
         let links = GuiLinks::new("");
         let mut payload = json!([{
-            "key": "dwdatalakeprodv2/raw/citybike/history/bikes/2026-08-25.json",
-            "originKind": "AzureStorage", "origin": "dwdatalakeprodv2", "container": "raw",
-            "path": "citybike/history/bikes", "name": "2026-08-25.json"
+            "key": "dwdatalakeprod/raw/cyclehire/history/bikes/2026-08-25.json",
+            "originKind": "AzureStorage", "origin": "dwdatalakeprod", "container": "raw",
+            "path": "cyclehire/history/bikes", "name": "2026-08-25.json"
         }]);
         links.decorate(&mut payload);
 
         assert_eq!(
             links_of(&payload, "/0/links/page"),
-            json!("/catalog?node=obj%3Adwdatalakeprodv2%252Fraw%252Fcitybike%252Fhistory%252Fbikes%252F2026-08-25.json")
+            json!("/catalog?node=obj%3Adwdatalakeprod%252Fraw%252Fcyclehire%252Fhistory%252Fbikes%252F2026-08-25.json")
         );
         assert_ne!(links_of(&payload, "/0/links/lineage"), Value::Null);
     }
@@ -679,9 +679,9 @@ mod tests {
         let links = GuiLinks::new("");
         // A repo source is joined to its repo by NAME, so its own id is not a repo id.
         let mut payload = json!([
-            { "id": "r-1", "name": "dwh-pipelines-prod", "remoteUrl": "https://bitbucket.org/kolumbus/dwh.git",
+            { "id": "r-1", "name": "dwh-pipelines-prod", "remoteUrl": "https://bitbucket.org/contoso/dwh.git",
               "rootPath": null, "firstSeenUtc": "2026-01-01T00:00:00Z", "lastSyncUtc": "2026-08-25T04:00:00Z" },
-            { "id": "s-1", "name": "dwh-pipelines-prod", "remoteUrl": "https://bitbucket.org/kolumbus/dwh.git",
+            { "id": "s-1", "name": "dwh-pipelines-prod", "remoteUrl": "https://bitbucket.org/contoso/dwh.git",
               "branch": "main", "enabled": true, "syncIntervalSeconds": 300,
               "lastSyncUtc": "2026-08-25T04:00:00Z" }
         ]);
@@ -690,15 +690,15 @@ mod tests {
         assert_eq!(links_of(&payload, "/0/links/page"), json!("/repos/r-1"));
         assert_eq!(links_of(&payload, "/1/links/page"), json!("/repos"));
         // The git remote is a real web address on both, so both link it.
-        assert_eq!(links_of(&payload, "/0/links/remote"), json!("https://bitbucket.org/kolumbus/dwh.git"));
-        assert_eq!(links_of(&payload, "/1/links/remote"), json!("https://bitbucket.org/kolumbus/dwh.git"));
+        assert_eq!(links_of(&payload, "/0/links/remote"), json!("https://bitbucket.org/contoso/dwh.git"));
+        assert_eq!(links_of(&payload, "/1/links/remote"), json!("https://bitbucket.org/contoso/dwh.git"));
     }
 
     #[test]
     fn an_ssh_remote_is_not_linked() {
         let links = GuiLinks::new("");
         let mut payload = json!({
-            "id": "s-2", "name": "internal", "remoteUrl": "git@bitbucket.org:kolumbus/dwh.git",
+            "id": "s-2", "name": "internal", "remoteUrl": "git@bitbucket.org:contoso/dwh.git",
             "branch": "main", "syncIntervalSeconds": 300
         });
         links.decorate(&mut payload);
@@ -711,10 +711,10 @@ mod tests {
     fn a_schedule_is_reachable_by_either_id_field() {
         let links = GuiLinks::new("");
         let mut payload = json!([
-            { "id": "sch-1", "repoId": "r-1", "name": "citybike_daily", "timezone": "Europe/Oslo",
+            { "id": "sch-1", "repoId": "r-1", "name": "cyclehire_daily", "timezone": "Europe/Oslo",
               "enabled": true, "lastRunId": "run-3", "lastGroupId": "g-2" },
-            { "scheduleId": "sch-1", "repoId": "r-1", "name": "citybike_daily", "timezone": "Europe/Oslo",
-              "enabled": true, "anchor": "citybike_00_api", "memberCount": 7 }
+            { "scheduleId": "sch-1", "repoId": "r-1", "name": "cyclehire_daily", "timezone": "Europe/Oslo",
+              "enabled": true, "anchor": "cyclehire_00_api", "memberCount": 7 }
         ]);
         links.decorate(&mut payload);
 
@@ -728,8 +728,8 @@ mod tests {
     fn a_flow_dependency_links_both_of_its_ends() {
         let links = GuiLinks::new("");
         let mut payload = json!([{
-            "id": 42, "repoId": "r-1", "fromFlow": "citybike_00_api", "toFlow": "citybike_bikes_01_jsn",
-            "fromPipelineId": "p-1", "toPipelineId": "p-2", "viaObjects": "raw/citybike"
+            "id": 42, "repoId": "r-1", "fromFlow": "cyclehire_00_api", "toFlow": "cyclehire_bikes_01_jsn",
+            "fromPipelineId": "p-1", "toPipelineId": "p-2", "viaObjects": "raw/cyclehire"
         }]);
         links.decorate(&mut payload);
 
@@ -741,12 +741,12 @@ mod tests {
     fn a_project_opens_the_graph_scoped_to_it_and_a_repo_reference_opens_the_repo() {
         let links = GuiLinks::new("");
         let mut payload = json!([
-            { "repoId": "r-1", "repoName": "dwh-pipelines-prod", "project": "Citybike", "flowCount": 9 },
+            { "repoId": "r-1", "repoName": "dwh-pipelines-prod", "project": "Cyclehire", "flowCount": 9 },
             { "repoId": "r-1", "repoName": "dwh-pipelines-prod", "edgeCount": 14, "writes": true }
         ]);
         links.decorate(&mut payload);
 
-        assert_eq!(links_of(&payload, "/0/links/page"), json!("/lineage?repoId=r-1&project=Citybike"));
+        assert_eq!(links_of(&payload, "/0/links/page"), json!("/lineage?repoId=r-1&project=Cyclehire"));
         assert_eq!(links_of(&payload, "/1/links/page"), json!("/repos/r-1"));
     }
 
@@ -764,8 +764,8 @@ mod tests {
     fn an_edge_links_both_of_its_ends_and_claims_no_page_of_its_own() {
         let links = GuiLinks::new("");
         let mut payload = json!([{
-            "id": 7, "repoId": "r-1", "flow": "citybike_00_api", "pipelineId": "p-1", "relation": "Writes",
-            "objectKey": "dw.arc.citybike_bikes", "objectName": "Citybike_Bikes", "tier": "Declared"
+            "id": 7, "repoId": "r-1", "flow": "cyclehire_00_api", "pipelineId": "p-1", "relation": "Writes",
+            "objectKey": "dw.arc.cyclehire_bikes", "objectName": "Cyclehire_Bikes", "tier": "Declared"
         }]);
         links.decorate(&mut payload);
 
@@ -773,7 +773,7 @@ mod tests {
         // and the repo fallback stays out of the way.
         assert_eq!(links_of(&payload, "/0/links/page"), Value::Null);
         assert_eq!(links_of(&payload, "/0/links/flow"), json!("/pipelines/p-1"));
-        assert_eq!(links_of(&payload, "/0/links/object"), json!("/catalog?node=obj%3Adw.arc.citybike_bikes"));
+        assert_eq!(links_of(&payload, "/0/links/object"), json!("/catalog?node=obj%3Adw.arc.cyclehire_bikes"));
     }
 
     #[test]
@@ -808,14 +808,14 @@ mod tests {
         let links = GuiLinks::new("");
         let mut payload = json!([{
             "id": 91, "repoId": "r-1", "runId": "run-4", "pipelineId": "p-9", "database": "dwh",
-            "category": "Tables", "schema": "arc", "name": "Citybike_Bikes", "changeType": "Changed",
+            "category": "Tables", "schema": "arc", "name": "Cyclehire_Bikes", "changeType": "Changed",
             "commitSha": "abc123", "occurredUtc": "2026-08-24T22:10:00Z"
         }]);
         links.decorate(&mut payload);
 
         assert_eq!(
             links_of(&payload, "/0/links/page"),
-            json!("/schema-changes?q=Citybike_Bikes&window=all")
+            json!("/schema-changes?q=Cyclehire_Bikes&window=all")
         );
         // The snapshot run that saw it, and the scm flow that took it, stay references.
         assert_eq!(links_of(&payload, "/0/links/run"), json!("/runs/run-4"));

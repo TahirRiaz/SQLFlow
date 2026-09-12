@@ -48,7 +48,7 @@ public sealed class HeaderRepeaterTests
                 $item:
                   extractedAt: { $column: ExtractedUtc, $type: dateTime }
                   recordCount: "{RecordCount}"
-                  format: kolumbus-trips-v1
+                  format: contoso-trips-v1
               transactions:
                 $forEach: rows
                 $item:
@@ -67,7 +67,7 @@ public sealed class HeaderRepeaterTests
         var header = document["header"]!.AsObject();
         Assert.Equal("2026-08-17T04:00:00", (string?)header["extractedAt"]);
         Assert.Equal(2L, (long?)header["recordCount"]);
-        Assert.Equal("kolumbus-trips-v1", (string?)header["format"]);
+        Assert.Equal("contoso-trips-v1", (string?)header["format"]);
         var transactions = document["transactions"]!.AsArray();
         Assert.Equal(2, transactions.Count);
         Assert.Equal(10.5m, (decimal?)transactions[0]!["amount"]);

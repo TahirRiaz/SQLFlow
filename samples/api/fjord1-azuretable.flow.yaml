@@ -19,6 +19,6 @@ source:
       to: today
 
 landing:
-  target: abfss://datalakev2@dwdatalakeprodv2.dfs.core.windows.net/raw/fjord1
+  target: abfss://datalakev2@dwdatalakeprod.dfs.core.windows.net/raw/fjord1
   pathTemplate: "history/{window.from:yyyy}/fjord1_{window.from:yyyyMMdd}"
   format: json

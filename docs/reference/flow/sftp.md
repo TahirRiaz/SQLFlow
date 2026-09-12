@@ -17,7 +17,7 @@ sourceRefs:
   - src/SqlFlow.Core/Sftp/SftpFlow.cs
   - src/SqlFlow.Sftp/SftpEngine.cs
   - src/SqlFlow.Yaml/YamlSftpFlowLoader.cs
-  - samples/sftp/citybike-nets-download.flow.yaml
+  - samples/sftp/cyclehire-settlement-download.flow.yaml
 ---
 
 # SFTP flow (flowType: sftp)

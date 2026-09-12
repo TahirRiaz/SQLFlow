@@ -101,7 +101,7 @@ The same over the API (`POST /api/v1/runs`):
 ```jsonc
 {
   "repoId": "…",
-  "flowName": "baatbooking_00_cpy",
+  "flowName": "boatbooking_00_cpy",
   "scope": "node",
   "backfillFrom": "2026-07-07T00:00:00Z",
   "backfillTo":   "2026-07-16T00:00:00Z"

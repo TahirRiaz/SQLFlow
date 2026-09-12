@@ -147,7 +147,7 @@ public enum AcquireAuthType
 
     /// <summary>
     /// A generic token exchange: POST <see cref="AcquireAuth.Token"/> and read the access token out of the JSON
-    /// response by path. Covers the Kolumbus-style pre-formed-form-body exchange and any bespoke token endpoint.
+    /// response by path. Covers the Contoso-style pre-formed-form-body exchange and any bespoke token endpoint.
     /// </summary>
     TokenExchange,
 }

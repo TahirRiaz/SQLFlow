@@ -35,11 +35,11 @@ public sealed class ParamsTests
     {
         var handler = new StubHttpHandler().Json("/report", req => $"[{{\"r\":\"{req.RequestUri!.Query}\"}}]");
         var engine = TestEngine.Create(handler, new FakeSecrets(), new FixedClock(Now), out var dir);
-        var flow = Flow(dir, new Dictionary<string, string?> { ["region"] = "rogaland" });
+        var flow = Flow(dir, new Dictionary<string, string?> { ["region"] = "westregion" });
 
         var byDefault = await engine.RunAsync(flow, Guid.NewGuid(), NullRunEventSink.Instance, null, CancellationToken.None);
         Assert.True(byDefault.Success);
-        Assert.Contains(handler.Requests, r => r.Uri.Query.Contains("region=rogaland", StringComparison.Ordinal));
+        Assert.Contains(handler.Requests, r => r.Uri.Query.Contains("region=westregion", StringComparison.Ordinal));
 
         var overridden = await engine.RunAsync(flow, Guid.NewGuid(), NullRunEventSink.Instance, null, CancellationToken.None,
             new AcquireRunOverrides { Params = new Dictionary<string, string> { ["region"] = "agder" } });
@@ -66,7 +66,7 @@ public sealed class ParamsTests
     {
         var handler = new StubHttpHandler().Json("/report", _ => "[]");
         var engine = TestEngine.Create(handler, new FakeSecrets(), new FixedClock(Now), out var dir);
-        var flow = Flow(dir, new Dictionary<string, string?> { ["region"] = "rogaland" });
+        var flow = Flow(dir, new Dictionary<string, string?> { ["region"] = "westregion" });
 
         var result = await engine.RunAsync(flow, Guid.NewGuid(), NullRunEventSink.Instance, null, CancellationToken.None,
             new AcquireRunOverrides { Params = new Dictionary<string, string> { ["regoin"] = "typo" } });
@@ -121,7 +121,7 @@ public sealed class ParamsTests
             flowType: api
             name: P
             params:
-              region: rogaland
+              region: westregion
               apiVersion: ""
             source:
               baseUrl: https://api.test.local
@@ -131,7 +131,7 @@ public sealed class ParamsTests
               pathTemplate: y
             """);
 
-        Assert.Equal("rogaland", flow.Params["region"]);
+        Assert.Equal("westregion", flow.Params["region"]);
         Assert.Null(flow.Params["apiVersion"]);
     }
 }

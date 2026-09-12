@@ -340,7 +340,7 @@ public sealed class CsvSourceReaderTests : IDisposable
     public async Task Headerless_RaggedRows_SizesSchemaFromWidestRow()
     {
         // A headerless file names its columns positionally, so the width is the file's WIDEST row, not its
-        // first. Mixed-record-type exports look exactly like this: the Nets settlement file opens with a
+        // first. Mixed-record-type exports look exactly like this: the settlement file opens with a
         // narrow 28-field header record and follows it with 30-field transaction rows. Sizing from row one
         // would drop the last two fields of every transaction.
         var source = Csv("ragged.csv", "a,b,c\nd,e,f,g,h\ni,j\n", new() { ["header"] = "false" });
@@ -358,7 +358,7 @@ public sealed class CsvSourceReaderTests : IDisposable
     [Fact]
     public async Task SrcEncoding_Latin1_DecodesHighBytesFaithfully()
     {
-        // Legacy feeds are delivered in single-byte code pages; the Nets settlement files are Latin1 and
+        // Legacy feeds are delivered in single-byte code pages; the settlement files are Latin1 and
         // carry Norwegian text ("Beløp - netto"). Read as UTF-8, 0xF8 is an invalid start byte and the
         // value is corrupted, so the declared encoding must actually be honoured.
         var path = Path.Combine(_dir, "latin1.csv");

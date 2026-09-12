@@ -158,7 +158,7 @@ public sealed class TranslateInvokerTests
             invoke:
               url: https://api.example.com/records
               headers:
-                data-partition-id: kolumbus
+                data-partition-id: contoso
                 Content-Type: application/json; charset=utf-8
               auth:
                 type: bearer
@@ -174,7 +174,7 @@ public sealed class TranslateInvokerTests
 
         var request = Assert.Single(handler.Requests);
         Assert.Equal("Bearer token-123", request.Headers["Authorization"]);
-        Assert.Equal("kolumbus", request.Headers["data-partition-id"]);
+        Assert.Equal("contoso", request.Headers["data-partition-id"]);
         Assert.Equal("application/json", request.ContentType);
     }
 

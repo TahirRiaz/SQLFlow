@@ -333,11 +333,11 @@ public sealed class CopyEngineTests : IDisposable
     {
         var flow = new YamlCopyFlowLoader().Parse("""
             flowType: cpy
-            name: BB_Baatbooking_00_cpy
+            name: BB_Boatbooking_00_cpy
             batch: BB
             operation: zip
             source:
-              location: abfss://baatbooking@acct.dfs.core.windows.net
+              location: abfss://boatbooking@acct.dfs.core.windows.net
               pattern: "*.json"
               modifiedWithinDays: 14
             target:
@@ -346,7 +346,7 @@ public sealed class CopyEngineTests : IDisposable
               zipName: bundle.zip
             """);
 
-        Assert.Equal("BB_Baatbooking_00_cpy", flow.Name);
+        Assert.Equal("BB_Boatbooking_00_cpy", flow.Name);
         Assert.Equal(CopyOperation.Zip, flow.Operation);
         var step = Assert.Single(flow.Steps);
         Assert.Equal("*.json", step.Source.Pattern);
@@ -366,13 +366,13 @@ public sealed class CopyEngineTests : IDisposable
     {
         var flow = new YamlCopyFlowLoader().Parse("""
             flowType: cpy
-            name: BB_Baatbooking_00_cpy
+            name: BB_Boatbooking_00_cpy
             batch: BB
             items:
-              - source: { location: abfss://baatbooking@acct.dfs.core.windows.net/DETAIL, pattern: "*.json", modifiedWithinDays: 14 }
-                target: { location: abfss://datalakev2@acct.dfs.core.windows.net/raw/baatbooking/history/detail }
-              - source: { location: abfss://baatbooking@acct.dfs.core.windows.net/SESS }
-                target: { location: abfss://datalakev2@acct.dfs.core.windows.net/raw/baatbooking/history/sess }
+              - source: { location: abfss://boatbooking@acct.dfs.core.windows.net/DETAIL, pattern: "*.json", modifiedWithinDays: 14 }
+                target: { location: abfss://datalakev2@acct.dfs.core.windows.net/raw/boatbooking/history/detail }
+              - source: { location: abfss://boatbooking@acct.dfs.core.windows.net/SESS }
+                target: { location: abfss://datalakev2@acct.dfs.core.windows.net/raw/boatbooking/history/sess }
             """);
 
         Assert.Equal(2, flow.Steps.Count);
@@ -412,7 +412,7 @@ public sealed class CopyEngineTests : IDisposable
     [Fact]
     public async Task Copy_ModifiedWithinDays_ExcludesOlderFilesByDefault()
     {
-        // The flow's declared window (the baatbooking runbook's 14 days) is the default when no override is supplied.
+        // The flow's declared window (the boatbooking runbook's 14 days) is the default when no override is supplied.
         var oldFile = Write("src/old.json", "{}");
         var newFile = Write("src/new.json", "{}");
         File.SetLastWriteTimeUtc(oldFile, DateTime.UtcNow.AddDays(-30));
