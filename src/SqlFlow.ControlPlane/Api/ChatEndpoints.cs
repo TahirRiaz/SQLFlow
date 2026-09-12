@@ -29,6 +29,9 @@ public sealed record ChatMessageDto(
     long Id, int Ordinal, string Role, string Text, IReadOnlyList<string> Images,
     IReadOnlyList<ChatToolCallDto> ToolCalls, DateTime CreatedUtc);
 
+/// <summary>What a purge removed: every conversation of the caller and every message in them.</summary>
+public sealed record ChatConversationsPurgedDto(int Conversations, int Messages);
+
 /// <summary>A rename request for a conversation.</summary>
 public sealed record RenameChatConversationRequest(string Title);
 
@@ -85,6 +88,7 @@ public static class ChatEndpoints
         chat.MapGet("/conversations", ListConversationsAsync).WithName("ListChatConversations");
         chat.MapPut("/conversations/{id:guid}", RenameConversationAsync).WithName("RenameChatConversation");
         chat.MapDelete("/conversations/{id:guid}", DeleteConversationAsync).WithName("DeleteChatConversation");
+        chat.MapDelete("/conversations", DeleteAllConversationsAsync).WithName("DeleteAllChatConversations");
         chat.MapGet("/conversations/{id:guid}/messages", ListMessagesAsync).WithName("ListChatMessages");
         chat.MapPost("/ask", AskAsync).WithName("AskChatAssistant");
         chat.MapPost("/transcribe", TranscribeAsync).WithName("TranscribeChatAudio");
@@ -170,6 +174,31 @@ public static class ChatEndpoints
 
         await db.ChatMessages.Where(m => m.ConversationId == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         return TypedResults.NoContent();
+    }
+
+    /// <summary>
+    /// Empties the caller's whole chat history in one call: every conversation they own and every
+    /// message in it. Only the caller's own rows are touched, and the count of each comes back so
+    /// the GUI can say what it removed. Deleting one conversation at a time is the common case; this
+    /// is the escape hatch for a rail that has grown to hundreds of entries.
+    /// </summary>
+    private static async Task<Results<Ok<ChatConversationsPurgedDto>, ProblemHttpResult>> DeleteAllConversationsAsync(
+        CatalogDbContext db, HttpContext http, CancellationToken ct)
+    {
+        if (!TryGetUserId(http, out var userId, out var noUser))
+        {
+            return noUser;
+        }
+
+        // Messages first, keyed off the caller's conversations, so a failure between the two
+        // statements can only leave empty conversations behind, never orphaned transcripts.
+        var messages = await db.ChatMessages
+            .Where(m => db.ChatConversations.Any(c => c.Id == m.ConversationId && c.UserId == userId))
+            .ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        var conversations = await db.ChatConversations
+            .Where(c => c.UserId == userId)
+            .ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        return TypedResults.Ok(new ChatConversationsPurgedDto(conversations, messages));
     }
 
     private static async Task<Results<Ok<IReadOnlyList<ChatMessageDto>>, ProblemHttpResult>> ListMessagesAsync(

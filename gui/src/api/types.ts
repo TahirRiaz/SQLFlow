@@ -2306,6 +2306,12 @@ export interface ChatConversation {
   updatedUtc: string;
 }
 
+/** What a chat-history purge removed. */
+export interface ChatConversationsPurged {
+  conversations: number;
+  messages: number;
+}
+
 /** One tool call an answer made (in call order); status is "started" | "completed" | "failed". */
 export interface ChatToolCall {
   name: string;

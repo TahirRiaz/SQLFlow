@@ -4,7 +4,7 @@
 import { del, get, getAnonymous, getText, post, postAnonymous, postBinary, put, streamSse, type QueryParams, type SseFrame } from "./client";
 import type {
   AccessToken, AllSearchResult, Attention, AuthProviders,
-  ChatAskRequest, ChatCapabilities, ChatConversation, ChatMessage, ChatTranscription,
+  ChatAskRequest, ChatCapabilities, ChatConversation, ChatConversationsPurged, ChatMessage, ChatTranscription,
   ColumnHit, ComputeTask, ComputeTaskAccepted, ComputeTaskRequest,
   DataStream, DataStreams, DispatchSnapshot,
   ComputeTaskSummary, CreateAccessTokenRequest, CreateNotificationSubscriptionRequest, CreateScheduleRequest, CreatedAccessToken,
@@ -575,6 +575,8 @@ export const chatApi = {
   renameConversation: (id: string, title: string) =>
     put<ChatConversation>(`/api/v1/chat/conversations/${id}`, { title }),
   deleteConversation: (id: string) => del<void>(`/api/v1/chat/conversations/${id}`),
+  /** Deletes every conversation of the signed-in user and returns how much was removed. */
+  deleteAllConversations: () => del<ChatConversationsPurged>("/api/v1/chat/conversations"),
   messages: (id: string) => get<ChatMessage[]>(`/api/v1/chat/conversations/${id}/messages`),
   /** One question, answered as SSE: a `conversation` frame, then `tool`/`delta` frames, then `done` (or `error`). */
   ask: (request: ChatAskRequest, onFrame: (frame: SseFrame) => void, signal: AbortSignal, onOpen?: () => void) =>
