@@ -2195,6 +2195,10 @@ export interface DataStream {
   batch: string | null;
   active: boolean;
   targetObject: string | null;
+  /** The lineage key and kind of that target, so the verdict can open the object's graph without the client
+   * having to rebuild the key from the qualified name. Null when the flow has no recorded write edge. */
+  targetObjectKey: string | null;
+  targetObjectKind: string | null;
   /** The data source this stream belongs to, from the repository layout or schedule membership rather than
    * from the flow's name, so a misnamed flow still groups with its siblings. */
   source: string;

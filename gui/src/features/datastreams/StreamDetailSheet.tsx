@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+﻿import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import {
   Bar,
@@ -21,6 +21,7 @@ import { dataStreamApi } from "../../api/endpoints";
 import type { StreamPoint, StreamSignal } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
+import { LineageJumpButton } from "../../components/LineageJumpButton";
 import { RelativeTime } from "../../components/RelativeTime";
 import { useChartInk, detectorLabels, detectorMethods, evidence, finding, formatRows, formatDays } from "./streamPresentation";
 import { StreamStatusBadge } from "./StreamStatusBadge";
@@ -323,13 +324,29 @@ export function StreamDetailSheet({
                 {stream.signals.map((signal) => <SignalRow key={signal.detector} signal={signal} />)}
               </div>
 
-              <div className="flex gap-2">
+              {/* A stopped stream is rarely about this flow: the upstream stopped producing, or something
+                  downstream is already reading a stale table. So the graph of the object it writes is the
+                  next step before acting, and it is offered here rather than left to be found by name. */}
+              <div className="flex flex-wrap gap-2">
                 <Button variant="outline" size="sm" onClick={() => navigate(`/pipelines/${stream.pipelineId}`)}>
                   Open flow
                 </Button>
                 <Button variant="outline" size="sm" onClick={() => navigate(`/runs?pipelineId=${stream.pipelineId}`)}>
                   Runs
                 </Button>
+                {stream.targetObjectKey !== null && (
+                  <LineageJumpButton
+                    variant="outlined"
+                    fullLabel
+                    target={{
+                      kind: "object",
+                      objectKey: stream.targetObjectKey,
+                      objectKind: stream.targetObjectKind ?? "",
+                      label: stream.targetObject ?? stream.flowName,
+                      sublabel: "What feeds this table, and what reads it",
+                    }}
+                  />
+                )}
               </div>
             </>
           )}

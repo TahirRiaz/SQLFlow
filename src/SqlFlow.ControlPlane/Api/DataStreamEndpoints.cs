@@ -90,6 +90,10 @@ public sealed record StreamPointDto(
 /// </summary>
 public sealed record DataStreamDto(
     Guid PipelineId, string FlowName, string FlowKind, string? Batch, bool Active, string? TargetObject,
+    // The lineage key of that same target, so a verdict can open the object's graph. The qualified name above
+    // is for reading; the key is the identity the lineage endpoints index on, and deriving one from the other
+    // in the client would be a second spelling of the estate's naming rules.
+    string? TargetObjectKey, string? TargetObjectKind,
     // The data SOURCE this stream belongs to (Cyclehire, Fara, Boatbooking), from the repository layout or
     // schedule membership rather than from the flow's name. One source routinely has fifty objects, so
     // without it a board is a flat wall of tables with no way to see that forty rows are one vendor. Not the
@@ -483,6 +487,7 @@ public static class DataStreamEndpoints
             results.Add(new DataStreamDto(
                 id, pipeline?.Name ?? id.ToString(), pipeline?.Kind ?? "?", pipeline?.Batch,
                 pipeline?.Active ?? false, graph.Targets.GetValueOrDefault(id).Name,
+                graph.Targets.GetValueOrDefault(id).Key, graph.Targets.GetValueOrDefault(id).Kind,
                 SourceOf(pipeline?.RelativePath, schedule?.Name, pipeline?.Name ?? string.Empty),
                 scopeById[id].Scope, scopeById[id].Reason, StageOf(pipeline?.Kind, scopeById[id].Scope),
                 schedule?.Name, schedule?.Cron, schedule?.Timezone,
@@ -616,7 +621,7 @@ public static class DataStreamEndpoints
     /// joined to the object registry for the write side.
     /// </summary>
     private sealed record ScopeGraph(
-        Dictionary<Guid, (string? Name, string? Schema)> Targets,
+        Dictionary<Guid, (string? Name, string? Schema, string? Key, string? Kind)> Targets,
         Dictionary<Guid, List<string>> Reads,
         Dictionary<string, List<Guid>> Producers);
 
@@ -641,7 +646,7 @@ public static class DataStreamEndpoints
             .Join(db.Objects.AsNoTracking(), e => e.ObjectKey, o => o.Key, (e, o) => new
             {
                 PipelineId = e.PipelineId!.Value, e.ObjectKey, e.ObjectName, e.Tier,
-                o.Database, o.Schema, ObjectRealName = o.Name,
+                o.Database, o.Schema, ObjectRealName = o.Name, o.Kind,
             })
             .ToListAsync(ct).ConfigureAwait(false);
 
@@ -661,7 +666,7 @@ public static class DataStreamEndpoints
                 {
                     var best = g.FirstOrDefault(w => w.Tier == "Declared") ?? g.First();
                     return ((string?)Qualify(best.Database, best.Schema, best.ObjectRealName ?? best.ObjectName),
-                        best.Schema);
+                        best.Schema, (string?)best.ObjectKey, (string?)best.Kind);
                 });
 
         return new ScopeGraph(
