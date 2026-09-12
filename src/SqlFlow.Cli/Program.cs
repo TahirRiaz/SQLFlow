@@ -1947,11 +1947,9 @@ internal static class Program
         _ => throw new SqlFlowException($"Unknown --provider '{provider}'. Allowed: mssql, azdb, mysql, postgres, oracle."),
     };
 
-    private static string SafeFileName(string name)
-    {
-        var invalid = Path.GetInvalidFileNameChars();
-        return new string(name.Select(c => invalid.Contains(c) ? '_' : c).ToArray());
-    }
+    /// <summary>The scaffolded file's name, sanitized by the one shared naming rule so a quoted identifier
+    /// containing a character Windows forbids cannot produce a file that only exists on Linux.</summary>
+    private static string SafeFileName(string name) => RunHistoryWriter.SafeName(name);
 
     private static void Output<T>(bool json, IReadOnlyList<T> items, Func<T, string> line)
     {

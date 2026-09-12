@@ -19,7 +19,7 @@ public sealed class FileDateDiscoveryTests : IDisposable
 
     private void Write(string relativePath, string content)
     {
-        var full = Path.Combine(_dir, relativePath);
+        var full = Path.Combine([_dir, .. relativePath.Split('\\')]);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         File.WriteAllText(full, content);
     }
