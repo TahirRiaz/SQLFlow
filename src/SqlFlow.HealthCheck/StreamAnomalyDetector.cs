@@ -1331,15 +1331,15 @@ public static class StreamAnomalyDetector
         // A table its source rarely changes is indistinguishable from a dead feed WITHIN this window: both run,
         // succeed, and write nothing for as long as anyone looks. What separates them is what the stream did
         // BEFORE the window, which the caller can see and this cannot. A stream that used to deliver on nearly
-        // every run and has delivered on none since is the outage this branch exists to catch. One that
-        // delivered on two runs in three hundred is a reference table doing exactly what it has always done,
+        // every day it ran and has delivered on none since is the outage this branch exists to catch. One that
+        // delivered on two days in three hundred is a reference table doing exactly what it has always done,
         // and reporting it as critical every day for the rest of its life is what teaches an operator to stop
         // reading the board. With no prior history supplied, the worst case stands.
-        var priorRuns = options.PriorSuccessfulRuns;
+        var priorRunDays = options.PriorRunDays;
         var rarelyChanges = !failing
             && lastLoad is not null
-            && priorRuns >= options.MinRunDaysForDeliveryShare
-            && (double)options.PriorLoadingRuns / priorRuns < options.DeliveryPerRunThreshold;
+            && priorRunDays >= options.MinRunDaysForDeliveryShare
+            && (double)options.PriorLoadingDays / priorRunDays < options.DeliveryPerRunThreshold;
 
         var profile = new StreamProfile
         {
@@ -1378,7 +1378,9 @@ public static class StreamAnomalyDetector
             AvgRowsWrittenPerLoadedDay = 0,
             MedianRowsWrittenPerLoadedDay = 0,
             TrendRowsPerDay = 0,
-            DeliveryShare = priorRuns > 0 ? Math.Round((double)options.PriorLoadingRuns / priorRuns, 4) : 0,
+            DeliveryShare = priorRunDays > 0
+                ? Math.Round((double)options.PriorLoadingDays / priorRunDays, 4)
+                : 0,
             ExpectedDays = 0,
             UnexpectedNullDays = 0,
             EmptyRunDays = 0,
@@ -1394,7 +1396,7 @@ public static class StreamAnomalyDetector
         if (rarelyChanges)
         {
             var detail = $"This table changes when its source does, not when its flow runs: it wrote rows on " +
-                $"{options.PriorLoadingRuns} of the {priorRuns} run(s) recorded before this window. It last " +
+                $"{options.PriorLoadingDays} of the {priorRunDays} day(s) it ran before this window. It last " +
                 $"changed on {lastLoad:yyyy-MM-dd} ({Days(silentDays)} ago) and has not changed inside the " +
                 $"{windowDays:0} day window, which for this table is ordinary.";
 

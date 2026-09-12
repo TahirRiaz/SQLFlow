@@ -1,4 +1,4 @@
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
@@ -397,25 +397,35 @@ public static class DataStreamEndpoints
 
         // For those same streams: how often running them USED to produce data. A window with no loads in it
         // cannot tell a table that died from a table that simply does not change, because both run, succeed,
-        // and write nothing. The history before the window can: a stream that delivered on nearly every run
-        // and has delivered on none since is an outage, while one that delivered on two runs in three hundred
-        // is a reference table whose quiet is its normal.
+        // and write nothing. The history before the window can: a stream that delivered on nearly every day it
+        // ran and has delivered on none since is an outage, while one that delivered on two days in three
+        // hundred is a reference table whose quiet is its normal.
+        //
+        // Counted per DAY, like every other measure on this surface, because a flow run several times a day
+        // delivers on the first run and reports nothing on the rest: that is an incremental load working, and
+        // per run it would look like a stream that seldom delivers.
         var priorFrom = fromUtc.AddDays(-PriorHistoryWindows * windowDays);
-        var priorDelivery = silentIds.Count == 0
+        var priorDays = silentIds.Count == 0
             ? []
             : await db.Runs.AsNoTracking()
                 .Where(r => silentIds.Contains(r.PipelineId)
                     && r.WrittenUtc >= priorFrom
                     && r.WrittenUtc < fromUtc
                     && r.Status == RunStatuses.Succeeded)
-                .GroupBy(r => r.PipelineId)
-                .Select(g => new PriorDelivery(
-                    g.Key,
-                    g.Count(),
-                    g.Count(r => (r.RowsInserted ?? 0) + (r.RowsUpdated ?? 0) + (r.RowsDeleted ?? 0) > 0
+                .GroupBy(r => new { r.PipelineId, Day = r.WrittenUtc.Date })
+                .Select(g => new
+                {
+                    g.Key.PipelineId,
+                    LoadingRuns = g.Count(r => (r.RowsInserted ?? 0) + (r.RowsUpdated ?? 0) + (r.RowsDeleted ?? 0) > 0
                         || (r.RowsInserted == null && r.RowsUpdated == null && r.RowsDeleted == null
-                            && (r.RowsLoaded ?? 0) > 0))))
-                .ToDictionaryAsync(x => x.PipelineId, ct).ConfigureAwait(false);
+                            && (r.RowsLoaded ?? 0) > 0)),
+                })
+                .ToListAsync(ct).ConfigureAwait(false);
+        var priorDelivery = priorDays
+            .GroupBy(d => d.PipelineId)
+            .ToDictionary(
+                g => g.Key,
+                g => new PriorDelivery(g.Key, g.Count(), g.Count(d => d.LoadingRuns > 0)));
 
         // The candidates, newest activity first, so a capped sweep keeps the streams whose state is current.
         var ordered = candidateIds
@@ -465,8 +475,8 @@ public static class DataStreamEndpoints
                 {
                     ExpectedGapDaysOverride = schedule?.ExpectedGapDays,
                     LastKnownLoadUtc = lastLoadBeforeWindow.TryGetValue(id, out var seen) ? seen : null,
-                    PriorSuccessfulRuns = priorDelivery.GetValueOrDefault(id)?.Runs ?? 0,
-                    PriorLoadingRuns = priorDelivery.GetValueOrDefault(id)?.LoadingRuns ?? 0,
+                    PriorRunDays = priorDelivery.GetValueOrDefault(id)?.RunDays ?? 0,
+                    PriorLoadingDays = priorDelivery.GetValueOrDefault(id)?.LoadingDays ?? 0,
                 });
 
             var pipeline = meta.GetValueOrDefault(id);
@@ -514,9 +524,9 @@ public static class DataStreamEndpoints
             ranked);
     }
 
-    /// <summary>How often running one stream produced data over the history BEFORE the analysed window: the
-    /// evidence that separates a dead feed from a table nobody ever changes.</summary>
-    private sealed record PriorDelivery(Guid PipelineId, int Runs, int LoadingRuns);
+    /// <summary>How often running one stream produced data over the history BEFORE the analysed window,
+    /// counted in DAYS: the evidence that separates a dead feed from a table nobody ever changes.</summary>
+    private sealed record PriorDelivery(Guid PipelineId, int RunDays, int LoadingDays);
 
     /// <summary>Backfill runs on one day of one stream, counted but never analysed.</summary>
     private sealed record ExcludedDay(Guid PipelineId, DateTime Day, int Runs);

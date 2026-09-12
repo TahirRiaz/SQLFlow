@@ -165,18 +165,26 @@ public sealed record StreamAnomalyOptions
     public int MinEraDaysForRhythm { get; init; } = 7;
 
     /// <summary>
-    /// Successful runs recorded BEFORE the analysed window, and how many of them wrote rows. Supplied by the
-    /// caller for the streams that loaded nothing inside the window, where the window alone cannot tell a
-    /// table that died from a table that simply does not change: both run, succeed, and write nothing for as
-    /// long as you look. A stream that used to deliver on nearly every run is the outage this surface exists
-    /// to catch; one that delivered on two runs in three hundred is a reference table behaving exactly as it
-    /// always has. Zero means the caller supplied no prior history, and the analysis keeps its worst-case
-    /// reading rather than inventing a reassurance.
+    /// DAYS on which the stream ran successfully BEFORE the analysed window, and how many of those days wrote
+    /// rows. Supplied by the caller for the streams that loaded nothing inside the window, where the window
+    /// alone cannot tell a table that died from a table that simply does not change: both run, succeed, and
+    /// write nothing for as long as you look. A stream that used to deliver on nearly every day it ran is the
+    /// outage this surface exists to catch; one that delivered on two days in three hundred is a reference
+    /// table behaving exactly as it always has. Zero means the caller supplied no prior history, and the
+    /// analysis keeps its worst-case reading rather than inventing a reassurance.
+    /// <para>
+    /// Days rather than runs, and the distinction is not pedantry. A flow run several times a day delivers on
+    /// the first run and reports nothing on the rest, which is the whole point of an incremental load; counted
+    /// per run that healthy feed looks like it delivers a fifth of the time, and a dead one would then be
+    /// excused as a table that never changes. On this estate 49 of 382 scheduled streams deliver on most of
+    /// their run DAYS and on under half of their runs, so counting the wrong unit would have put the blind
+    /// spot back exactly where this evidence exists to close it.
+    /// </para>
     /// </summary>
-    public int PriorSuccessfulRuns { get; init; }
+    public int PriorRunDays { get; init; }
 
-    /// <summary>See <see cref="PriorSuccessfulRuns"/>: how many of those runs actually wrote rows.</summary>
-    public int PriorLoadingRuns { get; init; }
+    /// <summary>See <see cref="PriorRunDays"/>: how many of those days actually wrote rows.</summary>
+    public int PriorLoadingDays { get; init; }
 
     /// <summary>The trailing slice the rate test compares against the rest of the window.</summary>
     public int RecentWindowDays { get; init; } = 7;

@@ -719,8 +719,8 @@ public sealed class StreamAnomalyDetectorTests
         {
             ExpectedGapDaysOverride = 1,
             LastKnownLoadUtc = AsOf.Date.AddDays(-95),
-            PriorSuccessfulRuns = 300,
-            PriorLoadingRuns = 2,
+            PriorRunDays = 300,
+            PriorLoadingDays = 2,
         });
 
         Assert.Equal(StreamStatus.Healthy, analysis.Status);
@@ -743,12 +743,61 @@ public sealed class StreamAnomalyDetectorTests
         {
             ExpectedGapDaysOverride = 1,
             LastKnownLoadUtc = AsOf.Date.AddDays(-95),
-            PriorSuccessfulRuns = 300,
-            PriorLoadingRuns = 295,
+            PriorRunDays = 300,
+            PriorLoadingDays = 295,
         });
 
         Assert.Equal(StreamStatus.Stalled, analysis.Status);
         Assert.Equal("critical", analysis.Severity);
+    }
+
+    [Fact]
+    public void ADeadFeedRunSeveralTimesADay_IsStillCritical()
+    {
+        // The unit matters. A flow run six times a day delivers on the first run and reports nothing on the
+        // other five, because that is what an incremental load does. Counted per RUN this healthy feed looks
+        // like it delivers a sixth of the time, and a dead one would then be excused as a table that never
+        // changes: 49 of the estate's 382 scheduled streams deliver on most of their run DAYS and on under
+        // half of their runs, so the wrong unit would put the blind spot back where it was.
+        var buckets = new List<StreamBucket>();
+        for (var i = 59; i >= 0; i--)
+        {
+            buckets.Add(Day(AsOf.Date.AddDays(-i), rows: 0, runs: 6));
+        }
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions
+        {
+            ExpectedGapDaysOverride = 1,
+            LastKnownLoadUtc = AsOf.Date.AddDays(-95),
+            // It ran on 300 days and delivered on 295 of them; per run that would have read 295 in 1,800.
+            PriorRunDays = 300,
+            PriorLoadingDays = 295,
+        });
+
+        Assert.Equal(StreamStatus.Stalled, analysis.Status);
+        Assert.Equal("critical", analysis.Severity);
+    }
+
+    [Fact]
+    public void RepeatedRunsOnOneDay_DoNotMakeItAnEmptyDay()
+    {
+        // Running a flow again by hand is normal: the first run takes the data and the second finds nothing
+        // new. The day is what is measured, and its rows are the day's total, so the empty re-runs neither
+        // create a missed day nor dilute the share of days that deliver.
+        var buckets = new List<StreamBucket>();
+        for (var i = 59; i >= 0; i--)
+        {
+            // One loading run plus two manual re-runs that find nothing, every day.
+            buckets.Add(Day(AsOf.Date.AddDays(-i), 10_000, runs: 3));
+        }
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 });
+
+        Assert.Equal(StreamStatus.Healthy, analysis.Status);
+        Assert.False(analysis.Profile.Pattern.ChangeDriven);
+        Assert.Equal(1, analysis.Profile.DeliveryShare);
+        Assert.Equal(0, analysis.Profile.UnexpectedNullDays);
+        Assert.Equal(60, analysis.Profile.LoadedDays);
     }
 
     [Fact]

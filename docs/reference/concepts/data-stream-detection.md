@@ -54,7 +54,7 @@ It is exposed in three places, all computing the same analysis on each request (
 
 **Reprocessing is removed before anything is measured, in two passes.** First, runs the log flags as reprocessing are dropped: a forced full load, a backfill window, an ad-hoc source filter or file pattern, a reprocess from the source minimum, an assertions-only run, or an engine-derived scope of backfill or init-load. They are still counted per day (`excludedBackfillRuns`) so the chart can show something happened. Second, the loading days that remain are trimmed to a Tukey fence, `Q3 + 3 * IQR` with a floor of three times the median load (`ReprocessTrimIqrMultiplier`, `ReprocessTrimMedianMultiplier`), because the flags only catch what an operator declared and a catch-up after an outage carries no flag. The reported series keeps the true numbers; only the fitting sees the trimmed ones. `includeBackfills=true` switches the first pass off.
 
-**Per-request, from the catalog.** The board reads the run table for the window, groups by pipeline and UTC day, and hands each stream's daily buckets to `StreamAnomalyDetector.Analyze`. For a stream that loaded nothing inside the window, its last load before the window is read from the full history, so a table dead for six months is reported as stalled rather than as "never loaded".
+**Per-request, and measured per DAY.** The board reads the run table for the window, groups by pipeline and UTC day, sums the rows each day wrote, and hands those daily buckets to `StreamAnomalyDetector.Analyze`. Every measure on this surface is therefore a count of days, never of runs, which is what makes repeated runs harmless: a flow run three times where the first takes the data and the other two find nothing new has one loading day, not one loading run and two empty ones. A day counts as run when at least one run on it succeeded, and as loading when the day's rows are above zero. For a stream that loaded nothing inside the window, its last load before the window is read from the full history, so a table dead for six months is reported as stalled rather than as "never loaded".
 
 ## The analysis, in order
 
@@ -108,11 +108,15 @@ Two supporting rules fall out of the same principle:
 **When the last change predates the window.** A stream that loaded nothing at all inside the window is
 analysed by a separate path, and from inside that window a static table and a dead feed are identical: both
 run, succeed, and write nothing for as long as anyone looks. The verdict therefore rests on evidence the
-window does not contain. The control plane reads the stream's runs over the `PriorHistoryWindows` (3) windows
-before this one and passes `PriorSuccessfulRuns` and `PriorLoadingRuns`; a stream that delivered on nearly
-every prior run and has delivered on none since is the outage the branch exists to catch and stays critical,
-while one that delivered on two runs in three hundred is reported `rarely-changes` at info. With no prior
-history supplied the worst-case reading stands, so the analysis never invents a reassurance.
+window does not contain. The control plane reads the stream's history over the `PriorHistoryWindows` (3)
+windows before this one and passes `PriorRunDays` and `PriorLoadingDays`; a stream that delivered on nearly
+every day it ran and has delivered on none since is the outage the branch exists to catch and stays critical,
+while one that delivered on two days in three hundred is reported `rarely-changes` at info. With no prior
+history supplied the worst-case reading stands, so the analysis never invents a reassurance. These are DAYS
+for the same reason everything else here is: a flow run six times a day delivers on the first run and reports
+nothing on the other five, so per run a healthy incremental feed would look like one that seldom delivers, and
+a dead one would be excused as a table that never changes. On this estate 49 of 382 scheduled streams deliver
+on most of their run days and on under half of their runs.
 
 ## The six detectors
 
