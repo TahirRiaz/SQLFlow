@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type {
-  DataStream, StreamDetectorName, StreamPattern, StreamStage, StreamStatus,
+  DataStream, StreamDetectorName, StreamPattern, StreamSparkline, StreamStage, StreamStatus,
 } from "../../api/types";
 import { useThemeMode } from "../../theme/ThemeModeContext";
 
@@ -53,6 +53,15 @@ export const statusLabels: Record<StreamStatus, string> = {
   "insufficient-history": "Too new",
 };
 
+/** What each verdict means in a few words, for the tile that counts it. */
+export const statusCaptions: Record<StreamStatus, string> = {
+  stalled: "no data arriving",
+  degraded: "skipped expected days",
+  watch: "one check fired",
+  healthy: "loading on pattern",
+  "insufficient-history": "not enough history",
+};
+
 /** Verdicts worst-first, for ordering a group's summary so the reason to open it comes first. */
 export function statusRank(status: StreamStatus): number {
   switch (status) {
@@ -70,41 +79,109 @@ export function statusRank(status: StreamStatus): number {
 }
 
 /**
+ * The judged part of the stream's last week, averaged per day, from the row's own sparkline: what actually
+ * arrived against what the model expected over the same days. Null when fewer than three judged days exist,
+ * because an average of two days is a coincidence with a decimal point.
+ */
+export function recentWeek(sparkline: StreamSparkline): { actual: number; expected: number } | null {
+  const judged = sparkline.rows.length - sparkline.immatureDays;
+  const start = Math.max(0, judged - 7);
+  const days = judged - start;
+  if (days < 3) {
+    return null;
+  }
+
+  let actual = 0;
+  let expected = 0;
+  for (let i = start; i < judged; i++) {
+    actual += sparkline.rows[i];
+    expected += sparkline.expected[i];
+  }
+
+  return { actual: actual / days, expected: expected / days };
+}
+
+/** A volume finding with its size in it, when the last week points the same way the finding does. When it
+ * does not (an outlying day the week has since recovered from), the bare label is the honest headline and the
+ * numbers stay in the hover panel and the detail sheet. */
+function volumeFinding(stream: DataStream, label: string, direction: "below" | "above"): string {
+  const week = recentWeek(stream.sparkline);
+  if (week === null || week.expected <= 0) {
+    return label;
+  }
+
+  const agrees = direction === "below" ? week.actual < week.expected : week.actual > week.expected;
+  return agrees
+    ? `${label}: ${formatRows(week.actual, true)}/day vs ${formatRows(week.expected, true)} expected`
+    : label;
+}
+
+/**
  * The headline for one row: what is wrong with this table, as a sentence with its number in it. The category
  * alone ("gap-days") says nothing to a reader, and the raw summary is a paragraph, so this is the middle
- * ground the board needs.
+ * ground the board needs. Every number carries its unit, because a bare "0" in a grid reads as "0 rows" to
+ * one reader and "0 days" to the next.
  */
-export function whatIsWrong(stream: DataStream): string {
-  const days = stream.profile.daysSinceLastLoad;
-  const missed = stream.profile.unexpectedNullDays;
+export function finding(stream: DataStream): string {
+  const profile = stream.profile;
+  const days = profile.daysSinceLastLoad;
+  const missed = profile.unexpectedNullDays;
   switch (stream.category) {
     case "stalled":
       return days === null ? "No data ever" : `No data for ${formatDayCount(days)}`;
     case "failing":
-      return days === null ? "Failing, no data" : `Failing, no data for ${formatDayCount(days)}`;
+      return days === null
+        ? "Every run has failed, no data yet"
+        : `Every run has failed, no data for ${formatDayCount(days)}`;
     case "gap-days":
-      return `Did not run on ${missed} day${missed === 1 ? "" : "s"}`;
+      return `Missed ${missed} of ${profile.expectedDays} expected days`;
     case "idle-days":
-      return `${missed} day${missed === 1 ? "" : "s"} with nothing new`;
+      return `Ran with nothing new on ${missed} day${missed === 1 ? "" : "s"}`;
     case "not-running":
-      return "Flow stopped running";
+      return profile.daysSinceLastRun === null
+        ? "Has never run"
+        : `Has not run for ${formatDayCount(profile.daysSinceLastRun)}`;
     case "less-than-normal":
-      return "Less data than usual";
+      return volumeFinding(stream, "Less data than usual", "below");
     case "more-than-normal":
-      return "More data than usual";
+      return volumeFinding(stream, "More data than usual", "above");
     case "never-loaded":
       return "Has never loaded";
     case "insufficient-history":
-      return "Too new to judge";
+      return `Only ${profile.loadedDays} loading day${profile.loadedDays === 1 ? "" : "s"} so far`;
     default:
-      return "Loading normally";
+      return "Loading on pattern";
   }
 }
 
-/** How often the table normally loads, spelled out. The shape name alone ("several-days-a-week") is the
- * algorithm's vocabulary; this is a person's. */
 /**
- * The recurring delivery in a few words, for the one line a board row can spare: "bigger load every 14d",
+ * How much to trust the finding, as the count it rests on: how many of the six independent checks agree.
+ * Two agreeing is the bar a finding has to clear before it can be called critical, so that is where "high"
+ * starts; one alone is a lead to look at, unless it is the one case that needs no corroboration (a stream
+ * that loaded before the window and never since, which the detector marks critical on its own).
+ */
+export function evidence(stream: DataStream): string {
+  const total = stream.signals.length;
+  const agreeing = stream.agreeingDetectors;
+  if (stream.status === "insufficient-history") {
+    return "not enough history to check";
+  }
+
+  if (agreeing === 0) {
+    return `all ${total} checks quiet`;
+  }
+
+  if (agreeing === 1) {
+    return stream.severity === "critical"
+      ? `1 of ${total} checks fired, beyond doubt`
+      : `1 of ${total} checks fired, a lead not a finding`;
+  }
+
+  return `${agreeing} of ${total} checks agree, ${stream.confidence >= 0.5 ? "high" : "medium"} confidence`;
+}
+
+/**
+ * The recurring delivery in a few words, for the one line a board row can spare: "bigger load every 14 days",
  * "bigger load once a month". The full sentence, with sizes and the next due date, is in the detail sheet.
  */
 export function cycleHint(pattern: StreamPattern): string | null {
@@ -121,6 +198,8 @@ export function cycleHint(pattern: StreamPattern): string | null {
   return `${size} load every ${formatDayCount(cycle.periodDays)}`;
 }
 
+/** How often the table normally loads, spelled out. The shape name alone ("several-days-a-week") is the
+ * algorithm's vocabulary; this is a person's. */
 export function howOftenItLoads(pattern: StreamPattern, expectedGapDays: number): string {
   switch (pattern.shape) {
     case "daily":
@@ -142,22 +221,15 @@ export function howOftenItLoads(pattern: StreamPattern, expectedGapDays: number)
   }
 }
 
-/**
- * How much to trust a finding, in a word. The underlying number is how many of the six independent checks
- * agreed, which is meaningful but not something a reader should have to interpret: two agreeing is the bar a
- * finding has to clear before it can be called critical, so that is where "high" starts.
- */
-export function confidenceLabel(stream: DataStream): { label: string; title: string } | null {
-  if (stream.agreeingDetectors === 0) {
-    return null;
+/** The rhythm as the caption under a "last data" age: "expected every day", "expected weekdays only", or
+ * "no fixed rhythm" for the stream nothing can be expected of. */
+export function expectedRhythm(pattern: StreamPattern, expectedGapDays: number): string {
+  const often = howOftenItLoads(pattern, expectedGapDays);
+  if (pattern.shape === "sporadic") {
+    return "no fixed rhythm";
   }
 
-  const title = `${stream.agreeingDetectors} of ${stream.signals.length} independent checks agree`;
-  if (stream.agreeingDetectors >= 2) {
-    return { label: stream.confidence >= 0.5 ? "High" : "Medium", title };
-  }
-
-  return { label: "Low", title: `${title}; a single check is a lead, not a finding` };
+  return `expected ${often.charAt(0).toLowerCase()}${often.slice(1)}`;
 }
 
 /**
@@ -191,11 +263,15 @@ export function formatRows(rows: number, compact = false): string {
     return value.toLocaleString();
   }
 
+  // One decimal below ten of a unit, none above: "8.9k" and "17k" are both honest to two figures, where a
+  // flat "9k" beside "9k expected" reads as no difference at all when there was a 5% one.
+  const scaled = (amount: number, unit: string) =>
+    `${(Math.abs(amount) < 10 ? amount.toFixed(1) : amount.toFixed(0)).replace(/\.0$/, "")}${unit}`;
   if (Math.abs(value) >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
+    return scaled(value / 1_000_000, "M");
   }
 
-  return Math.abs(value) >= 1_000 ? `${(value / 1_000).toFixed(0)}k` : String(value);
+  return Math.abs(value) >= 1_000 ? scaled(value / 1_000, "k") : String(value);
 }
 
 /** A bare span of days: "2 days", "1 day". */

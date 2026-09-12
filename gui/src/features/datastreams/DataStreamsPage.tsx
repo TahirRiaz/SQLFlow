@@ -7,9 +7,10 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { cn } from "@/lib/utils";
 import { isApiError } from "../../api/client";
 import { dataStreamApi } from "../../api/endpoints";
-import type { DataStream, StreamStatus } from "../../api/types";
+import type { DataStream, StreamProfile, StreamStatus } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DataTable, type Column, type TableGrouping } from "../../components/DataTable";
 import { EmptyState } from "../../components/EmptyState";
@@ -17,13 +18,15 @@ import { KpiCard } from "../../components/KpiCard";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { RelativeTime } from "../../components/RelativeTime";
+import { RichTooltip } from "../../components/RichTooltip";
 import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { pollingInterval } from "../../hooks/usePolling";
 import { StreamDetailSheet } from "./StreamDetailSheet";
-import { StreamStatusBadge } from "./StreamStatusBadge";
+import { StreamSparkline } from "./StreamSparkline";
+import { StreamStatusBadge, StreamStatusCounts } from "./StreamStatusBadge";
 import {
-  confidenceLabel, cycleHint, formatDays, formatRows, howOftenItLoads, stageLabels, stageMeaning, statusLabels,
-  statusRank, whatIsWrong,
+  cycleHint, evidence, expectedRhythm, finding, formatDays, formatRows, stageLabels, stageMeaning,
+  statusCaptions, statusLabels,
 } from "./streamPresentation";
 
 /** The last two parts of a qualified name (schema.table), which is what distinguishes pre.X from arc.X
@@ -37,7 +40,7 @@ function shortTarget(qualified: string | null): string | null {
   return parts.length <= 2 ? qualified : parts.slice(-2).join(".");
 }
 
-const kpiGridClass = "grid grid-cols-[repeat(auto-fill,minmax(148px,1fr))] gap-3";
+const kpiGridClass = "grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-3";
 
 const windowChoices = [
   { days: 30, label: "30d" },
@@ -51,47 +54,86 @@ const groupChoices = [
   { value: "none", label: "Flat" },
 ];
 
-/**
- * One collapsed group: the source (or schedule), its worst verdict, and what it is made of. A source with
- * fifty objects is one line here, and the summary is meant to answer "do I need to open this" without
- * opening it.
- */
-function GroupHeader({ label, caption, rows }: { label: string; caption?: string; rows: DataStream[] }) {
-  // Rows arrive ranked most urgent first and the grouping preserves that, so the first row IS the worst.
-  const worst = rows[0];
-  const counts = new Map<StreamStatus, number>();
+/** The verdict tiles in the order the board ranks them, each doubling as the filter for its own count. */
+const verdictTiles: { status: StreamStatus; color?: "error" | "warning" | "success" }[] = [
+  { status: "stalled", color: "error" },
+  { status: "degraded", color: "warning" },
+  { status: "watch" },
+  { status: "healthy", color: "success" },
+  { status: "insufficient-history" },
+];
+
+/** The days a group's data last arrived, across every stream in it: the newest load anywhere in the group,
+ * or null when no stream in it has ever loaded. */
+function groupLastLoad(rows: DataStream[]): number | null {
+  let newest: number | null = null;
   for (const row of rows) {
-    counts.set(row.status, (counts.get(row.status) ?? 0) + 1);
+    const days = row.profile.daysSinceLastLoad;
+    if (days !== null && (newest === null || days < newest)) {
+      newest = days;
+    }
   }
 
-  const breakdown = [...counts.entries()]
-    .sort((a, b) => statusRank(a[0]) - statusRank(b[0]))
-    .map(([status, n]) => `${n} ${statusLabels[status].toLowerCase()}`)
-    .join(" · ");
+  return newest;
+}
 
+/**
+ * One collapsed group: the schedule (or source), how many of its tables are in each verdict, and when data
+ * last arrived anywhere in it. A source with fifty objects is one line here, and the line is meant to answer
+ * "do I need to open this" without opening it: the verdict counts say how bad, the last-arrival says how
+ * current, and the cron (when grouping by schedule) says what the group promised.
+ */
+function GroupHeader({ label, cron, timezone, rows }: {
+  label: string;
+  cron?: string | null;
+  timezone?: string | null;
+  rows: DataStream[];
+}) {
+  const lastLoad = groupLastLoad(rows);
   return (
     <div className="flex min-w-0 flex-1 items-center gap-3">
       <span className="shrink-0 text-[13px] font-medium">{label}</span>
-      {caption !== undefined && (
-        <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{caption}</span>
+      {cron !== undefined && cron !== null && (
+        <span
+          className="shrink-0 font-mono text-[11px] text-muted-foreground"
+          title={timezone === null || timezone === undefined ? undefined : `Cron in ${timezone}`}
+        >
+          {cron}
+        </span>
       )}
-      <StreamStatusBadge status={worst.status} severity={worst.severity} />
+      <StreamStatusCounts rows={rows} />
+      <span className="shrink-0 text-[11px] text-muted-foreground">
+        {rows.length} table{rows.length === 1 ? "" : "s"}
+      </span>
       <span className="truncate text-[11px] text-muted-foreground">
-        {rows.length} table{rows.length === 1 ? "" : "s"} · {breakdown}
+        {lastLoad === null ? "no data ever" : `data last arrived ${formatDays(lastLoad).toLowerCase()}`}
       </span>
     </div>
   );
 }
 
-/** The filter chips carry the same words as the verdicts themselves, so a reader never has to map one
- * vocabulary onto another. */
-const statusFilters = [
-  { value: "", label: "All" },
-  { value: "stalled", label: "Stopped" },
-  { value: "degraded", label: "Missing data" },
-  { value: "watch", label: "Worth a look" },
-  { value: "healthy", label: "OK" },
-];
+/** The line under a missed-days count: who owns the misses, and whether the stream's own history predicts
+ * that many anyway. */
+function missedCaption(profile: StreamProfile): string {
+  if (profile.unexpectedNullDays === 0) {
+    return "loaded every time";
+  }
+
+  const parts: string[] = [];
+  if (profile.emptyRunDays > 0) {
+    parts.push(`${profile.emptyRunDays} ran empty`);
+  }
+
+  if (profile.noRunDays > 0) {
+    parts.push(`${profile.noRunDays} no run`);
+  }
+
+  if (profile.predictedNullDays >= 0.5) {
+    parts.push(`usually ${Math.round(profile.predictedNullDays)}`);
+  }
+
+  return parts.join(" · ");
+}
 
 /**
  * DataStream anomaly detection: which tables have stopped receiving data.
@@ -102,15 +144,18 @@ const statusFilters = [
  * whole downstream chain as a dozen separate findings that are all the same finding. Vendor deliveries are the
  * default view; our own processing is one click away, and so is everything at once.
  *
- * The stage column sharpens the same question. A source-side stream failing at "Vendor fetch" means nothing
- * arrived from them; the same stream failing at "File ingestion" or "Load to archive" means it arrived and we
- * did not take it in.
+ * Below the split, the verdict tiles are the filter: the number on a tile says how many tables are in that
+ * state, and clicking it shows which. One vocabulary, one control, rather than a row of counts and a separate
+ * row of chips carrying the same five words.
  *
- * Every column answers a question in the words an operator would use, because the algorithm's vocabulary
- * ("degraded", "gap-days", "2 of 6 detectors") is precise and useless at a glance. What is wrong, how often
- * this table normally loads, when data last arrived, how many days it missed against how many it usually
- * misses, and how much to trust the finding. The statistics behind each of those live one click away in the
- * detail sheet, where there is room to show the reasoning rather than just the verdict.
+ * Each row then reads left to right in the order an operator asks the questions. Which table, and at which
+ * stage (a source-side stream failing at "Vendor fetch" means nothing arrived from them; the same stream
+ * failing at "File ingestion" or "Load to archive" means it arrived and we did not take it in). What the
+ * verdict is, and what exactly is wrong, with its number and unit in the sentence and the evidence behind it
+ * underneath. Then the proof: the last two weeks drawn as bars against the expectation, so "less data than
+ * usual" is a shape rather than a claim; when data last arrived against how often it is expected; and how many
+ * expected days went by with nothing, always as "n of m days" so a zero can never be mistaken for zero rows.
+ * The statistics behind each of those live one click away in the detail sheet.
  *
  * Two switches change what the numbers MEAN rather than just what is shown, which is why they sit on the page
  * rather than in a menu. "Include backfills" puts operator-driven reprocessing back into the baseline, and a
@@ -160,103 +205,120 @@ export default function DataStreamsPage() {
     {
       id: "table",
       header: "Table",
-      width: 300,
+      width: 270,
       render: (s) => (
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-col" style={{ maxWidth: 250 }}>
           <span className="truncate font-mono text-xs" title={s.flowName}>{s.flowName}</span>
           <span className="truncate text-[11px] text-muted-foreground" title={s.targetObject ?? undefined}>
             {/* schema.table, because the bare name does not distinguish a staging copy from the archive one
-                it feeds; the full three-part name is on hover. */}
+                it feeds; the full three-part name is on hover. The stage rides beside it because it is the
+                sharper form of "whose problem": the same silence is theirs at the fetch and ours at the load. */}
             {shortTarget(s.targetObject) ?? s.batch ?? "unknown target"}
+            {" · "}
+            <span title={stageMeaning[s.stage]}>{stageLabels[s.stage]}</span>
           </span>
         </div>
       ),
     },
     {
-      id: "stage",
-      header: "Stage",
-      width: 140,
-      render: (s) => (
-        <span className="text-[13px]" title={stageMeaning[s.stage]}>{stageLabels[s.stage]}</span>
-      ),
+      id: "status",
+      header: "Status",
+      width: 120,
+      render: (s) => <StreamStatusBadge status={s.status} severity={s.severity} />,
     },
     {
-      id: "wrong",
+      id: "finding",
       header: "What's wrong",
-      width: 190,
+      width: 340,
       render: (s) => (
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <StreamStatusBadge status={s.status} severity={s.severity} />
-          <span className="truncate text-[11px] text-muted-foreground" title={s.summary}>{whatIsWrong(s)}</span>
+        <div className="flex min-w-0 flex-col gap-0.5" style={{ maxWidth: 330 }}>
+          {/* The headline with its number in it; the whole reasoning is one hover away, because a paragraph
+              in a cell is unreadable and a category alone is unhelpful. */}
+          <RichTooltip body={s.summary} title="Finding">
+            <span className="block truncate text-[13px]">{finding(s)}</span>
+          </RichTooltip>
+          <span className="truncate text-[11px] text-muted-foreground">{evidence(s)}</span>
         </div>
       ),
     },
     {
-      id: "cadence",
-      header: "Normally loads",
-      width: 165,
-      render: (s) => (
-        <div className="flex min-w-0 flex-col">
-          <span className="truncate text-[13px]">
-            {howOftenItLoads(s.profile.pattern, s.profile.expectedGapDays)}
-          </span>
-          <span className="truncate font-mono text-[11px] tabular-nums text-muted-foreground">
-            {s.profile.pattern.typicalRows > 0
-              ? `~${formatRows(s.profile.pattern.typicalRows, true)} rows each time`
-              : "no typical size yet"}
-          </span>
-          {/* The recurring delivery the rhythm alone cannot express. Without it a row reads "every day,
-              ~9k rows" for a vendor that also ships double that every fortnight, and every fortnight the
-              board would have to explain itself. */}
-          {cycleHint(s.profile.pattern) !== null && (
-            <span className="truncate text-[11px] text-muted-foreground" title={s.profile.pattern.cycle?.description}>
-              + {cycleHint(s.profile.pattern)}
-            </span>
-          )}
-        </div>
-      ),
-    },
-    {
-      id: "lastLoad",
-      header: "Data last arrived",
-      width: 130,
-      align: "right",
-      render: (s) => (
-        <span className="font-mono text-xs tabular-nums">{formatDays(s.profile.daysSinceLastLoad)}</span>
-      ),
-    },
-    {
-      id: "missed",
-      header: "Days with no rows",
-      width: 130,
-      align: "right",
+      id: "recent",
+      header: "Last 14 days",
+      width: 170,
       render: (s) => {
-        const missed = s.profile.unexpectedNullDays;
-        const usual = s.profile.predictedNullDays;
+        const typical = s.profile.pattern.typicalRows > 0
+          ? `~${formatRows(s.profile.pattern.typicalRows, true)} rows per load`
+          : "no typical size yet";
+        // The recurring delivery the rhythm alone cannot express. Without it a row reads "~9k rows" for a
+        // vendor that also ships double that every fortnight, and every fortnight the board would have to
+        // explain itself.
+        const cycle = cycleHint(s.profile.pattern);
         return (
-          <div className="flex flex-col items-end">
-            <span className={`font-mono text-xs tabular-nums ${missed > usual ? "text-destructive" : ""}`}>
-              {missed}
-            </span>
-            <span className="text-[11px] text-muted-foreground">
-              {s.profile.noRunDays > 0
-                ? `${s.profile.noRunDays} did not run`
-                : usual < 0.5 ? "all ran, none loaded" : `usually ${usual.toFixed(0)}`}
+          <div className="flex flex-col gap-1">
+            <StreamSparkline sparkline={s.sparkline} />
+            <span
+              className="truncate text-[11px] text-muted-foreground"
+              style={{ maxWidth: 150 }}
+              title={s.profile.pattern.cycle?.description ?? s.profile.pattern.description}
+            >
+              {typical}
+              {cycle !== null && `, ${cycle}`}
             </span>
           </div>
         );
       },
     },
     {
-      id: "confidence",
-      header: "Confidence",
-      width: 110,
+      id: "lastLoad",
+      header: "Last data",
+      width: 135,
+      render: (s) => (
+        <div className="flex flex-col">
+          <span
+            className={cn(
+              "font-mono text-xs tabular-nums",
+              (s.category === "stalled" || s.category === "failing") && "text-destructive",
+            )}
+          >
+            {formatDays(s.profile.daysSinceLastLoad)}
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {expectedRhythm(s.profile.pattern, s.profile.expectedGapDays)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      id: "missed",
+      header: "Missed days",
+      width: 135,
       align: "right",
       render: (s) => {
-        const confidence = confidenceLabel(s);
-        return confidence === null
-          ? <span className="text-xs text-muted-foreground">-</span>
-          : <span className="text-xs" title={confidence.title}>{confidence.label}</span>;
+        const profile = s.profile;
+        if (profile.expectedDays === 0) {
+          return (
+            <span className="text-xs text-muted-foreground" title="No fixed rhythm, so no day was expected">
+              -
+            </span>
+          );
+        }
+
+        const missed = profile.unexpectedNullDays;
+        return (
+          <div className="flex flex-col items-end">
+            {/* Always "n of m", never a bare number: the m says these are days and says how many there were
+                to miss, which is what makes "0 of 30" a good thing and "3 of 4" a bad one. */}
+            <span
+              className={cn(
+                "font-mono text-xs tabular-nums",
+                missed === 0 ? "text-muted-foreground" : missed > profile.predictedNullDays && "text-destructive",
+              )}
+            >
+              {missed} of {profile.expectedDays}
+            </span>
+            <span className="text-[11px] text-muted-foreground">{missedCaption(profile)}</span>
+          </div>
+        );
       },
     },
   ], []);
@@ -297,13 +359,16 @@ export default function DataStreamsPage() {
             label={keyOf(rows[0])}
             // Grouping by schedule, the cadence IS the group's contract, so it belongs in the header: a
             // group of daily flows that missed six days reads differently from a weekly one that missed six.
-            caption={groupBy === "schedule" ? (rows[0].cron ?? undefined) : undefined}
+            cron={groupBy === "schedule" ? rows[0].cron : undefined}
+            timezone={groupBy === "schedule" ? rows[0].timezone : undefined}
             rows={rows}
           />
         ),
       }],
     };
   }, [groupBy]);
+
+  const board = query.data;
 
   const controls = (
     <div className="flex flex-wrap items-center gap-4">
@@ -327,6 +392,13 @@ export default function DataStreamsPage() {
         />
         <Label htmlFor="include-backfills" className="text-xs font-normal text-muted-foreground">
           Include backfills
+          {/* The count sits on the control that changes it, so the number and the switch read as one
+              thing: how many runs this decision is about. */}
+          {board !== undefined && board.excludedBackfillRuns > 0 && (
+            <span className="ml-1 font-mono tabular-nums" data-testid="kpi-streams-backfills-value">
+              ({board.excludedBackfillRuns} {board.includeBackfills ? "counted" : "left out"})
+            </span>
+          )}
         </Label>
       </div>
       <div className="flex items-center gap-2">
@@ -338,6 +410,9 @@ export default function DataStreamsPage() {
         />
         <Label htmlFor="include-unscheduled" className="text-xs font-normal text-muted-foreground">
           Include unscheduled
+          {board !== undefined && !board.includeUnscheduled && board.unscheduledStreams > 0 && (
+            <span className="ml-1 font-mono tabular-nums">({board.unscheduledStreams} left out)</span>
+          )}
         </Label>
       </div>
       <ToggleGroup
@@ -368,14 +443,13 @@ export default function DataStreamsPage() {
     );
   }
 
-  const board = query.data;
-
   if (board === undefined) {
     return (
       <Page data-testid="page-datastreams">
         <PageHeader title="Data streams" actions={controls} />
+        <Skeleton className="h-8 w-96 rounded-md" />
         <div className={kpiGridClass}>
-          {Array.from({ length: 5 }, (_, i) => <Skeleton key={`kpi-${i}`} className="h-[88px] rounded-lg" />)}
+          {verdictTiles.map((tile) => <Skeleton key={tile.status} className="h-[88px] rounded-lg" />)}
         </div>
         <Skeleton className="h-96 rounded-lg" />
       </Page>
@@ -383,6 +457,13 @@ export default function DataStreamsPage() {
   }
 
   const truncated = board.totalStreams > board.analyzedStreams;
+  const countOf: Record<StreamStatus, number> = {
+    stalled: board.stalledCount,
+    degraded: board.degradedCount,
+    watch: board.watchCount,
+    healthy: board.healthyCount,
+    "insufficient-history": board.insufficientHistoryCount,
+  };
 
   return (
     <Page data-testid="page-datastreams">
@@ -428,59 +509,33 @@ export default function DataStreamsPage() {
         </ToggleGroupItem>
       </ToggleGroup>
 
-      <div className={kpiGridClass}>
-        <KpiCard
-          label="Stopped"
-          value={board.stalledCount}
-          caption="no data at all"
-          color={board.stalledCount > 0 ? "error" : "success"}
-          testId="kpi-streams-stalled"
-        />
-        <KpiCard
-          label="Missing data"
-          value={board.degradedCount}
-          caption="skipping loads"
-          color={board.degradedCount > 0 ? "warning" : undefined}
-          testId="kpi-streams-degraded"
-        />
-        <KpiCard label="Worth a look" value={board.watchCount} caption="one weak signal" testId="kpi-streams-watch" />
-        <KpiCard label="OK" value={board.healthyCount} caption="loading on pattern" testId="kpi-streams-healthy" />
-        <KpiCard
-          label="Backfills"
-          value={board.excludedBackfillRuns}
-          caption={board.includeBackfills ? "counted" : "left out"}
-          testId="kpi-streams-backfills"
-        />
+      {/* The verdict counts, and the filter, as one control: the tile that counts a state is the tile that
+          shows it. Clicking the selected tile again shows everything. The counts cover every analysed
+          stream whatever is selected, so the tiles never lose their meaning to their own filter. */}
+      <div className={kpiGridClass} role="group" aria-label="Filter by verdict" data-testid="datastreams-status-filter">
+        {verdictTiles.map((tile) => (
+          <KpiCard
+            key={tile.status}
+            label={statusLabels[tile.status]}
+            value={countOf[tile.status]}
+            caption={statusCaptions[tile.status]}
+            color={tile.color !== undefined && countOf[tile.status] > 0 ? tile.color : undefined}
+            selected={status === tile.status}
+            onClick={() => setStatus(status === tile.status ? "" : tile.status)}
+            testId={`kpi-streams-${tile.status === "insufficient-history" ? "too-new" : tile.status}`}
+          />
+        ))}
       </div>
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">
-            {board.analyzedStreams} table{board.analyzedStreams === 1 ? "" : "s"} checked
-            {truncated && ` of ${board.totalStreams} (capped)`}
-            {!board.includeUnscheduled && board.unscheduledStreams > 0 && (
-              <span className="ml-2 font-normal text-muted-foreground">
-                {board.unscheduledStreams} on no schedule, left out
-              </span>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <ToggleGroup
-              type="single"
-              value={status}
-              onValueChange={setStatus}
-              variant="outline"
-              size="sm"
-              data-testid="datastreams-status-filter"
-            >
-              {statusFilters.map((filter) => (
-                <ToggleGroupItem key={filter.value || "all"} value={filter.value} className="px-2.5 text-xs">
-                  {filter.label}
-                </ToggleGroupItem>
-              ))}
-            </ToggleGroup>
+            <CardTitle className="text-sm">
+              {status === ""
+                ? `${board.analyzedStreams} table${board.analyzedStreams === 1 ? "" : "s"} checked`
+                : `${board.streams.length} of ${board.analyzedStreams} tables: ${statusLabels[status as StreamStatus].toLowerCase()}`}
+              {truncated && ` of ${board.totalStreams} (capped)`}
+            </CardTitle>
             <ToggleGroup
               type="single"
               value={groupBy}
@@ -496,14 +551,15 @@ export default function DataStreamsPage() {
               ))}
             </ToggleGroup>
           </div>
-
+        </CardHeader>
+        <CardContent>
           {board.streams.length === 0 ? (
             <EmptyState
               icon={<Activity />}
               title="Nothing to show"
               description={
                 status !== ""
-                  ? "Every table checked is in a different state. Clear the filter to see them."
+                  ? "Every table checked is in a different state. Click the selected tile again to see them all."
                   : board.scope === "source"
                     ? "No stream brings data in from outside the estate in this window. Try Our processing."
                     : "No flow has run inside this window, so there is nothing to check."
@@ -518,7 +574,7 @@ export default function DataStreamsPage() {
               grouping={grouping}
               emptyMessage="No tables to show."
               // Below this the columns would compress and clip their content instead of the card scrolling.
-              minWidth={1140}
+              minWidth={1170}
               data-testid="datastreams-table"
             />
           )}

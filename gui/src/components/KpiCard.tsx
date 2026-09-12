@@ -7,6 +7,11 @@ interface KpiCardProps {
   value: string | number;
   caption?: string;
   linkTo?: string;
+  /** Makes the tile a button on the page it sits on (a filter, say) rather than a link away from it. */
+  onClick?: () => void;
+  /** Whether the tile is the one currently in effect, for a row of tiles that act as a single-select filter:
+   * the selected tile wears the accent ring and reports `aria-pressed`. */
+  selected?: boolean;
   color?: "primary" | "success" | "error" | "warning" | "info";
   testId?: string;
 }
@@ -21,10 +26,12 @@ const valueColors: Record<NonNullable<KpiCardProps["color"]>, string> = {
 
 /**
  * A dashboard headline number (DESIGN.md 7.7): 11px uppercase muted label over a 24px semibold value,
- * optionally linking to the page behind it. Full height so every card in a dashboard grid row is the
- * same size; the grid controls the width.
+ * optionally linking to the page behind it, or acting as a button on its own page. A row of such tiles is
+ * the natural filter for a board whose headline numbers ARE its categories: the count says how many, and
+ * clicking it shows which. Full height so every card in a dashboard grid row is the same size; the grid
+ * controls the width.
  */
-export function KpiCard({ label, value, caption, linkTo, color, testId }: KpiCardProps) {
+export function KpiCard({ label, value, caption, linkTo, onClick, selected, color, testId }: KpiCardProps) {
   const navigate = useNavigate();
 
   const content = (
@@ -40,11 +47,18 @@ export function KpiCard({ label, value, caption, linkTo, color, testId }: KpiCar
     </>
   );
 
-  if (linkTo !== undefined) {
+  const action = linkTo !== undefined ? () => navigate(linkTo) : onClick;
+  if (action !== undefined) {
     return (
-      <Card className="h-full gap-0 rounded-lg p-0" data-testid={testId}>
+      <Card
+        className={cn("h-full gap-0 rounded-lg p-0", selected && "border-primary ring-1 ring-inset ring-primary")}
+        data-testid={testId}
+        data-state={selected ? "selected" : undefined}
+      >
         <button
-          onClick={() => navigate(linkTo)}
+          type="button"
+          onClick={action}
+          aria-pressed={onClick !== undefined ? selected === true : undefined}
           className="h-full w-full rounded-lg p-4 text-left transition-colors hover:bg-accent/50 focus-visible:bg-accent/50"
         >
           {content}

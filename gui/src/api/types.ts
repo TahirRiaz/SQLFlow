@@ -2116,6 +2116,9 @@ export interface StreamProfile {
   avgRowsWrittenPerLoadedDay: number;
   medianRowsWrittenPerLoadedDay: number;
   trendRowsPerDay: number;
+  /** Days in the window it was expected to load on: the denominator unexpectedNullDays is read against, so a
+   * board can say "3 of 30" rather than a bare "3". Zero for a stream with no rhythm the history supports. */
+  expectedDays: number;
   /** Days it was expected to load on and wrote nothing: the headline number of this surface. */
   unexpectedNullDays: number;
   /** Of those, the days the flow RAN and still wrote nothing (an upstream problem). */
@@ -2163,8 +2166,21 @@ export type StreamScope = "source" | "internal";
  * "archive" means it arrived and we did not take it in. */
 export type StreamStage = "integration" | "file-ingestion" | "archive" | "derived";
 
+/** The stream's last two weeks, compact enough to ride on every board row: rows written and the expectation
+ * per day (oldest first, aligned), the zero-based positions of the days the analysis flagged and of the
+ * expected days that wrote nothing, and how many trailing entries are still arriving and were never judged.
+ * fromUtc is the day the first entry describes, null when there is no analysed day at all. */
+export interface StreamSparkline {
+  fromUtc: string | null;
+  rows: number[];
+  expected: number[];
+  flaggedDays: number[];
+  missedDays: number[];
+  immatureDays: number;
+}
+
 /** One data stream: a flow, the table it writes, and the verdict. series is null on the board and populated
- * on the single-stream endpoint. */
+ * on the single-stream endpoint; sparkline is always present and is what a board row draws. */
 export interface DataStream {
   pipelineId: string;
   flowName: string;
@@ -2191,6 +2207,7 @@ export interface DataStream {
   summary: string;
   profile: StreamProfile;
   signals: StreamSignal[];
+  sparkline: StreamSparkline;
   series: StreamPoint[] | null;
 }
 

@@ -272,8 +272,12 @@ JetBrains Mono, no shadows, border hairline. YAML/SQL always in `CodeView`, neve
 ### 7.7 KPI tiles and charts
 
 `KpiCard`: card with 11px muted uppercase label, 24px semibold value (mono when numeric), optional
-delta with icon + success/destructive text, optional sparkline in slot-1 blue. Charts follow section
-3.4 and the dataviz skill's rules (form first, hover tooltips, legends for 2+ series, one axis).
+delta with icon + success/destructive text, optional sparkline in slot-1 blue. A tile either links away
+(`linkTo`) or acts on its own page (`onClick` + `selected`): a row of tiles whose counts ARE the page's
+categories is that page's filter, the selected tile wearing the accent ring and `aria-pressed`, rather
+than a second row of chips repeating the same words (the Data streams verdicts). Charts follow section
+3.4 and the dataviz skill's rules (form first, hover tooltips, legends for 2+ series, one axis). A
+per-row sparkline in a table is inline SVG, never a chart-library instance per row.
 
 ### 7.8 Tooltips, and the reference components
 

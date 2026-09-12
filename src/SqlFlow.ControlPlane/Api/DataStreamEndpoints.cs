@@ -29,9 +29,9 @@ public sealed record StreamCycleDto(
 /// <summary>What one table's traffic normally looks like, learned from its own history after reprocessing was
 /// excluded. <c>shape</c> is <c>daily</c>, <c>weekdays</c>, <c>weekly</c>, <c>several-days-a-week</c>,
 /// <c>fortnightly</c>, <c>monthly</c>, <c>periodic</c>, or <c>sporadic</c>; <c>loadDays</c> names the weekdays
-/// it reliably loads on; <c>reliability</c> is the share of expected days it actually delivered on;
-/// <c>cycle</c> is the recurring larger (or smaller) delivery on top of that rhythm, null for a stream that
-/// has none.</summary>
+/// it reliably loads on;
+/// <c>reliability</c> is the share of expected days it actually delivered on; <c>cycle</c> is the recurring
+/// larger (or smaller) delivery on top of that rhythm, null for a stream that has none.</summary>
 public sealed record StreamPatternDto(
     string Shape, IReadOnlyList<string> LoadDays, double TypicalRows, double LowRows, double HighRows,
     double Reliability, StreamCycleDto? Cycle, string Description);
@@ -46,8 +46,25 @@ public sealed record StreamProfileDto(
     long TotalRowsInserted, long TotalRowsUpdated, long TotalRowsDeleted,
     double AvgRowsInsertedPerRun, double AvgRowsUpdatedPerRun, double AvgRowsDeletedPerRun,
     double AvgRowsWrittenPerLoadedDay, double MedianRowsWrittenPerLoadedDay, double TrendRowsPerDay,
-    int UnexpectedNullDays, int EmptyRunDays, int NoRunDays, double PredictedNullDays,
+    // The days the stream was expected to load on, so a client can state the missed count as "3 of 30".
+    int ExpectedDays, int UnexpectedNullDays, int EmptyRunDays, int NoRunDays, double PredictedNullDays,
     int TrimmedLoadDays, double TrimFence);
+
+/// <summary>
+/// The stream's last two weeks, compact enough to ride on every board row: one number per day for what
+/// arrived and what was expected, plus the positions of the days the analysis flagged and the expected days
+/// that wrote nothing. A row on the board can then SHOW "less data than usual" as a shape instead of asking
+/// the reader to trust a sentence, and it costs a few hundred bytes rather than the full scored series.
+/// </summary>
+/// <param name="FromUtc">The day the first entry describes, or null when the stream has no analysed day.</param>
+/// <param name="Rows">Rows written per day, oldest first.</param>
+/// <param name="Expected">The trend-and-weekday expectation per day, aligned with <paramref name="Rows"/>.</param>
+/// <param name="FlaggedDays">Zero-based positions of the days the analysis flagged as anomalous.</param>
+/// <param name="MissedDays">Zero-based positions of the days the stream was expected to load on and did not.</param>
+/// <param name="ImmatureDays">How many trailing entries may still be receiving data and were never judged.</param>
+public sealed record StreamSparklineDto(
+    DateTime? FromUtc, IReadOnlyList<long> Rows, IReadOnlyList<double> Expected,
+    IReadOnlyList<int> FlaggedDays, IReadOnlyList<int> MissedDays, int ImmatureDays);
 
 /// <summary>One analysed day: what arrived, what was expected, and how the point was judged.</summary>
 public sealed record StreamPointDto(
@@ -59,7 +76,8 @@ public sealed record StreamPointDto(
 /// <summary>
 /// One data stream: a flow, the table it writes, and the ensemble's verdict on whether data is still arriving
 /// the way it should. <see cref="Series"/> is null on the board (a hundred streams times sixty days is a
-/// payload nobody reads) and populated on the single-stream endpoint, which is what the chart draws.
+/// payload nobody reads) and populated on the single-stream endpoint, which is what the chart draws; the
+/// board carries the two-week <see cref="Sparkline"/> instead, which is what a row draws.
 /// </summary>
 public sealed record DataStreamDto(
     Guid PipelineId, string FlowName, string FlowKind, string? Batch, bool Active, string? TargetObject,
@@ -80,7 +98,8 @@ public sealed record DataStreamDto(
     string Stage,
     string? ScheduleName, string? Cron, string? Timezone,
     string Status, string Category, string Severity, double Confidence, int AgreeingDetectors, string Summary,
-    StreamProfileDto Profile, IReadOnlyList<StreamSignalDto> Signals, IReadOnlyList<StreamPointDto>? Series);
+    StreamProfileDto Profile, IReadOnlyList<StreamSignalDto> Signals, StreamSparklineDto Sparkline,
+    IReadOnlyList<StreamPointDto>? Series);
 
 /// <summary>
 /// The data-stream board: every monitored stream with its verdict, ranked most urgent first, plus the counts
@@ -145,6 +164,10 @@ public static class DataStreamEndpoints
     public const int MaxStreams = 1000;
 
     public const int MaxResults = 500;
+
+    /// <summary>The days a board row's sparkline covers. Two weeks is long enough for a weekly stream to show
+    /// two loads and for a shortfall to read as a shape, and short enough that a row stays a row.</summary>
+    public const int SparklineDays = 14;
 
     /// <summary>Vendor deliveries: streams that bring data in from outside the estate. The default scope,
     /// because "has the vendor delivered" is the question with an owner outside this building, and because a
@@ -419,6 +442,7 @@ public static class DataStreamEndpoints
                 analysis.Signals.Select(s => new StreamSignalDto(
                     DetectorName(s.Detector), s.Fired, s.Score, DirectionName(s.Direction), s.Primary,
                     s.Detail)).ToList(),
+                ToSparkline(analysis.Series),
                 pipelineId is null ? null : analysis.Series.Select(ToDto).ToList()));
         }
 
@@ -808,8 +832,26 @@ public static class DataStreamEndpoints
         profile.TotalRowsInserted, profile.TotalRowsUpdated, profile.TotalRowsDeleted,
         profile.AvgRowsInsertedPerRun, profile.AvgRowsUpdatedPerRun, profile.AvgRowsDeletedPerRun,
         profile.AvgRowsWrittenPerLoadedDay, profile.MedianRowsWrittenPerLoadedDay, profile.TrendRowsPerDay,
-        profile.UnexpectedNullDays, profile.EmptyRunDays, profile.NoRunDays, profile.PredictedNullDays,
+        profile.ExpectedDays, profile.UnexpectedNullDays, profile.EmptyRunDays, profile.NoRunDays,
+        profile.PredictedNullDays,
         profile.TrimmedLoadDays, profile.TrimFence);
+
+    /// <summary>The trailing <see cref="SparklineDays"/> of the scored series, as parallel arrays. The series
+    /// is one entry per calendar day of the window, so the tail is the most recent fortnight; a stream with
+    /// fewer analysed days than that (one dead before the window, whose series is only the runs it made) ships
+    /// what it has, and an empty series ships empty arrays rather than a null a client has to special-case.</summary>
+    private static StreamSparklineDto ToSparkline(IReadOnlyList<StreamPoint> series)
+    {
+        var recent = series.Count <= SparklineDays ? series : series.Skip(series.Count - SparklineDays).ToList();
+        var indexed = recent.Select((point, index) => (point, index)).ToList();
+        return new StreamSparklineDto(
+            recent.Count > 0 ? recent[0].Date : null,
+            recent.Select(p => p.RowsWritten).ToList(),
+            recent.Select(p => Math.Round(p.Expected, 1)).ToList(),
+            indexed.Where(x => x.point.Anomaly).Select(x => x.index).ToList(),
+            indexed.Where(x => x.point.UnexpectedNull).Select(x => x.index).ToList(),
+            recent.Count(p => p.Immature));
+    }
 
     private static StreamPointDto ToDto(StreamPoint point) => new(
         point.Date, point.RowsWritten, point.RowsInserted, point.RowsUpdated, point.RowsDeleted,
