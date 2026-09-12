@@ -18,13 +18,23 @@ namespace SqlFlow.ControlPlane.Api;
 public sealed record StreamSignalDto(
     string Detector, bool Fired, double Score, string Direction, bool Primary, string Detail);
 
+/// <summary>A recurring delivery on top of the ordinary rhythm: the vendor who ships a bigger refill every
+/// fortnight, the month-end settlement file. <c>periodDays</c> is the cycle length (0 when it repeats on a
+/// position in the calendar month, which <c>monthly</c> marks); <c>cycleRows</c> against <c>ordinaryRows</c>
+/// is how much bigger it is; <c>nextExpectedUtc</c> is the day to check.</summary>
+public sealed record StreamCycleDto(
+    int PeriodDays, bool Monthly, int Occurrences, bool Heavier, double CycleRows, double OrdinaryRows,
+    double Lift, DateTime? LastOccurrenceUtc, DateTime? NextExpectedUtc, string Description);
+
 /// <summary>What one table's traffic normally looks like, learned from its own history after reprocessing was
 /// excluded. <c>shape</c> is <c>daily</c>, <c>weekdays</c>, <c>weekly</c>, <c>several-days-a-week</c>,
-/// <c>periodic</c>, or <c>sporadic</c>; <c>loadDays</c> names the weekdays it reliably loads on;
-/// <c>reliability</c> is the share of expected days it actually delivered on.</summary>
+/// <c>fortnightly</c>, <c>monthly</c>, <c>periodic</c>, or <c>sporadic</c>; <c>loadDays</c> names the weekdays
+/// it reliably loads on; <c>reliability</c> is the share of expected days it actually delivered on;
+/// <c>cycle</c> is the recurring larger (or smaller) delivery on top of that rhythm, null for a stream that
+/// has none.</summary>
 public sealed record StreamPatternDto(
     string Shape, IReadOnlyList<string> LoadDays, double TypicalRows, double LowRows, double HighRows,
-    double Reliability, string Description);
+    double Reliability, StreamCycleDto? Cycle, string Description);
 
 /// <summary>A stream's measured normal: how much it writes, how often, and where it is trending. These are the
 /// averages an operator checks a verdict against, and what every detector is calibrated on.</summary>
@@ -779,12 +789,18 @@ public static class DataStreamEndpoints
     /// does not).</summary>
     private sealed record ScheduleCadence(string Name, string? Cron, string Timezone, double? ExpectedGapDays);
 
+    private static StreamCycleDto? ToDto(StreamCycle? cycle) => cycle is null
+        ? null
+        : new StreamCycleDto(
+            cycle.PeriodDays, cycle.Monthly, cycle.Occurrences, cycle.Heavier, cycle.CycleRows,
+            cycle.OrdinaryRows, cycle.Lift, cycle.LastOccurrenceUtc, cycle.NextExpectedUtc, cycle.Description);
+
     private static StreamProfileDto ToDto(StreamProfile profile) => new(
         new StreamPatternDto(
             profile.Pattern.Shape,
             profile.Pattern.LoadDays.Select(d => d.ToString()).ToList(),
             profile.Pattern.TypicalRows, profile.Pattern.LowRows, profile.Pattern.HighRows,
-            profile.Pattern.Reliability, profile.Pattern.Description),
+            profile.Pattern.Reliability, ToDto(profile.Pattern.Cycle), profile.Pattern.Description),
         profile.Cadence.ToString().ToLowerInvariant(), profile.ExpectedGapDays, profile.CadenceSource,
         profile.MaxObservedGapDays, profile.LastLoadUtc, profile.LastRunUtc,
         Finite(profile.DaysSinceLastLoad), Finite(profile.DaysSinceLastRun),

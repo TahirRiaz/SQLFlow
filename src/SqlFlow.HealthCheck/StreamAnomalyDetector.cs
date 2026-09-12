@@ -136,18 +136,38 @@ public static class StreamAnomalyDetector
 
         // ---- Step 4: the scored volume series, on the TRIMMED values -------------------------------------
 
-        var series = ScoreVolumes(loadDays, loadDates, trim, frequency, asOfDate, options);
+        var (series, cycle) = ScoreVolumes(loadDays, loadDates, trim, frequency, asOfDate, options);
         var observedMature = series.Where(r => r is { IsImmature: false, IsNoData: 0 }).ToList();
         var shifts = PeltDetector.Detect(
             observedMature.Select(r => (double)(r.BaseValue - r.PredictedValue)).ToList());
 
-        var pattern = DerivePattern(calendar, reliability, expectedGap, cadenceSource, options);
+        var pattern = DerivePattern(calendar, reliability, expectedGap, cadenceSource, cycle, asOfDate, options);
         var profile = BuildProfile(
             ordered, runDays, loadDays, calendar, frequency, expectedGap, cadenceSource, maxObservedGap,
             lastLoad, lastRun, asOfDate, series, trim, pattern, reliability);
         var points = BuildSeries(calendar, series);
 
-        if (loadDays.Count < options.MinObservedDays)
+        // ---- Step 5: how much of the analysis this sample can carry ---------------------------------------
+
+        // Seven loading days is a week of a daily stream, two months of a weekly one, and half a year of a
+        // monthly one. Holding the WHOLE analysis to that count made every low-frequency stream permanently
+        // unjudged: a monthly vendor could go dead for a year and never be reported, because it could never
+        // accumulate the loads its own rhythm forbids. So the bar is split by what each detector actually
+        // needs. The volume tests need a SAMPLE and keep the count. The presence tests need a CADENCE, and a
+        // cadence is established by three loads, or by one declared cron.
+        var volumeReady = loadDays.Count >= options.MinObservedDays;
+        var windowSpan = Math.Max((asOfDate - fromDate).TotalDays + 1, 1);
+        var wouldBeLoads = windowSpan / Math.Max(expectedGap, 0.5);
+        var daysSinceLastLoad = (asOfDate - lastLoad).TotalDays;
+
+        // Is the sample small because the RHYTHM is slow (or because the stream died partway), or because we
+        // simply cannot see this stream properly? Counting the loads the current drought swallowed alongside
+        // the loads actually made separates the two: a monthly feed accounts for its window either way, while
+        // a daily feed that has only ever loaded twice does not, and stays held back exactly as before.
+        var rhythmExplainsSample = loadDays.Count + (daysSinceLastLoad / Math.Max(expectedGap, 0.5))
+            >= 0.5 * wouldBeLoads;
+
+        if (!volumeReady && !rhythmExplainsSample)
         {
             return new StreamAnalysis
             {
@@ -156,24 +176,34 @@ public static class StreamAnomalyDetector
                 Severity = "info",
                 Confidence = 0,
                 AgreeingDetectors = 0,
-                Summary = $"Only {loadDays.Count} loading day(s) in the window; {options.MinObservedDays} are " +
-                    "needed before an empty day means anything. The series is charted, nothing is flagged.",
+                Summary = $"Only {loadDays.Count} loading day(s) in the window against the " +
+                    $"{wouldBeLoads:0.#} its {Days(expectedGap)} cadence implies; " +
+                    $"{options.MinObservedDays} are needed before an empty day means anything. The series is " +
+                    "charted, nothing is flagged.",
                 Signals = QuietSignals($"held back: {loadDays.Count} of {options.MinObservedDays} loading days"),
                 Profile = profile,
                 Series = points,
             };
         }
 
-        // ---- Step 5: the detectors ------------------------------------------------------------------------
+        // ---- Step 6: the detectors ------------------------------------------------------------------------
 
+        var heldBack = $"held back: {loadDays.Count} of {options.MinObservedDays} loading days, too few to " +
+            $"judge volume on a {Days(expectedGap)} cadence. Whether data is still ARRIVING is still tested.";
         var signals = new List<StreamSignal>
         {
             DetectSilence(profile, cadenceSource, options),
             DetectNullDays(calendar, reliability, profile, options),
             DetectCadence(ordered, runDays, profile, options),
-            DetectRateChange(ordered, trim, eraStart, asOfDate, options),
-            DetectLevelShift(shifts, observedMature, options),
-            DetectVolumeOutlier(series, asOfDate, options),
+            volumeReady
+                ? DetectRateChange(ordered, trim, eraStart, asOfDate, options)
+                : Signal(StreamDetector.RateChange, fired: false, 0, heldBack),
+            volumeReady
+                ? DetectLevelShift(shifts, observedMature, options)
+                : Signal(StreamDetector.LevelShift, fired: false, 0, heldBack),
+            volumeReady
+                ? DetectVolumeOutlier(series, asOfDate, options)
+                : Signal(StreamDetector.VolumeOutlier, fired: false, 0, heldBack),
         };
 
         return Classify(signals, profile, points, ordered, options);
@@ -400,7 +430,7 @@ public static class StreamAnomalyDetector
     /// </summary>
     private static StreamPattern DerivePattern(
         IReadOnlyList<CalendarDay> calendar, LoadReliability reliability, double expectedGap,
-        string cadenceSource, StreamAnomalyOptions options)
+        string cadenceSource, CycleModel? cycle, DateTime asOfDate, StreamAnomalyOptions options)
     {
         var loads = calendar.Where(d => d.Loaded).Select(d => d.TrimmedRows).ToList();
         var typical = loads.Count > 0 ? RobustStatistics.Median(loads) : 0;
@@ -413,13 +443,25 @@ public static class StreamAnomalyDetector
 
         var weekdaysOnly = loadDays.Count == 5
             && loadDays.All(d => d is not (DayOfWeek.Saturday or DayOfWeek.Sunday));
+        // With no reliable weekday the rhythm has to be named from the gap. The named bands are the ones a
+        // person actually says, because "about every 30 days" and "monthly" are the same fact and only one of
+        // them is a word: a monthly feed is the commonest low-frequency shape on a warehouse, and calling it
+        // periodic tells a reader to work it out for themselves.
         var shape = loadDays.Count switch
         {
             7 => "daily",
             5 when weekdaysOnly => "weekdays",
             1 => "weekly",
             > 1 => "several-days-a-week",
-            _ => expectedGap <= 1.5 ? "daily" : expectedGap <= 45 ? "periodic" : "sporadic",
+            _ => expectedGap switch
+            {
+                <= 1.5 => "daily",
+                >= 6 and <= 8 => "weekly",
+                >= 12 and <= 17 => "fortnightly",
+                >= 26 and <= 32 => "monthly",
+                <= 45 => "periodic",
+                _ => "sporadic",
+            },
         };
 
         // Measured only over the days the table was expected to deliver on; averaging in the weekends a feed
@@ -433,8 +475,10 @@ public static class StreamAnomalyDetector
         {
             "daily" => "every day",
             "weekdays" => "every weekday, never at weekends",
-            "weekly" => $"every {loadDays[0]}",
+            "weekly" => loadDays.Count == 1 ? $"every {loadDays[0]}" : "about once a week",
             "several-days-a-week" => "on " + string.Join(", ", loadDays),
+            "fortnightly" => "about every two weeks",
+            "monthly" => "about once a month",
             "periodic" => $"about every {Days(expectedGap)}",
             _ => "on no regular rhythm",
         };
@@ -446,6 +490,8 @@ public static class StreamAnomalyDetector
             ? $"; it has delivered on {delivered * 100:0}% of the {expectedDays.Count} days it was expected to"
             : string.Empty;
 
+        var delivery = DescribeCycle(calendar, cycle, asOfDate);
+
         return new StreamPattern
         {
             Shape = shape,
@@ -454,16 +500,81 @@ public static class StreamAnomalyDetector
             LowRows = Math.Round(low, 2),
             HighRows = Math.Round(high, 2),
             Reliability = Math.Round(reliability.NormalDeliveryRate, 4),
-            Description = $"Loads {rhythm}{declared}, {band}{record}.",
+            Cycle = delivery,
+            Description = $"Loads {rhythm}{declared}, {band}{record}." +
+                (delivery is null ? string.Empty : $" On top of that, {delivery.Description}."),
         };
     }
+
+    /// <summary>
+    /// Turns a fitted cycle into the operator-facing fact: how often the bigger delivery comes, how big it
+    /// actually is, when it last landed, and when the next is due. The volumes are read off the calendar's
+    /// TRIMMED rows rather than off the model's offsets, because the question being answered is "what does
+    /// this vendor send" and the answer should be in rows a person can check against the chart, not in a
+    /// residual.
+    /// </summary>
+    private static StreamCycle? DescribeCycle(
+        IReadOnlyList<CalendarDay> calendar, CycleModel? cycle, DateTime asOfDate)
+    {
+        if (cycle is null)
+        {
+            return null;
+        }
+
+        var loads = calendar.Where(d => d.Loaded).ToList();
+        var onCycle = loads.Where(d => cycle.Occurs(d.Date)).Select(d => d.TrimmedRows).ToList();
+        var ordinary = loads.Where(d => !cycle.Occurs(d.Date)).Select(d => d.TrimmedRows).ToList();
+        if (onCycle.Count == 0 || ordinary.Count == 0)
+        {
+            // The cycle was fitted on residuals, which can in principle mark days the calendar does not count
+            // as loads. Nothing to describe in rows then, and a description in residuals would be worse than
+            // none.
+            return null;
+        }
+
+        var cycleRows = RobustStatistics.Median(onCycle);
+        var ordinaryRows = RobustStatistics.Median(ordinary);
+        var heavier = cycle.Dominant.Offset > 0;
+        var last = cycle.LastOccurrenceOnOrBefore(asOfDate);
+        var next = cycle.NextOccurrenceAfter(asOfDate);
+        var every = cycle.Kind == CycleKind.MonthDay
+            ? cycle.Dominant.Phase == CycleModel.LastDayPhase
+                ? "at the end of each month"
+                : $"on the {Ordinal(cycle.Dominant.Phase)} of each month"
+            : $"every {Days(cycle.PeriodDays)}";
+        var multiple = ordinaryRows > 0
+            ? $" ({cycleRows / ordinaryRows:0.#}x an ordinary day)"
+            : string.Empty;
+
+        return new StreamCycle
+        {
+            PeriodDays = cycle.PeriodDays,
+            Monthly = cycle.Kind == CycleKind.MonthDay,
+            Occurrences = onCycle.Count,
+            Heavier = heavier,
+            CycleRows = Math.Round(cycleRows, 2),
+            OrdinaryRows = Math.Round(ordinaryRows, 2),
+            Lift = cycle.Lift,
+            LastOccurrenceUtc = last,
+            NextExpectedUtc = next,
+            Description =
+                $"a {(heavier ? "heavier" : "lighter")} delivery {every} of about {Rows(cycleRows)}{multiple}, " +
+                $"seen {onCycle.Count} time(s)" +
+                (next is null ? string.Empty : $", next due {next.Value:yyyy-MM-dd}"),
+        };
+    }
+
+    private static string Ordinal(int day) => day + (day % 100 is >= 11 and <= 13
+        ? "th"
+        : (day % 10) switch { 1 => "st", 2 => "nd", 3 => "rd", _ => "th" });
 
     // ---- Step 4: the scored volume series ----------------------------------------------------------------
 
     /// <summary>Scores the load volumes with the health-check stack: robust trend, the weekday pattern of what
-    /// the trend does not explain, then generalized ESD over the residuals. It runs on the TRIMMED values, so
-    /// a backfill cannot become the expectation every later day is measured against.</summary>
-    private static List<SeriesRow> ScoreVolumes(
+    /// the trend does not explain, the recurring delivery cycle neither of those can express, then generalized
+    /// ESD over what is left. It runs on the TRIMMED values, so a backfill cannot become the expectation every
+    /// later day is measured against.</summary>
+    private static (List<SeriesRow> Series, CycleModel? Cycle) ScoreVolumes(
         IReadOnlyList<StreamBucket> loadDays, IReadOnlyList<DateTime> loadDates, ReprocessingTrim trim,
         DataFrequency frequency, DateTime asOfDate, StreamAnomalyOptions options)
     {
@@ -490,13 +601,133 @@ public static class StreamAnomalyDetector
         // The health-check flow's baseline path, which is the right one for an estate sweep: AutoML over
         // calendar features needs a training budget per stream, and this scores hundreds in one request.
         var baseline = BaselineModel.Fit(fitPoints, r => r.DetrendedLabel);
+        var cycle = options.DetectDeliveryCycles ? FitCycle(fitPoints, ref baseline, options) : null;
         foreach (var row in series)
         {
-            row.PredictedValue = (float)(trend.ValueAt(row.Date) + baseline.Predict(row.Date));
+            row.PredictedValue = (float)(
+                trend.ValueAt(row.Date) + baseline.Predict(row.Date) + (cycle?.Predict(row.Date) ?? 0));
         }
 
         HealthCheckEngine.TagAnomalies(series, options.AnomalyThreshold, options.EsdAlpha, options.MaxAnomalyFraction);
-        return series;
+        return (series, cycle);
+    }
+
+    /// <summary>
+    /// Learns the recurring delivery cycle and the weekday model TOGETHER, and hands back the pair that
+    /// explains the series with the fewest moving parts.
+    /// <para>
+    /// Two components over one series have to be fitted against each other or each absorbs part of the other.
+    /// A fortnightly refill lands on the same weekday every time, so half of that weekday's observations are
+    /// refills, and a weekday median taken over all of them lands on whichever mode happens to have one more
+    /// member. So each candidate is BACKFITTED: estimate one component on what the other leaves over, then
+    /// re-estimate the other, twice, which is where it settles.
+    /// </para>
+    /// <para>
+    /// Backfitting alone does not decide WHICH component owns the effect, because it cannot: "this weekday is
+    /// a big day, and every other one of them is smaller" and "ordinary days all week, with a bigger delivery
+    /// every fortnight" predict the same numbers for every day. They are the same function and a different
+    /// sentence, and the sentence is the product. So both orders are fitted and the tie is broken the way a
+    /// person would break it: whichever explanation needs fewer parts that depart from the ordinary level. A
+    /// genuine Monday effect is one departing weekday and no cycle; a fortnightly refill is no departing
+    /// weekday and one cycle phase; the inverted readings of each need two. Loss decides first, and only where
+    /// the two fits genuinely disagree about the data.
+    /// </para>
+    /// </summary>
+    private static CycleModel? FitCycle(
+        IReadOnlyList<SeriesRow> fitPoints, ref BaselineModel baseline, StreamAnomalyOptions options)
+    {
+        var observed = fitPoints.Where(r => r.IsNoData == 0).ToList();
+        if (observed.Count == 0)
+        {
+            return null;
+        }
+
+        var weekdayFirst = Backfit(fitPoints, observed, cycleFirst: false, options);
+        var cycleFirst = Backfit(fitPoints, observed, cycleFirst: true, options);
+        var chosen = Simpler(weekdayFirst, cycleFirst, observed);
+        baseline = chosen.Baseline;
+        return chosen.Cycle;
+    }
+
+    /// <summary>One backfitted decomposition of the detrended series into a weekday model and a delivery
+    /// cycle.</summary>
+    private readonly record struct Decomposition(BaselineModel Baseline, CycleModel? Cycle);
+
+    /// <summary>Backfits the two components, starting from whichever one <paramref name="cycleFirst"/>
+    /// names. Which one goes first decides which gets the benefit of the doubt on an effect they could both
+    /// carry, which is exactly why both orders are tried.</summary>
+    private static Decomposition Backfit(
+        IReadOnlyList<SeriesRow> fitPoints, IReadOnlyList<SeriesRow> observed, bool cycleFirst,
+        StreamAnomalyOptions options)
+    {
+        CycleModel? cycle = null;
+        if (cycleFirst)
+        {
+            cycle = CycleModel.Fit(
+                observed.Select(r => (r.Date, (double)r.DetrendedLabel)).ToList(), options.CycleMaxPeriodDays);
+        }
+
+        var baseline = BaselineModel.Fit(fitPoints, r => r.DetrendedLabel - (cycle?.Predict(r.Date) ?? 0));
+        for (var pass = 0; pass < 2; pass++)
+        {
+            var current = baseline;
+            var found = CycleModel.Fit(
+                observed.Select(r => (r.Date, (double)r.DetrendedLabel - current.Predict(r.Date))).ToList(),
+                options.CycleMaxPeriodDays);
+            if (found is null)
+            {
+                break;
+            }
+
+            cycle = found;
+            baseline = BaselineModel.Fit(fitPoints, r => r.DetrendedLabel - found.Predict(r.Date));
+        }
+
+        return new Decomposition(baseline, cycle);
+    }
+
+    /// <summary>Picks between two decompositions: the one that fits materially better, or failing that the one
+    /// with fewer components departing from the stream's ordinary level.</summary>
+    private static Decomposition Simpler(
+        Decomposition weekdayFirst, Decomposition cycleFirst, IReadOnlyList<SeriesRow> observed)
+    {
+        var lossA = Loss(weekdayFirst, observed);
+        var lossB = Loss(cycleFirst, observed);
+        var tolerance = 0.01 * Math.Max(Math.Max(lossA, lossB), 1);
+        if (lossB < lossA - tolerance)
+        {
+            return cycleFirst;
+        }
+
+        if (lossA < lossB - tolerance)
+        {
+            return weekdayFirst;
+        }
+
+        // The same function written two ways. Prefer the shorter sentence, and on a true tie the weekday
+        // model, which is the rhythm almost every feed actually has.
+        var scale = RobustStatistics.Scale(observed.Select(r => (double)r.DetrendedLabel).ToList());
+        return Parts(cycleFirst, observed, scale) < Parts(weekdayFirst, observed, scale)
+            ? cycleFirst
+            : weekdayFirst;
+    }
+
+    private static double Loss(Decomposition model, IReadOnlyList<SeriesRow> observed)
+        => observed.Sum(r => Math.Abs(
+            r.DetrendedLabel - model.Baseline.Predict(r.Date) - (model.Cycle?.Predict(r.Date) ?? 0)));
+
+    /// <summary>How many parts of a decomposition depart from the ordinary level: the weekdays carrying a
+    /// level of their own, plus the cycle phases carrying an offset.</summary>
+    private static int Parts(Decomposition model, IReadOnlyList<SeriesRow> observed, double scale)
+    {
+        var levels = observed
+            .Select(r => r.Date.DayOfWeek)
+            .Distinct()
+            .Select(day => model.Baseline.Predict(observed.First(r => r.Date.DayOfWeek == day).Date))
+            .ToList();
+        var ordinary = levels.Count > 0 ? RobustStatistics.Median(levels) : 0;
+        var departing = levels.Count(level => Math.Abs(level - ordinary) > CycleModel.PhaseSigma * scale);
+        return departing + (model.Cycle?.Phases.Count ?? 0);
     }
 
     // ---- The detectors -----------------------------------------------------------------------------------
@@ -984,6 +1215,7 @@ public static class StreamAnomalyDetector
             AvgRowsWrittenPerLoadedDay = 0,
             MedianRowsWrittenPerLoadedDay = 0,
             TrendRowsPerDay = 0,
+            ExpectedDays = 0,
             UnexpectedNullDays = 0,
             EmptyRunDays = 0,
             NoRunDays = 0,
@@ -1055,6 +1287,7 @@ public static class StreamAnomalyDetector
         var updated = ordered.Sum(b => b.RowsUpdated);
         var deleted = ordered.Sum(b => b.RowsDeleted);
         var unexpectedNulls = calendar.Where(d => d.UnexpectedNull).ToList();
+        var expectedDays = calendar.Count(d => !d.Immature && reliability.LoadsOn(d.Date));
         var mature = series.Where(r => !r.IsImmature).ToList();
         var trend = TrendEstimator.Fit(
             (mature.Count > 0 ? mature : series).Select(r => (r.Date, (double)r.BaseValueAdjusted)).ToList());
@@ -1084,12 +1317,11 @@ public static class StreamAnomalyDetector
             MedianRowsWrittenPerLoadedDay = Math.Round(
                 RobustStatistics.Median(loadDays.Select(b => (double)b.RowsWritten).ToList()), 2),
             TrendRowsPerDay = Math.Round(trend.SlopePerDay, 4),
+            ExpectedDays = expectedDays,
             UnexpectedNullDays = unexpectedNulls.Count,
             EmptyRunDays = unexpectedNulls.Count(d => d.Runs > 0),
             NoRunDays = unexpectedNulls.Count(d => d.Runs == 0),
-            PredictedNullDays = Math.Round(
-                calendar.Count(d => !d.Immature && reliability.LoadsOn(d.Date))
-                    * (1 - reliability.NormalDeliveryRate), 2),
+            PredictedNullDays = Math.Round(expectedDays * (1 - reliability.NormalDeliveryRate), 2),
             TrimmedLoadDays = trim.TrimmedDays,
             TrimFence = double.IsFinite(trim.Fence) ? Math.Round(trim.Fence, 2) : 0,
         };

@@ -103,6 +103,24 @@ export function whatIsWrong(stream: DataStream): string {
 
 /** How often the table normally loads, spelled out. The shape name alone ("several-days-a-week") is the
  * algorithm's vocabulary; this is a person's. */
+/**
+ * The recurring delivery in a few words, for the one line a board row can spare: "bigger load every 14d",
+ * "bigger load once a month". The full sentence, with sizes and the next due date, is in the detail sheet.
+ */
+export function cycleHint(pattern: StreamPattern): string | null {
+  const cycle = pattern.cycle;
+  if (cycle === null) {
+    return null;
+  }
+
+  const size = cycle.heavier ? "bigger" : "smaller";
+  if (cycle.monthly) {
+    return `${size} load once a month`;
+  }
+
+  return `${size} load every ${formatDayCount(cycle.periodDays)}`;
+}
+
 export function howOftenItLoads(pattern: StreamPattern, expectedGapDays: number): string {
   switch (pattern.shape) {
     case "daily":
@@ -113,6 +131,10 @@ export function howOftenItLoads(pattern: StreamPattern, expectedGapDays: number)
       return pattern.loadDays.length === 1 ? `Every ${pattern.loadDays[0]}` : "Once a week";
     case "several-days-a-week":
       return `${pattern.loadDays.length} days a week`;
+    case "fortnightly":
+      return "Every two weeks";
+    case "monthly":
+      return "Once a month";
     case "periodic":
       return `Every ${formatDayCount(expectedGapDays)}`;
     default:

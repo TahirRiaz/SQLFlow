@@ -22,7 +22,7 @@ import { pollingInterval } from "../../hooks/usePolling";
 import { StreamDetailSheet } from "./StreamDetailSheet";
 import { StreamStatusBadge } from "./StreamStatusBadge";
 import {
-  confidenceLabel, formatDays, formatRows, howOftenItLoads, stageLabels, stageMeaning, statusLabels,
+  confidenceLabel, cycleHint, formatDays, formatRows, howOftenItLoads, stageLabels, stageMeaning, statusLabels,
   statusRank, whatIsWrong,
 } from "./streamPresentation";
 
@@ -205,6 +205,14 @@ export default function DataStreamsPage() {
               ? `~${formatRows(s.profile.pattern.typicalRows, true)} rows each time`
               : "no typical size yet"}
           </span>
+          {/* The recurring delivery the rhythm alone cannot express. Without it a row reads "every day,
+              ~9k rows" for a vendor that also ships double that every fortnight, and every fortnight the
+              board would have to explain itself. */}
+          {cycleHint(s.profile.pattern) !== null && (
+            <span className="truncate text-[11px] text-muted-foreground" title={s.profile.pattern.cycle?.description}>
+              + {cycleHint(s.profile.pattern)}
+            </span>
+          )}
         </div>
       ),
     },

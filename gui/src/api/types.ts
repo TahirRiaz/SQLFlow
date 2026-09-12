@@ -2052,8 +2052,30 @@ export interface StreamSignal {
 
 /** What one table's traffic normally looks like, learned from its own history after reprocessing was
  * excluded. This is the reference every verdict is stated against. */
+/** A recurring delivery on top of the ordinary rhythm: the vendor who ships a bigger refill every fortnight,
+ * the month-end settlement file. periodDays is the cycle length, or 0 when it repeats on a position in the
+ * calendar month (which `monthly` marks). */
+export interface StreamCycle {
+  periodDays: number;
+  monthly: boolean;
+  /** How many times the cycle was actually seen in the window. */
+  occurrences: number;
+  /** True when the cycle days are heavier than an ordinary day, false for a regular light day. */
+  heavier: boolean;
+  cycleRows: number;
+  ordinaryRows: number;
+  /** The share of the unexplained variation this cycle accounts for, in [0, 1]. */
+  lift: number;
+  lastOccurrenceUtc: string | null;
+  /** The next day the cycle is due: the date to check when the question is "did the big one arrive". */
+  nextExpectedUtc: string | null;
+  description: string;
+}
+
 export interface StreamPattern {
-  shape: "daily" | "weekdays" | "weekly" | "several-days-a-week" | "periodic" | "sporadic";
+  shape:
+    | "daily" | "weekdays" | "weekly" | "several-days-a-week" | "fortnightly" | "monthly" | "periodic"
+    | "sporadic";
   /** The weekdays it reliably loads on, Monday first. Empty for a periodic or sporadic stream. */
   loadDays: string[];
   /** The median load on a day it loads, from the TRIMMED volumes, so a backfill is not what "typical" means. */
@@ -2063,6 +2085,8 @@ export interface StreamPattern {
   highRows: number;
   /** How often it NORMALLY delivers on a day it loads on, in [0, 1]: the median week, not the mean day. */
   reliability: number;
+  /** The recurring larger (or smaller) delivery on top of the rhythm, null for a stream that has none. */
+  cycle: StreamCycle | null;
   description: string;
 }
 

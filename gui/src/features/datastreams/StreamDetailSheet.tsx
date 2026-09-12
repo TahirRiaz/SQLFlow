@@ -190,6 +190,32 @@ export function StreamDetailSheet({
                   Learned pattern
                 </div>
                 <p className="mt-1 text-[13px] leading-5">{stream.profile.pattern.description}</p>
+                {/* The recurring delivery, called out rather than left inside the sentence, because the date
+                    the next one is due is the one thing on this panel an operator can act on: it is when to
+                    come back and check that the big one arrived. */}
+                {stream.profile.pattern.cycle !== null && (
+                  <div className="mt-2 grid grid-cols-2 gap-2 border-t border-border pt-2 sm:grid-cols-4">
+                    <Stat
+                      label="Cycle"
+                      value={stream.profile.pattern.cycle.monthly
+                        ? "monthly"
+                        : `every ${stream.profile.pattern.cycle.periodDays}d`}
+                    />
+                    <Stat
+                      label={stream.profile.pattern.cycle.heavier ? "Cycle day" : "Light day"}
+                      value={`${formatRows(stream.profile.pattern.cycle.cycleRows)} vs ${
+                        formatRows(stream.profile.pattern.cycle.ordinaryRows)}`}
+                    />
+                    <Stat
+                      label="Last one"
+                      value={stream.profile.pattern.cycle.lastOccurrenceUtc?.slice(0, 10) ?? "-"}
+                    />
+                    <Stat
+                      label="Next due"
+                      value={stream.profile.pattern.cycle.nextExpectedUtc?.slice(0, 10) ?? "-"}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3 rounded-lg border border-border p-3 sm:grid-cols-3">

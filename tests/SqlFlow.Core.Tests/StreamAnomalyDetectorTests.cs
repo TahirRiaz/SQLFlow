@@ -1,3 +1,4 @@
+using System.Globalization;
 using SqlFlow.HealthCheck;
 using Xunit;
 
@@ -232,6 +233,37 @@ public sealed class StreamAnomalyDetectorTests
         Assert.Equal(5, profile.EmptyRunDays);
         Assert.Equal(3, profile.NoRunDays);
         Assert.Equal(8, profile.UnexpectedNullDays);
+        // The denominator the eight are read against: a daily stream is expected on every mature day of the
+        // sixty-day window, and only the trailing day still arriving is left out of it.
+        Assert.Equal(59, profile.ExpectedDays);
+    }
+
+    [Fact]
+    public void ExpectedDays_CountOnlyTheWeekdaysAStreamLoadsOn()
+    {
+        // A weekday-only feed is not expected at the weekend, so those days are neither missed nor expected:
+        // "3 of 43" has to mean 43 working days, not 60 calendar ones.
+        var buckets = new List<StreamBucket>();
+        var workingDays = 0;
+        for (var i = 59; i >= 0; i--)
+        {
+            var date = AsOf.Date.AddDays(-i);
+            if (date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday)
+            {
+                continue;
+            }
+
+            buckets.Add(Day(date, 10_000));
+            if (i > 0)
+            {
+                workingDays++;
+            }
+        }
+
+        var profile = Analyze(buckets).Profile;
+
+        Assert.Equal(workingDays, profile.ExpectedDays);
+        Assert.Equal(0, profile.UnexpectedNullDays);
     }
 
     [Fact]
@@ -475,6 +507,220 @@ public sealed class StreamAnomalyDetectorTests
         Assert.False(signals[StreamDetector.RateChange]);
         Assert.False(signals[StreamDetector.LevelShift]);
         Assert.False(signals[StreamDetector.VolumeOutlier]);
+    }
+
+    // ---- The recurring delivery a weekday model cannot express --------------------------------------------
+
+    /// <summary>A deterministic wobble in [-1, 1], so a series built "with realistic noise" is the same series
+    /// on every run.</summary>
+    private static double Jitter(int seed)
+    {
+        var x = Math.Sin((seed + 1) * 12.9898) * 43758.5453;
+        return 2 * (x - Math.Floor(x)) - 1;
+    }
+
+    /// <summary>A daily stream that ships an ordinary load most days and a refill of
+    /// <paramref name="refillRows"/> every <paramref name="period"/> days, the most recent of which lands
+    /// three days before "now". <paramref name="skipLastRefill"/> delivers an ordinary load on that day
+    /// instead, which is the failure the cycle model exists to make visible.</summary>
+    private static List<StreamBucket> DailyWithRefill(
+        int days, long ordinaryRows, long refillRows, int period, bool skipLastRefill = false)
+    {
+        var lastRefill = AsOf.Date.AddDays(-3);
+        var phase = (lastRefill - DateTime.UnixEpoch.Date).Days % period;
+        var buckets = new List<StreamBucket>();
+        for (var i = days - 1; i >= 0; i--)
+        {
+            var date = AsOf.Date.AddDays(-i);
+            var onCycle = (date - DateTime.UnixEpoch.Date).Days % period == phase;
+            var rows = onCycle && !(skipLastRefill && date == lastRefill) ? refillRows : ordinaryRows;
+            buckets.Add(Day(date, rows + (long)(0.02 * ordinaryRows * Jitter(i))));
+        }
+
+        return buckets;
+    }
+
+    [Fact]
+    public void FortnightlyRefill_IsLearned_AndTheRefillIsNotReportedAsAnOutlier()
+    {
+        // The false positive this cost us before: a vendor who has always shipped a bigger refill every
+        // fortnight was reported every fortnight for doing exactly that, which is the most corrosive kind of
+        // wrong answer because it is perfectly regular.
+        var analysis = Analyze(DailyWithRefill(60, 9_000, 18_000, 14));
+
+        var cycle = analysis.Profile.Pattern.Cycle;
+        Assert.NotNull(cycle);
+        Assert.Equal(14, cycle.PeriodDays);
+        Assert.False(cycle.Monthly);
+        Assert.True(cycle.Heavier);
+        Assert.Equal(AsOf.Date.AddDays(-3), cycle.LastOccurrenceUtc);
+        Assert.Equal(AsOf.Date.AddDays(11), cycle.NextExpectedUtc);
+        Assert.Contains("every 14 days", cycle.Description, StringComparison.Ordinal);
+
+        var outlier = analysis.Signals.First(s => s.Detector == StreamDetector.VolumeOutlier);
+        Assert.False(outlier.Fired, $"the refill was reported as an outlier: {outlier.Detail}");
+        Assert.Equal(StreamStatus.Healthy, analysis.Status);
+    }
+
+    [Fact]
+    public void AMissedRefill_IsReportedAsAShortfall()
+    {
+        // The inverse failure, and the one that was invisible before: with the cycle in the expectation, a
+        // refill that does not arrive is a shortfall on the day it was due rather than an ordinary day nobody
+        // looks at.
+        var analysis = Analyze(DailyWithRefill(60, 9_000, 18_000, 14, skipLastRefill: true));
+
+        var outlier = analysis.Signals.First(s => s.Detector == StreamDetector.VolumeOutlier);
+        Assert.True(outlier.Fired, "a refill that never arrived went unreported");
+        Assert.Equal(StreamDirection.Below, outlier.Direction);
+        Assert.Contains(AsOf.Date.AddDays(-3).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+            outlier.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TheRefillIsWrittenIntoThePatternSentence()
+    {
+        var analysis = Analyze(DailyWithRefill(60, 9_000, 18_000, 14));
+
+        Assert.Contains("heavier delivery every 14 days", analysis.Profile.Pattern.Description,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void ASteadyStream_LearnsNoCycle()
+    {
+        // Nothing to explain, so nothing may be claimed: a cycle invented here would excuse the real outliers
+        // this surface exists to report.
+        Assert.Null(Analyze(Daily(60, 10_000)).Profile.Pattern.Cycle);
+    }
+
+    // ---- Low-frequency streams: weekly and monthly rhythms ------------------------------------------------
+
+    /// <summary>A stream that loads once every <paramref name="everyDays"/> days, the last load
+    /// <paramref name="endsDaysAgo"/> before "now".</summary>
+    private static List<StreamBucket> EveryNDays(int windowDays, int everyDays, long rows, int endsDaysAgo = 0)
+    {
+        var buckets = new List<StreamBucket>();
+        for (var i = endsDaysAgo; i < windowDays; i += everyDays)
+        {
+            buckets.Add(Day(AsOf.Date.AddDays(-i), rows));
+        }
+
+        return buckets;
+    }
+
+    [Fact]
+    public void AMonthlyStreamThatDied_IsReportedStalled_NotHeldBackForeverAsTooNew()
+    {
+        // The blind spot a flat "seven loading days" bar creates: a monthly vendor can never accumulate seven
+        // loads in any window this surface reads, so it could go dead for a year and never be reported. The
+        // sample is small because the RHYTHM is slow, which is a different thing from not being able to see
+        // the stream.
+        var buckets = EveryNDays(180, 30, 40_000, endsDaysAgo: 75);
+        var analysis = StreamAnomalyDetector.Analyze(
+            buckets, AsOf.Date.AddDays(-179), AsOf, new StreamAnomalyOptions());
+
+        Assert.Equal(StreamStatus.Stalled, analysis.Status);
+        Assert.True(analysis.Signals.First(s => s.Detector == StreamDetector.Silence).Fired);
+    }
+
+    [Fact]
+    public void AHealthyMonthlyStream_IsNotFlagged_AndItsVolumeTestsSayTheyWereHeldBack()
+    {
+        var buckets = EveryNDays(180, 30, 40_000);
+        var analysis = StreamAnomalyDetector.Analyze(
+            buckets, AsOf.Date.AddDays(-179), AsOf, new StreamAnomalyOptions());
+
+        Assert.Equal(StreamStatus.Healthy, analysis.Status);
+        Assert.Equal("monthly", analysis.Profile.Pattern.Shape);
+        Assert.Contains("about once a month", analysis.Profile.Pattern.Description, StringComparison.Ordinal);
+
+        // Held back rather than silently passed: a verdict has to say what it did not test.
+        var volume = analysis.Signals.First(s => s.Detector == StreamDetector.VolumeOutlier);
+        Assert.False(volume.Fired);
+        Assert.Contains("held back", volume.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AWeeklyStreamOnAShortWindow_IsStillJudged()
+    {
+        // Four loads in a thirty-day window is every load a weekly feed can make, and it used to be too few
+        // for the surface to say anything at all.
+        var buckets = EveryNDays(30, 7, 20_000, endsDaysAgo: 21);
+        var analysis = StreamAnomalyDetector.Analyze(
+            buckets, AsOf.Date.AddDays(-29), AsOf, new StreamAnomalyOptions());
+
+        Assert.Equal(StreamStatus.Stalled, analysis.Status);
+        Assert.True(analysis.Signals.First(s => s.Detector == StreamDetector.Silence).Fired);
+    }
+
+    [Fact]
+    public void ADailyStreamWithAlmostNoLoads_IsStillHeldBack()
+    {
+        // The guard the split must not lose: a daily stream that has only ever loaded twice, most recently
+        // yesterday, is not a slow rhythm. Nothing about it can be judged, and saying so is the honest answer.
+        var buckets = new List<StreamBucket>
+        {
+            Day(AsOf.Date.AddDays(-30), 10_000),
+            Day(AsOf.Date.AddDays(-1), 10_000),
+        };
+        for (var i = 59; i >= 0; i--)
+        {
+            var date = AsOf.Date.AddDays(-i);
+            if (date != AsOf.Date.AddDays(-30) && date != AsOf.Date.AddDays(-1))
+            {
+                buckets.Add(Day(date, 0));
+            }
+        }
+
+        var analysis = Analyze(buckets, new StreamAnomalyOptions { ExpectedGapDaysOverride = 1 });
+
+        Assert.Equal(StreamStatus.InsufficientHistory, analysis.Status);
+    }
+
+    [Fact]
+    public void AStreamWithNoCycle_IsScoredExactlyAsItWasBefore()
+    {
+        // The cycle is an ENRICHMENT of the expectation, never a replacement for it. Where a stream has no
+        // recurring delivery to learn, nothing is learned and the trend-plus-weekday model is left exactly as
+        // it was, day for day. Anything else would mean every stream on the estate got a new verdict to pay
+        // for one vendor's fortnightly refill.
+        var buckets = new List<StreamBucket>();
+        for (var i = 59; i >= 0; i--)
+        {
+            var date = AsOf.Date.AddDays(-i);
+            var weekend = date.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday;
+            buckets.Add(Day(date, (weekend ? 3_000 : 10_000) + (long)(400 * Jitter(i))));
+        }
+
+        var enriched = Analyze(buckets);
+        var plain = Analyze(buckets, new StreamAnomalyOptions { DetectDeliveryCycles = false });
+
+        Assert.Null(enriched.Profile.Pattern.Cycle);
+        Assert.Equal(plain.Status, enriched.Status);
+        Assert.Equal(plain.Summary, enriched.Summary);
+        Assert.Equal(
+            plain.Series.Select(p => p.Expected).ToList(),
+            enriched.Series.Select(p => p.Expected).ToList());
+        Assert.Equal(
+            plain.Series.Select(p => p.Severity).ToList(),
+            enriched.Series.Select(p => p.Severity).ToList());
+    }
+
+    [Fact]
+    public void CycleDetectionOff_LeavesTheFortnightlyStreamFullOfFlaggedDays()
+    {
+        // What the surface did before, and the reason this is worth modelling: a weekday model can give a
+        // weekday ONE level, so on a stream whose every other Thursday is a refill it is wrong on every
+        // Thursday, in one direction or the other. Days get flagged either way; only which ones changes.
+        var buckets = DailyWithRefill(60, 9_000, 18_000, 14);
+
+        var without = Analyze(buckets, new StreamAnomalyOptions { DetectDeliveryCycles = false });
+        var with = Analyze(buckets);
+
+        Assert.Null(without.Profile.Pattern.Cycle);
+        Assert.Contains(without.Series, p => p is { Anomaly: true, Imputed: false });
+        Assert.DoesNotContain(with.Series, p => p is { Anomaly: true, Imputed: false });
     }
 
     [Fact]

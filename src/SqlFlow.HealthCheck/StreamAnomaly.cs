@@ -155,6 +155,24 @@ public sealed record StreamAnomalyOptions
     public int MaturityDays { get; init; } = 1;
 
     /// <summary>
+    /// Whether the volume expectation may learn a recurring delivery cycle the weekday model cannot express:
+    /// the fortnightly refill, the every-third-day consolidation, the month-end settlement file. True.
+    /// <para>
+    /// Without it those vendors are reported every single time they behave exactly as they always have, which
+    /// is the worst kind of false positive because it is perfectly regular and therefore trains an operator to
+    /// ignore the surface. Worse, the inverse failure is invisible: a refill that never arrives just looks
+    /// like an ordinary day. With the cycle in the expectation, both read correctly, and the learned pattern
+    /// says so in words. See <see cref="CycleModel"/> for the bars a candidate cycle has to clear.
+    /// </para>
+    /// </summary>
+    public bool DetectDeliveryCycles { get; init; } = true;
+
+    /// <summary>The longest delivery cycle to look for, in days. Capped by the analysed span regardless: a
+    /// period is only considered when the window covers <see cref="CycleModel.MinCycles"/> of it, so a
+    /// thirty-day window can learn a ten-day cycle and a fortnightly one needs sixty.</summary>
+    public int CycleMaxPeriodDays { get; init; } = CycleModel.MaxPeriodDays;
+
+    /// <summary>
     /// Whether a stream loading MORE than expected is reported. True, and it is only safe to be true because
     /// <see cref="ReprocessTrimIqrMultiplier"/> runs first: without the trim, every backfill and catch-up in the
     /// history is itself a surge, and a surge test would spend all its output on reprocessing nobody needs
@@ -292,8 +310,8 @@ public enum StreamStatus
 public sealed record StreamPattern
 {
     /// <summary>The rhythm, named: <c>daily</c>, <c>weekdays</c> (Monday to Friday, nothing at weekends),
-    /// <c>weekly</c>, <c>several-days-a-week</c>, <c>periodic</c> (a regular gap that is not a weekday
-    /// rhythm), or <c>sporadic</c> (no rhythm the history supports).</summary>
+    /// <c>weekly</c>, <c>several-days-a-week</c>, <c>fortnightly</c>, <c>monthly</c>, <c>periodic</c> (a
+    /// regular gap that fits none of those bands), or <c>sporadic</c> (no rhythm the history supports).</summary>
     public required string Shape { get; init; }
 
     /// <summary>The weekdays this table reliably loads on, in week order. Empty for a periodic or sporadic
@@ -317,7 +335,61 @@ public sealed record StreamPattern
     /// weekly rates and leaves the middle one where it was.</summary>
     public required double Reliability { get; init; }
 
+    /// <summary>The recurring delivery cycle on top of the rhythm, when the stream has one that its weekday
+    /// pattern cannot express: the vendor who ships a bigger refill every fortnight, the month-end file. Null
+    /// for the streams that simply deliver the same kind of load every time.</summary>
+    public StreamCycle? Cycle { get; init; }
+
     /// <summary>The pattern as a sentence, for a person reading one row of a board.</summary>
+    public required string Description { get; init; }
+}
+
+/// <summary>
+/// A recurring delivery the stream makes on top of its ordinary rhythm, learned from its own history: how
+/// often it comes, how much bigger (or smaller) it is, when it last landed, and when the next one is due.
+/// <para>
+/// This is what turns a fortnightly refill from a monthly false positive into a fact about the vendor. It is
+/// also the only thing that makes the opposite failure visible: once the cycle is part of the expectation, a
+/// refill that does not arrive is a shortfall on the day it was due rather than an ordinary day nobody looks
+/// at.
+/// </para>
+/// </summary>
+public sealed record StreamCycle
+{
+    /// <summary>The cycle length in days, or 0 for a monthly cycle whose length is whatever the calendar says
+    /// that month.</summary>
+    public required int PeriodDays { get; init; }
+
+    /// <summary>True when the cycle repeats on a position in the calendar month (the 1st, the last day)
+    /// rather than every fixed number of days.</summary>
+    public required bool Monthly { get; init; }
+
+    /// <summary>Occurrences of the cycle observed in the window: how many times this was actually seen, which
+    /// is what separates a pattern from two coincidences.</summary>
+    public required int Occurrences { get; init; }
+
+    /// <summary>Whether the cycle days are HEAVIER than an ordinary day. False for the rarer stream whose
+    /// cycle is a regular light day.</summary>
+    public required bool Heavier { get; init; }
+
+    /// <summary>The typical load on a cycle day, in rows.</summary>
+    public required double CycleRows { get; init; }
+
+    /// <summary>The typical load on an ordinary day, in rows: what <see cref="CycleRows"/> is a departure
+    /// from.</summary>
+    public required double OrdinaryRows { get; init; }
+
+    /// <summary>The share of the unexplained variation this cycle accounts for, in [0, 1]. Reported because a
+    /// cycle that explains most of the residual and one that explains a fifth of it are different claims.</summary>
+    public required double Lift { get; init; }
+
+    public required DateTime? LastOccurrenceUtc { get; init; }
+
+    /// <summary>The next day the cycle is due, from the analysis date. The date to check when the question is
+    /// "did the big one arrive".</summary>
+    public required DateTime? NextExpectedUtc { get; init; }
+
+    /// <summary>The cycle as a sentence, folded into the pattern description.</summary>
     public required string Description { get; init; }
 }
 
@@ -385,6 +457,12 @@ public sealed record StreamProfile
 
     /// <summary>The Theil-Sen slope in rows per day: a growing stream's growth is expectation, not anomaly.</summary>
     public required double TrendRowsPerDay { get; init; }
+
+    /// <summary>Days in the window the stream was expected to load on: every mature day whose weekday its
+    /// learned reliability cleared the threshold for. This is the denominator <see cref="UnexpectedNullDays"/>
+    /// is read against, carried so a board can say "3 of 30" rather than a bare "3". Zero for a stream with no
+    /// rhythm the history supports, which has no expected day to miss.</summary>
+    public required int ExpectedDays { get; init; }
 
     /// <summary>Days in the window the stream was expected to load on (its learned reliability for that
     /// weekday cleared the threshold) and wrote nothing. The headline number of this surface.</summary>
