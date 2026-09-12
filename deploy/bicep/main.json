@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "15949295719233653373"
+      "templateHash": "16924123486202582130"
     }
   },
   "parameters": {
@@ -336,9 +336,10 @@
     },
     "controlPlaneMaxReplicas": {
       "type": "int",
-      "defaultValue": 3,
+      "defaultValue": 1,
+      "minValue": 1,
       "metadata": {
-        "description": "Maximum control plane replicas for ingress autoscale."
+        "description": "Maximum control plane replicas. Keep at 1: the run queue is owned by exactly one replica (the dispatch lease), so an extra replica adds no dispatch capacity and refuses every node call that lands on it (503, retried by the node), which only slows hand-outs. Raise it only once passive replicas forward node calls to the owner."
       }
     },
     "controlPlaneName": {
@@ -975,7 +976,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "10741321074227073934"
+              "templateHash": "925202848424852857"
             }
           },
           "parameters": {
@@ -1168,9 +1169,10 @@
             },
             "maxReplicas": {
               "type": "int",
-              "defaultValue": 3,
+              "defaultValue": 1,
+              "minValue": 1,
               "metadata": {
-                "description": "Maximum replicas for ingress autoscale."
+                "description": "Maximum replicas. Keep at 1: the run queue is owned by exactly one replica (the dispatch lease), so an extra replica adds no dispatch capacity and refuses every node call that lands on it (503, retried by the node), which only slows hand-outs. Raise it only once passive replicas forward node calls to the owner."
               }
             }
           },

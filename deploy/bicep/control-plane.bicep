@@ -93,8 +93,9 @@ param assistantMcpServerUrl string = ''
 @minValue(1)
 param minReplicas int = 1
 
-@description('Maximum replicas for ingress autoscale.')
-param maxReplicas int = 3
+@description('Maximum replicas. Keep at 1: the run queue is owned by exactly one replica (the dispatch lease), so an extra replica adds no dispatch capacity and refuses every node call that lands on it (503, retried by the node), which only slows hand-outs. Raise it only once passive replicas forward node calls to the owner.')
+@minValue(1)
+param maxReplicas int = 1
 
 // The Key Vault Secrets User built-in role, so the app's identity can read the configured secrets.
 var keyVaultSecretsUserRoleId = '4633458b-17de-408a-b874-0445c86b69e6'

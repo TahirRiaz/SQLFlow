@@ -90,14 +90,9 @@ public sealed partial class RunWorker : IDisposable
     private static readonly TimeSpan MinBackoff = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan MaxBackoff = TimeSpan.FromSeconds(20);
 
-    /// <summary>The waits between retries of a call a run makes while executing (a flow version, its context)
-    /// when the dispatcher is momentarily unreachable or not the owner. About half a minute in total: long enough
-    /// to ride out an ownership hand-over or a control-plane restart, short enough that a run never sits idle for
-    /// an outage the poll loop would report anyway.</summary>
-    private static readonly TimeSpan[] SupportRetryWaits =
-    [
-        TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(8), TimeSpan.FromSeconds(15),
-    ];
+    /// <summary>How long a best-effort terminal report (a failure or a cancel, made after the run's own token may
+    /// already be tripped) may keep retrying on its own deadline.</summary>
+    private static readonly TimeSpan TerminalReportBudget = TimeSpan.FromMinutes(2);
 
     private readonly IServiceProvider _services;
     private readonly INodeTransport _transport;
@@ -215,8 +210,17 @@ public sealed partial class RunWorker : IDisposable
             {
                 // The dispatcher is unreachable or not the owner right now (or an answer could not be applied):
                 // back off with jitter and try again. Held leases outlive several failed polls, so a brief
-                // control-plane blip never loses work.
-                LogPollError(SecretHygiene.RedactedMessage(ex), (int)backoff.TotalSeconds);
+                // control-plane blip never loses work. A refusal from a replica that does not own dispatch is
+                // routine behind a load balancer and is logged as such; anything else is an error worth a look.
+                if (NodeTransportException.IsRetryable(ex))
+                {
+                    LogPollRetry(SecretHygiene.RedactedMessage(ex), (int)backoff.TotalSeconds);
+                }
+                else
+                {
+                    LogPollError(SecretHygiene.RedactedMessage(ex), (int)backoff.TotalSeconds);
+                }
+
                 if (!await DelayAsync(backoff, stoppingToken).ConfigureAwait(false))
                 {
                     break;
@@ -440,6 +444,10 @@ public sealed partial class RunWorker : IDisposable
         {
             // The drain window expired; nothing more to renew.
         }
+        catch (Exception ex) when (NodeTransportException.IsRetryable(ex))
+        {
+            LogPollRetry(SecretHygiene.RedactedMessage(ex), (int)DrainPollInterval.TotalSeconds);
+        }
         catch (Exception ex)
         {
             LogPollError(SecretHygiene.RedactedMessage(ex), (int)DrainPollInterval.TotalSeconds);
@@ -532,24 +540,66 @@ public sealed partial class RunWorker : IDisposable
         }
     }
 
-    /// <summary>Makes one of the calls a run needs while executing (a flow version, its lineage context), retrying
-    /// while the dispatcher is momentarily unreachable or not the owner, with the same jittered waits the poll loop
-    /// uses but inside a bounded budget: a hand-over or a restart is ridden out, a lasting outage surfaces as the
-    /// last failure and the run is reported failed with it.</summary>
-    private async Task<T> CallDispatcherAsync<T>(Guid runId, string what, Func<CancellationToken, Task<T>> call, CancellationToken ct)
+    /// <summary>Makes one of the calls a run needs (a flow version, its lineage context, its outcome), retrying under
+    /// <see cref="DispatcherRetry"/> while the dispatcher is momentarily unreachable or not the owner: a hand-over
+    /// or a restart is ridden out, and a lasting outage surfaces as the last failure once <paramref name="waits"/>
+    /// are spent.</summary>
+    private Task<T> CallDispatcherAsync<T>(
+        Guid id, string what, TimeSpan[] waits, Func<CancellationToken, Task<T>> call, CancellationToken ct)
+        => DispatcherRetry.RunAsync(
+            waits, call,
+            (ex, wait) => LogSupportRetry(id, what, SecretHygiene.RedactedMessage(ex), (int)wait.TotalSeconds), ct);
+
+    /// <summary>Delivers a run's outcome under the fence, retrying while the dispatcher is unreachable or not the
+    /// owner. Returns null when the report could not be delivered within the budget: nothing is reported then, so
+    /// the run's lease lapses, the dispatcher requeues it and the next execution's result stands. A completed run is
+    /// never reported failed because of a transport problem; a failure the dispatcher itself answers (a rejected
+    /// request) still propagates, because that is a fault in the report, not in the path.</summary>
+    private async Task<RunOutcomeStatus?> ReportRunOutcomeAsync(Guid runId, RunOutcomeRequest request, CancellationToken ct)
     {
-        for (var retry = 0; ; retry++)
+        try
         {
-            try
+            var status = await CallDispatcherAsync(
+                runId, "outcome", DispatcherRetry.OutcomeWaits,
+                token => _transport.ReportRunOutcomeAsync(runId, request, token), ct).ConfigureAwait(false);
+            if (status == RunOutcomeStatus.StaleClaim)
             {
-                return await call(ct).ConfigureAwait(false);
+                // The lease lapsed and the run was requeued (and possibly handed out again) out from under this
+                // node while it executed: the fence dropped this report, the successor execution's outcome is
+                // authoritative, and the flow's idempotent load makes the double execution harmless. Loud in the
+                // log because it means this node's polls went unanswered for the whole lease.
+                LogStaleClaim(runId, request.Attempt);
             }
-            catch (Exception ex) when (retry < SupportRetryWaits.Length && NodeTransportException.IsRetryable(ex))
+
+            return status;
+        }
+        catch (Exception ex) when (NodeTransportException.IsRetryable(ex))
+        {
+            LogOutcomeUndeliverable(runId, request.Attempt, request.Outcome.ToString(), SecretHygiene.RedactedMessage(ex));
+            return null;
+        }
+    }
+
+    /// <summary>The compute-task twin of <see cref="ReportRunOutcomeAsync"/>: null when undeliverable, in which case
+    /// the task's lease lapses and the dispatcher requeues it.</summary>
+    private async Task<bool?> ReportTaskOutcomeAsync(Guid taskId, TaskOutcomeRequest request, CancellationToken ct)
+    {
+        try
+        {
+            var recorded = await CallDispatcherAsync(
+                taskId, "task outcome", DispatcherRetry.OutcomeWaits,
+                token => _transport.ReportTaskOutcomeAsync(taskId, request, token), ct).ConfigureAwait(false);
+            if (!recorded)
             {
-                var wait = SupportRetryWaits[retry];
-                LogSupportRetry(runId, what, SecretHygiene.RedactedMessage(ex), (int)wait.TotalSeconds);
-                await Task.Delay(wait + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 500)), ct).ConfigureAwait(false);
+                LogTaskStale(taskId);
             }
+
+            return recorded;
+        }
+        catch (Exception ex) when (NodeTransportException.IsRetryable(ex))
+        {
+            LogTaskOutcomeUndeliverable(taskId, request.Outcome.ToString(), SecretHygiene.RedactedMessage(ex));
+            return null;
         }
     }
 
@@ -649,16 +699,11 @@ public sealed partial class RunWorker : IDisposable
             // while the outcome report below stays on the shutdown token (a late cancel never corrupts it).
             var resultJson = await executor.ExecuteAsync(payload, taskCt).ConfigureAwait(false);
 
-            var recorded = await _transport
-                .ReportTaskOutcomeAsync(taskId, new TaskOutcomeRequest(_node, TaskOutcomeKind.Succeeded, null, resultJson), ct)
-                .ConfigureAwait(false);
-            if (recorded)
+            var recorded = await ReportTaskOutcomeAsync(
+                taskId, new TaskOutcomeRequest(_node, TaskOutcomeKind.Succeeded, null, resultJson), ct).ConfigureAwait(false);
+            if (recorded == true)
             {
                 LogTaskSucceeded(taskId, spec.Operation);
-            }
-            else
-            {
-                LogTaskStale(taskId);
             }
         }
         catch (OperationCanceledException) when (shutdownCt.IsCancellationRequested)
@@ -686,16 +731,15 @@ public sealed partial class RunWorker : IDisposable
     {
         try
         {
-            // The original token may be tripped (or the failure a control-plane blip): a short independent deadline
-            // still reports the task terminal where the dispatcher is reachable.
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            await _transport
-                .ReportTaskOutcomeAsync(taskId, new TaskOutcomeRequest(_node, outcome, error, resultJson), cts.Token)
+            // The original token may be tripped (or the failure a control-plane blip): an independent deadline
+            // bounds the retries, so the task is still reported terminal wherever the dispatcher is reachable.
+            using var cts = new CancellationTokenSource(TerminalReportBudget);
+            await ReportTaskOutcomeAsync(taskId, new TaskOutcomeRequest(_node, outcome, error, resultJson), cts.Token)
                 .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            LogPollError(SecretHygiene.RedactedMessage(ex), 0);
+            LogTaskOutcomeUndeliverable(taskId, outcome.ToString(), SecretHygiene.RedactedMessage(ex));
         }
     }
 
@@ -743,6 +787,8 @@ public sealed partial class RunWorker : IDisposable
             var snapshotRoot = !string.IsNullOrWhiteSpace(run.FlowVersionHash)
                 ? await TryStageSnapshotAsync(scope, runId, run.FlowVersionHash, relativePath, ct).ConfigureAwait(false)
                 : null;
+            // (The stage, the context call below and the outcome report all retry a refusal from a replica that does
+            // not own dispatch, so a control plane behind a load balancer is transparent to the run.)
             if (snapshotRoot is not null)
             {
                 flowRoot = snapshotRoot;
@@ -841,7 +887,7 @@ public sealed partial class RunWorker : IDisposable
             if (incrementalWatermark || landingResetCandidate)
             {
                 var context = await CallDispatcherAsync(
-                    runId, "context",
+                    runId, "context", DispatcherRetry.SupportWaits,
                     token => _transport.ResolveRunContextAsync(
                         runId, new RunContextRequest(_node, attempt, targetSchema, targetTable, incrementalWatermark, landingResetCandidate), token),
                     ct).ConfigureAwait(false);
@@ -895,22 +941,11 @@ public sealed partial class RunWorker : IDisposable
             {
                 var runJson = Path.Combine(runDirectory, "run.json");
                 var artifact = await ReadArtifactAsync(runJson, ct).ConfigureAwait(false);
-                var status = artifact.Json is not null
-                    ? await _transport
-                        .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Completed, null, artifact.Json), ct)
-                        .ConfigureAwait(false)
-                    : await _transport
-                        .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Failed,
-                            $"the run executed but its result could not be recorded: {artifact.Error}.", null), ct)
-                        .ConfigureAwait(false);
-                if (status == RunOutcomeStatus.StaleClaim)
-                {
-                    // The lease lapsed and the run was requeued (and possibly handed out again) out from under this
-                    // node while it executed: the fence dropped this report, the successor execution's outcome is
-                    // authoritative, and the flow's idempotent load makes the double execution harmless. Loud in
-                    // the log because it means this node's polls went unanswered for the whole lease.
-                    LogStaleClaim(runId, attempt);
-                }
+                var report = artifact.Json is not null
+                    ? new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Completed, null, artifact.Json)
+                    : new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Failed,
+                        $"the run executed but its result could not be recorded: {artifact.Error}.", null);
+                await ReportRunOutcomeAsync(runId, report, ct).ConfigureAwait(false);
             }
             else
             {
@@ -1020,7 +1055,8 @@ public sealed partial class RunWorker : IDisposable
         else
         {
             var fetched = await CallDispatcherAsync(
-                runId, "flow version", token => _transport.GetFlowVersionAsync(contentHash, token), ct).ConfigureAwait(false);
+                runId, "flow version", DispatcherRetry.SupportWaits,
+                token => _transport.GetFlowVersionAsync(contentHash, token), ct).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(fetched))
             {
                 return null; // the version is not staged; the commit pin still identifies the exact content in git
@@ -1111,35 +1147,23 @@ public sealed partial class RunWorker : IDisposable
     // Every outcome report below presents the hand-out's fence (this node's name + the attempt): if the lease lapsed
     // and the dispatcher requeued the run in the meantime (this node was presumed dead), the report is dropped and the
     // successor execution's outcome stands - a stale report must lose to the fence, never race it.
-    private async Task FailAsync(Guid runId, int attempt, string error, CancellationToken ct)
-    {
-        var status = await _transport
-            .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Failed, error, null), ct)
-            .ConfigureAwait(false);
-        if (status == RunOutcomeStatus.StaleClaim)
-        {
-            LogStaleClaim(runId, attempt);
-        }
-    }
+    private Task FailAsync(Guid runId, int attempt, string error, CancellationToken ct)
+        => ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, RunOutcomeKind.Failed, error, null), ct);
 
     private async Task TryReportRunAsync(Guid runId, int attempt, RunOutcomeKind outcome, string? error)
     {
         try
         {
-            // The original cancellation token may be tripped (or the failure may have been a transport blip): use a
-            // short independent deadline so the run is still reported terminal where the dispatcher is reachable.
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-            var status = await _transport
-                .ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, outcome, error, null), cts.Token)
+            // The original cancellation token may be tripped (or the failure may have been a transport blip): an
+            // independent deadline bounds the retries, so the run is still reported terminal wherever the dispatcher
+            // is reachable.
+            using var cts = new CancellationTokenSource(TerminalReportBudget);
+            await ReportRunOutcomeAsync(runId, new RunOutcomeRequest(_node, attempt, outcome, error, null), cts.Token)
                 .ConfigureAwait(false);
-            if (status == RunOutcomeStatus.StaleClaim)
-            {
-                LogStaleClaim(runId, attempt);
-            }
         }
         catch (Exception ex)
         {
-            LogPollError(SecretHygiene.RedactedMessage(ex), 0);
+            LogOutcomeUndeliverable(runId, attempt, outcome.ToString(), SecretHygiene.RedactedMessage(ex));
         }
     }
 
@@ -1213,6 +1237,15 @@ public sealed partial class RunWorker : IDisposable
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Dispatcher poll error: {Error} (retrying in about {BackoffSeconds}s)")]
     private partial void LogPollError(string error, int backoffSeconds);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Dispatcher unavailable for polling: {Error} (retrying in about {BackoffSeconds}s)")]
+    private partial void LogPollRetry(string error, int backoffSeconds);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Run {RunId}: the {Outcome} outcome at attempt {Attempt} could not be delivered to the dispatcher after retries ({Error}). Nothing was reported: the lease lapses, the dispatcher requeues the run, and the next execution's result stands.")]
+    private partial void LogOutcomeUndeliverable(Guid runId, int attempt, string outcome, string error);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Compute task {TaskId}: the {Outcome} outcome could not be delivered to the dispatcher after retries ({Error}). Nothing was reported: the lease lapses and the dispatcher requeues the task.")]
+    private partial void LogTaskOutcomeUndeliverable(Guid taskId, string outcome, string error);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Stopping: no longer taking work; draining {Count} in-flight item(s) so each reports its own outcome (up to {DrainSeconds}s).")]
     private partial void LogDraining(int count, int drainSeconds);

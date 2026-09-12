@@ -1,7 +1,10 @@
-# The control plane HTTP tier: stateless API replicas behind the ingress, scaled on load by the HPA. These
-# replicas are API + scheduler + managed-sync ONLY (Worker__Enabled=false): compute scales separately on queue
-# depth (worker-pool.yaml). Multi-replica is safe by construction: token validation is stateless (shared signing
-# key), and the scheduler/sync/queue all claim work atomically in the catalog.
+# The control plane tier: the API, the scheduler, the managed sync and the run dispatcher, behind the ingress.
+# It runs ONE replica on purpose. The run queue lives in this process and is owned by exactly one replica at a
+# time (the dispatch lease in the catalog); a second replica would add no dispatch capacity and would refuse every
+# node call that landed on it (503 with a retry hint, which the nodes retry), so it only slows hand-outs. Compute
+# scales separately (worker-pool.yaml), so this replica does API work only (Worker__Enabled=false). A rolling
+# update briefly overlaps two replicas; the old one releases the lease on its graceful stop and the nodes retry
+# through the overlap.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -10,7 +13,7 @@ metadata:
   labels:
     app: sqlflow-controlplane
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: sqlflow-controlplane
@@ -88,24 +91,3 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
----
-# HTTP tier autoscaling: request load translates to CPU on a stateless API; scale between 2 and 10.
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: sqlflow-controlplane
-  namespace: sqlflow
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: sqlflow-controlplane
-  minReplicas: 2
-  maxReplicas: 10
-  metrics:
-    - type: Resource
-      resource:
-        name: cpu
-        target:
-          type: Utilization
-          averageUtilization: 70

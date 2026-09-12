@@ -66,9 +66,15 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             ProblemDetails =
             {
                 Status = status,
-                Title = isClientError ? "Bad request" : "An unexpected error occurred",
-                // Never echo an internal message on a 500; the correlation id ties it to the server log.
-                Detail = isClientError ? redacted : "An unexpected error occurred; quote the correlation id to support.",
+                Title = isInactiveDispatcher
+                    ? "Dispatch is not active on this replica"
+                    : isClientError ? "Bad request" : "An unexpected error occurred",
+                // A passive replica says so, because that is exactly what a node (or an operator reading its log)
+                // needs to know: retry, and the next attempt lands on the owner. A client error carries its own
+                // redacted message. Never echo an internal message on a 500; the correlation id ties it to the log.
+                Detail = isInactiveDispatcher || isClientError
+                    ? redacted
+                    : "An unexpected error occurred; quote the correlation id to support.",
                 Extensions = { ["correlationId"] = correlationId },
             },
         }).ConfigureAwait(false);

@@ -32,6 +32,7 @@ sourceRefs:
   - src/SqlFlow.Cli/Program.cs
   - src/SqlFlow.Node/RunWorker.cs
   - src/SqlFlow.Node/NodeTraceFeed.cs
+  - src/SqlFlow.Node/DispatcherRetry.cs
   - src/SqlFlow.Node/HttpNodeTransport.cs
   - src/SqlFlow.Node/InProcessNodeTransport.cs
   - src/SqlFlow.Node/GitMaterializer.cs
@@ -111,7 +112,7 @@ One call, `POST /api/v1/node/poll`, is at once the heartbeat, the lease renewal,
 
 When the node has free slots and nothing is eligible, the dispatcher parks the call for up to `--poll-seconds` and answers the instant a run it could take is enqueued or becomes eligible, so a run handed to a standalone worker starts within milliseconds of being queued, not after a poll interval. When the node has no free slots the call is a heartbeat: it parks too, but only a signal for this node (a cancel, a revoked lease, a restart request) wakes it early. A slot freeing on the node cancels a parked heartbeat so the node re-polls with its new capacity at once.
 
-A poll that cannot reach the control plane, or reaches a replica whose dispatcher is not the owner (HTTP 503 with a retry hint), is logged as `Dispatcher poll error: <redacted> (retrying in about Ns)` and retried with jittered backoff from 1 to 20 seconds. Held leases outlive several failed polls, so a brief control-plane blip never loses work.
+A poll that cannot reach the control plane, or reaches a replica whose dispatcher is not the owner (HTTP 503 `Dispatch is not active on this replica` with a retry hint), is logged as `Dispatcher unavailable for polling: <redacted> (retrying in about Ns)` and retried with jittered backoff from 1 to 20 seconds; a poll the control plane rejects outright is logged as `Dispatcher poll error`. Held leases outlive several failed polls, so a brief control-plane blip never loses work.
 
 ### Leases
 
@@ -143,7 +144,7 @@ Once the document is parsed the node knows whether the flow participates in down
 
 While the run executes, the node streams its generated SQL statements and canonical events (file progress, resolved watermarks, engine decisions, stage summaries, warnings) to `POST /api/v1/node/runs/{runId}/trace` in batches (src/SqlFlow.Node/NodeTraceFeed.cs): every 250 milliseconds, 200 items or 2 MB of text, whichever comes first, so the GUI's Statements and Events views update while the run is still running and the trace survives a mid-run crash. The feed never blocks the run: a retryable failure is retried with backoff for up to a minute, after which the feed stops and logs `live trace feed stopped after a batch could not be delivered`; a batch the dispatcher refuses (the lease lapsed) stops the feed with `the dispatcher no longer honors this node's lease`. The completion projection fills whatever a broken feed missed from the authoritative artifact.
 
-On completion the node reads the run's `run.json` artifact and posts it to `POST /api/v1/node/runs/{runId}/outcome` with the attempt its hand-out carried; the control plane projects the result (status, timings, row counts, error, plus the drill-down detail the live feed did not already write) under the fence. An artifact over the protocol's 64 MB bound, or one the node cannot read, is reported as a failure with the reason, so the run never lingers `running`. A run that produced no artifact at all (the flow file was missing, the document failed to load, the worker threw) is reported `failed` with a secret-redacted error. If the fence rejects the report (`staleClaim`), the node logs a warning and drops its result: the successor execution's outcome is authoritative.
+On completion the node reads the run's `run.json` artifact and posts it to `POST /api/v1/node/runs/{runId}/outcome` with the attempt its hand-out carried; the control plane projects the result (status, timings, row counts, error, plus the drill-down detail the live feed did not already write) under the fence. An artifact over the protocol's 64 MB bound, or one the node cannot read, is reported as a failure with the reason, so the run never lingers `running`. A run that produced no artifact at all (the flow file was missing, the document failed to load, the worker threw) is reported `failed` with a secret-redacted error. If the fence rejects the report (`staleClaim`), the node logs a warning and drops its result: the successor execution's outcome is authoritative. Every outcome report, like the flow-version and context calls, is retried while the control plane is unreachable or the replica it reached does not own dispatch (src/SqlFlow.Node/DispatcherRetry.cs: waits of 1, 2, 4, 8, 15, 15 and 15 seconds, about a minute in all, well inside the lease the poll loop keeps renewing). If the report still cannot be delivered, the node logs `could not be delivered to the dispatcher after retries` and reports nothing: the lease lapses, the dispatcher requeues the run, and the next execution's result stands. A completed run is never reported `failed` because of a transport problem.
 
 ### Failure handling
 

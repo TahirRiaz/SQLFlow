@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "9992240872878985180"
+      "templateHash": "925202848424852857"
     }
   },
   "parameters": {
@@ -118,6 +118,27 @@
         "description": "CIDRs of the ingress hops to trust for X-Forwarded-* headers. Leave empty to keep proxy trust off; per-client rate limiting then keys on the ingress hop address instead of the real client."
       }
     },
+    "azureAdAllowedTenantIds": {
+      "type": "array",
+      "defaultValue": [],
+      "metadata": {
+        "description": "Microsoft Entra tenant (directory) ids allowed to sign in to the GUI. Set together with azureAdClientId to offer \"Sign in with Microsoft\" on the login page; leave empty for local username/password only. Multiple tenants (e.g. the app registration's own tenant plus a customer's corporate tenant) are supported: the app registration itself must be multi-tenant, and each additional tenant's admin must consent to it."
+      }
+    },
+    "azureAdClientId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Client id of the SPA app registration users sign in with (its redirect URI must be the GUI origin). Set together with azureAdAllowedTenantIds to enable SSO."
+      }
+    },
+    "azureAdDefaultRole": {
+      "type": "string",
+      "defaultValue": "viewer",
+      "metadata": {
+        "description": "Role a first-time SSO user is provisioned with (least privilege by default; an admin raises it afterwards)."
+      }
+    },
     "acrName": {
       "type": "string",
       "defaultValue": "",
@@ -132,6 +153,41 @@
         "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
       }
     },
+    "assistantEnabled": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "Enable the GUI chat assistant (/api/v1/chat): the same assistant core as the Slack bot, streamed to the GUI, with every agent run forwarding the calling user's own bearer to the MCP server. Requires the Foundry and MCP parameters below; the key-based providers are configured out of band via ControlPlane__Assistant__* env vars instead."
+      }
+    },
+    "assistantFoundryProjectEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The Foundry project endpoint the assistant runs against (https://<account>.services.ai.azure.com/api/projects/<project>). Required when assistantEnabled."
+      }
+    },
+    "assistantFoundryModelDeploymentName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The model deployment the assistant runs on. Required when assistantEnabled."
+      }
+    },
+    "assistantFoundryTranscriptionDeploymentName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Optional audio-transcription deployment in the same account; empty leaves voice input on the browser's built-in speech recognition."
+      }
+    },
+    "assistantMcpServerUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The deployed SQLFlow MCP server endpoint (https://<mcp host>/mcp), the assistant's tool source. Required when assistantEnabled."
+      }
+    },
     "minReplicas": {
       "type": "int",
       "defaultValue": 1,
@@ -142,9 +198,10 @@
     },
     "maxReplicas": {
       "type": "int",
-      "defaultValue": 3,
+      "defaultValue": 1,
+      "minValue": 1,
       "metadata": {
-        "description": "Maximum replicas for ingress autoscale."
+        "description": "Maximum replicas. Keep at 1: the run queue is owned by exactly one replica (the dispatch lease), so an extra replica adds no dispatch capacity and refuses every node call that lands on it (503, retried by the node), which only slows hand-outs. Raise it only once passive replicas forward node calls to the owner."
       }
     }
   },
@@ -164,6 +221,14 @@
         "input": {
           "name": "[format('ControlPlane__Proxy__KnownNetworks__{0}', copyIndex('proxyNetworkEnv'))]",
           "value": "[parameters('proxyKnownNetworks')[copyIndex('proxyNetworkEnv')]]"
+        }
+      },
+      {
+        "name": "azureAdTenantEnv",
+        "count": "[length(parameters('azureAdAllowedTenantIds'))]",
+        "input": {
+          "name": "[format('ControlPlane__AzureAd__AllowedTenantIds__{0}', copyIndex('azureAdTenantEnv'))]",
+          "value": "[parameters('azureAdAllowedTenantIds')[copyIndex('azureAdTenantEnv')]]"
         }
       }
     ],
@@ -187,7 +252,9 @@
     "bootstrapEnv": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'ControlPlane__Bootstrap__AdminUsername', 'value', parameters('bootstrapAdminUsername')), createObject('name', 'ControlPlane__Bootstrap__AdminPasswordReference', 'secretRef', 'bootstrap-admin-password')))]",
     "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
     "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
-    "proxyEnv": "[if(empty(parameters('proxyKnownNetworks')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Proxy__Enabled', 'value', 'true')), variables('proxyNetworkEnv')))]"
+    "proxyEnv": "[if(empty(parameters('proxyKnownNetworks')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Proxy__Enabled', 'value', 'true')), variables('proxyNetworkEnv')))]",
+    "assistantEnv": "[if(not(parameters('assistantEnabled')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Assistant__Enabled', 'value', 'true'), createObject('name', 'ControlPlane__Assistant__Foundry__ProjectEndpoint', 'value', parameters('assistantFoundryProjectEndpoint')), createObject('name', 'ControlPlane__Assistant__Foundry__ModelDeploymentName', 'value', parameters('assistantFoundryModelDeploymentName')), createObject('name', 'ControlPlane__Assistant__Mcp__ServerUrl', 'value', parameters('assistantMcpServerUrl'))), if(empty(parameters('assistantFoundryTranscriptionDeploymentName')), createArray(), createArray(createObject('name', 'ControlPlane__Assistant__Foundry__TranscriptionDeploymentName', 'value', parameters('assistantFoundryTranscriptionDeploymentName'))))))]",
+    "entraEnv": "[if(or(empty(parameters('azureAdAllowedTenantIds')), empty(parameters('azureAdClientId'))), createArray(), concat(variables('azureAdTenantEnv'), createArray(createObject('name', 'ControlPlane__AzureAd__ClientId', 'value', parameters('azureAdClientId')), createObject('name', 'ControlPlane__AzureAd__DefaultRole', 'value', parameters('azureAdDefaultRole')))))]"
   },
   "resources": [
     {
@@ -257,7 +324,7 @@
                 "cpu": "[json('0.5')]",
                 "memory": "1.0Gi"
               },
-              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'))]",
+              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'))]",
               "probes": [
                 {
                   "type": "Liveness",

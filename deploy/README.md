@@ -4,7 +4,7 @@ Three core images, plus two optional ones for the Slack assistant:
 
 | Image | Built from | Scales on | Behind the ingress? |
 |---|---|---|---|
-| `sqlflow-control-plane` | `Dockerfile` | request load (HPA) | yes, under `/api` |
+| `sqlflow-control-plane` | `Dockerfile` | one replica (dispatch has one owner) | yes, under `/api` |
 | `sqlflow-gui` | `gui/Dockerfile` | trivially (static) | yes, under `/` |
 | `sqlflow-worker` | `Dockerfile.worker` | the control plane's replica target (KEDA) | never (pull model: it polls the control plane for work, no inbound surface) |
 | `sqlflow-mcp` (optional) | `Dockerfile.mcp` | pinned to 1 (in-memory MCP sessions) | own ingress, bearer-gated `/mcp` |
@@ -201,9 +201,10 @@ The layout and the reasoning behind it:
 - **One host, path split** (`/api` and `/openapi` to the control plane, `/` to the GUI): the SPA runs
   same-origin with the API, so no CORS configuration exists anywhere. The GUI image's
   `SQLFLOW_API_BASE_URL=""` means "same origin".
-- **Control plane replicas are API-only** (`ControlPlane__Worker__Enabled=false`): the HTTP tier scales on
-  request load via the HPA, independent of compute. Multi-replica is safe by construction: stateless JWT
-  validation, and the scheduler / managed sync / run queue all claim work atomically in the catalog.
+- **The control plane runs one replica, API-only** (`ControlPlane__Worker__Enabled=false`): the run queue lives
+  in that process and is owned by exactly one replica through the dispatch lease, so a second replica adds no
+  dispatch capacity and refuses every node call that lands on it (the nodes retry, so a rolling update's brief
+  overlap is harmless, but a steadily larger tier only slows hand-outs). Compute scales separately.
 - **Forwarded headers are trusted from the ingress only** (`ControlPlane__Proxy__*`): set `KnownNetworks` to
   your cluster's ingress/pod CIDR. Without this, rate limiting and login throttling would key on the ingress
   address instead of the real client.

@@ -176,8 +176,9 @@ param workerMaxReplicas int = 10
 @minValue(1)
 param controlPlaneMinReplicas int = 1
 
-@description('Maximum control plane replicas for ingress autoscale.')
-param controlPlaneMaxReplicas int = 3
+@description('Maximum control plane replicas. Keep at 1: the run queue is owned by exactly one replica (the dispatch lease), so an extra replica adds no dispatch capacity and refuses every node call that lands on it (503, retried by the node), which only slows hand-outs. Raise it only once passive replicas forward node calls to the owner.')
+@minValue(1)
+param controlPlaneMaxReplicas int = 1
 
 @description('Name of the Container App running the control plane.')
 param controlPlaneName string = 'sqlflow-control-plane'

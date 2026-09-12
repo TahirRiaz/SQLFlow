@@ -51,6 +51,20 @@ public sealed class DeployManifestTests
         Assert.DoesNotContain("catalogScalerUrl", main, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void ControlPlane_RunsOneReplica_BecauseDispatchHasOneOwner()
+    {
+        // The run queue is owned by exactly one replica; a second one refuses every node call that lands on it.
+        // The first production run at three replicas lost outcome reports to those refusals, so the templates pin
+        // the tier to one and this test keeps it there until passive replicas forward node calls to the owner.
+        Assert.Contains("param controlPlaneMaxReplicas int = 1", Manifest("deploy/bicep/main.bicep"), StringComparison.Ordinal);
+        Assert.Contains("param maxReplicas int = 1", Manifest("deploy/bicep/control-plane.bicep"), StringComparison.Ordinal);
+
+        var yaml = Manifest("deploy/k8s/controlplane.yaml");
+        Assert.Contains("replicas: 1", yaml, StringComparison.Ordinal);
+        Assert.DoesNotContain("HorizontalPodAutoscaler", yaml, StringComparison.Ordinal);
+    }
+
     private static string Manifest(string relativePath)
         => File.ReadAllText(Path.Combine(RepoRoot(), relativePath.Replace('/', Path.DirectorySeparatorChar)));
 

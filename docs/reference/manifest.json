@@ -537,6 +537,7 @@
         "src/SqlFlow.Cli/Program.cs",
         "src/SqlFlow.Node/RunWorker.cs",
         "src/SqlFlow.Node/NodeTraceFeed.cs",
+        "src/SqlFlow.Node/DispatcherRetry.cs",
         "src/SqlFlow.Node/HttpNodeTransport.cs",
         "src/SqlFlow.Node/InProcessNodeTransport.cs",
         "src/SqlFlow.Node/GitMaterializer.cs",

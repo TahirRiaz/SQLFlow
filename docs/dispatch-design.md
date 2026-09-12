@@ -220,4 +220,4 @@ Each phase lands on `main` green and deployable; none leaves a stub, a dual path
 
 - Whether the node credential is a personal access token with a `node` scope on a service user (smallest change, proposed here) or a dedicated node-token table with its own issuance page.
 - Whether to keep `UX_Run_RunningPipeline` once the dispatcher is the sole hand-out authority. Proposed: keep it; it costs nothing and turns a future bug into a loud failure.
-- Whether the split Azure estate pins the control plane to one replica or relies on the passive-replica 503 path during ingress autoscale. Proposed: pin to one; the lease remains as the safety net.
+- Whether the split Azure estate pins the control plane to one replica or relies on the passive-replica 503 path during ingress autoscale. Proposed: pin to one; the lease remains as the safety net. Decided 2026-09-11 after the first production run at three replicas lost outcome reports to the refusals: pinned to one in both templates, every node call now retries a refusal under a bounded budget (an outcome is never reported failed because of one), and the 503 path is for the overlap of a revision swap only.
