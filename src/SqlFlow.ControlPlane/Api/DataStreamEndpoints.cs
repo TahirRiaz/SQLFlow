@@ -179,6 +179,14 @@ public static class DataStreamEndpoints
     public const int MaxResults = 500;
 
     /// <summary>
+    /// How many streams one request may name explicitly. A caller naming its streams (the lineage graph
+    /// asking about the flows it has drawn) sends them as repeated query parameters, and a query string has a
+    /// practical ceiling; refusing past this point is a clear answer, where letting it through would be an
+    /// unexplained truncated URL somewhere between the browser and the server.
+    /// </summary>
+    public const int MaxNamedStreams = 200;
+
+    /// <summary>
     /// How many windows of history before the analysed one are read to judge whether a stream that loaded
     /// nothing inside the window is dead or merely static. Three is enough for the question (did running this
     /// flow ever produce data) and bounds a query that would otherwise walk a stream's whole life.
@@ -246,16 +254,27 @@ public static class DataStreamEndpoints
     /// a flow nothing schedules has no say in whether data is delivered, so holding it to a delivery
     /// expectation invents an incident out of a flow that was never promised to run.</param>
     /// <param name="limit">How many streams to return (the counts still cover every analysed stream).</param>
+    /// <param name="pipelineId">Restrict to these flows, named explicitly (repeat the parameter). For a caller
+    /// that already knows which streams it is asking about, such as a lineage graph asking for the verdicts of
+    /// the flows it has drawn. The other filters still apply on top, so a caller naming its own population
+    /// normally sends <c>scope=all</c> and <c>includeUnscheduled=true</c> with it.</param>
     /// <param name="ct">Cancellation.</param>
     private static async Task<Results<Ok<DataStreamsDto>, ProblemHttpResult>> GetDataStreamsAsync(
         CatalogDbContext db, TimeProvider clock, IOptions<ControlPlaneOptions> options, int? days, Guid? repoId,
         string? batch, string? status, string? scope, bool? includeBackfills, bool? includeUnscheduled,
-        int? limit, CancellationToken ct)
+        int? limit, Guid[]? pipelineId, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(options);
         if (Validate(days, limit) is { } problem)
         {
             return problem;
+        }
+
+        if (pipelineId is { Length: > MaxNamedStreams })
+        {
+            return TypedResults.Problem(
+                detail: $"At most {MaxNamedStreams} pipelineId values may be named in one request.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
         }
 
         var requested = NormalizeScope(scope);
@@ -268,7 +287,8 @@ public static class DataStreamEndpoints
 
         var report = await ComputeAsync(
             db, clock, options.Value.DataStreams, days ?? DefaultWindowDays, repoId, batch,
-            includeBackfills == true, includeUnscheduled == true, requested, pipelineId: null, ct)
+            includeBackfills == true, includeUnscheduled == true, requested,
+            pipelineId is { Length: > 0 } named ? named : null, includeSeries: false, ct)
             .ConfigureAwait(false);
 
         var filtered = string.IsNullOrWhiteSpace(status)
@@ -294,7 +314,7 @@ public static class DataStreamEndpoints
         // show it because it sits on the other side of the split would be obstruction, not filtering.
         var report = await ComputeAsync(
             db, clock, options.Value.DataStreams, days ?? DefaultWindowDays, repoId: null, batch: null,
-            includeBackfills == true, includeUnscheduled: true, AllScopes, pipelineId, ct)
+            includeBackfills == true, includeUnscheduled: true, AllScopes, [pipelineId], includeSeries: true, ct)
             .ConfigureAwait(false);
 
         var stream = report.Streams.FirstOrDefault(s => s.PipelineId == pipelineId);
@@ -310,8 +330,8 @@ public static class DataStreamEndpoints
     /// </summary>
     private static async Task<DataStreamsDto> ComputeAsync(
         CatalogDbContext db, TimeProvider clock, DataStreamOptions classification, int windowDays, Guid? repoId,
-        string? batch, bool includeBackfills, bool includeUnscheduled, string scope, Guid? pipelineId,
-        CancellationToken ct)
+        string? batch, bool includeBackfills, bool includeUnscheduled, string scope,
+        IReadOnlyList<Guid>? pipelineIds, bool includeSeries, CancellationToken ct)
     {
         var now = clock.GetUtcNow().UtcDateTime;
         var fromUtc = now.Date.AddDays(-(windowDays - 1));
@@ -320,7 +340,7 @@ public static class DataStreamEndpoints
             .Where(r => r.WrittenUtc >= fromUtc
                 && (r.Status == RunStatuses.Succeeded || r.Status == RunStatuses.Failed)
                 && (repoId == null || r.RepoId == repoId)
-                && (pipelineId == null || r.PipelineId == pipelineId));
+                && (pipelineIds == null || pipelineIds.Contains(r.PipelineId)));
 
         // Ordinary traffic only, unless the caller asked otherwise: see Reprocessing for what that excludes.
         var counted = includeBackfills ? window : window.Where(NotReprocessing);
@@ -498,7 +518,7 @@ public static class DataStreamEndpoints
                     DetectorName(s.Detector), s.Fired, s.Score, DirectionName(s.Direction), s.Primary,
                     s.Detail)).ToList(),
                 ToSparkline(analysis.Series),
-                pipelineId is null ? null : analysis.Series.Select(ToDto).ToList()));
+                includeSeries ? analysis.Series.Select(ToDto).ToList() : null));
         }
 
         var ranked = results

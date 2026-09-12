@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
@@ -207,6 +207,102 @@ public sealed class DataStreamApiTests
             Assert.Equal(2.0 / 60, stream.Profile.DeliveryShare, 3);
             Assert.Equal("healthy", stream.Status);
             Assert.Equal("rarely-changes", stream.Category);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// The board can be asked about named flows only. The lineage graph asks this way: it has drawn a handful
+    /// of flows and wants their verdicts, not the estate's. The filter has to be a real restriction on the
+    /// query rather than a client-side slice of a full sweep, so this sets up two sibling flows in one repo and
+    /// asks for one: the other must be absent because it was never analysed, which the counts prove by
+    /// reporting a single analysed stream.
+    /// </summary>
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task NamingAPipelineId_AnalysesThatStreamAlone()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoId = FlowIdentity.FromName("dsf_" + suffix);
+        var wanted = "dsf_wanted_" + suffix;
+        var other = "dsf_other_" + suffix;
+        var wantedId = CatalogIdentity.Pipeline(repoId, wanted);
+        var otherId = CatalogIdentity.Pipeline(repoId, other);
+        var today = DateTime.UtcNow.Date;
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Repos.Add(new CatalogRepo
+                {
+                    Id = repoId, Name = "dsf_repo_" + suffix, FirstSeenUtc = today, LastSyncUtc = today,
+                });
+                foreach (var (id, name) in new[] { (wantedId, wanted), (otherId, other) })
+                {
+                    db.Pipelines.Add(new CatalogPipeline
+                    {
+                        Id = id,
+                        RepoId = repoId,
+                        Name = name,
+                        Kind = "ing",
+                        RelativePath = "flows/" + name + ".flow.yaml",
+                        ContentHash = new string('0', 64),
+                        Yaml = "name: " + name + "\n",
+                        DefinitionJson = "{}",
+                        Active = true,
+                        Wave = 0,
+                        FirstSeenUtc = today,
+                        LastSeenUtc = today,
+                    });
+
+                    for (var dayOffset = 29; dayOffset >= 0; dayOffset--)
+                    {
+                        db.Runs.Add(new CatalogRun
+                        {
+                            RunId = Guid.NewGuid(),
+                            PipelineId = id,
+                            RepoId = repoId,
+                            FlowName = name,
+                            FlowKind = "ing",
+                            Success = true,
+                            Status = RunStatuses.Succeeded,
+                            WrittenUtc = today.AddDays(-dayOffset).AddHours(5),
+                            DurationSeconds = 10,
+                            RowsInserted = 1_000,
+                            RowsUpdated = 0,
+                            RowsDeleted = 0,
+                        });
+                    }
+                }
+
+                await db.SaveChangesAsync();
+            }
+
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["read"]);
+            var board = await GetJsonAsync<DataStreamsDto>(
+                client,
+                token,
+                "/api/v1/datastreams?days=30&scope=all&includeUnscheduled=true&pipelineId=" + wantedId);
+
+            Assert.Equal(1, board.AnalyzedStreams);
+            var stream = Assert.Single(board.Streams);
+            Assert.Equal(wanted, stream.FlowName);
+
+            // The board's rows carry no day-by-day series; only the single-stream endpoint does. Naming a flow
+            // must not quietly turn the board into that endpoint for every caller that filters.
+            Assert.Null(stream.Series);
         }
         finally
         {

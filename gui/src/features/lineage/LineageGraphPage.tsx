@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -47,11 +47,16 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { isApiError } from "../../api/client";
-import { lineageApi, searchApi } from "../../api/endpoints";
-import type { LineageProject, RunScope, WavePipeline } from "../../api/types";
+import { dataStreamApi, lineageApi, searchApi } from "../../api/endpoints";
+import type { DataStream, LineageProject, RunScope, WavePipeline } from "../../api/types";
 import { CodeView } from "../../components/CodeView";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
+import { StreamDetailSheet } from "../datastreams/StreamDetailSheet";
+import { statusIcons, StreamStatusCounts, statusInk } from "../datastreams/StreamStatusBadge";
+import { statusLabels } from "../datastreams/streamPresentation";
+import { StreamVerdictCard } from "../datastreams/StreamVerdictCard";
+import { useLocalStorageState } from "../../hooks/useLocalStorageState";
 import { rememberGraphSearch } from "./graphLocation";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { seriesColor } from "../../theme/branding";
@@ -773,6 +778,30 @@ function ProjectSelect({ items, selected, onSelect }: {
   );
 }
 
+/**
+ * How many flows one graph may ask the data-stream board about at once. The flows are NAMED in the request
+ * (a project's closure crosses repos, so scoping the sweep by repo would cover some drawn nodes and silently
+ * miss others), and a query string holding a hundred and twenty ids is already six kilobytes. Past this the
+ * graph says so and falls back to checking one node at a time, which is never wrong, only manual.
+ */
+const MAX_STREAM_OVERLAY_FLOWS = 120;
+
+/** A flow's delivery verdict beside its name in a list: the board's glyph in the board's ink, named in words
+ * for hover and for assistive tech, so nothing here rests on colour alone (DESIGN.md 3.2). */
+function FlowStreamGlyph({ stream }: { stream: DataStream | undefined }) {
+  if (stream === undefined) {
+    return null;
+  }
+
+  const Icon = statusIcons[stream.status];
+  const words = statusLabels[stream.status];
+  return (
+    <span className={cn("inline-flex shrink-0", statusInk[stream.status])} title={words} aria-label={words}>
+      <Icon className="size-3" aria-hidden />
+    </span>
+  );
+}
+
 /** A legend/wave chip: secondary pill with the flow's series color as a left accent bar. */
 const chipClass = "inline-flex max-w-full items-center truncate rounded-sm bg-secondary py-0.5 pl-1.5 pr-2 font-mono text-[11px] text-secondary-foreground";
 
@@ -807,6 +836,12 @@ export default function LineageGraphPage() {
   const [scriptTarget, setScriptTarget] = useState<{ key: string; view?: "object" } | null>(null);
   // A flow node's Run action opens the trigger dialog prefilled with that flow and the chosen scope.
   const [runDialog, setRunDialog] = useState<{ flowName: string; scope: RunScope } | null>(null);
+  // The stream whose full analysis (chart, detectors, learned pattern) is open over the graph.
+  const [streamTarget, setStreamTarget] = useState<{ pipelineId: string; flowName: string } | null>(null);
+  // The data-streams board owns these two preferences; the graph reads them rather than keeping its own, so a
+  // verdict shown beside a node is measured over exactly the span the board measured it over.
+  const [streamWindowDays] = useLocalStorageState<number>("datastreams.windowDays", 60);
+  const [streamIncludeBackfills] = useLocalStorageState<boolean>("datastreams.includeBackfills", false);
 
   // The literal accent colors, re-read when the theme flips so inline node styles track the tokens.
   const accents = useMemo(() => readAccents(), [mode]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -869,6 +904,16 @@ export default function LineageGraphPage() {
     const map = new Map<string, string>();
     for (const pipeline of pipelines ?? []) {
       map.set(pipeline.id, pipeline.kind);
+    }
+    return map;
+  }, [pipelines]);
+
+  // Flow names by id, read from the payload rather than from the drawn nodes: the Objects view draws no flow
+  // nodes at all, and a table focused there still has to be able to say which flow's delivery it depends on.
+  const flowNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const pipeline of pipelines ?? []) {
+      map.set(pipeline.id, pipeline.name);
     }
     return map;
   }, [pipelines]);
@@ -1369,6 +1414,63 @@ export default function LineageGraphPage() {
     && graph.openTarget(nodeMenu.id).label === "Open pipeline"
     && graph.repoOf.get(nodeMenu.id) === repoId;
 
+  // Every flow drawn here, asked of the data-stream board in one call so the panel can say WHERE in this
+  // graph data has stopped arriving before the reader clicks a single node. The flows are named explicitly
+  // rather than the sweep being scoped by repo, because a project's closure crosses repos and an overlay that
+  // covered some drawn nodes and quietly skipped others would be worse than no overlay at all.
+  const drawnFlowIds = useMemo(() => (pipelines ?? []).map((pipeline) => pipeline.id), [pipelines]);
+  const streamOverlayTooBig = drawnFlowIds.length > MAX_STREAM_OVERLAY_FLOWS;
+  const streamsQuery = useQuery({
+    queryKey: ["lineage-graph-streams", drawnFlowIds, streamWindowDays, streamIncludeBackfills],
+    enabled: drawnFlowIds.length > 0 && !streamOverlayTooBig,
+    queryFn: () => dataStreamApi.list({
+      pipelineIds: drawnFlowIds,
+      // The caller has already chosen its population, so neither the source/internal split nor schedule
+      // membership may narrow it further: a drawn node the board would have filtered out still has to be able
+      // to say what it is doing.
+      scope: "all",
+      includeUnscheduled: true,
+      days: streamWindowDays,
+      includeBackfills: streamIncludeBackfills,
+      limit: MAX_STREAM_OVERLAY_FLOWS,
+    }),
+  });
+
+  const verdictByFlow = useMemo(() => {
+    const map = new Map<string, DataStream>();
+    for (const stream of streamsQuery.data?.streams ?? []) {
+      map.set(stream.pipelineId, stream);
+    }
+    return map;
+  }, [streamsQuery.data]);
+
+  const drawnVerdicts = useMemo(
+    () => drawnFlowIds.map((id) => verdictByFlow.get(id)).filter((s): s is DataStream => s !== undefined),
+    [drawnFlowIds, verdictByFlow]);
+
+  // Whose delivery verdict describes the focused node. A flow speaks for itself; a table, view or landed file
+  // is spoken for by whatever flow WRITES it, read from the flow graph rather than from the drawn view's
+  // adjacency so a table focused in the Objects view (where no flow is drawn at all) still finds its producer.
+  const focusStreams = useMemo(() => {
+    if (focus === null) {
+      return [];
+    }
+
+    if (flowKindById.has(focus.id)) {
+      return [{ pipelineId: focus.id, caption: undefined as string | undefined }];
+    }
+
+    const producers = new Set<string>();
+    for (const edge of flowGraphEdges ?? []) {
+      if (edge.target === focus.id && edge.pipelineId !== null
+        && (edge.label === "writes" || edge.label === "creates")) {
+        producers.add(edge.pipelineId);
+      }
+    }
+
+    return [...producers].map((id) => ({ pipelineId: id, caption: flowNameById.get(id) ?? id }));
+  }, [focus, flowKindById, flowNameById, flowGraphEdges]);
+
   // The floating details panel: node focus (upstream/downstream trace + open) over the execution waves (flows)
   // or the per-flow edge legend (objects). It rides on the canvas via a React Flow <Panel> so the graph keeps the
   // full width, and collapses to a single button when the user wants the whole canvas.
@@ -1446,9 +1548,70 @@ export default function LineageGraphPage() {
                 Clear
               </Button>
             </div>
+
+            {/* Is data still arriving here? The question an operator tracing a chain asks at every hop, and
+                the one the graph alone cannot answer: an arrow says a flow SHOULD fill this table, not that it
+                still does. The verdict is the board's, unchanged, so the two surfaces cannot disagree. */}
+            <div className="mt-3" data-testid="graph-focus-stream">
+              <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Data stream
+              </div>
+              {focusStreams.length === 0 ? (
+                <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                  No flow in this graph writes this node, so there is no delivery to judge here. Follow an
+                  arrow into it to reach the flow that fills it.
+                </p>
+              ) : (
+                <div className="mt-1.5 flex flex-col gap-2">
+                  {focusStreams.map((producer) => (
+                    <StreamVerdictCard
+                      key={producer.pipelineId}
+                      pipelineId={producer.pipelineId}
+                      caption={producer.caption}
+                      known={verdictByFlow.get(producer.pipelineId)}
+                      windowDays={streamWindowDays}
+                      includeBackfills={streamIncludeBackfills}
+                      onOpen={(pipelineId, flowName) => setStreamTarget({ pipelineId, flowName })}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
             <Separator className="mt-3" />
           </div>
         )}
+
+        {/* Where data has stopped arriving in THIS graph. An arrow only says a flow is SUPPOSED to fill a
+            table; this says whether it still does, and it says it for every drawn flow at once so the reader
+            knows which node to open rather than opening each in turn. Same glyphs, ink and window as the
+            data-streams board, so the two surfaces cannot tell one table two different stories. */}
+        <div className="mb-3" data-testid="graph-stream-summary">
+          <div className="mb-1 flex items-center justify-between gap-2">
+            <h3 className="text-[13px] font-medium">Data streams</h3>
+            {drawnVerdicts.length > 0 && <StreamStatusCounts rows={drawnVerdicts} />}
+          </div>
+          {streamOverlayTooBig ? (
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              {drawnFlowIds.length} flows drawn, too many to check in one sweep. Select a node to check its
+              stream, or narrow the scope with a wave or a project.
+            </p>
+          ) : streamsQuery.isPending && drawnFlowIds.length > 0 ? (
+            <Skeleton className="h-4 w-40 rounded" />
+          ) : streamsQuery.isError ? (
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              The stream verdicts could not be loaded.
+            </p>
+          ) : drawnVerdicts.length === 0 ? (
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              No flow drawn here has run in the last {streamWindowDays} days, so there is nothing to judge.
+            </p>
+          ) : (
+            <p className="text-[11px] leading-4 text-muted-foreground">
+              {drawnVerdicts.length} of {drawnFlowIds.length} flows checked over the last {streamWindowDays} days.
+            </p>
+          )}
+        </div>
 
         {graphView === "flows" ? (
           <>
@@ -1467,10 +1630,11 @@ export default function LineageGraphPage() {
                         focusNode(pipeline.id);
                         setCenterRequest((previous) => ({ id: pipeline.id, nonce: (previous?.nonce ?? 0) + 1 }));
                       }}
-                      className={cn(chipClass, "cursor-pointer transition-colors hover:bg-accent")}
+                      className={cn(chipClass, "cursor-pointer gap-1.5 transition-colors hover:bg-accent")}
                       style={{ borderLeft: `3px solid ${graph.flowColors.get(pipeline.id) ?? "transparent"}` }}
                       data-testid={`wave-pipeline-${pipeline.id}`}
                     >
+                      <FlowStreamGlyph stream={verdictByFlow.get(pipeline.id)} />
                       {pipeline.name}
                     </button>
                   ))}
@@ -1482,9 +1646,16 @@ export default function LineageGraphPage() {
           <>
             <h3 className="mb-1.5 text-[13px] font-medium">Flows (edge colors)</h3>
             <div className="flex flex-wrap gap-1" data-testid="graph-flow-legend">
-              {[...graph.flowColors.entries()].map(([flow, color]) => (
-                <span key={flow} className={chipClass} style={{ borderLeft: `3px solid ${color}` }}>
-                  {flow}
+              {/* Keyed by pipeline id, which is what colours the edges; the chip shows the flow's NAME, which
+                  is what the reader recognises, and its stream verdict beside it. */}
+              {[...graph.flowColors.entries()].map(([flowId, color]) => (
+                <span
+                  key={flowId}
+                  className={cn(chipClass, "gap-1.5")}
+                  style={{ borderLeft: `3px solid ${color}` }}
+                >
+                  <FlowStreamGlyph stream={verdictByFlow.get(flowId)} />
+                  {flowNameById.get(flowId) ?? flowId}
                 </span>
               ))}
             </div>
@@ -1880,6 +2051,16 @@ export default function LineageGraphPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* The full analysis behind the panel's verdict: the same sheet the data-streams board opens, so a
+          stream checked while tracing lineage and one checked from the board are the same page. */}
+      <StreamDetailSheet
+        pipelineId={streamTarget?.pipelineId ?? null}
+        flowName={streamTarget?.flowName ?? null}
+        windowDays={streamWindowDays}
+        includeBackfills={streamIncludeBackfills}
+        onClose={() => setStreamTarget(null)}
+      />
     </div>
   );
 }

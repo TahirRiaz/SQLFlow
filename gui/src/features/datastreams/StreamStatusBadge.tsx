@@ -1,4 +1,4 @@
-import { CircleAlert, CircleCheck, CircleHelp, CircleSlash, TriangleAlert } from "lucide-react";
+﻿import { CircleAlert, CircleCheck, CircleHelp, CircleSlash, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DataStream, InsightSeverity, StreamStatus } from "../../api/types";
 import { statusLabels, statusRank } from "./streamPresentation";
@@ -20,8 +20,9 @@ const severityInk: Record<InsightSeverity, string> = {
 };
 
 /** The ink of each verdict when it is counted rather than judged: a count of stopped streams is red however
- * sure the detector was about each one. */
-const statusInk: Record<StreamStatus, string> = {
+ * sure the detector was about each one. Shared with the lineage graph, whose per-flow glyphs are counts of
+ * one and must wear the same colour as the chip that totals them. */
+export const statusInk: Record<StreamStatus, string> = {
   stalled: "text-destructive",
   degraded: "text-warning",
   watch: "text-info",
