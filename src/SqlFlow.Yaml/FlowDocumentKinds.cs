@@ -72,6 +72,17 @@ public interface IFlowDocumentKind
     /// <summary>Parses the document body; <paramref name="source"/> labels errors (the file path, or "&lt;inline&gt;").
     /// A failure is a <see cref="SqlFlow.Core.FlowValidationException"/> naming the source.</summary>
     RegisteredFlowDocument Parse(string yaml, string source);
+
+    /// <summary>The operations a run of this kind can perform, its default first. Empty for a kind with one implicit
+    /// operation, which then accepts no <see cref="RunParameters.Operation"/>.</summary>
+    IReadOnlyList<FlowKindOperation> Operations { get; }
+
+    /// <summary>Validates a run's kind arguments (<see cref="RunParameters.Operation"/>, already known to be one of
+    /// <see cref="Operations"/> when set, <see cref="RunParameters.Values"/> and <see cref="RunParameters.Payload"/>)
+    /// at the trust boundary: a trigger, a schedule, the CLI and the executor all call it through
+    /// <see cref="YamlDocumentLoader.ValidateRunParameters"/>. A refusal is a <see cref="SqlFlow.Core.SqlFlowException"/>
+    /// whose message names the offending argument.</summary>
+    void ValidateParameters(RunParameters parameters);
 }
 
 /// <summary>

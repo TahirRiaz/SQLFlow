@@ -68,6 +68,10 @@ public sealed record DocumentExecutionOptions
     /// records nothing live; the events are still collected into the run.json <c>events</c> array and projected
     /// at completion, so the artifact stays authoritative either way.</summary>
     public IFlowEventSink? EventSink { get; init; }
+
+    /// <summary>Who asked for this run, as the catalog recorded it (the caller's subject for a trigger), so an executor
+    /// can attribute what the run does to a person. Null for a schedule fire, a batch member and a direct CLI run.</summary>
+    public string? Actor { get; init; }
 }
 
 /// <summary>The uniform outcome of running one flow document, whatever its kind. The batch needs only the

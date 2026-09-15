@@ -191,6 +191,8 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(r => r.IncrementalWatermarkSource).HasMaxLength(256);
             entity.Property(r => r.DataSetConvention).HasMaxLength(128);
             entity.Property(r => r.TriggerSource).HasMaxLength(16);
+            entity.Property(r => r.Operation).HasMaxLength(32);
+            entity.Property(r => r.RequestedBy).HasMaxLength(256);
             // PipelineId is a soft link (no FK): a run can outlive its pipeline being removed from git, so the
             // history stays even when the Pipeline row is gone. The GUI left-joins on it; it is indexed for that.
             entity.HasIndex(r => r.PipelineId);
@@ -704,6 +706,7 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(s => s.DefinitionPath).HasMaxLength(1024);
             entity.Property(s => s.DefinitionFlow).HasMaxLength(400);
             entity.Property(s => s.LastStaleParents).HasMaxLength(2000);
+            entity.Property(s => s.Operation).HasMaxLength(32);
             entity.HasIndex(s => s.RepoId);
             // A name is what flows join, so it identifies exactly one schedule in a repo. The estate scan already
             // collapses a redefined name to the first definition; the unique index is what keeps two sync paths (or

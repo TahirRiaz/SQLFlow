@@ -22,11 +22,15 @@ namespace SqlFlow.ControlPlane.Api;
 /// for this run. <c>assertionsOnly</c> (ingestion flows only) evaluates the flow's data-quality assertions,
 /// manual-mode ones included, against the current target without loading anything. None of them touches the
 /// definition in git.</para></summary>
+/// <para><c>operation</c>, <c>values</c> and <c>payload</c> are the kind arguments of a flow of a registered kind (the
+/// operation it performs, its parameter values, and a JSON object the kind owns); the pipeline's kind validates them,
+/// and every other kind refuses them. They apply to a single flow.</para>
 public sealed record RunTriggerRequest(
     Guid RepoId, string FlowName, string? Pool = null, string? CommitSha = null,
     bool FullLoad = false, DateTime? BackfillFrom = null, DateTime? BackfillTo = null, string? FilePattern = null,
     string? Scope = null, string? Batch = null, bool AssertionsOnly = false, string? SourceFilter = null,
-    bool IncludeAll = false);
+    bool IncludeAll = false, string? Operation = null, IReadOnlyDictionary<string, string>? Values = null,
+    System.Text.Json.JsonElement? Payload = null);
 
 /// <summary>The accepted-run acknowledgement: the minted run id and its queued status. The run executes
 /// asynchronously; poll <c>GET /api/v1/runs/{runId}</c> (the <c>Location</c> header) for the outcome.</summary>
@@ -69,7 +73,8 @@ public static class RunTriggerEndpoints
     }
 
     private static async Task<Results<Accepted<RunTriggerAccepted>, Accepted<RunGroupAccepted>, ProblemHttpResult>> TriggerRunAsync(
-        RunTriggerRequest request, CatalogDbContext db, IRunDispatcher dispatcher, CancellationToken ct)
+        RunTriggerRequest request, CatalogDbContext db, IRunDispatcher dispatcher, SqlFlow.Yaml.YamlDocumentLoader documents,
+        System.Security.Claims.ClaimsPrincipal user, CancellationToken ct)
     {
         if (request is null)
         {
@@ -102,13 +107,18 @@ public static class RunTriggerEndpoints
                 title: "Invalid request");
         }
 
+        // Who asked, recorded on the run and handed to its executor: the token's subject, as every other attributed
+        // write in the control plane records it.
+        var requestedBy = user.FindFirst("sub")?.Value ?? user.Identity?.Name;
+
         return scope.Value == RunScope.Flow
-            ? await TriggerSingleFlowAsync(request, db, dispatcher, ct).ConfigureAwait(false)
-            : await TriggerGroupAsync(request, scope.Value, db, dispatcher, ct).ConfigureAwait(false);
+            ? await TriggerSingleFlowAsync(request, db, dispatcher, documents, requestedBy, ct).ConfigureAwait(false)
+            : await TriggerGroupAsync(request, scope.Value, db, dispatcher, requestedBy, ct).ConfigureAwait(false);
     }
 
     private static async Task<Results<Accepted<RunTriggerAccepted>, Accepted<RunGroupAccepted>, ProblemHttpResult>> TriggerSingleFlowAsync(
-        RunTriggerRequest request, CatalogDbContext db, IRunDispatcher dispatcher, CancellationToken ct)
+        RunTriggerRequest request, CatalogDbContext db, IRunDispatcher dispatcher, SqlFlow.Yaml.YamlDocumentLoader documents,
+        string? requestedBy, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.FlowName))
         {
@@ -129,6 +139,14 @@ public static class RunTriggerEndpoints
             FilePattern = string.IsNullOrWhiteSpace(request.FilePattern) ? null : request.FilePattern.Trim(),
             AssertionsOnly = request.AssertionsOnly,
             SourceFilter = string.IsNullOrWhiteSpace(request.SourceFilter) ? null : request.SourceFilter.Trim(),
+            Operation = string.IsNullOrWhiteSpace(request.Operation) ? null : request.Operation.Trim(),
+            Values = request.Values is { Count: > 0 } values
+                ? new Dictionary<string, string>(values, StringComparer.Ordinal)
+                : System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty,
+            // Stored compact: the payload is recorded on the run row, so the caller's formatting is not kept.
+            Payload = request.Payload is { ValueKind: not (System.Text.Json.JsonValueKind.Null or System.Text.Json.JsonValueKind.Undefined) } payload
+                ? System.Text.Json.JsonSerializer.Serialize(payload)
+                : null,
         };
         try
         {
@@ -167,8 +185,24 @@ public static class RunTriggerEndpoints
                 title: "Invalid run parameters");
         }
 
+        // The pipeline's kind decides whether it takes kind arguments, and which: the loader's one rule, shared with
+        // schedules, the CLI and the executor.
+        try
+        {
+            documents.ValidateRunParameters(pipeline.Kind, parameters);
+        }
+        catch (SqlFlowException ex)
+        {
+            return TypedResults.Problem(
+                detail: ex.Message, statusCode: StatusCodes.Status400BadRequest, title: "Invalid run parameters");
+        }
+
         var runId = await dispatcher.EnqueueAsync(
-            db, new RunEnqueueRequest(request.RepoId, flowName, pipeline.Kind, request.Pool, request.CommitSha, parameters), ct).ConfigureAwait(false);
+            db,
+            new RunEnqueueRequest(
+                request.RepoId, flowName, pipeline.Kind, request.Pool, request.CommitSha, parameters,
+                RequestedBy: requestedBy),
+            ct).ConfigureAwait(false);
 
         // 202 with the canonical run-detail location: GET /api/v1/runs/{runId} reflects the run from the moment it
         // is queued (status "queued"), through running, to its terminal state.
@@ -176,8 +210,21 @@ public static class RunTriggerEndpoints
     }
 
     private static async Task<Results<Accepted<RunTriggerAccepted>, Accepted<RunGroupAccepted>, ProblemHttpResult>> TriggerGroupAsync(
-        RunTriggerRequest request, RunScope scope, CatalogDbContext db, IRunDispatcher dispatcher, CancellationToken ct)
+        RunTriggerRequest request, RunScope scope, CatalogDbContext db, IRunDispatcher dispatcher, string? requestedBy,
+        CancellationToken ct)
     {
+        // Kind arguments belong to one flow's kind; a group mixes kinds. A schedule is how a set of flows is given an
+        // operation and values, so a group trigger that carries them is refused rather than applied to some members.
+        if (!string.IsNullOrWhiteSpace(request.Operation) || request.Values is { Count: > 0 }
+            || request.Payload is { ValueKind: not (System.Text.Json.JsonValueKind.Null or System.Text.Json.JsonValueKind.Undefined) })
+        {
+            return TypedResults.Problem(
+                detail: "operation, values and payload apply to a single flow; a node scope runs its members as defined. "
+                        + "Give a set of flows an operation through a schedule.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid run parameters");
+        }
+
         // An assertions-only execution is a single-flow concept (like the built-in backfill); refusing beats
         // silently load-running a whole group the caller asked to only assert on.
         if (request.AssertionsOnly)
@@ -269,7 +316,7 @@ public static class RunTriggerEndpoints
             db,
             new RunGroupEnqueueRequest(
                 request.RepoId, mode, expansion.Anchor, expansion.Members, request.Pool, request.CommitSha,
-                memberParameters),
+                memberParameters, RequestedBy: requestedBy),
             ct).ConfigureAwait(false);
 
         // 202 with the group location: GET /api/v1/runs/groups/{groupId} reflects the whole set as it executes.

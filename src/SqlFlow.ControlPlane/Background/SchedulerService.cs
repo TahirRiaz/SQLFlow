@@ -176,7 +176,7 @@ public sealed partial class SchedulerService : BackgroundService
             LogStaleParents(schedule.Id, schedule.Name, staleParents, schedule.ParentFreshnessHours);
         }
 
-        var fire = await ScheduleFire.EnqueueAsync(catalog, _dispatcher, schedule, now, ct).ConfigureAwait(false);
+        var fire = await ScheduleFire.EnqueueAsync(catalog, _dispatcher, _services.GetRequiredService<SqlFlow.Yaml.YamlDocumentLoader>(), schedule, now, ct).ConfigureAwait(false);
         switch (fire.Outcome)
         {
             case ScheduleFire.Outcome.ScopeEmpty:
@@ -251,7 +251,7 @@ public sealed partial class SchedulerService : BackgroundService
         // schedule's member set, enqueues it in wave order, and stamps the last run/group. A member declaring
         // mode: manual is excluded there, since a schedule is automatic dispatch and that flag reserves a flow for a
         // direct trigger; the occurrence's next fire has already advanced, so the cadence simply moves on.
-        var fire = await ScheduleFire.EnqueueAsync(catalog, _dispatcher, schedule, now, ct).ConfigureAwait(false);
+        var fire = await ScheduleFire.EnqueueAsync(catalog, _dispatcher, _services.GetRequiredService<SqlFlow.Yaml.YamlDocumentLoader>(), schedule, now, ct).ConfigureAwait(false);
         switch (fire.Outcome)
         {
             case ScheduleFire.Outcome.ScopeEmpty:

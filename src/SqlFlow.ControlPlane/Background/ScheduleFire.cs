@@ -1,5 +1,6 @@
 using SqlFlow.Catalog;
 using SqlFlow.Core.Runs;
+using SqlFlow.Yaml;
 
 namespace SqlFlow.ControlPlane.Background;
 
@@ -52,13 +53,18 @@ public static class ScheduleFire
     /// a direct trigger, and firing the schedule it happens to sit in is not a direct trigger of it.
     /// </para>
     /// </summary>
+    /// <remarks>The loader passed in knows the registered flow kinds: a schedule's operation and values reach the members
+    /// of a registered kind that declares the operation (or every member of a registered kind when the schedule names
+    /// none), each member's kind validates them, and a refusal fails the fire with a
+    /// <see cref="SqlFlow.Core.SqlFlowException"/> instead of quietly running the member as defined.</remarks>
     public static async Task<FireResult> EnqueueAsync(
-        CatalogDbContext catalog, IRunDispatcher dispatcher, CatalogSchedule schedule,
+        CatalogDbContext catalog, IRunDispatcher dispatcher, YamlDocumentLoader documents, CatalogSchedule schedule,
         DateTime nowUtc, CancellationToken ct, IReadOnlyCollection<string>? batchFilter = null,
         RunParameters? backfillWindow = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(dispatcher);
+        ArgumentNullException.ThrowIfNull(documents);
         ArgumentNullException.ThrowIfNull(schedule);
 
         // Membership decides what runs; lineage decides the order. The expansion reads the schedule's members and
@@ -77,6 +83,7 @@ public static class ScheduleFire
         var memberParameters = backfillWindow is null
             ? null
             : BuildBackfillParameters(expansion.Members, backfillWindow);
+        memberParameters = ApplyKindArguments(documents, schedule, expansion.Members, memberParameters);
 
         // A single member is a single run: enqueuing a one-member group would add a group's bookkeeping and its
         // claim gate for nothing.
@@ -112,6 +119,45 @@ public static class ScheduleFire
         var firstRunId = result.RunIds.Count > 0 ? result.RunIds[0] : Guid.Empty;
         await ScheduleStore.SetLastGroupAsync(catalog, schedule.Id, result.GroupId, firstRunId, nowUtc, ct).ConfigureAwait(false);
         return new FireResult(Outcome.EnqueuedGroup, firstRunId, result.GroupId, expansion.Members.Count);
+    }
+
+    /// <summary>
+    /// Merges the schedule's operation and values into the parameters of each member whose registered kind takes them:
+    /// a kind declaring the schedule's operation, or any registered kind when the schedule names none. Built-in members
+    /// and members of a kind without that operation are left as routed. Each merged set is validated by the member's
+    /// kind through the loader's one rule. Returns the (possibly new) map, or the input unchanged when the schedule
+    /// carries no kind arguments.
+    /// </summary>
+    private static Dictionary<string, RunParameters>? ApplyKindArguments(
+        YamlDocumentLoader documents, CatalogSchedule schedule, IReadOnlyList<RunScopeMember> members,
+        Dictionary<string, RunParameters>? memberParameters)
+    {
+        var values = RunParameters.ValuesFromJson(schedule.ValuesJson);
+        if (schedule.Operation is null && values.Count == 0)
+        {
+            return memberParameters;
+        }
+
+        var map = memberParameters ?? new Dictionary<string, RunParameters>(StringComparer.Ordinal);
+        foreach (var member in members)
+        {
+            var kind = documents.FindKind(member.FlowKind);
+            if (kind is null
+                || (schedule.Operation is { } operation && !kind.Operations.Any(o => string.Equals(o.Name, operation, StringComparison.Ordinal))))
+            {
+                continue;
+            }
+
+            var merged = (map.GetValueOrDefault(member.FlowName) ?? RunParameters.None) with
+            {
+                Operation = schedule.Operation,
+                Values = values,
+            };
+            documents.ValidateRunParameters(member.FlowKind, merged);
+            map[member.FlowName] = merged;
+        }
+
+        return map;
     }
 
     /// <summary>The flow kinds a schedule backfill acts on, matching the three layers of an ingest source: the

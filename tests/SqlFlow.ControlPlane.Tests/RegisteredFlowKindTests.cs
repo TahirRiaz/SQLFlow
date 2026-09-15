@@ -132,6 +132,11 @@ public sealed class RegisteredFlowKindTests
 
         public string Description => "a test-only drop flow";
 
+        public IReadOnlyList<SqlFlow.Core.Runs.FlowKindOperation> Operations { get; } =
+            [new("send", "Send", "Sends the flow's records.", WritesTarget: true)];
+
+        public void ValidateParameters(SqlFlow.Core.Runs.RunParameters parameters) => ArgumentNullException.ThrowIfNull(parameters);
+
         public RegisteredFlowDocument Parse(string yaml, string source)
         {
             var body = Deserializer.Deserialize<Body>(yaml) ?? new Body();

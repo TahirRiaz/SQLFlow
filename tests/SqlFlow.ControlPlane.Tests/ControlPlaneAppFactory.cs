@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -55,6 +57,18 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
     /// defaults leave off (a feature switch, for instance). Must be called before the first client.</summary>
     private readonly Dictionary<string, string> _settings = [];
 
+    /// <summary>Service registrations a test adds to the host after its own, applied in order.</summary>
+    private readonly List<Action<IServiceCollection>> _services = [];
+
+    /// <summary>Adds service registrations to the host (a flow kind a module would register, say), applied after the
+    /// host's own so a test can extend or replace them. Must be called before the first client.</summary>
+    public ControlPlaneAppFactory WithServices(Action<IServiceCollection> configure)
+    {
+        ArgumentNullException.ThrowIfNull(configure);
+        _services.Add(configure);
+        return this;
+    }
+
     /// <summary>Overrides one configuration value for this host. Applied after the standard test settings, so
     /// a test can turn on a feature the deployed default leaves off.</summary>
     public ControlPlaneAppFactory WithSetting(string key, string value)
@@ -94,6 +108,14 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
         {
             builder.UseSetting(key, value);
         }
+
+        builder.ConfigureTestServices(services =>
+        {
+            foreach (var configure in _services)
+            {
+                configure(services);
+            }
+        });
 
         builder.ConfigureLogging(logging =>
         {

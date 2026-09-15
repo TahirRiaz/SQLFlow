@@ -32,7 +32,8 @@ public sealed record ScheduleDto(
     Guid? LastGroupId, bool LastGroupActive, DateTime CreatedUtc, DateTime UpdatedUtc, int? MaxConcurrency,
     RunGroupCountsDto? LastCounts, IReadOnlyList<string>? AfterSchedules = null,
     IReadOnlyList<ScheduleChainLinkDto>? TriggersSchedules = null,
-    int ParentFreshnessHours = 24, string? LastStaleParents = null);
+    int ParentFreshnessHours = 24, string? LastStaleParents = null,
+    string? Operation = null, IReadOnlyDictionary<string, string>? Values = null);
 
 /// <summary>One link a schedule sets off, in chain order: the schedule that will fire, how many flows it runs, and
 /// whether it is currently able to (a disabled or paused link stops the chain there, and an operator about to start
@@ -54,10 +55,14 @@ public sealed record ScheduleDefinitionDto(
 /// intervalSeconds, and optionally a name (defaulting to the first member's flow name). Membership is what a fire
 /// runs, so a schedule with no members is rejected.
 /// <para><paramref name="MaxConcurrency"/> bounds how many members one fire executes at once. Omitted takes the
-/// product default (<see cref="ScheduleDefaults.MaxConcurrency"/>); <c>0</c> asks for unbounded.</para></summary>
+/// product default (<see cref="ScheduleDefaults.MaxConcurrency"/>); <c>0</c> asks for unbounded.</para>
+/// <para><paramref name="Operation"/> and <paramref name="Values"/> are what every fire passes to the members of a
+/// registered flow kind that declares the operation (or to every member of a registered kind when no operation is
+/// named); at least one member's kind must accept them.</para></summary>
 public sealed record CreateScheduleRequest(
     Guid RepoId, IReadOnlyList<string> Members, string? Cron, int? IntervalSeconds, string? Timezone, bool? Enabled,
-    bool? Catchup = null, string? Name = null, int? MaxConcurrency = null);
+    bool? Catchup = null, string? Name = null, int? MaxConcurrency = null, string? Operation = null,
+    IReadOnlyDictionary<string, string>? Values = null);
 
 /// <summary>The created-schedule acknowledgement.</summary>
 public sealed record ScheduleCreated(Guid Id, DateTime? NextFireUtc);
@@ -248,7 +253,8 @@ public static class ScheduleEndpoints
     }
 
     private static async Task<Results<Created<ScheduleCreated>, ProblemHttpResult>> CreateScheduleAsync(
-        CreateScheduleRequest request, CatalogDbContext db, TimeProvider clock, CancellationToken ct)
+        CreateScheduleRequest request, CatalogDbContext db, SqlFlow.Yaml.YamlDocumentLoader documents, TimeProvider clock,
+        CancellationToken ct)
     {
         if (request is null || request.Members is not { Count: > 0 })
         {
@@ -278,15 +284,54 @@ public static class ScheduleEndpoints
         // Every member must be a real, active flow: a schedule pointing at a name that does not exist would sit in
         // the catalog looking armed while firing nothing.
         var memberIds = members.ToDictionary(m => CatalogIdentity.Pipeline(request.RepoId, m), m => m);
-        var activeIds = await db.Pipelines.AsNoTracking()
+        var active = await db.Pipelines.AsNoTracking()
             .Where(pl => pl.RepoId == request.RepoId && pl.Active && memberIds.Keys.Contains(pl.Id))
-            .Select(pl => pl.Id).ToListAsync(ct).ConfigureAwait(false);
-        var missing = memberIds.Where(kv => !activeIds.Contains(kv.Key)).Select(kv => kv.Value).ToList();
+            .Select(pl => new { pl.Id, pl.Kind }).ToListAsync(ct).ConfigureAwait(false);
+        var missing = memberIds.Where(kv => active.All(a => a.Id != kv.Key)).Select(kv => kv.Value).ToList();
         if (missing.Count > 0)
         {
             return TypedResults.Problem(
                 detail: $"No active pipeline in repo '{request.RepoId}' for: {string.Join(", ", missing)}.",
                 statusCode: StatusCodes.Status404NotFound, title: "Not found");
+        }
+
+        // A schedule's operation and values are run arguments its fires pass on, so they are validated here exactly as
+        // a trigger's are: by every member kind that would take them, and at least one member must take them, or the
+        // schedule would carry arguments no fire ever uses.
+        var operation = string.IsNullOrWhiteSpace(request.Operation) ? null : request.Operation.Trim();
+        var values = request.Values is { Count: > 0 } declared
+            ? new Dictionary<string, string>(declared, StringComparer.Ordinal)
+            : new Dictionary<string, string>(StringComparer.Ordinal);
+        if (operation is not null || values.Count > 0)
+        {
+            var kindArguments = new RunParameters { Operation = operation, Values = values };
+            try
+            {
+                kindArguments.Validate();
+                var takers = active
+                    .Select(a => documents.FindKind(a.Kind))
+                    .Where(kind => kind is not null
+                        && (operation is null || kind.Operations.Any(o => string.Equals(o.Name, operation, StringComparison.Ordinal))))
+                    .ToList();
+                if (takers.Count == 0)
+                {
+                    return TypedResults.Problem(
+                        detail: operation is null
+                            ? "values apply to members of a registered flow kind; none of this schedule's members is one."
+                            : $"No member of this schedule is of a flow kind that declares the operation '{operation}'.",
+                        statusCode: StatusCodes.Status400BadRequest, title: "Invalid run parameters");
+                }
+
+                foreach (var kind in takers)
+                {
+                    documents.ValidateRunParameters(kind!.FlowType, kindArguments);
+                }
+            }
+            catch (SqlFlow.Core.SqlFlowException ex)
+            {
+                return TypedResults.Problem(
+                    detail: ex.Message, statusCode: StatusCodes.Status400BadRequest, title: "Invalid run parameters");
+            }
         }
 
         // The name is this schedule's identity in the repo, so a collision with a git-declared or existing API
@@ -305,7 +350,7 @@ public static class ScheduleEndpoints
         var id = await ScheduleStore.CreateApiScheduleAsync(
             db, request.RepoId, name, members, request.Cron, request.IntervalSeconds, timezone,
             request.Enabled ?? true, request.Catchup ?? false, ScheduleDefaults.Resolve(request.MaxConcurrency, out _),
-            next ?? now, now, ct).ConfigureAwait(false);
+            next ?? now, now, operation, values, ct).ConfigureAwait(false);
 
         return TypedResults.Created($"/api/v1/schedules/{id}", new ScheduleCreated(id, next));
     }
@@ -333,7 +378,8 @@ public static class ScheduleEndpoints
     /// </summary>
     private static async Task<Results<Accepted<ScheduleRunAccepted>, ProblemHttpResult>> RunScheduleAsync(
         Guid id, [FromQuery] string[]? batch, DateTime? from, DateTime? to, bool? chain,
-        CatalogDbContext db, IRunDispatcher dispatcher, TimeProvider clock, CancellationToken ct)
+        CatalogDbContext db, IRunDispatcher dispatcher, SqlFlow.Yaml.YamlDocumentLoader documents, TimeProvider clock,
+        CancellationToken ct)
     {
         var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct).ConfigureAwait(false);
         if (schedule is null)
@@ -364,8 +410,18 @@ public static class ScheduleEndpoints
             : batch.Where(b => !string.IsNullOrWhiteSpace(b)).Select(b => b.Trim())
                 .Distinct(StringComparer.Ordinal).ToList();
         var now = clock.GetUtcNow().UtcDateTime;
-        var fire = await ScheduleFire
-            .EnqueueAsync(db, dispatcher, schedule, now, ct, filter, backfillWindow).ConfigureAwait(false);
+        ScheduleFire.FireResult fire;
+        try
+        {
+            fire = await ScheduleFire
+                .EnqueueAsync(db, dispatcher, documents, schedule, now, ct, filter, backfillWindow).ConfigureAwait(false);
+        }
+        catch (SqlFlow.Core.SqlFlowException ex)
+        {
+            // A member's kind refused the schedule's operation or values: nothing was enqueued.
+            return TypedResults.Problem(
+                detail: ex.Message, statusCode: StatusCodes.Status400BadRequest, title: "Invalid run parameters");
+        }
         if (!fire.Queued)
         {
             var detail = filter is not { Count: > 0 }
@@ -455,7 +511,8 @@ public static class ScheduleEndpoints
         Guid Id, Guid RepoId, string Name, IReadOnlyList<Guid> MemberPipelineIds, string? Cron, int? IntervalSeconds,
         string Timezone, bool Enabled, bool Catchup, bool Paused, string Source, DateTime? NextFireUtc,
         DateTime? LastFireUtc, Guid? LastRunId, Guid? LastGroupId, DateTime CreatedUtc, DateTime UpdatedUtc,
-        int? MaxConcurrency, IReadOnlyList<string> AfterSchedules, int ParentFreshnessHours, string? LastStaleParents);
+        int? MaxConcurrency, IReadOnlyList<string> AfterSchedules, int ParentFreshnessHours, string? LastStaleParents,
+        string? Operation, string? ValuesJson);
 
     // An expression (not a method body) so EF Core translates the projection into the SELECT column list. It takes the
     // context because the member count is a correlated subquery over the member table: a schedule's whole meaning is
@@ -467,7 +524,7 @@ public static class ScheduleEndpoints
         s.Enabled, s.Catchup, s.Paused, s.Source, s.NextFireUtc, s.LastFireUtc, s.LastRunId, s.LastGroupId,
         s.CreatedUtc, s.UpdatedUtc, s.MaxConcurrency,
         db.ScheduleParents.Where(p => p.ScheduleId == s.Id).OrderBy(p => p.Ordinal).Select(p => p.ParentName).ToList(),
-        s.ParentFreshnessHours, s.LastStaleParents);
+        s.ParentFreshnessHours, s.LastStaleParents, s.Operation, s.ValuesJson);
 
     /// <summary>
     /// Walks the chain forward from each schedule on the page: which schedules its completion sets off, theirs in
@@ -625,7 +682,7 @@ public static class ScheduleEndpoints
                 // point to it. A single-member fire has no group, so this is always false there.
                 r.LastGroupId is not null && counts is { } c && c.Queued + c.Running > 0,
                 r.CreatedUtc, r.UpdatedUtc, r.MaxConcurrency, counts, r.AfterSchedules, triggers,
-                r.ParentFreshnessHours, r.LastStaleParents);
+                r.ParentFreshnessHours, r.LastStaleParents, r.Operation, RunParameters.ValuesFromJson(r.ValuesJson));
         }).ToList();
     }
 

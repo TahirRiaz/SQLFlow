@@ -930,6 +930,8 @@ public sealed partial class RunWorker : IDisposable
                     // The handed-out run's flow name selects WHICH flow of the document executes: for an ingestion
                     // document with an embedded healthCheck: block, the derived hc pipeline runs from the same file.
                     FlowName = run.FlowName,
+                    // Who asked for the run, so an executor can attribute what it does; null for a schedule fire.
+                    Actor = run.RequestedBy,
                 };
                 // The executor runs under the per-run token: an operator cancel aborts the in-flight statement here
                 // (and only here), while the surrounding bookkeeping stays on the shutdown token so a late cancel

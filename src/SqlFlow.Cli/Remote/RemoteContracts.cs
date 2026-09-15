@@ -61,7 +61,8 @@ internal sealed record RunTriggerRequest(
     Guid RepoId, string FlowName, string? Pool = null, string? CommitSha = null,
     bool FullLoad = false, DateTime? BackfillFrom = null, DateTime? BackfillTo = null, string? FilePattern = null,
     string? Scope = null, string? Batch = null, bool AssertionsOnly = false, string? SourceFilter = null,
-    bool IncludeAll = false);
+    bool IncludeAll = false, string? Operation = null, IReadOnlyDictionary<string, string>? Values = null,
+    System.Text.Json.JsonElement? Payload = null);
 
 /// <summary>The accepted-run acknowledgement for a single-flow trigger.</summary>
 internal sealed record RunTriggerAccepted(Guid RunId, string Status);
@@ -82,7 +83,7 @@ internal sealed record RunSummaryDto(
     string Status, bool Success,
     string? TargetPool, string? CommitSha, DateTime WrittenUtc, DateTime? EnqueuedUtc, double? DurationSeconds,
     long? RowsLoaded, long? RowsInserted, long? RowsUpdated, long? RowsDeleted, int FileCount, Guid? GroupId,
-    string? LastAction, DateTime? LastActionUtc);
+    string? LastAction, DateTime? LastActionUtc, string? Error = null, string? Operation = null, string? RequestedBy = null);
 
 /// <summary>One run with its full header for the detail view.</summary>
 internal sealed record RunDetailDto(
@@ -95,7 +96,9 @@ internal sealed record RunDetailDto(
     bool ReprocessFromSourceMin,
     string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark, string? IncrementalWatermarkSource,
     string? DataSetConvention,
-    int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId);
+    int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId,
+    string? Operation = null, string? RequestedBy = null, IReadOnlyDictionary<string, string>? Values = null,
+    System.Text.Json.JsonElement? Payload = null);
 
 /// <summary>One file a run processed (file flows).</summary>
 internal sealed record RunFileDto(
@@ -156,13 +159,16 @@ internal sealed record ScheduleDto(
     Guid Id, Guid RepoId, string Name, IReadOnlyList<Guid> MemberPipelineIds, string? Cron, int? IntervalSeconds,
     string Timezone, bool Enabled, bool Catchup, bool Paused, string Source, DateTime? NextFireUtc,
     DateTime? LastFireUtc, Guid? LastRunId, Guid? LastGroupId, bool LastGroupActive, DateTime CreatedUtc,
-    DateTime UpdatedUtc, int? MaxConcurrency, RunGroupCountsDto? LastCounts);
+    DateTime UpdatedUtc, int? MaxConcurrency, RunGroupCountsDto? LastCounts, string? Operation = null,
+    IReadOnlyDictionary<string, string>? Values = null);
 
 /// <summary>Creates a schedule: at least one member flow, exactly one of cron / interval. The name defaults to the
-/// first member's flow name on the server.</summary>
+/// first member's flow name on the server. The operation and values are what every fire passes to the members of a
+/// registered flow kind.</summary>
 internal sealed record CreateScheduleRequest(
     Guid RepoId, IReadOnlyList<string> Members, string? Cron, int? IntervalSeconds, string? Timezone, bool? Enabled,
-    bool? Catchup = null, string? Name = null, int? MaxConcurrency = null);
+    bool? Catchup = null, string? Name = null, int? MaxConcurrency = null, string? Operation = null,
+    IReadOnlyDictionary<string, string>? Values = null);
 
 /// <summary>The created-schedule acknowledgement.</summary>
 internal sealed record ScheduleCreated(Guid Id, DateTime? NextFireUtc);

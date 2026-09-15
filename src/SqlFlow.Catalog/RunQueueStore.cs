@@ -22,10 +22,12 @@ namespace SqlFlow.Catalog;
 /// client asking; the scheduler passes <see cref="RunTriggerSources.Schedule"/> and its schedule id. It is
 /// recorded rather than inferred because nothing else on the row distinguishes the two: a schedule fire and a
 /// GUI Run button take this same path and produce otherwise identical rows.</para>
+/// <para><c>RequestedBy</c> is who asked (the caller's subject), recorded on the run and handed to the executor so what
+/// the run does can be attributed to a person; null for a schedule fire.</para>
 public sealed record RunEnqueueRequest(
     Guid RepoId, string FlowName, string FlowKind, string? TargetPool = null, string? CommitSha = null,
     RunParameters? Parameters = null, string TriggerSource = RunTriggerSources.Manual,
-    Guid? TriggerScheduleId = null);
+    Guid? TriggerScheduleId = null, string? RequestedBy = null);
 
 /// <summary>What to enqueue as one multi-flow run group (a Node or Batch execution): the resolved, ordered member
 /// flows (with their waves) plus the shared routing. Every member is enqueued under one <see cref="RunGroupModes"/>
@@ -44,7 +46,7 @@ public sealed record RunGroupEnqueueRequest(
     string? TargetPool = null, string? CommitSha = null,
     IReadOnlyDictionary<string, RunParameters>? MemberParameters = null,
     int? MaxConcurrency = null, string TriggerSource = RunTriggerSources.Manual,
-    Guid? TriggerScheduleId = null);
+    Guid? TriggerScheduleId = null, string? RequestedBy = null);
 
 /// <summary>The outcome of enqueuing a single run: its new id and its placement row, which the caller hands to the
 /// dispatcher so memory learns of the run the ledger already holds.</summary>
@@ -167,6 +169,10 @@ public static class RunQueueStore
                 SourceFilter = string.IsNullOrWhiteSpace(parameters.SourceFilter) ? null : parameters.SourceFilter.Trim(),
                 AssertionsOnly = parameters.AssertionsOnly,
                 ReprocessFromSourceMin = parameters.ReprocessFromSourceMin,
+                Operation = parameters.Operation,
+                ValuesJson = RunParameters.ValuesToJson(parameters.Values),
+                Payload = parameters.Payload,
+                RequestedBy = TrimToNull(request.RequestedBy),
                 TriggerSource = request.TriggerSource,
                 TriggerScheduleId = request.TriggerScheduleId,
                 Status = RunStatuses.Queued,
@@ -287,6 +293,10 @@ public static class RunQueueStore
                     SourceFilter = string.IsNullOrWhiteSpace(memberParameters.SourceFilter) ? null : memberParameters.SourceFilter.Trim(),
                     AssertionsOnly = memberParameters.AssertionsOnly,
                     ReprocessFromSourceMin = memberParameters.ReprocessFromSourceMin,
+                    Operation = memberParameters.Operation,
+                    ValuesJson = RunParameters.ValuesToJson(memberParameters.Values),
+                    Payload = memberParameters.Payload,
+                    RequestedBy = TrimToNull(request.RequestedBy),
                     TriggerSource = request.TriggerSource,
                     TriggerScheduleId = request.TriggerScheduleId,
                     Status = RunStatuses.Queued,
@@ -533,6 +543,10 @@ public static class RunQueueStore
                     r.SourceFilter,
                     r.AssertionsOnly,
                     r.ReprocessFromSourceMin,
+                    r.Operation,
+                    r.ValuesJson,
+                    r.Payload,
+                    r.RequestedBy,
                     RepoName = repo != null ? repo.Name : null,
                     RepoRemoteUrl = repo != null ? repo.RemoteUrl : null,
                     RepoRootPath = repo != null ? repo.RootPath : null,
@@ -558,9 +572,15 @@ public static class RunQueueStore
                 SourceFilter = row.SourceFilter,
                 AssertionsOnly = row.AssertionsOnly,
                 ReprocessFromSourceMin = row.ReprocessFromSourceMin,
+                Operation = row.Operation,
+                Values = RunParameters.ValuesFromJson(row.ValuesJson),
+                Payload = row.Payload,
             },
-            row.CredentialReference, row.CredentialUsername);
+            row.CredentialReference, row.CredentialUsername, row.RequestedBy);
     }
+
+    /// <summary>A trimmed value, or null for a blank one.</summary>
+    private static string? TrimToNull(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>The YAML text of the snapshotted flow version with the given content hash, served to a node staging
     /// a handed-out run; null when no such version is staged.</summary>

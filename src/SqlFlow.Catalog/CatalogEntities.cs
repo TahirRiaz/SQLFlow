@@ -313,6 +313,22 @@ public class CatalogRun
     /// schedule being renamed out of the catalog by a later sync.</summary>
     public Guid? TriggerScheduleId { get; set; }
 
+    /// <summary>The operation a flow of a registered kind performs this run (<c>RunParameters.Operation</c>); null for
+    /// the kind's default operation and for every built-in kind.</summary>
+    public string? Operation { get; set; }
+
+    /// <summary>The run's parameter values as a JSON object ordered by name (<c>RunParameters.ValuesToJson</c>), or
+    /// null for none.</summary>
+    public string? ValuesJson { get; set; }
+
+    /// <summary>The run's kind-owned arguments, the compact text of one JSON object (<c>RunParameters.Payload</c>), or
+    /// null. Recorded on the run so the history says exactly what was asked.</summary>
+    public string? Payload { get; set; }
+
+    /// <summary>Who asked for the run: the caller's subject for a trigger through the API, null for a schedule fire, a
+    /// run recorded from its artifact, and every run enqueued before this column existed.</summary>
+    public string? RequestedBy { get; set; }
+
     public int SchemaVersion { get; set; }
 
     public DateTime WrittenUtc { get; set; }
@@ -2317,6 +2333,14 @@ public class CatalogSchedule
     /// by the queue's claim gate.
     /// </summary>
     public int? MaxConcurrency { get; set; }
+
+    /// <summary>The operation every fire runs on the members whose registered flow kind declares it; null runs each
+    /// member's default. A member of a kind that does not declare it runs as defined.</summary>
+    public string? Operation { get; set; }
+
+    /// <summary>The parameter values every fire passes to the members of a registered flow kind, as a JSON object, or
+    /// null for none.</summary>
+    public string? ValuesJson { get; set; }
 
     /// <summary>An API-applied operational pause that is independent of <see cref="Enabled"/>, so a git re-sync of a
     /// <c>yaml</c> schedule does not clear a pause an operator set through the GUI.</summary>

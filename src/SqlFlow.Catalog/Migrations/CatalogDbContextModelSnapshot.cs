@@ -1441,6 +1441,13 @@ namespace SqlFlow.Catalog.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("Operation")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("Payload")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("PipelineId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1449,6 +1456,10 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.Property<bool>("ReprocessFromSourceMin")
                         .HasColumnType("bit");
+
+                    b.Property<string>("RequestedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
 
                     b.Property<long?>("RowsDeleted")
                         .HasColumnType("bigint");
@@ -1490,6 +1501,9 @@ namespace SqlFlow.Catalog.Migrations
                     b.Property<string>("TriggerSource")
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("ValuesJson")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("WrittenUtc")
                         .HasColumnType("datetime2");
@@ -1891,6 +1905,10 @@ namespace SqlFlow.Catalog.Migrations
                     b.Property<DateTime?>("NextFireUtc")
                         .HasColumnType("datetime2");
 
+                    b.Property<string>("Operation")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
                     b.Property<int>("ParentFreshnessHours")
                         .HasColumnType("int");
 
@@ -1912,6 +1930,9 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<string>("ValuesJson")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 

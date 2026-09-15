@@ -255,7 +255,10 @@ internal static partial class RemoteVerbs
                 AssertionsOnly: parameters.AssertionsOnly,
                 SourceFilter: parameters.SourceFilter,
                 // Node scope's "find all": include mode: manual and mode: disabled descendants in the group.
-                IncludeAll: args.Contains("--include-all"));
+                IncludeAll: args.Contains("--include-all"),
+                Operation: parameters.Operation,
+                Values: parameters.Values.Count > 0 ? parameters.Values : null,
+                Payload: parameters.Payload is null ? null : JsonDocument.Parse(parameters.Payload).RootElement.Clone());
             var outcome = await client.TriggerRunAsync(request, ct).ConfigureAwait(false);
 
             if (outcome.Run is { } run)

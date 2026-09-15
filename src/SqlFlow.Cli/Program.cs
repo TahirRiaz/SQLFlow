@@ -2159,6 +2159,9 @@ internal static class Program
                                                  incremental date column / export or init-load chunk plan)
                                [--to <date>]     Backfill: the window's high bound (requires --from)
                                [--file-pattern <glob>]  Backfill: narrow a file flow to one glob this run
+                               [--operation <name>] [--set name=value]... [--payload <json>|@<file>]
+                                                 Kind arguments for a flow of a registered kind: the operation it
+                                                 performs, its parameter values, and its kind-owned JSON payload
                                [--assertions-only]      Evaluate the flow's data-quality assertions (manual-mode
                                                  ones included) against the current target; loads nothing (ing flows)
                                [--health-check]  Run the flow's embedded healthCheck: block (the derived hc
@@ -2277,6 +2280,7 @@ internal static class Program
               sqlflow trigger  --repo <name|id> --flow <f> [--scope flow|node]
                                [--pool <p>] [--commit <sha>] [--full] [--from <date>] [--to <date>]
                                [--file-pattern <glob>] [--source-filter <predicate>] [--assertions-only]
+                               [--operation <name>] [--set name=value]... [--payload <json>|@<file>]
                                [--include-all] [--preview] [--follow]
                                                  Enqueue a run on the fleet (POST /runs), exactly as the GUI's trigger
                                                  dialog does: scope flow (default) or node (the flow + its lineage
@@ -3014,9 +3018,42 @@ internal static class Program
             FilePattern = GetOption(args, "--file-pattern"),
             AssertionsOnly = args.Contains("--assertions-only"),
             SourceFilter = GetOption(args, "--source-filter"),
+            Operation = GetOption(args, "--operation"),
+            Values = RunParameters.ParseValues(GetOptions(args, "--set")),
+            Payload = ReadPayload(GetOption(args, "--payload")),
         };
         parameters.Validate();
         return parameters;
+    }
+
+    /// <summary>Reads the <c>--payload</c> value: inline JSON, or <c>@path</c> for a file holding it. The JSON is stored
+    /// compact; a value that is not JSON is refused naming the flag.</summary>
+    private static string? ReadPayload(string? value)
+    {
+        if (value is null)
+        {
+            return null;
+        }
+
+        string text;
+        try
+        {
+            text = value.StartsWith('@') ? File.ReadAllText(value[1..]) : value;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            throw new SqlFlowException($"--payload file '{value[1..]}' could not be read: {ex.Message}", ex);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(text);
+            return JsonSerializer.Serialize(document.RootElement);
+        }
+        catch (JsonException ex)
+        {
+            throw new SqlFlowException($"--payload is not valid JSON: {ex.Message}", ex);
+        }
     }
 
     /// <summary>0 on success, 1 on failure, 2 when --fail-on-anomaly was set and a mature anomaly exists
@@ -3157,7 +3194,7 @@ internal static class Program
         "--cron", "--interval", "--timezone", "--max-concurrency",
         "--remote-url", "--credential-ref", "--credential-user",
         "--ref", "--sample", "--max-columns", "--max-candidates", "--active", "--enabled",
-        "--search", "--relation", "--tier", "--server", "--operation", "--last",
+        "--search", "--relation", "--tier", "--server", "--operation", "--last", "--set", "--payload",
     };
 
     internal static string[] PositionalArguments(string[] args)
@@ -3193,6 +3230,23 @@ internal static class Program
         // setting explodePaths to "--data"). A lone "-" is still allowed (e.g. a separator).
         var value = args[index + 1];
         return value.Length > 1 && value[0] == '-' ? null : value;
+    }
+
+    /// <summary>Every value of a repeatable flag (<c>--set a=1 --set b=2</c>), in order. A flag with no value, or whose
+    /// next token is another flag, contributes nothing, as <see cref="GetOption"/> treats it.</summary>
+    internal static IReadOnlyList<string> GetOptions(string[] args, string name)
+    {
+        var values = new List<string>();
+        for (var i = 0; i < args.Length - 1; i++)
+        {
+            if (args[i] == name && !(args[i + 1].Length > 1 && args[i + 1][0] == '-'))
+            {
+                values.Add(args[i + 1]);
+                i++;
+            }
+        }
+
+        return values;
     }
 
     internal static int ParseIntOption(string[] args, int fallback, params string[] names)

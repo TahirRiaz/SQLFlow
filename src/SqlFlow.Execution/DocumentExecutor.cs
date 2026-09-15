@@ -131,6 +131,15 @@ public sealed class DocumentExecutor : IDocumentRunner
                 "evaluated against an ingestion flow's target.");
         }
 
+        // Kind arguments (an operation, values, a payload) are accepted only by a registered kind that declares them. A
+        // trigger and a schedule already applied this rule; a batch member and a direct CLI run reach the executor
+        // without either, so the same rule is applied here rather than letting a built-in kind silently ignore them.
+        if (options.Parameters.HasKindArguments)
+        {
+            _provider.GetRequiredService<YamlDocumentLoader>().ValidateRunParameters(
+                document is RegisteredFlowDocument registered ? registered.Kind : "built-in", options.Parameters);
+        }
+
         // An ingestion document with an embedded healthCheck: block expands into two pipelines sharing one
         // file: the load and its derived hc sibling. The caller selects by flow name (the node worker passes
         // the claimed run's name, a batch each member's, the CLI's --health-check the derived name); the

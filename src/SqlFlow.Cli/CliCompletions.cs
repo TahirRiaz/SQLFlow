@@ -39,7 +39,7 @@ internal static class CliCompletions
     [
         "--url", "--token", "--json", "--repo", "--flow", "--scope", "--batch", "--follow", "--preview",
         "--full", "--from", "--to", "--file-pattern", "--source-filter", "--page", "--page-size", "--status", "--kind",
-        "--source", "--object", "--ref", "--db", "--out", "--verbose", "--help",
+        "--source", "--object", "--ref", "--db", "--out", "--verbose", "--help", "--operation", "--set", "--payload",
     ];
 
     public static int Print(string[] positional)

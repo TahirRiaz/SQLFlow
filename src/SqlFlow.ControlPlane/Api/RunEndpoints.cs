@@ -30,7 +30,9 @@ namespace SqlFlow.ControlPlane.Api;
 /// load or a backfill window, and the incremental scope the engine actually applied (<see cref="IncrementalMode"/> is <c>full</c> or
 /// <c>incremental</c>, <see cref="IncrementalFilter"/> the bound it read with, <see cref="IncrementalWatermark"/>
 /// the resolved high-water mark). Those three are null for a run that has not reached the read, or a flow kind with
-/// no incremental surface.</summary>
+/// no incremental surface. <see cref="Operation"/> is the operation a flow of a registered kind performed (null
+/// for the kind's default and for built-in kinds), and <see cref="RequestedBy"/> who asked for the run (null for a
+/// schedule fire).</summary>
 public sealed record RunSummaryDto(
     Guid RunId, Guid PipelineId, Guid? RepoId, string FlowName, string FlowKind, string Batch, int Wave,
     string Status, bool Success,
@@ -38,7 +40,8 @@ public sealed record RunSummaryDto(
     long? RowsLoaded, long? RowsInserted, long? RowsUpdated, long? RowsDeleted, int FileCount, Guid? GroupId,
     string? LastAction, DateTime? LastActionUtc, string? Error,
     string? TriggerSource, bool FullLoad, DateTime? BackfillFrom, DateTime? BackfillTo,
-    string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark);
+    string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark,
+    string? Operation = null, string? RequestedBy = null);
 
 /// <summary>One run with its full header for the detail view: the summary plus the lifecycle fields (status, when it
 /// was enqueued, the node that claimed it), the schema version, the start/end window, the host, the error, and the
@@ -46,7 +49,9 @@ public sealed record RunSummaryDto(
 /// engine-computed incremental scope the run actually applied (mode, filter, resolved watermark and its source).
 /// <see cref="Batch"/> and <see cref="Wave"/> follow the same pipeline-join semantics as
 /// <see cref="RunSummaryDto"/>. <see cref="TriggerSource"/> says what started the run and
-/// <see cref="TriggerScheduleId"/> names the schedule when a schedule fire did.</summary>
+/// <see cref="TriggerScheduleId"/> names the schedule when a schedule fire did. <see cref="Operation"/>,
+/// <see cref="Values"/> and <see cref="Payload"/> are the kind arguments a flow of a registered kind ran with, and
+/// <see cref="RequestedBy"/> who asked for the run.</summary>
 public sealed record RunDetailDto(
     Guid RunId, Guid PipelineId, Guid? RepoId, string FlowName, string FlowKind, string Batch, int Wave,
     string Status, bool Success,
@@ -58,7 +63,9 @@ public sealed record RunDetailDto(
     string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark, string? IncrementalWatermarkSource,
     string? DataSetConvention,
     int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId,
-    string? TriggerSource, Guid? TriggerScheduleId);
+    string? TriggerSource, Guid? TriggerScheduleId,
+    string? Operation = null, string? RequestedBy = null, IReadOnlyDictionary<string, string>? Values = null,
+    JsonElement? Payload = null);
 
 /// <summary>One file a run processed (file flows): a drill-down row under a run.</summary>
 public sealed record RunFileDto(
@@ -354,7 +361,8 @@ public static class RunEndpoints
                     .OrderByDescending(e => e.Id).Select(e => (DateTime?)e.TimestampUtc).FirstOrDefault(),
                 x.Run.Error,
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
-                x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark))
+                x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
+                x.Run.Operation, x.Run.RequestedBy))
             : source.Select(x => new RunSummaryDto(
                 x.Run.RunId, x.Run.PipelineId, x.Run.RepoId, x.Run.FlowName, x.Run.FlowKind, x.Batch, x.Wave,
                 x.Run.Status, x.Run.Success,
@@ -364,7 +372,8 @@ public static class RunEndpoints
                 null, null,
                 x.Run.Error,
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
-                x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark));
+                x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
+                x.Run.Operation, x.Run.RequestedBy));
 
     /// <summary>A group's member summaries in execution order: the shape both the group view's member list and
     /// the group stream serve. This is the one list that shows the last action, so it resolves it.</summary>
@@ -378,12 +387,12 @@ public static class RunEndpoints
     private static async Task<Results<Ok<RunDetailDto>, ProblemHttpResult>> GetRunAsync(
         Guid runId, CatalogDbContext db, CancellationToken ct)
     {
-        var dto = await (
+        var row = await (
                 from run in db.Runs.AsNoTracking()
                 where run.RunId == runId
                 join pipeline in db.Pipelines.AsNoTracking() on run.PipelineId equals pipeline.Id into pipelines
                 from pipeline in pipelines.DefaultIfEmpty()
-                select new RunDetailDto(
+                select new { run.ValuesJson, run.Payload, Detail = new RunDetailDto(
                     run.RunId, run.PipelineId, run.RepoId, run.FlowName, run.FlowKind,
                     pipeline != null && pipeline.Batch != null ? pipeline.Batch : CatalogPipeline.DefaultBatch,
                     pipeline != null ? pipeline.Wave : -1,
@@ -397,12 +406,19 @@ public static class RunEndpoints
                     run.IncrementalMode, run.IncrementalFilter, run.IncrementalWatermark, run.IncrementalWatermarkSource,
                     run.DataSetConvention,
                     null, null, null, run.GroupId,
-                    run.TriggerSource, run.TriggerScheduleId))
+                    run.TriggerSource, run.TriggerScheduleId, run.Operation, run.RequestedBy) })
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-        if (dto is null)
+        if (row is null)
         {
             return NotFound("run", runId);
         }
+
+        // The kind arguments are stored as JSON text; they are served as objects, so a client reads them as it sent them.
+        var dto = row.Detail with
+        {
+            Values = SqlFlow.Core.Runs.RunParameters.ValuesFromJson(row.ValuesJson),
+            Payload = row.Payload is null ? null : JsonDocument.Parse(row.Payload).RootElement.Clone(),
+        };
 
         // On a failed run, surface the exact statement that threw alongside the header, so the detail view can show
         // the offending SQL next to the error banner instead of making the operator hunt for it in the Statements

@@ -32,7 +32,7 @@ public sealed class ScheduleFireTests
 
             // Only `solo` joined, even though the other flow shares its batch tag: a label match is not a join.
             var schedule = await SeedScheduleAsync(db, repoId, $"s_{suffix}", [solo]);
-            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), schedule, DateTime.UtcNow, default);
+            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default);
 
             Assert.Equal(ScheduleFire.Outcome.Enqueued, fire.Outcome);
             Assert.Null(fire.GroupId);
@@ -65,7 +65,7 @@ public sealed class ScheduleFireTests
             await SeedPipelineAsync(db, repoId, other, wave: 0, batch: "BB");
 
             var schedule = await SeedScheduleAsync(db, repoId, $"daily_{suffix}", [copy, pre, ods]);
-            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), schedule, DateTime.UtcNow, default);
+            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default);
 
             Assert.Equal(ScheduleFire.Outcome.EnqueuedGroup, fire.Outcome);
             Assert.NotNull(fire.GroupId);
@@ -107,7 +107,7 @@ public sealed class ScheduleFireTests
 
             // "Run the nightly, but only the small tables."
             var fire = await ScheduleFire.EnqueueAsync(
-                db, new RecordingDispatcher(), schedule, DateTime.UtcNow, default, batchFilter: ["small"]);
+                db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default, batchFilter: ["small"]);
 
             Assert.Equal(ScheduleFire.Outcome.EnqueuedGroup, fire.Outcome);
             Assert.Equal(2, fire.MemberCount);
@@ -137,7 +137,7 @@ public sealed class ScheduleFireTests
             // Both joined, but mode: manual reserves a flow for a direct trigger, and firing a schedule it sits in
             // is not a direct trigger of it.
             var schedule = await SeedScheduleAsync(db, repoId, $"daily_{suffix}", [auto, manual]);
-            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), schedule, DateTime.UtcNow, default);
+            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default);
 
             Assert.Equal(ScheduleFire.Outcome.Enqueued, fire.Outcome);
             var run = Assert.Single(await db.Runs.AsNoTracking().Where(r => r.RepoId == repoId).ToListAsync());
@@ -169,7 +169,7 @@ public sealed class ScheduleFireTests
             var from = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
             var to = new DateTime(2026, 2, 1, 0, 0, 0, DateTimeKind.Utc);
             var fire = await ScheduleFire.EnqueueAsync(
-                db, new RecordingDispatcher(), schedule, DateTime.UtcNow, default,
+                db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default,
                 backfillWindow: new SqlFlow.Core.Runs.RunParameters { BackfillFrom = from, BackfillTo = to });
 
             Assert.Equal(ScheduleFire.Outcome.EnqueuedGroup, fire.Outcome);
@@ -209,7 +209,7 @@ public sealed class ScheduleFireTests
             await using var db = CatalogDatabase.Create(cs);
             // A schedule nothing joined: a normal state (a source whose flows all left), not a fault.
             var schedule = await SeedScheduleAsync(db, repoId, $"empty_{suffix}", []);
-            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), schedule, DateTime.UtcNow, default);
+            var fire = await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default);
 
             Assert.Equal(ScheduleFire.Outcome.ScopeEmpty, fire.Outcome);
             Assert.False(fire.Queued);

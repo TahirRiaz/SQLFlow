@@ -161,6 +161,16 @@ public sealed record ScheduleSpec
     /// </summary>
     public int? MaxConcurrency { get; init; } = ScheduleDefaults.MaxConcurrency;
 
+    /// <summary>The operation every fire runs on the members whose registered flow kind declares it
+    /// (<see cref="Runs.RunParameters.Operation"/>); null runs each member's default. A member of a kind that does not
+    /// declare the operation runs as defined.</summary>
+    public string? Operation { get; init; }
+
+    /// <summary>The parameter values every fire passes to the members of a registered flow kind
+    /// (<see cref="Runs.RunParameters.Values"/>).</summary>
+    public IReadOnlyDictionary<string, string> Values { get; init; } =
+        System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
+
     /// <summary>Whether this declaration is a membership reference rather than a cadence of its own.</summary>
     public bool IsReference => Refs.Count > 0;
 }

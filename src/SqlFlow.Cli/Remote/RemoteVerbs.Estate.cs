@@ -219,7 +219,11 @@ internal static partial class RemoteVerbs
                         Enabled: !args.Contains("--disabled"),
                         Catchup: args.Contains("--catchup") ? true : null,
                         Name: Program.GetOption(args, "--name"),
-                        MaxConcurrency: maxConcurrency), ct).ConfigureAwait(false);
+                        MaxConcurrency: maxConcurrency,
+                        Operation: Program.GetOption(args, "--operation"),
+                        Values: Program.GetOptions(args, "--set") is { Count: > 0 } assignments
+                            ? SqlFlow.Core.Runs.RunParameters.ParseValues(assignments)
+                            : null), ct).ConfigureAwait(false);
                     if (json)
                     {
                         Console.WriteLine(JsonSerializer.Serialize(created, ControlPlaneClient.JsonIndented));

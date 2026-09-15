@@ -167,6 +167,10 @@ public sealed class YamlDocumentLoader
         public bool? Catchup { get; set; }
 
         public int? MaxConcurrency { get; set; }
+
+        public string? Operation { get; set; }
+
+        public Dictionary<string, string>? Values { get; set; }
     }
 
     /// <summary>The mapping shape the converter delegates an inline <c>schedule:</c> block to: the same inline fields
@@ -188,6 +192,10 @@ public sealed class YamlDocumentLoader
         public bool? Catchup { get; set; }
 
         public int? MaxConcurrency { get; set; }
+
+        public string? Operation { get; set; }
+
+        public Dictionary<string, string>? Values { get; set; }
     }
 
     /// <summary>
@@ -237,6 +245,8 @@ public sealed class YamlDocumentLoader
                 Enabled = inline.Enabled,
                 Catchup = inline.Catchup,
                 MaxConcurrency = inline.MaxConcurrency,
+                Operation = inline.Operation,
+                Values = inline.Values,
             };
         }
 
@@ -413,6 +423,42 @@ public sealed class YamlDocumentLoader
         => !string.IsNullOrWhiteSpace(flowType)
            && (BuiltInFlowTypes.Contains(flowType.Trim()) || _kinds.ContainsKey(flowType.Trim()));
 
+    /// <summary>The registered kind whose <c>flowType</c> is <paramref name="flowType"/>, or null for a built-in or
+    /// unknown one.</summary>
+    public IFlowDocumentKind? FindKind(string? flowType)
+        => string.IsNullOrWhiteSpace(flowType) ? null : _kinds.GetValueOrDefault(flowType.Trim());
+
+    /// <summary>
+    /// The one rule every trust boundary applies to a run's parameters for a flow of kind <paramref name="flowKind"/>
+    /// (a trigger, a schedule, the CLI, the executor): the parameters are valid on their own, and kind arguments
+    /// (<see cref="Core.Runs.RunParameters.Operation"/>, <c>Values</c>, <c>Payload</c>) are accepted only by a registered
+    /// kind, with the operation one the kind declares and the rest accepted by the kind itself. Throws
+    /// <see cref="SqlFlowException"/> naming what was refused.
+    /// </summary>
+    public void ValidateRunParameters(string? flowKind, Core.Runs.RunParameters parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        parameters.Validate();
+        if (!parameters.HasKindArguments)
+        {
+            return;
+        }
+
+        var kind = FindKind(flowKind)
+            ?? throw new SqlFlowException(
+                $"operation, values and payload apply to flows of a registered kind; '{flowKind}' flows take none.");
+
+        if (parameters.Operation is { } operation
+            && !kind.Operations.Any(o => string.Equals(o.Name, operation, StringComparison.Ordinal)))
+        {
+            throw new SqlFlowException(kind.Operations.Count == 0
+                ? $"'{kind.FlowType}' flows have a single operation and take no operation name; '{operation}' is not accepted."
+                : $"operation must be one of {string.Join(", ", kind.Operations.Select(o => o.Name))} for '{kind.FlowType}' flows; '{operation}' is not.");
+        }
+
+        kind.ValidateParameters(parameters);
+    }
+
     public FlowDocument LoadFile(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
@@ -430,6 +476,26 @@ public sealed class YamlDocumentLoader
         var flowType = probe?.FlowType?.Trim();
         var schedule = MapSchedule(probe?.Schedule);
         var mode = YamlDocumentParts.ParseExecutionMode(probe?.Mode, "mode", source);
+
+        // A schedule's operation and values are run arguments like a trigger's, so the document's kind must accept them:
+        // refusing here keeps a schedule no fire could honor out of the catalog.
+        if (schedule is { } declared && (declared.Operation is not null || declared.Values.Count > 0))
+        {
+            try
+            {
+                ValidateRunParameters(
+                    string.IsNullOrEmpty(flowType) ? "file" : flowType,
+                    new Core.Runs.RunParameters { Operation = declared.Operation, Values = declared.Values });
+            }
+            catch (FlowValidationException)
+            {
+                throw;
+            }
+            catch (SqlFlowException ex)
+            {
+                throw new FlowValidationException($"{source}: schedule: {ex.Message}", ex);
+            }
+        }
 
         if (string.IsNullOrEmpty(flowType))
         {
@@ -628,6 +694,10 @@ public sealed class YamlDocumentLoader
             // surface a warning, so a meaningless negative simply falls back to the default (the schedule-library
             // loader, which does have a warning channel, reports it).
             MaxConcurrency = ScheduleDefaults.Resolve(schedule.MaxConcurrency, out _),
+            Operation = string.IsNullOrWhiteSpace(schedule.Operation) ? null : schedule.Operation.Trim(),
+            Values = schedule.Values is { Count: > 0 } values
+                ? new Dictionary<string, string>(values, StringComparer.Ordinal)
+                : System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty,
         };
     }
 }

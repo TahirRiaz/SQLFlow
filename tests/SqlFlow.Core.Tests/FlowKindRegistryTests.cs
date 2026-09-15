@@ -437,6 +437,34 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
 
     public string Description => "a test-only flow";
 
+    public IReadOnlyList<FlowKindOperation> Operations { get; } =
+    [
+        new("load", "Load", "Loads the flow's source.", WritesTarget: true),
+        new("check", "Check", "Reads the target back and compares it.", WritesTarget: false),
+    ];
+
+    /// <summary>Refuses a <c>check</c> that carries a payload and any payload without a <c>scope</c> member, so the
+    /// tests can see the kind's own refusal surface.</summary>
+    public void ValidateParameters(RunParameters parameters)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        if (parameters.Payload is null)
+        {
+            return;
+        }
+
+        if (parameters.Operation == "check")
+        {
+            throw new SqlFlowException("a check takes no payload.");
+        }
+
+        using var payload = System.Text.Json.JsonDocument.Parse(parameters.Payload);
+        if (!payload.RootElement.TryGetProperty("scope", out _))
+        {
+            throw new SqlFlowException("payload must name a 'scope'.");
+        }
+    }
+
     public RegisteredFlowDocument Parse(string yaml, string source)
     {
         Body body;

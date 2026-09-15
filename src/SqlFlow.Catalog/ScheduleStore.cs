@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Core;
+using SqlFlow.Core.Runs;
 
 namespace SqlFlow.Catalog;
 
@@ -289,10 +290,11 @@ public static class ScheduleStore
         int? intervalSeconds, string timezone, bool enabled, bool catchup, int? maxConcurrency,
         DateTime computedNextFireUtc, DateTime nowUtc, ScheduleDefinitionSource? definition = null,
         IReadOnlyList<string>? afterSchedules = null, int parentFreshnessHours = ScheduleDefaults.ParentFreshnessHours,
+        string? operation = null, IReadOnlyDictionary<string, string>? values = null,
         CancellationToken ct = default)
         => CatalogTransaction.InSerializableAsync(
             catalog,
-            () => StageYamlUpsertAsync(catalog, repoId, scheduleName, members, cron, intervalSeconds, timezone, enabled, catchup, maxConcurrency, computedNextFireUtc, nowUtc, definition, afterSchedules, parentFreshnessHours, ct),
+            () => StageYamlUpsertAsync(catalog, repoId, scheduleName, members, cron, intervalSeconds, timezone, enabled, catchup, maxConcurrency, computedNextFireUtc, nowUtc, definition, afterSchedules, parentFreshnessHours, operation, values, ct),
             ct);
 
     /// <summary>The transaction-free core of the YAML upsert: it stages the insert/update on the context but does
@@ -303,11 +305,13 @@ public static class ScheduleStore
         int? intervalSeconds, string timezone, bool enabled, bool catchup, int? maxConcurrency,
         DateTime computedNextFireUtc, DateTime nowUtc, ScheduleDefinitionSource? definition = null,
         IReadOnlyList<string>? afterSchedules = null, int parentFreshnessHours = ScheduleDefaults.ParentFreshnessHours,
+        string? operation = null, IReadOnlyDictionary<string, string>? values = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(members);
         ArgumentException.ThrowIfNullOrWhiteSpace(scheduleName);
+        var valuesJson = RunParameters.ValuesToJson(values ?? System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
 
         // A chained schedule is driven by its parents, never by the clock: it keeps no cadence and, crucially, a null
         // next fire, which is what keeps it out of the due scan entirely. Duplicates and blanks are dropped here so
@@ -339,6 +343,8 @@ public static class ScheduleStore
                 Enabled = enabled,
                 Catchup = catchup,
                 MaxConcurrency = maxConcurrency,
+                Operation = operation,
+                ValuesJson = valuesJson,
                 Source = "yaml",
                 DefinitionPath = definition?.Path,
                 DefinitionFlow = definition?.Flow,
@@ -372,6 +378,8 @@ public static class ScheduleStore
             existing.Enabled = enabled;
             existing.Catchup = catchup;
             existing.MaxConcurrency = maxConcurrency;
+            existing.Operation = operation;
+            existing.ValuesJson = valuesJson;
             existing.Source = "yaml";
             // Git owns where the definition lives: a block moved from a flow into a schedules.yaml (or the reverse)
             // must repoint the provenance, and the old file's text must not linger.
@@ -520,11 +528,13 @@ public static class ScheduleStore
     public static Task<Guid> CreateApiScheduleAsync(
         CatalogDbContext catalog, Guid repoId, string scheduleName, IReadOnlyCollection<string> members, string? cron,
         int? intervalSeconds, string timezone, bool enabled, bool catchup, int? maxConcurrency,
-        DateTime computedNextFireUtc, DateTime nowUtc, CancellationToken ct = default)
+        DateTime computedNextFireUtc, DateTime nowUtc, string? operation = null,
+        IReadOnlyDictionary<string, string>? values = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(members);
         ArgumentException.ThrowIfNullOrWhiteSpace(scheduleName);
+        var valuesJson = RunParameters.ValuesToJson(values ?? System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
 
         var id = Guid.CreateVersion7();
         return CatalogTransaction.InSerializableAsync(catalog, async () =>
@@ -540,6 +550,8 @@ public static class ScheduleStore
                 Enabled = enabled,
                 Catchup = catchup,
                 MaxConcurrency = maxConcurrency,
+                Operation = operation,
+                ValuesJson = valuesJson,
                 Source = "api",
                 NextFireUtc = computedNextFireUtc,
                 CreatedUtc = nowUtc,

@@ -689,7 +689,7 @@ public sealed class CatalogSync
                 context, repoId, schedule.Name, schedule.Members, schedule.Spec.Cron, schedule.Spec.IntervalSeconds,
                 schedule.Spec.Timezone, schedule.Spec.Enabled, schedule.Spec.Catchup, schedule.Spec.MaxConcurrency,
                 schedule.NextFireUtc, nowUtc, schedule.Definition, schedule.Spec.After,
-                schedule.Spec.ParentFreshnessHours, ct).ConfigureAwait(false);
+                schedule.Spec.ParentFreshnessHours, schedule.Spec.Operation, schedule.Spec.Values, ct).ConfigureAwait(false);
             scheduleKeep.Add(scheduleId);
         }
 

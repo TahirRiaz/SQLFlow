@@ -1,4 +1,5 @@
 using SqlFlow.Core;
+using SqlFlow.Core.Runs;
 using YamlDotNet.Core;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
@@ -60,6 +61,10 @@ public sealed class YamlScheduleLibraryLoader
         public bool? Catchup { get; set; }
 
         public int? MaxConcurrency { get; set; }
+
+        public string? Operation { get; set; }
+
+        public Dictionary<string, string>? Values { get; set; }
     }
 
     /// <summary>Parses a library file's YAML. <paramref name="source"/> only labels warnings.</summary>
@@ -124,8 +129,26 @@ public sealed class YamlScheduleLibraryLoader
                 continue;
             }
 
+            // The operation and values a fire passes to its members are run arguments: an entry whose shape no run
+            // could accept is ignored like any other unusable entry, rather than firing its members with defaults.
+            var operation = string.IsNullOrWhiteSpace(entry.Operation) ? null : entry.Operation.Trim();
+            var values = entry.Values is { Count: > 0 } declared
+                ? new Dictionary<string, string>(declared, StringComparer.Ordinal)
+                : new Dictionary<string, string>(StringComparer.Ordinal);
+            try
+            {
+                RunParameters.ValidateKindArguments(operation, values, payload: null);
+            }
+            catch (SqlFlowException ex)
+            {
+                warnings.Add($"{source}: schedule '{name}': {ex.Message} The schedule is ignored.");
+                continue;
+            }
+
             schedules.Add(new NamedSchedule(name, new ScheduleSpec
             {
+                Operation = operation,
+                Values = values,
                 Name = name,
                 Cron = chained || string.IsNullOrWhiteSpace(entry.Cron) ? null : entry.Cron.Trim(),
                 IntervalSeconds = chained ? null : entry.IntervalSeconds,
