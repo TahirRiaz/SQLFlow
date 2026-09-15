@@ -51,16 +51,58 @@ public sealed class ComputeTaskExecutor
     private readonly CatalogService _catalog;
     private readonly IConnectionResolver _resolver;
     private readonly IConnectionFactory _factory;
+    private readonly Dictionary<string, IComputeOperation> _registered = new(StringComparer.Ordinal);
 
+    /// <summary>An executor over the built-in datasource operations only.</summary>
     public ComputeTaskExecutor(CatalogService catalog, IConnectionResolver resolver, IConnectionFactory factory)
+        : this(catalog, resolver, factory, [])
+    {
+    }
+
+    /// <summary>
+    /// An executor over the built-in operations plus the operations host modules registered. A registration with a name
+    /// no module operation may carry (see <see cref="ComputeOperations.IsValidRegisteredName"/>, which also refuses every
+    /// built-in name) or a name another registration already claims is refused at construction, rather than leaving one of
+    /// them unreachable.
+    /// </summary>
+    public ComputeTaskExecutor(
+        CatalogService catalog, IConnectionResolver resolver, IConnectionFactory factory, IEnumerable<IComputeOperation> operations)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(resolver);
         ArgumentNullException.ThrowIfNull(factory);
+        ArgumentNullException.ThrowIfNull(operations);
         _catalog = catalog;
         _resolver = resolver;
         _factory = factory;
+
+        foreach (var operation in operations)
+        {
+            if (operation is null)
+            {
+                throw new InvalidOperationException("A registered compute operation is null.");
+            }
+
+            if (!ComputeOperations.IsValidRegisteredName(operation.Name))
+            {
+                throw new InvalidOperationException(
+                    $"The compute operation '{operation.GetType().FullName}' is named '{operation.Name}', which is not a valid registered " +
+                    $"operation name: 1 to {ComputeOperations.MaxRegisteredNameLength} letters, digits and '-', starting with a lowercase " +
+                    "letter, and not a built-in operation's name.");
+            }
+
+            if (!_registered.TryAdd(operation.Name, operation))
+            {
+                throw new InvalidOperationException(
+                    $"The compute operation '{operation.Name}' is registered by both '{_registered[operation.Name].GetType().FullName}' " +
+                    $"and '{operation.GetType().FullName}'.");
+            }
+        }
     }
+
+    /// <summary>The names of the operations host modules registered, which a payload is validated against beside the
+    /// built-in names.</summary>
+    public IReadOnlyCollection<string> RegisteredOperations => _registered.Keys;
 
     /// <summary>
     /// Runs the task and returns its result JSON. Throws <see cref="SqlFlowException"/> (or the provider's
@@ -70,6 +112,23 @@ public sealed class ComputeTaskExecutor
     public async Task<string> ExecuteAsync(ComputeTaskPayload payload, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(payload);
+
+        // A module's operation owns its budget and its connections: it runs under the task's token only, and its result
+        // is held to the same size bound as a built-in one.
+        if (_registered.TryGetValue(payload.Operation, out var registered))
+        {
+            payload.Validate(RegisteredOperations);
+            var produced = await registered.ExecuteAsync(payload, ct).ConfigureAwait(false)
+                ?? throw new SqlFlowException($"The '{payload.Operation}' operation returned no result.");
+            if (produced.Length > MaxResultChars)
+            {
+                throw new SqlFlowException(
+                    $"The '{payload.Operation}' operation's result is {produced.Length} characters, over the {MaxResultChars}-character " +
+                    "limit for a compute task. Narrow what it is asked for and retry.");
+            }
+
+            return produced;
+        }
 
         var timeout = payload.Operation switch
         {

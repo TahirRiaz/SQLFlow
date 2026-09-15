@@ -682,19 +682,19 @@ public sealed partial class RunWorker : IDisposable
             LogTaskStarting(taskId, spec.Operation, spec.SourceRef);
 
             // The spec's payload is data from the journal: parse AND re-validate it here, so a malformed or
-            // hand-tampered payload fails the task with a precise message instead of reaching a provider.
+            // hand-tampered payload fails the task with a precise message instead of reaching a provider. The
+            // operations this host's modules registered are valid beside the built-in ones.
+            var executor = scope.GetRequiredService<ComputeTaskExecutor>();
             ComputeTaskPayload payload;
             try
             {
-                payload = ComputeTaskPayload.FromJson(spec.ArgumentsJson);
+                payload = ComputeTaskPayload.FromJson(spec.ArgumentsJson, executor.RegisteredOperations);
             }
             catch (SqlFlowException ex)
             {
                 await TryReportTaskAsync(taskId, TaskOutcomeKind.Failed, SecretHygiene.RedactedMessage(ex), null).ConfigureAwait(false);
                 return;
             }
-
-            var executor = scope.GetRequiredService<ComputeTaskExecutor>();
             // The executor runs under the per-task token so an operator cancel aborts only the in-flight query,
             // while the outcome report below stays on the shutdown token (a late cancel never corrupts it).
             var resultJson = await executor.ExecuteAsync(payload, taskCt).ConfigureAwait(false);

@@ -89,6 +89,20 @@ public static class ComputeOperations
     public static bool IsKnown(string? operation)
         => operation is TestConnection or ListDatabases or ListSchemas or ListObjects or SearchObjects
             or IntrospectObject or DetectUniqueKey || IsWarehouseHealth(operation) || IsDataOps(operation);
+
+    /// <summary>The longest name an operation a host module registers may have.</summary>
+    public const int MaxRegisteredNameLength = 32;
+
+    /// <summary>
+    /// Whether <paramref name="name"/> can name an operation a host module registers: 1 to
+    /// <see cref="MaxRegisteredNameLength"/> ASCII letters, digits and '-', starting with a lowercase letter (the camelCase
+    /// the built-in names use), and not a built-in name in any casing, so a registration can never shadow one.
+    /// </summary>
+    public static bool IsValidRegisteredName(string? name)
+        => name is { Length: > 0 and <= MaxRegisteredNameLength }
+           && char.IsAsciiLetterLower(name[0])
+           && name.All(c => char.IsAsciiLetterOrDigit(c) || c == '-')
+           && !All.Contains(name, StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>
@@ -114,7 +128,7 @@ public sealed record ComputeTaskPayload
 
     /// <summary>The connection reference to resolve on the executing node: a whole <c>${env:...}</c> /
     /// <c>${keyvault:...}</c> reference or an <c>@alias</c>. Inline connection strings are deliberately not
-    /// accepted on this ad-hoc path (see <see cref="Validate"/>): the estate's flows declare them through
+    /// accepted on this ad-hoc path (see <see cref="Validate()"/>): the estate's flows declare them through
     /// reviewed git, not through an interactive API.</summary>
     public required string SourceRef { get; init; }
 
@@ -214,6 +228,30 @@ public sealed record ComputeTaskPayload
     /// <summary>compareBaseline, data mode: how many example keys each anti-join direction carries.</summary>
     public int SampleRows { get; init; } = 5;
 
+    /// <summary>The arguments of an operation a host module registered (<c>IComputeOperation</c>), all strings so the
+    /// contract stays JSON-stable across versions; what they mean is the operation's to validate. Built-in operations take
+    /// their typed fields instead and refuse arguments. Null when the task carries none, so a built-in operation's queue
+    /// row reads back equal to the payload that wrote it.</summary>
+    public IReadOnlyDictionary<string, string>? Arguments { get; init; }
+
+    /// <summary>The most <see cref="Arguments"/> one task carries.</summary>
+    public const int MaxArguments = 32;
+
+    /// <summary>The longest argument name.</summary>
+    public const int MaxArgumentNameLength = 64;
+
+    /// <summary>The longest argument value.</summary>
+    public const int MaxArgumentLength = 4000;
+
+    /// <summary>The argument named <paramref name="name"/>, or null when it is absent or blank.</summary>
+    public string? Argument(string name)
+        => Arguments is not null && Arguments.TryGetValue(name, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
+
+    /// <summary>The argument named <paramref name="name"/>; a <see cref="SqlFlowException"/> naming the operation and the
+    /// argument when it is absent or blank.</summary>
+    public string RequireArgument(string name)
+        => Argument(name) ?? throw new SqlFlowException($"The '{Operation}' operation requires the '{name}' argument.");
+
     /// <summary>The widest page a task may request; larger asks are a request error, not a silent clamp, so the
     /// caller learns the real bound.</summary>
     public const int MaxLimit = 1000;
@@ -234,7 +272,11 @@ public sealed record ComputeTaskPayload
     /// <summary>Deserializes and validates a queue row's payload. Throws <see cref="SqlFlowException"/> when the
     /// JSON is malformed or the payload is invalid: a queue row is data from the database, so the worker treats
     /// it as a trust boundary rather than assuming the enqueuer validated it.</summary>
-    public static ComputeTaskPayload FromJson(string json)
+    public static ComputeTaskPayload FromJson(string json) => FromJson(json, registeredOperations: null);
+
+    /// <summary>Deserializes and validates a queue row's payload, accepting the operations a host module registered
+    /// (<paramref name="registeredOperations"/>) beside the built-in ones.</summary>
+    public static ComputeTaskPayload FromJson(string json, IReadOnlyCollection<string>? registeredOperations)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         ComputeTaskPayload? payload;
@@ -252,7 +294,7 @@ public sealed record ComputeTaskPayload
             throw new SqlFlowException("The compute task's arguments deserialized to nothing.");
         }
 
-        payload.Validate();
+        payload.Validate(registeredOperations);
         return payload;
     }
 
@@ -261,12 +303,35 @@ public sealed record ComputeTaskPayload
     /// is a 400, never a queued task doomed to fail) and the worker on deserialization (the queue row is data
     /// from the database). Throws <see cref="SqlFlowException"/> with the precise field named.
     /// </summary>
-    public void Validate()
+    public void Validate() => Validate(registeredOperations: null);
+
+    /// <summary>
+    /// Validates the payload, accepting the operations a host module registered (<paramref name="registeredOperations"/>)
+    /// beside the built-in ones. A registered operation's payload is checked as a transport contract only: a bounded
+    /// target reference and bounded arguments, their meaning being the operation's to validate. A built-in operation's
+    /// payload is checked field by field and takes no arguments.
+    /// </summary>
+    public void Validate(IReadOnlyCollection<string>? registeredOperations)
     {
+        if (registeredOperations is not null && registeredOperations.Contains(Operation, StringComparer.Ordinal))
+        {
+            ValidateRegistered();
+            return;
+        }
+
         if (!ComputeOperations.IsKnown(Operation))
         {
+            var valid = registeredOperations is { Count: > 0 }
+                ? ComputeOperations.All.Concat(registeredOperations.Order(StringComparer.Ordinal))
+                : ComputeOperations.All;
             throw new SqlFlowException(
-                $"Unknown compute operation '{Operation}'. Valid operations: {string.Join(", ", ComputeOperations.All)}.");
+                $"Unknown compute operation '{Operation}'. Valid operations: {string.Join(", ", valid)}.");
+        }
+
+        if (Arguments is { Count: > 0 })
+        {
+            throw new SqlFlowException(
+                $"The built-in '{Operation}' operation takes its typed fields, not arguments; arguments belong to an operation a module registered.");
         }
 
         if (string.IsNullOrWhiteSpace(SourceRef))
@@ -384,6 +449,43 @@ public sealed record ComputeTaskPayload
             if (MaxCandidates is < 1 or > 20)
             {
                 throw new SqlFlowException("maxCandidates must be between 1 and 20.");
+            }
+        }
+    }
+
+    /// <summary>The transport contract of an operation a host module registered: a non-blank, bounded target reference
+    /// free of control characters (what it names is the operation's business: a flow, an object, a reference), and at
+    /// most <see cref="MaxArguments"/> arguments with bounded names and values.</summary>
+    private void ValidateRegistered()
+    {
+        if (string.IsNullOrWhiteSpace(SourceRef) || SourceRef.Length > MaxSourceRefLength || HasControlCharacters(SourceRef))
+        {
+            throw new SqlFlowException(
+                $"The '{Operation}' operation requires a target reference of 1 to {MaxSourceRefLength} characters with no control characters.");
+        }
+
+        if (Arguments is null)
+        {
+            return;
+        }
+
+        if (Arguments.Count > MaxArguments)
+        {
+            throw new SqlFlowException($"The '{Operation}' operation takes at most {MaxArguments} arguments.");
+        }
+
+        foreach (var (name, value) in Arguments)
+        {
+            if (string.IsNullOrWhiteSpace(name) || name.Length > MaxArgumentNameLength || HasControlCharacters(name))
+            {
+                throw new SqlFlowException(
+                    $"Every argument of the '{Operation}' operation needs a name of 1 to {MaxArgumentNameLength} characters with no control characters.");
+            }
+
+            if (value is null || value.Length > MaxArgumentLength)
+            {
+                throw new SqlFlowException(
+                    $"Argument '{name}' of the '{Operation}' operation must be a value of at most {MaxArgumentLength} characters.");
             }
         }
     }
