@@ -107,9 +107,9 @@ public static class RunTriggerEndpoints
                 title: "Invalid request");
         }
 
-        // Who asked, recorded on the run and handed to its executor: the token's subject, as every other attributed
-        // write in the control plane records it.
-        var requestedBy = user.FindFirst("sub")?.Value ?? user.Identity?.Name;
+        // Who asked, recorded on the run and handed to its executor, by the rule every attributed write in the control
+        // plane records it with.
+        var requestedBy = RequestActor.Of(user);
 
         return scope.Value == RunScope.Flow
             ? await TriggerSingleFlowAsync(request, db, dispatcher, documents, requestedBy, ct).ConfigureAwait(false)

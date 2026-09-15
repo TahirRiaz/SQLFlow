@@ -197,7 +197,7 @@ public static class NodeEndpoints
             manualUntil = current?.ManualUntilUtc;
         }
 
-        var updatedBy = user.FindFirst("sub")?.Value ?? user.Identity?.Name;
+        var updatedBy = RequestActor.Of(user);
         await WorkerPoolStore.SaveScaleAsync(db, key, min, manualReplicas, manualUntil, updatedBy, now, ct)
             .ConfigureAwait(false);
 

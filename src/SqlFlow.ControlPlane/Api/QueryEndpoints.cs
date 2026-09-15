@@ -188,7 +188,7 @@ public static class QueryEndpoints
             TargetPool = string.IsNullOrWhiteSpace(request.Pool) ? null : request.Pool.Trim(),
             MaxRows = bounds.MaxRows,
             TimeoutSeconds = bounds.TimeoutSeconds,
-            PreparedBy = user.FindFirst("sub")?.Value ?? user.Identity?.Name,
+            PreparedBy = RequestActor.Of(user),
             PreparedUtc = now,
             ExpiresUtc = now + PlanLifetime,
         };
@@ -292,7 +292,7 @@ public static class QueryEndpoints
             db,
             new ComputeTaskEnqueueRequest(
                 payload.Operation, payload.SourceRef, plan.ProviderKind, payload.ToJson(),
-                plan.TargetPool, user.FindFirst("sub")?.Value ?? user.Identity?.Name),
+                plan.TargetPool, RequestActor.Of(user)),
             ct).ConfigureAwait(false);
 
         await db.QueryPlans.Where(p => p.PlanId == planId)

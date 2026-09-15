@@ -432,7 +432,7 @@ public static class DatasourceEndpoints
                 StatusCodes.Status404NotFound, "Not found");
         }
 
-        var requestedBy = user.FindFirst("sub")?.Value ?? user.Identity?.Name;
+        var requestedBy = RequestActor.Of(user);
         var taskId = await dispatcher.EnqueueComputeTaskAsync(
             db,
             new ComputeTaskEnqueueRequest(
