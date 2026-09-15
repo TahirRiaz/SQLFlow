@@ -84,7 +84,8 @@ public static class CatalogEndpoints
     /// root path the control-plane host cannot see (a local-path sync only works where the flows live on disk).
     /// </summary>
     private static async Task<Results<Ok<RepoSyncResultDto>, ProblemHttpResult>> SyncRepoAsync(
-        Guid id, CatalogDbContext db, ISecretResolver secrets, SqlFlow.Yaml.YamlDocumentLoader documents, TimeProvider clock,
+        Guid id, CatalogDbContext db, ISecretResolver secrets, SqlFlow.Yaml.YamlDocumentLoader documents,
+        [Microsoft.AspNetCore.Mvc.FromServices] IEnumerable<ICatalogSyncExtension> syncExtensions, TimeProvider clock,
         Background.QuestionGenerationSwitch questionGeneration, IServiceProvider services, CancellationToken ct)
     {
         var repo = await db.Repos.AsNoTracking().Where(r => r.Id == id)
@@ -131,7 +132,7 @@ public static class CatalogEndpoints
                 ? services.GetRequiredService<SqlFlow.Assistant.QuestionGenerator>()
                 : null;
 
-            var result = await new CatalogSync(documents).SyncAsync(
+            var result = await new CatalogSync(documents, syncExtensions).SyncAsync(
                 db, repo.RootPath, repo.Name, repo.RemoteUrl, clock.GetUtcNow().UtcDateTime,
                 includeDerived: true, secrets: secrets, ct: ct).ConfigureAwait(false);
 

@@ -201,7 +201,9 @@ public sealed partial class RepoSyncService : BackgroundService
                 ? scope.ServiceProvider.GetRequiredService<SqlFlow.Assistant.QuestionGenerator>()
                 : null;
 
-            var result = await new CatalogSync(scope.ServiceProvider.GetRequiredService<SqlFlow.Yaml.YamlDocumentLoader>())
+            var result = await new CatalogSync(
+                    scope.ServiceProvider.GetRequiredService<SqlFlow.Yaml.YamlDocumentLoader>(),
+                    scope.ServiceProvider.GetServices<ICatalogSyncExtension>())
                 .SyncAsync(catalog, workingDir, source.Name, source.RemoteUrl, _clock.GetUtcNow().UtcDateTime,
                     includeDerived: _connectLineage, secrets: resolver,
                     excludedFlowPaths: excludedFlowPaths, forceLineage: source.ForceLineageOnNextSync,

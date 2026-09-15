@@ -1081,7 +1081,9 @@ internal static class Program
                         return Task.CompletedTask;
                     }
 
-                    var result = await new CatalogSync(provider.GetRequiredService<YamlDocumentLoader>()).SyncAsync(
+                    var catalogSync = new CatalogSync(
+                        provider.GetRequiredService<YamlDocumentLoader>(), provider.GetServices<ICatalogSyncExtension>());
+                    var result = await catalogSync.SyncAsync(
                         context, directory, repoName, repoUrl, DateTime.UtcNow,
                         includeDerived: connect, secrets: provider.GetRequiredService<ISecretResolver>(),
                         lineageProgress: PrintProgress).ConfigureAwait(false);
@@ -1095,7 +1097,8 @@ internal static class Program
                         $"{result.Waves} waves, {result.FlowDependencies} dependencies" +
                         $"{(result.LineageEdgesPreserved > 0 ? $", {result.LineageEdgesPreserved} previously-derived edge(s) preserved" : "")}" +
                         $"{(result.ObjectsSuperseded > 0 ? $", {result.ObjectsSuperseded} superseded keys healed" : "")}" +
-                        $"{(result.LineageConnected ? " (connected)" : "")}.");
+                        $"{(result.LineageConnected ? " (connected)" : "")}" +
+                        $"{(catalogSync.HasExtensions ? $"; documents +{result.DocumentsAdded} added, {result.DocumentsUpdated} updated, {result.DocumentsUnchanged} unchanged, {result.DocumentsRemoved} removed, {result.DocumentsInvalid} invalid" : "")}.");
                     foreach (var warning in result.Warnings.Take(20))
                     {
                         Console.Error.WriteLine($"WARN  {warning}");
@@ -1171,7 +1174,7 @@ internal static class Program
             // block is best-effort; a refusal surfaces as a warning and never changes the run's exit code.)
             await CatalogDatabase.MigrateExistingAsync(connectionString).ConfigureAwait(false);
 
-            var sync = new CatalogSync(provider.GetRequiredService<YamlDocumentLoader>());
+            var sync = new CatalogSync(provider.GetRequiredService<YamlDocumentLoader>(), provider.GetServices<ICatalogSyncExtension>());
             var recorded = 0;
             var warnings = new List<string>();
             foreach (var (flowFile, runJson) in candidates)

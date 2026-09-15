@@ -49,6 +49,14 @@ public sealed record CatalogSyncResult
     /// <summary>Schema differences recorded from source-control runs in this pass.</summary>
     public int SchemaChangesAdded { get; init; }
     public bool LineageConnected { get; init; }
+
+    /// <summary>The documents the registered sync extensions reconciled beside the flows, tallied across every
+    /// extension; all zero when none is registered.</summary>
+    public int DocumentsAdded { get; init; }
+    public int DocumentsUpdated { get; init; }
+    public int DocumentsUnchanged { get; init; }
+    public int DocumentsRemoved { get; init; }
+    public int DocumentsInvalid { get; init; }
     public IReadOnlyList<string> Warnings { get; init; } = [];
 }
 
@@ -119,6 +127,7 @@ public sealed class CatalogSync
     };
 
     private readonly FlowSetCollector _estate;
+    private readonly IReadOnlyList<ICatalogSyncExtension> _extensions;
 
     private readonly YamlDocumentLoader _documents;
 
@@ -131,11 +140,23 @@ public sealed class CatalogSync
     /// <summary>A sync that parses with <paramref name="documents"/>, so the flow kinds a host registered become
     /// pipelines as well.</summary>
     public CatalogSync(YamlDocumentLoader documents)
+        : this(documents, [])
+    {
+    }
+
+    /// <summary>A sync that parses with <paramref name="documents"/> and reconciles the document families
+    /// <paramref name="extensions"/> add, in its own transaction.</summary>
+    public CatalogSync(YamlDocumentLoader documents, IEnumerable<ICatalogSyncExtension> extensions)
     {
         ArgumentNullException.ThrowIfNull(documents);
+        ArgumentNullException.ThrowIfNull(extensions);
         _documents = documents;
         _estate = new FlowSetCollector(documents);
+        _extensions = [.. extensions];
     }
+
+    /// <summary>Whether any sync extension is registered, so a caller reports the document tally only when there is one.</summary>
+    public bool HasExtensions => _extensions.Count > 0;
 
     /// <summary>One estate flow prepared for the reconciliation transaction: its redacted text, content hash,
     /// serialized definition, and the parsed document (null when it failed to parse after the scan) that the
@@ -315,8 +336,25 @@ public sealed class CatalogSync
                     lineage = (0, 0, 0, 0, 0, 0, false, 0);
                 }
 
+                // The document families registered modules add reconcile in the same transaction, so a sync is one
+                // atomic view of the repository. Their warnings are collected per attempt, so a retried transaction
+                // does not repeat them.
+                var documentTally = CatalogSyncExtensionResult.Empty;
+                var extensionWarnings = new List<string>();
+                foreach (var extension in _extensions)
+                {
+                    var tally = await extension.SyncAsync(context, repoId, root, nowUtc, extensionWarnings, ct).ConfigureAwait(false)
+                        ?? throw new InvalidOperationException($"The catalog sync extension {extension.GetType().Name} returned no result.");
+                    documentTally = documentTally.Add(tally);
+                }
+
                 return new CatalogSyncResult
                 {
+                    DocumentsAdded = documentTally.Added,
+                    DocumentsUpdated = documentTally.Updated,
+                    DocumentsUnchanged = documentTally.Unchanged,
+                    DocumentsRemoved = documentTally.Removed,
+                    DocumentsInvalid = documentTally.Invalid,
                     PipelinesAdded = pipelineTally.Added,
                     PipelinesUpdated = pipelineTally.Updated,
                     PipelinesUnchanged = pipelineTally.Unchanged,
@@ -340,7 +378,7 @@ public sealed class CatalogSync
                     FlowDependencies = lineage.FlowDeps,
                     Waves = lineage.Waves,
                     LineageConnected = lineage.Connected,
-                    Warnings = warnings,
+                    Warnings = [.. warnings, .. extensionWarnings],
                 };
             }, ct).ConfigureAwait(false);
         }
