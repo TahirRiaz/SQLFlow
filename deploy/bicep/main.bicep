@@ -244,7 +244,7 @@ var slackBotModelApiKeySecretName = 'sqlflow-slack-bot-model-api-key'
 var mcpEnabled = !empty(mcpImage)
 // The GUI chat assistant rides on the same building blocks (a Foundry model + the MCP server) and
 // needs nothing else, so it lights up automatically once both exist. It shares the assistant core
-// with the Slack bot but not its identity: every chat run carries the signed-in user's own bearer.
+// with the Slack bot but not its identity: every chat run carries a short-lived token delegated from the signed-in user.
 var chatAssistantEnabled = mcpEnabled && !empty(aiFoundryName) && !empty(aiFoundryModelName)
 var slackBotUsesApiKey = slackBotProvider != 'AzureFoundry'
 var slackBotProviderReady = slackBotUsesApiKey

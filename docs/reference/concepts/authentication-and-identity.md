@@ -13,6 +13,10 @@ keywords:
   - roles
   - scopes
   - throttle
+  - device grant
+  - session renewal
+  - assistant token
+  - delegation
 related:
   - concept-control-plane
   - guide-deployment
@@ -21,6 +25,10 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/UserEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/Contracts.cs
   - src/SqlFlow.ControlPlane/Security/TokenIssuer.cs
+  - src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs
+  - src/SqlFlow.ControlPlane/Security/DeviceCodeStore.cs
+  - src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/MeEndpoints.cs
   - src/SqlFlow.ControlPlane/Security/LoginThrottle.cs
   - src/SqlFlow.ControlPlane/Security/EntraTokenValidator.cs
   - src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs
@@ -44,7 +52,7 @@ The control plane offers several ways to sign in and issues one predominant kind
 
 Two further sign-in surfaces exist for clients that cannot drive an interactive login page:
 
-- **The OAuth 2.0 device-authorization grant (RFC 8628)**, always mapped, is the path for the MCP server and any headless client (src/SqlFlow.ControlPlane/Api/AuthEndpoints.cs:51-72,255,290-333). `POST /api/v1/auth/device` mints a device/user code pair and advertises the approval URL; both start and `POST /api/v1/auth/device/token` polling are anonymous, since the opaque `device_code` is the only secret the polling client holds. Approval and denial (`POST /api/v1/auth/device/approve`, `POST /api/v1/auth/device/deny`) run under an authenticated browser session (the `read` scope), so a human binds their own identity to the device. Once approved, the poll mints a normal HS256 token for the approving user, scoped to the granted subset of the device's allowed scopes `read` and `operate`: `admin` is deliberately excluded, so a headless client can never obtain account-administration rights this way.
+- **The OAuth 2.0 device-authorization grant (RFC 8628)**, always mapped, is the path for the MCP server and any headless client (src/SqlFlow.ControlPlane/Api/AuthEndpoints.cs). `POST /api/v1/auth/device` mints a device/user code pair and advertises the approval URL; both start and `POST /api/v1/auth/device/token` polling are anonymous, since the opaque `device_code` is the only secret the polling client holds. Approval and denial (`POST /api/v1/auth/device/approve`, `POST /api/v1/auth/device/deny`) run under an authenticated browser session (the `read` scope), so a human binds their own identity to the device. Once approved, the poll mints a normal HS256 token for the approving user, scoped to the granted subset of the device's allowed scopes `read`, `operate`, and `author`: `admin` is deliberately excluded, so a headless client can never obtain account-administration rights this way. The device token inherits the approving session's `auth_time` (src/SqlFlow.ControlPlane/Security/DeviceCodeStore.cs), so the MCP server rolls it at `POST /auth/renew` exactly as the GUI rolls its own session, a few minutes before each token lapses and under the same absolute cap measured from the approver's real sign-in. Approving a device therefore never starts a fresh cap. A device approved by a credential that does not roll itself (a personal access token or the bootstrap token) gets no `auth_time` and lives only as long as its one token.
 - **Personal access tokens (PATs)** are a distinct, long-lived bearer credential for headless clients (the CLI, the VSCode extension, automation), rather than a short-lived session token. A PAT and an HS256 token share one `Authorization: Bearer` header; a policy scheme (`PersonalAccessTokenDefaults.PolicyScheme`) inspects the presented token and forwards it to the right validator by shape, so authorization downstream sees one authenticated principal type regardless of which credential arrived (src/SqlFlow.ControlPlane/Program.cs:123-140,280). PATs are self-managed: any authenticated user creates, lists, and revokes their own through the `/me` endpoints, with each token's scopes capped server-side to the caller's own and the secret shown exactly once at creation and never retrievable again (src/SqlFlow.ControlPlane/Api/Contracts.cs:103-114).
 
 ## Tokens, scopes, and roles
@@ -72,9 +80,26 @@ The call is authenticated by the very token it replaces, so there is no second l
 - **`ControlPlane:Jwt:SessionMaxDays`** (default 30): past this, renewal is refused and a real sign-in is the only way back.
 - **A re-read of the account on every roll**: deactivating a user, changing their role, or deleting the role takes effect at their next renewal instead of lingering for the life of an issued token.
 
-Renewal is refused outright (403) for any credential with no `auth_time`: a personal access token (which already carries its own lifetime), the break-glass bootstrap token, and the device grant, whose long-lived path is a personal access token instead.
+Renewal is refused outright (403) for any credential with no `auth_time`: a personal access token (which already carries its own lifetime), the break-glass bootstrap token, an assistant run's delegated token (see [Assistant run tokens](#assistant-run-tokens)), and a device token approved by one of those. A device token approved from an interactive session carries that session's `auth_time` and rolls like it.
 
 Authorization has exactly two tiers, defined in src/SqlFlow.ControlPlane/Program.cs. Any authenticated caller gets the whole operational product: reading (catalog, runs, lineage, search, schedules, nodes, repo sources, summary), triggering and cancelling runs, schedule and repo-source writes, and proposing pipelines to a repo source as a pull request. Only user and role administration is fenced off, behind the `admin` scope. So the `read`, `operate`, and `author` policies all resolve to "authenticated", and `admin` alone consults the token's `scope` claim. This is deliberate: a signed-in user is never stuck unable to use a feature the UI shows them, and elevating an account is only ever needed to let it administer other accounts. The `operate` and `author` scopes still exist on tokens and roles (a token minted with only `read` is perfectly usable across the operational surface), but no policy other than `admin` enforces a scope.
+
+## Assistant run tokens
+
+The GUI chat assistant's model runs at a third party (Azure AI Foundry, OpenAI, or Anthropic), whose runtime calls the SQLFlow MCP server with whatever bearer the control plane hands it. That bearer is never the user's own session, which could be renewed for up to `SessionMaxDays` or used to mint a never-expiring personal access token. For each question, `POST /api/v1/chat/ask` issues a delegated token instead (`TokenIssuer.IssueAssistantDelegation`; src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs). It carries:
+
+- the caller's `sub`, `role`, and `uid`, and the caller's scopes with `admin` and `node` removed
+- `token_use: assistant`, the marker the control plane fences
+- no `auth_time`, so `/auth/renew` refuses it
+- an expiry of `ControlPlane:Assistant:RunTimeoutSeconds` plus 60 seconds
+
+Because `read`, `operate`, and `author` all resolve to "authenticated", cutting scopes alone would fence nothing, so the fence is an explicit, default-deny middleware. `AssistantDelegationMiddleware`, registered right after authorization, refuses a delegated token with 403 (`Not available to an assistant run`) on every endpoint that has not opted in with `AllowAssistantRead()` or `AllowAssistantWrite()` metadata. A new endpoint is therefore closed to the assistant until someone decides otherwise.
+
+- **The read surface** (catalog, runs, lineage, search, schedules, nodes, datasources, insights, dispatch) opts in for safe methods only (GET, HEAD, OPTIONS), so its few writes (repository sync and delete, node pool scaling and restarts) stay closed.
+- **The self-service surface** (`/me/tokens`, notification subscriptions, maintenance, chat conversations) does not opt in, apart from `GET /me`, which the MCP server uses to verify a bearer.
+- **The only writes open to it** are the ones the assistant's read-only tools make: `POST /datasources/tasks` (every compute operation only reads, and `runQuery` cannot be queued there) and `POST /dataops/queries/prepare` and `/dataops/queries/{planId}/run` (a plan is redeemed only after a person saw its SQL).
+
+So a model host holding the token can read what the user may read for one run and nothing else: it cannot renew the token, mint a personal access token, approve a device sign-in, read the user's conversations, trigger or cancel runs, change schedules or repo sources, propose pipelines, or administer users. The MCP server additionally verifies every inbound bearer with `GET /me` before any tool runs.
 
 Roles are catalog rows mapping a name to a scope string. `BootstrapProvisioningService` (src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs) seeds the built-in roles at startup, idempotently and without overwriting operator edits:
 

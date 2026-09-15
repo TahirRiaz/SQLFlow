@@ -179,8 +179,9 @@ if (options.Notifications.Enabled)
 
 // ---- GUI chat assistant: the same SqlFlow.Assistant core the Slack bot runs (one code path, two
 // surfaces), hosted behind /api/v1/chat with streaming and catalog-persisted conversations. The MCP
-// server is shared with the Slack bot unchanged; what differs is authority: every chat run forwards
-// the calling user's own bearer, so the assistant's tool access is exactly that user's access. The
+// server is shared with the Slack bot unchanged; what differs is authority: every chat run carries a
+// short-lived token delegated from the calling user (AssistantDelegation), bounded to the read surface
+// the tools need and never renewable, so the model host never holds the user's own session. The
 // gateways are registered only when the feature is enabled; the chat endpoints stay mapped either
 // way and report the switch through /chat/capabilities so the GUI can explain instead of erroring.
 if (options.Assistant.Enabled)
@@ -381,6 +382,9 @@ if (hasCors)
 app.UseAuthentication();
 app.UseRateLimiter(); // after authentication so the partition can key on the subject
 app.UseAuthorization();
+// After authorization, so the principal is resolved: refuses an assistant run's delegated token on every endpoint not
+// explicitly opened to it (default-deny; see AssistantDelegation).
+app.UseMiddleware<AssistantDelegationMiddleware>();
 
 // Liveness has no dependencies; readiness probes the catalog database. Probes are exempt from the rate limiter
 // so a shared egress IP's traffic can never throttle a liveness/readiness check into a false negative.
@@ -398,8 +402,9 @@ var v1 = app.MapGroup("/api/v1");
 // mapped when Azure SSO is enabled; the break-glass bootstrap token endpoint only when a secret is configured.
 v1.MapAuthEndpoints(options);
 
-// The authenticated read surface: repos/pipelines, runs, lineage, cross-repo search, and schedules.
-v1.MapGroup(string.Empty).RequireAuthorization("read")
+// The authenticated read surface: repos/pipelines, runs, lineage, cross-repo search, and schedules. Its safe methods
+// are open to an assistant run's delegated token (the MCP tools read from here); its few writes are not.
+v1.MapGroup(string.Empty).RequireAuthorization("read").AllowAssistantRead()
     .MapCatalogEndpoints()
     .MapRepoTreeEndpoints()
     .MapGitHistoryEndpoints()
@@ -415,14 +420,17 @@ v1.MapGroup(string.Empty).RequireAuthorization("read")
     .MapInsightsEndpoints()
     .MapDataStreamEndpoints()
     .MapIntegrationReadEndpoints()
-    // Self-service: any authenticated user manages their own personal access tokens (scopes capped to their own)
-    // and their own notification opt-ins.
+    // The dispatcher as it sees itself: every queued run with the gate holding it back, every lease, the fleet.
+    .MapDispatchEndpoints();
+
+// The authenticated self-service surface: the caller's own personal access tokens (scopes capped to their own),
+// notification opt-ins, maintenance, and chat conversations. Closed to an assistant run's delegated token (only the
+// /me whoami opts back in), so a model host holding that token can never mint a credential or read the user's chats.
+v1.MapGroup(string.Empty).RequireAuthorization("read")
     .MapMeEndpoints()
     .MapNotificationEndpoints()
     .MapMaintenanceEndpoints()
-    // The dispatcher as it sees itself: every queued run with the gate holding it back, every lease, the fleet.
-    .MapDispatchEndpoints()
-    // The GUI chat assistant: per-user conversations, streamed answers, per-user MCP authority.
+    // The GUI chat assistant: per-user conversations, streamed answers, each run under its own delegated token.
     .MapChatEndpoints();
 
 // The operate surface: triggering/cancelling a run and managing schedules are privileged operations, so they live

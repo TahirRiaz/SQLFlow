@@ -27,7 +27,9 @@ public static class MeEndpoints
     {
         ArgumentNullException.ThrowIfNull(group);
 
-        group.MapGet("/me", GetIdentity).WithTags("Access tokens").WithName("GetMyIdentity");
+        // Only the whoami is open to an assistant run (the MCP server verifies a bearer with it); an assistant token
+        // must never list, mint, or revoke the user's personal access tokens.
+        group.MapGet("/me", GetIdentity).WithTags("Access tokens").WithName("GetMyIdentity").AllowAssistantRead();
         group.MapGet("/me/tokens", ListTokensAsync).WithTags("Access tokens").WithName("ListMyAccessTokens");
         group.MapPost("/me/tokens", CreateTokenAsync).WithTags("Access tokens").WithName("CreateMyAccessToken");
         group.MapDelete("/me/tokens/{id:guid}", RevokeTokenAsync).WithTags("Access tokens").WithName("RevokeMyAccessToken");

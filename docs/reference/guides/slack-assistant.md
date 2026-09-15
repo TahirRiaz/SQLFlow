@@ -70,7 +70,7 @@ The gateway (`ResponsesApiGateway`, shared with the GUI chat assistant via the `
 1. **The tool allowlist.** The MCP tool is sent with `allowed_tools` set to the read-only surface (`SlackBot:Mcp:AllowedTools`): the docs tools, the catalog readers (`list_pipelines`, `list_runs`, `get_run`, `lineage_*`, `describe_object`, the `search_*` tools including `search_all` and the flow-side surfaces `search_flows`/`search_flow_columns`/`search_statements`, `summary`), and nothing that writes. `trigger_run`, `cancel_run`, and `propose_pipelines` are deliberately excluded.
 2. **The token scope.** The bot's whole SQLFlow authority is one **read-scoped** personal access token, sent to the MCP server as the MCP tool's `Authorization` header and forwarded to the control plane per call. Even if a write tool were reachable, the control plane rejects it: a read token calling `cancel_run` returns `403 insufficient scope`.
 
-Everyone in a workspace shares this one bot identity, which is why the allowlist stays read-only: widening it (for example adding `trigger_run`) would let anyone in any channel the bot is in fire it. Do not widen it here; the surface with a per-user identity is the [GUI chat assistant](chat-assistant.md), where every agent run carries the signed-in user's own token.
+Everyone in a workspace shares this one bot identity, which is why the allowlist stays read-only: widening it (for example adding `trigger_run`) would let anyone in any channel the bot is in fire it. Do not widen it here; the surface with a per-user identity is the [GUI chat assistant](chat-assistant.md), where every agent run carries a short-lived token delegated from the signed-in user.
 
 ## Conversation state
 

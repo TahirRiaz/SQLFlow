@@ -840,8 +840,8 @@ public sealed class SlackNotificationOptions
 /// (Markdown) formatting and streaming. Disabled by default: the chat endpoints then report the
 /// feature as unavailable instead of failing startup, so an estate without an AI deployment runs
 /// unchanged. Unlike the Slack bot, no assistant access token is configured here: every agent run
-/// forwards the calling user's own bearer to the MCP server, so tool access is exactly that user's
-/// access. The <c>ApiKey</c> fields accept <c>${env:...}</c>/<c>${keyvault:...}</c> references,
+/// presents a short-lived token delegated from the calling user to the MCP server, sized to
+/// <see cref="RunTimeoutSeconds"/> and fenced to the read surface the tools need. The <c>ApiKey</c> fields accept <c>${env:...}</c>/<c>${keyvault:...}</c> references,
 /// resolved through the engine's secret chain at first use.
 /// </summary>
 public sealed class AssistantChatOptions

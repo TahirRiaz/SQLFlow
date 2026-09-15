@@ -215,8 +215,8 @@ public static class AuthEndpoints
     /// safe without a second long-lived credential: a caller can only roll a session they already hold, and only
     /// while it is still valid. Once a session lapses there is no way back in but to sign in.
     /// <para>Refused for any credential that must not roll (no <c>auth_time</c>: a personal access token, the
-    /// break-glass bootstrap token, a device grant), past the absolute cap, and for an account that has since been
-    /// deactivated or had its role withdrawn.</para>
+    /// break-glass bootstrap token, an assistant run's delegated token, a device approved by one of those), past the
+    /// absolute cap, and for an account that has since been deactivated or had its role withdrawn.</para>
     /// </summary>
     private static async Task<Results<Ok<SessionResponse>, ProblemHttpResult>> RenewAsync(
         CatalogDbContext catalog, TokenIssuer issuer, IOptions<ControlPlaneOptions> options, TimeProvider clock,
@@ -361,7 +361,10 @@ public static class AuthEndpoints
     }
 
     /// <summary>Poll for the device token. Returns the standard RFC 8628 error codes until the flow is approved,
-    /// then mints a normal HS256 token for the approving user (scoped to the granted read/operate subset).</summary>
+    /// then mints a normal HS256 token for the approving user (scoped to the granted read/operate/author subset).
+    /// The token carries the approving session's <c>auth_time</c>, so a headless client rolls it at
+    /// <c>/auth/renew</c> exactly as the GUI rolls its own session, under the same absolute cap measured from the
+    /// approver's real sign-in.</summary>
     private static Results<Ok<DeviceTokenResponse>, JsonHttpResult<DeviceErrorResponse>> DeviceTokenAsync(
         DeviceTokenRequest request, DeviceCodeStore store, TokenIssuer issuer, TimeProvider clock, HttpContext httpContext)
     {
@@ -397,7 +400,8 @@ public static class AuthEndpoints
                 store.Remove(entry);
                 return DeviceError("access_denied");
             case DeviceCodeStore.DeviceStatus.Approved:
-                var result = issuer.Issue(entry.Username!, entry.GrantedScopes!, nowUtc, entry.Role, entry.UserId);
+                var result = issuer.Issue(
+                    entry.Username!, entry.GrantedScopes!, nowUtc, entry.Role, entry.UserId, entry.AuthTimeUtc);
                 store.Remove(entry);
                 var expiresIn = (int)Math.Max(1, (result.ExpiresUtc - nowUtc).TotalSeconds);
                 return TypedResults.Ok(new DeviceTokenResponse(
@@ -455,6 +459,13 @@ public static class AuthEndpoints
         entry.GrantedScopes = granted;
         entry.Role = user.FindFirst("role")?.Value;
         entry.UserId = Guid.TryParse(user.FindFirst("uid")?.Value, out var uid) ? uid : null;
+        // Inherit the approver's sign-in time rather than stamping now: approving a device must never reset the
+        // absolute session cap, or a user could chain device approvals into a session that never has to sign in.
+        entry.AuthTimeUtc = entry.UserId is not null
+            && long.TryParse(user.FindFirst(JwtRegisteredClaimNames.AuthTime)?.Value, NumberStyles.Integer,
+                CultureInfo.InvariantCulture, out var authTimeUnix)
+            ? DateTimeOffset.FromUnixTimeSeconds(authTimeUnix).UtcDateTime
+            : null;
         entry.Status = DeviceCodeStore.DeviceStatus.Approved;
         return TypedResults.NoContent();
     }

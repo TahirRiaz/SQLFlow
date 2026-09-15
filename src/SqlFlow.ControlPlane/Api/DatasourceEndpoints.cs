@@ -8,6 +8,7 @@ using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Background;
 using SqlFlow.ControlPlane.Configuration;
+using SqlFlow.ControlPlane.Security;
 using SqlFlow.Core;
 using SqlFlow.Core.Comparison;
 using SqlFlow.Core.Compute;
@@ -113,8 +114,10 @@ public static class DatasourceEndpoints
     {
         ArgumentNullException.ThrowIfNull(group);
 
+        // Open to an assistant run: every compute operation only reads (introspection, DMV probes, the data-ops
+        // checks), and runQuery cannot be queued here at all, only through a redeemed plan.
         group.MapPost("/datasources/tasks", TriggerTaskAsync)
-            .WithTags("Datasources").WithName("TriggerComputeTask");
+            .WithTags("Datasources").WithName("TriggerComputeTask").AllowAssistantWrite();
         group.MapPost("/datasources/tasks/{taskId:guid}/cancel", CancelTaskAsync)
             .WithTags("Datasources").WithName("CancelComputeTask");
 

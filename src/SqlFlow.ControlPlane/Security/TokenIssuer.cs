@@ -33,9 +33,10 @@ public sealed class TokenIssuer
     /// carries neither. <paramref name="nowUtc"/> is injectable for deterministic tests.
     /// <para><paramref name="authTimeUtc"/> marks the token as an interactive session that may roll: it records when
     /// the user actually proved who they are, and survives unchanged across every renewal so the absolute session cap
-    /// is measured from the real sign-in rather than from the newest token. Leave it null for a credential that must
-    /// not roll (the break-glass bootstrap token, and the device grant, whose long-lived path is a personal access
-    /// token instead). <c>/auth/renew</c> refuses anything without this claim.</para></summary>
+    /// is measured from the real sign-in rather than from the newest token. A device grant inherits the approving
+    /// session's value, so approving a device never extends the approver's own cap. Leave it null for a credential
+    /// that must not roll (the break-glass bootstrap token, or a device approved by a credential that does not roll
+    /// itself). <c>/auth/renew</c> refuses anything without this claim.</para></summary>
     public TokenResult Issue(
         string subject, IReadOnlyList<string> scopes, DateTime nowUtc, string? role = null, Guid? userId = null,
         DateTime? authTimeUtc = null)
@@ -43,12 +44,7 @@ public sealed class TokenIssuer
         ArgumentException.ThrowIfNullOrWhiteSpace(subject);
         ArgumentNullException.ThrowIfNull(scopes);
 
-        var expires = nowUtc.AddMinutes(_options.AccessTokenMinutes);
-        var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, subject),
-            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
-        };
+        var claims = SubjectClaims(subject, scopes, role, userId);
         if (authTimeUtc is { } authTime)
         {
             var seconds = new DateTimeOffset(DateTime.SpecifyKind(authTime, DateTimeKind.Utc)).ToUnixTimeSeconds();
@@ -57,6 +53,38 @@ public sealed class TokenIssuer
                 seconds.ToString(CultureInfo.InvariantCulture),
                 ClaimValueTypes.Integer64));
         }
+
+        return Sign(claims, nowUtc, nowUtc.AddMinutes(_options.AccessTokenMinutes));
+    }
+
+    /// <summary>
+    /// Issues the token one AI assistant run presents to the MCP server (see <see cref="AssistantDelegation"/>): the
+    /// same subject, role and catalog id as <paramref name="caller"/>, the caller's scopes minus administration and
+    /// fleet traffic, the <c>token_use=assistant</c> marker the control plane fences, no <c>auth_time</c> so it can
+    /// never be renewed, and a lifetime of <paramref name="lifetime"/> rather than the session lifetime.
+    /// </summary>
+    public TokenResult IssueAssistantDelegation(ClaimsPrincipal caller, TimeSpan lifetime, DateTime nowUtc)
+    {
+        ArgumentNullException.ThrowIfNull(caller);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(lifetime, TimeSpan.Zero);
+
+        var subject = caller.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+        ArgumentException.ThrowIfNullOrWhiteSpace(subject, nameof(caller));
+        Guid? userId = Guid.TryParse(caller.FindFirst("uid")?.Value, out var uid) ? uid : null;
+
+        var claims = SubjectClaims(
+            subject, AssistantDelegation.DelegableScopes(caller), caller.FindFirst("role")?.Value, userId);
+        claims.Add(new Claim(AssistantDelegation.ClaimType, AssistantDelegation.ClaimValue));
+        return Sign(claims, nowUtc, nowUtc.Add(lifetime));
+    }
+
+    private static List<Claim> SubjectClaims(string subject, IReadOnlyList<string> scopes, string? role, Guid? userId)
+    {
+        var claims = new List<Claim>
+        {
+            new(JwtRegisteredClaimNames.Sub, subject),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
+        };
 
         if (scopes.Count > 0)
         {
@@ -73,6 +101,11 @@ public sealed class TokenIssuer
             claims.Add(new Claim("uid", userId.Value.ToString("D")));
         }
 
+        return claims;
+    }
+
+    private TokenResult Sign(List<Claim> claims, DateTime nowUtc, DateTime expiresUtc)
+    {
         var descriptor = new SecurityTokenDescriptor
         {
             Issuer = _options.Issuer,
@@ -80,12 +113,12 @@ public sealed class TokenIssuer
             Subject = new ClaimsIdentity(claims),
             IssuedAt = nowUtc,
             NotBefore = nowUtc,
-            Expires = expires,
+            Expires = expiresUtc,
             SigningCredentials = _credentials,
         };
 
         var token = new JsonWebTokenHandler().CreateToken(descriptor);
-        return new TokenResult(token, expires);
+        return new TokenResult(token, expiresUtc);
     }
 }
 

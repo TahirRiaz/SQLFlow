@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Background;
 using SqlFlow.ControlPlane.Configuration;
+using SqlFlow.ControlPlane.Security;
 using SqlFlow.Core;
 using SqlFlow.Core.Compute;
 using SqlFlow.Core.Connections;
@@ -57,10 +58,12 @@ public static class QueryEndpoints
     {
         ArgumentNullException.ThrowIfNull(group);
 
+        // Both are open to an assistant run: preparing executes nothing, and running only redeems a single-use plan
+        // whose exact SQL a person was shown.
         group.MapPost("/dataops/queries/prepare", PrepareAsync)
-            .WithTags("Query").WithName("PrepareQuery");
+            .WithTags("Query").WithName("PrepareQuery").AllowAssistantWrite();
         group.MapPost("/dataops/queries/{planId:guid}/run", RunAsync)
-            .WithTags("Query").WithName("RunPreparedQuery");
+            .WithTags("Query").WithName("RunPreparedQuery").AllowAssistantWrite();
 
         return group;
     }

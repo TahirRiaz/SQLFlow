@@ -1128,7 +1128,7 @@
               "type": "bool",
               "defaultValue": false,
               "metadata": {
-                "description": "Enable the GUI chat assistant (/api/v1/chat): the same assistant core as the Slack bot, streamed to the GUI, with every agent run forwarding the calling user's own bearer to the MCP server. Requires the Foundry and MCP parameters below; the key-based providers are configured out of band via ControlPlane__Assistant__* env vars instead."
+                "description": "Enable the GUI chat assistant (/api/v1/chat): the same assistant core as the Slack bot, streamed to the GUI, with every agent run presenting a short-lived token delegated from the calling user to the MCP server. Requires the Foundry and MCP parameters below; the key-based providers are configured out of band via ControlPlane__Assistant__* env vars instead."
               }
             },
             "assistantFoundryProjectEndpoint": {

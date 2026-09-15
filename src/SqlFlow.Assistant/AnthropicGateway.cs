@@ -10,8 +10,8 @@ namespace SqlFlow.Assistant;
 /// The bridge to the Anthropic Claude API, via the Messages API's MCP connector: each question is
 /// one (or, after a <c>pause_turn</c>, a few chained) streamed <c>POST /v1/messages</c> calls
 /// carrying the model, the shared assistant instructions as the system prompt, and the SQLFlow MCP
-/// server as an <c>mcp_servers</c> entry whose tools Claude calls server-side. The caller's bearer
-/// rides as the connector's authorization token, and the tool allowlist is enforced through the
+/// server as an <c>mcp_servers</c> entry whose tools Claude calls server-side. The run's bearer
+/// (<see cref="AssistantRequest.McpBearer"/>) rides as the connector's authorization token, and the tool allowlist is enforced through the
 /// <c>mcp_toolset</c> configuration. Anthropic keeps no server-side conversation state, so every
 /// call sends the transcript (already capped by MaxReplayMessages); the host's record stays the
 /// single durable transcript, which also means a host restart loses nothing.
