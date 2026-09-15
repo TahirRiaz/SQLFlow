@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Core.Runs;
@@ -63,6 +64,10 @@ public sealed record GroupCancelResult(bool Found, int CancelledQueued, int Requ
 /// <summary>The outcome of a terminal write (fail, cancel-running): whether it applied, and which still-queued group
 /// members were skipped as a consequence, so the dispatcher can drop them from memory too.</summary>
 public sealed record RunTerminalResult(bool Applied, IReadOnlyList<Guid> SkippedRunIds);
+
+/// <summary>What ending a fan-out's unfinished members did: the queued members cancelled outright (they leave the
+/// dispatcher's memory) and how many running members were asked to stop.</summary>
+public sealed record FanOutMembersEnded(IReadOnlyList<Guid> CancelledQueuedIds, int RequestedRunning);
 
 /// <summary>The result of a cancel request, so the API can answer 200 / 202 / 404 / 409 precisely.</summary>
 public enum CancelOutcome
@@ -598,7 +603,7 @@ public static class RunQueueStore
     /// (which decides success or failure), a failure with a reason, or an honored operator cancel.</summary>
     public static async Task<RunOutcomeRecord> RecordOutcomeAsync(
         CatalogDbContext catalog, Guid runId, string node, int attempt, RunOutcomeKind outcome, string? failure,
-        string? artifactJson, DateTime nowUtc, CancellationToken ct = default)
+        string? artifactJson, DateTime nowUtc, Func<string, bool>? projectsResult = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
@@ -606,7 +611,8 @@ public static class RunQueueStore
         switch (outcome)
         {
             case RunOutcomeKind.Completed:
-                return await CompleteFromArtifactAsync(catalog, runId, artifactJson, nowUtc, node, attempt, ct).ConfigureAwait(false);
+                return await CompleteFromArtifactAsync(
+                    catalog, runId, artifactJson, nowUtc, node, attempt, projectsResult, ct).ConfigureAwait(false);
             case RunOutcomeKind.Failed:
                 {
                     var reason = string.IsNullOrWhiteSpace(failure) ? "the run failed without a recorded reason." : failure;
@@ -634,10 +640,13 @@ public static class RunQueueStore
     /// out again for a later attempt) no longer matches, so a node presumed dead that finishes late writes nothing:
     /// the current execution is authoritative, and this one's result is dropped as
     /// <see cref="RunOutcomeStatus.StaleClaim"/>. Passing no fence (the artifact-sync path, which records finished
-    /// CLI runs that were never handed out) applies unconditionally.</para></summary>
+    /// CLI runs that were never handed out) applies unconditionally.</para>
+    /// <para><paramref name="projectsResult"/> says, by flow kind, whether the artifact's result object is recorded on
+    /// the row (<see cref="CatalogRun.ResultJson"/>): true for the kinds a host registered. Null records none.</para></summary>
     public static Task<RunOutcomeRecord> CompleteFromArtifactAsync(
         CatalogDbContext catalog, Guid runId, string? artifactJson, DateTime nowUtc,
-        string? claimedByNode = null, int? claimAttempt = null, CancellationToken ct = default)
+        string? claimedByNode = null, int? claimAttempt = null, Func<string, bool>? projectsResult = null,
+        CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
 
@@ -688,7 +697,12 @@ public static class RunQueueStore
                     }
                     else
                     {
+                        var enqueuedKind = existing.FlowKind;
                         ApplyCompletion(existing, projected, nowUtc);
+                        existing.ResultJson = projectsResult is not null
+                            && (projectsResult(existing.FlowKind) || projectsResult(enqueuedKind))
+                                ? CatalogProjection.RunResultJson(document.RootElement)
+                                : null;
 
                         // The node streamed this run's statements and canonical events into the catalog live as it
                         // executed: each is an immutable, append-only row the trace stream already delivered under a
@@ -723,10 +737,9 @@ public static class RunQueueStore
                         }
                         // A failed group member strands its dependents: skip them in the same transaction so the
                         // completion and its consequences commit together (a no-op for a standalone or succeeded run).
-                        var skipped = projected.Success
-                            ? []
-                            : await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
-                        return new RunOutcomeRecord(RunOutcomeStatus.Recorded, skipped);
+                        // A fan-out root's unfinished members end with it whatever its outcome, in the same transaction.
+                        var ended = await EndDependentsAsync(catalog, runId, projected.Success, nowUtc, ct).ConfigureAwait(false);
+                        return new RunOutcomeRecord(RunOutcomeStatus.Recorded, ended);
                     }
                 }
                 catch (JsonException ex)
@@ -743,7 +756,7 @@ public static class RunQueueStore
             existing.WrittenUtc = nowUtc;
             existing.Error = $"the run executed but its result could not be recorded: {readError}.";
             // An unrecordable run is still a failed group member: strand its dependents like any other failure.
-            var stranded = await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
+            var stranded = await EndDependentsAsync(catalog, runId, succeeded: false, nowUtc, ct).ConfigureAwait(false);
             return new RunOutcomeRecord(RunOutcomeStatus.ArtifactUnreadable, stranded);
         }, ct);
     }
@@ -777,7 +790,7 @@ public static class RunQueueStore
             return new RunTerminalResult(false, []);
         }
 
-        return new RunTerminalResult(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
+        return new RunTerminalResult(true, await EndDependentsAsync(catalog, runId, succeeded: false, nowUtc, ct).ConfigureAwait(false));
     }
 
     /// <summary>Cancels a run, honoring its lifecycle. A still-queued run is cancelled outright (it never ran). A
@@ -803,9 +816,13 @@ public static class RunQueueStore
         {
             // Cancelling a queued group member is a non-success terminal too: its dependents in the group can no
             // longer run, so skip them (a no-op for a standalone run).
-            await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
+            await EndDependentsAsync(catalog, runId, succeeded: false, nowUtc, ct).ConfigureAwait(false);
             return CancelOutcome.Cancelled;
         }
+
+        // A fan-out root takes its members with it: queued ones are cancelled outright, running ones get the same
+        // durable request their root gets below.
+        await EndFanOutMembersAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false);
 
         // Still-running: record the request for the owning node. Stamp CancelRequestedUtc only when it is not yet
         // set, so the request reflects when the operator first asked (a repeated click does not keep moving it).
@@ -892,7 +909,252 @@ public static class RunQueueStore
             return new RunTerminalResult(false, []);
         }
 
-        return new RunTerminalResult(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
+        return new RunTerminalResult(true, await EndDependentsAsync(catalog, runId, succeeded: false, nowUtc, ct).ConfigureAwait(false));
+    }
+
+    // ----------------------------------------------------------------------------------------------- fan-out ------
+
+    /// <summary>
+    /// Journals the fan-out a running root run asks for: one queued member run per parameter set, of the root's flow and
+    /// routed exactly as the root (pool, commit, flow version, trigger, requester), each stamped with the root so the
+    /// dispatcher's family gate runs it beside the root, all under one run group of mode
+    /// <see cref="RunGroupModes.FanOut"/>. Fenced on the root's hand-out: unless the root is still running under
+    /// <paramref name="node"/> at <paramref name="attempt"/>, nothing is written and the answer is
+    /// <see cref="FanOutEnqueueRecord.NotHeld"/>. Members already journaled for the root and operation that have not
+    /// finished are returned instead of new ones, so a root re-executed after an interruption rejoins its fan-out rather
+    /// than doubling it; the fence, that check and the insert share one serializable transaction.
+    /// <paramref name="validateMember"/> applies the root kind's rule to each member's parameters, given the root's
+    /// flow kind (the kind owns its operations, values and payload). Throws <see cref="FanOutRefusedException"/> for a
+    /// request that cannot be honored: invalid members, a member refused by the kind, a root that is itself a member, a
+    /// root outside any repository.
+    /// </summary>
+    public static async Task<FanOutEnqueueRecord> EnqueueFanOutAsync(
+        CatalogDbContext catalog, Guid rootRunId, string node, int attempt, IReadOnlyList<RunParameters> members,
+        DateTime nowUtc, Action<string, RunParameters>? validateMember = null, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        new FanOutRequest(node, attempt, members).Validate();
+        var operation = members[0].Operation;
+
+        return await CatalogTransaction.InSerializableAsync(catalog, async () =>
+        {
+            var root = await catalog.Runs.AsNoTracking()
+                .Where(r => r.RunId == rootRunId)
+                .Select(r => new
+                {
+                    r.PipelineId, r.RepoId, r.FlowName, r.FlowKind, r.TargetPool, r.CommitSha, r.FlowVersionHash,
+                    r.TriggerSource, r.TriggerScheduleId, r.RequestedBy, r.Status, r.ClaimedByNode, r.Attempt, r.FanOutRoot,
+                })
+                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            if (root is null || root.Status != RunStatuses.Running || root.ClaimedByNode != node || root.Attempt != attempt)
+            {
+                return FanOutEnqueueRecord.NotHeld;
+            }
+
+            if (root.FanOutRoot is not null)
+            {
+                throw new FanOutRefusedException(
+                    $"run {rootRunId} is itself a fan-out member, and a member cannot fan out again.");
+            }
+
+            if (root.RepoId is not { } repoId)
+            {
+                throw new FanOutRefusedException($"run {rootRunId} belongs to no repository, so it cannot fan out.");
+            }
+
+            if (validateMember is not null)
+            {
+                for (var i = 0; i < members.Count; i++)
+                {
+                    try
+                    {
+                        validateMember(root.FlowKind, members[i]);
+                    }
+                    catch (Core.SqlFlowException ex)
+                    {
+                        throw new FanOutRefusedException($"fan-out member {i + 1}: {ex.Message}", ex);
+                    }
+                }
+            }
+
+            var rejoined = await catalog.Runs.AsNoTracking()
+                .Where(r => r.FanOutRoot == rootRunId && r.Operation == operation
+                    && (r.Status == RunStatuses.Queued || r.Status == RunStatuses.Running))
+                .Select(r => r.GroupId)
+                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            if (rejoined is { } existingGroup)
+            {
+                var memberIds = await catalog.Runs.AsNoTracking()
+                    .Where(r => r.GroupId == existingGroup && r.FanOutRoot == rootRunId)
+                    .OrderBy(r => r.FanOutSlot)
+                    .Select(r => r.RunId)
+                    .ToListAsync(ct).ConfigureAwait(false);
+                return new FanOutEnqueueRecord(true, existingGroup, memberIds, []);
+            }
+
+            var groupId = Guid.CreateVersion7();
+            catalog.RunGroups.Add(new CatalogRunGroup
+            {
+                GroupId = groupId,
+                RepoId = repoId,
+                Mode = RunGroupModes.FanOut,
+                Anchor = root.FlowName,
+                MemberCount = members.Count,
+                CommitSha = root.CommitSha,
+                EnqueuedUtc = nowUtc,
+            });
+
+            var ids = new List<Guid>(members.Count);
+            var placements = new List<DispatchRun>(members.Count);
+            for (var i = 0; i < members.Count; i++)
+            {
+                var parameters = members[i];
+                var runId = Guid.CreateVersion7();
+                ids.Add(runId);
+                catalog.Runs.Add(new CatalogRun
+                {
+                    RunId = runId,
+                    PipelineId = root.PipelineId,
+                    RepoId = repoId,
+                    FlowName = root.FlowName,
+                    FlowKind = root.FlowKind,
+                    TargetPool = root.TargetPool,
+                    CommitSha = root.CommitSha,
+                    FlowVersionHash = root.FlowVersionHash,
+                    GroupId = groupId,
+                    GroupWave = 0,
+                    FullLoad = parameters.FullLoad,
+                    BackfillFrom = parameters.BackfillFrom,
+                    BackfillTo = parameters.BackfillTo,
+                    FilePattern = string.IsNullOrWhiteSpace(parameters.FilePattern) ? null : parameters.FilePattern.Trim(),
+                    SourceFilter = string.IsNullOrWhiteSpace(parameters.SourceFilter) ? null : parameters.SourceFilter.Trim(),
+                    AssertionsOnly = parameters.AssertionsOnly,
+                    ReprocessFromSourceMin = parameters.ReprocessFromSourceMin,
+                    Operation = parameters.Operation,
+                    ValuesJson = RunParameters.ValuesToJson(parameters.Values),
+                    Payload = parameters.Payload,
+                    RequestedBy = root.RequestedBy,
+                    TriggerSource = root.TriggerSource,
+                    TriggerScheduleId = root.TriggerScheduleId,
+                    FanOutRoot = rootRunId,
+                    FanOutSlot = i + 1,
+                    FanOutCount = members.Count,
+                    Status = RunStatuses.Queued,
+                    EnqueuedUtc = nowUtc,
+                    WrittenUtc = nowUtc,
+                    Success = false,
+                });
+                placements.Add(new DispatchRun(
+                    runId, root.PipelineId, root.TargetPool, groupId, 0, null, nowUtc, 0, false, rootRunId));
+            }
+
+            return new FanOutEnqueueRecord(true, groupId, ids, placements);
+        }, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The members of one of a root's fan-out groups in slot order, with their states, errors and results.
+    /// Fenced on the root's hand-out: <see cref="FanOutStateResponse.NotHeld"/> unless the root is still running under
+    /// <paramref name="node"/> at <paramref name="attempt"/>.</summary>
+    public static async Task<FanOutStateResponse> LoadFanOutStateAsync(
+        CatalogDbContext catalog, Guid rootRunId, Guid groupId, string node, int attempt, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        if (!await IsHeldAsync(catalog, rootRunId, node, attempt, ct).ConfigureAwait(false))
+        {
+            return FanOutStateResponse.NotHeld;
+        }
+
+        var members = await catalog.Runs.AsNoTracking()
+            .Where(r => r.GroupId == groupId && r.FanOutRoot == rootRunId)
+            .OrderBy(r => r.FanOutSlot)
+            .Select(r => new FanOutMemberState(r.RunId, r.FanOutSlot ?? 0, r.Status, r.Error, r.ResultJson))
+            .ToListAsync(ct).ConfigureAwait(false);
+        return new FanOutStateResponse(true, members);
+    }
+
+    /// <summary>Cancels the unfinished members of one of a root's fan-out groups: queued ones outright, running ones by
+    /// a durable request their nodes hear on the next poll. Fenced on the root's hand-out.</summary>
+    public static async Task<FanOutCancelResponse> CancelFanOutAsync(
+        CatalogDbContext catalog, Guid rootRunId, Guid groupId, string node, int attempt, DateTime nowUtc,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        if (!await IsHeldAsync(catalog, rootRunId, node, attempt, ct).ConfigureAwait(false))
+        {
+            return FanOutCancelResponse.NotHeld;
+        }
+
+        var ended = await EndMembersAsync(
+            catalog, r => r.FanOutRoot == rootRunId && r.GroupId == groupId,
+            "cancelled: the run that fanned it out cancelled its fan-out.", nowUtc, ct).ConfigureAwait(false);
+        return new FanOutCancelResponse(true, ended.CancelledQueuedIds.Count, ended.RequestedRunning);
+    }
+
+    private static Task<bool> IsHeldAsync(CatalogDbContext catalog, Guid runId, string node, int attempt, CancellationToken ct)
+        => catalog.Runs.AsNoTracking().AnyAsync(
+            r => r.RunId == runId && r.Status == RunStatuses.Running && r.ClaimedByNode == node && r.Attempt == attempt, ct);
+
+    /// <summary>The consequences of a run reaching a terminal state, in the same unit of work: a group member that did
+    /// not succeed skips its queued dependents, and a fan-out root ends its unfinished members (queued ones cancelled
+    /// outright, running ones asked to stop), since they exist only to serve it. Returns the runs that left the queue,
+    /// for the dispatcher's memory.</summary>
+    private static async Task<IReadOnlyList<Guid>> EndDependentsAsync(
+        CatalogDbContext catalog, Guid endedRunId, bool succeeded, DateTime nowUtc, CancellationToken ct)
+    {
+        IReadOnlyList<Guid> skipped = succeeded
+            ? []
+            : await SkipGroupDescendantsAsync(catalog, endedRunId, nowUtc, ct).ConfigureAwait(false);
+        var members = await EndFanOutMembersAsync(catalog, endedRunId, nowUtc, ct).ConfigureAwait(false);
+        return members.CancelledQueuedIds.Count == 0 ? skipped : [.. skipped, .. members.CancelledQueuedIds];
+    }
+
+    /// <summary>Ends every unfinished fan-out member of a root: a no-op (one index seek) for a run that fanned nothing out.</summary>
+    private static Task<FanOutMembersEnded> EndFanOutMembersAsync(
+        CatalogDbContext catalog, Guid rootRunId, DateTime nowUtc, CancellationToken ct)
+        => EndMembersAsync(
+            catalog, r => r.FanOutRoot == rootRunId,
+            "cancelled: the run that fanned it out ended before this member finished.", nowUtc, ct);
+
+    private static async Task<FanOutMembersEnded> EndMembersAsync(
+        CatalogDbContext catalog, Expression<Func<CatalogRun, bool>> members, string reason, DateTime nowUtc,
+        CancellationToken ct)
+    {
+        var queued = await catalog.Runs.AsNoTracking()
+            .Where(members)
+            .Where(r => r.Status == RunStatuses.Queued)
+            .Select(r => r.RunId)
+            .ToListAsync(ct).ConfigureAwait(false);
+        IReadOnlyList<Guid> cancelledIds = [];
+        if (queued.Count > 0)
+        {
+            var cancelled = await catalog.Runs
+                .Where(members)
+                .Where(r => r.Status == RunStatuses.Queued && queued.Contains(r.RunId))
+                .ExecuteUpdateAsync(s => s
+                    .SetProperty(r => r.Status, RunStatuses.Cancelled)
+                    .SetProperty(r => r.Success, false)
+                    .SetProperty(r => r.Error, reason)
+                    .SetProperty(r => r.EndUtc, nowUtc)
+                    .SetProperty(r => r.WrittenUtc, nowUtc), ct)
+                .ConfigureAwait(false);
+            // Some members may have been handed out between the read and the write: report only those cancelled.
+            cancelledIds = cancelled == queued.Count
+                ? queued
+                : await catalog.Runs.AsNoTracking()
+                    .Where(r => queued.Contains(r.RunId) && r.Status == RunStatuses.Cancelled)
+                    .Select(r => r.RunId)
+                    .ToListAsync(ct).ConfigureAwait(false);
+        }
+
+        var requested = await catalog.Runs
+            .Where(members)
+            .Where(r => r.Status == RunStatuses.Running && r.CancelRequestedUtc == null)
+            .ExecuteUpdateAsync(s => s.SetProperty(r => r.CancelRequestedUtc, nowUtc), ct)
+            .ConfigureAwait(false);
+        return new FanOutMembersEnded(cancelledIds, requested);
     }
 
     private static string InterruptedTerminalError(string node, int attempt) =>
@@ -963,7 +1225,7 @@ public static class RunQueueStore
             return new InterruptedRunRecord(false, []);
         }
 
-        return new InterruptedRunRecord(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
+        return new InterruptedRunRecord(true, await EndDependentsAsync(catalog, runId, succeeded: false, nowUtc, ct).ConfigureAwait(false));
     }
 
     /// <summary>Records an interrupted run cancelled: the operator already asked for its death before its node went
@@ -990,7 +1252,7 @@ public static class RunQueueStore
             return new InterruptedRunRecord(false, []);
         }
 
-        return new InterruptedRunRecord(true, await SkipGroupDescendantsAsync(catalog, runId, nowUtc, ct).ConfigureAwait(false));
+        return new InterruptedRunRecord(true, await EndDependentsAsync(catalog, runId, succeeded: false, nowUtc, ct).ConfigureAwait(false));
     }
 
     /// <summary>When a group member reaches a non-success terminal state (failed / cancelled), marks every member
@@ -1137,18 +1399,19 @@ public static class RunQueueStore
 
     private sealed record PlacementRow(
         Guid RunId, Guid PipelineId, string? TargetPool, Guid? GroupId, int GroupWave, int? GroupMaxConcurrency,
-        DateTime? EnqueuedUtc, DateTime WrittenUtc, int Attempt, DateTime? CancelRequestedUtc, string? ClaimedByNode);
+        DateTime? EnqueuedUtc, DateTime WrittenUtc, int Attempt, DateTime? CancelRequestedUtc, string? ClaimedByNode,
+        Guid? FanOutRoot);
 
     private static IQueryable<PlacementRow> PlacementQuery(IQueryable<CatalogRun> runs)
         => runs.Select(r => new PlacementRow(
             r.RunId, r.PipelineId, r.TargetPool, r.GroupId, r.GroupWave, r.GroupMaxConcurrency,
-            r.EnqueuedUtc, r.WrittenUtc, r.Attempt, r.CancelRequestedUtc, r.ClaimedByNode));
+            r.EnqueuedUtc, r.WrittenUtc, r.Attempt, r.CancelRequestedUtc, r.ClaimedByNode, r.FanOutRoot));
 
     private static IQueryable<PlacementRow> RunningQuery(IQueryable<CatalogRun> runs) => PlacementQuery(runs);
 
     private static DispatchRun ToDispatchRun(PlacementRow row) => new(
         row.RunId, row.PipelineId, row.TargetPool, row.GroupId, row.GroupWave, row.GroupMaxConcurrency,
-        row.EnqueuedUtc ?? row.WrittenUtc, row.Attempt, row.CancelRequestedUtc != null);
+        row.EnqueuedUtc ?? row.WrittenUtc, row.Attempt, row.CancelRequestedUtc != null, row.FanOutRoot);
 
     private static RunningRunRecord? ToRunningRecord(PlacementRow row)
         => string.IsNullOrWhiteSpace(row.ClaimedByNode) ? null : new RunningRunRecord(ToDispatchRun(row), row.ClaimedByNode);

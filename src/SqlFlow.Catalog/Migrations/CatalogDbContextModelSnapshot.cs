@@ -1391,6 +1391,15 @@ namespace SqlFlow.Catalog.Migrations
                     b.Property<string>("Error")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("FanOutCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("FanOutRoot")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int?>("FanOutSlot")
+                        .HasColumnType("int");
+
                     b.Property<string>("FilePattern")
                         .HasMaxLength(200)
                         .HasColumnType("nvarchar(200)");
@@ -1461,6 +1470,9 @@ namespace SqlFlow.Catalog.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("nvarchar(256)");
 
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<long?>("RowsDeleted")
                         .HasColumnType("bigint");
 
@@ -1518,6 +1530,8 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.HasIndex("WrittenUtc");
 
+                    b.HasIndex("FanOutRoot", "Status");
+
                     b.HasIndex("Status", "EnqueuedUtc");
 
                     b.HasIndex("Status", "WrittenUtc");
@@ -1531,7 +1545,7 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.HasIndex(new[] { "PipelineId" }, "UX_Run_RunningPipeline")
                         .IsUnique()
-                        .HasFilter("[Status] = 'running'");
+                        .HasFilter("[Status] = 'running' AND [FanOutRoot] IS NULL");
 
                     b.ToTable("Run", "catalog");
                 });

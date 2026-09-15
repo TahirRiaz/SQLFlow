@@ -932,6 +932,8 @@ public sealed partial class RunWorker : IDisposable
                     FlowName = run.FlowName,
                     // Who asked for the run, so an executor can attribute what it does; null for a schedule fire.
                     Actor = run.RequestedBy,
+                    // Member runs beside this one, enqueued, read and cancelled under this hand-out's fence.
+                    FanOut = new NodeRunFanOut(_transport, runId, _node, attempt, _logger),
                 };
                 // The executor runs under the per-run token: an operator cancel aborts the in-flight statement here
                 // (and only here), while the surrounding bookkeeping stays on the shutdown token so a late cancel

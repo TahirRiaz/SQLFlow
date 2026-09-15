@@ -91,6 +91,21 @@ public interface IDispatchLedger
     /// that lease.</summary>
     Task<bool> AppendRunTraceAsync(Guid runId, RunTraceBatch batch, CancellationToken ct);
 
+    /// <summary>Journals the member runs a node asks for on behalf of a root run it holds: one queued run of the root's
+    /// flow per member, routed as the root, under one fan-out run group. Fenced on the (node, attempt) pair the request
+    /// presents; answers <see cref="FanOutEnqueueRecord.NotHeld"/>, writing nothing, when the root no longer carries that
+    /// lease. Members already journaled for the root and operation and not yet finished are returned instead of new
+    /// ones. Throws <see cref="FanOutRefusedException"/> when the request cannot be honored at all.</summary>
+    Task<FanOutEnqueueRecord> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, DateTime nowUtc, CancellationToken ct);
+
+    /// <summary>The members of one of a root's fan-out groups with their states, errors and results, fenced on the
+    /// root's lease.</summary>
+    Task<FanOutStateResponse> LoadFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct);
+
+    /// <summary>Cancels the unfinished members of one of a root's fan-out groups (queued ones outright, running ones by a
+    /// durable request), fenced on the root's lease.</summary>
+    Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, DateTime nowUtc, CancellationToken ct);
+
     /// <summary>Records a node's heartbeat and returns the pending restart request stamped on its row, if any.</summary>
     Task<DateTime?> RecordNodeHeartbeatAsync(NodeHeartbeat heartbeat, CancellationToken ct);
 

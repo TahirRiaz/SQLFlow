@@ -83,7 +83,8 @@ internal sealed record RunSummaryDto(
     string Status, bool Success,
     string? TargetPool, string? CommitSha, DateTime WrittenUtc, DateTime? EnqueuedUtc, double? DurationSeconds,
     long? RowsLoaded, long? RowsInserted, long? RowsUpdated, long? RowsDeleted, int FileCount, Guid? GroupId,
-    string? LastAction, DateTime? LastActionUtc, string? Error = null, string? Operation = null, string? RequestedBy = null);
+    string? LastAction, DateTime? LastActionUtc, string? Error = null, string? Operation = null, string? RequestedBy = null,
+    Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null);
 
 /// <summary>One run with its full header for the detail view.</summary>
 internal sealed record RunDetailDto(
@@ -98,7 +99,8 @@ internal sealed record RunDetailDto(
     string? DataSetConvention,
     int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId,
     string? Operation = null, string? RequestedBy = null, IReadOnlyDictionary<string, string>? Values = null,
-    System.Text.Json.JsonElement? Payload = null);
+    System.Text.Json.JsonElement? Payload = null, Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null,
+    string? ResultJson = null);
 
 /// <summary>One file a run processed (file flows).</summary>
 internal sealed record RunFileDto(

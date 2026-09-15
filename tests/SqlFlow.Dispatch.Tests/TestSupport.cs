@@ -57,6 +57,15 @@ internal sealed class FakeLedger : IDispatchLedger
         /// <summary>The member ids that must be skipped when this run ends unsuccessfully (the test's stand-in for
         /// the lineage walk the catalog store performs).</summary>
         public List<Guid> Dependents { get; } = [];
+
+        /// <summary>The member's slot when the run is a fan-out member.</summary>
+        public int? FanOutSlot { get; set; }
+
+        /// <summary>The operation the run performs; the members of one fan-out share it.</summary>
+        public string? Operation { get; set; }
+
+        /// <summary>The result object the run recorded, as JSON.</summary>
+        public string? ResultJson { get; set; }
     }
 
     public sealed class TaskRow
@@ -316,8 +325,29 @@ internal sealed class FakeLedger : IDispatchLedger
             }
 
             row.Status = outcome == RunOutcomeKind.Cancelled ? "cancelled" : success ? "succeeded" : "failed";
-            return new RunOutcomeRecord(status, success ? [] : SkipDependents(row));
+            return new RunOutcomeRecord(status, [.. success ? [] : SkipDependents(row), .. EndFanOutMembers(runId)]);
         }
+    }
+
+    /// <summary>A root that ends takes its unfinished fan-out members with it, exactly as the catalog store does: queued
+    /// members are cancelled (and reported, so memory drops them), running ones get a cancel request.</summary>
+    private List<Guid> EndFanOutMembers(Guid rootRunId)
+    {
+        var cancelled = new List<Guid>();
+        foreach (var member in Runs.Values.Where(r => r.Placement.FanOutRoot == rootRunId))
+        {
+            if (member.Status == "queued")
+            {
+                member.Status = "cancelled";
+                cancelled.Add(member.Placement.RunId);
+            }
+            else if (member.Status == "running")
+            {
+                member.CancelRequested = true;
+            }
+        }
+
+        return cancelled;
     }
 
     private List<Guid> SkipDependents(RunRow row)
@@ -471,6 +501,96 @@ internal sealed class FakeLedger : IDispatchLedger
             return Task.FromResult<IReadOnlyList<Guid>>(expired);
         }
     }
+
+    public async Task<FanOutEnqueueRecord> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, DateTime nowUtc, CancellationToken ct)
+    {
+        await WriteGateAsync(ct);
+        Calls.Enqueue($"fan-out:{rootRunId}:{request.Node}:{request.Attempt}:{request.Members.Count}");
+        lock (_gate)
+        {
+            if (!IsHeld(rootRunId, request.Node, request.Attempt, out var root))
+            {
+                return FanOutEnqueueRecord.NotHeld;
+            }
+
+            var operation = request.Members[0].Operation;
+            var existing = Runs.Values.FirstOrDefault(r =>
+                r.Placement.FanOutRoot == rootRunId && r.Operation == operation && r.Status is "queued" or "running");
+            if (existing?.Placement.GroupId is { } rejoined)
+            {
+                return new FanOutEnqueueRecord(true, rejoined, Members(rootRunId, rejoined).Select(r => r.Placement.RunId).ToList(), []);
+            }
+
+            var groupId = Guid.CreateVersion7();
+            var placements = new List<DispatchRun>(request.Members.Count);
+            for (var i = 0; i < request.Members.Count; i++)
+            {
+                var placement = new DispatchRun(
+                    Guid.CreateVersion7(), root.Placement.PipelineId, root.Placement.TargetPool, groupId, 0, null, nowUtc, 0, false, rootRunId);
+                Runs[placement.RunId] = new RunRow { Placement = placement, FanOutSlot = i + 1, Operation = operation };
+                placements.Add(placement);
+            }
+
+            return new FanOutEnqueueRecord(true, groupId, placements.Select(p => p.RunId).ToList(), placements);
+        }
+    }
+
+    public Task<FanOutStateResponse> LoadFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+    {
+        Calls.Enqueue($"fan-out-state:{rootRunId}:{groupId}");
+        lock (_gate)
+        {
+            if (!IsHeld(rootRunId, fence.Node, fence.Attempt, out _))
+            {
+                return Task.FromResult(FanOutStateResponse.NotHeld);
+            }
+
+            IReadOnlyList<FanOutMemberState> members = Members(rootRunId, groupId)
+                .Select(r => new FanOutMemberState(r.Placement.RunId, r.FanOutSlot ?? 0, r.Status, r.Error, r.ResultJson))
+                .ToList();
+            return Task.FromResult(new FanOutStateResponse(true, members));
+        }
+    }
+
+    public async Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, DateTime nowUtc, CancellationToken ct)
+    {
+        await WriteGateAsync(ct);
+        Calls.Enqueue($"fan-out-cancel:{rootRunId}:{groupId}");
+        lock (_gate)
+        {
+            if (!IsHeld(rootRunId, fence.Node, fence.Attempt, out _))
+            {
+                return FanOutCancelResponse.NotHeld;
+            }
+
+            var cancelled = 0;
+            var requested = 0;
+            foreach (var member in Members(rootRunId, groupId))
+            {
+                if (member.Status == "queued")
+                {
+                    member.Status = "cancelled";
+                    cancelled++;
+                }
+                else if (member.Status == "running" && !member.CancelRequested)
+                {
+                    member.CancelRequested = true;
+                    requested++;
+                }
+            }
+
+            return new FanOutCancelResponse(true, cancelled, requested);
+        }
+    }
+
+    private bool IsHeld(Guid runId, string node, int attempt, [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out RunRow? row)
+        => Runs.TryGetValue(runId, out row) && row.Status == "running" && row.Node == node && row.Attempt == attempt;
+
+    private List<RunRow> Members(Guid rootRunId, Guid groupId)
+        => Runs.Values
+            .Where(r => r.Placement.FanOutRoot == rootRunId && r.Placement.GroupId == groupId)
+            .OrderBy(r => r.FanOutSlot)
+            .ToList();
 
     public Task<DateTime?> RecordNodeHeartbeatAsync(NodeHeartbeat heartbeat, CancellationToken ct)
     {

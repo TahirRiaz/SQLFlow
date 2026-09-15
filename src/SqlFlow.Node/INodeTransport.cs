@@ -37,6 +37,16 @@ public interface INodeTransport
     /// <summary>Reports a compute task's outcome. Returns whether the dispatcher recorded it (false when the task no
     /// longer belonged to this node).</summary>
     Task<bool> ReportTaskOutcomeAsync(Guid taskId, TaskOutcomeRequest request, CancellationToken ct);
+
+    /// <summary>Enqueues member runs beside a run this node holds, under the hand-out's fence. The answer's
+    /// <see cref="FanOutResponse.Held"/> is false when the run no longer carries this node's lease.</summary>
+    Task<FanOutResponse> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, CancellationToken ct);
+
+    /// <summary>Reads the members of a fan-out of a run this node holds, under the hand-out's fence.</summary>
+    Task<FanOutStateResponse> GetFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct);
+
+    /// <summary>Cancels the unfinished members of a fan-out of a run this node holds, under the hand-out's fence.</summary>
+    Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct);
 }
 
 /// <summary>A node call that did not reach or was refused by the dispatcher: the HTTP status when there was one,

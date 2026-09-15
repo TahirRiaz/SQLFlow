@@ -127,6 +127,46 @@ public sealed class HttpNodeTransport : INodeTransport, IDisposable
         return body.Recorded;
     }
 
+    public async Task<FanOutResponse> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        var path = string.Create(CultureInfo.InvariantCulture, $"{NodeProtocol.RoutePrefix}/runs/{rootRunId}/fan-out");
+        // The members' parameters may carry large payloads, so the call gets the budget sized for a large document.
+        using var response = await PostAsync(path, request, OutcomeTimeout, ct).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return FanOutResponse.NotHeld;
+        }
+
+        return await ReadAsync<FanOutResponse>(response, ct).ConfigureAwait(false);
+    }
+
+    public async Task<FanOutStateResponse> GetFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(fence);
+        var path = string.Create(CultureInfo.InvariantCulture, $"{NodeProtocol.RoutePrefix}/runs/{rootRunId}/fan-out/{groupId}/state");
+        using var response = await PostAsync(path, fence, SupportTimeout, ct).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return FanOutStateResponse.NotHeld;
+        }
+
+        return await ReadAsync<FanOutStateResponse>(response, ct).ConfigureAwait(false);
+    }
+
+    public async Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(fence);
+        var path = string.Create(CultureInfo.InvariantCulture, $"{NodeProtocol.RoutePrefix}/runs/{rootRunId}/fan-out/{groupId}/cancel");
+        using var response = await PostAsync(path, fence, SupportTimeout, ct).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return FanOutCancelResponse.NotHeld;
+        }
+
+        return await ReadAsync<FanOutCancelResponse>(response, ct).ConfigureAwait(false);
+    }
+
     private async Task<HttpResponseMessage> PostAsync<T>(string path, T payload, TimeSpan budget, CancellationToken ct)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, new Uri(path, UriKind.Relative))

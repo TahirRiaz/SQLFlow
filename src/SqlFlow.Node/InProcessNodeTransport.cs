@@ -32,4 +32,13 @@ public sealed class InProcessNodeTransport : INodeTransport
 
     public Task<bool> ReportTaskOutcomeAsync(Guid taskId, TaskOutcomeRequest request, CancellationToken ct)
         => _dispatcher.RecordTaskOutcomeAsync(taskId, request, ct);
+
+    public Task<FanOutResponse> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, CancellationToken ct)
+        => _dispatcher.EnqueueFanOutAsync(rootRunId, request, ct);
+
+    public Task<FanOutStateResponse> GetFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+        => _dispatcher.LoadFanOutStateAsync(rootRunId, groupId, fence, ct);
+
+    public Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+        => _dispatcher.CancelFanOutAsync(rootRunId, groupId, fence, ct);
 }

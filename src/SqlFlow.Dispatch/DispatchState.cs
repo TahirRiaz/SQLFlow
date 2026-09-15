@@ -4,7 +4,7 @@ namespace SqlFlow.Dispatch;
 
 /// <summary>
 /// The in-memory dispatch state: every queued and held run and compute task, the gates that decide what may be
-/// handed out (pool routing, wave order inside a run group, the group concurrency cap, one execution per pipeline),
+/// handed out (pool routing, wave order inside a run group, the group concurrency cap, one execution family per pipeline, where a family is a run or a fan-out root with its members),
 /// the leases nodes hold, and the waiters of long-polling nodes. Every mutation happens under one lock and takes
 /// microseconds, so hundreds of nodes polling is a trivial load; nothing here touches I/O. The
 /// <see cref="Dispatcher"/> drives it and writes the ledger between a reservation and its confirmation, which is
@@ -23,7 +23,7 @@ public sealed class DispatchState
     private readonly Lock _gate = new();
     private readonly Dictionary<Guid, RunEntry> _runs = [];
     private readonly Dictionary<string, SortedSet<RunEntry>> _queuedRunsByPool = new(StringComparer.Ordinal);
-    private readonly Dictionary<Guid, int> _busyPipelines = [];
+    private readonly Dictionary<Guid, PipelineOccupancy> _busyPipelines = [];
     private readonly Dictionary<Guid, GroupState> _groups = [];
     private readonly Dictionary<Guid, TaskEntry> _tasks = [];
     private readonly Dictionary<string, SortedSet<TaskEntry>> _queuedTasksByPool = new(StringComparer.Ordinal);
@@ -274,6 +274,27 @@ public sealed class DispatchState
         lock (_gate)
         {
             var members = _runs.Values.Where(r => r.GroupId == groupId).Select(r => r.RunId).ToList();
+            var affected = 0;
+            foreach (var runId in members)
+            {
+                if (MarkRunCancelLocked(runId) != CancelMark.Unknown)
+                {
+                    affected++;
+                }
+            }
+
+            return affected;
+        }
+    }
+
+    /// <summary>Applies the end of a fan-out root to its members, as the ledger did when the root finished or an
+    /// operator cancelled it: queued members leave the queue, held ones are flagged so their nodes hear the cancel on
+    /// the next poll (woken at once). Returns how many members were affected; zero for a run that fanned nothing out.</summary>
+    public int MarkFanOutCancel(Guid rootRunId)
+    {
+        lock (_gate)
+        {
+            var members = _runs.Values.Where(r => r.FanOutRoot == rootRunId).Select(r => r.RunId).ToList();
             var affected = 0;
             foreach (var runId in members)
             {
@@ -949,9 +970,14 @@ public sealed class DispatchState
 
     // ------------------------------------------------------------------------------------------- internals -------
 
+    /// <summary>Whether another execution family holds the run's pipeline: a run waits for any run of its flow outside
+    /// its own family, and never for its fan-out root or that root's other members.</summary>
+    private bool IsPipelineBusyForLocked(RunEntry entry)
+        => _busyPipelines.TryGetValue(entry.PipelineId, out var occupancy) && occupancy.BlocksFamily(entry.Family);
+
     private bool IsEligibleLocked(RunEntry entry)
     {
-        if (_busyPipelines.ContainsKey(entry.PipelineId))
+        if (IsPipelineBusyForLocked(entry))
         {
             return false;
         }
@@ -974,7 +1000,7 @@ public sealed class DispatchState
 
     private string BlockReasonLocked(RunEntry entry, Func<string, (int OnlineNodes, int FreeRunSlots)> capacityOf)
     {
-        if (_busyPipelines.ContainsKey(entry.PipelineId))
+        if (IsPipelineBusyForLocked(entry))
         {
             return DispatchBlockReasons.PipelineBusy;
         }
@@ -1013,24 +1039,58 @@ public sealed class DispatchState
 
     private void OccupyLocked(RunEntry entry)
     {
-        _busyPipelines[entry.PipelineId] = _busyPipelines.GetValueOrDefault(entry.PipelineId) + 1;
+        if (!_busyPipelines.TryGetValue(entry.PipelineId, out var occupancy))
+        {
+            occupancy = new PipelineOccupancy();
+            _busyPipelines[entry.PipelineId] = occupancy;
+        }
+
+        occupancy.Add(entry.Family);
         if (Group(entry) is { } group)
         {
             group.Running++;
         }
     }
 
-    private void VacateLocked(RunEntry entry)
+    /// <summary>The execution families holding one pipeline, with how many runs of each. The gate only ever admits one
+    /// family, but a rebuild adopts whatever the ledger records as running, so the count is kept per family rather than
+    /// assumed.</summary>
+    private sealed class PipelineOccupancy
     {
-        if (_busyPipelines.TryGetValue(entry.PipelineId, out var count))
+        private readonly Dictionary<Guid, int> _families = [];
+
+        public bool IsEmpty => _families.Count == 0;
+
+        public bool BlocksFamily(Guid family) => _families.Keys.Any(held => held != family);
+
+        public void Add(Guid family) => _families[family] = _families.GetValueOrDefault(family) + 1;
+
+        public void Remove(Guid family)
         {
+            if (!_families.TryGetValue(family, out var count))
+            {
+                return;
+            }
+
             if (count <= 1)
             {
-                _busyPipelines.Remove(entry.PipelineId);
+                _families.Remove(family);
             }
             else
             {
-                _busyPipelines[entry.PipelineId] = count - 1;
+                _families[family] = count - 1;
+            }
+        }
+    }
+
+    private void VacateLocked(RunEntry entry)
+    {
+        if (_busyPipelines.TryGetValue(entry.PipelineId, out var occupancy))
+        {
+            occupancy.Remove(entry.Family);
+            if (occupancy.IsEmpty)
+            {
+                _busyPipelines.Remove(entry.PipelineId);
             }
         }
 
@@ -1344,6 +1404,12 @@ internal sealed class RunEntry
 
     public int? GroupMaxConcurrency { get; init; }
 
+    /// <summary>The fan-out root this run is a member of; null for every other run.</summary>
+    public Guid? FanOutRoot { get; init; }
+
+    /// <summary>The run's execution family: its fan-out root, or the run itself.</summary>
+    public Guid Family => FanOutRoot ?? RunId;
+
     public required DateTime EnqueuedUtc { get; init; }
 
     public int Attempt { get; set; }
@@ -1369,6 +1435,7 @@ internal sealed class RunEntry
         EnqueuedUtc = run.EnqueuedUtc,
         Attempt = run.Attempt,
         CancelRequested = run.CancelRequested,
+        FanOutRoot = run.FanOutRoot,
     };
 }
 

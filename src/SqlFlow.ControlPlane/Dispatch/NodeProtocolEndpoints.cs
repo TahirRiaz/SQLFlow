@@ -15,7 +15,8 @@ namespace SqlFlow.ControlPlane.Dispatch;
 /// <c>POST /poll</c> is the heartbeat, lease renewal, cancel channel and hand-out in one long-polled call (each
 /// hand-out carries its execution spec); <c>GET /flow-versions/{hash}</c> serves a run's snapshotted YAML;
 /// <c>POST /runs/{id}/context</c> resolves the lineage facts a run depends on; <c>POST /runs/{id}/trace</c> takes
-/// the live trace in batches; and <c>POST /runs/{id}/outcome</c> and <c>POST /tasks/{id}/outcome</c> report results,
+/// the live trace in batches; <c>POST /runs/{id}/fan-out</c> enqueues member runs beside a held run, which are read and
+/// cancelled under <c>/runs/{id}/fan-out/{groupId}</c>; and <c>POST /runs/{id}/outcome</c> and <c>POST /tasks/{id}/outcome</c> report results,
 /// every per-run call under the hand-out's fence. A replica whose dispatcher is not the owner answers 503 with a
 /// retry hint (see <see cref="Infrastructure.GlobalExceptionHandler"/>), so a node behind a load balancer lands on
 /// the owner within a retry or two. <c>GET /scale-target</c> is the one call here made not by a node but by the
@@ -42,6 +43,9 @@ public static class NodeProtocolEndpoints
         group.MapGet("/flow-versions/{contentHash}", FlowVersionAsync).WithTags("Node").WithName("NodeFlowVersion");
         group.MapPost("/runs/{runId:guid}/context", RunContextAsync).WithTags("Node").WithName("NodeRunContext");
         group.MapPost("/runs/{runId:guid}/trace", RunTraceAsync).WithTags("Node").WithName("NodeRunTrace");
+        group.MapPost("/runs/{runId:guid}/fan-out", FanOutAsync).WithTags("Node").WithName("NodeRunFanOut");
+        group.MapPost("/runs/{runId:guid}/fan-out/{groupId:guid}/state", FanOutStateAsync).WithTags("Node").WithName("NodeRunFanOutState");
+        group.MapPost("/runs/{runId:guid}/fan-out/{groupId:guid}/cancel", FanOutCancelAsync).WithTags("Node").WithName("NodeRunFanOutCancel");
         group.MapPost("/runs/{runId:guid}/outcome", RunOutcomeAsync).WithTags("Node").WithName("NodeRunOutcome");
         group.MapPost("/tasks/{taskId:guid}/outcome", TaskOutcomeAsync).WithTags("Node").WithName("NodeTaskOutcome");
         group.MapGet("/scale-target", ScaleTargetAsync).WithTags("Node").WithName("NodeScaleTarget");
@@ -167,6 +171,70 @@ public static class NodeProtocolEndpoints
 
         var accepted = await dispatcher.AppendRunTraceAsync(runId, batch, ct).ConfigureAwait(false);
         return TypedResults.Ok(new RunTraceResponse(accepted));
+    }
+
+    private static async Task<Results<Ok<FanOutResponse>, ProblemHttpResult>> FanOutAsync(
+        Guid runId, HttpContext context, Dispatcher dispatcher, CancellationToken ct)
+    {
+        var request = await ReadBodyAsync<FanOutRequest>(context, NodeProtocol.MaxFanOutRequestBytes, ct).ConfigureAwait(false);
+        if (request is null)
+        {
+            return Invalid("the request body must be a fan-out document.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Node))
+        {
+            return Invalid("node is required.");
+        }
+
+        if (request.Attempt < 1)
+        {
+            return Invalid("attempt must be the value the hand-out carried (1 or more).");
+        }
+
+        try
+        {
+            var response = await dispatcher.EnqueueFanOutAsync(runId, request, ct).ConfigureAwait(false);
+            return TypedResults.Ok(response);
+        }
+        catch (FanOutRefusedException ex)
+        {
+            return Invalid(ex.Message);
+        }
+    }
+
+    private static async Task<Results<Ok<FanOutStateResponse>, ProblemHttpResult>> FanOutStateAsync(
+        Guid runId, Guid groupId, FanOutFence fence, Dispatcher dispatcher, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(fence.Node))
+        {
+            return Invalid("node is required.");
+        }
+
+        if (fence.Attempt < 1)
+        {
+            return Invalid("attempt must be the value the hand-out carried (1 or more).");
+        }
+
+        var response = await dispatcher.LoadFanOutStateAsync(runId, groupId, fence, ct).ConfigureAwait(false);
+        return TypedResults.Ok(response);
+    }
+
+    private static async Task<Results<Ok<FanOutCancelResponse>, ProblemHttpResult>> FanOutCancelAsync(
+        Guid runId, Guid groupId, FanOutFence fence, Dispatcher dispatcher, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(fence.Node))
+        {
+            return Invalid("node is required.");
+        }
+
+        if (fence.Attempt < 1)
+        {
+            return Invalid("attempt must be the value the hand-out carried (1 or more).");
+        }
+
+        var response = await dispatcher.CancelFanOutAsync(runId, groupId, fence, ct).ConfigureAwait(false);
+        return TypedResults.Ok(response);
     }
 
     private static async Task<Results<Ok<RunOutcomeResponse>, ProblemHttpResult>> RunOutcomeAsync(

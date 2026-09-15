@@ -41,7 +41,8 @@ public sealed record RunSummaryDto(
     string? LastAction, DateTime? LastActionUtc, string? Error,
     string? TriggerSource, bool FullLoad, DateTime? BackfillFrom, DateTime? BackfillTo,
     string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark,
-    string? Operation = null, string? RequestedBy = null);
+    string? Operation = null, string? RequestedBy = null,
+    Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null);
 
 /// <summary>One run with its full header for the detail view: the summary plus the lifecycle fields (status, when it
 /// was enqueued, the node that claimed it), the schema version, the start/end window, the host, the error, and the
@@ -65,7 +66,8 @@ public sealed record RunDetailDto(
     int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId,
     string? TriggerSource, Guid? TriggerScheduleId,
     string? Operation = null, string? RequestedBy = null, IReadOnlyDictionary<string, string>? Values = null,
-    JsonElement? Payload = null);
+    JsonElement? Payload = null, Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null,
+    string? ResultJson = null);
 
 /// <summary>One file a run processed (file flows): a drill-down row under a run.</summary>
 public sealed record RunFileDto(
@@ -362,7 +364,7 @@ public static class RunEndpoints
                 x.Run.Error,
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
-                x.Run.Operation, x.Run.RequestedBy))
+                x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount))
             : source.Select(x => new RunSummaryDto(
                 x.Run.RunId, x.Run.PipelineId, x.Run.RepoId, x.Run.FlowName, x.Run.FlowKind, x.Batch, x.Wave,
                 x.Run.Status, x.Run.Success,
@@ -373,7 +375,7 @@ public static class RunEndpoints
                 x.Run.Error,
                 x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
                 x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark,
-                x.Run.Operation, x.Run.RequestedBy));
+                x.Run.Operation, x.Run.RequestedBy, x.Run.FanOutRoot, x.Run.FanOutSlot, x.Run.FanOutCount));
 
     /// <summary>A group's member summaries in execution order: the shape both the group view's member list and
     /// the group stream serve. This is the one list that shows the last action, so it resolves it.</summary>
@@ -406,7 +408,8 @@ public static class RunEndpoints
                     run.IncrementalMode, run.IncrementalFilter, run.IncrementalWatermark, run.IncrementalWatermarkSource,
                     run.DataSetConvention,
                     null, null, null, run.GroupId,
-                    run.TriggerSource, run.TriggerScheduleId, run.Operation, run.RequestedBy) })
+                    run.TriggerSource, run.TriggerScheduleId, run.Operation, run.RequestedBy, null, null,
+                    run.FanOutRoot, run.FanOutSlot, run.FanOutCount, run.ResultJson) })
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (row is null)
         {
@@ -417,8 +420,7 @@ public static class RunEndpoints
         var dto = row.Detail with
         {
             Values = SqlFlow.Core.Runs.RunParameters.ValuesFromJson(row.ValuesJson),
-            Payload = row.Payload is null ? null : JsonDocument.Parse(row.Payload).RootElement.Clone(),
-        };
+            Payload = row.Payload is null ? null : JsonDocument.Parse(row.Payload).RootElement.Clone(),        };
 
         // On a failed run, surface the exact statement that threw alongside the header, so the detail view can show
         // the offending SQL next to the error banner instead of making the operator hunt for it in the Statements

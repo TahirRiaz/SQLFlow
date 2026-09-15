@@ -1,6 +1,7 @@
 using SqlFlow.Catalog;
 using SqlFlow.Dispatch;
 using SqlFlow.Dispatch.Protocol;
+using SqlFlow.Yaml;
 
 namespace SqlFlow.ControlPlane.Dispatch;
 
@@ -56,8 +57,41 @@ public sealed class CatalogDispatchLedger : IDispatchLedger
     public Task<RunOutcomeRecord> RecordRunOutcomeAsync(
         Guid runId, string node, int attempt, RunOutcomeKind outcome, string? failure, string? artifactJson,
         DateTime nowUtc, CancellationToken ct)
-        => WithCatalogAsync(catalog => RunQueueStore.RecordOutcomeAsync(
-            catalog, runId, node, attempt, outcome, failure, artifactJson, nowUtc, ct));
+        => WithScopeAsync((services, catalog) =>
+        {
+            // A registered kind's result object is recorded on the run row, where a fan-out root and the run page read
+            // it; a built-in kind's result is projected into the typed columns instead.
+            var documents = services.GetRequiredService<YamlDocumentLoader>();
+            return RunQueueStore.RecordOutcomeAsync(
+                catalog, runId, node, attempt, outcome, failure, artifactJson, nowUtc,
+                projectsResult: kind => documents.FindKind(kind) is not null, ct: ct);
+        });
+
+    public Task<FanOutEnqueueRecord> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, DateTime nowUtc, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        return WithScopeAsync((services, catalog) =>
+        {
+            // Each member's parameters pass the root kind's own rule, exactly as a triggered run's do.
+            var documents = services.GetRequiredService<YamlDocumentLoader>();
+            return RunQueueStore.EnqueueFanOutAsync(
+                catalog, rootRunId, request.Node, request.Attempt, request.Members, nowUtc, documents.ValidateRunParameters, ct);
+        });
+    }
+
+    public Task<FanOutStateResponse> LoadFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(fence);
+        return WithCatalogAsync(catalog => RunQueueStore.LoadFanOutStateAsync(
+            catalog, rootRunId, groupId, fence.Node, fence.Attempt, ct));
+    }
+
+    public Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, DateTime nowUtc, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(fence);
+        return WithCatalogAsync(catalog => RunQueueStore.CancelFanOutAsync(
+            catalog, rootRunId, groupId, fence.Node, fence.Attempt, nowUtc, ct));
+    }
 
     public Task<InterruptedRunRecord> RequeueInterruptedRunAsync(Guid runId, string node, int attempt, DateTime nowUtc, CancellationToken ct)
         => WithCatalogAsync(catalog => RunQueueStore.RequeueInterruptedAsync(catalog, runId, node, attempt, nowUtc, ct));
@@ -113,10 +147,13 @@ public sealed class CatalogDispatchLedger : IDispatchLedger
             return true;
         });
 
-    private async Task<T> WithCatalogAsync<T>(Func<CatalogDbContext, Task<T>> operation)
+    private Task<T> WithCatalogAsync<T>(Func<CatalogDbContext, Task<T>> operation)
+        => WithScopeAsync((_, catalog) => operation(catalog));
+
+    private async Task<T> WithScopeAsync<T>(Func<IServiceProvider, CatalogDbContext, Task<T>> operation)
     {
         await using var scope = _scopes.CreateAsyncScope();
         var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
-        return await operation(catalog).ConfigureAwait(false);
+        return await operation(scope.ServiceProvider, catalog).ConfigureAwait(false);
     }
 }

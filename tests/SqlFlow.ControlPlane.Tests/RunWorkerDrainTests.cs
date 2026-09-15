@@ -50,6 +50,15 @@ public sealed class RunWorkerDrainTests
 
         public Task<bool> ReportTaskOutcomeAsync(Guid taskId, TaskOutcomeRequest request, CancellationToken ct)
             => Task.FromResult(true);
+
+        public Task<FanOutResponse> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, CancellationToken ct)
+            => Task.FromResult(FanOutResponse.NotHeld);
+
+        public Task<FanOutStateResponse> GetFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+            => Task.FromResult(FanOutStateResponse.NotHeld);
+
+        public Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+            => Task.FromResult(FanOutCancelResponse.NotHeld);
     }
 
     [Fact]

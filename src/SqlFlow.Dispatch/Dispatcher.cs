@@ -148,7 +148,17 @@ public sealed partial class Dispatcher : IDisposable
 
     /// <summary>Tells memory an operator cancelled a run (the ledger write already happened): a queued run leaves
     /// the queue, a held run's node hears the request on its next poll, which is woken at once.</summary>
-    public CancelMark NotifyRunCancelled(Guid runId) => _active ? Queue.MarkRunCancel(runId) : CancelMark.Unknown;
+    public CancelMark NotifyRunCancelled(Guid runId)
+    {
+        if (!_active)
+        {
+            return CancelMark.Unknown;
+        }
+
+        // A cancelled fan-out root takes its members with it, exactly as the ledger's cancel did.
+        Queue.MarkFanOutCancel(runId);
+        return Queue.MarkRunCancel(runId);
+    }
 
     /// <summary>Tells memory an operator cancelled a whole run group.</summary>
     public int NotifyGroupCancelled(Guid groupId) => _active ? Queue.MarkGroupCancel(groupId) : 0;
@@ -426,7 +436,84 @@ public sealed partial class Dispatcher : IDisposable
             Queue.RemoveRun(skipped);
         }
 
+        // The ledger ended the run's unfinished fan-out members with it; their nodes hear it on the next poll.
+        Queue.MarkFanOutCancel(runId);
         return record.Status;
+    }
+
+    // -------------------------------------------------------------------------------------------- fan-out --------
+
+    /// <summary>Journals the member runs a node asks for on behalf of a run it holds, then tells memory about the newly
+    /// queued ones so they are handed out at once, beside their root. Fenced in memory and in the ledger: a caller no
+    /// longer holding the root gets <see cref="FanOutResponse.NotHeld"/> and nothing is enqueued. Throws
+    /// <see cref="FanOutRefusedException"/> for a request that cannot be honored at all.</summary>
+    public async Task<FanOutResponse> EnqueueFanOutAsync(Guid rootRunId, FanOutRequest request, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.Node);
+        request.Validate();
+        EnsureActive();
+        if (!Queue.IsRunHeldBy(rootRunId, request.Node, request.Attempt))
+        {
+            LogFanOutRefused(rootRunId, request.Node, request.Attempt);
+            return FanOutResponse.NotHeld;
+        }
+
+        var record = await _ledger
+            .EnqueueFanOutAsync(rootRunId, request, _clock.GetUtcNow().UtcDateTime, ct)
+            .ConfigureAwait(false);
+        if (!record.Held || record.GroupId is not { } groupId)
+        {
+            LogFanOutRefused(rootRunId, request.Node, request.Attempt);
+            return FanOutResponse.NotHeld;
+        }
+
+        foreach (var placement in record.Placements)
+        {
+            Queue.AddQueuedRun(placement);
+        }
+
+        LogFanOutEnqueued(rootRunId, groupId, record.RunIds.Count, record.Placements.Count);
+        return new FanOutResponse(true, groupId, record.RunIds);
+    }
+
+    /// <summary>The members of a fan-out, for the node holding its root. Fenced in memory and in the ledger.</summary>
+    public Task<FanOutStateResponse> LoadFanOutStateAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(fence);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fence.Node);
+        EnsureActive();
+        if (!Queue.IsRunHeldBy(rootRunId, fence.Node, fence.Attempt))
+        {
+            LogFanOutRefused(rootRunId, fence.Node, fence.Attempt);
+            return Task.FromResult(FanOutStateResponse.NotHeld);
+        }
+
+        return _ledger.LoadFanOutStateAsync(rootRunId, groupId, fence, ct);
+    }
+
+    /// <summary>Cancels the unfinished members of a fan-out for the node holding its root: journaled first, then memory
+    /// drops the queued members and flags the held ones for their nodes. Fenced in memory and in the ledger.</summary>
+    public async Task<FanOutCancelResponse> CancelFanOutAsync(Guid rootRunId, Guid groupId, FanOutFence fence, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(fence);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fence.Node);
+        EnsureActive();
+        if (!Queue.IsRunHeldBy(rootRunId, fence.Node, fence.Attempt))
+        {
+            LogFanOutRefused(rootRunId, fence.Node, fence.Attempt);
+            return FanOutCancelResponse.NotHeld;
+        }
+
+        var response = await _ledger
+            .CancelFanOutAsync(rootRunId, groupId, fence, _clock.GetUtcNow().UtcDateTime, ct)
+            .ConfigureAwait(false);
+        if (response.Held)
+        {
+            Queue.MarkGroupCancel(groupId);
+        }
+
+        return response;
     }
 
     /// <summary>Records a compute task's outcome under the node fence and drops it from memory.</summary>
@@ -532,6 +619,10 @@ public sealed partial class Dispatcher : IDisposable
                         .ConfigureAwait(false);
                     Queue.RemoveRun(expired.RunId);
                     RemoveSkipped(cancelled.SkippedRunIds);
+                    if (cancelled.Applied)
+                    {
+                        Queue.MarkFanOutCancel(expired.RunId);
+                    }
                     LogLeaseExpiredCancelled(expired.RunId, expired.Node, cancelled.Applied);
                 }
                 else if (expired.Attempt < _options.MaxExecutionAttempts)
@@ -557,6 +648,10 @@ public sealed partial class Dispatcher : IDisposable
                         .ConfigureAwait(false);
                     Queue.RemoveRun(expired.RunId);
                     RemoveSkipped(failed.SkippedRunIds);
+                    if (failed.Applied)
+                    {
+                        Queue.MarkFanOutCancel(expired.RunId);
+                    }
                     LogLeaseExpiredFailed(expired.RunId, expired.Node, expired.Attempt, failed.Applied);
                 }
             }
@@ -799,6 +894,12 @@ public sealed partial class Dispatcher : IDisposable
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: trace batch from node '{Node}' at attempt {Attempt} refused; the run no longer carries that lease, so its feed ends here.")]
     private partial void LogTraceRefused(Guid runId, string node, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: fan-out call from node '{Node}' at attempt {Attempt} refused; the run no longer carries that lease.")]
+    private partial void LogFanOutRefused(Guid runId, string node, int attempt);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Run {RunId}: fan-out group {GroupId} holds {Members} member run(s), {Queued} newly queued.")]
+    private partial void LogFanOutEnqueued(Guid runId, Guid groupId, int members, int queued);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: lease held by '{Node}' lapsed with a cancel pending; recorded cancelled (applied: {Applied}).")]
     private partial void LogLeaseExpiredCancelled(Guid runId, string node, bool applied);

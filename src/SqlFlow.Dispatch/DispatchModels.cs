@@ -4,10 +4,11 @@ namespace SqlFlow.Dispatch;
 /// read. <see cref="TargetPool"/> null means any node; a group member carries its <see cref="GroupId"/>, its
 /// <see cref="GroupWave"/> (lower waves run first) and the group's concurrency cap; <see cref="Attempt"/> is how many
 /// times the run has been handed out so far (the fencing token every outcome write presents), and
-/// <see cref="CancelRequested"/> whether an operator has already asked for its death.</summary>
+/// <see cref="CancelRequested"/> whether an operator has already asked for its death. A fan-out member carries its
+/// <see cref="FanOutRoot"/>: the pipeline gate admits it beside its root and the root's other members.</summary>
 public sealed record DispatchRun(
     Guid RunId, Guid PipelineId, string? TargetPool, Guid? GroupId, int GroupWave, int? GroupMaxConcurrency,
-    DateTime EnqueuedUtc, int Attempt, bool CancelRequested);
+    DateTime EnqueuedUtc, int Attempt, bool CancelRequested, Guid? FanOutRoot = null);
 
 /// <summary>A queued ad-hoc compute task as the dispatcher sees it: the id, its pool routing, and its age. Tasks have
 /// no ordering gates beyond the pool, so this is all placement needs.</summary>
@@ -83,6 +84,16 @@ public sealed record RunOutcomeRecord(RunOutcomeStatus Status, IReadOnlyList<Gui
 /// <summary>The ledger's answer to a fenced disposition of an interrupted run (requeue, fail, cancel): whether the
 /// row still carried the expired lease so the write applied, plus any dependents skipped.</summary>
 public sealed record InterruptedRunRecord(bool Applied, IReadOnlyList<Guid> SkippedRunIds);
+
+/// <summary>The ledger's answer to a fan-out request: whether the root still carried the caller's lease (nothing was
+/// written otherwise), the member group, every member id in slot order, and the placement rows of the members this
+/// call newly queued (none when the root rejoined a fan-out it had already enqueued), for memory.</summary>
+public sealed record FanOutEnqueueRecord(
+    bool Held, Guid? GroupId, IReadOnlyList<Guid> RunIds, IReadOnlyList<DispatchRun> Placements)
+{
+    /// <summary>The answer when the root no longer carries the caller's lease.</summary>
+    public static FanOutEnqueueRecord NotHeld { get; } = new(false, null, [], []);
+}
 
 /// <summary>A node's heartbeat as the registry flushes it to the ledger: the node's name, build, pool, how many runs
 /// it is executing and how many it can execute at once (the replica-sizing terms an autoscaler reads back from the

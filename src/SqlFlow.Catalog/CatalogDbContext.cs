@@ -221,10 +221,14 @@ public sealed class CatalogDbContext : DbContext
             // dispatchers briefly overlapping during an ownership hand-over) into a loud duplicate-key failure on
             // the hand-out's journal write instead of two overlapping executions. That matters because the engine
             // names a flow's work tables per FLOW, not per run, so two overlapping executions would share (and
-            // drop) one staging table.
+            // drop) one staging table. A fan-out member is outside the index: it executes beside its root by design
+            // (the dispatcher's gate compares execution families, a root with its members), and members rely on that
+            // gate alone.
             entity.HasIndex(r => r.PipelineId, "UX_Run_RunningPipeline")
                 .IsUnique()
-                .HasFilter($"[Status] = '{RunStatuses.Running}'");
+                .HasFilter($"[Status] = '{RunStatuses.Running}' AND [FanOutRoot] IS NULL");
+            // A root's fan-out members by state: the root reads them while it waits, and they end when it does.
+            entity.HasIndex(r => new { r.FanOutRoot, r.Status });
         });
 
         modelBuilder.Entity<CatalogRunGroup>(entity =>

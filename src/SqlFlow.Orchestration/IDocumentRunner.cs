@@ -72,6 +72,11 @@ public sealed record DocumentExecutionOptions
     /// <summary>Who asked for this run, as the catalog recorded it (the caller's subject for a trigger), so an executor
     /// can attribute what the run does to a person. Null for a schedule fire, a batch member and a direct CLI run.</summary>
     public string? Actor { get; init; }
+
+    /// <summary>Spreads part of the run's work across member runs of the same flow executing beside it (see
+    /// <see cref="IRunFanOut"/>). Null when the run has no dispatcher to enqueue members through: every direct CLI run
+    /// and every batch member.</summary>
+    public IRunFanOut? FanOut { get; init; }
 }
 
 /// <summary>The uniform outcome of running one flow document, whatever its kind. The batch needs only the

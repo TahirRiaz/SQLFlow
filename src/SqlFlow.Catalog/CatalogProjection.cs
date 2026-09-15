@@ -673,6 +673,36 @@ public static class CatalogProjection
         };
     }
 
+    /// <summary>The largest result object, in characters of compact JSON, recorded on a run row; a larger one stays in
+    /// the run artifact only.</summary>
+    public const int MaxResultJsonChars = 32_000;
+
+    /// <summary>The artifact's <c>result</c> object as compact JSON, or null when the artifact carries no result object
+    /// or the object is over <see cref="MaxResultJsonChars"/>. Never truncated: a cut document is not JSON.</summary>
+    public static string? RunResultJson(JsonElement root)
+    {
+        if (root.ValueKind != JsonValueKind.Object || Prop(root, "result") is not { ValueKind: JsonValueKind.Object } result)
+        {
+            return null;
+        }
+
+        using var buffer = new MemoryStream();
+        using (var writer = new Utf8JsonWriter(buffer))
+        {
+            result.WriteTo(writer);
+        }
+
+        // UTF-8 never takes fewer bytes than UTF-16 code units and never more than three per unit, so the byte count
+        // settles both clear cases without decoding.
+        if (buffer.Length > MaxResultJsonChars * 3L)
+        {
+            return null;
+        }
+
+        var text = Encoding.UTF8.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        return text.Length <= MaxResultJsonChars ? text : null;
+    }
+
     /// <summary>The incremental filter is bounded by the column width (2048); an oversized WHERE fragment from an
     /// extreme flow is truncated rather than overflowing the insert.</summary>
     private static string? Truncate2048(string? value)

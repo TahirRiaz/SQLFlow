@@ -329,6 +329,24 @@ public class CatalogRun
     /// run recorded from its artifact, and every run enqueued before this column existed.</summary>
     public string? RequestedBy { get; set; }
 
+    /// <summary>The run this run is a fan-out member of: a running run of the same flow that spread part of its work
+    /// across member runs through the node protocol. A root and its members form one execution family, and the
+    /// dispatcher's one-execution-per-pipeline gate compares families, so members execute beside their root while any
+    /// other run of the flow waits. Null for every run that is not a fan-out member.</summary>
+    public Guid? FanOutRoot { get; set; }
+
+    /// <summary>The member's slot within its fan-out, from 1; null for a run that is not a fan-out member.</summary>
+    public int? FanOutSlot { get; set; }
+
+    /// <summary>How many members the member's fan-out has; null for a run that is not a fan-out member.</summary>
+    public int? FanOutCount { get; set; }
+
+    /// <summary>The run artifact's <c>result</c> object as compact JSON, recorded for runs of a flow kind a host
+    /// registered: a fan-out root reads its members' outcomes from it, and the run page shows it. Null for built-in
+    /// kinds (their results are projected into the typed columns), for an artifact without a result object, and for a
+    /// result over <see cref="CatalogProjection.MaxResultJsonChars"/>, which stays in the artifact only.</summary>
+    public string? ResultJson { get; set; }
+
     public int SchemaVersion { get; set; }
 
     public DateTime WrittenUtc { get; set; }
@@ -405,6 +423,10 @@ public static class RunGroupModes
 
     /// <summary>Every active flow in one batch / data source (the legacy "Batch" execution), run in wave order.</summary>
     public const string Batch = "batch";
+
+    /// <summary>The member runs a running run spread part of its work across (<see cref="CatalogRun.FanOutRoot"/>),
+    /// executing beside it.</summary>
+    public const string FanOut = "fan-out";
 }
 
 /// <summary>

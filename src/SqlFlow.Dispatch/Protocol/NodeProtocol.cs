@@ -41,6 +41,12 @@ public static class NodeProtocol
     /// the node's own client budgets its request timeout from it. Kept well under every proxy idle timeout in the
     /// estate.</summary>
     public const int MaxWaitSeconds = 60;
+
+    /// <summary>The most member runs one fan-out may ask for.</summary>
+    public const int MaxFanOutMembers = 256;
+
+    /// <summary>The largest fan-out request a node may post: room for every member's parameters at their own bounds.</summary>
+    public const long MaxFanOutRequestBytes = 32L * 1024 * 1024;
 }
 
 /// <summary>A run the node is executing, identified by the lease it holds (run id plus the attempt the hand-out
@@ -194,3 +200,98 @@ public sealed record TaskOutcomeRequest(string Node, TaskOutcomeKind Outcome, st
 /// <summary>The dispatcher's answer to a task outcome report: whether the task still belonged to the node and the
 /// write applied.</summary>
 public sealed record TaskOutcomeResponse(bool Recorded);
+
+/// <summary>A node's request, for a run it holds (the fence: node and attempt), to spread part of that run's work across
+/// member runs of the same flow executing beside it. Each member carries its own parameters, and every member performs
+/// the same operation. The members form one run group of mode fan-out under the root, and a root re-executed after an
+/// interruption that asks for the same operation again gets back the members it already has instead of new ones.</summary>
+public sealed record FanOutRequest(string Node, int Attempt, IReadOnlyList<RunParameters> Members)
+{
+    /// <summary>Refuses a request no dispatcher could honor, naming why: no members, more than
+    /// <see cref="NodeProtocol.MaxFanOutMembers"/>, a member whose parameters are invalid on their own, or members that
+    /// disagree on the operation.</summary>
+    public void Validate()
+    {
+        if (Members is not { Count: > 0 })
+        {
+            throw new FanOutRefusedException("a fan-out needs at least one member.");
+        }
+
+        if (Members.Count > NodeProtocol.MaxFanOutMembers)
+        {
+            throw new FanOutRefusedException(
+                $"a fan-out has at most {NodeProtocol.MaxFanOutMembers} members; this one asks for {Members.Count}.");
+        }
+
+        var operation = Members[0]?.Operation;
+        for (var i = 0; i < Members.Count; i++)
+        {
+            var member = Members[i] ?? throw new FanOutRefusedException($"fan-out member {i + 1} has no parameters.");
+            try
+            {
+                member.Validate();
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                throw new FanOutRefusedException($"fan-out member {i + 1}: {ex.Message}", ex);
+            }
+
+            if (!string.Equals(member.Operation, operation, StringComparison.Ordinal))
+            {
+                throw new FanOutRefusedException(
+                    $"every member of a fan-out performs the same operation; member {i + 1} asks for "
+                    + $"'{member.Operation ?? "(default)"}' where member 1 asks for '{operation ?? "(default)"}'.");
+            }
+        }
+    }
+}
+
+/// <summary>The dispatcher's answer to a fan-out request: whether the root still carries the caller's lease (nothing was
+/// enqueued otherwise), the member group, and the member run ids in slot order.</summary>
+public sealed record FanOutResponse(bool Held, Guid? GroupId, IReadOnlyList<Guid> RunIds)
+{
+    /// <summary>The answer when the root no longer carries the caller's lease.</summary>
+    public static FanOutResponse NotHeld { get; } = new(false, null, []);
+}
+
+/// <summary>The lease a node presents when it reads or cancels the members of a run it holds.</summary>
+public sealed record FanOutFence(string Node, int Attempt);
+
+/// <summary>One fan-out member as the journal records it: its run id, its slot (from 1), its lifecycle status, the
+/// recorded (redacted) error, and its result object as JSON when its kind records one.</summary>
+public sealed record FanOutMemberState(Guid RunId, int Slot, string Status, string? Error, string? ResultJson);
+
+/// <summary>The members of a fan-out in slot order; <see cref="Held"/> is false, with no members, when the root no longer
+/// carries the caller's lease.</summary>
+public sealed record FanOutStateResponse(bool Held, IReadOnlyList<FanOutMemberState> Members)
+{
+    /// <summary>The answer when the root no longer carries the caller's lease.</summary>
+    public static FanOutStateResponse NotHeld { get; } = new(false, []);
+}
+
+/// <summary>The dispatcher's answer to a fan-out cancel: whether the root still carries the caller's lease (nothing was
+/// cancelled otherwise), how many queued members were cancelled outright and how many running ones were asked to stop.</summary>
+public sealed record FanOutCancelResponse(bool Held, int CancelledQueued, int RequestedRunning)
+{
+    /// <summary>The answer when the root no longer carries the caller's lease.</summary>
+    public static FanOutCancelResponse NotHeld { get; } = new(false, 0, 0);
+}
+
+/// <summary>A fan-out request refused on its content (members, parameters, the root's kind, a member asking to fan out
+/// again): the node's request is wrong, and repeating it cannot succeed.</summary>
+public sealed class FanOutRefusedException : Exception
+{
+    public FanOutRefusedException()
+    {
+    }
+
+    public FanOutRefusedException(string message)
+        : base(message)
+    {
+    }
+
+    public FanOutRefusedException(string message, Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}
