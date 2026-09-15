@@ -90,7 +90,9 @@ public sealed class DocumentModeTests
     [Fact]
     public void AbsentMode_DefaultsToAuto()
     {
-        var doc = Loader().Parse(FileFlowYaml.Replace("mode: manual\n", string.Empty, StringComparison.Ordinal));
+        // The raw literal carries the source file's line endings (CRLF in a Windows checkout), so normalise them before
+        // removing the line; otherwise the key survives and the test reads a manual flow.
+        var doc = Loader().Parse(FileFlowYaml.ReplaceLineEndings("\n").Replace("mode: manual\n", string.Empty, StringComparison.Ordinal));
         Assert.Equal(ExecutionMode.Auto, doc.Mode);
         Assert.Equal(ExecutionMode.Auto, Assert.Single(FlowDocumentHeaders.Project(doc)).Mode);
     }
