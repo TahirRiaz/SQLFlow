@@ -56,7 +56,7 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
         }
         finally
         {
-            await CleanupAsync(cs, repoId);
+            await CleanupAsync(cs, repoId, repo);
         }
     }
 
@@ -80,7 +80,7 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
         }
         finally
         {
-            await CleanupAsync(cs, repoId);
+            await CleanupAsync(cs, repoId, repo);
         }
     }
 
@@ -104,7 +104,7 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
         }
         finally
         {
-            await CleanupAsync(cs, repoId);
+            await CleanupAsync(cs, repoId, repo);
         }
     }
 
@@ -115,6 +115,8 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
         var flowName = "cat_ext_orders_" + suffix;
         var path = Path.Combine(_dir, "flows", "orders.flow.yaml");
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        // The target table is this test's own, so the lineage objects the sync registers are too, and cleanup removes
+        // exactly them.
         File.WriteAllText(path, $"""
             name: {flowName}
             source:
@@ -123,10 +125,12 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
             target:
               connection: ${"${env:SQLFlowSinkConStr}"}
               schema: dbo
-              table: CatExtOrders
+              table: {TableFor(repo)}
             """);
         return (repo, FlowIdentity.FromName(repo), flowName);
     }
+
+    private static string TableFor(string repo) => "CatExt_" + repo["cat_ext_".Length..];
 
     private static async Task AssertNothingCommittedAsync(string cs, Guid repoId)
     {
@@ -136,9 +140,15 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
         Assert.False(await db.LineageEdges.AnyAsync(e => e.RepoId == repoId));
     }
 
-    private static async Task CleanupAsync(string cs, Guid repoId)
+    private static async Task CleanupAsync(string cs, Guid repoId, string repo)
     {
         await using var db = CatalogDatabase.Create(cs);
+        // The objects go before the edges: the catalog sync of any concurrently running test sweeps database-less objects
+        // no edge references, so an object left without its edges, even briefly, would be counted by that other sync.
+        var table = TableFor(repo).ToLowerInvariant();
+        var objectKeys = await db.Objects.Where(o => o.Name == table).Select(o => o.Key).ToListAsync();
+        await db.ObjectColumns.Where(c => objectKeys.Contains(c.ObjectKey)).ExecuteDeleteAsync();
+        await db.Objects.Where(o => objectKeys.Contains(o.Key)).ExecuteDeleteAsync();
         await db.FlowDependencies.Where(d => d.RepoId == repoId).ExecuteDeleteAsync();
         await db.LineageEdges.Where(e => e.RepoId == repoId).ExecuteDeleteAsync();
         await db.Runs.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
