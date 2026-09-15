@@ -22,6 +22,7 @@ import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { RelativeTime } from "../../components/RelativeTime";
 import { pollingInterval } from "../../hooks/usePolling";
+import { moduleDashboardTiles } from "../../modules/registry";
 import { useThemeMode } from "../../theme/ThemeModeContext";
 
 // One even grid for the KPI cards (and their loading skeletons), so the headline numbers read as a designed
@@ -152,6 +153,7 @@ export default function DashboardPage() {
           testId="kpi-repo-sources"
         />
         <KpiCard label="Runs last 24h" value={dashboard.runs.last24h} linkTo="/runs" testId="kpi-runs-24h" />
+        {moduleDashboardTiles().map(({ id, component: Tile }) => <Tile key={id} />)}
       </div>
 
       <Card className="gap-0 rounded-lg py-4" data-testid="runs-by-state-card">

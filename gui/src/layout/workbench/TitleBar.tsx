@@ -13,6 +13,7 @@ import {
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAuth } from "../../auth/AuthContext";
+import { branding } from "../../modules/branding";
 import { useThemeMode } from "../../theme/ThemeModeContext";
 import { SideBarSearch, SideBarSections } from "./SideBar";
 
@@ -22,6 +23,7 @@ import { SideBarSearch, SideBarSections } from "./SideBar";
  * hamburger opens the navigation sheet, which carries the same search.
  */
 export function TitleBar({ onOpenPalette }: { onOpenPalette: () => void }) {
+  const brand = branding();
   const { session, logout } = useAuth();
   const { mode, toggle } = useThemeMode();
   const navigate = useNavigate();
@@ -52,8 +54,18 @@ export function TitleBar({ onOpenPalette }: { onOpenPalette: () => void }) {
       </Sheet>
 
       <div className="flex items-center gap-2 pl-1">
-        <img src="/brand/logo-white.png" alt="" className="size-5 object-contain" />
-        <span className="hidden text-[13px] font-semibold sm:block">SQLFlow</span>
+        <img src={brand.logos.white} alt="" className="size-5 object-contain" />
+        {brand.attribution === null
+          ? <span className="hidden text-[13px] font-semibold sm:block">{brand.productName}</span>
+          : (
+            <span className="hidden items-baseline gap-1.5 sm:flex">
+              <span className="text-[13px] font-semibold">{brand.productName}</span>
+              {/* The attribution rides along where there is room for it, and drops out first when there is not. */}
+              <span className="text-[11px] font-normal text-white/45 max-lg:hidden" data-testid="app-bar-attribution">
+                {brand.attribution}
+              </span>
+            </span>
+          )}
       </div>
 
       <div className="flex-1" />

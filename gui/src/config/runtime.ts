@@ -3,8 +3,12 @@
 // environment wins (so a shell/e2e harness can point the dev GUI at any control plane without editing files).
 // Failing both, the SPA assumes the control plane shares its origin.
 
+import { parseRuntimeBranding, type RuntimeBrandingOverrides } from "../modules/branding";
+
 export interface RuntimeConfig {
   apiBaseUrl: string;
+  /** The deployment's branding overrides (config.json only), applied on top of the build's branding. */
+  branding?: RuntimeBrandingOverrides;
 }
 
 let config: RuntimeConfig | null = null;
@@ -33,7 +37,7 @@ export async function loadRuntimeConfig(): Promise<RuntimeConfig> {
   const envValue = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? null;
   const apiBaseUrl = (import.meta.env.DEV ? envValue ?? fileValue : fileValue ?? envValue)
     ?? window.location.origin;
-  config = { apiBaseUrl: apiBaseUrl.replace(/\/+$/, "") };
+  config = { apiBaseUrl: apiBaseUrl.replace(/\/+$/, ""), branding: parseRuntimeBranding(fromFile.branding) };
   return config;
 }
 

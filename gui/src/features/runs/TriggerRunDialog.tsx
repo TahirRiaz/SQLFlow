@@ -11,14 +11,16 @@ import { Label } from "@/components/ui/label";
 import {
   Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle,
 } from "@/components/ui/sheet";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { isApiError } from "../../api/client";
-import { pipelineApi, repoApi, runApi, scheduleApi } from "../../api/endpoints";
+import { kindApi, pipelineApi, repoApi, runApi, scheduleApi } from "../../api/endpoints";
 import type { RunParameterDescriptor, RunScope } from "../../api/types";
 import { ComboBoxField } from "../../components/ComboBoxField";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DateRangeCalendar } from "../../components/DateRangeCalendar";
+import { contributedKinds, kindContribution, type TriggerBodyContribution } from "../../modules/registry";
 import { useRunDock } from "./RunDockContext";
 
 /** Prior-run values used to prefill the form on Re-run (ISO strings for the window; they are trimmed to the
@@ -49,6 +51,15 @@ export interface TriggerRunDialogProps {
   scope?: RunScope;
   /** The batch label for a batch-scoped launch (from the status board); locks the dialog to that batch. */
   batch?: string;
+  /** The flow's kind, when the launching context knows it; a kind a GUI module contributes to gets its operations and
+   * fields. Resolved from the repo's pipeline list otherwise. */
+  flowKind?: string | null;
+  /** The operation of the run being repeated (Re-run), for a kind that registers operations. */
+  initialOperation?: string | null;
+  /** The values of the run being repeated (Re-run), handed to the kind's fields. */
+  initialValues?: Readonly<Record<string, string>> | null;
+  /** The payload of the run being repeated (Re-run), or of the launching context, handed to the kind's fields. */
+  initialPayload?: Readonly<Record<string, unknown>> | null;
 }
 
 const SCOPE_LABELS: Record<RunScope, string> = {
@@ -60,6 +71,9 @@ const SCOPE_LABELS: Record<RunScope, string> = {
 /** The scopes a free-choice trigger offers. "Whole batch" is not a run scope in V3 (the server runs a whole source
  * through its schedule, not a batch trigger), so it is surfaced as the related-schedule section below instead. */
 const OFFERED_SCOPES: RunScope[] = ["flow", "node"];
+
+/** The values a fresh launch hands a kind's fields: one shared empty object, so the fields see a stable reference. */
+const NO_VALUES: Readonly<Record<string, string>> = {};
 
 /** A one-line cadence for a related schedule ("cron 0 2 * * *", "every 3600s", or "manual"). */
 function describeCadence(cron: string | null, intervalSeconds: number | null): string {
@@ -96,7 +110,8 @@ interface ComboOption {
  * selection surface get none), so a user is never shown a control the run would ignore.
  */
 export function TriggerRunDialog({
-  open, onClose, repoId, flowName, flowId, initialParameters, scope, batch,
+  open, onClose, repoId, flowName, flowId, initialParameters, scope, batch, flowKind, initialOperation, initialValues,
+  initialPayload,
 }: TriggerRunDialogProps) {
   const navigate = useNavigate();
   const idPrefix = useId();
@@ -115,6 +130,11 @@ export function TriggerRunDialog({
   // Node scope's "find all": include mode: manual and mode: disabled descendants in the group. Off by default,
   // so a deactivated branch is only replayed when the operator deliberately asks for it.
   const [includeAll, setIncludeAll] = useState(false);
+  // A GUI module kind's run: the operation picked (null until one is picked, which leaves the kind's default), what the
+  // kind's fields report for the request body, and a key that mounts the fields afresh on every opening.
+  const [operation, setOperation] = useState<string | null>(null);
+  const [kindBody, setKindBody] = useState<TriggerBodyContribution>({ error: null });
+  const [fieldsKey, setFieldsKey] = useState(0);
 
   // A batch-locked launch (from the status board) carries no flow: force batch scope and keep it there.
   const batchLocked = batch !== undefined;
@@ -129,6 +149,9 @@ export function TriggerRunDialog({
       setSourceFilter(initialParameters?.sourceFilter ?? "");
       setAssertionsOnly(initialParameters?.assertionsOnly ?? false);
       setIncludeAll(false);
+      setOperation(initialOperation ?? null);
+      setKindBody({ error: null });
+      setFieldsKey((current) => current + 1);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -164,10 +187,31 @@ export function TriggerRunDialog({
     ?? pipelines.data?.items.find((p) => p.name === effectiveFlow)?.id
     ?? null;
 
+  // A kind a GUI module contributes to: the operations the control plane registers for it (asked for only in a build
+  // that has such modules), the one in effect (the picked one while the kind offers it, else the kind's default), and
+  // the kind's own fields. SQLFlow's own kinds have none of this and keep the parameter form below.
+  const selectedKind = flowKind ?? pipelines.data?.items.find((p) => p.name === effectiveFlow)?.kind ?? null;
+  const kindModule = kindContribution(selectedKind);
+  const kinds = useQuery({
+    queryKey: ["kinds"],
+    queryFn: kindApi.list,
+    enabled: open && contributedKinds().length > 0,
+    staleTime: 5 * 60_000,
+  });
+  const kindDescriptor = selectedKind === null ? undefined : kinds.data?.find((k) => k.flowType === selectedKind);
+  const kindOperations = kindDescriptor?.operations ?? [];
+  const effectiveOperation = operation !== null && kindOperations.some((o) => o.name === operation)
+    ? operation
+    : kindDescriptor?.defaultOperation ?? kindOperations[0]?.name ?? null;
+  const operationDescriptor = kindOperations.find((o) => o.name === effectiveOperation);
+  const KindFields = kindModule?.trigger?.Fields;
+  const moduleKind = kindModule !== undefined || kindDescriptor !== undefined;
+
   const flowParameters = useQuery({
     queryKey: ["pipeline-parameters", effectiveFlowId],
     queryFn: () => pipelineApi.parameters(effectiveFlowId!),
-    enabled: open && paramsScope !== "none" && Boolean(effectiveFlowId),
+    // A module kind's single-flow run takes the kind's operation and fields instead of SQLFlow's parameter form.
+    enabled: open && paramsScope !== "none" && Boolean(effectiveFlowId) && !(moduleKind && paramsScope === "flow"),
   });
   const applicable = useMemo(() => flowParameters.data?.parameters ?? [], [flowParameters.data]);
   const paramKeys = useMemo(() => new Set(applicable.map((p) => p.key)), [applicable]);
@@ -282,7 +326,11 @@ export function TriggerRunDialog({
   const hasTarget = batchLocked ? Boolean(batch) : Boolean(effectiveFlow);
   // A group run stays disabled until the preview confirms there is at least one flow to run.
   const groupReady = !isGroup || (preview.data !== undefined && preview.data.memberCount > 0);
-  const canSubmit = Boolean(effectiveRepoId) && hasTarget && windowError === null && groupReady && !trigger.isPending;
+  // A module kind's single-flow run carries the kind's operation and fields, and waits on what the fields report.
+  const kindForm = moduleKind && paramsScope === "flow";
+  const kindError = kindForm && KindFields !== undefined ? kindBody.error : null;
+  const canSubmit = Boolean(effectiveRepoId) && hasTarget && windowError === null && kindError === null && groupReady
+    && !trigger.isPending;
 
   const submit = () => {
     // A single flow sends every parameter its kind honors; a node run sends only the backfill window (the server
@@ -304,6 +352,18 @@ export function TriggerRunDialog({
       sourceFilter: applies("sourceFilter") && hasSourceFilter ? sourceFilter.trim() : null,
       assertionsOnly: applies("assertionsOnly") ? assertionsOnly : false,
       includeAll: selectedScope === "node" ? includeAll : false,
+      // A module kind's single-flow run: the operation in effect, and the values and payload its fields report.
+      ...(kindForm
+        ? {
+          operation: effectiveOperation ?? undefined,
+          values: KindFields !== undefined && kindBody.values !== undefined && Object.keys(kindBody.values).length > 0
+            ? kindBody.values
+            : undefined,
+          payload: KindFields !== undefined && kindBody.payload !== undefined && Object.keys(kindBody.payload).length > 0
+            ? kindBody.payload
+            : undefined,
+        }
+        : {}),
     });
   };
 
@@ -383,7 +443,7 @@ export function TriggerRunDialog({
     }
   };
 
-  const showParameters = paramsScope !== "none" && Boolean(effectiveFlow)
+  const showParameters = paramsScope !== "none" && Boolean(effectiveFlow) && !kindForm
     && (paramsScope === "flow" || renderable.length > 0 || resolvingParameters);
 
   return (
@@ -535,6 +595,71 @@ export function TriggerRunDialog({
               Pin the run to an exact git commit; empty pins to the repo's last synced commit.
             </p>
           </div>
+
+          {kindForm && Boolean(effectiveFlow) && (
+            <div className="rounded-lg border border-border bg-muted/40 p-3" data-testid="trigger-parameters">
+              <h3 className="text-[13px] font-medium">Run parameters</h3>
+              <div className="mt-2 flex flex-col gap-3">
+                <p className="text-xs text-muted-foreground">
+                  One-off overrides applied to this run only. The flow definition in git is unchanged.
+                </p>
+                {kinds.isLoading && (
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading this flow's operations...
+                  </div>
+                )}
+                {kinds.isError && (
+                  <Alert className="text-warning" data-testid="trigger-operations-unavailable">
+                    <TriangleAlert />
+                    <AlertDescription className="text-warning/90">
+                      Could not load this flow's operations. Triggering now runs its default operation.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {kindOperations.length > 0 && effectiveOperation !== null && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor={`${idPrefix}-operation`}>Operation</Label>
+                    <Select value={effectiveOperation} onValueChange={setOperation}>
+                      <SelectTrigger id={`${idPrefix}-operation`} size="sm" className="h-8 w-full" data-testid="trigger-operation">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {kindOperations.map((option) => (
+                          <SelectItem key={option.name} value={option.name}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {operationDescriptor !== undefined && operationDescriptor.description.trim() !== "" && (
+                      <p className="text-xs text-muted-foreground" data-testid="trigger-operation-description">
+                        {operationDescriptor.description}
+                      </p>
+                    )}
+                    {operationDescriptor !== undefined && !operationDescriptor.writesTarget && (
+                      <p className="text-xs text-muted-foreground" data-testid="trigger-operation-read-only">
+                        This operation writes nothing to the flow's target.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {KindFields !== undefined && selectedKind !== null && (
+                  <KindFields
+                    key={`${fieldsKey}:${selectedKind}`}
+                    flowKind={selectedKind}
+                    operation={effectiveOperation}
+                    initialValues={initialValues ?? NO_VALUES}
+                    initialPayload={initialPayload ?? null}
+                    onChange={setKindBody}
+                  />
+                )}
+                {kindError !== null && (
+                  <p className="text-xs font-medium text-destructive" data-testid="trigger-parameters-error">
+                    {kindError}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {showParameters && (
             <div className="rounded-lg border border-border bg-muted/40 p-3" data-testid="trigger-parameters">

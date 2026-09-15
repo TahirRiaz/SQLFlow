@@ -20,10 +20,11 @@ import { PagedTable, type Column, type TableGrouping } from "../../components/Pa
 import { RelativeTime } from "../../components/RelativeTime";
 import { RunStatusBadge, rollupStatus } from "../../components/StatusBadge";
 import { formatDurationSeconds } from "../../lib/time";
+import { contributedKinds, kindContribution } from "../../modules/registry";
 import { TriggerRunDialog } from "./TriggerRunDialog";
 
 const statuses: RunStatus[] = ["queued", "running", "succeeded", "failed", "cancelled", "skipped"];
-const kinds = ["all", "file", "ing", "api", "cpy", "sftp", "exp", "trl", "sp", "inv", "hc", "scm", "sch", "batch", "cal"];
+const builtInKinds = ["all", "file", "ing", "api", "cpy", "sftp", "exp", "trl", "sp", "inv", "hc", "scm", "sch", "batch", "cal"];
 
 /** A right-aligned numeric cell: the value with thousands separators, or "-" when it is null/zero (a flow that
  * touched no rows, or a non-file flow with no file count). */
@@ -279,6 +280,13 @@ export default function RunsPage() {
   const [batchRun, setBatchRun] = useState<{ repoId: string | null; batch: string } | null>(null);
   const [status, setStatus] = useLocalStorageState<RunStatus | null>("sqlflow.filters.runs.status", null);
   const [kind, setKind] = useLocalStorageState("sqlflow.filters.runs.kind", "all");
+  // The kinds the build's GUI modules contribute are filterable like the built-in ones, and a board filtered to one of
+  // them carries that kind's own run columns.
+  const kinds = useMemo(
+    () => [...builtInKinds, ...contributedKinds().filter((contributed) => !builtInKinds.includes(contributed))],
+    [],
+  );
+  const kindColumns = kind === "all" ? [] : kindContribution(kind)?.runColumns ?? [];
   const [flowNameInput, setFlowNameInput] = useLocalStorageState("sqlflow.filters.runs.flowName", "");
   // Seed the debounced value from the same remembered text so the first query runs filtered, with no flash.
   const [flowName, setFlowName] = useState(() =>
@@ -468,7 +476,7 @@ export default function RunsPage() {
             page,
             pageSize,
           })}
-        columns={grouped ? baseColumns : flatColumns}
+        columns={[...(grouped ? baseColumns : flatColumns), ...kindColumns]}
         rowKey={(row) => row.runId}
         onRowClick={(row) => navigate(`/runs/${row.runId}`)}
         pollMs={5000}

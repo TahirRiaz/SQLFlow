@@ -238,7 +238,7 @@ function RunGroupContent({ groupId }: { groupId: string }) {
   }
 
   const active = group.counts.queued > 0 || group.counts.running > 0;
-  const modeLabel = group.mode === "node" ? "Flow + descendants" : "Batch";
+  const modeLabel = group.mode === "node" ? "Flow + descendants" : group.mode === "fanout" ? "Fan-out" : "Batch";
 
   // While streaming, the rollup pills count the streamed member statuses directly, so the header agrees with
   // the rows beneath it instead of trailing on the 3s header poll.
@@ -311,7 +311,8 @@ function RunGroupContent({ groupId }: { groupId: string }) {
               Cancel group
             </Button>
           )
-          : (
+          // A fan-out group is its root run's spread across the fleet, so it is repeated from that run, not from here.
+          : group.mode === "fanout" ? undefined : (
             <Button
               variant="outline"
               size="sm"

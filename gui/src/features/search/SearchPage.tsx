@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { searchApi } from "../../api/endpoints";
 import { isApiError } from "../../api/client";
 import type {
-  ColumnHit, DefinitionHit, FileHit, FlowColumnHit, FlowHit, ObjectHit, SearchCategory, StatementHit,
+  AllSearchResult, ColumnHit, DefinitionHit, FileHit, FlowColumnHit, FlowHit, ObjectHit, SearchCategory, StatementHit,
   SubscriberHit,
 } from "../../api/types";
 import { LineageJumpButton, type LineageJumpTarget } from "../../components/LineageJumpButton";
@@ -24,6 +24,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { TruncatedText } from "../../components/TruncatedText";
 import { formatBytes, parseUtc } from "../../lib/time";
+import { moduleSearchCategories, type SearchCategoryContribution } from "../../modules/registry";
 
 /**
  * The trailing "Lineage" action column: a labeled button (not a bare icon) that opens the lineage jump picker for
@@ -419,6 +420,31 @@ export default function SearchPage() {
   );
 }
 
+/**
+ * A GUI module's category in the combined result: the key it names, when the result carries a category there (a total and
+ * a list of hits). Anything else, a result from a control plane without that module included, reads as no category.
+ */
+function moduleCategoryOf(result: AllSearchResult, key: string): SearchCategory<unknown> | null {
+  const value: unknown = (result as unknown as Record<string, unknown>)[key];
+  if (value === null || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as { total?: unknown; items?: unknown; totalCapped?: unknown };
+  return typeof candidate.total === "number" && Array.isArray(candidate.items)
+    ? { total: candidate.total, items: candidate.items, totalCapped: candidate.totalCapped === true }
+    : null;
+}
+
+/** One module category of the All view, rendered the way its module renders it. */
+function ModuleCategory({ contribution, query, category }: {
+  contribution: SearchCategoryContribution;
+  query: string;
+  category: SearchCategory<unknown>;
+}) {
+  return <>{contribution.render({ query, category })}</>;
+}
+
 interface AllResultsProps {
   q: string;
   onSelectTab: (tab: TabIndex) => void;
@@ -452,9 +478,15 @@ function AllResults({ q, onSelectTab, openLineage, openRun, openPipeline, openSu
     );
   }
 
+  // The categories the build's GUI modules add, read from the same combined result; a category with no hits is left out.
+  const moduleCategories = moduleSearchCategories().flatMap((contribution) => {
+    const category = moduleCategoryOf(data, contribution.key);
+    return category === null || category.total === 0 ? [] : [{ contribution, category }];
+  });
+
   const totalHits = data.objects.total + data.columns.total + data.definitions.total
     + data.files.total + data.flows.total + data.flowColumns.total + data.statements.total
-    + data.subscribers.total;
+    + data.subscribers.total + moduleCategories.reduce((sum, entry) => sum + entry.category.total, 0);
 
   if (totalHits === 0) {
     return <EmptyState title={`Nothing matches "${q}".`} data-testid="search-all-empty" />;
@@ -462,6 +494,9 @@ function AllResults({ q, onSelectTab, openLineage, openRun, openPipeline, openSu
 
   return (
     <div className="flex flex-col gap-4" data-testid="search-all">
+      {moduleCategories.map(({ contribution, category }) => (
+        <ModuleCategory key={contribution.key} contribution={contribution} query={q} category={category} />
+      ))}
       <CategorySection<ObjectHit>
         title="Objects" tab={1} category={data.objects} onSelectTab={onSelectTab}
         rowKey={(row) => row.key} onRowClick={(row) => openLineage(row.name)}

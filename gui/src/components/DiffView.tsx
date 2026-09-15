@@ -19,6 +19,16 @@ interface DiffViewProps {
   height?: number | string;
   /** What the two sides ARE (a commit, a date). Rendered in the toolbar, left of the view controls. */
   caption?: ReactNode;
+  /**
+   * A name for each side (a version, a release, a file): shown above its pane side by side, and as the removed and
+   * added side of the patch inline. For comparisons whose sides need naming one by one, where a caption would not do.
+   */
+  sideLabels?: { original: string; modified: string };
+  /**
+   * Folds the unchanged stretches away, so the differences are what is in view. For long documents that differ in a
+   * few places; a folded stretch opens on demand.
+   */
+  foldUnchanged?: boolean;
   "data-testid"?: string;
 }
 
@@ -34,11 +44,12 @@ interface DiffViewProps {
  * window is and how they prefer to read a patch, neither of which changes between one object and the next.
  */
 export function DiffView({
-  original, modified, language, height = 480, caption, "data-testid": testId,
+  original, modified, language, height = 480, caption, sideLabels, foldUnchanged = false, "data-testid": testId,
 }: DiffViewProps) {
   const { mode } = useThemeMode();
   const monacoRef = useRef<Monaco | null>(null);
   const [sideBySide, setSideBySide] = useLocalStorageState("sqlflow.diff-view.side-by-side", true);
+  const rootTestId = testId ?? "diff-view";
 
   const handleBeforeMount = useCallback((monaco: Monaco) => {
     monacoRef.current = monaco;
@@ -62,7 +73,7 @@ export function DiffView({
 
   return (
     <div
-      data-testid={testId ?? "diff-view"}
+      data-testid={rootTestId}
       className="overflow-hidden rounded-lg border border-border"
     >
       <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-2 py-0.5">
@@ -99,6 +110,27 @@ export function DiffView({
           </Tooltip>
         </div>
       </div>
+      {sideLabels !== undefined && (sideBySide
+        ? (
+          <div className="grid grid-cols-2 border-b border-border bg-muted/50 font-mono text-[11px] text-muted-foreground">
+            <div className="truncate px-3 py-1" title={sideLabels.original} data-testid={`${rootTestId}-original`}>
+              {sideLabels.original}
+            </div>
+            <div className="truncate border-l border-border px-3 py-1" title={sideLabels.modified} data-testid={`${rootTestId}-modified`}>
+              {sideLabels.modified}
+            </div>
+          </div>
+        )
+        : (
+          <div className="flex flex-col border-b border-border bg-muted/50 px-3 py-1 font-mono text-[11px] text-muted-foreground">
+            <div className="truncate" title={sideLabels.original} data-testid={`${rootTestId}-original`}>
+              {`- ${sideLabels.original}`}
+            </div>
+            <div className="truncate" title={sideLabels.modified} data-testid={`${rootTestId}-modified`}>
+              {`+ ${sideLabels.modified}`}
+            </div>
+          </div>
+        ))}
       <DiffEditor
         original={original}
         modified={modified}
@@ -119,6 +151,9 @@ export function DiffView({
           padding: { top: 12, bottom: 12 },
           renderLineHighlight: "none",
           smoothScrolling: true,
+          hideUnchangedRegions: foldUnchanged
+            ? { enabled: true, contextLineCount: 3, minimumLineCount: 6, revealLineCount: 20 }
+            : { enabled: false },
         }}
       />
     </div>

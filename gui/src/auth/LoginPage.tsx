@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDown, CircleAlert, Info, Loader2, ShieldCheck, Sparkles, Waypoints, Workflow } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
+import { ChevronDown, CircleAlert, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -14,6 +13,7 @@ import { authApi } from "../api/endpoints";
 import { isApiError } from "../api/client";
 import { CorrelationError } from "../components/CorrelationError";
 import { useAuth } from "./AuthContext";
+import { branding } from "../modules/branding";
 import { readLoginPrefs } from "./loginPrefs";
 
 /** Which sign-in path is in flight, so only the button that started the work shows the spinner. */
@@ -31,37 +31,14 @@ function MicrosoftMark() {
   );
 }
 
-/** What the product does, said once, in the panel that only wide screens have room for. */
-const CAPABILITIES: ReadonlyArray<{ icon: LucideIcon; title: string; body: string }> = [
-  {
-    icon: Workflow,
-    title: "Pipelines as code",
-    body: "Flows live as YAML in your repository, versioned and reviewed like the rest of your codebase.",
-  },
-  {
-    icon: Waypoints,
-    title: "Lineage end to end",
-    body: "Follow every table and column from the source system through to the warehouse it lands in.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Governed execution",
-    body: "Managed identity, secrets from the vault, and an audited history of every run.",
-  },
-  {
-    icon: Sparkles,
-    title: "AI built in",
-    body: "Ask the assistant about your flows, lineage, and runs; it answers from your own catalog.",
-  },
-];
-
 /**
- * The branded left column, shown only on wide screens: the SQLFlow lockup, what the product does, and the
+ * The branded left column, shown only on wide screens: the product's lockup, what the product does, and the
  * capabilities worth naming, over a navy field carrying concentric arcs that echo the logo mark. It
  * carries the page on large displays, where a lone card would otherwise float in an empty background.
  * Purely decorative, so it is hidden from assistive tech and never rendered on the narrow, form-only layout.
  */
 function BrandPanel() {
+  const brand = branding();
   return (
     <div
       className="relative hidden overflow-hidden lg:flex lg:w-[52%] lg:flex-col xl:w-[55%]"
@@ -95,18 +72,18 @@ function BrandPanel() {
 
       {/* Content stays a readable column and centres itself once the panel grows past it. */}
       <div className="relative mx-auto flex h-full w-full max-w-xl flex-col justify-center px-12 py-14 xl:px-16 xl:py-16">
-        <img src="/brand/logo-full.png" alt="" className="h-20 w-auto self-start object-contain xl:h-24" />
+        <img src={brand.logos.full} alt="" className="h-20 w-auto max-w-full self-start object-contain xl:h-24" />
 
         <div className="mt-14">
           <h2 className="text-3xl font-semibold leading-[1.15] tracking-tight text-white xl:text-[2.5rem]">
-            Move data with confidence.
+            {brand.login.headline}
           </h2>
           <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/60">
-            Orchestrate ingestion, transformation, and lineage across your estate from a single control plane.
+            {brand.login.tagline}
           </p>
 
           <ul className="mt-12 flex flex-col gap-7">
-            {CAPABILITIES.map(({ icon: Icon, title, body }) => (
+            {brand.login.capabilities.map(({ icon: Icon, title, body }) => (
               <li key={title} className="flex gap-4">
                 <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
                   <Icon className="size-[18px] text-white/70" strokeWidth={1.75} />
@@ -126,12 +103,13 @@ function BrandPanel() {
 
 /**
  * The sign-in page, the one surface that renders outside the workbench shell: a centered card on the
- * editor background with the SQLFlow lockup above it. Username/password for regular SQLFlow users,
+ * editor background with the product's lockup above it. Username/password for the product's regular users,
  * "Sign in with Microsoft" when the control plane has Entra enabled, and the break-glass bootstrap
  * secret tucked behind an expander when one is configured. Which options render is driven by
  * GET /auth/providers, so this page never guesses the server's configuration.
  */
 export default function LoginPage() {
+  const brand = branding();
   const { session, sessionEndedReason, loginLocal, loginEntra, loginBootstrap } = useAuth();
   const navigate = useNavigate();
   const [params] = useSearchParams();
@@ -195,7 +173,7 @@ export default function LoginPage() {
         {/* The lockup sits with the form on narrow screens, where the brand panel is hidden. The navy plaque
             keeps the light-blue mark legible on the light theme's near-white background. */}
         <div className="relative rounded-xl px-6 py-3.5 lg:hidden" style={{ backgroundColor: "var(--brand-navy)" }}>
-          <img src="/brand/logo-full.png" alt="SQLFlow" className="h-11 w-auto object-contain" />
+          <img src={brand.logos.full} alt={brand.productName} className="h-11 w-auto max-w-full object-contain" />
         </div>
 
         <Card
@@ -205,7 +183,7 @@ export default function LoginPage() {
           <div className="flex flex-col gap-5">
             <div>
               <h1 className="text-[22px] font-semibold tracking-tight">Welcome back</h1>
-              <p className="mt-1.5 text-[13px] text-muted-foreground">Sign in to your SQLFlow account to continue.</p>
+              <p className="mt-1.5 text-[13px] text-muted-foreground">{`Sign in to your ${brand.productName} account to continue.`}</p>
             </div>
 
           {sessionEndedReason && (
@@ -346,7 +324,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="relative max-w-[25rem] text-center text-xs text-muted-foreground">
-          Trouble signing in? Your SQLFlow administrator can reset the account or issue a new one.
+          {`Trouble signing in? Your ${brand.productName} administrator can reset the account or issue a new one.`}
         </p>
       </div>
     </div>

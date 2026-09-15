@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link as RouterLink, useNavigate, useParams } from "react-router-dom";
+import { Link as RouterLink, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { HeartPulse, ListChecks, Loader2, Network, Play } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +30,7 @@ import { TruncatedText } from "../../components/TruncatedText";
 import { useTabTitle } from "../../layout/workbench/TabsContext";
 import { embeddedHealthCheckName } from "../../lib/definition";
 import { formatBytes, formatDurationSeconds } from "../../lib/time";
+import { kindContribution } from "../../modules/registry";
 import { projectOf } from "../repos/project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 
@@ -296,6 +297,8 @@ export default function PipelineDetailPage() {
   const { pipelineId = "" } = useParams();
   const navigate = useNavigate();
   const [triggerOpen, setTriggerOpen] = useState(false);
+  // The open tab lives in the URL (?tab=), so a link can land on a tab and the workbench tab reopens where it was left.
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const detailQuery = useQuery({
     queryKey: ["pipelines", "detail", pipelineId],
@@ -360,6 +363,25 @@ export default function PipelineDetailPage() {
 
   // An ing document's embedded healthCheck: block derives a sibling hc pipeline; the button triggers it by name.
   const embeddedCheck = detail.kind === "ing" ? embeddedHealthCheckName(detail.definitionJson) : null;
+
+  // What a GUI module adds for this pipeline's kind: tabs of its own ahead of the built-in ones, the tab a pipeline of
+  // the kind opens on, the built-in tabs that say nothing about it, and extra run columns.
+  const kind = kindContribution(detail.kind);
+  const shows = (builtInTab: string) => !(kind?.hiddenPipelineTabs ?? []).includes(builtInTab);
+  const tabValues = [
+    ...(kind?.pipelineTabs ?? []).map((contributed) => contributed.value),
+    ...["yaml", "transforms", "runs", "files", "schedules", "definition"].filter(shows),
+  ];
+  const defaultTab = kind?.defaultPipelineTab !== undefined && tabValues.includes(kind.defaultPipelineTab)
+    ? kind.defaultPipelineTab
+    : tabValues[0] ?? "yaml";
+  const requestedTab = searchParams.get("tab");
+  const activeTab = requestedTab !== null && tabValues.includes(requestedTab) ? requestedTab : defaultTab;
+  const selectTab = (value: string) => setSearchParams((current) => {
+    const next = new URLSearchParams(current);
+    next.set("tab", value);
+    return next;
+  }, { replace: true });
 
   // Which one-click action is in flight, so only the clicked button wears the spinner.
   const pendingAssertions = triggerFlow.isPending && triggerFlow.variables?.assertionsOnly === true;
@@ -537,18 +559,29 @@ export default function PipelineDetailPage() {
         <DetailPair label="Last seen"><RelativeTime value={detail.lastSeenUtc} absolute /></DetailPair>
       </DetailHeaderCard>
 
-      <Tabs defaultValue="yaml">
+      <Tabs value={activeTab} onValueChange={selectTab}>
         <TabsList data-testid="pipeline-tabs">
-          <TabsTrigger value="yaml" data-testid="pipeline-tab-yaml">YAML</TabsTrigger>
-          <TabsTrigger value="transforms" data-testid="pipeline-tab-transforms">Transforms</TabsTrigger>
-          <TabsTrigger value="runs" data-testid="pipeline-tab-runs">Runs</TabsTrigger>
-          <TabsTrigger value="files" data-testid="pipeline-tab-files">Files</TabsTrigger>
-          <TabsTrigger value="schedules" data-testid="pipeline-tab-schedules">Schedules</TabsTrigger>
-          <TabsTrigger value="definition" data-testid="pipeline-tab-definition">Definition</TabsTrigger>
+          {(kind?.pipelineTabs ?? []).map((contributed) => (
+            <TabsTrigger key={contributed.value} value={contributed.value} data-testid={contributed.testId}>
+              {contributed.label}
+            </TabsTrigger>
+          ))}
+          {shows("yaml") && <TabsTrigger value="yaml" data-testid="pipeline-tab-yaml">YAML</TabsTrigger>}
+          {shows("transforms") && <TabsTrigger value="transforms" data-testid="pipeline-tab-transforms">Transforms</TabsTrigger>}
+          {shows("runs") && <TabsTrigger value="runs" data-testid="pipeline-tab-runs">Runs</TabsTrigger>}
+          {shows("files") && <TabsTrigger value="files" data-testid="pipeline-tab-files">Files</TabsTrigger>}
+          {shows("schedules") && <TabsTrigger value="schedules" data-testid="pipeline-tab-schedules">Schedules</TabsTrigger>}
+          {shows("definition") && <TabsTrigger value="definition" data-testid="pipeline-tab-definition">Definition</TabsTrigger>}
         </TabsList>
 
+        {(kind?.pipelineTabs ?? []).map((contributed) => (
+          <TabsContent key={contributed.value} value={contributed.value}>
+            {contributed.render(detail)}
+          </TabsContent>
+        ))}
         <TabsContent value="yaml">
-          <CodeView value={detail.yaml} language="yaml" height={560} lsp data-testid="pipeline-yaml" />
+          {/* Flow-YAML intelligence knows SQLFlow's own kinds; a module kind's document is not one of them. */}
+          <CodeView value={detail.yaml} language="yaml" height={560} lsp={kind === undefined} data-testid="pipeline-yaml" />
         </TabsContent>
         <TabsContent value="transforms">
           <TransformsTab pipelineId={pipelineId} />
@@ -557,7 +590,7 @@ export default function PipelineDetailPage() {
           <PagedTable
             queryKey={["runs", "by-pipeline", pipelineId]}
             fetchPage={(page, pageSize) => runApi.list({ pipelineId, page, pageSize })}
-            columns={runColumns}
+            columns={[...runColumns, ...(kind?.runColumns ?? [])]}
             rowKey={(row) => row.runId}
             onRowClick={(row) => navigate(`/runs/${row.runId}`)}
             pollMs={5000}
@@ -593,6 +626,7 @@ export default function PipelineDetailPage() {
           repoId={detail.repoId}
           flowName={detail.name}
           flowId={detail.id}
+          flowKind={detail.kind}
         />
       )}
     </Page>

@@ -32,6 +32,7 @@ import { usePanel } from "../../layout/workbench/PanelContext";
 import { useTabTitle } from "../../layout/workbench/TabsContext";
 import { embeddedHealthCheckName } from "../../lib/definition";
 import { formatBytes, formatDurationSeconds, parseUtc } from "../../lib/time";
+import { kindContribution } from "../../modules/registry";
 import { RunTracePanel } from "./RunTracePanel";
 import { TriggerRunDialog } from "./TriggerRunDialog";
 
@@ -299,6 +300,16 @@ function RunDetailContent({ runId }: { runId: string }) {
   // until polling reflects the terminal "cancelled" status.
   const cancellable = run.status === "queued" || run.status === "running";
   const cancelling = run.status === "running" && run.cancelRequestedUtc !== null;
+  // What a GUI module adds for this run's kind: header actions, chips and counts, a card above the tabs, and tabs of its
+  // own in place of the built-in ones that say nothing about its runs.
+  const kind = kindContribution(run.flowKind);
+  const kindRun = kind?.run;
+  const shows = (builtInTab: string) => !(kindRun?.hiddenTabs ?? []).includes(builtInTab);
+  const tabValues = [
+    ...["source", "files", "statements", "surrogate-keys", "assertions", "health-metrics"].filter(shows),
+    ...(kindRun?.tabs ?? []).map((contributed) => contributed.value),
+  ];
+  const activeTab = tabValues.includes(tab) ? tab : tabValues[0] ?? "source";
 
   return (
     <Page data-testid="page-run-detail">
@@ -336,6 +347,7 @@ function RunDetailContent({ runId }: { runId: string }) {
               <Terminal />
               Trace
             </Button>
+            {kindRun?.headerActions?.(run)}
             {cancellable
               ? (
                 <Button
@@ -367,9 +379,13 @@ function RunDetailContent({ runId }: { runId: string }) {
             {run.groupId && (
               <IdChip label="group" value={run.groupId} to={`/runs/groups/${run.groupId}`} testId="run-group-link" copyTestId="copy-run-group" />
             )}
+            {run.fanOutRoot && (
+              <IdChip label="fan-out of" value={run.fanOutRoot} to={`/runs/${run.fanOutRoot}`} testId="run-fanout-root" copyTestId="copy-run-fanout-root" />
+            )}
             {run.commitSha && (
               <IdChip label="commit" value={run.commitSha} display={run.commitSha.slice(0, 7)} testId="run-commit" copyTestId="copy-run-commit" />
             )}
+            {kindRun?.headerMeta?.(run)}
           </>
         )}
       >
@@ -381,13 +397,31 @@ function RunDetailContent({ runId }: { runId: string }) {
             {run.durationSeconds != null ? formatDurationSeconds(run.durationSeconds) : "-"}
           </span>
         </DetailPair>
-        <DetailPair label="Rows loaded"><RowCount value={run.rowsLoaded} /></DetailPair>
-        <DetailPair label="Rows inserted"><RowCount value={run.rowsInserted} /></DetailPair>
-        <DetailPair label="Rows updated"><RowCount value={run.rowsUpdated} /></DetailPair>
-        <DetailPair label="Rows deleted"><RowCount value={run.rowsDeleted} /></DetailPair>
+        {kindRun?.headerDetails !== undefined
+          ? kindRun.headerDetails(run)
+          : (
+            <>
+              <DetailPair label="Rows loaded"><RowCount value={run.rowsLoaded} /></DetailPair>
+              <DetailPair label="Rows inserted"><RowCount value={run.rowsInserted} /></DetailPair>
+              <DetailPair label="Rows updated"><RowCount value={run.rowsUpdated} /></DetailPair>
+              <DetailPair label="Rows deleted"><RowCount value={run.rowsDeleted} /></DetailPair>
+            </>
+          )}
         <DetailPair label="Step">
           <span className="font-mono tabular-nums">{run.wave >= 0 ? run.wave : "-"}</span>
         </DetailPair>
+        {run.fanOutSlot != null && (
+          <DetailPair label="Fan-out">
+            <span className="font-mono tabular-nums" data-testid="run-fanout-slot">
+              {`member ${run.fanOutSlot} of ${run.fanOutCount ?? "?"}`}
+            </span>
+          </DetailPair>
+        )}
+        {run.requestedBy && (
+          <DetailPair label="Requested by">
+            <span className="break-all font-mono text-[12px]" data-testid="run-requested-by">{run.requestedBy}</span>
+          </DetailPair>
+        )}
         <DetailPair label="Target pool">{run.targetPool ?? "-"}</DetailPair>
         <DetailPair label="Node"><span className="break-all font-mono text-[12px]">{run.claimedByNode ?? "-"}</span></DetailPair>
         {/* Host repeats the node name on a single-container node; surface it only when it actually adds a value. */}
@@ -465,14 +499,21 @@ function RunDetailContent({ runId }: { runId: string }) {
         </Card>
       )}
 
-      <Tabs value={tab} onValueChange={setTab} className="gap-4">
+      {kindRun?.card?.(run)}
+
+      <Tabs value={activeTab} onValueChange={setTab} className="gap-4">
         <TabsList variant="line" className="w-full justify-start overflow-x-auto" data-testid="run-tabs">
-          <TabsTrigger value="source" className="flex-none" data-testid="tab-source">Source</TabsTrigger>
-          <TabsTrigger value="files" className="flex-none" data-testid="tab-files">Files</TabsTrigger>
-          <TabsTrigger value="statements" className="flex-none" data-testid="tab-statements">Statements</TabsTrigger>
-          <TabsTrigger value="surrogate-keys" className="flex-none" data-testid="tab-surrogate-keys">Surrogate</TabsTrigger>
-          <TabsTrigger value="assertions" className="flex-none" data-testid="tab-assertions">Assertions</TabsTrigger>
-          <TabsTrigger value="health-metrics" className="flex-none" data-testid="tab-health-metrics">Health</TabsTrigger>
+          {shows("source") && <TabsTrigger value="source" className="flex-none" data-testid="tab-source">Source</TabsTrigger>}
+          {shows("files") && <TabsTrigger value="files" className="flex-none" data-testid="tab-files">Files</TabsTrigger>}
+          {shows("statements") && <TabsTrigger value="statements" className="flex-none" data-testid="tab-statements">Statements</TabsTrigger>}
+          {shows("surrogate-keys") && <TabsTrigger value="surrogate-keys" className="flex-none" data-testid="tab-surrogate-keys">Surrogate</TabsTrigger>}
+          {shows("assertions") && <TabsTrigger value="assertions" className="flex-none" data-testid="tab-assertions">Assertions</TabsTrigger>}
+          {shows("health-metrics") && <TabsTrigger value="health-metrics" className="flex-none" data-testid="tab-health-metrics">Health</TabsTrigger>}
+          {(kindRun?.tabs ?? []).map((contributed) => (
+            <TabsTrigger key={contributed.value} value={contributed.value} className="flex-none" data-testid={contributed.testId}>
+              {contributed.label}
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="source" className="flex flex-col gap-2">
@@ -495,7 +536,8 @@ function RunDetailContent({ runId }: { runId: string }) {
           {pipelineQuery.data === undefined && !pipelineQuery.isError
             ? <Skeleton className="h-[560px] w-full rounded-lg" data-testid="source-loading" />
             : pipelineQuery.data !== undefined && (
-              <CodeView value={pipelineQuery.data.yaml} language="yaml" height={560} lsp data-testid="run-source-yaml" />
+              // Flow-YAML intelligence knows SQLFlow's own kinds; a module kind's document is not one of them.
+              <CodeView value={pipelineQuery.data.yaml} language="yaml" height={560} lsp={kind === undefined} data-testid="run-source-yaml" />
             )}
         </TabsContent>
         <TabsContent value="files">
@@ -615,6 +657,11 @@ function RunDetailContent({ runId }: { runId: string }) {
             data-testid="health-metrics-table"
           />
         </TabsContent>
+        {(kindRun?.tabs ?? []).map((contributed) => (
+          <TabsContent key={contributed.value} value={contributed.value}>
+            {contributed.render(run)}
+          </TabsContent>
+        ))}
       </Tabs>
 
       <Sheet
@@ -661,6 +708,10 @@ function RunDetailContent({ runId }: { runId: string }) {
           repoId={run.repoId}
           flowName={run.flowName}
           flowId={run.pipelineId}
+          flowKind={run.flowKind}
+          initialOperation={run.operation}
+          initialValues={run.values}
+          initialPayload={run.payload}
           initialParameters={{
             fullLoad: run.fullLoad,
             backfillFrom: run.backfillFrom,

@@ -11,7 +11,7 @@ import type {
   CreateUserRequest, Dashboard, Datasource, DefinitionHit, DiscoveredFlow,
   FlowInsights, Recommendations, StepInsights,
   DiscoverRepoRequest, FileHit, FlowDependency, FlowColumnHit, FlowHit, StatementHit,
-  FilePipelineMatch,
+  FilePipelineMatch, FlowKindDescriptor, ProposalCreated, ProposeFilesRequest,
   LineageEdge, LineageObject, LineageObjectColumn, LineageObjectDetail, LineageProject, LineageSchema, MyNotificationOptions, Node, NodePurgeResult, NodeScript,
   ObjectDossier, PipelineBatch, SchemaKindCount, FileNode, FileFlows,
   ProjectGraph,
@@ -462,6 +462,17 @@ export const repoSourceApi = {
   // Remove a source-only registration (one registered but not yet synced, so no repo exists to delete through).
   // Once a sync has produced the repo, deleting the repo removes the source instead.
   remove: (id: string) => del<void>(`/api/v1/repos/sources/${id}`),
+  // Propose files to the source's repository as a pull request: the control plane pushes a branch with the source's own
+  // credential and opens the pull request against the tracked branch. Nothing reaches the catalog until it merges and syncs.
+  propose: (id: string, request: ProposeFilesRequest) =>
+    post<ProposalCreated>(`/api/v1/repos/sources/${id}/proposals`, request),
+};
+
+// ---- Flow kinds ---------------------------------------------------------------------------------------------------------------
+
+export const kindApi = {
+  /** The flow kinds a host's modules register, each with the operations its runs perform. SQLFlow's own kinds are not listed. */
+  list: () => get<FlowKindDescriptor[]>("/api/v1/kinds"),
 };
 
 // ---- Source discovery (JSON/XML flatten formula) -------------------------------------------------------------------------------

@@ -29,6 +29,8 @@ import {
   Wrench,
   type LucideIcon,
 } from "lucide-react";
+import { branding } from "../modules/branding";
+import type { ModuleNavigation } from "../modules/registry";
 
 export interface NavItem {
   label: string;
@@ -164,5 +166,69 @@ export function routeTitle(pathname: string): { title: string; icon: LucideIcon 
 
   const selected = selectedNavPath(pathname);
   const item = allNavItems().find((candidate) => candidate.to === selected);
-  return item ? { title: item.label, icon: item.icon } : { title: "SQLFlow", icon: LayoutDashboard };
+  return item ? { title: item.label, icon: item.icon } : { title: branding().productName, icon: LayoutDashboard };
+}
+
+/**
+ * Adds the navigation of the registered GUI modules: their groups, their entries (into existing groups or their own),
+ * and the initial titles of their detail routes. Called once by registerModules, before the app renders; a group or
+ * entry that already exists, or an anchor that does not, fails with a message naming the module.
+ */
+export function extendNavigation(contributions: readonly ModuleNavigation[]): void {
+  for (const contribution of contributions) {
+    const fail = (message: string): never => {
+      throw new Error(`GUI module '${contribution.moduleId}' ${message}`);
+    };
+
+    for (const group of contribution.groups) {
+      if (navGroups.some((existing) => existing.id === group.id)) {
+        fail(`adds the navigation group '${group.id}', which already exists.`);
+      }
+
+      const entry: NavGroup = {
+        id: group.id,
+        label: group.label,
+        icon: group.icon,
+        items: [],
+        requiresScope: group.requiresScope,
+        bottom: group.bottom,
+      };
+      if (group.after !== undefined) {
+        const anchor = navGroups.findIndex((existing) => existing.id === group.after);
+        if (anchor < 0) {
+          fail(`places the navigation group '${group.id}' after '${group.after}', which does not exist.`);
+        }
+
+        navGroups.splice(anchor + 1, 0, entry);
+      } else {
+        // Without an anchor a top group goes after the last top group, so the bottom groups stay anchored at the end.
+        const firstBottom = navGroups.findIndex((existing) => existing.bottom === true);
+        navGroups.splice(group.bottom === true || firstBottom < 0 ? navGroups.length : firstBottom, 0, entry);
+      }
+    }
+
+    for (const item of contribution.items) {
+      const group = navGroups.find((existing) => existing.id === item.group)
+        ?? fail(`adds the navigation entry '${item.to}' to the group '${item.group}', which does not exist.`);
+      if (allNavItems().some((existing) => existing.to === item.to)) {
+        fail(`adds the navigation entry '${item.to}', which already exists.`);
+      }
+
+      const entry: NavItem = { label: item.label, to: item.to, icon: item.icon, testId: item.testId };
+      if (item.after !== undefined) {
+        const anchor = group.items.findIndex((existing) => existing.to === item.after);
+        if (anchor < 0) {
+          fail(`places the navigation entry '${item.to}' after '${item.after}', which is not in the group '${item.group}'.`);
+        }
+
+        group.items.splice(anchor + 1, 0, entry);
+      } else {
+        group.items.push(entry);
+      }
+    }
+
+    for (const detail of contribution.detailTitles) {
+      detailTitles.push([detail.pattern, detail.title]);
+    }
+  }
 }

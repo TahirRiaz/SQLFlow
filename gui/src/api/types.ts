@@ -7,6 +7,8 @@ export interface PagedResult<T> {
   page: number;
   pageSize: number;
   total: number;
+  /** True when the listing stopped counting at a cap: `total` is then a floor, not the full match count. */
+  totalCapped?: boolean;
 }
 
 // ---- Authentication ---------------------------------------------------------------------------------------------
@@ -240,6 +242,10 @@ export interface RunSummary {
   incrementalMode: string | null;
   incrementalFilter: string | null;
   incrementalWatermark: string | null;
+  /** The operation a module kind's run performed (one its kind registers); null for SQLFlow's own kinds. */
+  operation: string | null;
+  /** Who asked for the run: the signed-in user, a token's subject, or the scheduler; null when it was not recorded. */
+  requestedBy: string | null;
 }
 
 export interface RunDetail extends RunSummary {
@@ -270,6 +276,18 @@ export interface RunDetail extends RunSummary {
   failedStatementSql: string | null;
   /** The schedule whose fire enqueued this run, when triggerSource is "schedule"; null otherwise. */
   triggerScheduleId: string | null;
+  /** The name=value parameters a module kind's run was given; empty for SQLFlow's own kinds. */
+  values: Record<string, string>;
+  /** The kind-owned request a module kind's run was given, as JSON; null when it carried none. */
+  payload: Record<string, unknown> | null;
+  /** The kind's bounded result as JSON text, once the run finished; null before, and for kinds that report none. */
+  resultJson: string | null;
+  /** For a member of a fan-out: the run that spread the work across the fleet; null otherwise. */
+  fanOutRoot: string | null;
+  /** For a member of a fan-out: which slice of the work it took (1-based); null otherwise. */
+  fanOutSlot: number | null;
+  /** For a member of a fan-out: how many members the root spread the work across; null otherwise. */
+  fanOutCount: number | null;
 }
 
 export interface RunFile {
@@ -516,6 +534,58 @@ export interface RunTriggerRequest {
   includeAll?: boolean;
   /** The batch label for a batch-scoped run; when omitted the anchor flow's own batch is used. */
   batch?: string | null;
+  /** For a kind a host module registers: the operation to perform, one of those GET /api/v1/kinds lists for it. */
+  operation?: string;
+  /** For a kind a host module registers: values for the parameters the flow declares, name to value. */
+  values?: Record<string, string>;
+  /** For a kind a host module registers: the kind-owned request, which the kind validates and interprets. */
+  payload?: Record<string, unknown>;
+}
+
+/** One operation a registered flow kind's runs perform. */
+export interface FlowKindOperation {
+  name: string;
+  label: string;
+  description: string;
+  /** Whether the operation writes to the flow's target, as opposed to planning or reading only. */
+  writesTarget: boolean;
+}
+
+/** A flow kind a host module registers (GET /api/v1/kinds), with the operations its runs perform. */
+export interface FlowKindDescriptor {
+  flowType: string;
+  description: string;
+  operations: FlowKindOperation[];
+  /** The operation a run performs when the request names none; null when the kind has a single way to run. */
+  defaultOperation: string | null;
+}
+
+/** One file a proposal writes: a repo-relative path and its full content. An existing path is revised; a new one added. */
+export interface ProposalFile {
+  path: string;
+  content: string;
+}
+
+/**
+ * Files proposed to a tracked repo source as a pull request. `baseBranch` defaults to the source's tracked branch and
+ * `headBranch` to a branch derived from the content; the control plane pushes with the source's own stored credential.
+ */
+export interface ProposeFilesRequest {
+  title: string;
+  body: string | null;
+  baseBranch: string | null;
+  headBranch: string | null;
+  files: ProposalFile[];
+}
+
+/** An opened proposal: the pull request to review, the pushed branch and commit, and the preflight warnings stamped into its body. */
+export interface ProposalCreated {
+  pullRequestUrl: string;
+  pullRequestNumber: number;
+  headBranch: string;
+  commitSha: string;
+  filesChanged: number;
+  warnings: string[];
 }
 
 /** The trigger response covers both a single flow (runId set) and a Node/Batch group (groupId + memberCount set). */
@@ -557,7 +627,8 @@ export interface RunGroupCounts {
 export interface RunGroup {
   groupId: string;
   repoId: string;
-  mode: "node" | "batch";
+  /** node: a flow and its descendants; batch: a whole batch; fanout: one run's work spread across members of its own pipeline. */
+  mode: "node" | "batch" | "fanout";
   anchor: string;
   memberCount: number;
   commitSha: string | null;
@@ -598,6 +669,10 @@ export interface Schedule {
   /** How the last fire ended: its members tallied by lifecycle state (the single run's own state when the fire ran
    * one flow). Null when the schedule has never fired, or its runs have aged out of the catalog. */
   lastCounts: RunGroupCounts | null;
+  /** The operation a fire runs its members with, for members of a kind a host module registers; null for the kinds' default. */
+  operation: string | null;
+  /** The name=value parameters a fire runs its members with; empty when it passes none. */
+  values: Record<string, string>;
   /** The schedule this one CHAINS BEHIND, or null when it is driven by the clock. A chained schedule has no cadence
    * of its own and a null `nextFireUtc`: it becomes due once, when the named parent's fire completes. */
   afterSchedule?: string | null;
@@ -648,6 +723,10 @@ export interface CreateScheduleRequest {
   name?: string | null;
   /** How many members one fire runs at once. Omit for the product default (4); 0 asks for unbounded. */
   maxConcurrency?: number | null;
+  /** The operation a fire runs its members with, for members of a kind a host module registers; omit for the default. */
+  operation?: string | null;
+  /** The name=value parameters a fire runs its members with. */
+  values?: Record<string, string>;
 }
 
 export interface ScheduleCreated {
@@ -1440,6 +1519,8 @@ export interface SubscriberHit {
 export interface SearchCategory<T> {
   total: number;
   items: T[];
+  /** True when the category stopped counting at a cap: `total` is then a floor. */
+  totalCapped?: boolean;
 }
 
 // The combined result of a single global search across every catalog surface. `tokens` is how the raw query was
@@ -2016,7 +2097,8 @@ export interface ComputeTaskAccepted {
 /** A compute task as the task list shows it (no result body). */
 export interface ComputeTaskSummary {
   taskId: string;
-  operation: ComputeOperation;
+  /** One of SQLFlow's datasource operations, or an operation a host module registers. */
+  operation: ComputeOperation | (string & {});
   sourceRef: string;
   providerKind: string | null;
   pool: string | null;

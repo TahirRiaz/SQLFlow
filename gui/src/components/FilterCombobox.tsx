@@ -41,7 +41,17 @@ export function FilterCombobox({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // The search is held here so every opening starts from an empty one. The list stays mounted while it animates
+  // closed, so a reopen during that moment would otherwise keep the term just typed and filter the rows by it.
+  const [search, setSearch] = useState("");
   const selected = options.find((option) => option.value === value) ?? null;
+
+  const openChange = (next: boolean) => {
+    if (next) {
+      setSearch("");
+    }
+    setOpen(next);
+  };
 
   const choose = (next: string) => {
     setOpen(false);
@@ -49,7 +59,7 @@ export function FilterCombobox({
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={openChange}>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
@@ -68,11 +78,13 @@ export function FilterCombobox({
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 p-0">
         <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput placeholder={searchPlaceholder} value={search} onValueChange={setSearch} />
           <CommandList>
             <CommandEmpty>{emptyText}</CommandEmpty>
             {value !== "" && (
-              <CommandItem value="__clear__" onSelect={() => choose("")} className="text-muted-foreground">
+              // Kept out of the type-ahead: a term that matches no option, or only other options, must never hide
+              // the way back to no filter.
+              <CommandItem value="__clear__" forceMount onSelect={() => choose("")} className="text-muted-foreground">
                 Clear filter
               </CommandItem>
             )}
