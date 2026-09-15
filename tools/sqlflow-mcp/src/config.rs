@@ -8,6 +8,8 @@
 //! are read at startup and rewritten on change, so a device-auth session
 //! survives restarts (matching the DeltaForge MCP token cache).
 
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -34,6 +36,26 @@ pub struct TokenCache {
     /// never has to sign in again while the client stays in use. A pasted secret or device token is not renewable.
     #[serde(default)]
     pub renewable: bool,
+}
+
+/// The `exp` claim of a bearer token that is a JWT, as an absolute instant.
+///
+/// A session token minted by the control plane states its own lifetime in its payload, so a credential handed to
+/// us without separate expiry metadata (the `SQLFLOW_CONTROL_PLANE_TOKEN` environment variable, or a paste through
+/// `set_access_token`) can still be dated honestly instead of being treated as never-expiring. Returns `None` for
+/// anything that is not a three-segment JWT with a numeric `exp`, which covers the opaque `sqlf_` personal access
+/// token: its lifetime is known only to the server, and `None` (no local opinion) is the truthful answer there.
+/// This reads the payload without verifying the signature, which is correct for the only thing it is used for:
+/// deciding whether a credential is worth presenting. The server remains the authority on validity.
+pub fn jwt_expiry(token: &str) -> Option<DateTime<Utc>> {
+    let mut parts = token.split('.');
+    let (_header, payload, _signature) = (parts.next()?, parts.next()?, parts.next()?);
+    if parts.next().is_some() {
+        return None;
+    }
+    let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
+    let claims: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
+    DateTime::from_timestamp(claims.get("exp")?.as_i64()?, 0)
 }
 
 impl TokenCache {
@@ -146,6 +168,51 @@ mod tests {
             token_id: id.map(|s| s.to_string()),
             renewable,
         }
+    }
+
+    /// A signature-less JWT carrying the given claims payload; only the payload segment is ever read.
+    fn jwt(claims: &serde_json::Value) -> String {
+        let payload = URL_SAFE_NO_PAD.encode(serde_json::to_vec(claims).unwrap());
+        format!("header.{payload}.signature")
+    }
+
+    #[test]
+    fn reads_the_expiry_a_session_jwt_states_for_itself() {
+        // The control plane's session token dates itself; an env/pasted credential must be dated from it
+        // rather than treated as never-expiring.
+        let exp = Utc::now() + chrono::Duration::hours(12);
+        let parsed = jwt_expiry(&jwt(&serde_json::json!({ "sub": "admin", "exp": exp.timestamp() })));
+        assert_eq!(parsed.map(|d| d.timestamp()), Some(exp.timestamp()));
+    }
+
+    #[test]
+    fn an_expired_session_jwt_is_dated_in_the_past() {
+        // The case that broke a real session: a 12-hour token read hours after it lapsed must report expired,
+        // not authenticated.
+        let exp = Utc::now() - chrono::Duration::hours(8);
+        let cache = TokenCache {
+            access_token: jwt(&serde_json::json!({ "exp": exp.timestamp() })),
+            scope: "read".to_string(),
+            expires_at: jwt_expiry(&jwt(&serde_json::json!({ "exp": exp.timestamp() }))),
+            token_id: None,
+            renewable: false,
+        };
+        assert!(cache.is_expired(30));
+    }
+
+    #[test]
+    fn an_opaque_personal_access_token_has_no_local_expiry() {
+        // A sqlf_ PAT is not a JWT: it states nothing, and inventing an expiry for it would be a guess.
+        assert!(jwt_expiry("sqlf_abc123").is_none());
+    }
+
+    #[test]
+    fn a_malformed_or_unclaimed_token_yields_no_expiry() {
+        assert!(jwt_expiry("not.a.jwt").is_none());
+        assert!(jwt_expiry("too.many.segments.here").is_none());
+        assert!(jwt_expiry("").is_none());
+        // Well-formed JWT, but no exp claim: nothing to read, so no local opinion.
+        assert!(jwt_expiry(&jwt(&serde_json::json!({ "sub": "admin" }))).is_none());
     }
 
     #[test]

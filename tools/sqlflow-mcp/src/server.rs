@@ -17,7 +17,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::control_plane::{ControlPlane, PollOutcome};
+use crate::control_plane::{ControlPlane, PollOutcome, WhoAmI};
 use crate::docs::DocsIndex;
 use crate::links::GuiLinks;
 use sqlflow_lang::census::Census;
@@ -1071,17 +1071,43 @@ and fix every finding first."
         }
     }
 
-    #[tool(description = "Poll the pending device-flow sign-in (or report current auth state).")]
+    #[tool(
+        description = "Poll the pending device-flow sign-in (or report current auth state). With no sign-in \
+            in progress, this asks the control plane who the stored credential actually authenticates as \
+            (`GET /api/v1/me`) rather than trusting the locally cached expiry, so it never reports \
+            \"Authenticated\" for a credential the server has since revoked or lost (a rotated-out token, or \
+            a local-dev catalog reset). A rejected credential is cleared automatically; call login again."
+    )]
     async fn check_auth_status(&self, Parameters(input): Parameters<CheckAuthInput>) -> String {
         if self.http_mode {
             return HTTP_MODE_AUTH_NOTE.to_string();
         }
         let code = input.device_code.or_else(|| self.cp.pending_device_code());
         let Some(code) = code else {
-            return if self.cp.is_authenticated() {
-                "Authenticated.".to_string()
-            } else {
-                "Not authenticated and no sign-in in progress. Call login first.".to_string()
+            return match self.cp.whoami().await {
+                Ok(WhoAmI::Authenticated { subject, role, scopes }) => {
+                    let role = role.map(|r| format!(", role {r}")).unwrap_or_default();
+                    let scopes = if scopes.is_empty() {
+                        String::new()
+                    } else {
+                        format!(", scopes: {}", scopes.join(" "))
+                    };
+                    format!("Authenticated as {subject}{role}{scopes}.")
+                }
+                Ok(WhoAmI::Unauthenticated) => {
+                    if self.cp.has_token() {
+                        self.cp.clear_token();
+                        "The stored credential was rejected by the control plane (expired, revoked, or the \
+                            catalog it lived in was reset). It has been cleared; call login again."
+                            .to_string()
+                    } else {
+                        "Not authenticated and no sign-in in progress. Call login first.".to_string()
+                    }
+                }
+                Err(e) => format!(
+                    "Could not verify authentication with the control plane: {e:#}. Check \
+                        check_connectivity, then try again."
+                ),
             };
         };
         match self.cp.poll_device_token(&code).await {
@@ -1117,9 +1143,11 @@ and fix every finding first."
         let is_pat = token.starts_with("sqlf_");
         let scope = input.scope.unwrap_or_else(|| "read operate".to_string());
         self.cp.set_token(crate::config::TokenCache {
+            // A pasted session JWT carries its own expiry; honour it instead of recording the credential as
+            // never-expiring, which would report it authenticated long after the server stopped accepting it.
+            expires_at: crate::config::jwt_expiry(&token),
             access_token: token,
             scope: scope.clone(),
-            expires_at: None,
             token_id: None,
             // A pasted personal access token is already long-lived and owned by the user; we do not manage its
             // lifecycle. A pasted session token is short-lived, so we exchange it below for one we do manage.

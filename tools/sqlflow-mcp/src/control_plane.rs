@@ -52,6 +52,25 @@ pub enum PollOutcome {
     Expired,
 }
 
+/// Outcome of asking the control plane who the stored credential authenticates as.
+pub enum WhoAmI {
+    Authenticated {
+        subject: String,
+        role: Option<String>,
+        scopes: Vec<String>,
+    },
+    Unauthenticated,
+}
+
+/// `GET /api/v1/me`: the caller's own identity, the cheapest authoritative "whoami" the control plane offers.
+#[derive(Deserialize)]
+struct IdentityResponse {
+    subject: String,
+    role: Option<String>,
+    #[serde(default)]
+    scopes: Vec<String>,
+}
+
 #[derive(Deserialize)]
 struct TokenResponse {
     access_token: String,
@@ -111,12 +130,18 @@ impl ControlPlane {
         let token = std::env::var("SQLFLOW_CONTROL_PLANE_TOKEN")
             .ok()
             .map(|t| TokenCache {
+                // A session JWT states its own lifetime; read it rather than assuming the credential never
+                // lapses, or an expired override reports itself as authenticated until a request 401s.
+                expires_at: config::jwt_expiry(&t),
                 access_token: t,
                 scope: "read operate author".to_string(),
-                expires_at: None,
                 token_id: None,
                 renewable: false,
             })
+            // A lapsed environment credential must not shadow the stored one. The device-flow sign-in writes
+            // its long-lived token to disk, so an expired override that still won here would send every
+            // restart back to the sign-in it just completed, with no way out but editing the environment.
+            .filter(|t| !t.is_expired(30))
             .or_else(config::load_token);
         ControlPlane {
             http: reqwest::Client::builder()
@@ -154,6 +179,12 @@ impl ControlPlane {
             .unwrap_or(false)
     }
 
+    /// Whether a credential is stored at all, regardless of its cached expiry. Used to word
+    /// `check_auth_status` accurately when [`whoami`](Self::whoami) reports the control plane rejected it.
+    pub fn has_token(&self) -> bool {
+        self.token.read().unwrap().is_some()
+    }
+
     pub fn set_token(&self, token: TokenCache) {
         let _ = config::save_token(&token);
         *self.token.write().unwrap() = Some(token);
@@ -187,6 +218,40 @@ impl ControlPlane {
             .await
             .context("could not reach the control plane")?;
         Ok(format!("{} ({})", resp.status(), self.base_url()))
+    }
+
+    /// Ask the control plane whether the stored credential is actually valid, rather than trusting the
+    /// locally cached expiry: a managed PAT can be revoked, or the catalog row backing it can disappear
+    /// (a local-dev database reset), while the client's cached `expires_at` is still comfortably in the
+    /// future. Rotates first if the token is due, then calls `GET /api/v1/me`. A 401 is reported as
+    /// `Unauthenticated`, never as an error, so a stale credential surfaces as truthful status rather than a
+    /// failed request.
+    pub async fn whoami(&self) -> Result<WhoAmI> {
+        self.ensure_fresh().await;
+        let Some(bearer) = self.bearer() else {
+            return Ok(WhoAmI::Unauthenticated);
+        };
+        let resp = self
+            .http
+            .get(self.url("/api/v1/me"))
+            .bearer_auth(bearer)
+            .send()
+            .await
+            .context("could not reach the control plane")?;
+        if resp.status() == reqwest::StatusCode::UNAUTHORIZED {
+            return Ok(WhoAmI::Unauthenticated);
+        }
+        if !resp.status().is_success() {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            bail!("GET /api/v1/me returned {status}: {body}");
+        }
+        let identity: IdentityResponse = resp.json().await.context("invalid identity response")?;
+        Ok(WhoAmI::Authenticated {
+            subject: identity.subject,
+            role: identity.role,
+            scopes: identity.scopes,
+        })
     }
 
     /// Begin a device-authorization grant.

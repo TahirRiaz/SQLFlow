@@ -21,6 +21,7 @@ tracing-subscriber = { workspace = true }
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 dirs = "5"
 chrono = { version = "0.4", features = ["serde"] }
+base64 = "0.22"
 # HTTP serving mode (`sqlflow-mcp http`): hyper hosts rmcp's streamable HTTP service.
 # These stay in lockstep with the hyper stack reqwest already pulls in.
 http = "1"
