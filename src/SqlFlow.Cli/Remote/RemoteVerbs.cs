@@ -853,7 +853,7 @@ internal static partial class RemoteVerbs
     /// <summary>A client carrying the resolved bearer credential: <c>--token</c>, then <c>SQLFLOW_TOKEN</c>,
     /// then the stored credential for the URL. No credential is not an error here; the server's 401 (decorated
     /// with sign-in guidance) is the single authoritative rejection path.</summary>
-    private static ControlPlaneClient CreateAuthenticatedClient(Uri url, string[] args)
+    internal static ControlPlaneClient CreateAuthenticatedClient(Uri url, string[] args)
     {
         var token = ResolveToken(url, args);
         if (string.IsNullOrWhiteSpace(token))

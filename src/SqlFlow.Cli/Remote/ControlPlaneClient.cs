@@ -392,19 +392,8 @@ internal sealed class ControlPlaneClient : IDisposable
         => PostOrNullAsync<ScheduleDto>($"/api/v1/schedules/{id}/resume", null, ct);
 
     /// <summary>Deletes a schedule. False when the server does not know the id.</summary>
-    public async Task<bool> DeleteScheduleAsync(Guid id, CancellationToken ct)
-    {
-        using var request = NewRequest(HttpMethod.Delete, $"/api/v1/schedules/{id}");
-        using var timeout = Budget(ct);
-        using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
-        if (response.StatusCode == HttpStatusCode.NotFound)
-        {
-            return false;
-        }
-
-        await EnsureSuccessAsync(response, timeout.Token).ConfigureAwait(false);
-        return true;
-    }
+    public Task<bool> DeleteScheduleAsync(Guid id, CancellationToken ct)
+        => DeleteAsync($"/api/v1/schedules/{id}", ct);
 
     // ---- repo sources -------------------------------------------------------------------------------------
 
@@ -625,7 +614,10 @@ internal sealed class ControlPlaneClient : IDisposable
         return Deserialize<T>(text, path);
     }
 
-    private async Task<T> GetAsync<T>(string path, CancellationToken ct)
+    // The generic verbs below are the one transport every typed call above goes through; they are internal so a host
+    // module's verbs reach their own endpoints through the same transport (CliControlPlaneClient).
+
+    internal async Task<T> GetAsync<T>(string path, CancellationToken ct)
     {
         using var request = NewRequest(HttpMethod.Get, path);
         using var timeout = Budget(ct);
@@ -635,7 +627,7 @@ internal sealed class ControlPlaneClient : IDisposable
         return Deserialize<T>(body, path);
     }
 
-    private async Task<T?> GetOrNullAsync<T>(string path, CancellationToken ct)
+    internal async Task<T?> GetOrNullAsync<T>(string path, CancellationToken ct)
         where T : class
     {
         using var request = NewRequest(HttpMethod.Get, path);
@@ -651,9 +643,30 @@ internal sealed class ControlPlaneClient : IDisposable
         return Deserialize<T>(body, path);
     }
 
-    private async Task<T> PostAsync<T>(string path, object body, CancellationToken ct)
+    internal Task<T> PostAsync<T>(string path, object body, CancellationToken ct)
+        => SendJsonAsync<T>(HttpMethod.Post, path, body, ct);
+
+    internal Task<T> PutAsync<T>(string path, object body, CancellationToken ct)
+        => SendJsonAsync<T>(HttpMethod.Put, path, body, ct);
+
+    /// <summary>DELETEs <paramref name="path"/>: true when the server removed it, false when it does not know it (404).</summary>
+    internal async Task<bool> DeleteAsync(string path, CancellationToken ct)
     {
-        using var request = NewRequest(HttpMethod.Post, path);
+        using var request = NewRequest(HttpMethod.Delete, path);
+        using var timeout = Budget(ct);
+        using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        await EnsureSuccessAsync(response, timeout.Token).ConfigureAwait(false);
+        return true;
+    }
+
+    private async Task<T> SendJsonAsync<T>(HttpMethod method, string path, object body, CancellationToken ct)
+    {
+        using var request = NewRequest(method, path);
         request.Content = JsonContent(body);
         using var timeout = Budget(ct);
         using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);

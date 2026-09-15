@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using SqlFlow.ControlPlane.Hosting;
 
 namespace SqlFlow.ControlPlane.Tests;
 
@@ -69,6 +70,19 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
         return this;
     }
 
+    /// <summary>The modules this host composes, registered in order after the host's own services.</summary>
+    private readonly List<IControlPlaneModule> _modules = [];
+
+    /// <summary>Composes <paramref name="modules"/> into the host exactly as <see cref="ControlPlaneHost"/> does for a product
+    /// host: each module's services are registered through the same registration, and its endpoints are mapped when the host
+    /// is built. Must be called before the first client.</summary>
+    public ControlPlaneAppFactory WithModules(params IControlPlaneModule[] modules)
+    {
+        ArgumentNullException.ThrowIfNull(modules);
+        _modules.AddRange(modules);
+        return this;
+    }
+
     /// <summary>Overrides one configuration value for this host. Applied after the standard test settings, so
     /// a test can turn on a feature the deployed default leaves off.</summary>
     public ControlPlaneAppFactory WithSetting(string key, string value)
@@ -108,6 +122,16 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
         {
             builder.UseSetting(key, value);
         }
+
+        // The modules register while the host is built, after the entry point's own registrations, through the same
+        // registration ControlPlaneHost uses; ControlPlaneHost then maps their endpoints from the built host.
+        builder.ConfigureServices((context, services) =>
+        {
+            foreach (var module in _modules)
+            {
+                services.AddControlPlaneModule(module, context.Configuration, context.HostingEnvironment);
+            }
+        });
 
         builder.ConfigureTestServices(services =>
         {

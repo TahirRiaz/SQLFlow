@@ -1,13 +1,16 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Text;
+using SqlFlow.Cli.Hosting;
 
 namespace SqlFlow.Cli;
 
 /// <summary>
 /// 'sqlflow completions bash|zsh|powershell': prints a completion script for the requested shell to stdout,
 /// for the operator to source or install (e.g. <c>source &lt;(sqlflow completions bash)</c>). One registry
-/// drives all three generators, so a new verb is added exactly once. Completion covers verbs, their
-/// subcommands, and the shared option set; document paths fall through to the shell's file completion.
+/// drives all three generators, so a new verb is added exactly once; a host's module verbs join it with their
+/// subcommands and options. Completion covers verbs, their subcommands, and the shared option set; document paths
+/// fall through to the shell's file completion.
 /// </summary>
 internal static class CliCompletions
 {
@@ -33,6 +36,9 @@ internal static class CliCompletions
         ("completions", ["bash", "zsh", "powershell"]),
     ];
 
+    /// <summary>Every SQLFlow verb; a module verb may not take one of these names.</summary>
+    internal static readonly FrozenSet<string> BuiltInVerbs = Registry.Select(r => r.Verb).ToFrozenSet(StringComparer.Ordinal);
+
     /// <summary>The options completion offers everywhere. Verb-specific flags stay in --help; completing this
     /// shared core keeps the script small and never stale for the flags people type most.</summary>
     private static readonly string[] CommonOptions =
@@ -42,42 +48,58 @@ internal static class CliCompletions
         "--source", "--object", "--ref", "--db", "--out", "--verbose", "--help", "--operation", "--set", "--payload",
     ];
 
-    public static int Print(string[] positional)
+    public static int Print(string[] positional, CliModuleSet modules)
     {
         var shell = positional.Length > 1 ? positional[1].ToLowerInvariant() : string.Empty;
-        switch (shell)
+        var script = Script(shell, modules);
+        if (script is null)
         {
-            case "bash":
-                Console.WriteLine(Bash());
-                return 0;
-            case "zsh":
-                Console.WriteLine(Zsh());
-                return 0;
-            case "powershell" or "pwsh":
-                Console.WriteLine(PowerShell());
-                return 0;
-            default:
-                Console.Error.WriteLine("ERROR  'completions' supports: bash, zsh, powershell. E.g. source <(sqlflow completions bash)");
-                return 1;
+            Console.Error.WriteLine("ERROR  'completions' supports: bash, zsh, powershell. E.g. source <(sqlflow completions bash)");
+            return 1;
         }
+
+        Console.WriteLine(script);
+        return 0;
     }
 
-    private static string Verbs() => string.Join(' ', Registry.Select(r => r.Verb));
+    /// <summary>The completion script for <paramref name="shell"/> (bash, zsh, powershell or pwsh), or null for any other
+    /// shell. Module verbs, subcommands and options have been validated to letters, digits and hyphens, so they embed in the
+    /// scripts as they are.</summary>
+    internal static string? Script(string shell, CliModuleSet modules)
+    {
+        ArgumentNullException.ThrowIfNull(modules);
+        var registry = Registry
+            .Concat(modules.Verbs.Select(v => (v.Verb.Name, v.Verb.Subcommands.ToArray())))
+            .ToList();
+        var options = CommonOptions
+            .Concat(modules.Verbs.SelectMany(v => v.Verb.ValueOptions.Concat(v.Verb.Flags)))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        return shell switch
+        {
+            "bash" => Bash(registry, options),
+            "zsh" => Zsh(registry, options),
+            "powershell" or "pwsh" => PowerShell(registry, options),
+            _ => null,
+        };
+    }
 
-    private static string Bash()
+    private static string Verbs(List<(string Verb, string[] Subcommands)> registry) => string.Join(' ', registry.Select(r => r.Verb));
+
+    private static string Bash(List<(string Verb, string[] Subcommands)> registry, List<string> options)
     {
         var builder = new StringBuilder();
         builder.AppendLine("# sqlflow bash completion. Install: sqlflow completions bash > /etc/bash_completion.d/sqlflow");
         builder.AppendLine("_sqlflow_completions() {");
         builder.AppendLine("  local cur prev verbs opts");
         builder.AppendLine("  cur=\"${COMP_WORDS[COMP_CWORD]}\"");
-        builder.AppendLine(CultureInfo.InvariantCulture, $"  verbs=\"{Verbs()}\"");
-        builder.AppendLine(CultureInfo.InvariantCulture, $"  opts=\"{string.Join(' ', CommonOptions)}\"");
+        builder.AppendLine(CultureInfo.InvariantCulture, $"  verbs=\"{Verbs(registry)}\"");
+        builder.AppendLine(CultureInfo.InvariantCulture, $"  opts=\"{string.Join(' ', options)}\"");
         builder.AppendLine("  if [[ ${COMP_CWORD} -eq 1 ]]; then");
         builder.AppendLine("    COMPREPLY=( $(compgen -W \"${verbs}\" -- \"${cur}\") ); return 0");
         builder.AppendLine("  fi");
         builder.AppendLine("  case \"${COMP_WORDS[1]}\" in");
-        foreach (var (verb, subcommands) in Registry.Where(r => r.Subcommands.Length > 0))
+        foreach (var (verb, subcommands) in registry.Where(r => r.Subcommands.Length > 0))
         {
             builder.AppendLine(CultureInfo.InvariantCulture, $"    {verb})");
             builder.AppendLine("      if [[ ${COMP_CWORD} -eq 2 ]]; then");
@@ -95,20 +117,20 @@ internal static class CliCompletions
         return builder.ToString();
     }
 
-    private static string Zsh()
+    private static string Zsh(List<(string Verb, string[] Subcommands)> registry, List<string> options)
     {
         var builder = new StringBuilder();
         builder.AppendLine("#compdef sqlflow");
         builder.AppendLine("# sqlflow zsh completion. Install into a directory on $fpath as _sqlflow.");
         builder.AppendLine("_sqlflow() {");
         builder.AppendLine("  local -a verbs opts");
-        builder.AppendLine(CultureInfo.InvariantCulture, $"  verbs=({Verbs()})");
-        builder.AppendLine(CultureInfo.InvariantCulture, $"  opts=({string.Join(' ', CommonOptions)})");
+        builder.AppendLine(CultureInfo.InvariantCulture, $"  verbs=({Verbs(registry)})");
+        builder.AppendLine(CultureInfo.InvariantCulture, $"  opts=({string.Join(' ', options)})");
         builder.AppendLine("  if (( CURRENT == 2 )); then");
         builder.AppendLine("    _describe 'verb' verbs; return");
         builder.AppendLine("  fi");
         builder.AppendLine("  case $words[2] in");
-        foreach (var (verb, subcommands) in Registry.Where(r => r.Subcommands.Length > 0))
+        foreach (var (verb, subcommands) in registry.Where(r => r.Subcommands.Length > 0))
         {
             builder.AppendLine(CultureInfo.InvariantCulture, $"    {verb})");
             builder.AppendLine("      if (( CURRENT == 3 )); then");
@@ -126,17 +148,17 @@ internal static class CliCompletions
         return builder.ToString();
     }
 
-    private static string PowerShell()
+    private static string PowerShell(List<(string Verb, string[] Subcommands)> registry, List<string> options)
     {
         var builder = new StringBuilder();
         builder.AppendLine("# sqlflow PowerShell completion. Install: sqlflow completions powershell | Out-String | Invoke-Expression");
         builder.AppendLine("Register-ArgumentCompleter -Native -CommandName sqlflow -ScriptBlock {");
         builder.AppendLine("    param($wordToComplete, $commandAst, $cursorPosition)");
         builder.AppendLine("    $tokens = $commandAst.CommandElements | ForEach-Object { $_.ToString() }");
-        builder.AppendLine(CultureInfo.InvariantCulture, $"    $verbs = @({string.Join(", ", Registry.Select(r => $"'{r.Verb}'"))})");
-        builder.AppendLine(CultureInfo.InvariantCulture, $"    $opts = @({string.Join(", ", CommonOptions.Select(o => $"'{o}'"))})");
+        builder.AppendLine(CultureInfo.InvariantCulture, $"    $verbs = @({string.Join(", ", registry.Select(r => $"'{r.Verb}'"))})");
+        builder.AppendLine(CultureInfo.InvariantCulture, $"    $opts = @({string.Join(", ", options.Select(o => $"'{o}'"))})");
         builder.AppendLine("    $subs = @{");
-        foreach (var (verb, subcommands) in Registry.Where(r => r.Subcommands.Length > 0))
+        foreach (var (verb, subcommands) in registry.Where(r => r.Subcommands.Length > 0))
         {
             builder.AppendLine(CultureInfo.InvariantCulture, $"        '{verb}' = @({string.Join(", ", subcommands.Select(s => $"'{s}'"))})");
         }

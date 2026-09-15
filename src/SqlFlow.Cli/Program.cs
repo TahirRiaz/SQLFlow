@@ -1,3 +1,4 @@
+using System.Collections.Frozen;
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -42,28 +43,38 @@ using SqlFlow.SqlServer.Ingestion;
 using SqlFlow.SqlServer.Profiling;
 using SqlFlow.SqlServer.StoredProcedures;
 using SqlFlow.Yaml;
+using SqlFlow.Cli.Hosting;
 using SqlFlow.Cli.Remote;
 
 namespace SqlFlow.Cli;
 
 internal static class Program
 {
-    private static async Task<int> Main(string[] args)
+    private static Task<int> Main(string[] args) => CliHost.RunAsync(args);
+
+    /// <summary>
+    /// The CLI with a host's modules: SQLFlow's verbs and the modules' verbs, with every command's service provider (and a
+    /// worker node's) carrying the modules' registrations. <see cref="CliHost.RunAsync"/> is the public entry point.
+    /// </summary>
+    internal static async Task<int> RunAsync(string[] args, CliModuleSet modules)
     {
         var verbose = args.Any(a => a is "-v" or "--verbose");
-        var positional = PositionalArguments(args);
+        // A module verb's own value-taking options are known when its command line is parsed.
+        var positional = modules.PositionalArguments(args);
 
         // 'healthcheck' addresses its table through --source/--object, 'auth' is a pure environment check, 'db'
         // takes a subcommand (migrate/sync/status), and the control-plane verbs (health/login/logout/trigger/
         // runs/groups) address the remote API through flags; none take a pipeline file.
         var command = positional.Length > 0 ? positional[0].ToLowerInvariant() : string.Empty;
-        var needsFile = command is not ("healthcheck" or "auth" or "db" or "worker" or "runs" or "user" or "detect-unique-key"
+        // A module verb reads its own positionals and reports its own usage.
+        var moduleVerb = modules.Find(command);
+        var needsFile = moduleVerb is null && command is not ("healthcheck" or "auth" or "db" or "worker" or "runs" or "user" or "detect-unique-key"
             or "health" or "login" or "logout" or "trigger" or "groups"
             or "whoami" or "doctor" or "summary" or "nodes" or "schedules" or "repos" or "pipelines"
             or "datasources" or "search" or "completions" or "powerbi");
         if (positional.Length < (needsFile ? 2 : 1) || args.Any(a => a is "-h" or "--help"))
         {
-            PrintUsage();
+            PrintUsage(modules);
             return positional.Length < (needsFile ? 2 : 1) ? 1 : 0;
         }
 
@@ -94,13 +105,23 @@ internal static class Program
             return 1;
         }
 
-        using var provider = BuildServiceProvider(verbose, json: args.Contains("--json"));
+        using var provider = BuildServiceProvider(verbose, json: args.Contains("--json"), modules, args);
+        if (provider is null)
+        {
+            return 1;
+        }
+
         var loader = provider.GetRequiredService<YamlFlowLoader>();
         var documents = provider.GetRequiredService<YamlDocumentLoader>();
         var runner = provider.GetRequiredService<FlowRunner>();
 
         try
         {
+            if (moduleVerb is not null)
+            {
+                return await CliModuleSet.InvokeAsync(moduleVerb, provider, args, verbose).ConfigureAwait(false);
+            }
+
             switch (command)
             {
                 case "validate":
@@ -478,7 +499,7 @@ internal static class Program
                     return await RunDbAsync(provider, positional, args).ConfigureAwait(false);
 
                 case "worker":
-                    return await RunWorkerAsync(provider, args, verbose).ConfigureAwait(false);
+                    return await RunWorkerAsync(provider, args, verbose, modules).ConfigureAwait(false);
 
                 case "runs":
                 {
@@ -547,14 +568,14 @@ internal static class Program
                     return await RemoteVerbs.PowerBiAsync(positional, args).ConfigureAwait(false);
 
                 case "completions":
-                    return CliCompletions.Print(positional);
+                    return CliCompletions.Print(positional, modules);
 
                 case "user":
                     return await RunUserAsync(provider, positional, args).ConfigureAwait(false);
 
                 default:
                     Console.Error.WriteLine($"Unknown command '{command}'.");
-                    PrintUsage();
+                    PrintUsage(modules);
                     return 1;
             }
         }
@@ -618,7 +639,7 @@ internal static class Program
     /// travel over the same protocol, and no catalog connection is opened here. Any number of nodes may run at once:
     /// placement is the dispatcher's.
     /// </summary>
-    private static async Task<int> RunWorkerAsync(IServiceProvider provider, string[] args, bool verbose)
+    private static async Task<int> RunWorkerAsync(IServiceProvider provider, string[] args, bool verbose, CliModuleSet modules)
     {
         Uri controlPlane;
         try
@@ -687,6 +708,18 @@ internal static class Program
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<INodeTransport>(_ => new HttpNodeTransport(controlPlane, token));
         services.AddSingleton<RunWorker>();
+        // The host's modules register on the node too (after SQLFlow's own services, so they may extend them), so a run of a
+        // module's flow kind executes here exactly as it does from the command line.
+        try
+        {
+            modules.ConfigureServices(services, args, CliServiceScope.Worker);
+        }
+        catch (CliModuleException ex)
+        {
+            Console.Error.WriteLine($"ERROR  {SecretHygiene.RedactedMessage(ex)}");
+            return 1;
+        }
+
         await using var workerProvider = services.BuildServiceProvider();
 
         var worker = workerProvider.GetRequiredService<RunWorker>();
@@ -2052,7 +2085,8 @@ internal static class Program
         }
     }
 
-    private static ServiceProvider BuildServiceProvider(bool verbose, bool json)
+    /// <summary>The command's service provider, or null (after printing why) when a module failed to register its services.</summary>
+    private static ServiceProvider? BuildServiceProvider(bool verbose, bool json, CliModuleSet modules, string[] args)
     {
         var services = new ServiceCollection();
 
@@ -2081,6 +2115,17 @@ internal static class Program
         if (json)
         {
             services.AddSingleton<IFlowEventSink>(new ConsoleFlowEventSink(Console.Error));
+        }
+
+        // The host's modules register after SQLFlow's own services, so SQLFlow's verbs see the modules' flow kinds too.
+        try
+        {
+            modules.ConfigureServices(services, args, CliServiceScope.Command);
+        }
+        catch (CliModuleException ex)
+        {
+            Console.Error.WriteLine($"ERROR  {SecretHygiene.RedactedMessage(ex)}");
+            return null;
         }
 
         return services.BuildServiceProvider();
@@ -2147,9 +2192,12 @@ internal static class Program
         }
     }
 
-    private static void PrintUsage()
+    private static void PrintUsage(CliModuleSet modules) => Console.WriteLine(UsageText(modules));
+
+    /// <summary>The CLI's help: SQLFlow's local verbs, then the modules' verbs, then the remote verbs and the reference.</summary>
+    internal static string UsageText(CliModuleSet modules)
     {
-        Console.WriteLine(
+        var usage = new StringBuilder(
             """
             sqlflow - metadata-driven ETL for SQL Server
 
@@ -2262,6 +2310,11 @@ internal static class Program
                                                  hashed exactly as the control plane verifies it. SSO (Entra) users
                                                  are refused (their credential lives in the provider). --db defaults
                                                  to ${env:SQLFLOW_CATALOG_DB}.
+            """);
+        usage.AppendLine();
+        modules.AppendUsage(usage);
+        usage.Append(
+            """
 
             Control plane (remote): the same API the GUI uses, so anything verified in the browser can be
             verified from a terminal or a test script. The target resolves from --url or SQLFLOW_URL; the
@@ -2454,6 +2507,7 @@ internal static class Program
                   --default-type <sqltype>       schema.defaultColumnType in the emitted flow (flatten; default varchar(255))
               -h, --help                         Show this help
             """);
+        return usage.ToString();
     }
 
     private static IFlattenIntrospector? IntrospectorFor(IServiceProvider provider, string type)
@@ -3176,85 +3230,20 @@ internal static class Program
         }
     }
 
-    /// <summary>Every option that consumes the next token as its value. Kept in sync with the GetOption /
-    /// ParseIntOption / MapOption call sites so an option's value is never mistaken for a positional argument
-    /// (the command and the file), regardless of where the user places the option.</summary>
-    internal static readonly HashSet<string> ValueTakingOptions = new(StringComparer.Ordinal)
-    {
-        "-o", "--out", "--log-level",
-        "--max-files", "--max-records", "--max-depth",
-        "--source", "--target", "--database", "--schema", "--target-schema", "--provider",
-        "--like", "--offset", "--limit", "--term", "--object", "--target-object", "--keys", "--name",
-        "--pattern", "--root", "--keep", "--include", "--exclude", "--explode", "--aliases",
-        "--separator", "--join-separator", "--map", "--array", "--repeat", "--xml",
-        "--date-column", "--base-value", "--filter", "--threshold", "--alpha", "--budget", "--maturity", "--state-dir",
-        "--of", "--explain",
-        "--db", "--repo", "--repo-url",
-        // The control-plane verbs (health/login/logout/trigger/runs/groups and the estate family).
-        "--url", "--token", "--username", "--token-name", "--expires-days", "--scopes",
-        "--scope", "--batch", "--pool", "--poll-seconds", "--commit", "--flow", "--status", "--kind", "--group",
-        "--page", "--page-size", "--from", "--to", "--file-pattern", "--source-filter",
-        "--cron", "--interval", "--timezone", "--max-concurrency",
-        "--remote-url", "--credential-ref", "--credential-user",
-        "--ref", "--sample", "--max-columns", "--max-candidates", "--active", "--enabled",
-        "--search", "--relation", "--tier", "--server", "--operation", "--last", "--set", "--payload",
-    };
+    // The argument readers every SQLFlow verb uses. They are CliArguments' own rules (the public API a module verb reads its
+    // command line through), so a SQLFlow verb and a module verb parse a command line identically.
 
-    internal static string[] PositionalArguments(string[] args)
-    {
-        var positional = new List<string>();
-        for (var i = 0; i < args.Length; i++)
-        {
-            if (args[i].StartsWith('-'))
-            {
-                if (ValueTakingOptions.Contains(args[i]))
-                {
-                    i++;
-                }
+    /// <summary>Every SQLFlow option that consumes the next token as its value; see <see cref="CliArguments"/>.</summary>
+    internal static IReadOnlySet<string> ValueTakingOptions => CliArguments.BuiltInValueOptions;
 
-                continue;
-            }
+    internal static string[] PositionalArguments(string[] args) => CliArguments.ParsePositionals(args, CliArguments.BuiltInValueOptions);
 
-            positional.Add(args[i]);
-        }
-
-        return [.. positional];
-    }
-
-    internal static string? GetOption(string[] args, params string[] names)
-    {
-        var index = Array.FindIndex(args, a => names.Contains(a));
-        if (index < 0 || index + 1 >= args.Length)
-        {
-            return null;
-        }
-
-        // A value-taking flag with no value would otherwise swallow the next flag (e.g. `--explode --data`
-        // setting explodePaths to "--data"). A lone "-" is still allowed (e.g. a separator).
-        var value = args[index + 1];
-        return value.Length > 1 && value[0] == '-' ? null : value;
-    }
+    internal static string? GetOption(string[] args, params string[] names) => CliArguments.FindOption(args, names);
 
     /// <summary>Every value of a repeatable flag (<c>--set a=1 --set b=2</c>), in order. A flag with no value, or whose
     /// next token is another flag, contributes nothing, as <see cref="GetOption"/> treats it.</summary>
-    internal static IReadOnlyList<string> GetOptions(string[] args, string name)
-    {
-        var values = new List<string>();
-        for (var i = 0; i < args.Length - 1; i++)
-        {
-            if (args[i] == name && !(args[i + 1].Length > 1 && args[i + 1][0] == '-'))
-            {
-                values.Add(args[i + 1]);
-                i++;
-            }
-        }
-
-        return values;
-    }
+    internal static IReadOnlyList<string> GetOptions(string[] args, string name) => CliArguments.FindOptions(args, name);
 
     internal static int ParseIntOption(string[] args, int fallback, params string[] names)
-    {
-        var value = GetOption(args, names);
-        return value is not null && int.TryParse(value, out var parsed) && parsed >= 0 ? parsed : fallback;
-    }
+        => CliArguments.ParseNonNegativeInt(GetOption(args, names), fallback);
 }
