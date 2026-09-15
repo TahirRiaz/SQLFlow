@@ -47,7 +47,9 @@ async fn main() -> anyhow::Result<()> {
 
     let docs = Arc::new(DocsIndex::load());
     tracing::info!("loaded {} reference pages for {}", docs.len(), docs.product());
-    let cp = Arc::new(ControlPlane::from_env());
+    // Over HTTP the server holds no credential of its own: every call runs as the bearer on the inbound request.
+    let http_mode = args.get(1).map(String::as_str) == Some("http");
+    let cp = Arc::new(ControlPlane::from_env(!http_mode));
     tracing::info!("control plane: {}", cp.base_url());
     let gui = links::GuiLinks::from_env();
     match gui.base() {
@@ -57,10 +59,13 @@ async fn main() -> anyhow::Result<()> {
         base => tracing::info!("GUI links: {base}"),
     }
 
-    if args.get(1).map(String::as_str) == Some("http") {
+    if http_mode {
         let opts = parse_http_options(&args[2..])?;
         return http_server::serve(docs, cp, opts).await;
     }
+
+    // Over stdio this process holds the user's session: keep it rolling on the GUI's schedule while the server runs.
+    cp.clone().spawn_session_keeper();
 
     let service = SqlFlowMcp::new(docs, cp).serve(stdio()).await?;
     service.waiting().await?;

@@ -1,12 +1,13 @@
 //! Persisted MCP configuration and access token.
 //!
 //! Two files under `~/.sqlflow/`:
-//!   * `mcp-config.json` — the control-plane URL.
-//!   * `mcp-token.json`  — the bearer token, its scopes, and expiry.
+//!   * `mcp-config.json`: the control-plane URL.
+//!   * `mcp-token.json`: the bearer token, its scopes, its expiry, and whether it renews.
 //!
-//! The token file is written owner-only where the platform supports it. Both
-//! are read at startup and rewritten on change, so a device-auth session
-//! survives restarts (matching the DeltaForge MCP token cache).
+//! The token file is written owner-only where the platform supports it. Both are read at startup and rewritten on
+//! change, so a device-auth session survives restarts. An interactive session token renews itself at the control
+//! plane's `POST /api/v1/auth/renew` on the same schedule the GUI uses (see [`RENEW_LEAD_SECS`]), so it stays
+//! short-lived on the wire while the person behind it stays signed in up to the control plane's absolute cap.
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
@@ -15,6 +16,14 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 pub const DEFAULT_URL: &str = "http://localhost:8080";
+
+/// How long before expiry a renewable session is rolled onto a fresh token. Matches the GUI's `RENEW_LEAD_MS`
+/// (gui/src/auth/AuthContext.tsx), so a headless client and a browser tab follow one expiration policy.
+pub const RENEW_LEAD_SECS: i64 = 5 * 60;
+
+/// This close to expiry a token is treated as already gone: too little runway to trust a renewal round trip. Matches
+/// the GUI's `RENEW_FLOOR_MS`.
+pub const EXPIRY_FLOOR_SECS: i64 = 30;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct McpConfig {
@@ -28,59 +37,84 @@ pub struct TokenCache {
     #[serde(default)]
     pub scope: String,
     pub expires_at: Option<DateTime<Utc>>,
-    /// The catalog id of the personal access token, when this credential is a managed PAT we minted (so we can
-    /// revoke it after rotating). Absent for a pasted token or a short-lived device token.
+    /// True for an interactive session token (a JWT carrying `auth_time`), which this client rolls at
+    /// `POST /api/v1/auth/renew` before it lapses. False for a personal access token, the break-glass bootstrap
+    /// token, or any credential the control plane refuses to renew: those live exactly as long as they were issued
+    /// for. A token file written by an older client (which carried `token_id`/`renewable` for a self-minted personal
+    /// access token) loads with this false, so that token is used until its own expiry and never extended.
     #[serde(default)]
-    pub token_id: Option<String>,
-    /// True for a managed PAT the server minted for us: one we rotate on our own before it expires, so the user
-    /// never has to sign in again while the client stays in use. A pasted secret or device token is not renewable.
-    #[serde(default)]
-    pub renewable: bool,
+    pub renews: bool,
 }
 
-/// The `exp` claim of a bearer token that is a JWT, as an absolute instant.
+/// The claims payload of a bearer token that is a JWT, or `None` for anything that is not a three-segment JWT with a
+/// JSON payload (which covers the opaque `sqlf_` personal access token).
 ///
-/// A session token minted by the control plane states its own lifetime in its payload, so a credential handed to
-/// us without separate expiry metadata (the `SQLFLOW_CONTROL_PLANE_TOKEN` environment variable, or a paste through
-/// `set_access_token`) can still be dated honestly instead of being treated as never-expiring. Returns `None` for
-/// anything that is not a three-segment JWT with a numeric `exp`, which covers the opaque `sqlf_` personal access
-/// token: its lifetime is known only to the server, and `None` (no local opinion) is the truthful answer there.
-/// This reads the payload without verifying the signature, which is correct for the only thing it is used for:
-/// deciding whether a credential is worth presenting. The server remains the authority on validity.
-pub fn jwt_expiry(token: &str) -> Option<DateTime<Utc>> {
+/// This reads the payload without verifying the signature, which is correct for the only things it is used for:
+/// deciding whether a credential is worth presenting and whether it is worth trying to renew. The control plane
+/// remains the authority on validity.
+fn jwt_claims(token: &str) -> Option<serde_json::Value> {
     let mut parts = token.split('.');
     let (_header, payload, _signature) = (parts.next()?, parts.next()?, parts.next()?);
     if parts.next().is_some() {
         return None;
     }
     let bytes = URL_SAFE_NO_PAD.decode(payload).ok()?;
-    let claims: serde_json::Value = serde_json::from_slice(&bytes).ok()?;
-    DateTime::from_timestamp(claims.get("exp")?.as_i64()?, 0)
+    serde_json::from_slice(&bytes).ok()
+}
+
+fn jwt_instant(token: &str, claim: &str) -> Option<DateTime<Utc>> {
+    DateTime::from_timestamp(jwt_claims(token)?.get(claim)?.as_i64()?, 0)
+}
+
+/// The `exp` claim of a bearer token that is a JWT, as an absolute instant.
+///
+/// A session token minted by the control plane states its own lifetime, so a credential handed to us without
+/// separate expiry metadata (the `SQLFLOW_CONTROL_PLANE_TOKEN` environment variable, or a paste through
+/// `set_access_token`) can still be dated honestly instead of being treated as never-expiring. `None` for an opaque
+/// personal access token: its lifetime is known only to the server, and no local opinion is the truthful answer.
+pub fn jwt_expiry(token: &str) -> Option<DateTime<Utc>> {
+    jwt_instant(token, "exp")
+}
+
+/// The `auth_time` claim of a bearer token that is a JWT: when the person behind an interactive session actually
+/// signed in. Its presence is exactly what makes the control plane willing to renew the token.
+pub fn jwt_auth_time(token: &str) -> Option<DateTime<Utc>> {
+    jwt_instant(token, "auth_time")
 }
 
 impl TokenCache {
+    /// A cache entry for a bearer whose only metadata is itself: dated from its own `exp`, and renewable exactly
+    /// when it carries `auth_time`.
+    pub fn from_bearer(access_token: String, scope: String) -> Self {
+        TokenCache {
+            expires_at: jwt_expiry(&access_token),
+            renews: jwt_auth_time(&access_token).is_some(),
+            access_token,
+            scope,
+        }
+    }
+
     pub fn is_expired(&self, skew_secs: i64) -> bool {
+        self.is_expired_at(Utc::now(), skew_secs)
+    }
+
+    fn is_expired_at(&self, now: DateTime<Utc>, skew_secs: i64) -> bool {
         match self.expires_at {
-            Some(exp) => Utc::now() + chrono::Duration::seconds(skew_secs) >= exp,
+            Some(exp) => now + chrono::Duration::seconds(skew_secs) >= exp,
             None => false,
         }
     }
 
-    /// Whether this managed PAT has entered its rotation window: it is still valid but expires within
-    /// <paramref name="window_days"/>, so it should be replaced now while it can still authenticate the mint of its
-    /// successor. A non-renewable or already-expired token never qualifies (the former is not ours to rotate, the
-    /// latter can no longer mint a replacement and needs a fresh sign-in).
-    pub fn should_rotate(&self, window_days: i64) -> bool {
-        if !self.renewable || self.token_id.is_none() {
+    /// Whether this session should be rolled now: it renews, it is inside the renewal lead, and it is still far
+    /// enough from expiry for a renewal round trip to land. A token past that floor can no longer authenticate its
+    /// own renewal and needs a fresh sign-in instead.
+    pub fn renewal_due(&self, now: DateTime<Utc>) -> bool {
+        let Some(exp) = self.expires_at else {
             return false;
-        }
-        match self.expires_at {
-            Some(exp) => {
-                let now = Utc::now();
-                now < exp && now + chrono::Duration::days(window_days) >= exp
-            }
-            None => false,
-        }
+        };
+        self.renews
+            && !self.is_expired_at(now, EXPIRY_FLOOR_SECS)
+            && now + chrono::Duration::seconds(RENEW_LEAD_SECS) >= exp
     }
 }
 
@@ -160,20 +194,19 @@ fn restrict_permissions(_path: &std::path::Path) {
 mod tests {
     use super::*;
 
-    fn token(renewable: bool, id: Option<&str>, expires_in_days: Option<i64>) -> TokenCache {
-        TokenCache {
-            access_token: "sqlf_x".to_string(),
-            scope: "read operate".to_string(),
-            expires_at: expires_in_days.map(|d| Utc::now() + chrono::Duration::days(d)),
-            token_id: id.map(|s| s.to_string()),
-            renewable,
-        }
-    }
-
     /// A signature-less JWT carrying the given claims payload; only the payload segment is ever read.
     fn jwt(claims: &serde_json::Value) -> String {
         let payload = URL_SAFE_NO_PAD.encode(serde_json::to_vec(claims).unwrap());
         format!("header.{payload}.signature")
+    }
+
+    fn session(expires_in_secs: i64, renews: bool) -> TokenCache {
+        TokenCache {
+            access_token: "header.payload.signature".to_string(),
+            scope: "read".to_string(),
+            expires_at: Some(Utc::now() + chrono::Duration::seconds(expires_in_secs)),
+            renews,
+        }
     }
 
     #[test]
@@ -190,20 +223,17 @@ mod tests {
         // The case that broke a real session: a 12-hour token read hours after it lapsed must report expired,
         // not authenticated.
         let exp = Utc::now() - chrono::Duration::hours(8);
-        let cache = TokenCache {
-            access_token: jwt(&serde_json::json!({ "exp": exp.timestamp() })),
-            scope: "read".to_string(),
-            expires_at: jwt_expiry(&jwt(&serde_json::json!({ "exp": exp.timestamp() }))),
-            token_id: None,
-            renewable: false,
-        };
+        let cache = TokenCache::from_bearer(jwt(&serde_json::json!({ "exp": exp.timestamp() })), "read".into());
         assert!(cache.is_expired(30));
     }
 
     #[test]
-    fn an_opaque_personal_access_token_has_no_local_expiry() {
+    fn an_opaque_personal_access_token_has_no_local_expiry_and_does_not_renew() {
         // A sqlf_ PAT is not a JWT: it states nothing, and inventing an expiry for it would be a guess.
         assert!(jwt_expiry("sqlf_abc123").is_none());
+        let cache = TokenCache::from_bearer("sqlf_abc123".into(), "read".into());
+        assert!(!cache.renews);
+        assert!(cache.expires_at.is_none());
     }
 
     #[test]
@@ -216,33 +246,54 @@ mod tests {
     }
 
     #[test]
-    fn rotates_only_a_renewable_token_inside_its_window() {
-        // Managed, expiring in 5 days: inside the 14-day window -> rotate.
-        assert!(token(true, Some("id"), Some(5)).should_rotate(14));
+    fn only_a_token_carrying_auth_time_renews() {
+        let exp = (Utc::now() + chrono::Duration::hours(12)).timestamp();
+        let signed_in = (Utc::now() - chrono::Duration::days(2)).timestamp();
+
+        // An interactive session (GUI login, or a device approved from one) carries auth_time.
+        let interactive = TokenCache::from_bearer(
+            jwt(&serde_json::json!({ "exp": exp, "auth_time": signed_in })), "read".into());
+        assert!(interactive.renews);
+        assert_eq!(jwt_auth_time(&interactive.access_token).map(|d| d.timestamp()), Some(signed_in));
+
+        // The bootstrap token, an assistant run's delegated token, or a device approved by a PAT: no auth_time.
+        let fixed = TokenCache::from_bearer(jwt(&serde_json::json!({ "exp": exp })), "read".into());
+        assert!(!fixed.renews);
     }
 
     #[test]
-    fn does_not_rotate_a_token_with_ample_life() {
-        // Managed but 60 days out: well outside the window -> leave it.
-        assert!(!token(true, Some("id"), Some(60)).should_rotate(14));
+    fn renewal_is_due_only_inside_the_lead_and_above_the_floor() {
+        let now = Utc::now();
+        // Hours of life left: leave it.
+        assert!(!session(3 * 3600, true).renewal_due(now));
+        // Four minutes left: inside the five-minute lead, roll it.
+        assert!(session(4 * 60, true).renewal_due(now));
+        // Ten seconds left: under the floor, too late to trust a round trip.
+        assert!(!session(10, true).renewal_due(now));
+        // Already expired: needs a sign-in, not a renewal.
+        assert!(!session(-60, true).renewal_due(now));
     }
 
     #[test]
-    fn does_not_rotate_a_pasted_or_device_token() {
-        // Not renewable (a pasted secret / device token), even inside the window: not ours to rotate.
-        assert!(!token(false, None, Some(1)).should_rotate(14));
-        // Renewable in shape but missing an id (cannot be revoked) is likewise skipped.
-        assert!(!token(true, None, Some(1)).should_rotate(14));
+    fn a_token_that_does_not_renew_is_never_due() {
+        assert!(!session(4 * 60, false).renewal_due(Utc::now()));
+        let undated = TokenCache { expires_at: None, ..session(0, true) };
+        assert!(!undated.renewal_due(Utc::now()));
     }
 
     #[test]
-    fn does_not_rotate_an_already_expired_token() {
-        // Past expiry: a mint would 401, so this needs a fresh sign-in, not a rotation.
-        assert!(!token(true, Some("id"), Some(-1)).should_rotate(14));
-    }
-
-    #[test]
-    fn never_expiring_managed_token_is_not_rotated() {
-        assert!(!token(true, Some("id"), None).should_rotate(14));
+    fn a_token_file_from_an_older_client_loads_as_non_renewable() {
+        // The previous client stored a self-minted 90-day personal access token it rotated forever. That token is
+        // honoured until its own expiry, but never extended: it must not read as a renewable session.
+        let legacy = r#"{
+            "access_token": "sqlf_legacy",
+            "scope": "read operate author",
+            "expires_at": "2030-01-01T00:00:00Z",
+            "token_id": "0b6c6f5e-7d1a-4a57-9b77-3d1b8d9a2f10",
+            "renewable": true
+        }"#;
+        let cache: TokenCache = serde_json::from_str(legacy).unwrap();
+        assert!(!cache.renews);
+        assert_eq!(cache.access_token, "sqlf_legacy");
     }
 }
