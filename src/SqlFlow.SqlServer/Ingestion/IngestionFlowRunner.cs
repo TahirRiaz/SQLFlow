@@ -317,21 +317,30 @@ public sealed class IngestionFlowRunner
                 throw new SqlFlowException($"Source object {flow.Source.Table.QualifiedName} exposes no columns to ingest.");
             }
 
-            // 2. Build the desired target schema (data + system + hash + identity) and the bulk-copy name map.
+            // 2. Build the desired target schema (data + system + hash + identity) and the source read that fills
+            //    staging: every source column as itself, plus each virtual column as its expression (legacy
+            //    flw.IngestionVirtual), which from staging on is an ordinary data column.
             var targetSchema = new IngestionSchemaBuilder(new DefaultColumnNameCleaner()).Build(sourceColumns, flow, forStaging: false);
             var nameMap = targetSchema.SourceToTargetNames;
+            var projections = targetSchema.Projections;
             var byName = sourceColumns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
-            var bulkColumns = sourceColumns
-                .Where(c => nameMap.ContainsKey(c.Name))
-                .Select(c => (Source: c.Name, Target: nameMap[c.Name]))
-                .ToList();
+            var desiredByName = targetSchema.Columns.ToDictionary(c => c.Name, StringComparer.OrdinalIgnoreCase);
+            var bulkColumns = projections.Select(p => (Source: p.SourceName, Target: p.TargetName)).ToList();
             var dataColumnNames = bulkColumns.Select(c => c.Target).ToList();
-            var stagingColumns = bulkColumns.Select(c => byName[c.Source] with { Name = c.Target }).ToList();
+            // A source column stages with its introspected type; a virtual column with the type the schema builder
+            // settled (declared, or that of the source column it replaces).
+            var stagingColumns = projections
+                .Select(p => p.Expression is null ? byName[p.SourceName] with { Name = p.TargetName } : desiredByName[p.TargetName])
+                .ToList();
+            var virtualCount = projections.Count(p => p.Expression is not null);
 
             Info("source.introspect", $"{sourceColumns.Count} source column(s), {bulkColumns.Count} bulk-copied"
+                + (virtualCount > 0 ? $" ({virtualCount} virtual)" : string.Empty)
                 + (flow.Source.IgnoreColumns.Count > 0 ? $", {flow.Source.IgnoreColumns.Count} ignored" : string.Empty));
-            Dbg("source.introspect", "column map: " + string.Join(", ", bulkColumns.Select(c =>
-                string.Equals(c.Source, c.Target, StringComparison.Ordinal) ? c.Source : $"{c.Source} -> {c.Target}")));
+            Dbg("source.introspect", "column map: " + string.Join(", ", projections.Select(p =>
+                p.Expression is not null ? $"{p.TargetName} = {p.Expression}"
+                : string.Equals(p.SourceName, p.TargetName, StringComparison.Ordinal) ? p.SourceName
+                : $"{p.SourceName} -> {p.TargetName}")));
 
             // 2b. PreProcessOnTarget: raw T-SQL on the target, before any new data is staged or loaded (so it
             //     sees the old/absent target). On a first-ever run the target does not exist yet, so a pre-hook
@@ -424,7 +433,7 @@ public sealed class IngestionFlowRunner
                 }
 
                 window = new IncrementalWindow { SourceWhere = string.Empty, RunFullLoad = true };
-                var segments = InitLoadPlanner.Plan(initFlow, initFlow.Source.Table, bulkColumns.Select(c => c.Source).ToList(), sourceDialect);
+                var segments = InitLoadPlanner.Plan(initFlow, initFlow.Source.Table, projections, sourceDialect);
                 sourceSelect = segments.Count > 0 ? segments[0].Sql : null;
                 Info("source.initload", $"init-load backfill: {segments.Count} segment(s), {Math.Max(1, flow.Load.Threads ?? 1)} concurrent");
                 foreach (var segment in segments)
@@ -452,7 +461,7 @@ public sealed class IngestionFlowRunner
                     : window.SourceWhere.Length > 0 ? $"incremental read: WHERE 1=1{window.SourceWhere}" : "full read (no incremental bound)");
                 Trace("incremental.max-probe", window.TargetMaxProbeSql);
                 Trace("incremental.min-probe", window.SourceMinProbeSql);
-                sourceSelect = BuildSourceSelect(flow.Source.Table, bulkColumns, window.SourceWhere, sourceDialect);
+                sourceSelect = BuildSourceSelect(flow.Source.Table, projections, window.SourceWhere, sourceDialect);
                 Trace("source.select", sourceSelect);
                 rowsStaged = await BulkCopyAsync(resolvedSource, sourceSelect, targetConnectionString, staging, bulkColumns, flow.Load, ct).ConfigureAwait(false);
             }
@@ -691,7 +700,7 @@ public sealed class IngestionFlowRunner
                     Name = CanonicalWorkTableName("mkey", flow),
                 };
                 rowsDeleted = await RunMatchKeysAsync(
-                    flow, resolvedSource, targetConnectionString, matchKeyTable, nameMap, sourceDialect, Info, Dbg, Trace, ct).ConfigureAwait(false);
+                    flow, resolvedSource, targetConnectionString, matchKeyTable, nameMap, projections, sourceDialect, Info, Dbg, Trace, ct).ConfigureAwait(false);
             }
 
             // 7.5. Apply the declared (trgDesiredIndex) indexes, only on the run that created the target (the
@@ -1030,6 +1039,7 @@ public sealed class IngestionFlowRunner
         string targetConnectionString,
         RelationalObject keyTable,
         IReadOnlyDictionary<string, string> nameMap,
+        IReadOnlyList<SourceProjection> projections,
         ISourceSqlDialect sourceDialect,
         Action<string, string> info,
         Action<string, string> dbg,
@@ -1081,8 +1091,11 @@ public sealed class IngestionFlowRunner
         // deleted (the legacy default of no filter deleted them).
         var filter = !string.IsNullOrWhiteSpace(policy.SourceFilter) ? policy.SourceFilter : flow.Source.Filter;
         var staticWhere = string.IsNullOrWhiteSpace(filter) ? string.Empty : " " + filter.Trim();
+        // A key may be a virtual column, which exists on the source only as its expression, so every key is read
+        // through the load's own projection (MapName above already proved each key is one), under the declared name.
+        var projectionBySource = projections.ToDictionary(p => p.SourceName, StringComparer.OrdinalIgnoreCase);
         var keySelect =
-            $"SELECT DISTINCT {string.Join(", ", keyPairs.Select(p => sourceDialect.QuoteIdentifier(p.Source)))} " +
+            $"SELECT DISTINCT {string.Join(", ", keyPairs.Select(p => projectionBySource[p.Source].Render(sourceDialect, p.Source)))} " +
             $"FROM {sourceDialect.QualifyObject(flow.Source.Table)} WHERE 1=1{staticWhere}";
         traceSql("matchkeys.source-keys", keySelect);
         var keysCopied = await BulkCopyAsync(resolvedSource, keySelect, targetConnectionString, keyTable, keyPairs, flow.Load, ct).ConfigureAwait(false);
@@ -1488,10 +1501,10 @@ public sealed class IngestionFlowRunner
 
     // The source read always uses a `WHERE 1=1` base so the incremental and filter fragments (each beginning
     // with " AND ", per the legacy raw-append contract) compose onto it. The text executes on the SOURCE, so
-    // its identifiers come from the source dialect.
-    private static string BuildSourceSelect(RelationalObject sourceTable, IReadOnlyList<(string Source, string Target)> columns, string sourceWhere, ISourceSqlDialect dialect)
+    // its identifiers come from the source dialect, and a virtual column's expression is evaluated there too.
+    private static string BuildSourceSelect(RelationalObject sourceTable, IReadOnlyList<SourceProjection> projections, string sourceWhere, ISourceSqlDialect dialect)
     {
-        var columnList = string.Join(", ", columns.Select(c => dialect.QuoteIdentifier(c.Source)));
+        var columnList = string.Join(", ", projections.Select(p => p.Render(dialect)));
         return $"SELECT {columnList} FROM {dialect.QualifyObject(sourceTable)} WHERE 1=1{sourceWhere}";
     }
 
@@ -1743,14 +1756,14 @@ public sealed class IngestionFlowRunner
         => new HashSet<string>(keys, StringComparer.OrdinalIgnoreCase);
 
     // Canonical indexes reference the cleaned TARGET column names; the flow declares SOURCE names, so map
-    // through the bulk-copy name map (identity when column cleaning is off). A required key column that is
-    // not a bulk-copied target column (because it is ignored or virtual) is a contradictory configuration and
-    // fails fast with a clear message rather than emitting an index on a phantom column.
+    // through the bulk-copy name map (identity when column cleaning is off; virtual columns map too). A required
+    // key column that is not a bulk-copied target column (because it is ignored) is a contradictory configuration
+    // and fails fast with a clear message rather than emitting an index on a phantom column.
     private static string MapName(IReadOnlyDictionary<string, string> nameMap, string source)
         => nameMap.TryGetValue(source, out var target)
             ? target
             : throw new SqlFlowException(
-                $"Key column '{source}' is not a bulk-copied target column (is it in IgnoreColumns or a virtual column?).");
+                $"Key column '{source}' is not a bulk-copied target column (is it in IgnoreColumns?).");
 
     // For an OPTIONAL canonical index (date / dataset), a column that is not a real bulk-copied target column
     // simply yields no index, rather than failing the run.

@@ -28,12 +28,13 @@ sourceRefs:
   - src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs
   - src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs
   - src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs
+  - src/SqlFlow.SqlServer/Schema/SourceProjection.cs
   - src/SqlFlow.Catalog/CatalogProjection.cs
 ---
 
 # Ingestion flow: assertions, surrogateKeys, virtualColumns
 
-Three optional top-level sections of an ingestion flow (`flowType: ing`) that run around the core load. `assertions` declares named, log-only data-quality checks evaluated against the loaded target after the upsert. `surrogateKeys` generates IDENTITY-backed surrogate keys in a lookup table (auto-created) and stamps them back onto the target, post-load and post-commit. `virtualColumns` marks named source columns as computed projections instead of bulk-copied source data. All three are loaded by src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs and executed by the same engine components as full (control-database) mode.
+Three optional top-level sections of an ingestion flow (`flowType: ing`) that run around the core load. `assertions` declares named, log-only data-quality checks evaluated against the loaded target after the upsert. `surrogateKeys` generates IDENTITY-backed surrogate keys in a lookup table (auto-created) and stamps them back onto the target, post-load and post-commit. `virtualColumns` adds computed columns to the source read: each is a select expression the source database evaluates, landed and loaded like any other data column. All three are loaded by src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs and executed by the same engine components as full (control-database) mode.
 
 ```yaml
 flowType: ing
@@ -94,10 +95,10 @@ surrogateKeys:
 
 | Key | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `expression` | string | yes | none | T-SQL select expression that produces the column value (legacy `SelectExp`). |
-| `name` | string | no | unset | The output column name (legacy `ColumnName`). |
-| `dataType` | string | no | unset | Declared target data type, for example `nvarchar(50)` (legacy `DataType`). |
-| `dataTypeExpression` | string | no | unset | A T-SQL expression that yields the type, for example `CAST('2022-01-01' AS DATE)` (legacy `DataTypeExp`); an alternative to `dataType`. |
+| `name` | string | yes | none | The column name (legacy `ColumnName`). The name of a source column replaces that column's value; any other name adds a column. Unique case-insensitively. |
+| `expression` | string | yes | none | Select expression the source database evaluates for each row (legacy `SelectExp`), in the source's own SQL dialect. |
+| `dataTypeExpression` | string | no | unset | The column's SQL Server type, for example `time(0)` (legacy `DataTypeExp`). Wins over `dataType`. This or `dataType` is required when `name` is not a source column. |
+| `dataType` | string | no | unset | The column's SQL Server type when `dataTypeExpression` is unset, for example `varchar(100)` (legacy `DataType`). |
 
 ## assertions
 
@@ -176,15 +177,26 @@ Each `SurrogateKeyResult` carries `KeysGenerated` (rows inserted into the lookup
 
 ## virtualColumns
 
-Each entry is a computed projection column (`VirtualColumn`, src/SqlFlow.Core/Ingestion/VirtualColumn.cs), a faithful port of a legacy `flw.IngestionVirtual` row; the full-mode loader reads the same shape from that table. The loader requires `expression`; a missing or blank value fails with `'virtualColumns[i].expression' is required.` `name`, `dataType`, and `dataTypeExpression` are optional and blank values normalize to unset.
+Each entry is a computed column (`VirtualColumn`, src/SqlFlow.Core/Ingestion/VirtualColumn.cs), a faithful port of a legacy `flw.IngestionVirtual` row; the full-mode loader reads the same shape from that table. The YAML loader validates:
+
+- A missing or blank expression fails with `'virtualColumns[i].expression' is required.`
+- A missing or blank name fails with `'virtualColumns[i].name' is required.`
+- Names must be unique case-insensitively (surrounding brackets ignored); a repeat fails with `virtual column '<name>' is declared more than once.`
+
+`dataType` and `dataTypeExpression` are optional; blank values normalize to unset.
 
 ### Runtime behavior
 
-The schema builder (src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs) matches each named virtual column against the introspected source columns case-insensitively. A source column whose name matches a virtual declaration is marked computed (role `Virtual`, origin `Computed`) and carries the declared select expression on the schema model. Computed columns are excluded from the bulk-copy name map, so they are not copied from the source and not part of the upsert's data columns; they still appear in the desired target schema. A declaration whose name matches no introspected source column (or that has no name) does not change the built schema.
+A virtual column is part of the source read, as it was in the legacy engine. The schema builder (src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs) turns each declaration into a `SourceProjection` (src/SqlFlow.SqlServer/Schema/SourceProjection.cs), and the runner renders it into the source SELECT as `<expression> AS [<name>]`. The source database evaluates the expression against the source object, and the value is bulk-copied into staging like any other column. From staging on it is an ordinary data column: schema sync adds it to the target, the upsert inserts and updates it, and it can be a `load.keyColumns` or `matchKeys.keyColumns` entry (the key-match pass reads the key through the same expression). InitLoad chunk reads project it the same way.
 
-Because a virtual column is not bulk-copied, it cannot serve as an upsert key. The upsert generator rejects a `load.keyColumns` entry that is not among the bulk-copied data columns with `Key column '<c>' is not among the data columns.`; on the run that creates the target (and when planning the SCD2 key index or a match-key pass), the key-index mapping fails first with `Key column '<c>' is not a bulk-copied target column (is it in IgnoreColumns or a virtual column?).`
+What happens depends on the name, matched case-insensitively against the raw (pre-cleanup) source column names, with surrounding brackets removed (`[VehicleNo_DW]` is the legacy spelling of `VehicleNo_DW`):
 
-`dataType` and `dataTypeExpression` are parsed onto the flow model for legacy `flw.IngestionVirtual` parity (`DataType` / `DataTypeExp`).
+- **The name is a source column.** The expression replaces that column's value in the same staging and target column. The column keeps the type the source introspected unless the entry declares one.
+- **The name is not a source column.** A nullable column is added under that name, typed from `dataTypeExpression`, else `dataType`, parsed as a SQL Server type such as `int`, `time(0)`, or `varchar(100)`. Legacy rows kept the full type in `DataTypeExp` and only the family in `DataType`, which is why `dataTypeExpression` wins. Without a type the run fails with `Virtual column '<name>' is not a column of source <object>, so it needs a dataTypeExpression (or dataType) ...`; a type that does not parse (a `CAST` expression, for example) fails naming the key and the value.
+
+The run also fails, before any data moves, when an added column's name equals the cleaned name of a source column, when a declaration from the control-database path has no name or repeats one, and when a virtual column is named like an engine-maintained column the flow enables (`InsertedDate_DW`, `UpdatedDate_DW`, `DeletedDate_DW`, `RowStatus_DW`, the SCD2 period columns, the hash key, or the identity column).
+
+The expression is raw SQL in the source's dialect, spliced verbatim, so it may reference any column of the source object, including one listed in `source.ignoreColumns`. Incremental watermarks and InitLoad date and key predicates still address plain source columns. A virtual column whose name ends in `_DW` is left out of the change checksum like every `_DW` column, so a change in that column alone does not update an existing row.
 
 ## Full example
 
@@ -227,7 +239,7 @@ surrogateKeys:
     preProcess: "EXEC dbo.skBefore"
     postProcess: "EXEC dbo.skAfter"
 
-# Computed columns: a source column matching the name is marked computed, not bulk-copied.
+# Computed columns: read from the source as '<expression> AS [LoadTag]' and loaded like any data column.
 virtualColumns:
   - name: LoadTag
     dataType: nvarchar(50)

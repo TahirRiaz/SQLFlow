@@ -1045,6 +1045,7 @@
         "src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs",
         "src/SqlFlow.SqlServer/Ingestion/ChunkRanges.cs",
         "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.SqlServer/Schema/SourceProjection.cs",
         "src/SqlFlow.SqlServer/Schema/UnicodeConverter.cs",
         "src/SqlFlow.Core/Ingestion/DefaultColumnNameCleaner.cs",
         "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
@@ -1937,6 +1938,7 @@
         "src/SqlFlow.SqlServer/Ingestion/SurrogateKeyExecutor.cs",
         "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
         "src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs",
+        "src/SqlFlow.SqlServer/Schema/SourceProjection.cs",
         "src/SqlFlow.Catalog/CatalogProjection.cs"
       ]
     },

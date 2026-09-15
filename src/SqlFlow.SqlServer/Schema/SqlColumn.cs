@@ -6,7 +6,8 @@ public enum ColumnRole
     /// <summary>A column read from the source and bulk-copied.</summary>
     Source,
 
-    /// <summary>A computed projection column from flw.IngestionVirtual.</summary>
+    /// <summary>A virtual column from flw.IngestionVirtual: read from the source as its select expression and
+    /// bulk-copied like a source column.</summary>
     Virtual,
 
     /// <summary>An injected system audit column (the _DW family).</summary>
@@ -22,10 +23,11 @@ public enum ColumnRole
 /// <summary>How a column's value is produced.</summary>
 public enum ColumnOrigin
 {
-    /// <summary>Read from the source and bulk-copied into staging.</summary>
+    /// <summary>Produced by the source read and bulk-copied into staging: a source column, or a virtual column's
+    /// expression.</summary>
     BulkCopied,
 
-    /// <summary>Computed by an expression (virtual, system, hash, identity); not bulk-copied.</summary>
+    /// <summary>Maintained by the engine on the target (system, hash, identity); not part of the source read.</summary>
     Computed,
 }
 
@@ -46,7 +48,7 @@ public sealed record SqlColumn
 
     public ColumnOrigin Origin { get; init; } = ColumnOrigin.BulkCopied;
 
-    /// <summary>The T-SQL expression that produces the value, for a computed/virtual/system/hash column.</summary>
+    /// <summary>The source-dialect select expression that produces a virtual column's value; null otherwise.</summary>
     public string? SelectExpression { get; init; }
 
     public bool IsIdentity { get; init; }

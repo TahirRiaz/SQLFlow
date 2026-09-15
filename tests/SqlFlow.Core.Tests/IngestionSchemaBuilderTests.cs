@@ -1,3 +1,4 @@
+using SqlFlow.Core;
 using SqlFlow.Core.Ingestion;
 using SqlFlow.SqlServer.Schema;
 using Xunit;
@@ -98,7 +99,7 @@ public sealed class IngestionSchemaBuilderTests
     }
 
     [Fact]
-    public void VirtualColumn_MarkedComputed_AndExcludedFromBulkCopyMap()
+    public void VirtualColumn_ReplacingASourceColumn_ReadsItsExpressionUnderTheSourceName()
     {
         var schema = Builder.Build(
             [Src("Id", "int"), Src("LoadTag", "nvarchar(10)")],
@@ -107,10 +108,113 @@ public sealed class IngestionSchemaBuilderTests
 
         var v = Col(schema, "LoadTag");
         Assert.Equal(ColumnRole.Virtual, v.Role);
-        Assert.Equal(ColumnOrigin.Computed, v.Origin);
+        Assert.Equal(ColumnOrigin.BulkCopied, v.Origin);
         Assert.Equal("'X'", v.SelectExpression);
-        Assert.False(schema.SourceToTargetNames.ContainsKey("LoadTag"));
-        Assert.True(schema.SourceToTargetNames.ContainsKey("Id"));
+        Assert.Equal("nvarchar(10)", v.DataType.Render()); // undeclared: keeps the source column's type
+        Assert.Equal("LoadTag", schema.SourceToTargetNames["LoadTag"]);
+        Assert.Equal(new[] { "Id", "LoadTag" }, schema.Projections.Select(p => p.SourceName).ToArray());
+        Assert.Null(schema.Projections[0].Expression);
+        Assert.Equal("'X'", schema.Projections[1].Expression);
+    }
+
+    [Fact]
+    public void VirtualColumn_ReplacingASourceColumn_TakesTheDeclaredType()
+    {
+        var schema = Builder.Build(
+            [Src("Code", "varchar(20)")],
+            Flow(virtuals: [new VirtualColumn { Name = "Code", DataTypeExpression = "int", SelectExpression = "CAST([Code] AS int)" }]),
+            forStaging: true);
+
+        Assert.Equal("int", Col(schema, "Code").DataType.Render());
+    }
+
+    [Fact]
+    public void VirtualColumn_NotInSource_IsAppendedAsADataColumn_WithItsDeclaredType()
+    {
+        // The legacy row shape: a bracketed name, DataType holding the family and DataTypeExp the full type.
+        var schema = Builder.Build(
+            [Src("VehicleIdentity", "bigint"), Src("PlannedArrivalTime", "datetime")],
+            Flow(virtuals:
+            [
+                new VirtualColumn { Name = "[ArrivalPlan_DW]", DataType = "time", DataTypeExpression = "time(0)", SelectExpression = "CAST([PlannedArrivalTime] AS TIME)" },
+                new VirtualColumn { Name = "Tag", DataType = "varchar(5)", SelectExpression = "'a'" },
+            ]),
+            forStaging: true);
+
+        var arrival = Col(schema, "ArrivalPlan_DW");
+        Assert.Equal("time(0)", arrival.DataType.Render());
+        Assert.True(arrival.IsNullable);
+        Assert.Equal(ColumnRole.Virtual, arrival.Role);
+        Assert.Equal(ColumnOrigin.BulkCopied, arrival.Origin);
+        Assert.Equal("varchar(5)", Col(schema, "Tag").DataType.Render());
+        Assert.Equal(new[] { "VehicleIdentity", "PlannedArrivalTime", "ArrivalPlan_DW", "Tag" }, schema.Projections.Select(p => p.SourceName).ToArray());
+        Assert.Equal("CAST([PlannedArrivalTime] AS TIME)", schema.Projections[2].Expression);
+        Assert.Equal("ArrivalPlan_DW", schema.SourceToTargetNames["ArrivalPlan_DW"]);
+        // The schema keeps the legacy order: _DW columns last, so the appended Tag precedes ArrivalPlan_DW.
+        Assert.Equal(new[] { "VehicleIdentity", "PlannedArrivalTime", "Tag", "ArrivalPlan_DW" }, schema.Columns.Select(c => c.Name).ToArray());
+    }
+
+    [Fact]
+    public void VirtualColumn_NotInSource_WithoutAType_Fails()
+    {
+        var ex = Assert.Throws<SqlFlowException>(() => Builder.Build(
+            [Src("Id", "int")],
+            Flow(virtuals: [new VirtualColumn { Name = "Tag", SelectExpression = "'a'" }]),
+            forStaging: true));
+
+        Assert.Contains("Virtual column 'Tag' is not a column of source", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("  ")]
+    public void VirtualColumn_WithoutAName_Fails(string? name)
+    {
+        var ex = Assert.Throws<SqlFlowException>(() => Builder.Build(
+            [Src("Id", "int")],
+            Flow(virtuals: [new VirtualColumn { Name = name, DataType = "int", SelectExpression = "1" }]),
+            forStaging: true));
+
+        Assert.Contains("has no name", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VirtualColumn_DeclaredTwice_Fails()
+    {
+        var ex = Assert.Throws<SqlFlowException>(() => Builder.Build(
+            [Src("Id", "int")],
+            Flow(virtuals:
+            [
+                new VirtualColumn { Name = "Tag", DataType = "int", SelectExpression = "1" },
+                new VirtualColumn { Name = "[tag]", DataType = "int", SelectExpression = "2" },
+            ]),
+            forStaging: true));
+
+        Assert.Contains("declared more than once", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VirtualColumn_UnparseableType_FailsNamingTheKey()
+    {
+        var ex = Assert.Throws<SqlFlowException>(() => Builder.Build(
+            [Src("Id", "int")],
+            Flow(virtuals: [new VirtualColumn { Name = "Tag", DataTypeExpression = "CAST('2022-01-01' AS DATE)", SelectExpression = "1" }]),
+            forStaging: true));
+
+        Assert.Contains("declares dataTypeExpression 'CAST('2022-01-01' AS DATE)'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VirtualColumn_NamedLikeAnEnabledSystemColumn_Fails()
+    {
+        var ex = Assert.Throws<SqlFlowException>(() => Builder.Build(
+            [Src("Id", "int")],
+            Flow(
+                system: new SystemColumnsPolicy(),
+                virtuals: [new VirtualColumn { Name = "UpdatedDate_DW", DataType = "datetime", SelectExpression = "GETDATE()" }]),
+            forStaging: true));
+
+        Assert.Contains("engine-maintained column 'UpdatedDate_DW'", ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -23,6 +23,7 @@ sourceRefs:
   - src/SqlFlow.SqlServer/Ingestion/InitLoadPlanner.cs
   - src/SqlFlow.SqlServer/Ingestion/ChunkRanges.cs
   - src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs
+  - src/SqlFlow.SqlServer/Schema/SourceProjection.cs
   - src/SqlFlow.SqlServer/Schema/UnicodeConverter.cs
   - src/SqlFlow.Core/Ingestion/DefaultColumnNameCleaner.cs
   - src/SqlFlow.Core/Ingestion/IngestionPolicies.cs
@@ -85,8 +86,10 @@ The bulk copy into staging uses `SqlBulkCopy` with `TableLock`, `BatchSize = 0` 
 The source read is always:
 
 ```sql
-SELECT <quoted columns> FROM <qualified object> WHERE 1=1<sourceWhere>
+SELECT <projections> FROM <qualified object> WHERE 1=1<sourceWhere>
 ```
+
+Each projection (`SourceProjection`, src/SqlFlow.SqlServer/Schema/SourceProjection.cs) is either a quoted source column or a virtual column rendered as `<expression> AS <quoted name>`, so virtual expressions are evaluated by the source database in the same read. InitLoad segment reads and the match-key pass's source key read render the same projections.
 
 The `WHERE 1=1` base exists so that fragments compose by raw append (the legacy contract): the incremental predicate and the user filter each carry their own leading ` AND ` (or, for `source.filter`, their own leading keyword) and are concatenated onto it.
 
@@ -101,11 +104,11 @@ The `WHERE 1=1` base exists so that fragments compose by raw append (the legacy 
 
 - **Name cleanup** (`schema.cleanColumnNames`): `DefaultColumnNameCleaner` applies a remove-invalid-characters regex (the per-flow `schema.cleanColumnNameRegex`, or the legacy shipped default when blank), replacing matches with `schema.replaceInvalidCharsWith` (or removing them when blank). An empty result becomes `EmptyColumnName`; collisions are de-duplicated with a numeric suffix. The regex runs with a 2-second timeout, and an invalid pattern fails with `Invalid CleanColumnNameRegex '<pattern>': ...`.
 - **Unicode conversion** (`schema.convertUnicodeToNonUnicode`): `UnicodeConverter` maps `nvarchar` to `varchar` and `nchar` to `char` (both preserve the declared length), `ntext` to `text` (the length is dropped), and `sysname` to `varchar(128)` (a fixed length, not the source declaration). Other types pass through.
-- **Virtual columns**: a `virtualColumns` entry matching a source column name marks it computed with its declared expression, so it is projected, not bulk-copied.
+- **Virtual columns**: each `virtualColumns` entry becomes a projection of the source read. A name matching a raw source column replaces that column's value (keeping its type unless one is declared); any other name adds a nullable column of the declared type. Either way the value is bulk-copied into staging and is a data column from there on.
 - **System, SCD2, and hash columns** are injected as computed columns (`InsertedDate_DW`, `UpdatedDate_DW`, `DeletedDate_DW`, `RowStatus_DW`, the SCD2 period columns, the hash key).
 - **Identity** (`target.identityColumn`): injected on the target pass only, typed `int`, rendered as `IDENTITY(1, 1)` and `NOT NULL`, and marked as the primary key.
 - **Column order** is legacy-normalized: names starting with `PK` first, names ending with `PK` next, ordinary columns in source order, then every `*_DW` column last (the `_DW` rule wins even over a PK-shaped name).
-- The builder's `SourceToTargetNames` map drives the `SqlBulkCopy` column mappings. Virtual, system, hash, and identity columns are computed, so they are absent from it. A key column that is not in the map (because it is ignored or virtual) fails fast: `Key column '<name>' is not a bulk-copied target column (is it in IgnoreColumns or a virtual column?).`
+- The builder's `Projections`, and the `SourceToTargetNames` map derived from them, drive the source SELECT and the `SqlBulkCopy` column mappings. System, hash, and identity columns are maintained on the target, so they are not projections. A key column that is not in the map (because it is ignored) fails fast: `Key column '<name>' is not a bulk-copied target column (is it in IgnoreColumns?).`
 
 ## Incremental window resolution
 

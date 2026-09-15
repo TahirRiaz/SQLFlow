@@ -1,23 +1,29 @@
+using SqlFlow.Core;
 using SqlFlow.Core.Ingestion;
 
 namespace SqlFlow.SqlServer.Schema;
 
-/// <summary>The desired target schema plus the source-to-target column-name map for the bulk copy.</summary>
+/// <summary>The desired target schema plus the source read that fills staging.</summary>
 public sealed record DesiredSchema
 {
     public required IReadOnlyList<SqlColumn> Columns { get; init; }
 
-    /// <summary>Maps each bulk-copied source column name to its target name (after cleanup). Virtual,
-    /// system, hash, and identity columns are computed, not bulk-copied, so they are not in this map.</summary>
+    /// <summary>The source read in select-list order: every data column the bulk copy lands in staging. A source
+    /// column reads as itself and a virtual column as its expression; system, hash, and identity columns are
+    /// computed on the target, so they are not projections.</summary>
+    public required IReadOnlyList<SourceProjection> Projections { get; init; }
+
+    /// <summary>Maps each projection's source-side name to its target name (after cleanup), for resolving the
+    /// column names a flow declares (keys, dates, datasets) onto the target.</summary>
     public required IReadOnlyDictionary<string, string> SourceToTargetNames { get; init; }
 }
 
 /// <summary>
 /// Builds the desired target schema for an ingestion flow from the detected (shaped) source columns: applies
-/// column-name cleanup and unicode conversion, marks virtual columns, injects the system, hash key, and
-/// (target only) identity columns, and orders columns the legacy way (PK-prefixed first, PK-suffixed next,
-/// ordinary source columns, then the _DW columns last). Pure; one builder serves both the staging and target
-/// passes (forStaging toggles only the identity injection).
+/// column-name cleanup and unicode conversion, projects the virtual columns into the source read, injects the
+/// system, hash key, and (target only) identity columns, and orders columns the legacy way (PK-prefixed first,
+/// PK-suffixed next, ordinary columns, then the _DW columns last). Pure; one builder serves both the staging and
+/// target passes (forStaging toggles only the identity injection).
 /// </summary>
 public sealed class IngestionSchemaBuilder
 {
@@ -36,14 +42,12 @@ public sealed class IngestionSchemaBuilder
 
         var rawNames = sourceColumns.Select(c => c.Name).ToList();
         var cleanedNames = _cleaner.Clean(rawNames, flow.SchemaSync);
+        var virtuals = NamedVirtualColumns(flow);
+        var virtualByName = virtuals.ToDictionary(v => v.Name, v => v.Column, StringComparer.OrdinalIgnoreCase);
 
-        var virtualByName = flow.VirtualColumns
-            .Where(v => !string.IsNullOrWhiteSpace(v.Name))
-            .GroupBy(v => v.Name!, StringComparer.OrdinalIgnoreCase)
-            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
-
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var columns = new List<SqlColumn>(sourceColumns.Count);
+        var columns = new List<SqlColumn>(sourceColumns.Count + virtuals.Count);
+        var projections = new List<SourceProjection>(sourceColumns.Count + virtuals.Count);
+        var replaced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         for (var i = 0; i < sourceColumns.Count; i++)
         {
@@ -53,18 +57,22 @@ public sealed class IngestionSchemaBuilder
 
             if (virtualByName.TryGetValue(source.Name, out var virtualColumn))
             {
+                // The declaration replaces this source column's value: the read projects the expression under the
+                // column's own name, so it lands in the same staging and target column. A declared type wins;
+                // without one the column keeps the type the source introspected.
+                replaced.Add(source.Name);
                 columns.Add(source with
                 {
                     Name = targetName,
-                    DataType = type,
+                    DataType = DeclaredType(source.Name, virtualColumn) ?? type,
                     Role = ColumnRole.Virtual,
-                    Origin = ColumnOrigin.Computed,
+                    Origin = ColumnOrigin.BulkCopied,
                     SelectExpression = virtualColumn.SelectExpression,
                 });
+                projections.Add(new SourceProjection { SourceName = source.Name, TargetName = targetName, Expression = virtualColumn.SelectExpression });
             }
             else
             {
-                map[source.Name] = targetName;
                 columns.Add(source with
                 {
                     Name = targetName,
@@ -72,7 +80,39 @@ public sealed class IngestionSchemaBuilder
                     Role = ColumnRole.Source,
                     Origin = ColumnOrigin.BulkCopied,
                 });
+                projections.Add(new SourceProjection { SourceName = source.Name, TargetName = targetName });
             }
+        }
+
+        foreach (var (name, virtualColumn) in virtuals)
+        {
+            if (replaced.Contains(name))
+            {
+                continue;
+            }
+
+            // Not a column of the source: it exists only because of the declaration, so it takes the declared
+            // type, the way legacy flw.IngestionVirtual added it to the target as its DataTypeExp.
+            var declared = DeclaredType(name, virtualColumn) ?? throw new SqlFlowException(
+                $"Virtual column '{name}' is not a column of source {flow.Source.Table.QualifiedName}, so it needs a " +
+                "dataTypeExpression (or dataType), for example 'int' or 'varchar(100)', to create it in staging and the target.");
+            if (columns.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new SqlFlowException(
+                    $"Virtual column '{name}' has the cleaned name of a source column of {flow.Source.Table.QualifiedName}. " +
+                    "Name it after the raw source column to replace that column's value, or give it a distinct name.");
+            }
+
+            columns.Add(new SqlColumn
+            {
+                Name = name,
+                DataType = declared,
+                IsNullable = true,
+                Role = ColumnRole.Virtual,
+                Origin = ColumnOrigin.BulkCopied,
+                SelectExpression = virtualColumn.SelectExpression,
+            });
+            projections.Add(new SourceProjection { SourceName = name, TargetName = name, Expression = virtualColumn.SelectExpression });
         }
 
         AddSystemColumns(columns, flow.SystemColumns);
@@ -83,7 +123,71 @@ public sealed class IngestionSchemaBuilder
             AddIdentity(columns, flow.Target.IdentityColumn);
         }
 
-        return new DesiredSchema { Columns = Order(columns), SourceToTargetNames = map };
+        // Assigned, not added: two source columns whose names differ only by case (Dup, dup) share one
+        // case-insensitive entry, the later one winning, exactly as before virtual columns were projected.
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var projection in projections)
+        {
+            map[projection.SourceName] = projection.TargetName;
+        }
+
+        return new DesiredSchema
+        {
+            Columns = Order(columns),
+            Projections = projections,
+            SourceToTargetNames = map,
+        };
+    }
+
+    // Every virtual column is read under its name, so the name is mandatory and unique. The YAML loader rejects
+    // both mistakes at parse time; the control-database path reaches here unchecked, so the run guards them too.
+    // Legacy rows spell the name bracketed ([VehicleNo_DW]); the brackets are not part of the name.
+    private static List<(string Name, VirtualColumn Column)> NamedVirtualColumns(IngestionFlow flow)
+    {
+        var named = new List<(string Name, VirtualColumn Column)>(flow.VirtualColumns.Count);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < flow.VirtualColumns.Count; i++)
+        {
+            var column = flow.VirtualColumns[i];
+            var name = string.IsNullOrWhiteSpace(column.Name) ? string.Empty : IngestionText.Unbracket(column.Name);
+            if (name.Length == 0)
+            {
+                throw new SqlFlowException(
+                    $"Virtual column {i + 1} of flow {flow.FlowId} has no name. A virtual column is read from the source as " +
+                    "its expression aliased to its name, so the name is required.");
+            }
+
+            if (!seen.Add(name))
+            {
+                throw new SqlFlowException($"Virtual column '{name}' is declared more than once in flow {flow.FlowId}.");
+            }
+
+            named.Add((name, column));
+        }
+
+        return named;
+    }
+
+    // The declared type: DataTypeExpression first, because the legacy row keeps the full type there ("time(0)",
+    // "varchar(150)") and only the bare family in DataType ("time", "varchar"). Null when neither is set.
+    private static SqlDataType? DeclaredType(string name, VirtualColumn column)
+    {
+        var text = column.DataTypeExpression ?? column.DataType;
+        if (text is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return SqlDataType.Parse(text);
+        }
+        catch (SqlFlowException ex)
+        {
+            var key = column.DataTypeExpression is null ? "dataType" : "dataTypeExpression";
+            throw new SqlFlowException(
+                $"Virtual column '{name}' declares {key} '{text}', which is not a SQL Server data type: {ex.Message}", ex);
+        }
     }
 
     private static void AddSystemColumns(List<SqlColumn> columns, SystemColumnsPolicy policy)
@@ -164,8 +268,21 @@ public sealed class IngestionSchemaBuilder
         });
     }
 
+    // Whether an engine-maintained column is already present. A SOURCE column of that name is kept (a view may
+    // legitimately carry its own UpdatedDate_DW); a VIRTUAL column of that name is refused, because the engine
+    // would silently drop either the declaration's value or its own maintenance of the column.
     private static bool Exists(List<SqlColumn> columns, string name)
-        => columns.Any(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+    {
+        var existing = columns.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+        if (existing is { Role: ColumnRole.Virtual })
+        {
+            throw new SqlFlowException(
+                $"Virtual column '{existing.Name}' has the name of the engine-maintained column '{name}' this flow enables; " +
+                "rename the virtual column or turn the engine column off.");
+        }
+
+        return existing is not null;
+    }
 
     private static IReadOnlyList<SqlColumn> Order(List<SqlColumn> columns)
     {

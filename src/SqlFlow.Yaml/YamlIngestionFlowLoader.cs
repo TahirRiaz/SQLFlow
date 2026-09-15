@@ -634,14 +634,23 @@ public sealed class YamlIngestionFlowLoader
         }
 
         var columns = new List<VirtualColumn>(items.Count);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < items.Count; i++)
         {
             var item = items[i];
             var expression = NullIfBlank(item.Expression)
                 ?? throw new FlowValidationException($"{source}: 'virtualColumns[{i}].expression' is required.");
+            // The column is read from the source as its expression aliased to this name, so it must have one.
+            var name = NullIfBlank(item.Name)
+                ?? throw new FlowValidationException($"{source}: 'virtualColumns[{i}].name' is required.");
+            if (!seen.Add(IngestionText.Unbracket(name)))
+            {
+                throw new FlowValidationException($"{source}: virtual column '{name}' is declared more than once.");
+            }
+
             columns.Add(new VirtualColumn
             {
-                Name = NullIfBlank(item.Name),
+                Name = name,
                 DataType = NullIfBlank(item.DataType),
                 DataTypeExpression = NullIfBlank(item.DataTypeExpression),
                 SelectExpression = expression,

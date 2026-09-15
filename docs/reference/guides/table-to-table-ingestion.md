@@ -202,7 +202,7 @@ target:
 
 `desiredIndexes` holds declared index DDL applied when the target is created.
 
-Computed columns are injected with `virtualColumns`; each entry needs `expression` (missing it fails with `'virtualColumns[i].expression' is required.`) and may carry `name` and `dataType`:
+Computed columns are added with `virtualColumns`. Each entry needs a `name` and an `expression`, which the source database evaluates as part of the read (`<expression> AS [<name>]`); a name that is not a source column also needs its type, as `dataTypeExpression` or `dataType`. The value then loads like any other column, and can even serve as a key:
 
 ```yaml
 virtualColumns:

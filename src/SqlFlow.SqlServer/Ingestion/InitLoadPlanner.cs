@@ -2,6 +2,7 @@ using System.Globalization;
 using SqlFlow.Core;
 using SqlFlow.Core.Connections;
 using SqlFlow.Core.Ingestion;
+using SqlFlow.SqlServer.Schema;
 
 namespace SqlFlow.SqlServer.Ingestion;
 
@@ -22,11 +23,11 @@ public static class InitLoadPlanner
 {
     private const int DefaultKeyMaxValue = 10_000_000;
 
-    public static IReadOnlyList<InitLoadSegment> Plan(IngestionFlow flow, RelationalObject source, IReadOnlyList<string> sourceColumns, ISourceSqlDialect? dialect = null)
+    public static IReadOnlyList<InitLoadSegment> Plan(IngestionFlow flow, RelationalObject source, IReadOnlyList<SourceProjection> projections, ISourceSqlDialect? dialect = null)
     {
         ArgumentNullException.ThrowIfNull(flow);
         ArgumentNullException.ThrowIfNull(source);
-        ArgumentNullException.ThrowIfNull(sourceColumns);
+        ArgumentNullException.ThrowIfNull(projections);
         dialect ??= new SqlServerSourceDialect();
 
         var by = (flow.InitLoad.BatchBy ?? "M").Trim().ToUpperInvariant();
@@ -44,7 +45,7 @@ public static class InitLoadPlanner
             throw new SqlFlowException("InitLoad by key requires InitLoad.KeyColumn to be set.");
         }
 
-        var prefix = BuildPrefix(source, sourceColumns, flow.Source.Filter, dialect);
+        var prefix = BuildPrefix(source, projections, flow.Source.Filter, dialect);
         var segments = new List<InitLoadSegment>();
 
         switch (by)
@@ -94,9 +95,10 @@ public static class InitLoadPlanner
     }
 
     // Calendar-aligned month chunks (snap to month-end), with the first/last chunk clamped to the window;
-    private static string BuildPrefix(RelationalObject source, IReadOnlyList<string> columns, string? filter, ISourceSqlDialect dialect)
+    private static string BuildPrefix(RelationalObject source, IReadOnlyList<SourceProjection> projections, string? filter, ISourceSqlDialect dialect)
     {
-        var columnList = string.Join(", ", columns.Select(dialect.QuoteIdentifier));
+        // The same projections as the regular source read, so a virtual column's expression is evaluated per chunk.
+        var columnList = string.Join(", ", projections.Select(p => p.Render(dialect)));
         var filterClause = string.IsNullOrWhiteSpace(filter) ? string.Empty : " " + filter.Trim();
         return $"SELECT {columnList} FROM {dialect.QualifyObject(source)} WHERE 1=1{filterClause}";
     }

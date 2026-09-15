@@ -436,6 +436,8 @@ public sealed class YamlIngestionLoaderTests
     [InlineData("flowType: ing\nsource:\n  object: a.b.c\ntarget:\n  connection: y\n  object: a.b.c", "needs a connection")]
     [InlineData("flowType: ing\nconnections:\n  s: x\nsource:\n  server: s\n  connection: y\n  object: a.b.c\ntarget:\n  connection: y\n  object: a.b.c", "both 'server' and 'connection'")]
     [InlineData("flowType: ing\nsource:\n  server: missing\n  object: a.b.c\ntarget:\n  connection: y\n  object: a.b.c", "not declared under 'connections:'")]
+    [InlineData("flowType: ing\nsource:\n  connection: x\n  object: a.b.c\ntarget:\n  connection: y\n  object: a.b.c\nvirtualColumns:\n  - expression: \"1\"", "'virtualColumns[0].name' is required")]
+    [InlineData("flowType: ing\nsource:\n  connection: x\n  object: a.b.c\ntarget:\n  connection: y\n  object: a.b.c\nvirtualColumns:\n  - name: Tag\n    expression: \"1\"\n  - name: \"[tag]\"\n    expression: \"2\"", "virtual column '[tag]' is declared more than once")]
     public void InvalidDocuments_FailWithFieldPath(string yaml, string expectedFragment)
     {
         var ex = Assert.Throws<FlowValidationException>(() => Loader.Parse(yaml));
