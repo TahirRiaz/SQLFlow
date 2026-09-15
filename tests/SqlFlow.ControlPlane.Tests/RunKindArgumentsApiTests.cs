@@ -26,9 +26,12 @@ public sealed class RunKindArgumentsApiTests
 {
     private const string Node = "kind-args-node";
 
+    // The host's in-process worker is off: these tests hand a queued run out themselves (as a node would), and a hosted
+    // worker claiming it first would leave nothing to hand out.
     private static ControlPlaneAppFactory Host(string? catalog = null)
     {
         var factory = new ControlPlaneAppFactory()
+            .WithSetting("ControlPlane:Worker:Enabled", "false")
             .WithServices(services => services.AddSingleton<IFlowDocumentKind, OpsFlowKind>());
         return catalog is null ? factory : factory.WithCatalog(catalog);
     }
