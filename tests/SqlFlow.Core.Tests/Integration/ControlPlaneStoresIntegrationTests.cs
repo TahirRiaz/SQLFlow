@@ -146,6 +146,8 @@ public sealed class ControlPlaneStoresIntegrationTests
         return IntegrationDb.ExecuteAsync(cs, $"IF OBJECT_ID('flw.DataSource','U') IS NOT NULL DELETE FROM [flw].[DataSource] WHERE [Alias] IN ({list});");
     }
 
+    /// <summary>Removes exactly the assertions this class seeds. A prefix match would also delete the assertions other
+    /// integration classes seed in the same registry while they run in parallel (the full-mode host test's, say).</summary>
     private static Task CleanAssertions(string cs)
-        => IntegrationDb.ExecuteAsync(cs, "IF OBJECT_ID('flw.Assertion','U') IS NOT NULL DELETE FROM [flw].[Assertion] WHERE [AssertionName] LIKE 'Sf%';");
+        => IntegrationDb.ExecuteAsync(cs, "IF OBJECT_ID('flw.Assertion','U') IS NOT NULL DELETE FROM [flw].[Assertion] WHERE [AssertionName] IN ('SfCheckEmpty','SfCheckFresh','SfInactive');");
 }
