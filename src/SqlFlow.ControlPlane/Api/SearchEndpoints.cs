@@ -1,8 +1,11 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
+using SqlFlow.ControlPlane.Infrastructure;
 
 namespace SqlFlow.ControlPlane.Api;
 
@@ -70,8 +73,9 @@ public sealed record SubscriberHitDto(
     string? Url, string RepoId, string File);
 
 /// <summary>One category of a combined search: the full match count plus a small preview of the top hits, so the
-/// unified view can show "Files (37)" with the first few and a jump to the dedicated tab for the rest.</summary>
-public sealed record SearchCategoryDto<T>(long Total, IReadOnlyList<T> Items);
+/// unified view can show "Files (37)" with the first few and a jump to the dedicated tab for the rest. A category
+/// counted only as far as a bound sets <see cref="TotalCapped"/>; its total is then a floor.</summary>
+public sealed record SearchCategoryDto<T>(long Total, IReadOnlyList<T> Items, bool TotalCapped = false);
 
 /// <summary>
 /// The combined result of a single global search across every catalog surface, each category counted in full and
@@ -79,7 +83,9 @@ public sealed record SearchCategoryDto<T>(long Total, IReadOnlyList<T> Items);
 /// query is matched token by token, not as a literal phrase), so a caller can see what was searched for and retry
 /// with a narrower term when a stray word emptied the result. <see cref="StatementWindowDays"/> is the only bounded
 /// surface: executed SQL is high-volume and pruned by retention, so the global view searches a recent window and
-/// says which, and the dedicated endpoint can widen it.
+/// says which, and the dedicated endpoint can widen it. <see cref="Contributed"/> holds the categories host modules
+/// add (<see cref="ISearchContributor"/>), each a <see cref="ContributedSearchCategoryDto"/> serialized as a top-level
+/// member under its key beside the built-in categories.
 /// </summary>
 public sealed record AllSearchDto(
     string Query,
@@ -92,7 +98,13 @@ public sealed record AllSearchDto(
     SearchCategoryDto<FlowHitDto> Flows,
     SearchCategoryDto<FlowColumnHitDto> FlowColumns,
     SearchCategoryDto<StatementHitDto> Statements,
-    SearchCategoryDto<SubscriberHitDto> Subscribers);
+    SearchCategoryDto<SubscriberHitDto> Subscribers)
+{
+    /// <summary>The contributed categories by key. An init-only member rather than a constructor parameter: JSON
+    /// extension data cannot bind to a constructor parameter.</summary>
+    [System.Text.Json.Serialization.JsonExtensionData]
+    public IDictionary<string, object>? Contributed { get; init; }
+}
 
 /// <summary>
 /// A search term parsed into the raw phrase and the tokens actually matched. A query is matched token by token and
@@ -214,6 +226,7 @@ public static class SearchEndpoints
         search.MapGet("/flow-columns", SearchFlowColumnsAsync).WithName("SearchFlowColumns");
         search.MapGet("/statements", SearchStatementsAsync).WithName("SearchStatements");
         search.MapGet("/subscribers", SearchSubscribersAsync).WithName("SearchSubscribers");
+        search.MapGet("/categories/{key}", SearchContributedCategoryAsync).WithName("SearchContributedCategory");
 
         return group;
     }
@@ -370,7 +383,8 @@ public static class SearchEndpoints
     /// is the same hit the tab shows.
     /// </summary>
     private static async Task<Results<Ok<AllSearchDto>, ProblemHttpResult>> SearchAllAsync(
-        CatalogDbContext db, TimeProvider clock, string? q, CancellationToken ct)
+        CatalogDbContext db, TimeProvider clock, [FromServices] IEnumerable<ISearchContributor> contributors,
+        IAuthorizationService authorization, ILoggerFactory loggers, HttpContext http, string? q, CancellationToken ct)
     {
         var term = SearchQuery.Parse(q);
         if (term is null)
@@ -403,6 +417,12 @@ public static class SearchEndpoints
         var stmtGroups = await stmtQuery.Take(PreviewSize).ToListAsync(ct).ConfigureAwait(false);
         var stmtItems = await MapStatementsAsync(db, stmtGroups, term, ct).ConfigureAwait(false);
 
+        // The categories host modules contribute run after the built-in ones and one at a time (they may share this
+        // request's scoped services); a failing contributor reports its own category and never fails the search.
+        var contributed = await SearchContributors.CollectAsync(
+            contributors, term.Phrase, term.Tokens, PreviewSize, http.User, authorization, CorrelationIdOf(http),
+            ContributorLogger(loggers), ct).ConfigureAwait(false);
+
         return TypedResults.Ok(new AllSearchDto(
             term.Phrase,
             term.Tokens,
@@ -414,8 +434,63 @@ public static class SearchEndpoints
             new SearchCategoryDto<FlowHitDto>(flowTotal, flowItems),
             new SearchCategoryDto<FlowColumnHitDto>(flowColTotal, flowColItems),
             new SearchCategoryDto<StatementHitDto>(stmtTotal, stmtItems),
-            subscribers));
+            subscribers)
+        {
+            Contributed = contributed,
+        });
     }
+
+    /// <summary>
+    /// One page of a category a host module contributes (<see cref="ISearchContributor"/>): the "see all" view of a
+    /// category the combined search previews. An unknown key is 404, a caller outside the category's policy is 403, and
+    /// a failing contributor is a 500 whose detail is the same safe error the combined search reports for it.
+    /// </summary>
+    private static async Task<Results<Ok<PagedResult<SearchHitDto>>, ProblemHttpResult, ForbidHttpResult>> SearchContributedCategoryAsync(
+        string key, [FromServices] IEnumerable<ISearchContributor> contributors, IAuthorizationService authorization,
+        ILoggerFactory loggers, HttpContext http, string? q, int? page, int? pageSize, CancellationToken ct)
+    {
+        var contributor = SearchContributors.Find(contributors, key);
+        if (contributor is null)
+        {
+            return TypedResults.Problem(
+                detail: $"No search category '{key}' is registered.",
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Unknown search category");
+        }
+
+        if (!await SearchContributors.IsVisibleAsync(contributor, http.User, authorization).ConfigureAwait(false))
+        {
+            return TypedResults.Forbid();
+        }
+
+        var term = SearchQuery.Parse(q);
+        if (term is null)
+        {
+            return BadRequest("A non-empty 'q' query parameter is required.");
+        }
+
+        var (p, size) = PageRequest.Normalize(page, pageSize);
+        var outcome = await SearchContributors.RunAsync(
+            contributor, new SearchContributionRequest(term.Phrase, term.Tokens, p, size, http.User),
+            CorrelationIdOf(http), ContributorLogger(loggers), ct).ConfigureAwait(false);
+
+        return outcome.Result is { } result
+            ? TypedResults.Ok(new PagedResult<SearchHitDto>(result.Items, p, size, result.Total, result.TotalCapped))
+            : TypedResults.Problem(
+                detail: outcome.Error,
+                statusCode: StatusCodes.Status500InternalServerError,
+                title: "Search category failed");
+    }
+
+    /// <summary>The request's correlation id, as the exception handler reports it, so a category's error names the
+    /// log line that explains it.</summary>
+    private static string CorrelationIdOf(HttpContext http)
+        => http.Items.TryGetValue(CorrelationIdMiddleware.HeaderName, out var id) && id?.ToString() is { Length: > 0 } value
+            ? value
+            : http.TraceIdentifier;
+
+    private static ILogger ContributorLogger(ILoggerFactory loggers)
+        => loggers.CreateLogger(typeof(SearchContributors).FullName ?? nameof(SearchContributors));
 
     // ---- Shared query builders (one definition per surface, used by both the paged and combined endpoints) --------
     //

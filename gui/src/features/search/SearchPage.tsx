@@ -422,7 +422,8 @@ export default function SearchPage() {
 
 /**
  * A GUI module's category in the combined result: the key it names, when the result carries a category there (a total and
- * a list of hits). Anything else, a result from a control plane without that module included, reads as no category.
+ * a list of hits, with the label and error the control plane's contributor reports). Anything else, a result from a
+ * control plane without that module included, reads as no category.
  */
 function moduleCategoryOf(result: AllSearchResult, key: string): SearchCategory<unknown> | null {
   const value: unknown = (result as unknown as Record<string, unknown>)[key];
@@ -430,18 +431,35 @@ function moduleCategoryOf(result: AllSearchResult, key: string): SearchCategory<
     return null;
   }
 
-  const candidate = value as { total?: unknown; items?: unknown; totalCapped?: unknown };
+  const candidate = value as { total?: unknown; items?: unknown; totalCapped?: unknown; label?: unknown; error?: unknown };
   return typeof candidate.total === "number" && Array.isArray(candidate.items)
-    ? { total: candidate.total, items: candidate.items, totalCapped: candidate.totalCapped === true }
+    ? {
+      total: candidate.total,
+      items: candidate.items,
+      totalCapped: candidate.totalCapped === true,
+      label: typeof candidate.label === "string" ? candidate.label : undefined,
+      error: typeof candidate.error === "string" && candidate.error !== "" ? candidate.error : null,
+    }
     : null;
 }
 
-/** One module category of the All view, rendered the way its module renders it. */
+/**
+ * One module category of the All view, rendered the way its module renders it. A category whose contributor failed is
+ * rendered as the control plane's reason instead, so a broken category is visible without hiding the others.
+ */
 function ModuleCategory({ contribution, query, category }: {
   contribution: SearchCategoryContribution;
   query: string;
   category: SearchCategory<unknown>;
 }) {
+  if (typeof category.error === "string") {
+    return (
+      <p className="text-[13px] text-destructive" role="alert" data-testid={`search-category-error-${contribution.key}`}>
+        {category.error}
+      </p>
+    );
+  }
+
   return <>{contribution.render({ query, category })}</>;
 }
 
@@ -478,10 +496,13 @@ function AllResults({ q, onSelectTab, openLineage, openRun, openPipeline, openSu
     );
   }
 
-  // The categories the build's GUI modules add, read from the same combined result; a category with no hits is left out.
+  // The categories the build's GUI modules add, read from the same combined result; a category with no hits is left out,
+  // unless it holds no hits because its contributor failed, which is shown.
   const moduleCategories = moduleSearchCategories().flatMap((contribution) => {
     const category = moduleCategoryOf(data, contribution.key);
-    return category === null || category.total === 0 ? [] : [{ contribution, category }];
+    return category === null || (category.total === 0 && typeof category.error !== "string")
+      ? []
+      : [{ contribution, category }];
   });
 
   const totalHits = data.objects.total + data.columns.total + data.definitions.total

@@ -1521,6 +1521,20 @@ export interface SearchCategory<T> {
   items: T[];
   /** True when the category stopped counting at a cap: `total` is then a floor. */
   totalCapped?: boolean;
+  /** A contributed category's display name, as the control plane's contributor declares it. */
+  label?: string;
+  /** Why a contributed category holds no hits: its contributor failed. Null or absent when it answered. */
+  error?: string | null;
+}
+
+// One hit of a category a control plane module contributes (ISearchContributor): what it is, where it opens (`route`,
+// an absolute GUI path or an http(s) link, null when it opens nowhere), and the contributor's own detail in `data`.
+export interface SearchHit {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  route: string | null;
+  data?: unknown;
 }
 
 // The combined result of a single global search across every catalog surface. `tokens` is how the raw query was

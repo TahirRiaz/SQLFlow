@@ -32,7 +32,7 @@ import type {
   RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry, RunTraceStorage, RunTraceRetention, RunTraceRetentionUpdate, RunStatementPurgeResult, RunEventPurgeResult,
   RunSummary, RunSurrogateKey, SchemaChange, SchemaChangeDatabase, SchemaObjectCompare,
   RunTriggerAccepted, RunTriggerRequest, Schedule, ScheduleCreated, ScheduleDefinition, SchedulePlan, ScheduleRunAccepted, SessionResponse, TokenResponse,
-  SourceDiscoverRequest, SourceDiscoverResult, Subscriber, SubscriberDossier, SubscriberHit,
+  SearchHit, SourceDiscoverRequest, SourceDiscoverResult, Subscriber, SubscriberDossier, SubscriberHit,
   UpdateNotificationSubscriptionRequest, UpdateUserProfileRequest, User, Wave, WorkerPool, WorkerPoolScaleRequest,
 } from "./types";
 
@@ -577,6 +577,9 @@ export const searchApi = {
     get<PagedResult<StatementHit>>("/api/v1/search/statements", { q, ...query } as QueryParams),
   subscribers: (q: string, query: PageQuery = {}) =>
     get<PagedResult<SubscriberHit>>("/api/v1/search/subscribers", { q, ...query } as QueryParams),
+  // A category a control plane module contributes, paged; the combined search previews it under the same key.
+  category: (key: string, q: string, query: PageQuery = {}) =>
+    get<PagedResult<SearchHit>>(`/api/v1/search/categories/${encodeURIComponent(key)}`, { q, ...query } as QueryParams),
 };
 
 // ---- Users ---------------------------------------------------------------------------------------------------------------------

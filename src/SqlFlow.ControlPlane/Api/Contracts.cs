@@ -3,9 +3,11 @@
 namespace SqlFlow.ControlPlane.Api;
 
 /// <summary>One page of results plus the totals a client needs to paginate. Offset paging (page/pageSize) is
-/// sufficient for the catalog's cardinality; the contract can move to a cursor without breaking callers.</summary>
+/// sufficient for the catalog's cardinality; the contract can move to a cursor without breaking callers. A listing
+/// that counts only as far as a bound (a contributed search category over a large store, say) sets
+/// <c>TotalCapped</c>, and its total is then a floor: that many match, and more.</summary>
 /// <typeparam name="T">The item DTO.</typeparam>
-public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, long Total);
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, int Page, int PageSize, long Total, bool TotalCapped = false);
 
 /// <summary>Page request normalization: clamps to safe bounds so a client cannot request an unbounded page.</summary>
 public static class PageRequest

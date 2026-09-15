@@ -386,6 +386,15 @@ if (hasCors)
 
 var app = builder.Build();
 
+// ---- Host extensions: search categories a module contributes are checked once, before the first request, so a
+// conflicting registration (a duplicate or reserved key, an undefined policy) stops startup with a message naming it.
+using (var scope = app.Services.CreateScope())
+{
+    await SearchContributors.ValidateAsync(
+        scope.ServiceProvider.GetServices<ISearchContributor>(),
+        scope.ServiceProvider.GetRequiredService<Microsoft.AspNetCore.Authorization.IAuthorizationPolicyProvider>()).ConfigureAwait(false);
+}
+
 // ---- Pipeline ------------------------------------------------------------------------------------------------
 // Forwarded headers run FIRST: everything downstream (the rate limiter's per-IP partition, the login throttle,
 // diagnostics) must see the real client address, not the ingress's. Only the configured proxies are trusted, so
