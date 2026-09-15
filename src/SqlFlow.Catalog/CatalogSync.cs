@@ -118,14 +118,24 @@ public sealed class CatalogSync
         Converters = { new JsonStringEnumConverter() },
     };
 
-    private readonly FlowSetCollector _estate = new();
+    private readonly FlowSetCollector _estate;
 
-    private readonly YamlDocumentLoader _documents = new(
-        new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(),
-        new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
-        new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
-        new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
+    private readonly YamlDocumentLoader _documents;
+
+    /// <summary>A sync over the built-in flow kinds only.</summary>
+    public CatalogSync()
+        : this(YamlDocumentLoader.CreateDefault())
+    {
+    }
+
+    /// <summary>A sync that parses with <paramref name="documents"/>, so the flow kinds a host registered become
+    /// pipelines as well.</summary>
+    public CatalogSync(YamlDocumentLoader documents)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+        _documents = documents;
+        _estate = new FlowSetCollector(documents);
+    }
 
     /// <summary>One estate flow prepared for the reconciliation transaction: its redacted text, content hash,
     /// serialized definition, and the parsed document (null when it failed to parse after the scan) that the
@@ -242,6 +252,7 @@ public sealed class CatalogSync
                             IncludeDerived = includeDerived,
                             Secrets = secrets,
                             Progress = lineageProgress,
+                            Documents = _documents,
                         },
                         collected, ct).ConfigureAwait(false);
                     foreach (var warning in report.Warnings)

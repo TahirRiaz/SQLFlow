@@ -1136,6 +1136,7 @@ public sealed partial class RunWorker : IDisposable
             FileFlowDocument doc => IsLocalRelative(doc.Flow.Source.Location),
             ExportFlowDocument doc => IsLocalRelative(doc.Document.Flow.TrgPath),
             SourceControlFlowDocument doc => IsLocalRelative(doc.Document.Flow.Repository.WorkingDirectory),
+            RegisteredFlowDocument doc => doc.RequiresRepoTree,
             _ => false,
         };
 

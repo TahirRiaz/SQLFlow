@@ -74,18 +74,19 @@ public sealed record FlowLoadProfile
 /// </summary>
 public static class FlowLoadProfiles
 {
-    private static readonly YamlDocumentLoader Documents = new(
-        new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(),
-        new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
-        new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
-        new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
+    private static readonly YamlDocumentLoader BuiltInDocuments = YamlDocumentLoader.CreateDefault();
 
-    /// <summary>Profiles a flow from its stored (secret-redacted) YAML, the same text the catalog sync parsed. A
-    /// document that no longer parses yields an <see cref="FlowReadModes.Unknown"/> profile naming the parse error,
-    /// so the caller reports "cannot tell" instead of guessing.</summary>
-    public static FlowLoadProfile FromYaml(string? yaml)
+    /// <summary>Profiles a flow of a built-in kind from its stored YAML; see
+    /// <see cref="FromYaml(string?, YamlDocumentLoader)"/>.</summary>
+    public static FlowLoadProfile FromYaml(string? yaml) => FromYaml(yaml, BuiltInDocuments);
+
+    /// <summary>Profiles a flow from its stored (secret-redacted) YAML, the same text the catalog sync parsed, with
+    /// <paramref name="documents"/>, the loader the host's sync parses with, so a flow of a registered kind is read as
+    /// the sync read it. A document that no longer parses yields an <see cref="FlowReadModes.Unknown"/> profile naming
+    /// the parse error, so the caller reports "cannot tell" instead of guessing.</summary>
+    public static FlowLoadProfile FromYaml(string? yaml, YamlDocumentLoader documents)
     {
+        ArgumentNullException.ThrowIfNull(documents);
         if (string.IsNullOrWhiteSpace(yaml))
         {
             return Unknown("the catalog holds no YAML for this flow");
@@ -94,7 +95,7 @@ public static class FlowLoadProfiles
         FlowDocument document;
         try
         {
-            document = Documents.Parse(yaml, "<catalog>");
+            document = documents.Parse(yaml, "<catalog>");
         }
         catch (SqlFlowException ex)
         {
@@ -150,6 +151,11 @@ public static class FlowLoadProfiles
                 $"reads the table and view metadata of {(d.Document.Flow.Scope.Database is { } database ? $"database '{database}'" : "the default database")} behind connection '{d.Document.Flow.Server}'",
                 "registers those objects in the catalog; it loads no table",
                 target: null),
+            RegisteredFlowDocument d => Profile(
+                FlowReadModes.External,
+                $"runs the '{d.Kind}' flow kind a host module registered; what it reads is defined by that module, not modelled by SQLFlow",
+                "whatever the module's executor writes (its documentation describes the load)",
+                target: d.TargetReference),
             _ => Unknown($"no load profile is defined for the flow document type {document.GetType().Name}"),
         };
     }

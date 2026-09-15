@@ -35,22 +35,24 @@ public static class FlowProposalPreflight
     /// Only ACTIVE pipelines participate: a flow that already left git constrains nothing.</summary>
     public sealed record ExistingPipeline(string Name, string RelativePath, string Yaml);
 
-    private static readonly YamlDocumentLoader Documents = new(
-        new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(),
-        new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
-        new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
-        new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
-
     private static readonly YamlScheduleLibraryLoader ScheduleLibraries = new();
 
     private static readonly YamlSubscriberLibraryLoader SubscriberLibraries = new();
 
+    /// <summary>Preflights a proposal against the built-in flow kinds only.</summary>
     public static ProposalPreflightResult Run(
         IReadOnlyList<ProposalFile> files, IReadOnlyList<ExistingPipeline> existing)
+        => Run(files, existing, YamlDocumentLoader.CreateDefault());
+
+    /// <summary>Preflights a proposal with <paramref name="documents"/>, the loader this host's managed sync parses
+    /// with, so a proposed flow of a registered kind and a companion document are judged exactly as the sync will judge
+    /// them.</summary>
+    public static ProposalPreflightResult Run(
+        IReadOnlyList<ProposalFile> files, IReadOnlyList<ExistingPipeline> existing, YamlDocumentLoader documents)
     {
         ArgumentNullException.ThrowIfNull(files);
         ArgumentNullException.ThrowIfNull(existing);
+        ArgumentNullException.ThrowIfNull(documents);
 
         var errors = new List<ProposalFinding>();
         var warnings = new List<ProposalFinding>();
@@ -95,10 +97,26 @@ public static class FlowProposalPreflight
                 continue;
             }
 
+            // A companion document (a registered kind's mapping, say) is checked under its own document type: one that
+            // does not parse would be refused by the kind that reads it, so it is refused here too.
+            try
+            {
+                if (documents.ParseCompanion(file.Content, file.Path) is not null)
+                {
+                    continue;
+                }
+            }
+            catch (SqlFlowException ex)
+            {
+                errors.Add(new ProposalFinding(
+                    file.Path, $"does not parse as a companion document: {SecretHygiene.RedactedMessage(ex)}"));
+                continue;
+            }
+
             FlowDocument document;
             try
             {
-                document = Documents.Parse(file.Content, file.Path);
+                document = documents.Parse(file.Content, file.Path);
             }
             catch (SqlFlowException ex)
             {
@@ -158,7 +176,7 @@ public static class FlowProposalPreflight
                     continue; // endpoint identity belongs to the document's primary flow.
                 }
 
-                var (removed, added) = DiffEndpoints(current, document, file.Path, warnings);
+                var (removed, added) = DiffEndpoints(current, document, file.Path, documents, warnings);
                 if (removed.Count > 0 || added.Count > 0)
                 {
                     warnings.Add(new ProposalFinding(
@@ -178,12 +196,13 @@ public static class FlowProposalPreflight
     /// revision. A stored document that no longer parses cannot be diffed; that is reported as its own warning
     /// (never an error: the proposal may be the very fix) and the diff is empty.</summary>
     private static (List<string> Removed, List<string> Added) DiffEndpoints(
-        ExistingPipeline current, FlowDocument proposed, string path, List<ProposalFinding> warnings)
+        ExistingPipeline current, FlowDocument proposed, string path, YamlDocumentLoader documents,
+        List<ProposalFinding> warnings)
     {
         FlowDocument currentDocument;
         try
         {
-            currentDocument = Documents.Parse(current.Yaml, current.RelativePath);
+            currentDocument = documents.Parse(current.Yaml, current.RelativePath);
         }
         catch (SqlFlowException ex)
         {

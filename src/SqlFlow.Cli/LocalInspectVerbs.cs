@@ -71,6 +71,13 @@ internal static class LocalInspectVerbs
             var relative = Path.GetRelativePath(root, file);
             try
             {
+                // A companion document (a registered kind's mapping, say) validates under its own document type.
+                if (documents.ParseCompanion(File.ReadAllText(file), file) is { } companion)
+                {
+                    results.Add(new ValidationResult(relative, true, companion.DocumentType, companion.Name, null));
+                    continue;
+                }
+
                 // Parse warnings go to stderr exactly as single-file validate routes them.
                 var document = DocumentLoader.Load(documents, file, Console.Error.WriteLine);
                 var (kind, name) = Describe(document);
@@ -120,6 +127,7 @@ internal static class LocalInspectVerbs
         SftpFlowDocument doc => ("sftp", doc.Flow.Name),
         CalendarFlowDocument doc => ("cal", doc.Document.Flow.SysAlias),
         TranslateFlowDocument doc => ("trl", doc.Document.Flow.SysAlias),
+        RegisteredFlowDocument doc => (doc.Kind, doc.Name),
         _ => throw new SqlFlowException($"Unhandled document kind '{document.GetType().Name}'."),
     };
 

@@ -1,5 +1,6 @@
 using SqlFlow.Core.Secrets;
 using SqlFlow.Lineage.Collection;
+using SqlFlow.Yaml;
 
 namespace SqlFlow.Catalog;
 
@@ -26,9 +27,16 @@ public static class FlowDiscovery
     /// kilobytes; this only guards a corrupt or hostile file from bloating the preview payload).</summary>
     public const long MaxPreviewContentBytes = 256 * 1024;
 
+    /// <summary>Discovers the flows of the built-in flow kinds.</summary>
     public static IReadOnlyList<DiscoveredFlow> Discover(string estateDirectory, CancellationToken ct = default)
+        => Discover(estateDirectory, YamlDocumentLoader.CreateDefault(), ct);
+
+    /// <summary>Discovers the flows <paramref name="documents"/> parses: the built-in kinds and every kind the host
+    /// registered, exactly as a sync with the same loader imports them.</summary>
+    public static IReadOnlyList<DiscoveredFlow> Discover(string estateDirectory, YamlDocumentLoader documents, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(estateDirectory);
+        ArgumentNullException.ThrowIfNull(documents);
         var root = Path.GetFullPath(estateDirectory);
         if (!Directory.Exists(root))
         {
@@ -37,7 +45,7 @@ public static class FlowDiscovery
 
         // The same collector the sync runs: every *.yaml that parses as a flow. Non-flow yamls are already dropped
         // there, so the preview shows exactly what a sync would import.
-        var collected = new FlowSetCollector().Collect(root);
+        var collected = new FlowSetCollector(documents).Collect(root);
 
         // One entry per file: a document that projects several flow nodes (an ingestion with an embedded health
         // check) still selects as one file, and the first node for a path names it.

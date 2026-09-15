@@ -121,14 +121,25 @@ public sealed record TranslateFlowDocument : FlowDocument
 /// The single entry point for loading any flow document: it sniffs the root <c>flowType</c> key with a cheap
 /// probe pass, then delegates to the matching loader. No key (the long-standing default) means a file flow;
 /// <c>ing</c> means a relational ingestion flow, <c>exp</c> a file export, <c>sp</c> a stored-procedure flow,
-/// <c>inv</c> a standalone invoke, <c>hc</c> an ML health check; anything else is a clear error rather than a
-/// confusing downstream validation failure.
+/// <c>inv</c> a standalone invoke, <c>hc</c> an ML health check, <c>sch</c> a schema registration. A host can
+/// register further kinds (<see cref="IFlowDocumentKind"/>) and companion document types
+/// (<see cref="ICompanionDocumentKind"/>); anything else is a clear error rather than a confusing downstream
+/// validation failure.
 /// </summary>
 public sealed class YamlDocumentLoader
 {
+    /// <summary>The <c>flowType</c> values the loader parses itself (<c>file</c> names the key-less file flow). A
+    /// registered kind may not claim one of them.</summary>
+    public static readonly IReadOnlySet<string> BuiltInFlowTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "file", "ing", "exp", "sp", "inv", "hc", "scm", "sch", "batch", "api", "cpy", "sftp", "cal", "trl",
+    };
+
     private sealed class DocumentKindYaml
     {
         public string? FlowType { get; set; }
+
+        public string? DocumentType { get; set; }
 
         public ScheduleYaml? Schedule { get; set; }
 
@@ -251,7 +262,10 @@ public sealed class YamlDocumentLoader
     private readonly YamlCalendarFlowLoader _calendarFlows;
     private readonly YamlTranslateFlowLoader _translateFlows;
     private readonly YamlSchemaRegistrationFlowLoader _schemaRegistrationFlows;
+    private readonly Dictionary<string, IFlowDocumentKind> _kinds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ICompanionDocumentKind> _companions = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>A loader over the built-in flow kinds only.</summary>
     public YamlDocumentLoader(
         YamlFlowLoader fileFlows,
         YamlIngestionFlowLoader ingestionFlows,
@@ -267,6 +281,35 @@ public sealed class YamlDocumentLoader
         YamlCalendarFlowLoader calendarFlows,
         YamlTranslateFlowLoader translateFlows,
         YamlSchemaRegistrationFlowLoader schemaRegistrationFlows)
+        : this(
+            fileFlows, ingestionFlows, exportFlows, storedProcedureFlows, invokeFlows, healthCheckFlows, sourceControlFlows,
+            batchFlows, acquireFlows, copyFlows, sftpFlows, calendarFlows, translateFlows, schemaRegistrationFlows, [], [])
+    {
+    }
+
+    /// <summary>
+    /// A loader over the built-in flow kinds plus the kinds and companion document types a host registered. A
+    /// registered kind may not claim a built-in <c>flowType</c>, and no two registrations may share a
+    /// <c>flowType</c> or a <c>documentType</c>: each would make one of them unreachable, so it is refused at
+    /// construction rather than surfacing as a wrongly parsed document later.
+    /// </summary>
+    public YamlDocumentLoader(
+        YamlFlowLoader fileFlows,
+        YamlIngestionFlowLoader ingestionFlows,
+        YamlExportFlowLoader exportFlows,
+        YamlStoredProcedureFlowLoader storedProcedureFlows,
+        YamlInvokeFlowLoader invokeFlows,
+        YamlHealthCheckFlowLoader healthCheckFlows,
+        YamlSourceControlFlowLoader sourceControlFlows,
+        YamlBatchFlowLoader batchFlows,
+        YamlAcquireFlowLoader acquireFlows,
+        YamlCopyFlowLoader copyFlows,
+        YamlSftpFlowLoader sftpFlows,
+        YamlCalendarFlowLoader calendarFlows,
+        YamlTranslateFlowLoader translateFlows,
+        YamlSchemaRegistrationFlowLoader schemaRegistrationFlows,
+        IEnumerable<IFlowDocumentKind> kinds,
+        IEnumerable<ICompanionDocumentKind> companions)
     {
         ArgumentNullException.ThrowIfNull(fileFlows);
         ArgumentNullException.ThrowIfNull(ingestionFlows);
@@ -282,6 +325,8 @@ public sealed class YamlDocumentLoader
         ArgumentNullException.ThrowIfNull(calendarFlows);
         ArgumentNullException.ThrowIfNull(translateFlows);
         ArgumentNullException.ThrowIfNull(schemaRegistrationFlows);
+        ArgumentNullException.ThrowIfNull(kinds);
+        ArgumentNullException.ThrowIfNull(companions);
         _fileFlows = fileFlows;
         _ingestionFlows = ingestionFlows;
         _exportFlows = exportFlows;
@@ -296,7 +341,75 @@ public sealed class YamlDocumentLoader
         _calendarFlows = calendarFlows;
         _translateFlows = translateFlows;
         _schemaRegistrationFlows = schemaRegistrationFlows;
+
+        foreach (var kind in kinds)
+        {
+            if (kind is null)
+            {
+                throw new InvalidOperationException("A registered flow kind is null.");
+            }
+
+            var flowType = kind.FlowType?.Trim();
+            if (string.IsNullOrEmpty(flowType))
+            {
+                throw new InvalidOperationException($"The flow kind '{kind.GetType().FullName}' declares no flowType.");
+            }
+
+            if (BuiltInFlowTypes.Contains(flowType))
+            {
+                throw new InvalidOperationException(
+                    $"The flow kind '{kind.GetType().FullName}' claims the built-in flowType '{flowType}'; a registered kind needs a flowType of its own.");
+            }
+
+            if (!_kinds.TryAdd(flowType, kind))
+            {
+                throw new InvalidOperationException(
+                    $"The flowType '{flowType}' is registered by both '{_kinds[flowType].GetType().FullName}' and '{kind.GetType().FullName}'.");
+            }
+        }
+
+        foreach (var companion in companions)
+        {
+            if (companion is null)
+            {
+                throw new InvalidOperationException("A registered companion document type is null.");
+            }
+
+            var documentType = companion.DocumentType?.Trim();
+            if (string.IsNullOrEmpty(documentType))
+            {
+                throw new InvalidOperationException($"The companion document type '{companion.GetType().FullName}' declares no documentType.");
+            }
+
+            if (!_companions.TryAdd(documentType, companion))
+            {
+                throw new InvalidOperationException(
+                    $"The documentType '{documentType}' is registered by both '{_companions[documentType].GetType().FullName}' and '{companion.GetType().FullName}'.");
+            }
+        }
     }
+
+    /// <summary>A loader over the built-in flow kinds, plus <paramref name="kinds"/> and <paramref name="companions"/>
+    /// when given: what a component that has no dependency injection of its own parses with.</summary>
+    public static YamlDocumentLoader CreateDefault(
+        IEnumerable<IFlowDocumentKind>? kinds = null, IEnumerable<ICompanionDocumentKind>? companions = null)
+        => new(
+            new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(),
+            new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
+            new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
+            new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
+            new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader(), kinds ?? [], companions ?? []);
+
+    /// <summary>The flow kinds a host registered beside the built-in ones.</summary>
+    public IReadOnlyCollection<IFlowDocumentKind> Kinds => _kinds.Values;
+
+    /// <summary>The companion document types a host registered.</summary>
+    public IReadOnlyCollection<ICompanionDocumentKind> CompanionKinds => _companions.Values;
+
+    /// <summary>Whether <paramref name="flowType"/> names a built-in or a registered flow kind.</summary>
+    public bool IsKnownFlowType(string? flowType)
+        => !string.IsNullOrWhiteSpace(flowType)
+           && (BuiltInFlowTypes.Contains(flowType.Trim()) || _kinds.ContainsKey(flowType.Trim()));
 
     public FlowDocument LoadFile(string path)
     {
@@ -311,22 +424,21 @@ public sealed class YamlDocumentLoader
 
     public FlowDocument Parse(string yaml, string source = "<inline>")
     {
-        DocumentKindYaml? probe;
-        try
-        {
-            probe = _probe.Deserialize<DocumentKindYaml>(yaml);
-        }
-        catch (YamlException ex)
-        {
-            throw new FlowValidationException($"{source}: invalid YAML - {ex.Message}", ex);
-        }
-
+        var probe = Probe(yaml, source);
         var flowType = probe?.FlowType?.Trim();
         var schedule = MapSchedule(probe?.Schedule);
         var mode = YamlDocumentParts.ParseExecutionMode(probe?.Mode, "mode", source);
 
         if (string.IsNullOrEmpty(flowType))
         {
+            // A companion document (a mapping a registered kind owns, say) is not a key-less file flow: say what it
+            // is, rather than failing file-flow validation on keys it never meant to have.
+            if (probe?.DocumentType?.Trim() is { Length: > 0 } documentType && _companions.ContainsKey(documentType))
+            {
+                throw new FlowValidationException(
+                    $"{source}: is a '{documentType}' document, not a flow document; it is read by the kind that registered the document type.");
+            }
+
             return new FileFlowDocument { Flow = _fileFlows.Parse(yaml, source), Schedule = schedule, Mode = mode };
         }
 
@@ -395,6 +507,11 @@ public sealed class YamlDocumentLoader
             return new TranslateFlowDocument { Document = _translateFlows.Parse(yaml, source), Schedule = schedule, Mode = mode };
         }
 
+        if (_kinds.TryGetValue(flowType, out var registered))
+        {
+            return ParseRegistered(registered, yaml, source, schedule, mode);
+        }
+
         throw new FlowValidationException(
             $"{source}: unknown flowType '{flowType}'. Use 'ing' for a table-to-table ingestion flow, 'exp' for a " +
             "file export, 'sp' for a stored-procedure flow, 'inv' for an ADF/Automation trigger, 'hc' for an ML " +
@@ -403,7 +520,72 @@ public sealed class YamlDocumentLoader
             "'api' for a generic acquisition flow (HTTP / SFTP / Azure Table), 'cpy' for a file-copy flow "
             + "(local / Azure storage / S3, with optional zip/unzip), 'cal' for a generated calendar dimension, "
             + "'trl' for a JSON translation flow (query result to shaped documents, optionally delivered to an API), "
-            + "or omit flowType for a file flow.");
+            + "or omit flowType for a file flow."
+            + (_kinds.Count == 0
+                ? string.Empty
+                : " Registered kinds: " + string.Join(
+                    ", ", _kinds.Values.OrderBy(k => k.FlowType, StringComparer.OrdinalIgnoreCase).Select(k => $"'{k.FlowType}' for {k.Description}")) + "."));
+    }
+
+    /// <summary>
+    /// Parses a companion document: a YAML whose top-level <c>documentType</c> a registered kind owns (a mapping, say).
+    /// Returns the document type and the display name its kind reports, or null when the YAML declares no
+    /// <c>documentType</c> (it is then a flow document or not a document of this estate at all). A
+    /// <c>documentType</c> no registration owns is refused, naming the registered types.
+    /// </summary>
+    public (string DocumentType, string Name)? ParseCompanion(string yaml, string source = "<inline>")
+    {
+        var documentType = Probe(yaml, source)?.DocumentType?.Trim();
+        if (string.IsNullOrEmpty(documentType))
+        {
+            return null;
+        }
+
+        if (!_companions.TryGetValue(documentType, out var companion))
+        {
+            throw new FlowValidationException(
+                $"{source}: unknown documentType '{documentType}'."
+                + (_companions.Count == 0
+                    ? " No companion document types are registered in this host."
+                    : " Registered document types: " + string.Join(
+                        ", ", _companions.Values.OrderBy(c => c.DocumentType, StringComparer.OrdinalIgnoreCase).Select(c => $"'{c.DocumentType}' for {c.Description}")) + "."));
+        }
+
+        return (companion.DocumentType, companion.ParseCompanion(yaml, source));
+    }
+
+    private DocumentKindYaml? Probe(string yaml, string source)
+    {
+        try
+        {
+            return _probe.Deserialize<DocumentKindYaml>(yaml);
+        }
+        catch (YamlException ex)
+        {
+            throw new FlowValidationException($"{source}: invalid YAML - {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>Parses a document of a registered kind and stamps the envelope on it, so every kind carries its
+    /// schedule and mode exactly as the built-in kinds do. A kind that returns no document, a document of another
+    /// kind, or a document without a name is a defect of that kind, reported against the source file.</summary>
+    private static RegisteredFlowDocument ParseRegistered(
+        IFlowDocumentKind kind, string yaml, string source, ScheduleSpec? schedule, Core.Runs.ExecutionMode mode)
+    {
+        var document = kind.Parse(yaml, source)
+            ?? throw new FlowValidationException($"{source}: the '{kind.FlowType}' kind returned no document.");
+        if (!string.Equals(document.Kind, kind.FlowType, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new FlowValidationException(
+                $"{source}: the '{kind.FlowType}' kind returned a document of kind '{document.Kind}'.");
+        }
+
+        if (string.IsNullOrWhiteSpace(document.Name))
+        {
+            throw new FlowValidationException($"{source}: a '{kind.FlowType}' flow must declare a name.");
+        }
+
+        return document with { Schedule = schedule, Mode = mode };
     }
 
     private static ScheduleSpec? MapSchedule(ScheduleYaml? schedule)

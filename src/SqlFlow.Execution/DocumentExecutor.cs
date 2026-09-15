@@ -181,8 +181,29 @@ public sealed class DocumentExecutor : IDocumentRunner
             SchemaRegistrationFlowDocument doc => await ExecuteSchemaRegistrationAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             CalendarFlowDocument doc => await ExecuteCalendarAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             TranslateFlowDocument doc => await ExecuteTranslateAsync(doc, flowFile, options, ct).ConfigureAwait(false),
+            RegisteredFlowDocument doc => await ExecuteRegisteredAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             _ => throw new SqlFlowException($"Cannot run document kind '{document.GetType().Name}'."),
         };
+    }
+
+    /// <summary>
+    /// Runs a document of a registered kind through the executor that claims it. The flow-name check the ingestion
+    /// branch applies holds here too: a caller that names a flow the document does not declare is refused rather than
+    /// running something else.
+    /// </summary>
+    private async Task<DocumentExecutionResult> ExecuteRegisteredAsync(
+        RegisteredFlowDocument document, string flowFile, DocumentExecutionOptions options, CancellationToken ct)
+    {
+        if (options.FlowName is { } requested && !string.Equals(requested, document.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new SqlFlowException(
+                $"This document declares flow '{document.Name}', not '{requested}'. The file and the catalog have drifted; re-sync the repo.");
+        }
+
+        var executor = _provider.GetServices<IFlowDocumentExecutor>().FirstOrDefault(e => e.CanExecute(document))
+            ?? throw new SqlFlowException(
+                $"No executor is registered for flowType '{document.Kind}' (flow '{document.Name}'); the host that runs it must register the module that provides the kind.");
+        return await executor.ExecuteAsync(document, flowFile, options, ct).ConfigureAwait(false);
     }
 
     private async Task<DocumentExecutionResult> ExecuteFileAsync(FileFlowDocument doc, string flowFile, DocumentExecutionOptions options, CancellationToken ct)

@@ -52,6 +52,7 @@ public static class DocumentLoader
             CalendarFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
             TranslateFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
             FileFlowDocument doc => [("target", doc.Flow.Target.Connection)],
+            RegisteredFlowDocument doc => doc.CredentialReferences.Select(c => (c.Key, c.Value)),
             _ => Enumerable.Empty<(string, string)>(),
         };
 

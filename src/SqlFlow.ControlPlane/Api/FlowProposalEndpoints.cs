@@ -74,6 +74,7 @@ public static class FlowProposalEndpoints
         ISecretResolver resolver,
         IGitProposalPublisher gitPublisher,
         IEnumerable<IPullRequestPublisher> prPublishers,
+        SqlFlow.Yaml.YamlDocumentLoader documents,
         CancellationToken ct)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.Title))
@@ -120,7 +121,7 @@ public static class FlowProposalEndpoints
             .Where(p => p.RepoId == repoId && p.Active)
             .Select(p => new FlowProposalPreflight.ExistingPipeline(p.Name, p.RelativePath, p.Yaml))
             .ToListAsync(ct).ConfigureAwait(false);
-        var preflight = FlowProposalPreflight.Run(filesOrError.Files!, existingPipelines);
+        var preflight = FlowProposalPreflight.Run(filesOrError.Files!, existingPipelines, documents);
         if (preflight.Errors.Count > 0)
         {
             return Problem(

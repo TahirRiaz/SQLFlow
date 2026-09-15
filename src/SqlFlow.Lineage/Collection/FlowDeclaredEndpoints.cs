@@ -164,6 +164,22 @@ public static class FlowDeclaredEndpoints
                 break;
             }
 
+            case RegisteredFlowDocument doc:
+            {
+                // A registered kind declares its endpoints as the references it shows on the pipeline row.
+                if (!string.IsNullOrWhiteSpace(doc.SourceReference))
+                {
+                    endpoints.Add(new DeclaredEndpoint("source", doc.SourceReference!));
+                }
+
+                if (!string.IsNullOrWhiteSpace(doc.TargetReference))
+                {
+                    endpoints.Add(new DeclaredEndpoint("target", doc.TargetReference!));
+                }
+
+                break;
+            }
+
             // A source-control snapshot and a schema registration read definitions, not data, and a batch document
             // declares no flow of its own: none has a data endpoint whose change the preflight should police.
             case SourceControlFlowDocument:

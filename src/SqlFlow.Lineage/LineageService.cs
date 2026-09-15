@@ -3,6 +3,7 @@ using SqlFlow.Core.Secrets;
 using SqlFlow.Lineage.Collection;
 using SqlFlow.Lineage.Graph;
 using SqlFlow.SqlServer;
+using SqlFlow.Yaml;
 
 namespace SqlFlow.Lineage;
 
@@ -10,6 +11,10 @@ namespace SqlFlow.Lineage;
 public sealed record LineageOptions
 {
     public required string FlowDirectory { get; init; }
+
+    /// <summary>The loader the declared tier parses the flow documents with; the built-in flow kinds only when null. A
+    /// host passes its own loader so the flow kinds it registered take part in the graph.</summary>
+    public YamlDocumentLoader? Documents { get; init; }
 
     /// <summary>Read the canonical run artifacts (offline ground truth). Default on.</summary>
     public bool IncludeObserved { get; init; } = true;
@@ -65,7 +70,8 @@ public static class LineageService
     public static Task<LineageComputation> ComputeDetailedAsync(LineageOptions options, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(options);
-        return ComputeDetailedAsync(options, new FlowSetCollector().Collect(options.FlowDirectory), ct);
+        var collector = new FlowSetCollector(options.Documents ?? YamlDocumentLoader.CreateDefault());
+        return ComputeDetailedAsync(options, collector.Collect(options.FlowDirectory), ct);
     }
 
     /// <summary>

@@ -24,10 +24,16 @@ public sealed class BatchOrchestrator
 {
     private readonly IDocumentRunner _runner;
 
-    public BatchOrchestrator(IDocumentRunner runner)
+    private readonly SqlFlow.Yaml.YamlDocumentLoader _documents;
+
+    /// <param name="runner">The shared runner every member executes through.</param>
+    /// <param name="documents">The loader lineage parses the batch folder with; the built-in flow kinds only when null.
+    /// A host passes its own so the flow kinds it registered can be batch members.</param>
+    public BatchOrchestrator(IDocumentRunner runner, SqlFlow.Yaml.YamlDocumentLoader? documents = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
         _runner = runner;
+        _documents = documents ?? SqlFlow.Yaml.YamlDocumentLoader.CreateDefault();
     }
 
     public async Task<BatchRunResult> RunAsync(
@@ -355,13 +361,14 @@ public sealed class BatchOrchestrator
         }
     }
 
-    private static async Task<LineageReport> ComputeLineageAsync(string flowDirectory, bool connect, ISecretResolver secrets, CancellationToken ct)
+    private async Task<LineageReport> ComputeLineageAsync(string flowDirectory, bool connect, ISecretResolver secrets, CancellationToken ct)
         => await LineageService.ComputeAsync(new LineageOptions
         {
             FlowDirectory = flowDirectory,
             IncludeObserved = true,
             IncludeDerived = connect,
             Secrets = secrets,
+            Documents = _documents,
         }, ct).ConfigureAwait(false);
 
     /// <summary>Selects member flows from the lineage report by the include/exclude globs, marking the inactive

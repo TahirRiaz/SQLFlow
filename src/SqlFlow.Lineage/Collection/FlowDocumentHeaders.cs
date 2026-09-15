@@ -198,6 +198,19 @@ public static class FlowDocumentHeaders
                 ];
             }
 
+            case RegisteredFlowDocument doc:
+                // A kind a host registered: the document declares its own header members, so the estate scan, the
+                // per-run write-back and the proposal preflight project it exactly as they project a built-in flow.
+                // A side that is not a server (files, an external API) is the file-system identity, as for api/cpy.
+                return
+                [
+                    new DocumentFlowHeader(
+                        doc.Name, doc.Kind, doc.Batch,
+                        doc.SourceConnectionReference is { Length: > 0 } sourceReference ? ServerIdentity.From(sourceReference) : null,
+                        doc.TargetConnectionReference is { Length: > 0 } targetReference ? ServerIdentity.From(targetReference) : ServerIdentity.FileSystem,
+                        document.Schedule, document.Mode, doc.Lifecycle, doc.ParticipatesInLineage),
+                ];
+
             case BatchFlowDocument:
                 // An orchestration document: a batch declares no flow of its own; its ordering is computed FROM
                 // lineage, so it never becomes a pipeline row.

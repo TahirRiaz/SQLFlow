@@ -111,7 +111,25 @@ public static class SqlFlowEngineServices
         services.AddSingleton<YamlCalendarFlowLoader>();
         services.AddSingleton<YamlTranslateFlowLoader>();
         services.AddSingleton<YamlSchemaRegistrationFlowLoader>();
-        services.AddSingleton<YamlDocumentLoader>();
+        // The document loader parses the built-in kinds plus every flow kind (IFlowDocumentKind) and companion document
+        // type (ICompanionDocumentKind) a host registered, so each consumer of the loader sees the same set of kinds.
+        services.AddSingleton(sp => new YamlDocumentLoader(
+            sp.GetRequiredService<YamlFlowLoader>(),
+            sp.GetRequiredService<YamlIngestionFlowLoader>(),
+            sp.GetRequiredService<YamlExportFlowLoader>(),
+            sp.GetRequiredService<YamlStoredProcedureFlowLoader>(),
+            sp.GetRequiredService<YamlInvokeFlowLoader>(),
+            sp.GetRequiredService<YamlHealthCheckFlowLoader>(),
+            sp.GetRequiredService<YamlSourceControlFlowLoader>(),
+            sp.GetRequiredService<YamlBatchFlowLoader>(),
+            sp.GetRequiredService<YamlAcquireFlowLoader>(),
+            sp.GetRequiredService<YamlCopyFlowLoader>(),
+            sp.GetRequiredService<YamlSftpFlowLoader>(),
+            sp.GetRequiredService<YamlCalendarFlowLoader>(),
+            sp.GetRequiredService<YamlTranslateFlowLoader>(),
+            sp.GetRequiredService<YamlSchemaRegistrationFlowLoader>(),
+            sp.GetServices<IFlowDocumentKind>(),
+            sp.GetServices<ICompanionDocumentKind>()));
         services.AddSingleton<InferSpecLoader>();
         services.AddSingleton<FlowRunner>();
 

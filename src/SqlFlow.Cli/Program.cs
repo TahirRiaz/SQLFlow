@@ -112,6 +112,13 @@ internal static class Program
                         return await LocalInspectVerbs.ValidateEstateAsync(documents, file, args.Contains("--json")).ConfigureAwait(false);
                     }
 
+                    // A companion document (a registered kind's mapping, say) validates under its own document type.
+                    if (File.Exists(file) && documents.ParseCompanion(File.ReadAllText(file), file) is { } companion)
+                    {
+                        Console.WriteLine($"OK  '{companion.Name}' is valid ({companion.DocumentType}).");
+                        return 0;
+                    }
+
                     switch (DocumentLoader.Load(documents, file, Console.Error.WriteLine))
                     {
                         case FileFlowDocument doc:
@@ -230,6 +237,13 @@ internal static class Program
                                 $"OK  '{flow.SysAlias}' is valid (translate: query -> {flow.Output.Path} " +
                                 $"[{flow.Output.Mode}, one document {grain}]" +
                                 (flow.Invoke is null ? ")." : $", then {flow.Invoke.Method} {flow.Invoke.Url})."));
+                            return 0;
+                        }
+
+                        case RegisteredFlowDocument doc:
+                        {
+                            var sides = string.Join(" -> ", new[] { doc.SourceReference, doc.TargetReference }.Where(s => !string.IsNullOrWhiteSpace(s)));
+                            Console.WriteLine($"OK  '{doc.Name}' is valid ({doc.Kind}{(sides.Length == 0 ? string.Empty : ": " + sides)}).");
                             return 0;
                         }
 
@@ -1067,7 +1081,7 @@ internal static class Program
                         return Task.CompletedTask;
                     }
 
-                    var result = await new CatalogSync().SyncAsync(
+                    var result = await new CatalogSync(provider.GetRequiredService<YamlDocumentLoader>()).SyncAsync(
                         context, directory, repoName, repoUrl, DateTime.UtcNow,
                         includeDerived: connect, secrets: provider.GetRequiredService<ISecretResolver>(),
                         lineageProgress: PrintProgress).ConfigureAwait(false);
@@ -1157,7 +1171,7 @@ internal static class Program
             // block is best-effort; a refusal surfaces as a warning and never changes the run's exit code.)
             await CatalogDatabase.MigrateExistingAsync(connectionString).ConfigureAwait(false);
 
-            var sync = new CatalogSync();
+            var sync = new CatalogSync(provider.GetRequiredService<YamlDocumentLoader>());
             var recorded = 0;
             var warnings = new List<string>();
             foreach (var (flowFile, runJson) in candidates)
@@ -1375,6 +1389,7 @@ internal static class Program
             IncludeObserved = !args.Contains("--no-observed"),
             IncludeDerived = args.Contains("--connect"),
             Secrets = provider.GetRequiredService<ISecretResolver>(),
+            Documents = provider.GetRequiredService<YamlDocumentLoader>(),
         }).ConfigureAwait(false);
         var report = computation.Report;
 
@@ -2702,7 +2717,8 @@ internal static class Program
             return 1;
         }
 
-        var orchestrator = new BatchOrchestrator(provider.GetRequiredService<DocumentExecutor>());
+        var orchestrator = new BatchOrchestrator(
+            provider.GetRequiredService<DocumentExecutor>(), provider.GetRequiredService<YamlDocumentLoader>());
         var memberOptions = new DocumentExecutionOptions
         {
             LogLevel = ParseLogLevel(GetOption(args, "--log-level")),
@@ -2874,6 +2890,13 @@ internal static class Program
 
                 break;
             }
+
+            // A registered kind's result shape belongs to its host module; the platform reports the shared outcome.
+            case RegisteredFlowDocument doc:
+                Console.WriteLine(exec.Success
+                    ? $"OK  {doc.Kind} '{doc.Name}' completed in {exec.DurationSeconds}s"
+                    : $"FAILED  {exec.Error}");
+                break;
         }
 
         // The file flow already prints its own trace via PrintResult; every other kind points at its run folder.

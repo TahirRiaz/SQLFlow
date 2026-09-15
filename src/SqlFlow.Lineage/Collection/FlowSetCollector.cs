@@ -17,12 +17,21 @@ namespace SqlFlow.Lineage.Collection;
 /// </summary>
 public sealed class FlowSetCollector
 {
-    private readonly YamlDocumentLoader _documents = new(
-        new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(),
-        new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
-        new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
-        new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
+    private readonly YamlDocumentLoader _documents;
+
+    /// <summary>A collector over the built-in flow kinds only.</summary>
+    public FlowSetCollector()
+        : this(YamlDocumentLoader.CreateDefault())
+    {
+    }
+
+    /// <summary>A collector that parses with <paramref name="documents"/>, so the flow kinds a host registered are
+    /// scanned as well.</summary>
+    public FlowSetCollector(YamlDocumentLoader documents)
+    {
+        ArgumentNullException.ThrowIfNull(documents);
+        _documents = documents;
+    }
 
     private readonly YamlScheduleLibraryLoader _scheduleLibraries = new();
 
@@ -83,7 +92,17 @@ public sealed class FlowSetCollector
                 continue;
             }
 
-            Collect(result, document, relative, File.GetLastWriteTimeUtc(file), root, producers, consumers);
+            try
+            {
+                Collect(result, document, relative, File.GetLastWriteTimeUtc(file), root, producers, consumers);
+            }
+            catch (SqlFlowException ex)
+            {
+                // The document parsed but could not be projected (a kind no projection knows, a document whose
+                // declared connections are inconsistent): one such file must not blind the whole estate, so it is
+                // reported and the scan continues.
+                result.Warnings.Add($"{relative}: skipped: {ex.Message}");
+            }
         }
 
         ReconcileFileLinks(result, producers, consumers, root);

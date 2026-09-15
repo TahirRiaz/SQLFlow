@@ -1,4 +1,5 @@
 using SqlFlow.Catalog;
+using SqlFlow.Yaml;
 using Xunit;
 
 namespace SqlFlow.Tests;
@@ -221,6 +222,27 @@ public sealed class FlowLoadProfilesTests
         Assert.Equal(FlowReadModes.External, profile.ReadMode);
         Assert.Equal("[dw].[edw].[Build_Fact]", profile.Target);
         Assert.Contains("defined in the procedure body", profile.Read, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void RegisteredKind_IsExternal_WhenProfiledWithTheHostsLoader_AndUnparseableWithoutIt()
+    {
+        const string yaml = """
+            flowType: probe
+            name: wells
+            source: s3://drops/wells/
+            target: https://platform.example/api/storage/v2/records
+            """;
+
+        var profile = FlowLoadProfiles.FromYaml(yaml, YamlDocumentLoader.CreateDefault([new ProbeFlowKind()]));
+        Assert.Equal(FlowReadModes.External, profile.ReadMode);
+        Assert.Equal("https://platform.example/api/storage/v2/records", profile.Target);
+        Assert.Contains("'probe' flow kind a host module registered", profile.Read, StringComparison.Ordinal);
+
+        // The built-in loader does not know the kind, so the profile says it cannot tell rather than guessing.
+        var builtInOnly = FlowLoadProfiles.FromYaml(yaml);
+        Assert.Equal(FlowReadModes.Unknown, builtInOnly.ReadMode);
+        Assert.Contains("unknown flowType 'probe'", builtInOnly.Summary, StringComparison.Ordinal);
     }
 
     [Fact]

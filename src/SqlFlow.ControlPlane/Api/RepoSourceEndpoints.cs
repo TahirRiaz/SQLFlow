@@ -186,7 +186,7 @@ public static class RepoSourceEndpoints
     }
 
     private static async Task<Results<Ok<List<DiscoveredFlowDto>>, ProblemHttpResult>> DiscoverRepoAsync(
-        DiscoverRepoRequest request, ISecretResolver resolver, CancellationToken ct)
+        DiscoverRepoRequest request, ISecretResolver resolver, SqlFlow.Yaml.YamlDocumentLoader documents, CancellationToken ct)
     {
         if (request is null || string.IsNullOrWhiteSpace(request.RemoteUrl))
         {
@@ -218,7 +218,7 @@ public static class RepoSourceEndpoints
                 () =>
                 {
                     var (workingDir, _) = new GitMaterializer().MaterializeBranch(remoteUrl, branch, credentials, ct);
-                    return FlowDiscovery.Discover(workingDir, ct);
+                    return FlowDiscovery.Discover(workingDir, documents, ct);
                 },
                 ct).ConfigureAwait(false);
 

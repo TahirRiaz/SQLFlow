@@ -84,7 +84,7 @@ public static class CatalogEndpoints
     /// root path the control-plane host cannot see (a local-path sync only works where the flows live on disk).
     /// </summary>
     private static async Task<Results<Ok<RepoSyncResultDto>, ProblemHttpResult>> SyncRepoAsync(
-        Guid id, CatalogDbContext db, ISecretResolver secrets, TimeProvider clock,
+        Guid id, CatalogDbContext db, ISecretResolver secrets, SqlFlow.Yaml.YamlDocumentLoader documents, TimeProvider clock,
         Background.QuestionGenerationSwitch questionGeneration, IServiceProvider services, CancellationToken ct)
     {
         var repo = await db.Repos.AsNoTracking().Where(r => r.Id == id)
@@ -131,7 +131,7 @@ public static class CatalogEndpoints
                 ? services.GetRequiredService<SqlFlow.Assistant.QuestionGenerator>()
                 : null;
 
-            var result = await new CatalogSync().SyncAsync(
+            var result = await new CatalogSync(documents).SyncAsync(
                 db, repo.RootPath, repo.Name, repo.RemoteUrl, clock.GetUtcNow().UtcDateTime,
                 includeDerived: true, secrets: secrets, ct: ct).ConfigureAwait(false);
 
@@ -296,7 +296,7 @@ public static class CatalogEndpoints
     }
 
     private static async Task<Results<Ok<PipelineDetailDto>, ProblemHttpResult>> GetPipelineAsync(
-        Guid id, CatalogDbContext db, CancellationToken ct)
+        Guid id, CatalogDbContext db, SqlFlow.Yaml.YamlDocumentLoader documents, CancellationToken ct)
     {
         var x = await db.Pipelines.AsNoTracking().Where(p => p.Id == id)
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
@@ -310,7 +310,7 @@ public static class CatalogEndpoints
             x.SourceServer, x.TargetServer, x.RelativePath, x.ContentHash,
             x.Yaml, x.DefinitionJson, x.FirstSeenUtc, x.LastSeenUtc,
             RunsOnSchedule(x.Active, x.ExecutionMode),
-            FlowLoadProfiles.FromYaml(x.Yaml)));
+            FlowLoadProfiles.FromYaml(x.Yaml, documents)));
     }
 
     /// <summary>Whether a schedule fire runs a pipeline: the same rule <see cref="RunScopeExpander"/> applies when it

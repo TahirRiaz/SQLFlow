@@ -1419,7 +1419,7 @@ public static class LineageEndpoints
     /// the caller at the derivation to read.
     /// </summary>
     private static async Task<Results<Ok<ObjectRefreshDto>, ProblemHttpResult>> GetObjectRefreshAsync(
-        string key, CatalogDbContext db, CancellationToken ct)
+        string key, CatalogDbContext db, SqlFlow.Yaml.YamlDocumentLoader documents, CancellationToken ct)
     {
         var identity = await db.Objects.AsNoTracking().Where(o => o.Key == key)
             .Select(o => new { o.Key, o.Name, o.Kind })
@@ -1543,7 +1543,7 @@ public static class LineageEndpoints
                     pipeline?.ExecutionMode,
                     pipeline?.Lifecycle,
                     pipeline is not null && CatalogEndpoints.RunsOnSchedule(pipeline.Active, pipeline.ExecutionMode),
-                    FlowLoadProfiles.FromYaml(pipeline?.Yaml),
+                    FlowLoadProfiles.FromYaml(pipeline?.Yaml, documents),
                     success is null ? null : ToProducerRun(success));
             })
             .OrderBy(p => p.FlowName, StringComparer.OrdinalIgnoreCase)
