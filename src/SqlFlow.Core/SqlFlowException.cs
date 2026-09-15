@@ -17,20 +17,33 @@ public class SqlFlowException : Exception
 }
 
 /// <summary>
-/// Thrown when an acquisition request came back with a non-2xx status the retry policy will not retry. Carries the
-/// status code so a fan-out can decide per request whether the failure is fatal to the run or a tolerated skip: a
-/// per-id rejection (a route id the endpoint no longer accepts) must not poison the other ids in the same sweep.
+/// Thrown when a request came back with a non-2xx status the retry policy will not retry. Carries the status code so a
+/// caller can decide per request whether the failure is fatal, a tolerated skip or one to retry later (a per-id rejection,
+/// such as a route id the endpoint no longer accepts, must not poison the other ids in the same sweep), and the wait the
+/// service asked for when it named one.
 /// </summary>
 public sealed class HttpStatusException : SqlFlowException
 {
     public HttpStatusException(int statusCode, string message)
+        : this(statusCode, message, null)
+    {
+    }
+
+    /// <param name="statusCode">The HTTP status code the endpoint answered with.</param>
+    /// <param name="message">The failure, secret-free.</param>
+    /// <param name="retryAfter">The wait the service asked for (its <c>Retry-After</c>), or null when it named none. A negative wait (a retry date already past) is kept as zero.</param>
+    public HttpStatusException(int statusCode, string message, TimeSpan? retryAfter)
         : base(message)
     {
         StatusCode = statusCode;
+        RetryAfter = retryAfter is { } wait && wait < TimeSpan.Zero ? TimeSpan.Zero : retryAfter;
     }
 
     /// <summary>The HTTP status code the endpoint answered with.</summary>
     public int StatusCode { get; }
+
+    /// <summary>How long the service asked the caller to wait before trying again, or null when it named no wait. A later attempt must not come sooner.</summary>
+    public TimeSpan? RetryAfter { get; }
 }
 
 /// <summary>Thrown when a pipeline definition is invalid.</summary>
