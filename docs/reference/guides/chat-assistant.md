@@ -2,7 +2,7 @@
 id: guide-chat-assistant
 title: "The GUI chat assistant: the SQLFlow agent in the workbench, with per-user authority and voice input"
 type: guide
-summary: How the GUI's Assistant page answers questions - the same assistant core as the Slack bot, streamed over SSE from the control plane, with tool calls made under the signed-in user's own token, persisted conversations, image paste, and voice input via server-side transcription.
+summary: How the GUI's Assistant page answers questions - the same assistant core as the Slack bot, streamed over SSE from the control plane, with tool calls made under a short-lived token delegated from the signed-in user, persisted conversations, image paste, and voice input via server-side transcription.
 keywords:
   - chat
   - assistant
@@ -30,6 +30,7 @@ sourceRefs:
   - src/SqlFlow.Assistant/AnthropicGateway.cs
   - src/SqlFlow.Assistant/TranscriptionGateway.cs
   - src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs
+  - src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs
   - src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - gui/src/features/chat/ChatPage.tsx
@@ -48,15 +49,15 @@ The Slack bot and the GUI chat share one implementation: `SqlFlow.Assistant`, th
 
 ## Per-user authority (the difference from Slack)
 
-The Slack bot holds one shared read-scoped token, because everyone in a channel shares the bot's identity. The GUI chat has a signed-in user on every request, so the control plane forwards the caller's OWN bearer to the MCP server on every agent run: the assistant can read exactly what that user can read, and the control plane enforces the token's scopes per tool call exactly as it would for the user's own API calls. The tool allowlist still defaults to the read-only surface (`ControlPlane:Assistant:Mcp:AllowedTools`).
+The Slack bot holds one shared read-scoped token, because everyone in a channel shares the bot's identity. The GUI chat has a signed-in user on every request, so each agent run gets a token the control plane delegates from that user for that one run: the assistant reads at most what that user may read, the control plane enforces it per tool call, and the model host never holds the user's own session. The delegated token expires with the run (`RunTimeoutSeconds` plus 60 seconds), cannot be renewed, and is refused everywhere outside the read surface the tools need, so it cannot mint a personal access token, approve a device sign-in, read the user's conversations, or start work; see [Assistant run tokens](../concepts/authentication-and-identity.md#assistant-run-tokens). The tool allowlist still defaults to the read-only surface (`ControlPlane:Assistant:Mcp:AllowedTools`).
 
 ## The chain
 
 ```
 GUI /chat -> control plane POST /api/v1/chat/ask (SSE stream)
           -> SqlFlow.Assistant gateway (Foundry / OpenAI / Anthropic)
-          -> sqlflow-mcp over streamable HTTP (the tools, caller's bearer)
-          -> control plane /api/v1 (bearer-scoped)
+          -> sqlflow-mcp over streamable HTTP (the tools, the run's delegated token)
+          -> control plane /api/v1 (fenced to the read surface the tools need)
 ```
 
 Conversations persist in the catalog (`ChatConversation` / `ChatMessage`): the transcript is the durable record, provider-side conversation state is only a cache of it, so a control-plane restart or a re-opened browser loses nothing. Deleting a conversation deletes its messages; conversations are strictly per-user.

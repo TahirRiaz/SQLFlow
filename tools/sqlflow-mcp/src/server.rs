@@ -17,7 +17,7 @@ use schemars::JsonSchema;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-use crate::control_plane::{ControlPlane, PollOutcome};
+use crate::control_plane::{ControlPlane, PollOutcome, WhoAmI};
 use crate::docs::DocsIndex;
 use crate::links::GuiLinks;
 use sqlflow_lang::census::Census;
@@ -1071,33 +1071,65 @@ and fix every finding first."
         }
     }
 
-    #[tool(description = "Poll the pending device-flow sign-in (or report current auth state).")]
+    #[tool(
+        description = "Poll the pending device-flow sign-in (or report current auth state). With no sign-in \
+            in progress, this asks the control plane who the stored credential actually authenticates as \
+            (`GET /api/v1/me`) rather than trusting the locally cached expiry, so it never reports \
+            \"Authenticated\" for a credential the server has since revoked or lost (a revoked token, a session \
+            past its maximum age, or a local-dev catalog reset). A rejected credential is cleared automatically; \
+            call login again."
+    )]
     async fn check_auth_status(&self, Parameters(input): Parameters<CheckAuthInput>) -> String {
         if self.http_mode {
             return HTTP_MODE_AUTH_NOTE.to_string();
         }
         let code = input.device_code.or_else(|| self.cp.pending_device_code());
         let Some(code) = code else {
-            return if self.cp.is_authenticated() {
-                "Authenticated.".to_string()
-            } else {
-                "Not authenticated and no sign-in in progress. Call login first.".to_string()
+            return match self.cp.whoami().await {
+                Ok(WhoAmI::Authenticated { subject, role, scopes }) => {
+                    let role = role.map(|r| format!(", role {r}")).unwrap_or_default();
+                    let scopes = if scopes.is_empty() {
+                        String::new()
+                    } else {
+                        format!(", scopes: {}", scopes.join(" "))
+                    };
+                    format!("Authenticated as {subject}{role}{scopes}.")
+                }
+                Ok(WhoAmI::Unauthenticated) => {
+                    if let Some(reason) = self.cp.session_ended_reason() {
+                        format!("The stored session ended: {reason} Call login to sign in again.")
+                    } else if self.cp.has_token() {
+                        self.cp.clear_token();
+                        "The stored credential was rejected by the control plane (expired, revoked, or the \
+                            catalog it lived in was reset). It has been cleared; call login again."
+                            .to_string()
+                    } else {
+                        "Not authenticated and no sign-in in progress. Call login first.".to_string()
+                    }
+                }
+                Err(e) => format!(
+                    "Could not verify authentication with the control plane: {e:#}. Check \
+                        check_connectivity, then try again."
+                ),
             };
         };
         match self.cp.poll_device_token(&code).await {
             Ok(PollOutcome::Approved(t)) => {
-                // The device grant hands back a short-lived session token. Exchange it for a long-lived, self-
-                // rotating personal access token so the user does not have to sign in again; if the control plane
-                // cannot mint one, the device token stands and sign-in still succeeds.
-                let scope = if t.scope.is_empty() { "read operate".to_string() } else { t.scope.clone() };
-                match self.cp.provision_managed_token(&scope).await {
-                    Ok(()) => format!(
-                        "Signed in. A long-lived access token (scopes: {scope}) was provisioned and will refresh automatically; you will not need to sign in again while this client stays in use."
-                    ),
-                    Err(_) => format!(
-                        "Signed in. Scopes: {}. (Could not provision a long-lived token; this session token expires and will need a fresh sign-in.)",
-                        if scope.is_empty() { "(none reported)".into() } else { scope }
-                    ),
+                // The device grant hands back a session token with the same lifetime and the same absolute cap as the
+                // approving browser session. It is kept as is and rolled on the GUI's schedule; no longer-lived
+                // credential is minted in its place.
+                let scopes = if t.scope.is_empty() { "(none reported)".to_string() } else { t.scope.clone() };
+                if t.renews {
+                    format!(
+                        "Signed in. Scopes: {scopes}. The session renews itself a few minutes before each token \
+                         expires, for as long as the control plane's session limit allows (measured from your \
+                         browser sign-in, 30 days by default); after that, call login again."
+                    )
+                } else {
+                    format!(
+                        "Signed in. Scopes: {scopes}. This credential does not renew (it was approved from a \
+                         personal access token or bootstrap session), so call login again when it expires."
+                    )
                 }
             }
             Ok(PollOutcome::Pending) => "Still waiting for approval. Approve in the browser, then check again.".to_string(),
@@ -1113,26 +1145,21 @@ and fix every finding first."
         if self.http_mode {
             return HTTP_MODE_AUTH_NOTE.to_string();
         }
-        let token = input.token.trim().to_string();
-        let is_pat = token.starts_with("sqlf_");
-        let scope = input.scope.unwrap_or_else(|| "read operate".to_string());
-        self.cp.set_token(crate::config::TokenCache {
-            access_token: token,
-            scope: scope.clone(),
-            expires_at: None,
-            token_id: None,
-            // A pasted personal access token is already long-lived and owned by the user; we do not manage its
-            // lifecycle. A pasted session token is short-lived, so we exchange it below for one we do manage.
-            renewable: false,
-        });
-        if is_pat {
-            "Access token stored.".to_string()
-        } else {
-            match self.cp.provision_managed_token(&scope).await {
-                Ok(()) => "Access token stored and exchanged for a long-lived, self-refreshing token.".to_string(),
-                Err(_) => "Access token stored.".to_string(),
-            }
-        }
+        // A pasted token is dated from its own exp claim and renews exactly when it is an interactive session (it
+        // carries auth_time); a personal access token keeps the lifetime its owner gave it.
+        let cache = crate::config::TokenCache::from_bearer(
+            input.token.trim().to_string(),
+            input.scope.unwrap_or_else(|| "read operate".to_string()),
+        );
+        let reply = match (cache.renews, cache.expires_at) {
+            (true, _) => "Access token stored. It is an interactive session, so it renews itself before each token \
+                expires, up to the control plane's session limit; after that, call login again."
+                .to_string(),
+            (false, Some(exp)) => format!("Access token stored. It does not renew and expires at {exp}."),
+            (false, None) => "Access token stored.".to_string(),
+        };
+        self.cp.set_token(cache);
+        reply
     }
 
     #[tool(description = "Forget the stored access token.")]
@@ -3013,14 +3040,15 @@ const DISCOVERY_STDIO: &str = "\
 const ONLINE_SETUP_STDIO: &str = "\
 ONLINE (needs the control plane; sign in first):
 - Setup: get/set_control_plane_url, check_connectivity, login (device flow) then check_auth_status,
-  or set_access_token to paste a bearer token.
+  or set_access_token to paste a bearer token. A signed-in session renews itself in the background up to
+  the control plane's session limit; check_auth_status reports when a fresh sign-in is needed.
 ";
 
 const ONLINE_SETUP_HTTP: &str = "\
 ONLINE (needs the control plane):
-- Auth is per request: every call to this server already carries the caller's bearer token, and
-  control-plane requests run as that caller with scopes enforced server-side. There is no login
-  step; check_connectivity probes reachability.
+- Auth is per request: every call to this server already carries the caller's bearer token, verified
+  with the control plane before any tool runs, and control-plane requests run as that caller with its
+  authority enforced server-side. There is no login step; check_connectivity probes reachability.
 ";
 
 const INSTRUCTIONS_ONLINE_TAIL: &str = "\

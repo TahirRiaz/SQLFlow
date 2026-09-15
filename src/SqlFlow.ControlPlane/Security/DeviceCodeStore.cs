@@ -38,6 +38,12 @@ public sealed class DeviceCodeStore
         public IReadOnlyList<string>? GrantedScopes { get; set; }
         public string? Role { get; set; }
         public Guid? UserId { get; set; }
+
+        /// <summary>The approving session's own <c>auth_time</c>, inherited by the device token so it rolls under
+        /// the approver's absolute session cap rather than starting a fresh one. Null when the approving credential
+        /// does not roll itself (a personal access token or the bootstrap token), which makes the device token
+        /// non-renewable too.</summary>
+        public DateTime? AuthTimeUtc { get; set; }
     }
 
     // Characters excluding easily-confused 0/O/1/I so a human can retype the code reliably.

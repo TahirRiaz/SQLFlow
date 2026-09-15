@@ -74,7 +74,7 @@ param acrName string = ''
 @description('Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set.')
 param acrLoginServer string = ''
 
-@description('Enable the GUI chat assistant (/api/v1/chat): the same assistant core as the Slack bot, streamed to the GUI, with every agent run forwarding the calling user\'s own bearer to the MCP server. Requires the Foundry and MCP parameters below; the key-based providers are configured out of band via ControlPlane__Assistant__* env vars instead.')
+@description('Enable the GUI chat assistant (/api/v1/chat): the same assistant core as the Slack bot, streamed to the GUI, with every agent run presenting a short-lived token delegated from the calling user to the MCP server. Requires the Foundry and MCP parameters below; the key-based providers are configured out of band via ControlPlane__Assistant__* env vars instead.')
 param assistantEnabled bool = false
 
 @description('The Foundry project endpoint the assistant runs against (https://<account>.services.ai.azure.com/api/projects/<project>). Required when assistantEnabled.')

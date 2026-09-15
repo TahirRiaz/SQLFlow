@@ -81,7 +81,7 @@ public static class DeviceApprovalPage
         const session = await login.json();
         const approve = await fetch('/api/v1/auth/device/approve', {
           method: 'POST',
-          headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + session.token },
+          headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + session.accessToken },
           body: JSON.stringify({ userCode: codeEl.value })
         });
         if (approve.status === 204) {

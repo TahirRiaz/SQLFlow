@@ -178,7 +178,7 @@ public sealed class McpOptions
 
     /// <summary>
     /// The GUI's surface: everything shared, plus the tools that reach a datasource. The GUI is a signed-in,
-    /// per-user surface where the caller's own bearer authorises every call, so the data-model tools and the
+    /// per-user surface where a token delegated from the caller authorises every call, so the data-model tools and the
     /// data-operations surface belong here.
     /// </summary>
     public static readonly IReadOnlyList<string> GuiDefaultTools =

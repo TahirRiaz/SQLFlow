@@ -63,9 +63,9 @@ public sealed class AssistantRequest
 
     /// <summary>
     /// The bearer token the model provider forwards to the SQLFlow MCP server on every tool call;
-    /// the MCP server passes it verbatim to the control plane, which enforces its scopes. The
-    /// Slack bot sends its one read-scoped access token; the GUI chat sends the calling user's own
-    /// token, so tool access is exactly that user's access.
+    /// the MCP server passes it verbatim to the control plane, which enforces its authority. The
+    /// Slack bot sends its one read-scoped access token; the GUI chat sends a short-lived token the
+    /// control plane delegated from the calling user for this one run, never the user's own session.
     /// </summary>
     public required string McpBearer { get; init; }
 }

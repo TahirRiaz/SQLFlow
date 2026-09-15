@@ -604,7 +604,11 @@
         "msal",
         "roles",
         "scopes",
-        "throttle"
+        "throttle",
+        "device grant",
+        "session renewal",
+        "assistant token",
+        "delegation"
       ],
       "related": [
         "concept-control-plane",
@@ -615,6 +619,10 @@
         "src/SqlFlow.ControlPlane/Api/UserEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/Contracts.cs",
         "src/SqlFlow.ControlPlane/Security/TokenIssuer.cs",
+        "src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs",
+        "src/SqlFlow.ControlPlane/Security/DeviceCodeStore.cs",
+        "src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/MeEndpoints.cs",
         "src/SqlFlow.ControlPlane/Security/LoginThrottle.cs",
         "src/SqlFlow.ControlPlane/Security/EntraTokenValidator.cs",
         "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
@@ -2612,6 +2620,7 @@
         "src/SqlFlow.Assistant/AnthropicGateway.cs",
         "src/SqlFlow.Assistant/TranscriptionGateway.cs",
         "src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs",
         "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
         "src/SqlFlow.Catalog/CatalogEntities.cs",
         "gui/src/features/chat/ChatPage.tsx",

@@ -16,7 +16,7 @@ namespace SqlFlow.Assistant;
 /// Both speak the same wire format, so one gateway serves both; only the endpoint, the model
 /// name, and the credential differ (Azure token via managed identity for Foundry, a static API
 /// key for OpenAI). Each question is one streamed <c>POST .../responses</c> carrying the model,
-/// the assistant instructions, the MCP tool (the deployed SQLFlow MCP server, with the caller's
+/// the assistant instructions, the MCP tool (the deployed SQLFlow MCP server, with the run's
 /// bearer as its Authorization header and the tool allowlist), and either the new turn plus a
 /// <c>previous_response_id</c> that chains the conversation server-side, or - when that link is
 /// lost (host restart, server-side expiry) - the transcript replayed as the input. On Foundry the
@@ -440,12 +440,12 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
             ["server_label"] = _settings.Mcp.ServerLabel,
             ["server_url"] = _settings.Mcp.ServerUrl,
             // Approval is off because there is no human in the loop to approve a tool call mid-run;
-            // authority is bounded by the bearer's scopes and the tool allowlist instead.
+            // authority is bounded by what the bearer may reach and the tool allowlist instead.
             ["require_approval"] = "never",
             ["headers"] = new JsonObject
             {
-                // The MCP server forwards this verbatim to the control plane, which enforces the token's
-                // scopes; this bearer is the run's whole authority.
+                // The MCP server forwards this verbatim to the control plane, which enforces what the
+                // token may reach; this bearer is the run's whole authority.
                 ["Authorization"] = "Bearer " + mcpBearer,
             },
         };

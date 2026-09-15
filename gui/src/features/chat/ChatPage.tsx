@@ -35,8 +35,9 @@ import {
 /**
  * The SQLFlow assistant chat (DESIGN.md 6: a full-bleed editor surface like the lineage graph):
  * a conversation rail on the left and a ChatGPT-style thread on the right. Answers stream over
- * the authenticated SSE channel; every agent run carries the signed-in user's own bearer to the
- * SQLFlow MCP server, so the assistant sees exactly what this user may see. Conversations persist
+ * the authenticated SSE channel; every agent run carries a short-lived token the control plane
+ * delegates from the signed-in user, so the assistant sees at most what this user may see and the
+ * model host never holds the user's own session. Conversations persist
  * in the catalog and re-open with their full transcript, including tool activity.
  */
 export default function ChatPage() {
