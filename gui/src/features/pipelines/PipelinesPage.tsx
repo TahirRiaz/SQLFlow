@@ -16,12 +16,20 @@ import { FilterBar } from "../../components/FilterBar";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { SearchInput } from "../../components/SearchInput";
+import { contributedKinds } from "../../modules/registry";
 import { fetchAllPipelines, type FetchResult } from "./fetchAllPipelines";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { groupByProject, pipelineMatches, ProjectGroup } from "./ProjectGroup";
 
-/** Every flow kind the loader recognises, acquisition-first then transform/utility (see YamlDocumentLoader). */
-const kinds = ["file", "ing", "api", "cpy", "sftp", "exp", "trl", "sp", "inv", "hc", "scm", "sch", "batch", "cal"];
+/** Every built-in flow kind the loader recognises, acquisition-first then transform/utility (see YamlDocumentLoader). */
+const builtInKinds = ["file", "ing", "api", "cpy", "sftp", "exp", "trl", "sp", "inv", "hc", "scm", "sch", "batch", "cal"];
+
+/** The kinds the filter offers: the built-in ones, then the kinds registered modules add, so a module's flows are
+ * filtered like any other. Read while rendering rather than at import, because modules register after this module is
+ * imported and before the first render. */
+function filterKinds(): readonly string[] {
+  return [...builtInKinds, ...contributedKinds().filter((kind) => !builtInKinds.includes(kind))];
+}
 
 /** The radix Select cannot carry an empty-string item value, so "all" stands in for the unfiltered choice. */
 const ALL = "all";
@@ -139,7 +147,7 @@ export default function PipelinesPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>all kinds</SelectItem>
-            {kinds.map((kind) => (
+            {filterKinds().map((kind) => (
               <SelectItem key={kind} value={kind}>{kind}</SelectItem>
             ))}
           </SelectContent>
