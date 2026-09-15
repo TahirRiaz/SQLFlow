@@ -1,6 +1,69 @@
+using SqlFlow.Core.Connections;
+using SqlFlow.Core.Ingestion;
+using SqlFlow.Core.Lineage;
 using SqlFlow.Core.Runs;
 
 namespace SqlFlow.Yaml;
+
+/// <summary>
+/// A database object a flow of a registered kind reads or writes, declared by the document so the estate scan turns it
+/// into a declared lineage fact exactly as it does an ingestion flow's source and target: the server identity comes
+/// from <see cref="ConnectionReference"/> by the same rule, so a registered flow reading the table an ingestion flow
+/// writes lands on the same node and is ordered after it in waves.
+/// </summary>
+public sealed record DeclaredDataObject
+{
+    /// <summary><see cref="LineageRelation.Reads"/> or <see cref="LineageRelation.Writes"/>; the scan refuses any
+    /// other relation.</summary>
+    public required LineageRelation Relation { get; init; }
+
+    /// <summary>The connection reference (<c>${env:...}</c>, <c>${keyvault:...}</c>, <c>@alias</c>) of the server the
+    /// object lives on: the same value the flow's connection declares, never a resolved connection string.</summary>
+    public required string ConnectionReference { get; init; }
+
+    /// <summary>The object's database, or null when the flow does not know it (the graph completes it from the
+    /// server's default database, as for a file flow's target).</summary>
+    public string? Database { get; init; }
+
+    /// <summary>The object's schema, or null when the flow does not know it.</summary>
+    public string? Schema { get; init; }
+
+    /// <summary>The object's name.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>What the object is, when the flow knows; null takes the ingestion default (a read is of an object of
+    /// unknown kind, a write is to a table).</summary>
+    public LineageNodeKind? Kind { get; init; }
+
+    /// <summary>The server's provider, for the server inventory the derived tier connects to.</summary>
+    public DataSourceKind Provider { get; init; } = DataSourceKind.MSSQL;
+
+    /// <summary>A read of a three-part <c>[Database].[Schema].[Object]</c> name (bracket-aware; the rightmost three
+    /// parts are used) on the server <paramref name="connectionReference"/> names.</summary>
+    public static DeclaredDataObject Reads(string connectionReference, string qualifiedName)
+        => FromQualifiedName(LineageRelation.Reads, connectionReference, qualifiedName);
+
+    /// <summary>A write to a three-part <c>[Database].[Schema].[Object]</c> name on the server
+    /// <paramref name="connectionReference"/> names.</summary>
+    public static DeclaredDataObject Writes(string connectionReference, string qualifiedName)
+        => FromQualifiedName(LineageRelation.Writes, connectionReference, qualifiedName);
+
+    /// <summary>A declaration of <paramref name="relation"/> on a three-part name. The name is parsed here (a name with
+    /// fewer than three parts is a <see cref="SqlFlow.Core.SqlFlowException"/>); the relation and the connection
+    /// reference are checked by the estate scan, which reports a refusal against the document's file.</summary>
+    public static DeclaredDataObject FromQualifiedName(LineageRelation relation, string connectionReference, string qualifiedName)
+    {
+        var parsed = RelationalObject.Parse(qualifiedName);
+        return new DeclaredDataObject
+        {
+            Relation = relation,
+            ConnectionReference = connectionReference,
+            Database = parsed.Database,
+            Schema = parsed.Schema,
+            Name = parsed.Name,
+        };
+    }
+}
 
 /// <summary>
 /// A flow document of a kind a host registered (<see cref="IFlowDocumentKind"/>) rather than one the loader builds in.
@@ -54,6 +117,12 @@ public abstract record RegisteredFlowDocument : FlowDocument
     /// <summary>Whether the flow belongs in the lineage graph: true for a flow that moves catalog data, false for one
     /// that runs on the estate rather than through it.</summary>
     public virtual bool ParticipatesInLineage => true;
+
+    /// <summary>The database objects the flow reads and writes. The estate scan turns each into a declared lineage fact
+    /// on the node an ingestion flow naming the same object uses, so the execution plan orders the flow after the flows
+    /// that write what it reads, and before the flows that read what it writes. Empty for a kind that relates to no
+    /// database object; a declaration the scan cannot use skips the document with a warning.</summary>
+    public virtual IReadOnlyList<DeclaredDataObject> DeclaredObjects => [];
 }
 
 /// <summary>

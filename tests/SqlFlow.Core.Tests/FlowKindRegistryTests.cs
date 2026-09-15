@@ -431,6 +431,19 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
         public Dictionary<string, string>? Credentials { get; set; }
 
         public bool RepoTree { get; set; }
+
+        public List<ObjectBody>? Reads { get; set; }
+
+        public List<ObjectBody>? Writes { get; set; }
+
+        public List<ObjectBody>? Requires { get; set; }
+    }
+
+    private sealed class ObjectBody
+    {
+        public string? Connection { get; set; }
+
+        public string? Object { get; set; }
     }
 
     public string FlowType => flowType;
@@ -492,8 +505,19 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
             Target = body.Target,
             Credentials = body.Credentials ?? [],
             RepoTree = body.RepoTree,
+            Objects =
+            [
+                .. Declared(SqlFlow.Core.Lineage.LineageRelation.Reads, body.Reads),
+                .. Declared(SqlFlow.Core.Lineage.LineageRelation.Writes, body.Writes),
+                .. Declared(SqlFlow.Core.Lineage.LineageRelation.Requires, body.Requires),
+            ],
         };
     }
+
+    /// <summary>The lineage declarations of one YAML list, passed to the platform as written so its own checks are
+    /// what the tests see.</summary>
+    private static IEnumerable<DeclaredDataObject> Declared(SqlFlow.Core.Lineage.LineageRelation relation, List<ObjectBody>? objects)
+        => (objects ?? []).Select(o => DeclaredDataObject.FromQualifiedName(relation, o.Connection ?? string.Empty, o.Object ?? string.Empty));
 }
 
 /// <summary>The document <see cref="ProbeFlowKind"/> produces.</summary>
@@ -514,6 +538,10 @@ internal sealed record ProbeFlowDocument : RegisteredFlowDocument
     public IReadOnlyDictionary<string, string> Credentials { get; init; } = new Dictionary<string, string>();
 
     public bool RepoTree { get; init; }
+
+    public IReadOnlyList<DeclaredDataObject> Objects { get; init; } = [];
+
+    public override IReadOnlyList<DeclaredDataObject> DeclaredObjects => Objects;
 
     public override string Name => FlowName;
 

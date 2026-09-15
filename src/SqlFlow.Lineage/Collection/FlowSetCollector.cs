@@ -996,13 +996,19 @@ public sealed class FlowSetCollector
     {
         foreach (var connection in connections)
         {
-            var identity = ServerIdentity.From(connection.ConnectionRef);
-            if (!result.Servers.TryAdd(identity, (connection.ConnectionRef, connection.Kind))
-                && result.Servers[identity].Kind != connection.Kind)
-            {
-                result.Warnings.Add(
-                    $"server '{identity}' is declared with conflicting providers ({result.Servers[identity].Kind} vs {connection.Kind}); the first wins.");
-            }
+            RegisterServer(result, connection.ConnectionRef, connection.Kind);
+        }
+    }
+
+    /// <summary>Registers one connection in the server inventory; a server declared again with another provider keeps
+    /// the first, and the conflict is warned.</summary>
+    private static void RegisterServer(CollectionResult result, string connectionReference, Core.Connections.DataSourceKind kind)
+    {
+        var identity = ServerIdentity.From(connectionReference);
+        if (!result.Servers.TryAdd(identity, (connectionReference, kind)) && result.Servers[identity].Kind != kind)
+        {
+            result.Warnings.Add(
+                $"server '{identity}' is declared with conflicting providers ({result.Servers[identity].Kind} vs {kind}); the first wins.");
         }
     }
 
@@ -1017,6 +1023,11 @@ public sealed class FlowSetCollector
         // lineage adds on top of the headers: the server inventory, the declared facts, and the file producers and
         // consumers reconciled after the whole estate is scanned.
         var headers = FlowDocumentHeaders.Project(document);
+
+        // A registered kind's declared objects are checked before anything is collected, so a document declaring an
+        // unusable object is skipped whole (reported by the caller) rather than collected with half its lineage.
+        var declared = document is RegisteredFlowDocument registered ? DeclaredObjectFacts(registered, headers[0].Name) : null;
+
         foreach (var header in headers)
         {
             result.Flows.Add(new CollectedFlow
@@ -1350,11 +1361,96 @@ public sealed class FlowSetCollector
                 break;
             }
 
+            case RegisteredFlowDocument:
+            {
+                // A kind a host registered declares the database objects it reads and writes; they were validated
+                // before the flow node was added, and become declared facts on the same node identities an ingestion
+                // flow's source and target use, so waves order the registered flow after what it reads.
+                foreach (var (fact, connectionReference, provider) in declared!)
+                {
+                    RegisterServer(result, connectionReference, provider);
+                    result.Facts.Add(fact);
+                }
+
+                break;
+            }
+
                 // SourceControlFlowDocument contributes a flow node for the catalog but no facts: it reads object
                 // DEFINITIONS, not data, so it declares no dependency and the graph builder drops it entirely.
                 // BatchFlowDocument projects no header at all: a batch's ordering is computed FROM lineage,
                 // never part of it.
         }
+    }
+
+    /// <summary>
+    /// The declared facts of a registered flow's <see cref="RegisteredFlowDocument.DeclaredObjects"/>, with the
+    /// connection each registers in the server inventory. A declaration the graph cannot use (no connection reference,
+    /// no name, a relation other than reads or writes) refuses the document with a message naming the flow and the
+    /// declaration's position, never the reference itself (a literal would be a secret). A repeated declaration is
+    /// one fact.
+    /// </summary>
+    private static List<(LineageFact Fact, string ConnectionReference, Core.Connections.DataSourceKind Provider)> DeclaredObjectFacts(
+        RegisteredFlowDocument document, string flow)
+    {
+        var facts = new List<(LineageFact, string, Core.Connections.DataSourceKind)>();
+        var declarations = document.DeclaredObjects;
+        if (declarations is null)
+        {
+            return facts;
+        }
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < declarations.Count; i++)
+        {
+            var declaration = declarations[i];
+            var at = $"{document.Kind} flow '{flow}' declared object {i + 1}";
+            if (declaration is null)
+            {
+                throw new SqlFlowException($"{at} is missing.");
+            }
+
+            if (declaration.Relation is not (LineageRelation.Reads or LineageRelation.Writes))
+            {
+                throw new SqlFlowException($"{at} has the relation '{declaration.Relation}'; a flow declares only reads and writes.");
+            }
+
+            if (string.IsNullOrWhiteSpace(declaration.ConnectionReference))
+            {
+                throw new SqlFlowException($"{at} names no connection reference.");
+            }
+
+            if (string.IsNullOrWhiteSpace(declaration.Name))
+            {
+                throw new SqlFlowException($"{at} names no object.");
+            }
+
+            var server = ServerIdentity.From(declaration.ConnectionReference);
+            var database = string.IsNullOrWhiteSpace(declaration.Database) ? null : declaration.Database.Trim();
+            var schema = string.IsNullOrWhiteSpace(declaration.Schema) ? null : declaration.Schema.Trim();
+            var name = declaration.Name.Trim();
+            if (!seen.Add($"{declaration.Relation}|{NodeKey.For(server, database, schema, name)}"))
+            {
+                continue;
+            }
+
+            facts.Add((
+                new LineageFact
+                {
+                    Flow = flow,
+                    Relation = declaration.Relation,
+                    ServerRef = server,
+                    Database = database,
+                    Schema = schema,
+                    Name = name,
+                    Tier = LineageTier.Declared,
+                    KindHint = declaration.Kind
+                        ?? (declaration.Relation == LineageRelation.Writes ? LineageNodeKind.Table : LineageNodeKind.Unknown),
+                },
+                declaration.ConnectionReference.Trim(),
+                declaration.Provider));
+        }
+
+        return facts;
     }
 
     /// <summary>A document hook is raw author T-SQL: the same operation-wise extractor derives what it
