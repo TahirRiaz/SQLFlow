@@ -10,7 +10,7 @@ namespace SqlFlow.Cli.Hosting;
 internal sealed record CliModuleVerb(ICliModule Module, CliVerb Verb, FrozenSet<string> ValueOptions);
 
 /// <summary>
-/// The modules a CLI host was started with, validated once: names, verbs, usage lines, subcommands and options. Everything
+/// The modules (and branding) a CLI host was started with, validated once: names, verbs, usage lines, subcommands and options. Everything
 /// the CLI does with a module goes through here: finding a verb, parsing its command line, registering module services,
 /// running a verb, and listing verbs for help and shell completion.
 /// </summary>
@@ -26,10 +26,13 @@ internal sealed class CliModuleSet
     private readonly string[] _moduleValueOptions;
     private readonly FrozenSet<string> _allValueOptions;
 
+    /// <param name="modules">The host's modules.</param>
+    /// <param name="branding">The host's branding; SQLFlow's when null.</param>
     /// <exception cref="CliModuleException">A module or one of its verbs breaks a rule; the message names the module.</exception>
-    public CliModuleSet(IReadOnlyList<ICliModule> modules)
+    public CliModuleSet(IReadOnlyList<ICliModule> modules, ProductBranding? branding = null)
     {
         ArgumentNullException.ThrowIfNull(modules);
+        Branding = branding ?? ProductBranding.SqlFlow;
         var names = new HashSet<string>(StringComparer.Ordinal);
         var verbs = new Dictionary<string, CliModuleVerb>(StringComparer.Ordinal);
         var ordered = new List<CliModuleVerb>();
@@ -95,6 +98,9 @@ internal sealed class CliModuleSet
 
     /// <summary>The CLI without modules.</summary>
     public static CliModuleSet Empty { get; } = new([]);
+
+    /// <summary>The host's branding: the help banner's tagline, and a service in every provider the CLI builds.</summary>
+    public ProductBranding Branding { get; }
 
     /// <summary>The modules, in the order the host passed them.</summary>
     public IReadOnlyList<ICliModule> Modules { get; }

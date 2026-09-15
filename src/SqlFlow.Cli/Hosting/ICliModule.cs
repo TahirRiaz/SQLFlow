@@ -7,7 +7,7 @@ namespace SqlFlow.Cli.Hosting;
 /// A module a host composes into the <c>sqlflow</c> CLI. The CLI knows nothing about a module beyond this contract: the module
 /// contributes verbs (with their usage lines and shell completions) and registers services into the service provider the
 /// CLI builds for every command and for the <c>worker</c> node, so SQLFlow's own verbs (validate, run, worker) see the
-/// module's flow kinds too. Modules are passed to <see cref="CliHost.RunAsync"/>, never discovered.
+/// module's flow kinds too. Modules are passed to <see cref="CliHost"/>, never discovered.
 /// </summary>
 public interface ICliModule
 {

@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Configuration;
 using SqlFlow.ControlPlane.Notifications;
+using SqlFlow.Core.Hosting;
 
 namespace SqlFlow.ControlPlane.Api;
 
@@ -264,7 +265,7 @@ public static partial class NotificationEndpoints
     /// in the deliveries history like any other message. Works while disabled: that is exactly when you test.</summary>
     private static async Task<Results<Accepted<NotificationQueuedDeliveryDto>, ProblemHttpResult>> TestSubscriptionAsync(
         Guid id, CatalogDbContext catalog, IOptions<ControlPlaneOptions> options, TimeProvider clock,
-        HttpContext httpContext, CancellationToken ct)
+        ProductBranding branding, HttpContext httpContext, CancellationToken ct)
     {
         if (!TryGetUserId(httpContext.User, out var userId))
         {
@@ -290,7 +291,7 @@ public static partial class NotificationEndpoints
         }
 
         var nowUtc = clock.GetUtcNow().UtcDateTime;
-        var message = NotificationComposer.ComposeTest(subscription.Channel, notifications.GuiBaseUrl, nowUtc);
+        var message = NotificationComposer.ComposeTest(subscription.Channel, notifications.GuiBaseUrl, nowUtc, branding.ProductName);
         var delivery = new CatalogNotificationDelivery
         {
             Id = Guid.CreateVersion7(),
@@ -459,7 +460,7 @@ public static partial class NotificationEndpoints
     /// </summary>
     private static async Task<Results<Created<NotificationDigestDto>, ProblemHttpResult>> GenerateDigestAsync(
         GenerateNotificationDigestRequest request, CatalogDbContext catalog, IOptions<ControlPlaneOptions> options,
-        TimeProvider clock, HttpContext httpContext, CancellationToken ct)
+        TimeProvider clock, ProductBranding branding, HttpContext httpContext, CancellationToken ct)
     {
         if (!TryGetUserId(httpContext.User, out var userId))
         {
@@ -490,7 +491,7 @@ public static partial class NotificationEndpoints
         }
 
         var digest = await NotificationDigestGenerator.GenerateManualAsync(
-            catalog, from, to, now, userId, notifications.GuiBaseUrl, ct).ConfigureAwait(false);
+            catalog, from, to, now, userId, notifications.GuiBaseUrl, branding.ProductName, ct).ConfigureAwait(false);
         var authors = await ResolveAuthorsAsync(catalog, [digest.GeneratedByUserId], ct).ConfigureAwait(false);
         return TypedResults.Created(
             $"/api/v1/notifications/digests/{digest.Id}", ToDto(digest, authors, full: true));

@@ -14,6 +14,7 @@ using SqlFlow.Core.Connections;
 using SqlFlow.Core.Engine;
 using SqlFlow.Core.Export;
 using SqlFlow.Core.HealthChecks;
+using SqlFlow.Core.Hosting;
 using SqlFlow.Core.Identity;
 using SqlFlow.Core.Ingestion;
 using SqlFlow.Core.Invoke;
@@ -55,7 +56,7 @@ internal static class Program
 
     /// <summary>
     /// The CLI with a host's modules: SQLFlow's verbs and the modules' verbs, with every command's service provider (and a
-    /// worker node's) carrying the modules' registrations. <see cref="CliHost.RunAsync"/> is the public entry point.
+    /// worker node's) carrying the modules' registrations. <see cref="CliHost"/> is the public entry point.
     /// </summary>
     internal static async Task<int> RunAsync(string[] args, CliModuleSet modules)
     {
@@ -709,6 +710,7 @@ internal static class Program
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<INodeTransport>(_ => new HttpNodeTransport(controlPlane, token));
         services.AddSingleton<RunWorker>();
+        services.AddSingleton(modules.Branding);
         // A node opens no catalog connection, so a module database it uses needs a connection reference of its own.
         services.AddSingleton<IModuleDatabaseConnections>(sp => ModuleDatabaseConnections.WithoutCatalog(
             sp.GetRequiredService<ISecretResolver>(), "a worker node has no catalog connection"));
@@ -2229,6 +2231,8 @@ internal static class Program
             services.AddSingleton<IFlowEventSink>(new ConsoleFlowEventSink(Console.Error));
         }
 
+        services.AddSingleton(modules.Branding);
+
         // A module database on the catalog connection resolves the catalog reference the db verbs use (--db, else
         // ${env:SQLFLOW_CATALOG_DB}), and only when such a database is opened.
         services.AddSingleton<IModuleDatabaseConnections>(sp =>
@@ -2318,9 +2322,9 @@ internal static class Program
     /// <summary>The CLI's help: SQLFlow's local verbs, then the modules' verbs, then the remote verbs and the reference.</summary>
     internal static string UsageText(CliModuleSet modules)
     {
-        var usage = new StringBuilder(
+        var usage = new StringBuilder("sqlflow - ").Append(modules.Branding.CliTagline).AppendLine();
+        usage.Append(
             """
-            sqlflow - metadata-driven ETL for SQL Server
 
             Usage:
               sqlflow validate <pipeline.yaml>   Validate a pipeline definition

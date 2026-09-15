@@ -4,7 +4,7 @@ namespace SqlFlow.ControlPlane.Hosting;
 /// A module a host composes into the control plane. The control plane knows nothing about a module beyond this
 /// contract: the module registers its services, options and hosted services while the host is being built, and maps its
 /// endpoints onto the authenticated route groups once it is built. A module is registered through
-/// <see cref="ControlPlaneHost.RunAsync"/> (or <see cref="ControlPlaneModuleServiceCollectionExtensions.AddControlPlaneModule"/>),
+/// <see cref="ControlPlaneHost"/> (or <see cref="ControlPlaneModuleServiceCollectionExtensions.AddControlPlaneModule"/>),
 /// never discovered.
 /// </summary>
 /// <remarks>

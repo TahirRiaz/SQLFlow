@@ -156,6 +156,25 @@ public sealed class NotificationComposerTests
     }
 
     [Fact]
+    public void AHostsProductName_LeadsEverySubject_AndNamesTheTestMessage()
+    {
+        const string product = "Acme Data";
+
+        var single = NotificationComposer.Compose(
+            Composition(NotificationChannels.Email, NotificationModes.Immediate, Event(1)) with { ProductName = product });
+        var digest = NotificationComposer.ComposeReport(
+            Composition(NotificationChannels.Email, NotificationModes.Digest) with { ProductName = product });
+        var test = NotificationComposer.ComposeTest(NotificationChannels.Email, null, Now, product);
+
+        Assert.Equal("Acme Data: flow 'orders-load' failed", single.Subject);
+        Assert.Equal("Acme Data digest: no failures", digest.Subject);
+        Assert.Equal("Acme Data test notification", test.Subject);
+        Assert.Contains("test notification from Acme Data", test.TextBody, StringComparison.Ordinal);
+        Assert.Contains(">Acme Data test notification</h2>", test.HtmlBody, StringComparison.Ordinal);
+        Assert.Equal("SQLFlow test notification", NotificationComposer.ComposeTest(NotificationChannels.Slack, null, Now).Subject);
+    }
+
+    [Fact]
     public void Filter_SelectsByKind_AndByGlob()
     {
         var subscription = new CatalogNotificationSubscription

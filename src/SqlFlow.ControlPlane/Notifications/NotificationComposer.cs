@@ -3,6 +3,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json.Nodes;
 using SqlFlow.Catalog;
+using SqlFlow.Core.Hosting;
 
 namespace SqlFlow.ControlPlane.Notifications;
 
@@ -20,7 +21,8 @@ public sealed record NotificationWindow(DateTime StartUtc, DateTime EndUtc);
 
 /// <summary>Everything one message is composed from: the matched events (oldest first, empty only for an estate
 /// digest, which reports an all-clear window), whether more were pending than fit (they follow in the next
-/// message), the covered period when one is known, and the rendering context.</summary>
+/// message), the covered period when one is known, and the rendering context, including the product name the subject
+/// leads with.</summary>
 public sealed record NotificationComposition(
     string Channel,
     string Mode,
@@ -28,7 +30,8 @@ public sealed record NotificationComposition(
     bool MorePending,
     string? GuiBaseUrl,
     DateTime NowUtc,
-    NotificationWindow? Window = null);
+    NotificationWindow? Window = null,
+    string ProductName = ProductBranding.SqlFlowProductName);
 
 /// <summary>
 /// Renders a subscription's pending events into one message. The shape is the anti-spam contract made visible:
@@ -83,12 +86,15 @@ public static class NotificationComposer
             blocks ? ComposeSlackBlocks(composition, groups, subject) : null);
     }
 
-    /// <summary>The message a test send delivers: proof the channel, address, and credentials work end to end.</summary>
-    public static NotificationMessage ComposeTest(string channel, string? guiBaseUrl, DateTime nowUtc)
+    /// <summary>The message a test send delivers: proof the channel, address, and credentials work end to end. It is
+    /// named for <paramref name="productName"/>, the host's product.</summary>
+    public static NotificationMessage ComposeTest(
+        string channel, string? guiBaseUrl, DateTime nowUtc, string productName = ProductBranding.SqlFlowProductName)
     {
-        const string subject = "SQLFlow test notification";
+        ArgumentException.ThrowIfNullOrWhiteSpace(productName);
+        var subject = $"{productName} test notification";
         var settingsUrl = SettingsUrl(guiBaseUrl);
-        var text = "This is a test notification from SQLFlow, sent at "
+        var text = $"This is a test notification from {productName}, sent at "
             + Stamp(nowUtc)
             + ". If you can read this, the subscription's channel and destination are configured correctly."
             + (settingsUrl is null ? string.Empty : $"\n\nManage your notification settings: {settingsUrl}");
@@ -99,7 +105,7 @@ public static class NotificationComposer
         {
             var body = new StringBuilder();
             body.Append("<div style=\"font-family:Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;color:#1f2328\">");
-            body.Append("<h2 style=\"font-size:16px;margin:0 0 8px\">SQLFlow test notification</h2>");
+            body.Append("<h2 style=\"font-size:16px;margin:0 0 8px\">").Append(WebUtility.HtmlEncode(subject)).Append("</h2>");
             body.Append("<p>This is a test notification, sent at ").Append(WebUtility.HtmlEncode(Stamp(nowUtc)))
                 .Append(". If you can read this, the subscription's channel and destination are configured correctly.</p>");
             if (settingsUrl is not null)
@@ -187,7 +193,7 @@ public static class NotificationComposer
 
     private static string ComposeSubject(NotificationComposition composition, List<NotificationFlowGroup> groups)
     {
-        var prefix = composition.Mode == NotificationModes.Digest ? "SQLFlow digest: " : "SQLFlow: ";
+        var prefix = composition.Mode == NotificationModes.Digest ? $"{composition.ProductName} digest: " : $"{composition.ProductName}: ";
         if (composition.Events.Count == 0)
         {
             return prefix + "no failures";

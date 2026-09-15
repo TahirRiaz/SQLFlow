@@ -1,4 +1,5 @@
 ﻿using SqlFlow.Catalog;
+using SqlFlow.Core.Hosting;
 
 namespace SqlFlow.ControlPlane.Notifications;
 
@@ -25,33 +26,34 @@ public static class NotificationDigestGenerator
     public const int MaxEventsPerDigest = 5000;
 
     /// <summary>The control plane's own periodic digest: everything after the generator's cursor, detected up to
-    /// this instant. Advances the cursor over exactly what it covered.</summary>
+    /// this instant. Advances the cursor over exactly what it covered. The subject leads with <paramref name="productName"/>.</summary>
     public static Task<CatalogNotificationDigest> GenerateScheduledAsync(
         CatalogDbContext catalog, long afterEventId, DateTime periodStartUtc, DateTime nowUtc, string? guiBaseUrl,
-        CancellationToken ct = default)
+        string productName = ProductBranding.SqlFlowProductName, CancellationToken ct = default)
         => GenerateAsync(
             catalog, NotificationDigestOrigins.Scheduled, afterEventId, fromUtc: null, periodStartUtc,
-            periodEndUtc: nowUtc, generatedUtc: nowUtc, generatedByUserId: null, advanceCursor: true, guiBaseUrl, ct);
+            periodEndUtc: nowUtc, generatedUtc: nowUtc, generatedByUserId: null, advanceCursor: true, guiBaseUrl, productName, ct);
 
     /// <summary>
     /// A digest a person asked for over a period they chose, which is very often a past day rather than a window
     /// ending now: the period the digest reports on and the instant it was produced at are therefore separate.
     /// A report only, so the scheduled cursor is left alone and the next scheduled digest still covers everything
-    /// it was going to.
+    /// it was going to. The subject leads with <paramref name="productName"/>.
     /// </summary>
     public static Task<CatalogNotificationDigest> GenerateManualAsync(
         CatalogDbContext catalog, DateTime periodStartUtc, DateTime periodEndUtc, DateTime generatedUtc,
-        Guid generatedByUserId, string? guiBaseUrl, CancellationToken ct = default)
+        Guid generatedByUserId, string? guiBaseUrl, string productName = ProductBranding.SqlFlowProductName, CancellationToken ct = default)
         => GenerateAsync(
             catalog, NotificationDigestOrigins.Manual, afterEventId: 0, periodStartUtc, periodStartUtc,
-            periodEndUtc, generatedUtc, generatedByUserId, advanceCursor: false, guiBaseUrl, ct);
+            periodEndUtc, generatedUtc, generatedByUserId, advanceCursor: false, guiBaseUrl, productName, ct);
 
     private static async Task<CatalogNotificationDigest> GenerateAsync(
         CatalogDbContext catalog, string origin, long afterEventId, DateTime? fromUtc, DateTime periodStartUtc,
         DateTime periodEndUtc, DateTime generatedUtc, Guid? generatedByUserId, bool advanceCursor,
-        string? guiBaseUrl, CancellationToken ct)
+        string? guiBaseUrl, string productName, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(productName);
 
         var events = await NotificationStore.ListEventsForDigestAsync(
             catalog, afterEventId, fromUtc, periodEndUtc, MaxEventsPerDigest + 1, ct).ConfigureAwait(false);
@@ -65,7 +67,7 @@ public static class NotificationDigestGenerator
         // so the one artifact can later be viewed in the GUI or delivered over either channel.
         var message = NotificationComposer.ComposeReport(new NotificationComposition(
             NotificationChannels.Email, NotificationModes.Digest, events, truncated, guiBaseUrl, periodEndUtc,
-            new NotificationWindow(periodStartUtc, periodEndUtc)));
+            new NotificationWindow(periodStartUtc, periodEndUtc), productName));
 
         // The same grouping the bodies were rendered from, persisted so the GUI's table and the delivered message
         // can never disagree, and so the digest still reads in full after its events have been pruned.

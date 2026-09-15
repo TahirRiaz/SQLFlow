@@ -3,9 +3,11 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using SqlFlow.ControlPlane.Hosting;
+using SqlFlow.Core.Hosting;
 
 namespace SqlFlow.ControlPlane.Tests;
 
@@ -67,6 +69,19 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
     {
         ArgumentNullException.ThrowIfNull(configure);
         _services.Add(configure);
+        return this;
+    }
+
+    /// <summary>The branding this host runs with, when a test sets one; the entry point's SQLFlow branding otherwise.</summary>
+    private ProductBranding? _branding;
+
+    /// <summary>Runs the host branded as <paramref name="branding"/>, as a product host passing it to
+    /// <see cref="ControlPlaneHost.Build(string[], ProductBranding, IControlPlaneModule[])"/> does. Must be called before
+    /// the first client.</summary>
+    public ControlPlaneAppFactory WithBranding(ProductBranding branding)
+    {
+        ArgumentNullException.ThrowIfNull(branding);
+        _branding = branding;
         return this;
     }
 
@@ -135,6 +150,12 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
 
         builder.ConfigureTestServices(services =>
         {
+            if (_branding is not null)
+            {
+                services.RemoveAll<ProductBranding>();
+                services.AddSingleton(_branding);
+            }
+
             foreach (var configure in _services)
             {
                 configure(services);

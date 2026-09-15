@@ -19,6 +19,7 @@ using SqlFlow.ControlPlane.Infrastructure;
 using SqlFlow.ControlPlane.Notifications;
 using SqlFlow.ControlPlane.Proposals;
 using SqlFlow.ControlPlane.Security;
+using SqlFlow.Core.Hosting;
 using SqlFlow.Dispatch;
 using SqlFlow.Dispatch.Protocol;
 using SqlFlow.Execution;
@@ -34,11 +35,16 @@ namespace SqlFlow.ControlPlane.Hosting;
 /// </summary>
 public static class ControlPlaneHost
 {
-    /// <summary>Builds the control plane with <paramref name="modules"/> and runs it until the host shuts down.</summary>
+    /// <summary>Builds the control plane with <paramref name="modules"/>, branded as SQLFlow, and runs it until the host shuts down.</summary>
     /// <exception cref="ControlPlaneModuleException">A module could not be registered, configured or mapped.</exception>
-    public static async Task RunAsync(string[] args, params IControlPlaneModule[] modules)
+    public static Task RunAsync(string[] args, params IControlPlaneModule[] modules)
+        => RunAsync(args, ProductBranding.SqlFlow, modules);
+
+    /// <summary>Builds the control plane with <paramref name="modules"/>, branded as <paramref name="branding"/>, and runs it until the host shuts down.</summary>
+    /// <exception cref="ControlPlaneModuleException">A module could not be registered, configured or mapped.</exception>
+    public static async Task RunAsync(string[] args, ProductBranding branding, params IControlPlaneModule[] modules)
     {
-        var app = Build(args, modules);
+        var app = Build(args, branding, modules);
         await app.RunAsync().ConfigureAwait(false);
     }
 
@@ -50,11 +56,23 @@ public static class ControlPlaneHost
     /// <exception cref="InvalidOperationException">The control plane's configuration is invalid.</exception>
     /// <exception cref="ControlPlaneModuleException">A module could not be registered, configured or mapped.</exception>
     public static WebApplication Build(string[] args, params IControlPlaneModule[] modules)
+        => Build(args, ProductBranding.SqlFlow, modules);
+
+    /// <summary>
+    /// Builds the control plane as <see cref="Build(string[], IControlPlaneModule[])"/> does, branded as
+    /// <paramref name="branding"/>: the OpenAPI document's title and notification subjects carry the product's name, and the
+    /// branding is registered for modules to use.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">The control plane's configuration is invalid.</exception>
+    /// <exception cref="ControlPlaneModuleException">A module could not be registered, configured or mapped.</exception>
+    public static WebApplication Build(string[] args, ProductBranding branding, params IControlPlaneModule[] modules)
     {
         ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(branding);
         ArgumentNullException.ThrowIfNull(modules);
 
         var builder = WebApplication.CreateBuilder(args);
+        builder.Services.AddSingleton(branding);
 
         // ---- Configuration (fail fast on a misconfigured deployment) -------------------------------------------------
         var options = builder.Configuration.GetSection(ControlPlaneOptions.SectionName).Get<ControlPlaneOptions>() ?? new ControlPlaneOptions();
@@ -372,7 +390,20 @@ public static class ControlPlaneHost
         // ---- Cross-cutting: problem details, OpenAPI, compression, health, rate limiting, CORS -----------------------
         builder.Services.AddProblemDetails();
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
-        builder.Services.AddOpenApi();
+        // A branded host's OpenAPI document is titled with its product name and described by its lockup; SQLFlow's own
+        // keeps the framework's title.
+        builder.Services.AddOpenApi(openApi => openApi.AddDocumentTransformer((document, context, _) =>
+        {
+            var product = context.ApplicationServices.GetRequiredService<ProductBranding>();
+            if (!product.IsSqlFlow)
+            {
+                document.Info ??= new Microsoft.OpenApi.Models.OpenApiInfo();
+                document.Info.Title = product.ProductName;
+                document.Info.Description = product.Lockup;
+            }
+
+            return Task.CompletedTask;
+        }));
         builder.Services.AddResponseCompression();
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<CatalogDbContext>("catalog")

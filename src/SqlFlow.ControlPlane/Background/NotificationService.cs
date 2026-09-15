@@ -2,6 +2,7 @@
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Configuration;
 using SqlFlow.ControlPlane.Notifications;
+using SqlFlow.Core.Hosting;
 using SqlFlow.Core.Secrets;
 
 namespace SqlFlow.ControlPlane.Background;
@@ -60,6 +61,7 @@ public sealed partial class NotificationService : BackgroundService
     private readonly NotificationOptions _options;
     private readonly TimeSpan _pollInterval;
     private readonly IReadOnlyDictionary<string, INotificationChannel> _channels;
+    private readonly ProductBranding _branding;
     private DateTime _lastHousekeepingUtc;
 
     public NotificationService(
@@ -67,13 +69,16 @@ public sealed partial class NotificationService : BackgroundService
         TimeProvider clock,
         IOptions<ControlPlaneOptions> options,
         IEnumerable<INotificationChannel> channels,
+        ProductBranding branding,
         ILogger<NotificationService> logger)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(channels);
+        ArgumentNullException.ThrowIfNull(branding);
         ArgumentNullException.ThrowIfNull(logger);
+        _branding = branding;
         _services = services;
         _clock = clock;
         _options = options.Value.Notifications;
@@ -178,7 +183,7 @@ public sealed partial class NotificationService : BackgroundService
         var catalog = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
         var tick = await RunDigestTickAsync(
             catalog, _clock.GetUtcNow().UtcDateTime, _options.DigestIntervalMinutes, _options.DigestOffsetMinutes,
-            _options.GuiBaseUrl, ct).ConfigureAwait(false);
+            _options.GuiBaseUrl, _branding.ProductName, ct).ConfigureAwait(false);
 
         switch (tick.Outcome)
         {
@@ -203,7 +208,7 @@ public sealed partial class NotificationService : BackgroundService
     /// </summary>
     internal static async Task<NotificationDigestTick> RunDigestTickAsync(
         CatalogDbContext catalog, DateTime nowUtc, int intervalMinutes, int offsetMinutes, string? guiBaseUrl,
-        CancellationToken ct = default)
+        string productName = ProductBranding.SqlFlowProductName, CancellationToken ct = default)
     {
         var next = NextDigestBoundary(nowUtc, intervalMinutes, offsetMinutes);
         var watermark = await NotificationStore.GetWatermarkAsync(catalog, ct).ConfigureAwait(false);
@@ -238,7 +243,7 @@ public sealed partial class NotificationService : BackgroundService
         // band is reported over its nominal period instead, which is the closest honest bound available.
         var periodStart = watermark.DigestPeriodStartUtc ?? due.AddMinutes(-intervalMinutes);
         var digest = await NotificationDigestGenerator.GenerateScheduledAsync(
-            catalog, watermark.DigestCursorEventId, periodStart, nowUtc, guiBaseUrl, ct).ConfigureAwait(false);
+            catalog, watermark.DigestCursorEventId, periodStart, nowUtc, guiBaseUrl, productName, ct).ConfigureAwait(false);
         return new NotificationDigestTick(DigestTickOutcome.Generated, next, digest);
     }
 
@@ -347,7 +352,7 @@ public sealed partial class NotificationService : BackgroundService
         }
 
         var message = NotificationComposer.Compose(new NotificationComposition(
-            subscription.Channel, subscription.Mode, matched, truncated, _options.GuiBaseUrl, now));
+            subscription.Channel, subscription.Mode, matched, truncated, _options.GuiBaseUrl, now, ProductName: _branding.ProductName));
         var target = await NotificationTargetResolver.ResolveAsync(catalog, subscription, ct).ConfigureAwait(false);
         var delivery = new CatalogNotificationDelivery
         {
