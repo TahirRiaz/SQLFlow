@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using SqlFlow.Catalog.Modules;
 
 namespace SqlFlow.ControlPlane.Hosting;
 
@@ -80,6 +81,31 @@ public sealed class ControlPlaneModuleServices
 
         builder.ValidateOnStart();
         return bound;
+    }
+
+    /// <summary>
+    /// Registers the module's own database. Bootstrap migrates it after the catalog (when the control plane applies
+    /// migrations) and verifies it against the build, and the control plane refuses to run when it is missing, behind or
+    /// ahead. The module's context is available as <c>IDbContextFactory&lt;TContext&gt;</c>.
+    /// </summary>
+    /// <exception cref="ControlPlaneModuleException">The database belongs to another module name, or its name or schema is taken.</exception>
+    public void AddDatabase(ModuleDatabase database)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        if (!string.Equals(database.Module, ModuleName, StringComparison.Ordinal))
+        {
+            throw new ControlPlaneModuleException(
+                ModuleName, $"Control plane module '{ModuleName}' registers the database of module '{database.Module}'; a module registers its own database, under its own name.");
+        }
+
+        try
+        {
+            Services.AddModuleDatabase(database);
+        }
+        catch (ModuleDatabaseException ex)
+        {
+            throw new ControlPlaneModuleException(ModuleName, ex.Message, ex);
+        }
     }
 
     /// <summary>Registers a hosted service the control plane starts and stops with the host.</summary>

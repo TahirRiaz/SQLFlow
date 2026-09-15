@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SqlFlow.Catalog;
+using SqlFlow.Catalog.Modules;
 using SqlFlow.ControlPlane.Api;
 using SqlFlow.ControlPlane.Background;
 using SqlFlow.ControlPlane.Configuration;
@@ -93,6 +94,12 @@ public static class ControlPlaneHost
         // (IAzureCredentialFactory, the env + Key Vault providers, ISecretResolver) the catalog connection provider needs.
         builder.Services.AddSqlFlowEngine();
         builder.Services.AddSingleton<CatalogConnectionProvider>();
+        // ---- Module databases: a module's own schema, on the catalog connection or a reference of its own, migrated and
+        // verified by bootstrap after the catalog; readiness stays red until they are verified.
+        builder.Services.AddSingleton<IModuleDatabaseConnections>(sp => new ModuleDatabaseConnections(
+            sp.GetRequiredService<SqlFlow.Core.Secrets.ISecretResolver>(),
+            () => sp.GetRequiredService<CatalogConnectionProvider>().ConnectionString));
+        builder.Services.AddSingleton<ModuleDatabaseVerification>();
         builder.Services.AddSingleton<TokenIssuer>();
         builder.Services.AddSingleton<DeviceCodeStore>();
 
@@ -367,7 +374,9 @@ public static class ControlPlaneHost
         builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
         builder.Services.AddOpenApi();
         builder.Services.AddResponseCompression();
-        builder.Services.AddHealthChecks().AddDbContextCheck<CatalogDbContext>("catalog");
+        builder.Services.AddHealthChecks()
+            .AddDbContextCheck<CatalogDbContext>("catalog")
+            .AddCheck<ModuleDatabaseVerification>("module-databases");
 
         builder.Services.AddRateLimiter(rate =>
         {

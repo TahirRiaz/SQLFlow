@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
+using SqlFlow.Catalog.Modules;
 using SqlFlow.ControlPlane.Api;
 using SqlFlow.ControlPlane.Configuration;
 using SqlFlow.ControlPlane.Infrastructure;
@@ -10,7 +11,8 @@ namespace SqlFlow.ControlPlane.Background;
 
 /// <summary>
 /// First-run provisioning: brings a fresh (or upgraded) deployment to a usable state without manual SQL. In order:
-/// applies pending catalog migrations (so a pointed-at empty database self-provisions), seeds the built-in roles,
+/// applies pending catalog migrations (so a pointed-at empty database self-provisions), migrates and verifies every
+/// module database (refusing to run, by stopping the host, when one is missing, behind or ahead of the build), seeds the built-in roles,
 /// creates the configured initial admin when absent, and registers the configured demo repo source. Every step is
 /// idempotent and never overwrites operator state: an existing admin keeps their password, an edited role keeps
 /// its scopes. Runs as a background service that retries with backoff until the catalog is reachable, so a control
@@ -30,10 +32,16 @@ public sealed class BootstrapProvisioningService : BackgroundService
     private readonly ControlPlaneOptions _options;
     private readonly TimeProvider _clock;
     private readonly ILogger<BootstrapProvisioningService> _logger;
+    private readonly IReadOnlyList<ModuleDatabase> _moduleDatabases;
+    private readonly IModuleDatabaseConnections _moduleConnections;
+    private readonly ModuleDatabaseVerification _moduleVerification;
+    private readonly IHostApplicationLifetime _lifetime;
 
     public BootstrapProvisioningService(
         CatalogConnectionProvider connection, ISecretResolver secrets, IPasswordHasher<CatalogUser> hasher,
-        IOptions<ControlPlaneOptions> options, TimeProvider clock, ILogger<BootstrapProvisioningService> logger)
+        IOptions<ControlPlaneOptions> options, TimeProvider clock, ILogger<BootstrapProvisioningService> logger,
+        IEnumerable<ModuleDatabase> moduleDatabases, IModuleDatabaseConnections moduleConnections,
+        ModuleDatabaseVerification moduleVerification, IHostApplicationLifetime lifetime)
     {
         ArgumentNullException.ThrowIfNull(connection);
         ArgumentNullException.ThrowIfNull(secrets);
@@ -41,12 +49,20 @@ public sealed class BootstrapProvisioningService : BackgroundService
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(moduleDatabases);
+        ArgumentNullException.ThrowIfNull(moduleConnections);
+        ArgumentNullException.ThrowIfNull(moduleVerification);
+        ArgumentNullException.ThrowIfNull(lifetime);
         _connection = connection;
         _secrets = secrets;
         _hasher = hasher;
         _options = options.Value;
         _clock = clock;
         _logger = logger;
+        _moduleDatabases = [.. moduleDatabases];
+        _moduleConnections = moduleConnections;
+        _moduleVerification = moduleVerification;
+        _lifetime = lifetime;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -71,6 +87,16 @@ public sealed class BootstrapProvisioningService : BackgroundService
                 _logger.LogCritical(
                     "Bootstrap provisioning refused: {Error} Set ControlPlane:Bootstrap:AllowCreate=true only if you intend to provision this exact database.",
                     ex.Message);
+                return;
+            }
+            catch (ModuleDatabaseException ex)
+            {
+                // A module database is missing, behind or ahead of this build, or refused provisioning. Serving the API
+                // over it would fail the module's requests one by one, so the control plane refuses to run: readiness
+                // carries the refusal and the host stops.
+                _moduleVerification.MarkRefused(ex.Message);
+                _logger.LogCritical("The control plane refuses to run: {Error}", ex.Message);
+                _lifetime.StopApplication();
                 return;
             }
             catch (Exception ex)
@@ -130,6 +156,8 @@ public sealed class BootstrapProvisioningService : BackgroundService
             }
         }
 
+        await ProvisionModuleDatabasesAsync(connectionString, ct).ConfigureAwait(false);
+
         await using var catalog = CatalogDatabase.Create(connectionString);
         var nowUtc = _clock.GetUtcNow().UtcDateTime;
 
@@ -144,6 +172,38 @@ public sealed class BootstrapProvisioningService : BackgroundService
         await ProvisionAdminAsync(catalog, nowUtc, ct).ConfigureAwait(false);
         await ProvisionDemoRepoAsync(catalog, nowUtc, ct).ConfigureAwait(false);
         await EnsureDefaultPoolFloorAsync(catalog, nowUtc, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Every module database after the catalog: migrated under the same switches as the catalog (ApplyMigrations, and
+    /// AllowCreate for a missing database or a module schema holding tables the module did not create), then verified
+    /// against the build and against the catalog migration the module needs, whether or not migrations were applied. A
+    /// database that is not current raises <see cref="ModuleDatabaseException"/>, which stops the host.
+    /// </summary>
+    private async Task ProvisionModuleDatabasesAsync(string catalogConnectionString, CancellationToken ct)
+    {
+        if (_moduleDatabases.Count > 0)
+        {
+            var (catalogApplied, _) = await CatalogDatabase.StatusAsync(catalogConnectionString, ct).ConfigureAwait(false);
+            foreach (var database in _moduleDatabases)
+            {
+                var connectionString = _moduleConnections.ConnectionString(database);
+                _logger.LogInformation(
+                    "Module database target: {Database} on {Target}.", database.Describe(), CatalogDatabase.DescribeTarget(connectionString));
+
+                if (_options.Bootstrap.ApplyMigrations)
+                {
+                    await ModuleDatabases.MigrateAsync(
+                        database, connectionString, _options.Bootstrap.AllowCreate, $"control plane on {Environment.MachineName}",
+                        _clock.GetUtcNow().UtcDateTime, catalogApplied, ct).ConfigureAwait(false);
+                }
+
+                var status = await ModuleDatabases.VerifyAsync(database, connectionString, catalogApplied, ct).ConfigureAwait(false);
+                _logger.LogInformation("{Status}", status.Summary());
+            }
+        }
+
+        _moduleVerification.MarkVerified();
     }
 
     /// <summary>Seeds the default pool with an always-on floor of one worker, so a fresh SQLFlow always has a node

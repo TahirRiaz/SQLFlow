@@ -27,6 +27,7 @@ using SqlFlow.Core.State;
 using SqlFlow.Core.StoredProcedures;
 using SqlFlow.Azure;
 using SqlFlow.Catalog;
+using SqlFlow.Catalog.Modules;
 using SqlFlow.DuckDb;
 using SqlFlow.Execution;
 using SqlFlow.HealthCheck;
@@ -708,6 +709,9 @@ internal static class Program
         services.AddSingleton(TimeProvider.System);
         services.AddSingleton<INodeTransport>(_ => new HttpNodeTransport(controlPlane, token));
         services.AddSingleton<RunWorker>();
+        // A node opens no catalog connection, so a module database it uses needs a connection reference of its own.
+        services.AddSingleton<IModuleDatabaseConnections>(sp => ModuleDatabaseConnections.WithoutCatalog(
+            sp.GetRequiredService<ISecretResolver>(), "a worker node has no catalog connection"));
         // The host's modules register on the node too (after SQLFlow's own services, so they may extend them), so a run of a
         // module's flow kind executes here exactly as it does from the command line.
         try
@@ -721,6 +725,24 @@ internal static class Program
         }
 
         await using var workerProvider = services.BuildServiceProvider();
+
+        // A node refuses to take work over a module database that is missing, behind or ahead of this build, as the control
+        // plane refuses to run: every run it took would fail on the module's tables instead.
+        var moduleConnections = workerProvider.GetRequiredService<IModuleDatabaseConnections>();
+        foreach (var database in workerProvider.GetServices<ModuleDatabase>())
+        {
+            try
+            {
+                // A node has no catalog, so the catalog migration a module needs is checked by the control plane, not here.
+                var status = await ModuleDatabases.VerifyAsync(database, moduleConnections.ConnectionString(database), catalogAppliedMigrations: null).ConfigureAwait(false);
+                Console.WriteLine($"OK   {status.Summary()}");
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Console.Error.WriteLine($"ERROR  the worker refuses to start: {SecretHygiene.RedactedMessage(ex)}");
+                return 1;
+            }
+        }
 
         var worker = workerProvider.GetRequiredService<RunWorker>();
         using var cts = new CancellationTokenSource();
@@ -1027,7 +1049,33 @@ internal static class Program
     {
         var sub = positional.Length > 1 ? positional[1].ToLowerInvariant() : string.Empty;
         var reference = GetOption(args, "--db") ?? "${env:SQLFLOW_CATALOG_DB}";
-        if (SecretHygiene.LooksLikeEmbeddedSecret(reference))
+
+        // The module databases the host's modules registered: migrate and status cover each after the catalog, and
+        // --module limits both to one, which needs no catalog connection when that module has a connection of its own.
+        var moduleDatabases = provider.GetServices<ModuleDatabase>().ToList();
+        var moduleName = GetOption(args, "--module");
+        ModuleDatabase? onlyModule = null;
+        if (moduleName is not null)
+        {
+            if (sub is not ("migrate" or "status"))
+            {
+                Console.Error.WriteLine("ERROR  --module applies to 'db migrate' and 'db status' only.");
+                return 1;
+            }
+
+            onlyModule = moduleDatabases.Find(d => string.Equals(d.Module, moduleName, StringComparison.Ordinal));
+            if (onlyModule is null)
+            {
+                Console.Error.WriteLine(moduleDatabases.Count == 0
+                    ? $"ERROR  there is no module database '{moduleName}': this host registers none."
+                    : $"ERROR  there is no module database '{moduleName}'; this host registers: {string.Join(", ", moduleDatabases.Select(d => d.Module))}.");
+                return 1;
+            }
+        }
+
+        IReadOnlyList<ModuleDatabase> modulesCovered = onlyModule is null ? moduleDatabases : [onlyModule];
+        var needsCatalog = onlyModule is null || onlyModule.ConnectionReference is null;
+        if (needsCatalog && SecretHygiene.LooksLikeEmbeddedSecret(reference))
         {
             Console.Error.WriteLine(
                 "WARN  --db embeds a credential on the command line (it lands in shell history). Prefer the canonical " +
@@ -1035,20 +1083,26 @@ internal static class Program
                 "values in the git-ignored .sqlflow/env file.");
         }
 
-        string connectionString;
-        try
+        var connectionString = string.Empty;
+        if (needsCatalog)
         {
-            connectionString = provider.GetRequiredService<ISecretResolver>().Resolve(reference);
+            try
+            {
+                connectionString = provider.GetRequiredService<ISecretResolver>().Resolve(reference);
+            }
+            catch (SqlFlowException ex)
+            {
+                Console.Error.WriteLine($"ERROR  {SecretHygiene.RedactedMessage(ex)}");
+                return 1;
+            }
         }
-        catch (SqlFlowException ex)
-        {
-            Console.Error.WriteLine($"ERROR  {SecretHygiene.RedactedMessage(ex)}");
-            return 1;
-        }
+
+        var moduleConnections = provider.GetRequiredService<IModuleDatabaseConnections>();
 
         // The catalog operations talk to SQL Server through EF Core, which throws SqlException / DbUpdateException
         // / InvalidOperationException (none are SqlFlowException) on a bad connection, missing permission, or a
         // failed migration. Catch them here so the verb reports a clean, redacted message instead of crashing.
+        var phase = "catalog";
         try
         {
             switch (sub)
@@ -1058,32 +1112,90 @@ internal static class Program
                     // Creating the database (or initialising the catalog in an empty one) requires the explicit
                     // --create flag, so a mistyped --db can never silently provision the wrong database. Without
                     // it, migrate upgrades an EXISTING catalog only and refuses anything else.
-                    if (args.Contains("--create"))
+                    var create = args.Contains("--create");
+                    IReadOnlyCollection<string>? catalogApplied = null;
+                    if (onlyModule is null)
                     {
-                        await CatalogDatabase.MigrateAsync(connectionString).ConfigureAwait(false);
+                        if (create)
+                        {
+                            await CatalogDatabase.MigrateAsync(connectionString).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            await CatalogDatabase.MigrateExistingAsync(connectionString).ConfigureAwait(false);
+                        }
+
+                        var (applied, pending) = await CatalogDatabase.StatusAsync(connectionString).ConfigureAwait(false);
+                        Console.WriteLine(
+                            $"OK   catalog database current at '{(applied.Count > 0 ? applied[^1] : "(none)")}' " +
+                            $"({applied.Count} migration(s) applied, {pending.Count} pending).");
+                        catalogApplied = applied;
                     }
-                    else
+                    else if (needsCatalog)
                     {
-                        await CatalogDatabase.MigrateExistingAsync(connectionString).ConfigureAwait(false);
+                        // The module lives on the catalog connection: check the catalog migration it needs, without migrating the catalog.
+                        catalogApplied = (await CatalogDatabase.StatusAsync(connectionString).ConfigureAwait(false)).Applied;
                     }
 
-                    var (applied, pending) = await CatalogDatabase.StatusAsync(connectionString).ConfigureAwait(false);
-                    Console.WriteLine(
-                        $"OK   catalog database current at '{(applied.Count > 0 ? applied[^1] : "(none)")}' " +
-                        $"({applied.Count} migration(s) applied, {pending.Count} pending).");
+                    // Each module database after the catalog it may live in, under the same --create rule: without it a
+                    // missing database, or a module schema holding tables the module did not create, is refused, and a
+                    // database ahead of this build is refused either way.
+                    var appliedBy = $"sqlflow db migrate on {Environment.MachineName} by {Environment.UserName}";
+                    foreach (var database in modulesCovered)
+                    {
+                        phase = $"module database '{database.Module}'";
+                        var status = await ModuleDatabases.MigrateAsync(
+                            database, moduleConnections.ConnectionString(database), create, appliedBy, DateTime.UtcNow, catalogApplied).ConfigureAwait(false);
+                        status.ThrowIfNotCurrent();
+                        Console.WriteLine($"OK   {status.Summary()}");
+                    }
+
                     return 0;
                 }
 
                 case "status":
                 {
-                    var (applied, pending) = await CatalogDatabase.StatusAsync(connectionString).ConfigureAwait(false);
-                    Console.WriteLine($"catalog: {applied.Count} migration(s) applied, {pending.Count} pending.");
-                    foreach (var migration in pending)
+                    var exitCode = 0;
+                    IReadOnlyCollection<string>? catalogApplied = null;
+                    if (onlyModule is null)
                     {
-                        Console.WriteLine($"  pending: {migration}");
+                        var (applied, pending) = await CatalogDatabase.StatusAsync(connectionString).ConfigureAwait(false);
+                        Console.WriteLine($"catalog: {applied.Count} migration(s) applied, {pending.Count} pending.");
+                        foreach (var migration in pending)
+                        {
+                            Console.WriteLine($"  pending: {migration}");
+                        }
+
+                        exitCode = pending.Count == 0 ? 0 : 2;
+                        catalogApplied = applied;
+                    }
+                    else if (needsCatalog)
+                    {
+                        catalogApplied = (await CatalogDatabase.StatusAsync(connectionString).ConfigureAwait(false)).Applied;
                     }
 
-                    return pending.Count == 0 ? 0 : 2;
+                    foreach (var database in modulesCovered)
+                    {
+                        phase = $"module database '{database.Module}'";
+                        var status = await ModuleDatabases.StatusAsync(database, moduleConnections.ConnectionString(database), catalogApplied).ConfigureAwait(false);
+                        Console.WriteLine(status.Summary());
+                        foreach (var migration in status.Pending)
+                        {
+                            Console.WriteLine($"  pending: {migration}");
+                        }
+
+                        foreach (var migration in status.Unknown)
+                        {
+                            Console.WriteLine($"  unknown to this build: {migration}");
+                        }
+
+                        if (!status.IsCurrent)
+                        {
+                            exitCode = 2;
+                        }
+                    }
+
+                    return exitCode;
                 }
 
                 case "sync":
@@ -1141,13 +1253,13 @@ internal static class Program
                 }
 
                 default:
-                    Console.Error.WriteLine("Usage: sqlflow db <migrate|sync|status> [path] [--db <conn-ref>] [--create]");
+                    Console.Error.WriteLine("Usage: sqlflow db <migrate|sync|status> [path] [--db <conn-ref>] [--create] [--module <name>]");
                     return 1;
             }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            Console.Error.WriteLine($"ERROR  catalog '{sub}' failed: {SecretHygiene.RedactedMessage(ex)}");
+            Console.Error.WriteLine($"ERROR  {phase} '{sub}' failed: {SecretHygiene.RedactedMessage(ex)}");
             return 1;
         }
     }
@@ -2117,6 +2229,15 @@ internal static class Program
             services.AddSingleton<IFlowEventSink>(new ConsoleFlowEventSink(Console.Error));
         }
 
+        // A module database on the catalog connection resolves the catalog reference the db verbs use (--db, else
+        // ${env:SQLFLOW_CATALOG_DB}), and only when such a database is opened.
+        services.AddSingleton<IModuleDatabaseConnections>(sp =>
+        {
+            var secrets = sp.GetRequiredService<ISecretResolver>();
+            var catalogReference = GetOption(args, "--db") ?? "${env:SQLFLOW_CATALOG_DB}";
+            return new ModuleDatabaseConnections(secrets, () => secrets.Resolve(catalogReference));
+        });
+
         // The host's modules register after SQLFlow's own services, so SQLFlow's verbs see the modules' flow kinds too.
         try
         {
@@ -2257,7 +2378,7 @@ internal static class Program
                                                  acquires a token for the scope (default storage), through the one
                                                  credential factory Key Vault, invoke, and DuckDB cloud reads all
                                                  use. Exit 0 on a token, 1 on failure.
-              sqlflow db <migrate|sync|status> [path] [--db <conn-ref>] [--create] [--repo name] [--repo-url url] [--connect]
+              sqlflow db <migrate|sync|status> [path] [--db <conn-ref>] [--create] [--repo name] [--repo-url url] [--connect] [--module <name>]
                                                  Database mode: the EF-managed shadow catalog (a read-model of the
                                                  git/YAML estate + on-disk run history + lineage, for the GUI).
                                                  Each YAML flow is mapped into a row (kind, source/target, the full
@@ -2272,7 +2393,12 @@ internal static class Program
                                                  attributed to --repo (default: the folder name); --connect adds the
                                                  derived lineage tier (fetches object metadata from the live
                                                  database, linking flows across repos through shared objects);
-                                                 'status' lists applied vs pending migrations.
+                                                 'status' lists applied vs pending migrations. 'migrate' and 'status'
+                                                 also cover every module database the host registers (a module's own
+                                                 schema, on the catalog connection or one of its own): 'status' names
+                                                 the migrations a database has that this build does not know and exits
+                                                 2 unless every database is current; --module <name> limits both to one
+                                                 module database.
                                                  --db defaults to ${env:SQLFLOW_CATALOG_DB}.
               sqlflow worker   --url <control-plane> [--token <ref>] [--pool a,b]
                                [--poll-seconds N] [--drain-seconds N]

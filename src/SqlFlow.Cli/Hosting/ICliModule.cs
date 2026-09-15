@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using SqlFlow.Catalog.Modules;
 
 namespace SqlFlow.Cli.Hosting;
 
@@ -59,6 +60,32 @@ public sealed class CliModuleServices
 
     /// <summary>Whether this is a command's provider or a worker node's.</summary>
     public CliServiceScope Scope { get; }
+
+    /// <summary>
+    /// Registers the module's own database: <c>sqlflow db migrate</c> and <c>db status</c> cover it after the catalog, a worker
+    /// node verifies it before taking work, and its context is available as <c>IDbContextFactory&lt;TContext&gt;</c>. On a
+    /// command the catalog connection is <c>--db</c>, else <c>${env:SQLFLOW_CATALOG_DB}</c>; a worker node has none, so a
+    /// module database a node opens needs a connection reference of its own.
+    /// </summary>
+    /// <exception cref="CliModuleException">The database belongs to another module name, or its name or schema is taken.</exception>
+    public void AddDatabase(ModuleDatabase database)
+    {
+        ArgumentNullException.ThrowIfNull(database);
+        if (!string.Equals(database.Module, ModuleName, StringComparison.Ordinal))
+        {
+            throw new CliModuleException(
+                ModuleName, $"CLI module '{ModuleName}' registers the database of module '{database.Module}'; a module registers its own database, under its own name.");
+        }
+
+        try
+        {
+            Services.AddModuleDatabase(database);
+        }
+        catch (ModuleDatabaseException ex)
+        {
+            throw new CliModuleException(ModuleName, ex.Message, ex);
+        }
+    }
 }
 
 /// <summary>A module could not be registered or configured. <see cref="ModuleName"/> names it.</summary>

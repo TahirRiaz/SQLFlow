@@ -25,6 +25,16 @@ namespace SqlFlow.Catalog;
 /// </summary>
 public static class CatalogDatabase
 {
+    /// <summary>The build's catalog migrations, read from the migrations assembly once. Reading them opens no connection.</summary>
+    private static readonly Lazy<IReadOnlyList<string>> BuildMigrations = new(() =>
+    {
+        using var context = Create("Data Source=(local);Initial Catalog=SqlFlowCatalog");
+        return context.Database.GetMigrations().ToList();
+    });
+
+    /// <summary>Every catalog migration this build knows, oldest first. Reading it opens no connection.</summary>
+    public static IReadOnlyList<string> KnownMigrations => BuildMigrations.Value;
+
     /// <summary>
     /// THE single definition of how a catalog <see cref="DbContext"/> talks to SQL Server: the migrations history
     /// table pinned into the catalog schema, and transient-error resiliency. Every catalog context in the product is

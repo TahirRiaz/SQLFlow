@@ -23,7 +23,7 @@ public sealed class CliArguments
         "--separator", "--join-separator", "--map", "--array", "--repeat", "--xml",
         "--date-column", "--base-value", "--filter", "--threshold", "--alpha", "--budget", "--maturity", "--state-dir",
         "--of", "--explain",
-        "--db", "--repo", "--repo-url",
+        "--db", "--repo", "--repo-url", "--module",
         // The control-plane verbs (health/login/logout/trigger/runs/groups and the estate family).
         "--url", "--token", "--username", "--token-name", "--expires-days", "--scopes",
         "--scope", "--batch", "--pool", "--poll-seconds", "--commit", "--flow", "--status", "--kind", "--group",
