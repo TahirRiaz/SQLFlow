@@ -8,7 +8,7 @@ namespace SqlFlow.Yaml;
 /// kind, batch, the servers it reads and writes, lifecycle, lineage participation), the declared endpoints the proposal
 /// preflight compares, the credential references the secret-hygiene check inspects, and whether a node can run it
 /// from a single-file snapshot. With those, every consumer treats a registered flow like a built-in one without knowing
-/// its kind. The loader stamps the document's schedule and execution mode from the envelope.
+/// its kind. The loader stamps the document's schedule, execution mode and lifecycle from the envelope.
 /// </summary>
 public abstract record RegisteredFlowDocument : FlowDocument
 {
@@ -21,9 +21,10 @@ public abstract record RegisteredFlowDocument : FlowDocument
     /// <summary>The flow's grouping label (<c>batch:</c>), or null when it declares none.</summary>
     public virtual string? Batch => null;
 
-    /// <summary>The flow's declared lifecycle: production unless the document says otherwise. Only production
-    /// pipelines generate notification events; execution is unaffected.</summary>
-    public virtual FlowLifecycle Lifecycle => FlowLifecycle.Production;
+    /// <summary>The flow's declared lifecycle (the envelope's <c>lifecycle:</c> key, stamped by the loader): production
+    /// unless the document says otherwise. Only production pipelines generate notification events; execution is
+    /// unaffected.</summary>
+    public FlowLifecycle Lifecycle { get; init; } = FlowLifecycle.Production;
 
     /// <summary>The connection reference (<c>${env:...}</c>, <c>${keyvault:...}</c>) of the server the flow reads
     /// from, or null when its source is not a server (files, an external API).</summary>

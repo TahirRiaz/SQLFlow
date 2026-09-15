@@ -144,6 +144,8 @@ public sealed class YamlDocumentLoader
         public ScheduleYaml? Schedule { get; set; }
 
         public string? Mode { get; set; }
+
+        public string? Lifecycle { get; set; }
     }
 
     private sealed class ScheduleYaml
@@ -509,7 +511,8 @@ public sealed class YamlDocumentLoader
 
         if (_kinds.TryGetValue(flowType, out var registered))
         {
-            return ParseRegistered(registered, yaml, source, schedule, mode);
+            var lifecycle = YamlDocumentParts.ParseLifecycle(probe?.Lifecycle, source);
+            return ParseRegistered(registered, yaml, source, schedule, mode, lifecycle);
         }
 
         throw new FlowValidationException(
@@ -567,10 +570,11 @@ public sealed class YamlDocumentLoader
     }
 
     /// <summary>Parses a document of a registered kind and stamps the envelope on it, so every kind carries its
-    /// schedule and mode exactly as the built-in kinds do. A kind that returns no document, a document of another
-    /// kind, or a document without a name is a defect of that kind, reported against the source file.</summary>
+    /// schedule, mode and lifecycle exactly as the built-in kinds do. A kind that returns no document, a document of
+    /// another kind, or a document without a name is a defect of that kind, reported against the source file.</summary>
     private static RegisteredFlowDocument ParseRegistered(
-        IFlowDocumentKind kind, string yaml, string source, ScheduleSpec? schedule, Core.Runs.ExecutionMode mode)
+        IFlowDocumentKind kind, string yaml, string source, ScheduleSpec? schedule, Core.Runs.ExecutionMode mode,
+        Core.Runs.FlowLifecycle lifecycle)
     {
         var document = kind.Parse(yaml, source)
             ?? throw new FlowValidationException($"{source}: the '{kind.FlowType}' kind returned no document.");
@@ -585,7 +589,7 @@ public sealed class YamlDocumentLoader
             throw new FlowValidationException($"{source}: a '{kind.FlowType}' flow must declare a name.");
         }
 
-        return document with { Schedule = schedule, Mode = mode };
+        return document with { Schedule = schedule, Mode = mode, Lifecycle = lifecycle };
     }
 
     private static ScheduleSpec? MapSchedule(ScheduleYaml? schedule)

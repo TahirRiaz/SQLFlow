@@ -74,6 +74,23 @@ public sealed class FlowKindRegistryTests : IDisposable
     }
 
     [Fact]
+    public void Parse_RegisteredFlowType_StampsTheDeclaredLifecycle_AndDefaultsToProduction()
+    {
+        var development = Loader().Parse(ProbeFlow + "\nlifecycle: development\n", "flows/wells.yaml");
+        Assert.Equal(FlowLifecycle.Development, Assert.IsType<ProbeFlowDocument>(development).Lifecycle);
+        Assert.Equal(FlowLifecycle.Development, Assert.Single(FlowDocumentHeaders.Project(development)).Lifecycle);
+
+        Assert.Equal(FlowLifecycle.Production, Loader().Parse(ProbeFlow, "flows/wells.yaml") is RegisteredFlowDocument d ? d.Lifecycle : default);
+    }
+
+    [Fact]
+    public void Parse_RegisteredFlowType_RefusesAnUnknownLifecycle()
+    {
+        var ex = Assert.Throws<FlowValidationException>(() => Loader().Parse(ProbeFlow + "\nlifecycle: retired\n", "flows/wells.yaml"));
+        Assert.Contains("'lifecycle' has unknown value 'retired'", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Parse_FlowTypeMatchesCaseInsensitively()
     {
         var document = Loader().Parse(ProbeFlow.Replace("flowType: probe", "flowType: PROBE", StringComparison.Ordinal));
