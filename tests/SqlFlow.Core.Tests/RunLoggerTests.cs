@@ -74,6 +74,32 @@ public sealed class RunLoggerTests
     }
 
     [Fact]
+    public void Log_KeepsWarnings_AtTheLeastVerboseLevel()
+    {
+        var logger = new RunLogger(RunLogLevel.Info);
+        logger.Log(RunLogLevel.Warning, "target.evolve", "re-typed a column");
+        logger.Log(RunLogLevel.Debug, "b", "dropped");
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(RunLogLevel.Warning, entry.Level);
+        Assert.Equal("target.evolve", entry.Step);
+    }
+
+    [Fact]
+    public void Format_RendersWarningLevel()
+    {
+        var entry = new RunLogEntry
+        {
+            TimestampUtc = new DateTime(2026, 6, 10, 12, 0, 0, DateTimeKind.Utc),
+            Level = RunLogLevel.Warning,
+            Step = "target.drift",
+            Message = "[amount]: incompatible type",
+        };
+
+        Assert.StartsWith("2026-06-10 12:00:00.000Z WARN  target.drift", RunLogger.Format(entry), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Log_IsThreadSafe()
     {
         var logger = new RunLogger(RunLogLevel.Info);

@@ -107,7 +107,7 @@ public sealed class RunEventCollector : IFlowEventSink
 /// <summary>
 /// The seam that folds the canonical run log into the canonical event stream: an <see cref="IRunEventSink"/> the
 /// runners log through, which forwards every entry to the wrapped run log (the <see cref="RunLogger"/> still
-/// applies its own level to what lands in <c>run.log</c>) and republishes Info and Debug entries as
+/// applies its own level to what lands in <c>run.log</c>) and republishes Warning, Info and Debug entries as
 /// <see cref="FlowEvent"/>s. Trace-level entries are exactly the generated-SQL mirrors (see
 /// <see cref="RunLogLevel.Trace"/>), which already stream through the statement sink, so republishing them would
 /// duplicate every statement body; they go to the log only. The bridge reports <see cref="RunLogLevel.Trace"/> as
@@ -152,7 +152,12 @@ public sealed class RunLogEventBridge : IRunEventSink
             RunId = _runId,
             FlowName = _flowName,
             Timestamp = DateTimeOffset.UtcNow,
-            Level = level == RunLogLevel.Debug ? FlowEventLevel.Debug : FlowEventLevel.Info,
+            Level = level switch
+            {
+                RunLogLevel.Warning => FlowEventLevel.Warning,
+                RunLogLevel.Debug => FlowEventLevel.Debug,
+                _ => FlowEventLevel.Info,
+            },
             Stage = stepName,
             Message = message,
         });

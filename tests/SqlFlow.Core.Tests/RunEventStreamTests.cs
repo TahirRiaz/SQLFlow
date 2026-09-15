@@ -60,6 +60,22 @@ public sealed class RunEventStreamTests
     }
 
     [Fact]
+    public void Bridge_PublishesWarningsAsWarnings()
+    {
+        var logger = new RunLogger(RunLogLevel.Info);
+        var events = new RecordingSink();
+        var bridge = new RunLogEventBridge(logger, events);
+
+        bridge.Log(RunLogLevel.Warning, "target.evolve", "[name] varchar(50) -> nvarchar(50)");
+
+        var published = Assert.Single(events.Published);
+        Assert.Equal(FlowEventLevel.Warning, published.Level);
+        Assert.Equal("target.evolve", published.Stage);
+        // And it survived the run log's own Info level, because a warning is a severity, not a verbosity step.
+        Assert.Equal(RunLogLevel.Warning, Assert.Single(logger.Entries).Level);
+    }
+
+    [Fact]
     public void Bridge_ReportsTraceLevel_SoNoRunnerDropsAnEntryAtTheSource()
     {
         var bridge = new RunLogEventBridge(new RunLogger(RunLogLevel.Info), new RecordingSink());

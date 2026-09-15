@@ -3,9 +3,18 @@ using System.Text;
 
 namespace SqlFlow.Core.Runs;
 
-/// <summary>How much detail the canonical run log records. Levels are cumulative.</summary>
+/// <summary>
+/// How much detail the canonical run log records. Levels are cumulative from <see cref="Info"/> upward.
+/// <see cref="Warning"/> sits below them all deliberately: it is a severity, not a verbosity step, so it
+/// passes every configured level and can never be gated away.
+/// </summary>
 public enum RunLogLevel
 {
+    /// <summary>Something the run survived but an operator must see: a change the engine applied that alters
+    /// what consumers of the target observe, or a difference it deliberately did not act on. Recorded at every
+    /// verbosity, because a warning nobody sees is not a warning.</summary>
+    Warning = -1,
+
     /// <summary>The authoritative step-by-step account: what ran, in what order, with counts, durations,
     /// and the outcome. Always enough to know exactly what took place.</summary>
     Info = 0,
@@ -150,6 +159,7 @@ public sealed class RunLogger : IRunEventSink
 
     private static string LevelName(RunLogLevel level) => level switch
     {
+        RunLogLevel.Warning => "WARN",
         RunLogLevel.Debug => "DEBUG",
         RunLogLevel.Trace => "TRACE",
         _ => "INFO",
