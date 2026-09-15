@@ -57,6 +57,16 @@ public sealed record RunEnqueueResult(Guid RunId, DispatchRun Placement);
 /// members' placement rows for the dispatcher.</summary>
 public sealed record RunGroupEnqueueResult(Guid GroupId, IReadOnlyList<Guid> RunIds, IReadOnlyList<DispatchRun> Placements);
 
+/// <summary>
+/// Work a caller commits together with a run group's enqueue, in the same serializable transaction. It is called once the
+/// group header and member runs are written but not committed, with the planned group, writes the caller's own rows
+/// through <paramref name="catalog"/>'s connection and transaction (a context of the caller's own shares the connection
+/// and enlists with <c>Database.UseTransaction</c>), and answers whether to commit. Answering false rolls the whole
+/// enqueue back, and so does an exception, which propagates. A transient failure may retry the transaction, so the work
+/// rebuilds what it writes from its inputs on every call.
+/// </summary>
+public delegate Task<bool> RunGroupCompanion(CatalogDbContext catalog, RunGroupEnqueueResult planned, CancellationToken ct);
+
 /// <summary>The outcome of cancelling a run group: whether the group existed, how many queued members were cancelled
 /// outright, and how many running members had a cancel request stamped.</summary>
 public sealed record GroupCancelResult(bool Found, int CancelledQueued, int RequestedRunning);
@@ -203,6 +213,23 @@ public static class RunQueueStore
     /// the caller (an empty scope is a request error, not something to enqueue).</summary>
     public static async Task<RunGroupEnqueueResult> EnqueueGroupAsync(
         CatalogDbContext catalog, RunGroupEnqueueRequest request, DateTime nowUtc, CancellationToken ct = default)
+        => (await EnqueueGroupCoreAsync(catalog, request, nowUtc, companion: null, ct).ConfigureAwait(false))!;
+
+    /// <summary>Enqueues a run group exactly as <see cref="EnqueueGroupAsync(CatalogDbContext, RunGroupEnqueueRequest, DateTime, CancellationToken)"/>
+    /// does, and commits it together with the caller's own rows: <paramref name="companion"/> runs inside the same
+    /// serializable transaction once the header and members are written, and decides whether it all commits. Returns null,
+    /// with nothing enqueued, when the companion declined.</summary>
+    public static Task<RunGroupEnqueueResult?> EnqueueGroupAsync(
+        CatalogDbContext catalog, RunGroupEnqueueRequest request, DateTime nowUtc, RunGroupCompanion companion,
+        CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(companion);
+        return EnqueueGroupCoreAsync(catalog, request, nowUtc, companion, ct);
+    }
+
+    private static async Task<RunGroupEnqueueResult?> EnqueueGroupCoreAsync(
+        CatalogDbContext catalog, RunGroupEnqueueRequest request, DateTime nowUtc, RunGroupCompanion? companion,
+        CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(request);
@@ -255,7 +282,7 @@ public static class RunQueueStore
         }
 
         var placements = new List<DispatchRun>(request.Members.Count);
-        var runIds = await CatalogTransaction.InSerializableAsync(catalog, () =>
+        return await CatalogTransaction.InSerializableUnlessDeclinedAsync<RunGroupEnqueueResult?>(catalog, async () =>
         {
             placements.Clear();
             catalog.RunGroups.Add(new CatalogRunGroup
@@ -312,10 +339,22 @@ public static class RunQueueStore
                 placements.Add(new DispatchRun(runId, pipelineId, targetPool, groupId, wave, maxConcurrency, nowUtc, 0, false));
             }
 
-            return Task.FromResult(ids);
-        }, ct).ConfigureAwait(false);
+            var planned = new RunGroupEnqueueResult(groupId, ids, [.. placements]);
+            if (companion is null)
+            {
+                return (planned, true);
+            }
 
-        return new RunGroupEnqueueResult(groupId, runIds, placements);
+            // The companion runs once the members are written, so it reads them, and writes beside them, through the
+            // transaction they will commit in.
+            await catalog.SaveChangesAsync(ct).ConfigureAwait(false);
+            if (await companion(catalog, planned, ct).ConfigureAwait(false))
+            {
+                return (planned, true);
+            }
+
+            return (null, false);
+        }, ct).ConfigureAwait(false);
     }
 
     /// <summary>

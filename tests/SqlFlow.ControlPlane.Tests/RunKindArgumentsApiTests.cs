@@ -323,6 +323,10 @@ public sealed class RunKindArgumentsApiTests
             CatalogDbContext catalog, RunGroupEnqueueRequest request, CancellationToken ct = default)
             => RunQueueStore.EnqueueGroupAsync(catalog, request, DateTime.UtcNow, ct);
 
+        public Task<RunGroupEnqueueResult?> EnqueueGroupAsync(
+            CatalogDbContext catalog, RunGroupEnqueueRequest request, RunGroupCompanion companion, CancellationToken ct = default)
+            => RunQueueStore.EnqueueGroupAsync(catalog, request, DateTime.UtcNow, companion, ct);
+
         public Task<CancelOutcome> CancelAsync(CatalogDbContext catalog, Guid runId, CancellationToken ct = default)
             => throw new NotSupportedException();
 
