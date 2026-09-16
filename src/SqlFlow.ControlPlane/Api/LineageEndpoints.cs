@@ -139,25 +139,47 @@ public sealed record ObjectLineageDto(
     IReadOnlyList<LineageStepDto> Downstream,
     bool Truncated);
 
-/// <summary>The latest run of a producing flow: did the last population attempt work, when, and how much landed.</summary>
+/// <summary>One run of a producing flow: did the population attempt work, when, how much landed, and why it failed
+/// (<see cref="Error"/>, null unless it failed). The trailing fields say what kind of run it was, so its rows are not
+/// misread: what started it, whether it was a forced full load or a backfill window, and the incremental scope the
+/// engine actually applied (<see cref="IncrementalMode"/> <c>full</c> or <c>incremental</c>, the bound it read with,
+/// the resolved watermark; null when the run never reached the read or the flow kind has no incremental surface).</summary>
 public sealed record ProducerRunDto(
-    string RunId, string Status, DateTime? StartUtc, DateTime? EndUtc, long? RowsLoaded);
+    string RunId, string Status, DateTime? StartUtc, DateTime? EndUtc, long? RowsLoaded,
+    long? RowsInserted, long? RowsUpdated, long? RowsDeleted, string? Error,
+    string? TriggerSource, bool FullLoad, DateTime? BackfillFrom, DateTime? BackfillTo,
+    string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark);
+
+/// <summary>The clock of a schedule a chained schedule fires after: its own cron or interval and next fire, or, when
+/// it is itself chained, the schedules it waits for in turn.</summary>
+public sealed record ParentScheduleDto(
+    string Name, bool Resolved, string? Cron, int? IntervalSeconds, string? Timezone, bool Enabled, bool Paused,
+    DateTime? NextFireUtc, DateTime? LastFireUtc, IReadOnlyList<string> AfterSchedules);
 
 /// <summary>One schedule that fires a producing flow: the cadence behind "how often does this table update".
 /// <c>Cron</c>/<c>IntervalSeconds</c> carry the clock (exactly one is set for a clock-driven schedule);
 /// <c>AfterSchedules</c> is set instead when this schedule chains behind others (it fires when they complete, so
-/// its cadence is theirs). <c>NextFireUtc</c> is the concrete next update time.</summary>
+/// its cadence is theirs). <c>NextFireUtc</c> is the concrete next update time. <c>Fires</c> is whether this schedule
+/// fires at all (enabled and not paused). <c>ParentSchedules</c> resolves each <c>AfterSchedules</c> name to that
+/// schedule's own clock, so a chained schedule's real cadence is in the payload rather than a further lookup; a name
+/// with no schedule row reports <c>Resolved</c> false.</summary>
 public sealed record ProducerScheduleDto(
     string ScheduleId, string Name, string? Cron, int? IntervalSeconds, string Timezone,
     bool Enabled, bool Paused, DateTime? NextFireUtc, DateTime? LastFireUtc,
-    IReadOnlyList<string> AfterSchedules);
+    IReadOnlyList<string> AfterSchedules, bool Fires, IReadOnlyList<ParentScheduleDto> ParentSchedules);
 
 /// <summary>One flow that WRITES the object, with its latest run and the schedules that fire it. The unit of the
-/// "how is this table populated" answer: the flow is the mechanism, the run is the last outcome, the schedules
-/// are the cadence.</summary>
+/// "how is this table populated" answer: the flow is the mechanism (<see cref="LoadProfile"/> states how it reads
+/// and what it does to the table), the run is the last outcome, the schedules are the cadence.
+/// <see cref="LastRun"/> is the newest run of any status; <see cref="LastSuccessfulRun"/> is the newest that
+/// succeeded (the last time the table was actually loaded), null when none ever did. <see cref="RunsOnSchedule"/>
+/// is whether a schedule fire runs this flow at all: a fire skips an inactive flow and one in <c>manual</c> or
+/// <c>disabled</c> mode, whatever its schedule memberships say.</summary>
 public sealed record ObjectProducerDto(
     string PipelineId, string FlowName, string FlowKind, string? Batch, Guid RepoId, string? RepoName,
-    string Relation, string Tier, ProducerRunDto? LastRun, IReadOnlyList<ProducerScheduleDto> Schedules);
+    string Relation, string Tier, ProducerRunDto? LastRun, IReadOnlyList<ProducerScheduleDto> Schedules,
+    bool Active, string? ExecutionMode, string? Lifecycle, bool RunsOnSchedule,
+    FlowLoadProfile LoadProfile, ProducerRunDto? LastSuccessfulRun);
 
 /// <summary>
 /// How an object is populated and how often it updates, in one payload: every flow that writes it, each with its
@@ -1181,11 +1203,27 @@ public static class LineageEndpoints
             .GroupBy(r => r.PipelineId)
             .Select(g => g.OrderByDescending(r => r.StartUtc).ThenByDescending(r => r.RunId).First());
 
+    /// <summary>The newest SUCCEEDED run of each of the given pipelines: the last time each actually loaded, which
+    /// the newest run of any status cannot answer once a flow starts failing.</summary>
+    internal static IQueryable<CatalogRun> LatestSuccessfulRunsQuery(CatalogDbContext db, List<Guid> pipelineIds)
+        => db.Runs.AsNoTracking()
+            .Where(r => pipelineIds.Contains(r.PipelineId) && r.Status == RunStatuses.Succeeded)
+            .GroupBy(r => r.PipelineId)
+            .Select(g => g.OrderByDescending(r => r.StartUtc).ThenByDescending(r => r.RunId).First());
+
+    private static ProducerRunDto ToProducerRun(CatalogRun run)
+        => new(
+            run.RunId.ToString(), run.Status, run.StartUtc, run.EndUtc, run.RowsLoaded,
+            run.RowsInserted, run.RowsUpdated, run.RowsDeleted, run.Error,
+            run.TriggerSource, run.FullLoad, run.BackfillFrom, run.BackfillTo,
+            run.IncrementalMode, run.IncrementalFilter, run.IncrementalWatermark);
+
     /// <summary>
     /// How an object is populated and how often it updates: the writing flows resolved from the object's lineage
-    /// edges, each joined to its latest run and to every schedule that fires it (including chained schedules,
-    /// whose cadence is their parents'). A view or procedure with no writing flow reports its module edges
-    /// instead, pointing the caller at the derivation to read.
+    /// edges, each with its load profile (derived from its stored definition), its latest run and latest successful
+    /// run, whether a schedule fire runs it at all, and every schedule it is a member of (a chained schedule with its
+    /// parents' clocks resolved). A view or procedure with no writing flow reports its module edges instead, pointing
+    /// the caller at the derivation to read.
     /// </summary>
     private static async Task<Results<Ok<ObjectRefreshDto>, ProblemHttpResult>> GetObjectRefreshAsync(
         string key, CatalogDbContext db, CancellationToken ct)
@@ -1234,7 +1272,7 @@ public static class LineageEndpoints
         // its edge (name from the edge, no batch/repo detail), so history does not hide a former writer.
         var pipelines = await db.Pipelines.AsNoTracking()
             .Where(p => pipelineIds.Contains(p.Id))
-            .Select(p => new { p.Id, p.Name, p.Kind, p.Batch, p.RepoId })
+            .Select(p => new { p.Id, p.Name, p.Kind, p.Batch, p.RepoId, p.Active, p.ExecutionMode, p.Lifecycle, p.Yaml })
             .ToListAsync(ct).ConfigureAwait(false);
         var pipelineById = pipelines.ToDictionary(p => p.Id);
 
@@ -1249,6 +1287,8 @@ public static class LineageEndpoints
         // Latest run per producing pipeline, resolved server-side (one row per pipeline, newest StartUtc).
         var latestRuns = await LatestRunsQuery(db, pipelineIds).ToListAsync(ct).ConfigureAwait(false);
         var runByPipeline = latestRuns.ToDictionary(r => r.PipelineId);
+        var successfulRuns = await LatestSuccessfulRunsQuery(db, pipelineIds).ToListAsync(ct).ConfigureAwait(false);
+        var successByPipeline = successfulRuns.ToDictionary(r => r.PipelineId);
 
         // Every schedule each producer is a member of, with the schedule's cadence and its parents (a chained
         // schedule has no clock of its own; its parents are its cadence).
@@ -1272,6 +1312,7 @@ public static class LineageEndpoints
         var parentsBySchedule = parents
             .GroupBy(p => p.ScheduleId)
             .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(p => p.ParentName).ToList());
+        var resolvedParentsBySchedule = await ResolveParentSchedulesAsync(db, parents, ct).ConfigureAwait(false);
 
         var schedulesByPipeline = memberships
             .GroupBy(m => m.PipelineId)
@@ -1281,7 +1322,9 @@ public static class LineageEndpoints
                     .Select(m => new ProducerScheduleDto(
                         m.Id.ToString(), m.Name, m.Cron, m.IntervalSeconds, m.Timezone, m.Enabled, m.Paused,
                         m.NextFireUtc, m.LastFireUtc,
-                        parentsBySchedule.GetValueOrDefault(m.Id, [])))
+                        parentsBySchedule.GetValueOrDefault(m.Id, []),
+                        m.Enabled && !m.Paused,
+                        resolvedParentsBySchedule.GetValueOrDefault(m.Id, [])))
                     .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
                     .ToList());
 
@@ -1290,6 +1333,7 @@ public static class LineageEndpoints
             {
                 var pipeline = pipelineById.GetValueOrDefault(p.PipelineId);
                 var run = runByPipeline.GetValueOrDefault(p.PipelineId);
+                var success = successByPipeline.GetValueOrDefault(p.PipelineId);
                 var repoId = pipeline?.RepoId ?? p.RepoId;
                 return new ObjectProducerDto(
                     p.PipelineId.ToString(),
@@ -1300,17 +1344,74 @@ public static class LineageEndpoints
                     repoNames.GetValueOrDefault(repoId),
                     p.Relation,
                     p.Tier,
-                    run is null
-                        ? null
-                        : new ProducerRunDto(
-                            run.RunId.ToString(), run.Status, run.StartUtc, run.EndUtc, run.RowsLoaded),
-                    schedulesByPipeline.GetValueOrDefault(p.PipelineId, []));
+                    run is null ? null : ToProducerRun(run),
+                    schedulesByPipeline.GetValueOrDefault(p.PipelineId, []),
+                    pipeline?.Active ?? false,
+                    pipeline?.ExecutionMode,
+                    pipeline?.Lifecycle,
+                    pipeline is not null && CatalogEndpoints.RunsOnSchedule(pipeline.Active, pipeline.ExecutionMode),
+                    FlowLoadProfiles.FromYaml(pipeline?.Yaml),
+                    success is null ? null : ToProducerRun(success));
             })
             .OrderBy(p => p.FlowName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return TypedResults.Ok(new ObjectRefreshDto(
             identity.Key, identity.Name, identity.Kind, producerDtos, viaModules));
+    }
+
+    /// <summary>
+    /// Resolves each parent name of the given chained-schedule links to that schedule's own clock (same repo, by
+    /// name, the way the chaining gate resolves it), with the parent's own parents when it is chained in turn. A
+    /// name with no schedule row is reported unresolved rather than dropped, since that is why the child never fires.
+    /// </summary>
+    private static async Task<Dictionary<Guid, IReadOnlyList<ParentScheduleDto>>> ResolveParentSchedulesAsync(
+        CatalogDbContext db, List<CatalogScheduleParent> links, CancellationToken ct)
+    {
+        if (links.Count == 0)
+        {
+            return [];
+        }
+
+        var repoIds = links.Select(p => p.RepoId).Distinct().ToList();
+        var names = links.Select(p => p.ParentName).Distinct().ToList();
+        var rows = await db.Schedules.AsNoTracking()
+            .Where(s => repoIds.Contains(s.RepoId) && names.Contains(s.Name))
+            .Select(s => new
+            {
+                s.Id, s.RepoId, s.Name, s.Cron, s.IntervalSeconds, s.Timezone, s.Enabled, s.Paused,
+                s.NextFireUtc, s.LastFireUtc,
+            })
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        var rowIds = rows.Select(r => r.Id).ToList();
+        var grandParents = rowIds.Count == 0
+            ? []
+            : await db.ScheduleParents.AsNoTracking()
+                .Where(p => rowIds.Contains(p.ScheduleId))
+                .OrderBy(p => p.Ordinal)
+                .ToListAsync(ct).ConfigureAwait(false);
+        var grandParentsBySchedule = grandParents
+            .GroupBy(p => p.ScheduleId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(p => p.ParentName).ToList());
+
+        // Schedule names are matched the way SQL Server compares them (case-insensitively under the catalog's
+        // collation), so the in-memory lookup uses the same comparison.
+        var rowByKey = rows
+            .GroupBy(r => (r.RepoId, Name: r.Name.ToUpperInvariant()))
+            .ToDictionary(g => g.Key, g => g.First());
+
+        return links
+            .GroupBy(p => p.ScheduleId)
+            .ToDictionary(
+                g => g.Key,
+                g => (IReadOnlyList<ParentScheduleDto>)g
+                    .Select(p => rowByKey.TryGetValue((p.RepoId, p.ParentName.ToUpperInvariant()), out var row)
+                        ? new ParentScheduleDto(
+                            row.Name, true, row.Cron, row.IntervalSeconds, row.Timezone, row.Enabled, row.Paused,
+                            row.NextFireUtc, row.LastFireUtc, grandParentsBySchedule.GetValueOrDefault(row.Id, []))
+                        : new ParentScheduleDto(p.ParentName, false, null, null, null, false, false, null, null, []))
+                    .ToList());
     }
 
     /// <summary>

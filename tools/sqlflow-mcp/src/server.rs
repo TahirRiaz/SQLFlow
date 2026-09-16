@@ -1210,7 +1210,13 @@ and fix every finding first."
         self.get("/api/v1/pipelines/batches", &q).await
     }
 
-    #[tool(description = "Get one pipeline (flow) by id.")]
+    #[tool(
+        description = "Get one pipeline (flow) by id: its identity, YAML, definition, `runsOnSchedule` (whether a \
+            schedule fire runs it at all: active and in auto mode), and `loadProfile`, the server's statement \
+            of how it loads (`readMode` full / incremental / window / generated / external / notApplicable / \
+            unknown, `summary`, `read`, `write`, `keyColumns`, `watermarkColumns`, `replacesTargetEachRun`). \
+            Answer \"is this flow a full load or incremental\" from `loadProfile`, never from reading the YAML."
+    )]
     async fn get_pipeline(&self, Parameters(input): Parameters<GuidInput>) -> String {
         self.get(&format!("/api/v1/pipelines/{}", input.id), &[]).await
     }
@@ -1250,7 +1256,14 @@ and fix every finding first."
 
     // ---- Runs (read) -----------------------------------------------------
 
-    #[tool(description = "List runs, filterable by repo, pipeline, status, flow name, batch, and latest-only.")]
+    #[tool(
+        description = "List runs, filterable by repo, pipeline, status, flow name, batch, and latest-only. Each row \
+            carries the outcome (status, error, rows loaded / inserted / updated / deleted) and what kind of \
+            run it was: `triggerSource` (schedule / manual / cli), `fullLoad` and `backfillFrom`/`backfillTo` \
+            (operator overrides), and `incrementalMode` / `incrementalFilter` / `incrementalWatermark`, the \
+            read scope the engine actually applied (null when the run never reached the read or the flow \
+            kind has no incremental surface). Read those before comparing row counts across runs."
+    )]
     async fn list_runs(&self, Parameters(i): Parameters<ListRunsInput>) -> String {
         let q = vec![
             ("repoId", i.repo_id.unwrap_or_default()),
@@ -1265,7 +1278,13 @@ and fix every finding first."
         self.get("/api/v1/runs", &q).await
     }
 
-    #[tool(description = "Get one run by id (status, timings, row counts).")]
+    #[tool(
+        description = "Get one run by id: status, timings, row counts, error, the failed statement (on a failed run), \
+            what started it (`triggerSource`, `triggerScheduleId`), the operator's overrides (fullLoad, \
+            backfill window, source filter), and the incremental scope the engine actually applied \
+            (`incrementalMode`, `incrementalFilter`, `incrementalWatermark`, `incrementalWatermarkSource`). \
+            The SQL it executed is in run_statements; quote that, never reconstruct it."
+    )]
     async fn get_run(&self, Parameters(i): Parameters<RunIdInput>) -> String {
         self.get(&format!("/api/v1/runs/{}", i.run_id), &[]).await
     }
@@ -1413,13 +1432,21 @@ and fix every finding first."
 
     #[tool(
         description = "How an object is populated and HOW OFTEN it updates, in one call: every flow that WRITES \
-            the table, each with its latest run (status, when, rows loaded) and the schedules that fire it \
-            (cron/interval, timezone, enabled/paused, next and last fire; a chained schedule reports the \
-            schedules it fires after instead of a clock). The one-call answer to \"when does <table> update\", \
-            \"how is <table> loaded\", and \"did its last load work\". A view with no writing flow reports \
-            viaModules instead: the derivation lives in that module's body (describe_object shows it). An \
-            object with neither producers nor modules is loaded outside SQLFlow, and that absence IS the \
-            answer. Takes the object `key` from search_all / describe_object / lineage_objects."
+            the table, each with its `loadProfile` (derived from the flow definition: `readMode` full / \
+            incremental / window / generated / external / notApplicable / unknown, a one-sentence `summary`, \
+            the `read` and `write` behavior, `keyColumns` the upsert matches on, `watermarkColumns` that \
+            bound an incremental read, and `replacesTargetEachRun`), its `lastRun` (newest of any status, with \
+            error, trigger source, and the `incrementalMode` / `incrementalFilter` the engine actually \
+            applied), its `lastSuccessfulRun` (the last time the table was actually loaded; null if never), \
+            `runsOnSchedule` (false means no schedule fire runs it: inactive, manual, or disabled), and the \
+            schedules that fire it (cron/interval, timezone, `fires` = enabled and not paused, next and last \
+            fire; a chained schedule carries `parentSchedules` with the parents' own clocks). The one-call \
+            answer to \"when does <table> update\", \"how is <table> loaded\", \"is it a full load or \
+            incremental\", and \"did its last load work\": read those fields, never infer the load mode \
+            from the YAML or from the key (an upsert key is not a watermark). A view with no writing flow \
+            reports viaModules instead: the derivation lives in that module's body (describe_object shows \
+            it). An object with neither producers nor modules is loaded outside SQLFlow, and that absence IS \
+            the answer. Takes the object `key` from search_all / describe_object / lineage_objects."
     )]
     async fn describe_object_refresh(&self, Parameters(i): Parameters<KeyInput>) -> String {
         self.get("/api/v1/lineage/objects/refresh", &[("key", i.key)]).await
@@ -3094,10 +3121,16 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = "\
 - Ask about an object (text-to-query): describe_object returns one object's identity, columns, generating
   script, module body, and lineage edges in one call: start here to reason about, or author SQL against, a
   specific table or view.
-- \"When does <table> update / how is it populated / did its last load work?\": describe_object_refresh(key)
-  answers all three at once: the writing flows, each flow's latest run, and the schedules that fire it with
-  the next fire time. For a view it names the modules the content derives from instead; read them with
-  describe_object.
+- \"When does <table> update / how is it populated / is it full or incremental / did its last load work?\":
+  describe_object_refresh(key) answers all four at once: the writing flows, each with its `loadProfile`
+  (`readMode`, `summary`, `keyColumns`, `watermarkColumns`, `replacesTargetEachRun`), its `lastRun` and
+  `lastSuccessfulRun`, `runsOnSchedule`, and the schedules that fire it with the next fire time. State the
+  load mode from `loadProfile.readMode`, never from the YAML or the key. When the latest run failed, say so
+  and give `lastSuccessfulRun` as the last time the table was loaded. For a view it names the modules the
+  content derives from instead; read them with describe_object.
+- Every fact you state must be a value a tool returned. If no tool returned it, say so and name the tool
+  that would; never fill a gap with what a flow of that kind usually does. Executed SQL comes only from
+  run_statements; never reconstruct it from a flow settings.
 - \"Where does <table>'s data come from / what feeds it / what depends on it?\": object_lineage(key) walks
   the graph transitively, upstream to the true origin (the source system's table, file, or API endpoint) and
   downstream to every dependent, each step naming the flow that carries the hop. Use it whenever the answer

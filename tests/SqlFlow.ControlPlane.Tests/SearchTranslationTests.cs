@@ -176,6 +176,22 @@ public sealed class SearchTranslationTests
     }
 
     [Fact]
+    public void LatestSuccessfulRunsQuery_TranslatesAndFiltersOnStatusServerSide()
+    {
+        using var db = Context();
+
+        var sql = LineageEndpoints.LatestSuccessfulRunsQuery(db, [Guid.NewGuid(), Guid.NewGuid()]).ToQueryString();
+
+        // The "last time this table actually loaded" answer is the newest SUCCEEDED run per pipeline: the same
+        // grouped top-1 as above with the status predicate pushed into the SQL, so a flow that has been failing
+        // for days still reports its last good load instead of nothing.
+        Assert.Contains("[Run]", sql, StringComparison.Ordinal);
+        Assert.Contains("[Status]", sql, StringComparison.Ordinal);
+        Assert.Contains("succeeded", sql, StringComparison.Ordinal);
+        Assert.Contains("[StartUtc]", sql, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void TraversalQueries_TranslateBothLevelsServerSide()
     {
         using var db = Context();

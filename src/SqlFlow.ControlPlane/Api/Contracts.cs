@@ -130,11 +130,16 @@ public sealed record PipelineSummaryDto(
 /// <see cref="SqlFlow.Catalog.CatalogPipeline.DefaultBatch"/>.</summary>
 public sealed record PipelineBatchDto(Guid RepoId, string Batch, int FlowCount, int ActiveCount);
 
-/// <summary>A single pipeline with its full (secret-redacted) definition for the detail view.</summary>
+/// <summary>A single pipeline with its full (secret-redacted) definition for the detail view.
+/// <see cref="LoadProfile"/> states, derived from that definition, how the flow selects what it reads and what it
+/// does to its target (full or incremental, upsert key, truncate), so neither a person nor an assistant has to infer
+/// the load behavior from the YAML. <see cref="RunsOnSchedule"/> is whether a schedule fire runs the flow at all:
+/// only an active flow in <c>auto</c> mode is expanded into a fire.</summary>
 public sealed record PipelineDetailDto(
     Guid Id, Guid RepoId, string Name, string Kind, string? Batch, int Wave, bool Active, string ExecutionMode,
     string Lifecycle, string? SourceServer, string? TargetServer, string RelativePath, string ContentHash,
-    string Yaml, string DefinitionJson, DateTime FirstSeenUtc, DateTime LastSeenUtc);
+    string Yaml, string DefinitionJson, DateTime FirstSeenUtc, DateTime LastSeenUtc,
+    bool RunsOnSchedule, SqlFlow.Catalog.FlowLoadProfile LoadProfile);
 
 /// <summary>The run parameters that apply to a pipeline, driven by its flow kind and definition, so the GUI renders
 /// a trigger form of exactly the controls the engine will honor. <see cref="FlowKind"/> is the flow's kind (<c>cpy</c>,

@@ -24,20 +24,29 @@ namespace SqlFlow.ControlPlane.Api;
 /// column it never shows and reports both as null there.
 /// <see cref="Error"/> is why a failed run failed, carried on the summary so a set (a schedule's fire, a batch run)
 /// can show its failures where they happened instead of making an operator open each member to find out. Null for
-/// every run that did not fail.</summary>
+/// every run that did not fail.
+/// The trailing fields say what KIND of run this was, so a row count is never read out of context: how it was
+/// started (<see cref="TriggerSource"/>, one of <see cref="RunTriggerSources"/>), whether it was a forced full
+/// load or a backfill window, and the incremental scope the engine actually applied (<see cref="IncrementalMode"/> is <c>full</c> or
+/// <c>incremental</c>, <see cref="IncrementalFilter"/> the bound it read with, <see cref="IncrementalWatermark"/>
+/// the resolved high-water mark). Those three are null for a run that has not reached the read, or a flow kind with
+/// no incremental surface.</summary>
 public sealed record RunSummaryDto(
     Guid RunId, Guid PipelineId, Guid? RepoId, string FlowName, string FlowKind, string Batch, int Wave,
     string Status, bool Success,
     string? TargetPool, string? CommitSha, DateTime WrittenUtc, DateTime? EnqueuedUtc, double? DurationSeconds,
     long? RowsLoaded, long? RowsInserted, long? RowsUpdated, long? RowsDeleted, int FileCount, Guid? GroupId,
-    string? LastAction, DateTime? LastActionUtc, string? Error);
+    string? LastAction, DateTime? LastActionUtc, string? Error,
+    string? TriggerSource, bool FullLoad, DateTime? BackfillFrom, DateTime? BackfillTo,
+    string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark);
 
 /// <summary>One run with its full header for the detail view: the summary plus the lifecycle fields (status, when it
 /// was enqueued, the node that claimed it), the schema version, the start/end window, the host, the error, and the
 /// run's substitution parameters (the built-in backfill's audit trail: full load, window, file pattern), and the
 /// engine-computed incremental scope the run actually applied (mode, filter, resolved watermark and its source).
 /// <see cref="Batch"/> and <see cref="Wave"/> follow the same pipeline-join semantics as
-/// <see cref="RunSummaryDto"/>.</summary>
+/// <see cref="RunSummaryDto"/>. <see cref="TriggerSource"/> says what started the run and
+/// <see cref="TriggerScheduleId"/> names the schedule when a schedule fire did.</summary>
 public sealed record RunDetailDto(
     Guid RunId, Guid PipelineId, Guid? RepoId, string FlowName, string FlowKind, string Batch, int Wave,
     string Status, bool Success,
@@ -48,7 +57,8 @@ public sealed record RunDetailDto(
     bool ReprocessFromSourceMin, string? SourceFilter,
     string? IncrementalMode, string? IncrementalFilter, string? IncrementalWatermark, string? IncrementalWatermarkSource,
     string? DataSetConvention,
-    int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId);
+    int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId,
+    string? TriggerSource, Guid? TriggerScheduleId);
 
 /// <summary>One file a run processed (file flows): a drill-down row under a run.</summary>
 public sealed record RunFileDto(
@@ -342,7 +352,9 @@ public static class RunEndpoints
                     .OrderByDescending(e => e.Id).Select(e => (string?)e.Message).FirstOrDefault(),
                 db.RunEvents.Where(e => e.RunId == x.Run.RunId)
                     .OrderByDescending(e => e.Id).Select(e => (DateTime?)e.TimestampUtc).FirstOrDefault(),
-                x.Run.Error))
+                x.Run.Error,
+                x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
+                x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark))
             : source.Select(x => new RunSummaryDto(
                 x.Run.RunId, x.Run.PipelineId, x.Run.RepoId, x.Run.FlowName, x.Run.FlowKind, x.Batch, x.Wave,
                 x.Run.Status, x.Run.Success,
@@ -350,7 +362,9 @@ public static class RunEndpoints
                 x.Run.RowsLoaded, x.Run.RowsInserted, x.Run.RowsUpdated, x.Run.RowsDeleted,
                 db.RunFiles.Count(f => f.RunId == x.Run.RunId), x.Run.GroupId,
                 null, null,
-                x.Run.Error));
+                x.Run.Error,
+                x.Run.TriggerSource, x.Run.FullLoad, x.Run.BackfillFrom, x.Run.BackfillTo,
+                x.Run.IncrementalMode, x.Run.IncrementalFilter, x.Run.IncrementalWatermark));
 
     /// <summary>A group's member summaries in execution order: the shape both the group view's member list and
     /// the group stream serve. This is the one list that shows the last action, so it resolves it.</summary>
@@ -382,7 +396,8 @@ public static class RunEndpoints
                     run.ReprocessFromSourceMin, run.SourceFilter,
                     run.IncrementalMode, run.IncrementalFilter, run.IncrementalWatermark, run.IncrementalWatermarkSource,
                     run.DataSetConvention,
-                    null, null, null, run.GroupId))
+                    null, null, null, run.GroupId,
+                    run.TriggerSource, run.TriggerScheduleId))
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         if (dto is null)
         {

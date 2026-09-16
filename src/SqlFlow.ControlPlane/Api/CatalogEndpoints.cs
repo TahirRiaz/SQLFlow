@@ -285,14 +285,25 @@ public static class CatalogEndpoints
     private static async Task<Results<Ok<PipelineDetailDto>, ProblemHttpResult>> GetPipelineAsync(
         Guid id, CatalogDbContext db, CancellationToken ct)
     {
-        var dto = await db.Pipelines.AsNoTracking().Where(x => x.Id == id)
-            .Select(x => new PipelineDetailDto(
-                x.Id, x.RepoId, x.Name, x.Kind, x.Batch, x.Wave, x.Active, x.ExecutionMode, x.Lifecycle,
-                x.SourceServer, x.TargetServer, x.RelativePath, x.ContentHash,
-                x.Yaml, x.DefinitionJson, x.FirstSeenUtc, x.LastSeenUtc))
+        var x = await db.Pipelines.AsNoTracking().Where(p => p.Id == id)
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-        return dto is null ? NotFound("pipeline", id) : TypedResults.Ok(dto);
+        if (x is null)
+        {
+            return NotFound("pipeline", id);
+        }
+
+        return TypedResults.Ok(new PipelineDetailDto(
+            x.Id, x.RepoId, x.Name, x.Kind, x.Batch, x.Wave, x.Active, x.ExecutionMode, x.Lifecycle,
+            x.SourceServer, x.TargetServer, x.RelativePath, x.ContentHash,
+            x.Yaml, x.DefinitionJson, x.FirstSeenUtc, x.LastSeenUtc,
+            RunsOnSchedule(x.Active, x.ExecutionMode),
+            FlowLoadProfiles.FromYaml(x.Yaml)));
     }
+
+    /// <summary>Whether a schedule fire runs a pipeline: the same rule <see cref="RunScopeExpander"/> applies when it
+    /// expands a fire (active, and in <c>auto</c> mode; a manual or disabled flow is skipped).</summary>
+    internal static bool RunsOnSchedule(bool active, string executionMode)
+        => active && string.Equals(executionMode, PipelineExecutionModes.Auto, StringComparison.Ordinal);
 
     private static async Task<Results<ContentHttpResult, ProblemHttpResult>> GetPipelineDefinitionAsync(
         Guid id, CatalogDbContext db, CancellationToken ct)

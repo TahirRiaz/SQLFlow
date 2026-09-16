@@ -149,10 +149,27 @@ export interface PipelineBatch {
   activeCount: number;
 }
 
+/** How a flow selects what it reads and what it does to its target, derived server-side from its definition. */
+export interface FlowLoadProfile {
+  /** "full" | "incremental" | "window" | "generated" | "external" | "notApplicable" | "unknown". */
+  readMode: string;
+  /** One plain sentence combining read and write. */
+  summary: string;
+  read: string;
+  write: string;
+  target: string | null;
+  replacesTargetEachRun: boolean;
+  keyColumns: string[];
+  watermarkColumns: string[];
+}
+
 export interface PipelineDetail extends PipelineSummary {
   contentHash: string;
   yaml: string;
   definitionJson: string;
+  /** Whether a schedule fire runs this flow at all (active and in auto mode). */
+  runsOnSchedule: boolean;
+  loadProfile: FlowLoadProfile;
 }
 
 /** One resolved column of a pipeline's pre-ingestion transformation view: "declared" rows come from the flow
@@ -211,6 +228,18 @@ export interface RunSummary {
   /** Why a failed run failed, carried on the summary so a set (a schedule's fire, a batch run) can show its
    * failures where they happened. Null for every run that did not fail. */
   error: string | null;
+  /** What started the run: "schedule", "manual" (the GUI, the API, an MCP tool), or "cli" (a synced local
+   * run); null on runs recorded before it was tracked. */
+  triggerSource: string | null;
+  fullLoad: boolean;
+  backfillFrom: string | null;
+  backfillTo: string | null;
+  /** The incremental read scope the engine computed and applied this run: mode (full / incremental / backfill /
+   * init-load), the filter that bounded the read, and the resolved watermark. Null on flows with no incremental
+   * surface. Distinct from the operator's backfill parameters above. */
+  incrementalMode: string | null;
+  incrementalFilter: string | null;
+  incrementalWatermark: string | null;
 }
 
 export interface RunDetail extends RunSummary {
@@ -223,21 +252,13 @@ export interface RunDetail extends RunSummary {
   endUtc: string | null;
   error: string | null;
   host: string | null;
-  fullLoad: boolean;
-  backfillFrom: string | null;
-  backfillTo: string | null;
   filePattern: string | null;
   /** The raw predicate this run appended to the source read, in the source's own dialect, or null. */
   sourceFilter: string | null;
   /** True when this run evaluated the flow's data-quality assertions (manual-mode ones included) against the
    * current target without loading anything (the on-demand assertion run). */
   assertionsOnly: boolean;
-  /** The incremental read scope the engine computed and applied this run: mode (full / incremental / backfill /
-   * init-load), the filter that bounded the read, and the resolved watermark with the object it was probed from.
-   * Null on flows with no incremental surface. Distinct from the operator's backfill parameters above. */
-  incrementalMode: string | null;
-  incrementalFilter: string | null;
-  incrementalWatermark: string | null;
+  /** The object the incremental watermark was probed from (see incrementalMode on the summary). */
   incrementalWatermarkSource: string | null;
   /** How DataSet_DW was derived for a file run (e.g. "filename dates; month-first (inferred from file set)" or
    * "last-modified"), so the detail view shows what the reader detected. Null for flows with no DataSet_DW. */
@@ -247,6 +268,8 @@ export interface RunDetail extends RunSummary {
   failedStatementOrdinal: number | null;
   failedStatementStep: string | null;
   failedStatementSql: string | null;
+  /** The schedule whose fire enqueued this run, when triggerSource is "schedule"; null otherwise. */
+  triggerScheduleId: string | null;
 }
 
 export interface RunFile {
