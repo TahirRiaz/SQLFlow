@@ -55,7 +55,51 @@ impl SqlFlowMcp {
             cp,
             links: GuiLinks::from_env(),
             http_mode,
-            tool_router: Self::tool_router(),
+            tool_router: Self::grounded_router(),
+        }
+    }
+
+    /// The generated router with [`GROUNDING_RULE`] appended to every tool description. The description is
+    /// the one text every consumer of this server sees: the built-in chatbot and the Slack bot reach the tools
+    /// through their provider's MCP connector, which forwards descriptions but not the server's
+    /// `instructions`, and an external client may ignore `instructions` too. Appending the rule here, once,
+    /// makes it hold on every surface without 85 hand-copies that would drift.
+    fn grounded_router() -> ToolRouter<Self> {
+        let mut router = Self::tool_router();
+        for route in router.map.values_mut() {
+            let description = route.attr.description.take().unwrap_or_default();
+            route.attr.description = Some(format!("{description}\n\n{GROUNDING_RULE}").into());
+        }
+        router
+    }
+}
+
+/// The rule appended to every tool description: the model may state only what the tool returned. A missing
+/// fact is reported as missing, never filled in from what a flow or a run of that kind usually looks like.
+const GROUNDING_RULE: &str = "Grounding: state only values this result contains. A null or an empty list is \
+the answer (nothing declared, never happened), not a gap to fill. If a fact is not in the result, say so and \
+name the tool that holds it. Never invent rows, counts, SQL, or watermarks.";
+
+#[cfg(test)]
+mod grounding_tests {
+    use super::*;
+
+    #[test]
+    fn every_tool_description_ends_with_the_grounding_rule() {
+        let tools = SqlFlowMcp::grounded_router().list_all();
+        assert!(tools.len() > 50, "expected the full tool set, got {}", tools.len());
+        for tool in tools {
+            let description = tool.description.as_deref().unwrap_or("");
+            assert!(
+                description.ends_with(GROUNDING_RULE),
+                "tool '{}' lacks the grounding rule: {description}",
+                tool.name
+            );
+            assert!(
+                description.len() > GROUNDING_RULE.len() + 10,
+                "tool '{}' has no description of its own",
+                tool.name
+            );
         }
     }
 }
