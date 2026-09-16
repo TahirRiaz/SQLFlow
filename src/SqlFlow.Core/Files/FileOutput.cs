@@ -12,9 +12,9 @@ namespace SqlFlow.Core.Files;
 /// </summary>
 public sealed record FileOutput
 {
-    /// <summary>The folder or full file path the run lands data at: a local path (normalized against the estate root
-    /// for lineage identity), an Azure storage URI (canonicalized so the shape does not matter), or another cloud URL
-    /// kept verbatim. Required whenever an output is declared.</summary>
+    /// <summary>The folder or full file path the run lands data at: a local path (relative to the declaring document's
+    /// folder, and made relative to the estate root for lineage identity), an Azure storage URI (canonicalized so the
+    /// shape does not matter), or another cloud URL kept verbatim. Required whenever an output is declared.</summary>
     public required string Location { get; init; }
 
     /// <summary>The file-name glob the run produces within <see cref="Location"/> (e.g. <c>orders_*.csv</c>); when

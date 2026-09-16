@@ -94,7 +94,8 @@ public sealed class FlowSetCollector
 
             try
             {
-                Collect(result, document, relative, File.GetLastWriteTimeUtc(file), root, producers, consumers);
+                var anchor = new FileAnchor(root, Path.GetDirectoryName(file) ?? root);
+                Collect(result, document, relative, File.GetLastWriteTimeUtc(file), anchor, producers, consumers);
             }
             catch (SqlFlowException ex)
             {
@@ -105,7 +106,7 @@ public sealed class FlowSetCollector
             }
         }
 
-        ReconcileFileLinks(result, producers, consumers, root);
+        ReconcileFileLinks(result, producers, consumers);
 
         // Shared schedules: build the repo-wide library (dedicated schedules.yaml files plus named inline blocks),
         // then resolve every `schedule: <name>` reference to a concrete cadence. Done after the whole estate is
@@ -1013,7 +1014,7 @@ public sealed class FlowSetCollector
     }
 
     private static void Collect(
-        CollectionResult result, FlowDocument document, string file, DateTime fileWriteUtc, string root,
+        CollectionResult result, FlowDocument document, string file, DateTime fileWriteUtc, FileAnchor files,
         List<FileProducer> producers, List<FileConsumer> consumers)
     {
         // The flow nodes come from the shared header projection, the single authority for what a document
@@ -1115,7 +1116,7 @@ public sealed class FlowSetCollector
                 result.Facts.Add(ObjectFact(headers[0].Name, LineageRelation.Reads, headers[0].TargetServerRef, flow.Source, LineageNodeKind.Unknown));
                 if (!string.IsNullOrWhiteSpace(flow.TrgPath))
                 {
-                    result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, flow.TrgPath, root));
+                    result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, files.Identity(flow.TrgPath)));
                 }
 
                 break;
@@ -1138,14 +1139,14 @@ public sealed class FlowSetCollector
 
                 // The saved documents are a declared file drop: the writes fact records the folder, and the
                 // producer registration lets reconciliation bind any downstream file flow watching it.
-                result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, flow.Output.Path, root));
-                producers.Add(new FileProducer(headers[0].Name, [new FileOutput { Location = flow.Output.Path }]));
+                result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, files.Identity(flow.Output.Path)));
+                producers.Add(new FileProducer(headers[0].Name, [files.Output(new FileOutput { Location = flow.Output.Path })]));
 
                 // The optional delivery endpoint is an outbound the flow writes, mirroring how an acquisition
                 // records its inbound endpoints, so the graph carries where the documents actually go.
                 if (flow.Invoke is not null)
                 {
-                    result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, flow.Invoke.Url, root));
+                    result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, files.Identity(flow.Invoke.Url)));
                 }
 
                 break;
@@ -1194,12 +1195,12 @@ public sealed class FlowSetCollector
                     : Option(flow.Source.Options, "srcPath");
                 if (!string.IsNullOrWhiteSpace(readLocation))
                 {
-                    var fileNode = NormalizeFileIdentity(readLocation!, root);
-                    result.Facts.Add(FileFact(flow.Name, LineageRelation.Reads, readLocation!, root));
+                    var fileNode = files.Identity(readLocation!);
+                    result.Facts.Add(FileFact(flow.Name, LineageRelation.Reads, fileNode));
                     consumers.Add(new FileConsumer(flow.Name, fileNode, new FileSelectionSpec
                     {
                         Type = flow.Source.Type,
-                        Location = readLocation,
+                        Location = fileNode,
                         Glob = Option(flow.Source.Options, "srcFile"),
                         Mask = Option(flow.Source.Options, "srcPathMask"),
                     }));
@@ -1248,7 +1249,7 @@ public sealed class FlowSetCollector
                 var definition = doc.Document.Definition;
                 if (definition.Outputs.Count > 0)
                 {
-                    producers.Add(new FileProducer(definition.InvokeAlias, definition.Outputs));
+                    producers.Add(new FileProducer(definition.InvokeAlias, definition.Outputs.Select(files.Output).ToList()));
                 }
 
                 break;
@@ -1271,7 +1272,7 @@ public sealed class FlowSetCollector
                         : baseUrl + (path!.StartsWith('/') ? path : "/" + path);
                     if (endpoints.Add(endpoint))
                     {
-                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, endpoint, root));
+                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, files.Identity(endpoint)));
                     }
                 }
 
@@ -1281,7 +1282,7 @@ public sealed class FlowSetCollector
                 // the graph chains acquire -> file -> landing table -> view -> downstream, ordering the waves. A
                 // multi-endpoint flow thus feeds several downstream pre flows from one pipeline. An unconsumed
                 // drop still records its own node.
-                producers.Add(new FileProducer(headers[0].Name, doc.Flow.Items.Select(item => AcquireDrop(item.Landing)).ToList()));
+                producers.Add(new FileProducer(headers[0].Name, doc.Flow.Items.Select(item => files.Output(AcquireDrop(item.Landing))).ToList()));
                 break;
             }
 
@@ -1296,14 +1297,15 @@ public sealed class FlowSetCollector
                 // copy read by an exact-folder load or by nothing keeps its previous graph.
                 foreach (var step in doc.Flow.Steps)
                 {
-                    result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, step.Source.Location, root));
+                    result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, files.Identity(step.Source.Location)));
                 }
 
                 producers.Add(new FileProducer(
                     headers[0].Name,
-                    doc.Flow.Outputs.Count > 0
+                    (doc.Flow.Outputs.Count > 0
                         ? doc.Flow.Outputs
-                        : doc.Flow.Steps.Select(step => new FileOutput { Location = step.Target.Location }).ToList()));
+                        : doc.Flow.Steps.Select(step => new FileOutput { Location = step.Target.Location }))
+                    .Select(files.Output).ToList()));
 
                 break;
             }
@@ -1321,21 +1323,22 @@ public sealed class FlowSetCollector
                 {
                     foreach (var step in doc.Flow.Steps)
                     {
-                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, host + step.RemotePath, root));
+                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, files.Identity(host + step.RemotePath)));
                     }
 
                     producers.Add(new FileProducer(
                         headers[0].Name,
-                        doc.Flow.Outputs.Count > 0
+                        (doc.Flow.Outputs.Count > 0
                             ? doc.Flow.Outputs
-                            : doc.Flow.Steps.Select(step => new FileOutput { Location = step.Local }).ToList()));
+                            : doc.Flow.Steps.Select(step => new FileOutput { Location = step.Local }))
+                        .Select(files.Output).ToList()));
                 }
                 else
                 {
                     foreach (var step in doc.Flow.Steps)
                     {
-                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, step.Local, root));
-                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, host + step.RemotePath, root));
+                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, files.Identity(step.Local)));
+                        result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Writes, files.Identity(host + step.RemotePath)));
                     }
                 }
 
@@ -1535,38 +1538,17 @@ public sealed class FlowSetCollector
         ScriptFactBuilder.AppendModelObservations(result, deps, serverRef, LineageTier.Declared, moduleKey);
     }
 
-    private static LineageFact FileFact(string flow, LineageRelation relation, string location, string root)
+    /// <summary>A declared file fact on a node identity <see cref="FileAnchor.Identity"/> produced.</summary>
+    private static LineageFact FileFact(string flow, LineageRelation relation, string identity)
         => new()
         {
             Flow = flow,
             Relation = relation,
             ServerRef = ServerIdentity.FileSystem,
-            Name = NormalizeFileIdentity(location, root),
+            Name = identity,
             Tier = LineageTier.Declared,
             KindHint = LineageNodeKind.File,
         };
-
-    /// <summary>File-endpoint identity: cloud URLs verbatim; local paths normalized against the estate root
-    /// (relative when inside it), so './data/x.csv' and 'data/x.csv' are one node and the identity survives
-    /// a checkout moving between machines.</summary>
-    private static string NormalizeFileIdentity(string location, string root)
-    {
-        // An Azure Storage path is one node regardless of the URI shape it was written or read in: a cpy/sftp
-        // target in abfss:// form and a file ingestion reading the same folder in https://...dfs form must bind.
-        if (AzureBlobLocation.CanonicalIdentity(location) is { } azure)
-        {
-            return azure;
-        }
-
-        if (location.Contains("://", StringComparison.Ordinal))
-        {
-            return location;
-        }
-
-        var full = Path.GetFullPath(Path.IsPathRooted(location) ? location : Path.Combine(root, location));
-        var relative = Path.GetRelativePath(root, full);
-        return (relative.StartsWith("..", StringComparison.Ordinal) ? full : relative).Replace('\\', '/');
-    }
 
     /// <summary>Connects each file producer (an invoke that lands files) to the file consumers (file ingestions) it
     /// feeds, with engine-parity file selection: the invoke is attributed a Writes of the SAME file node the
@@ -1574,7 +1556,7 @@ public sealed class FlowSetCollector
     /// the execution waves order the chain. A producer nothing consumes still records its own declared output node,
     /// so the invoke is not a dangling node and links automatically once a matching ingestion is added.</summary>
     private static void ReconcileFileLinks(
-        CollectionResult result, List<FileProducer> producers, List<FileConsumer> consumers, string root)
+        CollectionResult result, List<FileProducer> producers, List<FileConsumer> consumers)
     {
         foreach (var producer in producers)
         {
@@ -1609,9 +1591,9 @@ public sealed class FlowSetCollector
 
                 // A drop nothing consumes still records its own declared node, so it is visible and links
                 // automatically once a matching ingestion is added.
-                if (!matched && linked.Add(NormalizeFileIdentity(output.Location, root)))
+                if (!matched && linked.Add(output.Location))
                 {
-                    result.Facts.Add(FileFact(producer.Flow, LineageRelation.Writes, output.Location, root));
+                    result.Facts.Add(FileFact(producer.Flow, LineageRelation.Writes, output.Location));
                 }
             }
         }
@@ -1677,11 +1659,65 @@ public sealed class FlowSetCollector
     private static string? Option(IReadOnlyDictionary<string, string?> options, string key)
         => options.TryGetValue(key, out var value) && !string.IsNullOrWhiteSpace(value) ? value : null;
 
-    /// <summary>An invoke that declares it lands one or more file drops, awaiting reconciliation against the file
-    /// ingestions.</summary>
+    /// <summary>A flow that declares it lands one or more file drops, awaiting reconciliation against the file
+    /// ingestions. Every output's location is already a file node identity (<see cref="FileAnchor.Output"/>).</summary>
     private sealed record FileProducer(string Flow, IReadOnlyList<FileOutput> Outputs);
 
     /// <summary>A file ingestion's source: the file node it reads and the selection spec a producer is matched
-    /// against.</summary>
+    /// against, whose location is that same identity.</summary>
     private sealed record FileConsumer(string Flow, string Node, FileSelectionSpec Spec);
+
+    /// <summary>
+    /// Where one document's file locations are resolved. A relative local location is relative to the folder of the
+    /// document that declares it (the rule the engine applies when it runs a file flow), and its node identity is that
+    /// location relative to the estate root, so the identity is the same on every machine and in every checkout
+    /// folder. A location outside the root keeps its absolute path; a URL is kept as written (an Azure Storage
+    /// location in its canonical form, so two URI shapes of one folder are one node); a location that is a reference
+    /// (<c>${...}</c> or an <c>@alias</c>) is kept as written, because lineage never resolves one.
+    /// </summary>
+    private sealed class FileAnchor(string root, string folder)
+    {
+        /// <summary>The node identity of <paramref name="location"/>.</summary>
+        public string Identity(string location)
+        {
+            var trimmed = location.Trim();
+            if (trimmed.Contains("${", StringComparison.Ordinal) || trimmed.StartsWith('@'))
+            {
+                return trimmed;
+            }
+
+            // An Azure Storage path is one node regardless of the URI shape it was written or read in: a cpy/sftp
+            // target in abfss:// form and a file ingestion reading the same folder in https://...dfs form must bind.
+            if (AzureBlobLocation.CanonicalIdentity(trimmed) is { } azure)
+            {
+                return azure;
+            }
+
+            if (trimmed.Contains("://", StringComparison.Ordinal))
+            {
+                return trimmed;
+            }
+
+            string full;
+            try
+            {
+                full = Path.GetFullPath(Path.IsPathRooted(trimmed) ? trimmed : Path.Combine(folder, trimmed));
+            }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+            {
+                throw new SqlFlowException($"file location '{trimmed}' is not a usable path: {ex.Message}");
+            }
+
+            var relative = Path.GetRelativePath(root, full);
+            var outside = Path.IsPathRooted(relative)
+                || relative == ".."
+                || relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal)
+                || relative.StartsWith(".." + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
+            return (outside ? full : relative).Replace('\\', '/');
+        }
+
+        /// <summary>A declared drop with its location in node identity form, so it is matched in the form the
+        /// consumers are.</summary>
+        public FileOutput Output(FileOutput output) => output with { Location = Identity(output.Location) };
+    }
 }
