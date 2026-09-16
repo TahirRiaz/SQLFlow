@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { ChevronDown, FolderGit2 } from "lucide-react";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
@@ -83,11 +83,26 @@ function RepoGroup({
 }
 
 /** All pipelines across repos, grouped as a repo -> project folder tree. Server-side filters (repo, kind, active) shape
- * the fetched set; a free-text box narrows it in the browser by name, path, kind, or project. */
+ * the fetched set; a free-text box narrows it in the browser by name, path, kind, or project. A link can set the repo and
+ * the kind (?repo=, ?kind=), which wins over the filters remembered from an earlier visit; picking a filter here replaces
+ * what the link set, so the address never disagrees with the dropdown. */
 export default function PipelinesPage() {
   const navigate = useNavigate();
-  const [repoFilter, setRepoFilter] = useLocalStorageState("sqlflow.filters.pipelines.repo", "");
-  const [kindFilter, setKindFilter] = useLocalStorageState("sqlflow.filters.pipelines.kind", "");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [storedRepo, setStoredRepo] = useLocalStorageState("sqlflow.filters.pipelines.repo", "");
+  const [storedKind, setStoredKind] = useLocalStorageState("sqlflow.filters.pipelines.kind", "");
+  const repoFilter = searchParams.get("repo") ?? storedRepo;
+  const kindFilter = searchParams.get("kind") ?? storedKind;
+  const choose = (key: "repo" | "kind", store: (value: string) => void) => (value: string) => {
+    store(value);
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete(key);
+      return next;
+    }, { replace: true });
+  };
+  const setRepoFilter = choose("repo", setStoredRepo);
+  const setKindFilter = choose("kind", setStoredKind);
   const [activeFilter, setActiveFilter] = useLocalStorageState("sqlflow.filters.pipelines.active", "");
   const [search, setSearch] = useLocalStorageState("sqlflow.filters.pipelines.name", "");
   const [runBatch, setRunBatch] = useState<{ repoId: string; flowName: string } | null>(null);

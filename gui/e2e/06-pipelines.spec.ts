@@ -34,6 +34,31 @@ test.describe.serial("pipelines", () => {
       .toBeVisible({ timeout: 15_000 });
   });
 
+  test("a link sets the kind filter, and picking a kind replaces what the link set", async ({ adminPage }) => {
+    // The fixture holds one file flow and no ingestion flow, so a link to the ingestion kind lists nothing.
+    await adminPage.goto("/pipelines?kind=ing");
+    await expect(adminPage.getByTestId("page-pipelines")).toBeVisible();
+    await expect(adminPage.getByTestId("filter-kind")).toHaveText("ing");
+    await expect(adminPage.getByTestId("pipelines-empty")).toBeVisible({ timeout: 15_000 });
+
+    // Picking a kind here drops the link's, so the address and the dropdown agree.
+    await adminPage.getByTestId("filter-kind").click();
+    await adminPage.getByRole("option", { name: "all kinds" }).click();
+    await expect(adminPage).not.toHaveURL(/[?&]kind=/);
+    await expect(adminPage.getByTestId("filter-kind")).toHaveText("all kinds");
+    await adminPage.getByTestId("filter-name").fill("Csv_Basic");
+    await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first())
+      .toBeVisible({ timeout: 15_000 });
+
+    // A link to the flow's own kind lists it, whatever was picked before.
+    await adminPage.goto("/pipelines?kind=file");
+    await expect(adminPage.getByTestId("filter-kind")).toHaveText("file");
+    await adminPage.getByTestId("filter-name").fill("Csv_Basic");
+    await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first())
+      .toBeVisible({ timeout: 15_000 });
+    await adminPage.getByTestId("filter-name").fill("");
+  });
+
   test("pipeline detail shows YAML, definition, runs, and schedules tabs", async ({ adminPage }) => {
     await adminPage.getByTestId("nav-pipelines").click();
     // The folder tree starts collapsed; a search expands it and surfaces the flow row.
