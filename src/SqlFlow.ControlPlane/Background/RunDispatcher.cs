@@ -22,12 +22,6 @@ public interface IRunDispatcher
     Task<RunGroupEnqueueResult> EnqueueGroupAsync(
         CatalogDbContext catalog, RunGroupEnqueueRequest request, CancellationToken ct = default);
 
-    /// <summary>Enqueues a run group together with the caller's own rows in one transaction (see
-    /// <see cref="RunGroupCompanion"/>), and places the members only once it has committed. Returns null, with nothing
-    /// enqueued, when the companion declined.</summary>
-    Task<RunGroupEnqueueResult?> EnqueueGroupAsync(
-        CatalogDbContext catalog, RunGroupEnqueueRequest request, RunGroupCompanion companion, CancellationToken ct = default);
-
     /// <summary>Cancels a run: a still-queued run is dequeued outright; a run already executing has a durable cancel
     /// request stamped, which the dispatcher relays to its node on the node's next poll (woken at once). Returns the
     /// precise <see cref="CancelOutcome"/> so the endpoint can answer 200 / 202 / 404 / 409.</summary>
@@ -77,20 +71,6 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
             .EnqueueGroupAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
         _dispatcher.NotifyRunsEnqueued(result.Placements);
-        return result;
-    }
-
-    public async Task<RunGroupEnqueueResult?> EnqueueGroupAsync(
-        CatalogDbContext catalog, RunGroupEnqueueRequest request, RunGroupCompanion companion, CancellationToken ct = default)
-    {
-        var result = await RunQueueStore
-            .EnqueueGroupAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, companion, ct)
-            .ConfigureAwait(false);
-        if (result is not null)
-        {
-            _dispatcher.NotifyRunsEnqueued(result.Placements);
-        }
-
         return result;
     }
 
