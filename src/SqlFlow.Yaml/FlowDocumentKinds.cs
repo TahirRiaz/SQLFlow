@@ -187,6 +187,10 @@ public sealed record RegisteredFlowLineage
 /// </summary>
 public sealed record DeclaredFileLocation
 {
+    /// <summary>The longest location identity a declaration may have once anchored: the width the catalog keeps a
+    /// file node's name in.</summary>
+    public const int MaxLocationLength = 512;
+
     /// <summary><see cref="LineageRelation.Reads"/> or <see cref="LineageRelation.Writes"/>.</summary>
     public required LineageRelation Relation { get; init; }
 
@@ -211,6 +215,12 @@ public sealed record DeclaredDataset
 {
     /// <summary>The longest namespace, group or name a dataset may carry.</summary>
     public const int MaxPartLength = 256;
+
+    /// <summary>The longest instance a dataset may name.</summary>
+    public const int MaxInstanceLength = 256;
+
+    /// <summary>The longest node identity a dataset may have: the width the catalog keeps an object key in.</summary>
+    public const int MaxIdentityLength = 900;
 
     /// <summary><see cref="LineageRelation.Reads"/> or <see cref="LineageRelation.Writes"/>.</summary>
     public required LineageRelation Relation { get; init; }

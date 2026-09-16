@@ -348,6 +348,45 @@ public sealed class LineageRegisteredDescriptionTests : IDisposable
     }
 
     [Fact]
+    public void An_oversized_instance_skips_the_document_without_echoing_it()
+    {
+        var instance = "https://" + new string('h', DeclaredDataset.MaxInstanceLength) + ".example.com";
+        Write("flows/probe.yaml", Probe("probe", "datasets:", Dataset("reads", "x", instance: instance)));
+
+        var warning = SkippedWarning(Collect());
+
+        Assert.Contains($"has an instance longer than {DeclaredDataset.MaxInstanceLength} characters", warning, StringComparison.Ordinal);
+        Assert.DoesNotContain("hhhh", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_dataset_identity_wider_than_the_catalog_key_skips_the_document()
+    {
+        // Every part at its limit and a long instance reference: each is allowed alone, the key they make is not.
+        var part = new string('x', DeclaredDataset.MaxPartLength);
+        var instance = "${env:" + new string('I', 200) + "}";
+        Write("flows/probe.yaml", Probe("probe", "datasets:", Dataset("reads", part, ns: part, group: part, instance: instance)));
+
+        var warning = SkippedWarning(Collect());
+
+        Assert.Contains($"; the catalog keeps at most {DeclaredDataset.MaxIdentityLength}.", warning, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_file_location_wider_than_the_catalog_keeps_skips_the_document()
+    {
+        // Two folders of 300 characters each: the anchored identity is 601 characters, wider than a file node's name.
+        Write("flows/probe.yaml", Probe("probe", "files:", FileWrite("../" + new string('d', 300) + "/" + new string('e', 300))));
+
+        var warning = SkippedWarning(Collect());
+
+        Assert.Contains(
+            $"declared file 1 has a location of 601 characters once resolved; the catalog keeps at most {DeclaredFileLocation.MaxLocationLength}.",
+            warning,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void A_literal_instance_is_identified_by_hash_and_never_echoed()
     {
         const string literal = "https://store.example.com/;Password=hunter2";

@@ -1544,6 +1544,12 @@ public sealed class FlowSetCollector
             var location = StaticLocation(declaration.Location)
                 ?? throw new SqlFlowException($"{at} has a location that is a token from its first segment, so it names no folder.");
             var identity = files.Identity(location);
+            if (identity.Length > DeclaredFileLocation.MaxLocationLength)
+            {
+                throw new SqlFlowException(
+                    $"{at} has a location of {identity.Length} characters once resolved; the catalog keeps at most {DeclaredFileLocation.MaxLocationLength}.");
+            }
+
             if (!seen.Add($"{declaration.Relation}|{identity}|{pattern}"))
             {
                 continue;
@@ -1635,8 +1641,20 @@ public sealed class FlowSetCollector
                 throw new SqlFlowException($"{at} writes '{name}', a wildcard; a flow writes named datasets only.");
             }
 
+            if (declaration.Instance is { } instance && instance.Trim().Length > DeclaredDataset.MaxInstanceLength)
+            {
+                throw new SqlFlowException($"{at} has an instance longer than {DeclaredDataset.MaxInstanceLength} characters.");
+            }
+
             var server = ServerIdentity.Dataset(system, declaration.Instance);
-            if (!seen.Add($"{declaration.Relation}|{NodeKey.For(server, ns, group, name)}"))
+            var key = NodeKey.For(server, ns, group, name);
+            if (key.Length > DeclaredDataset.MaxIdentityLength)
+            {
+                throw new SqlFlowException(
+                    $"{at} has an identity of {key.Length} characters; the catalog keeps at most {DeclaredDataset.MaxIdentityLength}.");
+            }
+
+            if (!seen.Add($"{declaration.Relation}|{key}"))
             {
                 continue;
             }
