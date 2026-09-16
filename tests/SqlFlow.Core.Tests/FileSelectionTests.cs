@@ -44,6 +44,49 @@ public sealed class FileSelectionTests
         Assert.True(FileSelection.GlobsOverlap("a*z", "*mz"));   // amz
     }
 
+    [Fact]
+    public void FromDefinition_ReadsTheSourceAndItsOptions()
+    {
+        var spec = FileSelection.FromDefinition(
+            """{"flow":{"source":{"type":"csv","location":"raw/orders","options":{"srcFile":"orders_*.csv","srcPathMask":"raw/.*"}}}}""");
+
+        Assert.NotNull(spec);
+        Assert.Equal("csv", spec!.Type);
+        Assert.Equal("raw/orders", spec.Location);
+        Assert.Equal("orders_*.csv", spec.Glob);
+        Assert.Equal("raw/.*", spec.Mask);
+    }
+
+    [Fact]
+    public void FromDefinition_FallsBackToSrcPathWhenTheSourceNamesNoLocation()
+    {
+        var spec = FileSelection.FromDefinition(
+            """{"flow":{"source":{"type":"parquet","options":{"srcPath":"landing/wells"}}}}""");
+
+        Assert.NotNull(spec);
+        Assert.Equal("landing/wells", spec!.Location);
+        Assert.Equal("landing/wells", spec.SrcPath);
+        Assert.Equal("*.parquet", FileSelection.PatternOf(spec));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not json at all")]
+    [InlineData("""{"flow":{}}""")]                                  // no source
+    [InlineData("""{"source":{"type":"csv"}}""")]                    // source not under flow
+    [InlineData("""{"flow":{"source":{"location":"raw/x"}}}""")]     // nothing to select on
+    public void FromDefinition_IsNullWhenThereIsNoUsableFileSource(string? definitionJson)
+        => Assert.Null(FileSelection.FromDefinition(definitionJson));
+
+    [Fact]
+    public void PatternOf_PrefersTheDeclaredGlobOverTheTypeDefault()
+    {
+        Assert.Equal("orders_*.csv", FileSelection.PatternOf(new FileSelectionSpec { Type = "csv", Glob = " orders_*.csv " }));
+        Assert.Equal("*.csv", FileSelection.PatternOf(new FileSelectionSpec { Type = "csv" }));
+        Assert.Equal("*", FileSelection.PatternOf(new FileSelectionSpec()));
+    }
+
     private static FileSelectionSpec Consumer(string location, string? type = "csv", string? glob = null, string? mask = null)
         => new() { Location = location, Type = type, Glob = glob, Mask = mask };
 

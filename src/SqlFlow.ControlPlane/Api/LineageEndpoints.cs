@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
@@ -985,13 +984,13 @@ public static class LineageEndpoints
         var matches = new List<(FilePipelineMatchDto Dto, bool Confirmed)>();
         foreach (var flow in flows)
         {
-            var source = ExtractFileSource(flow.DefinitionJson);
+            var source = FileSelection.FromDefinition(flow.DefinitionJson);
             if (source is null)
             {
                 continue;
             }
 
-            var glob = string.IsNullOrWhiteSpace(source.Glob) ? FileSelection.DefaultPattern(source.Type) : source.Glob!;
+            var glob = FileSelection.PatternOf(source);
             // The engine applies the glob to the file name; reuse the one shared matcher (the exact BCL matcher its
             // cloud store uses) so the read API and the lineage collector select files identically.
             if (!FileSelection.NameMatchesGlob(glob, fileName))
@@ -1026,7 +1025,7 @@ public static class LineageEndpoints
 
             matches.Add((
                 new FilePipelineMatchDto(
-                    flow.Id, flow.Name, flow.RepoId, flow.RepoName, source.Type, source.Location, glob,
+                    flow.Id, flow.Name, flow.RepoId, flow.RepoName, source.Type ?? string.Empty, source.Location, glob,
                     pathConfirmed == true),
                 pathConfirmed == true));
         }
@@ -1039,61 +1038,6 @@ public static class LineageEndpoints
             .ToList();
         return TypedResults.Ok<IReadOnlyList<FilePipelineMatchDto>>(ordered);
     }
-
-    /// <summary>The parsed file source of a flow: what a file must match to be ingested by it.</summary>
-    private sealed record FileSource(string Type, string? Location, string? Glob, string? Mask);
-
-    /// <summary>Reads a file flow's source spec out of its stored <c>DefinitionJson</c> (the parsed flow), reaching
-    /// <c>flow.source</c> and its options. Returns null when the document is not a file flow or carries no source.</summary>
-    private static FileSource? ExtractFileSource(string definitionJson)
-    {
-        if (string.IsNullOrWhiteSpace(definitionJson))
-        {
-            return null;
-        }
-
-        try
-        {
-            using var doc = JsonDocument.Parse(definitionJson);
-            if (!doc.RootElement.TryGetProperty("flow", out var flow)
-                || flow.ValueKind != JsonValueKind.Object
-                || !flow.TryGetProperty("source", out var source)
-                || source.ValueKind != JsonValueKind.Object)
-            {
-                return null;
-            }
-
-            var type = StringProp(source, "type") ?? "";
-            var location = StringProp(source, "location");
-            string? glob = null, mask = null, srcPath = null;
-            if (source.TryGetProperty("options", out var options) && options.ValueKind == JsonValueKind.Object)
-            {
-                glob = StringProp(options, "srcFile");
-                mask = StringProp(options, "srcPathMask");
-                srcPath = StringProp(options, "srcPath");
-            }
-
-            // The source root is either the endpoint location or the srcPath option (the loader accepts either).
-            location ??= srcPath;
-            // Nothing to match on (neither a type to default a pattern from, nor an explicit glob): not a usable
-            // file source.
-            if (type.Length == 0 && string.IsNullOrEmpty(glob))
-            {
-                return null;
-            }
-
-            return new FileSource(type, location, glob, mask);
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
-    }
-
-    private static string? StringProp(JsonElement obj, string name)
-        => obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
-            ? value.GetString()
-            : null;
 
     /// <summary>The maximum rows each list of the dossier returns: an object's columns and its edges are
     /// bounded by the object, but a hot object can be referenced by many flows across many repos, so each

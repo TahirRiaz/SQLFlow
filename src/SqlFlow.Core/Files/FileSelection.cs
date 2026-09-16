@@ -1,4 +1,5 @@
 using System.IO.Enumeration;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace SqlFlow.Core.Files;
@@ -46,6 +47,76 @@ public static class FileSelection
     /// uses (case-insensitive), so lineage never claims a match the engine's own selection would not make.</summary>
     public static bool NameMatchesGlob(string glob, string fileName)
         => FileSystemName.MatchesSimpleExpression(glob, fileName, ignoreCase: true);
+
+    /// <summary>
+    /// Reads a flow's file selection out of the catalog's parsed copy of its document (a pipeline's
+    /// <c>DefinitionJson</c>), reaching <c>flow.source</c> and its <c>srcFile</c>, <c>srcPathMask</c> and
+    /// <c>srcPath</c> options. The caller does not have to know the document's kind, which is what lets one
+    /// component ask what another flow reads when all it holds is the stored definition. Returns null when the
+    /// definition carries no usable file source: unparseable, no <c>flow.source</c> object, or neither a type to
+    /// default a pattern from nor an explicit glob.
+    /// </summary>
+    public static FileSelectionSpec? FromDefinition(string? definitionJson)
+    {
+        if (string.IsNullOrWhiteSpace(definitionJson))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(definitionJson);
+            if (!document.RootElement.TryGetProperty("flow", out var flow)
+                || flow.ValueKind != JsonValueKind.Object
+                || !flow.TryGetProperty("source", out var source)
+                || source.ValueKind != JsonValueKind.Object)
+            {
+                return null;
+            }
+
+            var type = StringProp(source, "type") ?? string.Empty;
+            var location = StringProp(source, "location");
+            string? glob = null, mask = null, srcPath = null;
+            if (source.TryGetProperty("options", out var options) && options.ValueKind == JsonValueKind.Object)
+            {
+                glob = StringProp(options, "srcFile");
+                mask = StringProp(options, "srcPathMask");
+                srcPath = StringProp(options, "srcPath");
+            }
+
+            // Nothing to select on (no type to default a pattern from, and no explicit glob) is not a file source.
+            if (type.Length == 0 && string.IsNullOrEmpty(glob))
+            {
+                return null;
+            }
+
+            return new FileSelectionSpec
+            {
+                Type = type,
+                // The source root is either the endpoint location or the srcPath option; the loader accepts either.
+                Location = location ?? srcPath,
+                Glob = glob,
+                Mask = mask,
+                SrcPath = srcPath,
+            };
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The glob a reader would apply for this spec: its own <c>srcFile</c>, or its type's default.</summary>
+    public static string PatternOf(FileSelectionSpec spec)
+    {
+        ArgumentNullException.ThrowIfNull(spec);
+        return string.IsNullOrWhiteSpace(spec.Glob) ? DefaultPattern(spec.Type) : spec.Glob!.Trim();
+    }
+
+    private static string? StringProp(JsonElement obj, string name)
+        => obj.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 
     /// <summary>Matches a path against a source path-mask regex the way the engine does (case-insensitive, culture
     /// invariant), bounded by a short timeout and treating an invalid or runaway pattern as no match rather than
