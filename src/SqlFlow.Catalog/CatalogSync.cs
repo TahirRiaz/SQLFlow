@@ -254,7 +254,8 @@ public sealed class CatalogSync
             var anyExcluded = collected.Flows.Count != flows.Count;
             var lineageNeeded = forceLineage || includeDerived || anyExcluded || runs.Count > 0
                 || !string.Equals(storedSubscriberHash, collected.SubscriberInputHash, StringComparison.Ordinal)
-                || LineageInputsChanged(pipelines, anyUnreadable, storedActiveHashes);
+                || LineageInputsChanged(pipelines, anyUnreadable, storedActiveHashes)
+                || await ExtensionLineageInputsChangedAsync(context, repoId, root, ct).ConfigureAwait(false);
 
             LineageReport? report = null;
             string? lineageFailure = null;
@@ -595,6 +596,23 @@ public sealed class CatalogSync
         }
 
         return (pipelines, present, schedules, anyUnreadable);
+    }
+
+    /// <summary>Whether any extension reports that a document it owns changed in a way the lineage of the flows depends
+    /// on (a companion document a registered flow reads while describing its lineage). Asked only when nothing else
+    /// already requires a recompute.</summary>
+    private async Task<bool> ExtensionLineageInputsChangedAsync(
+        CatalogDbContext context, Guid repoId, string root, CancellationToken ct)
+    {
+        foreach (var extension in _extensions)
+        {
+            if (await extension.LineageInputsChangedAsync(context, repoId, root, ct).ConfigureAwait(false))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>Whether the declared tier's lineage inputs differ from what the stored catalog reflects: any
@@ -2063,7 +2081,7 @@ public sealed class CatalogSync
         ArgumentNullException.ThrowIfNull(objects);
         var result = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
         foreach (var group in objects
-                     .Where(o => o.Kind != Core.Lineage.LineageNodeKind.File)
+                     .Where(o => o.Kind is not (Core.Lineage.LineageNodeKind.File or Core.Lineage.LineageNodeKind.Dataset))
                      .GroupBy(o => NodeKey.For(o.ServerRef, null, o.Schema, o.Name), StringComparer.Ordinal))
         {
             var distinctDatabases = group

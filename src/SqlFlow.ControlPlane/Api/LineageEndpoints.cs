@@ -7,6 +7,8 @@ using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Configuration;
 using SqlFlow.Core;
 using SqlFlow.Core.Files;
+using SqlFlow.Core.Lineage;
+using SqlFlow.Lineage.Collection;
 
 namespace SqlFlow.ControlPlane.Api;
 
@@ -402,8 +404,15 @@ public sealed record SchemaKindCountDto(
 public sealed record FileNodeDto(
     string Key, string OriginKind, string Origin, string? Container, string? Path, string Name);
 
+/// <summary>
+/// One dataset of an external system a registered flow kind reads or writes, for the catalog explorer: its node key,
+/// the system it belongs to, the namespace and group it is listed under, its name, and how many flows read and write
+/// it. A name carrying a <c>*</c> is a pattern a flow reads with.
+/// </summary>
+public sealed record DatasetNodeDto(string Key, string System, string Namespace, string Group, string Name, int Readers, int Writers);
+
 /// <summary>One object a flow lands data into (a written or created target), for the provenance view of a
-/// file source: where the data that came through this file ends up.</summary>
+/// file or a dataset: where the data that came through it ends up.</summary>
 public sealed record LandingObjectDto(string Key, string? Database, string? Schema, string Name, string Kind);
 
 /// <summary>One pipeline that reads a file source, with where it lands the data: the flow identity plus the
@@ -451,6 +460,7 @@ public static class LineageEndpoints
         lineage.MapGet("/objects/join-paths", GetJoinPathsAsync).WithName("GetLineageObjectJoinPaths");
         lineage.MapGet("/file-pipelines", MatchFilePipelinesAsync).WithName("MatchFilePipelines");
         lineage.MapGet("/script", GetNodeScriptAsync).WithName("GetLineageNodeScript");
+        lineage.MapGet("/datasets", ListDatasetsAsync).WithName("ListLineageDatasets");
         lineage.MapGet("/subscribers", ListSubscribersAsync).WithName("ListLineageSubscribers");
         lineage.MapGet("/subscribers/dossier", GetSubscriberDossierAsync).WithName("GetLineageSubscriberDossier");
         lineage.MapGet("/subscribers/report", GetSubscriberReportAsync).WithName("GetLineageSubscriberReport");
@@ -470,11 +480,79 @@ public static class LineageEndpoints
     /// The object kinds that are NOT part of the database hierarchy and must never fold into it: a file
     /// endpoint belongs to a storage account, and a data subscriber belongs to no server at all. Both carry a
     /// null database and schema, so leaving them in makes the schema endpoints invent a nameless "unresolved"
-    /// database holding them. Each has its own branch (<c>/lineage/file-tree</c> and
-    /// <c>/lineage/subscribers</c>), so this is where the split belongs: filtering it in one client leaves
-    /// every other caller, the MCP server included, showing the phantom.
+    /// database holding them. A dataset of an external system carries a namespace and a group in those columns,
+    /// which are not a database and a schema either. Each has its own branch (<c>/lineage/file-tree</c>,
+    /// <c>/lineage/subscribers</c> and <c>/lineage/datasets</c>), so this is where the split belongs: filtering it
+    /// in one client leaves every other caller, the MCP server included, showing the phantom.
     /// </summary>
-    private static readonly string[] NonDatabaseKinds = ["File", "Subscriber"];
+    private static readonly string[] NonDatabaseKinds = ["File", "Subscriber", nameof(LineageNodeKind.Dataset)];
+
+    /// <summary>The most datasets one listing returns.</summary>
+    private const int MaxDatasets = 5000;
+
+    /// <summary>
+    /// Every dataset node in the catalog, for the explorer's Datasets branch (system &gt; namespace &gt; group &gt;
+    /// dataset), with how many flows read and write each. Bounded: a dataset node is a declared type or collection, so
+    /// the set follows the estate's declarations, not its data volume. <paramref name="system"/> narrows to one system;
+    /// <paramref name="search"/> matches the name or the namespace.
+    /// </summary>
+    private static async Task<Ok<IReadOnlyList<DatasetNodeDto>>> ListDatasetsAsync(
+        CatalogDbContext db, string? system, string? search, CancellationToken ct)
+    {
+        var kind = nameof(LineageNodeKind.Dataset);
+        var query = db.Objects.AsNoTracking().Where(o => o.Kind == kind);
+        if (!string.IsNullOrWhiteSpace(system))
+        {
+            var prefix = ServerIdentity.DatasetPrefix + system.Trim();
+            query = query.Where(o => o.ServerRef.StartsWith(prefix));
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            query = query.Where(o => o.Name.Contains(term) || (o.Database != null && o.Database.Contains(term)));
+        }
+
+        var rows = await query
+            .OrderBy(o => o.ServerRef).ThenBy(o => o.Database).ThenBy(o => o.Schema).ThenBy(o => o.Name)
+            .Take(MaxDatasets)
+            .Select(o => new { o.Key, o.ServerRef, o.Database, o.Schema, o.Name })
+            .ToListAsync(ct).ConfigureAwait(false);
+        var wanted = string.IsNullOrWhiteSpace(system) ? null : system.Trim();
+        rows = rows
+            .Where(r => wanted is null || string.Equals(ServerIdentity.DatasetSystem(r.ServerRef), wanted, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (rows.Count == 0)
+        {
+            return TypedResults.Ok<IReadOnlyList<DatasetNodeDto>>([]);
+        }
+
+        // Who reads and writes each dataset comes from the flow-attributed edges, counted per distinct flow.
+        var keys = rows.Select(r => r.Key).ToList();
+        var edges = await db.LineageEdges.AsNoTracking()
+            .Where(e => e.Flow != null && keys.Contains(e.ObjectKey))
+            .Select(e => new { e.ObjectKey, e.Relation, Flow = e.Flow! })
+            .Distinct()
+            .ToListAsync(ct).ConfigureAwait(false);
+        var readers = edges.Where(e => e.Relation == nameof(LineageRelation.Reads))
+            .GroupBy(e => e.ObjectKey, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.Flow).Distinct(StringComparer.OrdinalIgnoreCase).Count(), StringComparer.Ordinal);
+        var writers = edges.Where(e => e.Relation == nameof(LineageRelation.Writes))
+            .GroupBy(e => e.ObjectKey, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.Select(e => e.Flow).Distinct(StringComparer.OrdinalIgnoreCase).Count(), StringComparer.Ordinal);
+
+        var nodes = rows
+            .Select(r => new DatasetNodeDto(
+                r.Key,
+                ServerIdentity.DatasetSystem(r.ServerRef) ?? r.ServerRef,
+                r.Database ?? string.Empty,
+                r.Schema ?? string.Empty,
+                r.Name,
+                readers.GetValueOrDefault(r.Key),
+                writers.GetValueOrDefault(r.Key)))
+            .ToList();
+        return TypedResults.Ok<IReadOnlyList<DatasetNodeDto>>(nodes);
+    }
 
     private static async Task<Ok<IReadOnlyList<SchemaDto>>> ListSchemasAsync(
         CatalogDbContext db, string? serverRef, string? database, CancellationToken ct)
@@ -579,12 +657,14 @@ public static class LineageEndpoints
     }
 
     /// <summary>
-    /// A file source's provenance: the pipelines that produce it and the pipelines that consume it, each
-    /// consumer with the database objects it lands the data in. Resolved from the flow-attributed lineage
-    /// edges on this object key (across every repo, since a file identity is global): a Writes/Creates edge is
-    /// a producer, a Reads/Requires edge a consumer, and a consumer's landing is that flow's own Writes/Creates
-    /// edges onto non-file objects. Bounded: a file is touched by a handful of flows, each landing a handful of
-    /// tables. Answers "what pipelines use this source and where does the data land" in one call.
+    /// A file's or a dataset's provenance: the pipelines that produce it and the pipelines that consume it, each
+    /// consumer with the objects it lands the data in. Resolved from the flow-attributed lineage edges on this
+    /// object key (across every repo, since a file or dataset identity is global): a Writes/Creates edge is a
+    /// producer, a Reads/Requires edge a consumer, and a consumer's landing is that flow's own Writes/Creates
+    /// edges onto other objects. For a file the landing leaves files out (a flow that reads a file and also
+    /// archives it has not landed its data in the archive); for a dataset a written file is a real landing (a
+    /// retrieval dropping what it read). Bounded: a node is touched by a handful of flows, each landing a handful
+    /// of objects. Answers "what pipelines use this source and where does the data land" in one call.
     /// </summary>
     private static async Task<Ok<FileFlowsDto>> GetFileFlowsAsync(CatalogDbContext db, string key, CancellationToken ct)
     {
@@ -607,6 +687,8 @@ public static class LineageEndpoints
         var producerIds = edges.Where(e => e.Relation is "Writes" or "Creates").Select(e => e.PipelineId).Distinct().ToList();
         var consumerIds = edges.Where(e => e.Relation is "Reads" or "Requires").Select(e => e.PipelineId).Distinct().ToList();
         var pipelineIds = producerIds.Concat(consumerIds).Distinct().ToList();
+        var landsOnFiles = await db.Objects.AsNoTracking()
+            .AnyAsync(o => o.Key == key && o.Kind != "File", ct).ConfigureAwait(false);
 
         // The involved flows' identities (name/kind/repo) in one lookup.
         var pipelines = (await db.Pipelines.AsNoTracking()
@@ -621,7 +703,8 @@ public static class LineageEndpoints
             : await db.LineageEdges.AsNoTracking()
                 .Where(e => e.PipelineId != null && consumerIds.Contains(e.PipelineId!.Value)
                     && (e.Relation == "Writes" || e.Relation == "Creates"))
-                .Join(db.Objects.AsNoTracking().Where(o => o.Kind != "File"), e => e.ObjectKey, o => o.Key,
+                .Join(db.Objects.AsNoTracking().Where(o => o.Key != key && (landsOnFiles || o.Kind != "File")),
+                    e => e.ObjectKey, o => o.Key,
                     (e, o) => new { PipelineId = e.PipelineId!.Value, o.Key, o.Database, o.Schema, o.Name, o.Kind })
                 .Distinct()
                 .ToListAsync(ct).ConfigureAwait(false);
@@ -2517,6 +2600,13 @@ public static class LineageEndpoints
             if (subscriberKeys.Contains(key))
             {
                 return "subscriber";
+            }
+
+            // A dataset of an external system is captioned by its system ("record type", "message queue"), which
+            // says what the node is far better than the generic kind would.
+            if (ServerIdentity.DatasetSystem(key) is { } datasetSystem)
+            {
+                return datasetSystem.Replace('-', ' ');
             }
 
             if (key.StartsWith("file|", StringComparison.Ordinal))

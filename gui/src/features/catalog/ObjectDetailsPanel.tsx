@@ -178,10 +178,10 @@ function FlowRef({ pipelineId, flow, kind }: { pipelineId: string; flow: string;
   );
 }
 
-/** A file source's provenance: the pipelines that produce it (where it comes from) and the pipelines that
- * consume it, each with the tables the data lands in (where it goes). This is the "where do we source this,
- * through which pipeline, to where" answer for a file. */
-function FileProvenance({ objectKey }: { objectKey: string }) {
+/** A file's or a dataset's provenance: the pipelines that produce it (where it comes from) and the pipelines
+ * that consume it, each with the objects the data lands in (where it goes). This is the "where do we source
+ * this, through which pipeline, to where" answer for a file or a dataset. */
+function FileProvenance({ objectKey, noun }: { objectKey: string; noun: "file" | "dataset" }) {
   const flows = useQuery({
     queryKey: ["catalog-file-flows", objectKey],
     queryFn: () => lineageApi.fileFlows(objectKey),
@@ -198,7 +198,7 @@ function FileProvenance({ objectKey }: { objectKey: string }) {
 
   const { producers, consumers } = flows.data;
   if (producers.length === 0 && consumers.length === 0) {
-    return <EmptyState title="No pipelines reference this file yet." />;
+    return <EmptyState title={`No pipelines reference this ${noun} yet.`} />;
   }
 
   return (
@@ -207,7 +207,9 @@ function FileProvenance({ objectKey }: { objectKey: string }) {
         <h3 className="mb-2 text-sm font-medium">{`Produced by (${producers.length})`}</h3>
         {producers.length === 0 ? (
           <p className="text-[13px] text-muted-foreground">
-            Nothing in the catalog produces this file: it is an external source landing here.
+            {noun === "file"
+              ? "Nothing in the catalog produces this file: it is an external source landing here."
+              : "No pipeline writes this dataset: it is maintained outside the flows."}
           </p>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -218,7 +220,7 @@ function FileProvenance({ objectKey }: { objectKey: string }) {
       <section>
         <h3 className="mb-2 text-sm font-medium">{`Consumed by (${consumers.length})`}</h3>
         {consumers.length === 0 ? (
-          <p className="text-[13px] text-muted-foreground">No pipeline reads this file.</p>
+          <p className="text-[13px] text-muted-foreground">{`No pipeline reads this ${noun}.`}</p>
         ) : (
           <div className="flex flex-col gap-3">
             {consumers.map((c) => (
@@ -227,7 +229,7 @@ function FileProvenance({ objectKey }: { objectKey: string }) {
                 <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 pl-6">
                   <span className="text-xs text-muted-foreground">Lands in:</span>
                   {c.lands.length === 0 ? (
-                    <span className="text-xs text-muted-foreground">(no table target recorded)</span>
+                    <span className="text-xs text-muted-foreground">(no target recorded)</span>
                   ) : (
                     c.lands.map((l, index) => (
                       <span key={l.key} className="text-xs">
@@ -249,6 +251,13 @@ function FileProvenance({ objectKey }: { objectKey: string }) {
       </section>
     </div>
   );
+}
+
+/** The system a dataset identity (`dataset:<system>[:<instance>]`) belongs to, the way the tree groups it. */
+function datasetSystemOf(serverRef: string): string {
+  const rest = serverRef.startsWith("dataset:") ? serverRef.slice("dataset:".length) : serverRef;
+  const end = rest.indexOf(":");
+  return (end < 0 ? rest : rest.slice(0, end)).replaceAll("-", " ");
 }
 
 /**
@@ -292,9 +301,11 @@ export function ObjectDetailsPanel({ objectKey }: { objectKey: string }) {
   const { object, columns, references, referencedBy, subscribers } = dossier.data;
   const keys = keyColumnSet(object.keyColumns);
   const relationshipCount = references.length + referencedBy.length;
-  // A file source's useful detail is its provenance (pipelines + landing), not columns/keys/joins, which it
-  // has none of. A database object gets the semantic/query tabs instead.
+  // A file's or a dataset's useful detail is its provenance (pipelines + landing), not columns/keys/joins, which
+  // it has none of. A database object gets the semantic/query tabs instead.
   const isFile = object.kind === "File";
+  const isDataset = object.kind === "Dataset";
+  const hasProvenance = isFile || isDataset;
 
   return (
     <div data-testid="catalog-object-details">
@@ -318,7 +329,7 @@ export function ObjectDetailsPanel({ objectKey }: { objectKey: string }) {
       <Tabs value={tab} onValueChange={(value) => setTab(value as typeof tab)} className="gap-4">
         <TabsList variant="line">
           <TabsTrigger value="overview" data-testid="catalog-tab-overview">Overview</TabsTrigger>
-          {isFile
+          {hasProvenance
             ? <TabsTrigger value="pipelines" data-testid="catalog-tab-pipelines">Pipelines</TabsTrigger>
             : (
               <>
@@ -338,9 +349,19 @@ export function ObjectDetailsPanel({ objectKey }: { objectKey: string }) {
 
         <TabsContent value="overview">
           <div className="grid grid-cols-2 gap-3">
-            <DetailPair label="Server"><ConnectionRef value={object.serverRef} copyTestId="copy-object-server" /></DetailPair>
-            <DetailPair label="Database">{object.database === null ? "-" : <Mono>{object.database}</Mono>}</DetailPair>
-            <DetailPair label="Schema">{object.schema === null ? "-" : <Mono>{object.schema}</Mono>}</DetailPair>
+            {isDataset ? (
+              <>
+                <DetailPair label="System"><Mono>{datasetSystemOf(object.serverRef)}</Mono></DetailPair>
+                <DetailPair label="Namespace">{object.database === null ? "-" : <Mono>{object.database}</Mono>}</DetailPair>
+                <DetailPair label="Group">{object.schema === null ? "-" : <Mono>{object.schema}</Mono>}</DetailPair>
+              </>
+            ) : (
+              <>
+                <DetailPair label="Server"><ConnectionRef value={object.serverRef} copyTestId="copy-object-server" /></DetailPair>
+                <DetailPair label="Database">{object.database === null ? "-" : <Mono>{object.database}</Mono>}</DetailPair>
+                <DetailPair label="Schema">{object.schema === null ? "-" : <Mono>{object.schema}</Mono>}</DetailPair>
+              </>
+            )}
             <DetailPair label="Level">{object.level ?? "-"}</DetailPair>
             <DetailPair label="Key">
               {object.keyColumns === null ? "-" : (
@@ -370,7 +391,7 @@ export function ObjectDetailsPanel({ objectKey }: { objectKey: string }) {
         </TabsContent>
 
         <TabsContent value="pipelines">
-          <FileProvenance objectKey={object.key} />
+          <FileProvenance objectKey={object.key} noun={isDataset ? "dataset" : "file"} />
         </TabsContent>
 
         <TabsContent value="columns">

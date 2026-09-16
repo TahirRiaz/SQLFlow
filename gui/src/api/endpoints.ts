@@ -13,7 +13,7 @@ import type {
   DiscoverRepoRequest, FileHit, FlowDependency, FlowColumnHit, FlowHit, StatementHit,
   FilePipelineMatch, FlowKindDescriptor, ProposalCreated, ProposeFilesRequest,
   LineageEdge, LineageObject, LineageObjectColumn, LineageObjectDetail, LineageProject, LineageSchema, MyNotificationOptions, Node, NodePurgeResult, NodeScript,
-  ObjectDossier, PipelineBatch, SchemaKindCount, FileNode, FileFlows,
+  ObjectDossier, PipelineBatch, SchemaKindCount, FileNode, FileFlows, DatasetNode,
   ProjectGraph,
   GenerateNotificationDigestRequest, NotificationDelivery, NotificationDigest, NotificationDigestSummary,
   NotificationQueuedDelivery, NotificationSubscription, SendNotificationDigestRequest,
@@ -514,8 +514,12 @@ export const lineageApi = {
   // Every file endpoint decomposed to its canonical parent (origin/container/folder/leaf), for the source
   // tree. Unpaged and bounded: file nodes are the distinct declared locations, not physical blobs.
   fileTree: () => get<FileNode[]>("/api/v1/lineage/file-tree"),
-  // A file source's provenance: the pipelines that produce it and consume it, with where consumers land data.
+  // A file's or a dataset's provenance: the pipelines that produce it and consume it, with where consumers land data.
   fileFlows: (key: string) => get<FileFlows>("/api/v1/lineage/file-flows", { key }),
+  // Every dataset of an external system the flows read or write (system > namespace > group > dataset), for the
+  // Datasets branch. Unpaged and bounded: dataset nodes are the declared types and collections, not their data.
+  datasets: (query: { system?: string; search?: string } = {}) =>
+    get<DatasetNode[]>("/api/v1/lineage/datasets", query as QueryParams),
   objects: (query: LineageObjectQuery = {}) =>
     get<PagedResult<LineageObject>>("/api/v1/lineage/objects", query as QueryParams),
   objectDetail: (key: string) => get<LineageObjectDetail>("/api/v1/lineage/objects/detail", { key }),

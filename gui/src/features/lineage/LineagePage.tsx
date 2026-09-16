@@ -32,7 +32,7 @@ import { PageHeader } from "../../components/PageHeader";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
 
-const OBJECT_KINDS = ["Table", "View", "Procedure", "Function", "Trigger", "Synonym", "File"];
+const OBJECT_KINDS = ["Table", "View", "Procedure", "Function", "Trigger", "Synonym", "File", "Dataset"];
 
 /** Local debounce for free-text filters: the table re-queries 400ms after the user stops typing. */
 function useDebounced(value: string, delayMs: number): string {

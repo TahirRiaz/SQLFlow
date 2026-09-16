@@ -3,9 +3,10 @@
 // (a database name, a storage path, a batch) round-trips regardless of the characters it contains. A null
 // database/schema/container encodes as the sentinel "~".
 //
-// Four perspectives:
+// Five perspectives:
 //   Databases    connection > database > schema > kind > object   (the SQL estate; files excluded)
 //   Sources      origin system > container > folder > file        (storage accounts, SFTP servers, filesystem)
+//   Datasets     system > namespace > group > dataset             (external systems the flows read and write)
 //   Flows        repo > batch > flow                              (the pipeline estate, for navigation)
 //   Subscribers  type > subscriber                                (the consumption estate: who reads it all)
 
@@ -21,6 +22,11 @@ export type CatalogNode =
   | { type: "origin"; provider: string; origin: string }
   | { type: "container"; provider: string; origin: string; container: string }
   | { type: "folder"; provider: string; origin: string; container: string | null; path: string }
+  // Datasets of external systems: system > namespace > group; the dataset itself is an object leaf
+  | { type: "datasetsRoot" }
+  | { type: "datasetSystem"; system: string }
+  | { type: "datasetNamespace"; system: string; namespace: string }
+  | { type: "datasetGroup"; system: string; namespace: string; group: string }
   // Flows: repo > folder (the repository directory structure) > batch > flow
   | { type: "flowsRoot" }
   | { type: "repo"; repoId: string }
@@ -31,7 +37,7 @@ export type CatalogNode =
   | { type: "subscribersRoot" }
   | { type: "subscriberType"; subscriberType: string }
   | { type: "subscriber"; key: string }
-  // A leaf object (a database object OR a file), keyed by its global object key
+  // A leaf object (a database object, a file, or a dataset), keyed by its global object key
   | { type: "object"; objectKey: string };
 
 export const UNRESOLVED_LABEL = "(unresolved)";
@@ -66,6 +72,14 @@ export function encodeNodeId(node: CatalogNode): string {
       return `orgc:${seg(node.provider)}|${seg(node.origin)}|${seg(node.container)}`;
     case "folder":
       return `orgf:${seg(node.provider)}|${seg(node.origin)}|${seg(node.container)}|${seg(node.path)}`;
+    case "datasetsRoot":
+      return "sets";
+    case "datasetSystem":
+      return `dss:${seg(node.system)}`;
+    case "datasetNamespace":
+      return `dsn:${seg(node.system)}|${seg(node.namespace)}`;
+    case "datasetGroup":
+      return `dsg:${seg(node.system)}|${seg(node.namespace)}|${seg(node.group)}`;
     case "flowsRoot":
       return "flows";
     case "repo":
@@ -97,6 +111,9 @@ export function decodeNodeId(id: string): CatalogNode | null {
   }
   if (id === "flows") {
     return { type: "flowsRoot" };
+  }
+  if (id === "sets") {
+    return { type: "datasetsRoot" };
   }
   if (id === "subs") {
     return { type: "subscribersRoot" };
@@ -148,6 +165,23 @@ export function decodeNodeId(id: string): CatalogNode | null {
             path: decodeURIComponent(parts[3]),
           }
           : null;
+      case "dss":
+        return parts.length === 1 && notNull(parts[0])
+          ? { type: "datasetSystem", system: decodeURIComponent(parts[0]) }
+          : null;
+      case "dsn":
+        return parts.length === 2 && parts.every(notNull)
+          ? { type: "datasetNamespace", system: decodeURIComponent(parts[0]), namespace: decodeURIComponent(parts[1]) }
+          : null;
+      case "dsg":
+        return parts.length === 3 && parts.every(notNull)
+          ? {
+            type: "datasetGroup",
+            system: decodeURIComponent(parts[0]),
+            namespace: decodeURIComponent(parts[1]),
+            group: decodeURIComponent(parts[2]),
+          }
+          : null;
       case "repo":
         return parts.length === 1 && notNull(parts[0])
           ? { type: "repo", repoId: decodeURIComponent(parts[0]) }
@@ -193,9 +227,19 @@ export function ancestorIds(node: CatalogNode): string[] {
   switch (node.type) {
     case "databasesRoot":
     case "sourcesRoot":
+    case "datasetsRoot":
     case "flowsRoot":
     case "subscribersRoot":
       return [];
+    case "datasetSystem":
+      return [encodeNodeId({ type: "datasetsRoot" })];
+    case "datasetNamespace":
+      return [encodeNodeId({ type: "datasetsRoot" }), encodeNodeId({ type: "datasetSystem", system: node.system })];
+    case "datasetGroup":
+      return [
+        ...ancestorIds({ type: "datasetNamespace", system: node.system, namespace: node.namespace }),
+        encodeNodeId({ type: "datasetNamespace", system: node.system, namespace: node.namespace }),
+      ];
     case "subscriberType":
       return [encodeNodeId({ type: "subscribersRoot" })];
     case "subscriber":
@@ -212,7 +256,7 @@ export function ancestorIds(node: CatalogNode): string[] {
         encodeNodeId({ type: "schema", database: node.database, schema: node.schema }),
       ];
     case "object":
-      // A file object's chain is revealed by the tree from the loaded file list; a bare object opens Databases.
+      // A file's or a dataset's chain is revealed by the tree from its loaded list; a bare object opens Databases.
       return [encodeNodeId({ type: "databasesRoot" })];
     case "provider":
       return [encodeNodeId({ type: "sourcesRoot" })];

@@ -437,6 +437,16 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
         public List<ObjectBody>? Writes { get; set; }
 
         public List<ObjectBody>? Requires { get; set; }
+
+        public List<FileBody>? Files { get; set; }
+
+        public List<DatasetBody>? Datasets { get; set; }
+
+        public List<string>? LineageWarnings { get; set; }
+
+        public string? LineageFailure { get; set; }
+
+        public string? Companion { get; set; }
     }
 
     private sealed class ObjectBody
@@ -444,6 +454,32 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
         public string? Connection { get; set; }
 
         public string? Object { get; set; }
+    }
+
+    private sealed class FileBody
+    {
+        public string? Relation { get; set; }
+
+        public string? Location { get; set; }
+
+        public string? Pattern { get; set; }
+    }
+
+    private sealed class DatasetBody
+    {
+        public string? Relation { get; set; }
+
+        public string? System { get; set; }
+
+        public string? Instance { get; set; }
+
+        public string? Namespace { get; set; }
+
+        public string? Group { get; set; }
+
+        public string? Name { get; set; }
+
+        public string? Separator { get; set; }
     }
 
     public string FlowType => flowType;
@@ -511,8 +547,32 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
                 .. Declared(SqlFlow.Core.Lineage.LineageRelation.Writes, body.Writes),
                 .. Declared(SqlFlow.Core.Lineage.LineageRelation.Requires, body.Requires),
             ],
+            Files = (body.Files ?? []).Select(f => new DeclaredFileLocation
+            {
+                Relation = Relation(f.Relation),
+                Location = f.Location ?? string.Empty,
+                FilePattern = f.Pattern,
+            }).ToList(),
+            Datasets = (body.Datasets ?? []).Select(d => new DeclaredDataset
+            {
+                Relation = Relation(d.Relation),
+                System = d.System ?? string.Empty,
+                Instance = d.Instance,
+                Namespace = d.Namespace ?? string.Empty,
+                Group = d.Group ?? string.Empty,
+                Name = d.Name ?? string.Empty,
+                Separator = string.IsNullOrEmpty(d.Separator) ? null : d.Separator[0],
+            }).ToList(),
+            LineageWarnings = body.LineageWarnings ?? [],
+            LineageFailure = body.LineageFailure,
+            Companion = body.Companion,
         };
     }
+
+    /// <summary>A declared relation as written (<c>reads</c>, <c>writes</c>, <c>requires</c>), so the platform's own
+    /// refusal of a relation other than reads and writes is what the tests see.</summary>
+    private static SqlFlow.Core.Lineage.LineageRelation Relation(string? value)
+        => Enum.Parse<SqlFlow.Core.Lineage.LineageRelation>(value ?? "reads", ignoreCase: true);
 
     /// <summary>The lineage declarations of one YAML list, passed to the platform as written so its own checks are
     /// what the tests see.</summary>
@@ -541,7 +601,55 @@ internal sealed record ProbeFlowDocument : RegisteredFlowDocument
 
     public IReadOnlyList<DeclaredDataObject> Objects { get; init; } = [];
 
+    public IReadOnlyList<DeclaredFileLocation> Files { get; init; } = [];
+
+    public IReadOnlyList<DeclaredDataset> Datasets { get; init; } = [];
+
+    public IReadOnlyList<string> LineageWarnings { get; init; } = [];
+
+    /// <summary>When set, describing the lineage throws an <see cref="InvalidOperationException"/> with this message.</summary>
+    public string? LineageFailure { get; init; }
+
+    /// <summary>A file, relative to the document's folder, listing one dataset name per line that the flow writes to the
+    /// <c>probe-store</c> system; a file outside the estate is not read and is reported as a warning.</summary>
+    public string? Companion { get; init; }
+
     public override IReadOnlyList<DeclaredDataObject> DeclaredObjects => Objects;
+
+    /// <summary>The declared objects through the default, plus the files, datasets and warnings the document names,
+    /// plus what its companion lists.</summary>
+    public override RegisteredFlowLineage DescribeLineage(RegisteredLineageContext context)
+    {
+        var lineage = base.DescribeLineage(context);
+        if (LineageFailure is not null)
+        {
+            throw new InvalidOperationException(LineageFailure);
+        }
+
+        var datasets = Datasets.ToList();
+        var warnings = LineageWarnings.ToList();
+        if (Companion is not null)
+        {
+            var path = Path.Combine(context.DocumentFolder, Companion);
+            if (!context.Contains(path))
+            {
+                warnings.Add($"the companion '{Companion}' lies outside the estate and was not read.");
+            }
+            else
+            {
+                datasets.AddRange(File.ReadAllLines(path).Where(line => line.Trim().Length > 0).Select(line => new DeclaredDataset
+                {
+                    Relation = SqlFlow.Core.Lineage.LineageRelation.Writes,
+                    System = "probe-store",
+                    Namespace = "tenant",
+                    Group = "companion",
+                    Name = line.Trim(),
+                }));
+            }
+        }
+
+        return lineage with { Files = Files, Datasets = datasets, Warnings = warnings };
+    }
 
     public override string Name => FlowName;
 

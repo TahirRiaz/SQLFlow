@@ -11,7 +11,9 @@ namespace SqlFlow.Tests.Integration;
 /// catalog: every registered extension runs inside the sync's reconciliation transaction, after the pipelines are
 /// staged, with the repository's id and materialized root; the tallies of all extensions are summed onto the result and
 /// their warnings reported; and an extension that throws, or returns no result, fails the sync and rolls every write
-/// back, so the catalog never shows a repository half reconciled. Cleans up its own repository's rows.
+/// back, so the catalog never shows a repository half reconciled. An extension also decides whether an otherwise
+/// unchanged estate recomputes its lineage, because a companion document it owns can change what a flow declares.
+/// Cleans up its own repository's rows.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
@@ -108,6 +110,67 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
         }
     }
 
+    [SkippableFact]
+    public async Task AnUnchangedEstate_RecomputesLineage_OnlyWhenAnExtensionReportsItsLineageInputsChanged()
+    {
+        var cs = IntegrationDb.Require();
+        var (repo, repoId, _) = NewEstate();
+        await CatalogDatabase.MigrateAsync(cs);
+        var gate = new LineageGateExtension();
+
+        try
+        {
+            // A new estate recomputes on the flows' own account; the extension is not asked.
+            var first = await SyncWithAsync(cs, repo, gate);
+            Assert.True(first.LineageEdges > 0);
+            Assert.Equal(0, gate.Asked);
+
+            // Unchanged flows and an extension reporting nothing changed: the stored lineage is current.
+            var unchanged = await SyncWithAsync(cs, repo, gate);
+            Assert.Equal(0, unchanged.LineageEdges);
+            Assert.Equal(1, gate.Asked);
+            Assert.Equal((repoId, Path.GetFullPath(_dir)), (gate.RepoId, gate.Root));
+            Assert.False(gate.InTransaction);
+
+            // Unchanged flows but a changed companion document: the lineage is recomputed.
+            gate.Changed = true;
+            var recomputed = await SyncWithAsync(cs, repo, gate);
+            Assert.Equal(first.LineageEdges, recomputed.LineageEdges);
+            Assert.Equal(2, gate.Asked);
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId, repo);
+        }
+    }
+
+    [SkippableFact]
+    public async Task AnExtensionFailingToReportItsLineageInputs_FailsTheSync()
+    {
+        var cs = IntegrationDb.Require();
+        var (repo, repoId, _) = NewEstate();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        try
+        {
+            await SyncWithAsync(cs, repo, new LineageGateExtension());
+
+            var failure = await Assert.ThrowsAsync<IOException>(() =>
+                SyncWithAsync(cs, repo, new LineageGateExtension { Failure = new IOException("the mappings could not be read.") }));
+            Assert.Equal("the mappings could not be read.", failure.Message);
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId, repo);
+        }
+    }
+
+    private async Task<CatalogSyncResult> SyncWithAsync(string cs, string repo, ICatalogSyncExtension extension)
+    {
+        await using var db = CatalogDatabase.Create(cs);
+        return await new CatalogSync(YamlDocumentLoader.CreateDefault(), [extension]).SyncAsync(db, _dir, repo, null, DateTime.UtcNow);
+    }
+
     private (string Repo, Guid RepoId, string FlowName) NewEstate()
     {
         var suffix = Guid.NewGuid().ToString("N")[..8];
@@ -184,6 +247,36 @@ public sealed class CatalogSyncExtensionIntegrationTests : IDisposable
             }
 
             return Task.FromResult(tally);
+        }
+    }
+
+    /// <summary>Reports a settable answer to whether its lineage inputs changed, counting how often it was asked and
+    /// recording what it was handed; its reconciliation reconciles nothing.</summary>
+    private sealed class LineageGateExtension : ICatalogSyncExtension
+    {
+        public bool Changed { get; set; }
+
+        public Exception? Failure { get; init; }
+
+        public int Asked { get; private set; }
+
+        public Guid RepoId { get; private set; }
+
+        public string? Root { get; private set; }
+
+        public bool InTransaction { get; private set; }
+
+        public Task<CatalogSyncExtensionResult> SyncAsync(
+            CatalogDbContext context, Guid repoId, string root, DateTime nowUtc, ICollection<string> warnings, CancellationToken ct)
+            => Task.FromResult(CatalogSyncExtensionResult.Empty);
+
+        public Task<bool> LineageInputsChangedAsync(CatalogDbContext context, Guid repoId, string root, CancellationToken ct)
+        {
+            Asked++;
+            RepoId = repoId;
+            Root = root;
+            InTransaction = context.Database.CurrentTransaction is not null;
+            return Failure is null ? Task.FromResult(Changed) : Task.FromException<bool>(Failure);
         }
     }
 

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { CircleHelp, FileText, Layers, Link2, MonitorPlay, Split, SquareFunction, Table2, Zap } from "lucide-react";
+import { Boxes, CircleHelp, FileText, Layers, Link2, MonitorPlay, Split, SquareFunction, Table2, Zap } from "lucide-react";
 
 /** Display metadata for one object kind: the folder label the tree shows and the leaf icon. */
 export interface KindMeta {
@@ -19,6 +19,7 @@ export const KIND_ORDER: readonly KindMeta[] = [
   { kind: "Trigger", plural: "Triggers", icon: <Zap className="size-4" /> },
   { kind: "Synonym", plural: "Synonyms", icon: <Link2 className="size-4" /> },
   { kind: "File", plural: "Files", icon: <FileText className="size-4" /> },
+  { kind: "Dataset", plural: "Datasets", icon: <Boxes className="size-4" /> },
   { kind: "Subscriber", plural: "Subscribers", icon: <MonitorPlay className="size-4" /> },
   { kind: "Unknown", plural: "Unknown", icon: <CircleHelp className="size-4" /> },
 ];

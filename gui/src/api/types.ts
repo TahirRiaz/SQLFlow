@@ -1090,7 +1090,7 @@ export interface SchemaKindCount {
 export type FileOriginKind =
   | "AzureStorage" | "AmazonS3" | "GoogleCloud" | "Sftp" | "NetworkShare" | "Local" | "Other";
 
-/** One database object a flow lands data into (a written/created target), for a file source's provenance. */
+/** One object a flow lands data into (a written/created target), for a file's or a dataset's provenance. */
 export interface LandingObject {
   key: string;
   database: string | null;
@@ -1129,6 +1129,21 @@ export interface FileNode {
   container: string | null;
   path: string | null;
   name: string;
+}
+
+/** One dataset of an external system a registered flow kind reads or writes (a record type in a partition, a
+ * queue, a collection), for the catalog's Datasets branch: system > namespace > group > dataset. `key` is the
+ * object key, so a leaf opens its dossier. A name carrying a `*` is a pattern a flow reads with. */
+export interface DatasetNode {
+  key: string;
+  system: string;
+  namespace: string;
+  group: string;
+  name: string;
+  /** How many flows read it. */
+  readers: number;
+  /** How many flows write it. */
+  writers: number;
 }
 
 export interface LineageObject {

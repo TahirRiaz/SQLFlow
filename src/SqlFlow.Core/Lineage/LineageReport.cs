@@ -35,6 +35,12 @@ public enum LineageNodeKind
     /// between, and it exists so "which dashboard breaks if I change this table" is a graph query rather than
     /// tribal knowledge.</summary>
     Subscriber = 8,
+
+    /// <summary>A dataset of an external system a registered flow kind declares it reads or writes: a record type in
+    /// a partition of a data platform, a queue, a collection. It lives outside the databases SQLFlow connects to, but
+    /// it always carries a namespace (as its database) and a group (as its schema), so it is identified like any other
+    /// object and never mistaken for an identity waiting on its database.</summary>
+    Dataset = 9,
 }
 
 /// <summary>How a flow or module relates to an object (the DeltaForge typed-relation taxonomy).</summary>

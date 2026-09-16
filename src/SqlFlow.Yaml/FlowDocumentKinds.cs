@@ -123,6 +123,122 @@ public abstract record RegisteredFlowDocument : FlowDocument
     /// that write what it reads, and before the flows that read what it writes. Empty for a kind that relates to no
     /// database object; a declaration the scan cannot use skips the document with a warning.</summary>
     public virtual IReadOnlyList<DeclaredDataObject> DeclaredObjects => [];
+
+    /// <summary>
+    /// Everything the flow contributes to lineage: the database objects it reads and writes, the file locations it reads
+    /// and the file drops it lands, the datasets of external systems it reads and writes, and the warnings describing
+    /// them raised. The estate scan calls this once per document with the document's own file and the estate it is
+    /// scanning, so a kind can read the companion documents a flow names from the checkout. A kind that only relates to
+    /// database objects keeps the default, which is <see cref="DeclaredObjects"/>. A declaration the scan cannot use
+    /// skips the document with a warning, and so does a description that throws.
+    /// </summary>
+    public virtual RegisteredFlowLineage DescribeLineage(RegisteredLineageContext context)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        return new RegisteredFlowLineage { Objects = DeclaredObjects };
+    }
+}
+
+/// <summary>Where a registered document's lineage is described.</summary>
+/// <param name="DocumentPath">The full path of the document being described.</param>
+/// <param name="EstateRoot">The full path of the estate the scan walks: a document reads companion files from inside it
+/// only.</param>
+public sealed record RegisteredLineageContext(string DocumentPath, string EstateRoot)
+{
+    /// <summary>The folder the document sits in, which a relative location of the document is relative to.</summary>
+    public string DocumentFolder => Path.GetDirectoryName(DocumentPath) ?? EstateRoot;
+
+    /// <summary>Whether <paramref name="path"/> lies inside the estate, after resolving it to a full path.</summary>
+    public bool Contains(string path)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        var full = Path.GetFullPath(path);
+        var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(EstateRoot));
+        return string.Equals(full, root, StringComparison.OrdinalIgnoreCase)
+            || full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || full.StartsWith(root + Path.AltDirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+/// <summary>What a registered flow contributes to lineage (<see cref="RegisteredFlowDocument.DescribeLineage"/>).</summary>
+public sealed record RegisteredFlowLineage
+{
+    /// <summary>A flow that contributes nothing.</summary>
+    public static RegisteredFlowLineage Empty { get; } = new();
+
+    /// <summary>The database objects the flow reads and writes.</summary>
+    public IReadOnlyList<DeclaredDataObject> Objects { get; init; } = [];
+
+    /// <summary>The file locations the flow reads, and the file drops it lands.</summary>
+    public IReadOnlyList<DeclaredFileLocation> Files { get; init; } = [];
+
+    /// <summary>The datasets of external systems the flow reads and writes.</summary>
+    public IReadOnlyList<DeclaredDataset> Datasets { get; init; } = [];
+
+    /// <summary>What the description could not declare and why, one sentence each. The scan reports each against the
+    /// document's file; the declarations above still count.</summary>
+    public IReadOnlyList<string> Warnings { get; init; } = [];
+}
+
+/// <summary>
+/// A file location a registered flow reads, or a file drop it lands, declared so the estate scan treats it exactly as it
+/// treats a file ingestion's source and a copy flow's target: a read becomes a file node the flow reads, which a flow
+/// landing that folder is ordered before; a write becomes a drop reconciled with the file ingestions reading it.
+/// </summary>
+public sealed record DeclaredFileLocation
+{
+    /// <summary><see cref="LineageRelation.Reads"/> or <see cref="LineageRelation.Writes"/>.</summary>
+    public required LineageRelation Relation { get; init; }
+
+    /// <summary>The folder or file: relative to the declaring document's folder, absolute, a URL, or a reference
+    /// (<c>${...}</c>) kept as written. A <c>{token}</c> renders per run, so the location is cut at the first segment
+    /// carrying one and the rest is left to the drop's contents.</summary>
+    public required string Location { get; init; }
+
+    /// <summary>The file-name glob of the files under <see cref="Location"/> (for example <c>part-*.jsonl*</c>), or
+    /// null for any file.</summary>
+    public string? FilePattern { get; init; }
+}
+
+/// <summary>
+/// A dataset of an external system a registered flow reads or writes: a record type in a partition of a data
+/// platform, a queue, a collection. Its node is identified by the system, the system instance, a namespace, a group and
+/// the dataset's name, and is a <see cref="LineageNodeKind.Dataset"/>. A flow reading a dataset is ordered after the
+/// flows writing it. A read may name its dataset with <c>*</c> wildcards: it reads its own pattern node, and every
+/// dataset of the same system, instance and namespace written in the estate whose name the pattern matches.
+/// </summary>
+public sealed record DeclaredDataset
+{
+    /// <summary>The longest namespace, group or name a dataset may carry.</summary>
+    public const int MaxPartLength = 256;
+
+    /// <summary><see cref="LineageRelation.Reads"/> or <see cref="LineageRelation.Writes"/>.</summary>
+    public required LineageRelation Relation { get; init; }
+
+    /// <summary>The system the dataset belongs to: lower-case letters, digits and hyphens, starting with a letter, at
+    /// most 32 characters. It captions the node.</summary>
+    public required string System { get; init; }
+
+    /// <summary>The reference (<c>${env:...}</c>, <c>${keyvault:...}</c>) or the address of the system instance, as the
+    /// flow declares it, or null when the namespace alone identifies the dataset. It is identified the way a server
+    /// connection is, so a literal is never stored or shown.</summary>
+    public string? Instance { get; init; }
+
+    /// <summary>The namespace inside the instance (an account, a partition, a tenant).</summary>
+    public required string Namespace { get; init; }
+
+    /// <summary>The group inside the namespace the dataset is listed under.</summary>
+    public required string Group { get; init; }
+
+    /// <summary>The dataset's name. A read may carry <c>*</c> wildcards.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The separator of the name's segments, which a wildcard never matches across; null matches the name
+    /// as one segment.</summary>
+    public char? Separator { get; init; }
+
+    /// <summary>True when <see cref="Name"/> carries a wildcard.</summary>
+    public bool IsPattern => Name.Contains('*', StringComparison.Ordinal);
 }
 
 /// <summary>

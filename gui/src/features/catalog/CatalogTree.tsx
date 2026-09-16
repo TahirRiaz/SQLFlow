@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import {
+  Boxes,
   CircleAlert,
   Cloud,
   Database,
@@ -33,7 +34,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { NodeLabel, TreeContext, TreeNode, type TreeState } from "@/components/Tree";
 import { lineageApi, repoApi } from "../../api/endpoints";
-import type { FileNode, FileOriginKind, LineageObject, PagedResult, PipelineSummary, Repo, SchemaKindCount, Subscriber } from "../../api/types";
+import type {
+  DatasetNode, FileNode, FileOriginKind, LineageObject, PagedResult, PipelineSummary, Repo, SchemaKindCount, Subscriber,
+} from "../../api/types";
 import { fetchAllPipelines } from "../pipelines/fetchAllPipelines";
 import { compareKinds, metaForKind } from "./kindMeta";
 import { encodeNodeId, UNRESOLVED_LABEL, decodeNodeId, type CatalogNode } from "./nodeIds";
@@ -313,6 +316,114 @@ function fileAncestorIds(file: FileNode): string[] {
   return ids;
 }
 
+// ---- Datasets branch (system > namespace > group > dataset) ----------------------------------------------
+
+interface DatasetSystemBranch { system: string; count: number; namespaces: DatasetNamespaceBranch[] }
+interface DatasetNamespaceBranch { namespace: string; count: number; groups: DatasetGroupBranch[] }
+interface DatasetGroupBranch { group: string; datasets: DatasetNode[] }
+
+/** A system's display caption: its identifier with the hyphens read as spaces ("partition-type" reads as
+ * "partition type"), the same caption the lineage graph gives its nodes. */
+function datasetSystemLabel(system: string): string {
+  return system.replaceAll("-", " ");
+}
+
+/** Folds the flat dataset list into system > namespace > group, each level sorted by name, datasets by name. */
+function foldDatasets(rows: DatasetNode[]): DatasetSystemBranch[] {
+  const systems = new Map<string, Map<string, Map<string, DatasetNode[]>>>();
+  for (const row of rows) {
+    let namespaces = systems.get(row.system);
+    if (namespaces === undefined) {
+      namespaces = new Map();
+      systems.set(row.system, namespaces);
+    }
+    let groups = namespaces.get(row.namespace);
+    if (groups === undefined) {
+      groups = new Map();
+      namespaces.set(row.namespace, groups);
+    }
+    const datasets = groups.get(row.group);
+    if (datasets === undefined) {
+      groups.set(row.group, [row]);
+    } else {
+      datasets.push(row);
+    }
+  }
+
+  return [...systems.entries()]
+    .map(([system, namespaces]) => {
+      const namespaceBranches = [...namespaces.entries()]
+        .map(([namespace, groups]) => {
+          const groupBranches = [...groups.entries()]
+            .map(([group, datasets]) => ({ group, datasets: datasets.sort((a, b) => byNameCi(a.name, b.name)) }))
+            .sort((a, b) => byNameCi(a.group, b.group));
+          return {
+            namespace,
+            count: groupBranches.reduce((sum, group) => sum + group.datasets.length, 0),
+            groups: groupBranches,
+          };
+        })
+        .sort((a, b) => byNameCi(a.namespace, b.namespace));
+      return {
+        system,
+        count: namespaceBranches.reduce((sum, namespace) => sum + namespace.count, 0),
+        namespaces: namespaceBranches,
+      };
+    })
+    .sort((a, b) => byNameCi(a.system, b.system));
+}
+
+/** The ids to expand so a dataset leaf is visible: its system, namespace and group. */
+function datasetAncestorIds(dataset: DatasetNode): string[] {
+  return [
+    encodeNodeId({ type: "datasetsRoot" }),
+    encodeNodeId({ type: "datasetSystem", system: dataset.system }),
+    encodeNodeId({ type: "datasetNamespace", system: dataset.system, namespace: dataset.namespace }),
+    encodeNodeId({ type: "datasetGroup", system: dataset.system, namespace: dataset.namespace, group: dataset.group }),
+  ];
+}
+
+/** One system of the Datasets branch with its namespaces, groups and dataset leaves. */
+function DatasetSystemNode({ branch }: { branch: DatasetSystemBranch }) {
+  const systemId = encodeNodeId({ type: "datasetSystem", system: branch.system });
+  return (
+    <TreeNode id={systemId}
+      label={<NodeLabel icon={<Boxes className="size-4" />} text={datasetSystemLabel(branch.system)} count={branch.count} />}>
+      {branch.namespaces.map((namespace) => {
+        const namespaceId = encodeNodeId({ type: "datasetNamespace", system: branch.system, namespace: namespace.namespace });
+        return (
+          <TreeNode key={namespaceId} id={namespaceId}
+            label={<NodeLabel icon={<Folder className="size-4" />} text={namespace.namespace} count={namespace.count} />}>
+            {namespace.groups.map((group) => {
+              const groupId = encodeNodeId({
+                type: "datasetGroup", system: branch.system, namespace: namespace.namespace, group: group.group,
+              });
+              return (
+                <TreeNode key={groupId} id={groupId}
+                  label={<NodeLabel icon={<Layers className="size-4" />} text={group.group} count={group.datasets.length} />}>
+                  {group.datasets.map((dataset) => (
+                    <TreeNode
+                      key={dataset.key}
+                      id={encodeNodeId({ type: "object", objectKey: dataset.key })}
+                      label={(
+                        <NodeLabel
+                          icon={<Boxes className="size-4" />}
+                          text={dataset.name}
+                          badge={dataset.name.includes("*") ? "pattern" : undefined}
+                        />
+                      )}
+                    />
+                  ))}
+                </TreeNode>
+              );
+            })}
+          </TreeNode>
+        );
+      })}
+    </TreeNode>
+  );
+}
+
 // ---- Flows branch (repo > repository folder > batch > flow) ----------------------------------------------
 
 interface FlowLeaf { id: string; name: string; kind: string; repoId: string }
@@ -507,6 +618,7 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
   });
 
   const subscribers = useQuery({ queryKey: ["catalog-subscribers"], queryFn: () => lineageApi.subscribers() });
+  const datasets = useQuery({ queryKey: ["catalog-datasets"], queryFn: () => lineageApi.datasets() });
 
   const databases = useMemo(() => foldDatabases(schemaKinds.data ?? []), [schemaKinds.data]);
 
@@ -559,6 +671,18 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
     return foldFileProviders(kept);
   }, [fileTree.data, needle]);
 
+  // Filter the flat dataset list (by system, namespace, group or name) BEFORE folding, so a matched dataset keeps
+  // its whole system/namespace/group chain.
+  const datasetSystems = useMemo(() => {
+    const rows = datasets.data ?? [];
+    const kept = needle === ""
+      ? rows
+      : rows.filter((d) =>
+        lower(d.system).includes(needle) || lower(d.namespace).includes(needle)
+        || lower(d.group).includes(needle) || lower(d.name).includes(needle));
+    return foldDatasets(kept);
+  }, [datasets.data, needle]);
+
   const repoList: Repo[] = useMemo(() => (repos.data?.items ?? []).slice().sort((a, b) => byNameCi(a.name, b.name)), [repos.data]);
 
   // Filter the flat flow list (by repo name, folder path, batch, or flow name) BEFORE folding, so a matched
@@ -585,10 +709,17 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
           open.add(id);
         }
       }
+      const dataset = (datasets.data ?? []).find((d) => d.key === selected.objectKey);
+      if (dataset) {
+        for (const id of datasetAncestorIds(dataset)) {
+          open.add(id);
+        }
+      }
     }
     if (needle !== "") {
       open.add(encodeNodeId({ type: "databasesRoot" }));
       open.add(encodeNodeId({ type: "sourcesRoot" }));
+      open.add(encodeNodeId({ type: "datasetsRoot" }));
       open.add(encodeNodeId({ type: "flowsRoot" }));
       open.add(encodeNodeId({ type: "subscribersRoot" }));
       for (const database of filteredDatabases) {
@@ -602,6 +733,12 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
           }
         }
       }
+      for (const system of datasetSystems) {
+        open.add(encodeNodeId({ type: "datasetSystem", system: system.system }));
+        for (const namespace of system.namespaces) {
+          open.add(encodeNodeId({ type: "datasetNamespace", system: system.system, namespace: namespace.namespace }));
+        }
+      }
       for (const [repoId, root] of flowsByRepo) {
         open.add(encodeNodeId({ type: "repo", repoId }));
         for (const id of collectFlowIds(repoId, "", root)) {
@@ -610,7 +747,7 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
       }
     }
     return open;
-  }, [expanded, needle, selectedId, fileTree.data, filteredDatabases, fileProviders, flowsByRepo]);
+  }, [expanded, needle, selectedId, fileTree.data, datasets.data, filteredDatabases, fileProviders, datasetSystems, flowsByRepo]);
 
   const setOpen = useCallback((id: string, open: boolean) => {
     setExpanded((current) => {
@@ -630,7 +767,7 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
     (rows.find((row) => row.dataset.id === selectedId) ?? rows[0])?.focus();
   };
 
-  const skeletonError = [schemaKinds, fileTree, repos, pipelines, subscribers].find((query) => query.isError);
+  const skeletonError = [schemaKinds, fileTree, datasets, repos, pipelines, subscribers].find((query) => query.isError);
   if (skeletonError !== undefined) {
     return (
       <Alert variant="destructive" data-testid="catalog-tree-error">
@@ -643,7 +780,8 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
       </Alert>
     );
   }
-  if (schemaKinds.isPending || fileTree.isPending || repos.isPending || pipelines.isPending || subscribers.isPending) {
+  if (schemaKinds.isPending || fileTree.isPending || datasets.isPending || repos.isPending || pipelines.isPending
+    || subscribers.isPending) {
     return (
       <div className="flex flex-col gap-2" data-testid="catalog-tree-loading">
         {Array.from({ length: 8 }, (_, i) => <Skeleton key={i} className="h-7 w-full" />)}
@@ -661,6 +799,7 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
 
   const totalDbObjects = databases.reduce((sum, database) => sum + database.objectCount, 0);
   const totalFiles = (fileTree.data ?? []).length;
+  const totalDatasets = (datasets.data ?? []).length;
   const totalFlows = (pipelines.data ?? []).length;
   const totalSubscribers = (subscribers.data ?? []).length;
 
@@ -734,6 +873,21 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
             )}
             {fileProviders.map((group) => <ProviderNode key={encodeNodeId({ type: "provider", provider: group.kind })} group={group} />)}
           </TreeNode>
+
+          {/* Datasets (external systems the flows read and write: system > namespace > group > dataset) */}
+          {totalDatasets > 0 && (
+            <TreeNode
+              id={encodeNodeId({ type: "datasetsRoot" })}
+              label={<NodeLabel icon={<Boxes className="size-4" />} text="Datasets" count={totalDatasets} />}
+            >
+              {datasetSystems.length === 0 && (
+                <TreeNode id="sets#empty" disabled label={<NodeLabel text="No dataset matches the filter" />} />
+              )}
+              {datasetSystems.map((branch) => (
+                <DatasetSystemNode key={encodeNodeId({ type: "datasetSystem", system: branch.system })} branch={branch} />
+              ))}
+            </TreeNode>
+          )}
 
           {/* Flows (repo > repository folder > batch > flow) */}
           <TreeNode

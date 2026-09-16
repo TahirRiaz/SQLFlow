@@ -135,6 +135,18 @@ public sealed class LineageFileAnchorTests : IDisposable
     }
 
     [Fact]
+    public void A_trailing_separator_names_the_same_folder()
+    {
+        Write("fetch.yaml", Invoke("fetch", "data/in/"));
+        Write("flows/load.yaml", FileIngestion("load", "../data/in", "Rows"));
+
+        var report = Build();
+
+        Assert.Equal(["data/in"], FileNames(report));
+        Assert.True(DependsOn(report, "fetch", "load"));
+    }
+
+    [Fact]
     public void A_location_outside_the_estate_keeps_its_absolute_path()
     {
         Write("flows/load.yaml", FileIngestion("load", "../../outside-the-estate", "Rows"));

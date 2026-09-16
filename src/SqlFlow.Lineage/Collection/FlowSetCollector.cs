@@ -71,6 +71,10 @@ public sealed class FlowSetCollector
         var producers = new List<FileProducer>();
         var consumers = new List<FileConsumer>();
 
+        // Dataset reads naming their datasets with a wildcard are bound once every document is in hand, to the datasets
+        // the estate writes that the pattern matches.
+        var patternReads = new List<DatasetPatternRead>();
+
         foreach (var file in files)
         {
             var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
@@ -94,8 +98,8 @@ public sealed class FlowSetCollector
 
             try
             {
-                var anchor = new FileAnchor(root, Path.GetDirectoryName(file) ?? root);
-                Collect(result, document, relative, File.GetLastWriteTimeUtc(file), anchor, producers, consumers);
+                var anchor = new FileAnchor(root, file);
+                Collect(result, document, relative, File.GetLastWriteTimeUtc(file), anchor, producers, consumers, patternReads);
             }
             catch (SqlFlowException ex)
             {
@@ -107,6 +111,7 @@ public sealed class FlowSetCollector
         }
 
         ReconcileFileLinks(result, producers, consumers);
+        BindDatasetPatterns(result, patternReads);
 
         // Shared schedules: build the repo-wide library (dedicated schedules.yaml files plus named inline blocks),
         // then resolve every `schedule: <name>` reference to a concrete cadence. Done after the whole estate is
@@ -1015,7 +1020,7 @@ public sealed class FlowSetCollector
 
     private static void Collect(
         CollectionResult result, FlowDocument document, string file, DateTime fileWriteUtc, FileAnchor files,
-        List<FileProducer> producers, List<FileConsumer> consumers)
+        List<FileProducer> producers, List<FileConsumer> consumers, List<DatasetPatternRead> patternReads)
     {
         // The flow nodes come from the shared header projection, the single authority for what a document
         // declares (name, kind, batch, servers, mode, lifecycle, schedule), shared with the catalog's per-run
@@ -1025,9 +1030,10 @@ public sealed class FlowSetCollector
         // consumers reconciled after the whole estate is scanned.
         var headers = FlowDocumentHeaders.Project(document);
 
-        // A registered kind's declared objects are checked before anything is collected, so a document declaring an
-        // unusable object is skipped whole (reported by the caller) rather than collected with half its lineage.
-        var declared = document is RegisteredFlowDocument registered ? DeclaredObjectFacts(registered, headers[0].Name) : null;
+        // A registered kind's lineage is described and checked before anything is collected, so a document declaring an
+        // unusable object, file or dataset is skipped whole (reported by the caller) rather than collected with half its
+        // lineage.
+        var declared = document is RegisteredFlowDocument registered ? DescribeRegistered(registered, headers[0].Name, files) : null;
 
         foreach (var header in headers)
         {
@@ -1366,13 +1372,34 @@ public sealed class FlowSetCollector
 
             case RegisteredFlowDocument:
             {
-                // A kind a host registered declares the database objects it reads and writes; they were validated
-                // before the flow node was added, and become declared facts on the same node identities an ingestion
-                // flow's source and target use, so waves order the registered flow after what it reads.
-                foreach (var (fact, connectionReference, provider) in declared!)
+                // A kind a host registered describes what it reads and writes; the description was validated before the
+                // flow node was added. Its database objects become declared facts on the same node identities an
+                // ingestion flow's source and target use, its file reads and drops join the file reconciliation exactly
+                // as a file ingestion's source and a copy flow's target do, and its datasets become dataset nodes, so
+                // waves order the registered flow after what it reads and before what reads what it writes.
+                var description = declared!;
+                foreach (var (fact, connectionReference, provider) in description.Objects)
                 {
                     RegisterServer(result, connectionReference, provider);
                     result.Facts.Add(fact);
+                }
+
+                foreach (var read in description.FileReads)
+                {
+                    result.Facts.Add(FileFact(headers[0].Name, LineageRelation.Reads, read.Location!));
+                    consumers.Add(new FileConsumer(headers[0].Name, read.Location!, read));
+                }
+
+                if (description.FileDrops.Count > 0)
+                {
+                    producers.Add(new FileProducer(headers[0].Name, description.FileDrops));
+                }
+
+                result.Facts.AddRange(description.Datasets);
+                patternReads.AddRange(description.PatternReads);
+                foreach (var warning in description.Warnings)
+                {
+                    result.Warnings.Add($"{file}: {warning}");
                 }
 
                 break;
@@ -1386,22 +1413,43 @@ public sealed class FlowSetCollector
     }
 
     /// <summary>
-    /// The declared facts of a registered flow's <see cref="RegisteredFlowDocument.DeclaredObjects"/>, with the
-    /// connection each registers in the server inventory. A declaration the graph cannot use (no connection reference,
-    /// no name, a relation other than reads or writes) refuses the document with a message naming the flow and the
-    /// declaration's position, never the reference itself (a literal would be a secret). A repeated declaration is
-    /// one fact.
+    /// A registered flow's lineage (<see cref="RegisteredFlowDocument.DescribeLineage"/>), validated and in the form the
+    /// scan collects: its database object facts with the connection each registers in the server inventory, its file
+    /// reads and drops with their locations as node identities, its dataset facts, its wildcard dataset reads awaiting
+    /// binding, and its warnings. A declaration the graph cannot use refuses the document with a message naming the
+    /// flow, what is wrong and the declaration's position, never a connection or instance reference (a literal would be
+    /// a secret); so does a description that throws. A repeated declaration is one fact.
     /// </summary>
-    private static List<(LineageFact Fact, string ConnectionReference, Core.Connections.DataSourceKind Provider)> DeclaredObjectFacts(
-        RegisteredFlowDocument document, string flow)
+    private static RegisteredDescription DescribeRegistered(RegisteredFlowDocument document, string flow, FileAnchor files)
     {
-        var facts = new List<(LineageFact, string, Core.Connections.DataSourceKind)>();
-        var declarations = document.DeclaredObjects;
-        if (declarations is null)
+        RegisteredFlowLineage lineage;
+        try
         {
-            return facts;
+            lineage = document.DescribeLineage(new RegisteredLineageContext(files.DocumentPath, files.Root))
+                ?? throw new SqlFlowException($"{document.Kind} flow '{flow}' described no lineage.");
+        }
+        catch (SqlFlowException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            throw new SqlFlowException(
+                $"{document.Kind} flow '{flow}' could not describe its lineage ({ex.GetType().Name}): {Core.Secrets.SecretHygiene.RedactedMessage(ex)}", ex);
         }
 
+        var objects = DeclaredObjectFacts(document, flow, lineage.Objects ?? []);
+        var (reads, drops) = DeclaredFiles(document, flow, lineage.Files ?? [], files);
+        var (datasets, patterns) = DeclaredDatasets(document, flow, lineage.Datasets ?? []);
+        var warnings = (lineage.Warnings ?? []).Where(w => !string.IsNullOrWhiteSpace(w)).Select(w => w.Trim()).ToList();
+        return new RegisteredDescription(objects, reads, drops, datasets, patterns, warnings);
+    }
+
+    /// <summary>The database object facts of a registered flow, with the connection each registers.</summary>
+    private static List<(LineageFact Fact, string ConnectionReference, Core.Connections.DataSourceKind Provider)> DeclaredObjectFacts(
+        RegisteredFlowDocument document, string flow, IReadOnlyList<DeclaredDataObject> declarations)
+    {
+        var facts = new List<(LineageFact, string, Core.Connections.DataSourceKind)>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < declarations.Count; i++)
         {
@@ -1454,6 +1502,266 @@ public sealed class FlowSetCollector
         }
 
         return facts;
+    }
+
+    /// <summary>
+    /// The file reads (as consumer selection specs whose location is the node identity) and file drops (as producer
+    /// outputs in node identity form) of a registered flow. A location is cut at its first segment carrying a
+    /// <c>{token}</c>, since a token renders per run; a location that is all token is refused, because there is no
+    /// folder to name. A pattern is a file-name glob and may not name a folder.
+    /// </summary>
+    private static (List<FileSelectionSpec> Reads, List<FileOutput> Drops) DeclaredFiles(
+        RegisteredFlowDocument document, string flow, IReadOnlyList<DeclaredFileLocation> declarations, FileAnchor files)
+    {
+        var reads = new List<FileSelectionSpec>();
+        var drops = new List<FileOutput>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < declarations.Count; i++)
+        {
+            var declaration = declarations[i];
+            var at = $"{document.Kind} flow '{flow}' declared file {i + 1}";
+            if (declaration is null)
+            {
+                throw new SqlFlowException($"{at} is missing.");
+            }
+
+            if (declaration.Relation is not (LineageRelation.Reads or LineageRelation.Writes))
+            {
+                throw new SqlFlowException($"{at} has the relation '{declaration.Relation}'; a flow declares only reads and writes.");
+            }
+
+            if (string.IsNullOrWhiteSpace(declaration.Location))
+            {
+                throw new SqlFlowException($"{at} names no location.");
+            }
+
+            var pattern = string.IsNullOrWhiteSpace(declaration.FilePattern) ? null : declaration.FilePattern.Trim();
+            if (pattern is not null && (pattern.Contains('/', StringComparison.Ordinal) || pattern.Contains('\\', StringComparison.Ordinal)))
+            {
+                throw new SqlFlowException($"{at} has the file pattern '{pattern}', which names a folder; a pattern is a file-name glob.");
+            }
+
+            var location = StaticLocation(declaration.Location)
+                ?? throw new SqlFlowException($"{at} has a location that is a token from its first segment, so it names no folder.");
+            var identity = files.Identity(location);
+            if (!seen.Add($"{declaration.Relation}|{identity}|{pattern}"))
+            {
+                continue;
+            }
+
+            if (declaration.Relation == LineageRelation.Reads)
+            {
+                reads.Add(new FileSelectionSpec { Location = identity, Glob = pattern });
+            }
+            else
+            {
+                drops.Add(new FileOutput { Location = identity, SrcFile = pattern });
+            }
+        }
+
+        return (reads, drops);
+    }
+
+    /// <summary>
+    /// A location up to its first segment carrying a <c>{token}</c> (a <c>${...}</c> reference is not a token), or null
+    /// when the first segment already carries one. Separators are kept as written.
+    /// </summary>
+    private static string? StaticLocation(string location)
+    {
+        var trimmed = location.Trim();
+        for (var i = 0; i < trimmed.Length; i++)
+        {
+            if (trimmed[i] != '{' || (i > 0 && trimmed[i - 1] == '$'))
+            {
+                continue;
+            }
+
+            var cut = trimmed.LastIndexOfAny(['/', '\\'], i);
+            if (cut <= 0)
+            {
+                return null;
+            }
+
+            var prefix = trimmed[..cut];
+            return prefix.EndsWith(':') || prefix.EndsWith("//", StringComparison.Ordinal) ? null : prefix;
+        }
+
+        return trimmed;
+    }
+
+    /// <summary>
+    /// The dataset facts of a registered flow, and its wildcard reads awaiting binding. The node is identified by the
+    /// system and its instance (<see cref="ServerIdentity.Dataset"/>), the namespace as its database, the group as its
+    /// schema and the name.
+    /// </summary>
+    private static (List<LineageFact> Facts, List<DatasetPatternRead> Patterns) DeclaredDatasets(
+        RegisteredFlowDocument document, string flow, IReadOnlyList<DeclaredDataset> declarations)
+    {
+        var facts = new List<LineageFact>();
+        var patterns = new List<DatasetPatternRead>();
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < declarations.Count; i++)
+        {
+            var declaration = declarations[i];
+            var at = $"{document.Kind} flow '{flow}' declared dataset {i + 1}";
+            if (declaration is null)
+            {
+                throw new SqlFlowException($"{at} is missing.");
+            }
+
+            if (declaration.Relation is not (LineageRelation.Reads or LineageRelation.Writes))
+            {
+                throw new SqlFlowException($"{at} has the relation '{declaration.Relation}'; a flow declares only reads and writes.");
+            }
+
+            var system = declaration.System?.Trim() ?? string.Empty;
+            if (!IsDatasetSystem(system))
+            {
+                throw new SqlFlowException(
+                    $"{at} names the system '{system}'; a system is lower-case letters, digits and hyphens, starting with a letter, at most 32 characters.");
+            }
+
+            var ns = DatasetPart(declaration.Namespace, "namespace", at);
+            var group = DatasetPart(declaration.Group, "group", at);
+            var name = DatasetPart(declaration.Name, "name", at);
+            if (declaration.Separator is { } separator && (separator == '*' || separator == '|' || char.IsWhiteSpace(separator) || char.IsControl(separator)))
+            {
+                throw new SqlFlowException($"{at} has a segment separator that is a wildcard, a '|' or blank.");
+            }
+
+            var pattern = name.Contains('*', StringComparison.Ordinal);
+            if (pattern && declaration.Relation == LineageRelation.Writes)
+            {
+                throw new SqlFlowException($"{at} writes '{name}', a wildcard; a flow writes named datasets only.");
+            }
+
+            var server = ServerIdentity.Dataset(system, declaration.Instance);
+            if (!seen.Add($"{declaration.Relation}|{NodeKey.For(server, ns, group, name)}"))
+            {
+                continue;
+            }
+
+            facts.Add(new LineageFact
+            {
+                Flow = flow,
+                Relation = declaration.Relation,
+                ServerRef = server,
+                Database = ns,
+                Schema = group,
+                Name = name,
+                Tier = LineageTier.Declared,
+                KindHint = LineageNodeKind.Dataset,
+            });
+            if (pattern)
+            {
+                patterns.Add(new DatasetPatternRead(flow, server, ns, name, declaration.Separator));
+            }
+        }
+
+        return (facts, patterns);
+    }
+
+    /// <summary>A trimmed namespace, group or name, refused when blank, oversized, or carrying a character the node key
+    /// or a display cannot hold.</summary>
+    private static string DatasetPart(string? value, string part, string at)
+    {
+        var trimmed = value?.Trim() ?? string.Empty;
+        if (trimmed.Length == 0)
+        {
+            throw new SqlFlowException($"{at} names no {part}.");
+        }
+
+        if (trimmed.Length > DeclaredDataset.MaxPartLength)
+        {
+            throw new SqlFlowException($"{at} has a {part} longer than {DeclaredDataset.MaxPartLength} characters.");
+        }
+
+        if (trimmed.Contains('|', StringComparison.Ordinal) || trimmed.Any(char.IsControl))
+        {
+            throw new SqlFlowException($"{at} has a {part} carrying a '|' or a control character.");
+        }
+
+        return trimmed;
+    }
+
+    private static bool IsDatasetSystem(string system)
+        => system.Length is > 0 and <= 32
+            && system[0] is >= 'a' and <= 'z'
+            && system.All(c => c is (>= 'a' and <= 'z') or (>= '0' and <= '9') or '-');
+
+    /// <summary>
+    /// Binds every wildcard dataset read to each dataset the estate writes on the same system instance and namespace
+    /// whose name the pattern matches, segment by segment when the read names a separator: the reading flow reads the
+    /// written node too, so waves order it after the writer. A flow's own writes are never bound to its reads. A
+    /// pattern nothing matches keeps only its own node.
+    /// </summary>
+    private static void BindDatasetPatterns(CollectionResult result, List<DatasetPatternRead> reads)
+    {
+        if (reads.Count == 0)
+        {
+            return;
+        }
+
+        var writes = result.Facts
+            .Where(f => f.Relation == LineageRelation.Writes && f.KindHint == LineageNodeKind.Dataset && f.Flow is not null)
+            .ToList();
+        var bound = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var read in reads)
+        {
+            foreach (var write in writes)
+            {
+                if (string.Equals(write.Flow, read.Flow, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(write.ServerRef, read.ServerRef, StringComparison.OrdinalIgnoreCase)
+                    || !string.Equals(write.Database, read.Namespace, StringComparison.OrdinalIgnoreCase)
+                    || !DatasetNameMatches(read.Pattern, write.Name, read.Separator))
+                {
+                    continue;
+                }
+
+                var key = NodeKey.For(write.ServerRef, write.Database, write.Schema, write.Name);
+                if (bound.Add($"{read.Flow}|{key}"))
+                {
+                    result.Facts.Add(new LineageFact
+                    {
+                        Flow = read.Flow,
+                        Relation = LineageRelation.Reads,
+                        ServerRef = write.ServerRef,
+                        Database = write.Database,
+                        Schema = write.Schema,
+                        Name = write.Name,
+                        Tier = LineageTier.Declared,
+                        KindHint = LineageNodeKind.Dataset,
+                    });
+                }
+            }
+        }
+    }
+
+    /// <summary>Whether <paramref name="name"/> matches the wildcard <paramref name="pattern"/>, ignoring case, with
+    /// <c>*</c> matching within one segment when a separator is given.</summary>
+    private static bool DatasetNameMatches(string pattern, string name, char? separator)
+    {
+        if (separator is not { } split)
+        {
+            return System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(pattern, name, ignoreCase: true);
+        }
+
+        var patternSegments = pattern.Split(split);
+        var nameSegments = name.Split(split);
+        if (patternSegments.Length != nameSegments.Length)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < patternSegments.Length; i++)
+        {
+            if (!System.IO.Enumeration.FileSystemName.MatchesSimpleExpression(patternSegments[i], nameSegments[i], ignoreCase: true))
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>A document hook is raw author T-SQL: the same operation-wise extractor derives what it
@@ -1667,6 +1975,18 @@ public sealed class FlowSetCollector
     /// against, whose location is that same identity.</summary>
     private sealed record FileConsumer(string Flow, string Node, FileSelectionSpec Spec);
 
+    /// <summary>A dataset read naming its datasets with a wildcard, awaiting binding to the datasets the estate writes.</summary>
+    private sealed record DatasetPatternRead(string Flow, string ServerRef, string Namespace, string Pattern, char? Separator);
+
+    /// <summary>A registered flow's validated lineage, in the form the scan collects.</summary>
+    private sealed record RegisteredDescription(
+        List<(LineageFact Fact, string ConnectionReference, Core.Connections.DataSourceKind Provider)> Objects,
+        List<FileSelectionSpec> FileReads,
+        List<FileOutput> FileDrops,
+        List<LineageFact> Datasets,
+        List<DatasetPatternRead> PatternReads,
+        List<string> Warnings);
+
     /// <summary>
     /// Where one document's file locations are resolved. A relative local location is relative to the folder of the
     /// document that declares it (the rule the engine applies when it runs a file flow), and its node identity is that
@@ -1675,8 +1995,16 @@ public sealed class FlowSetCollector
     /// location in its canonical form, so two URI shapes of one folder are one node); a location that is a reference
     /// (<c>${...}</c> or an <c>@alias</c>) is kept as written, because lineage never resolves one.
     /// </summary>
-    private sealed class FileAnchor(string root, string folder)
+    private sealed class FileAnchor(string root, string documentPath)
     {
+        private readonly string _folder = Path.GetDirectoryName(documentPath) ?? root;
+
+        /// <summary>The estate root.</summary>
+        public string Root => root;
+
+        /// <summary>The full path of the document the locations belong to.</summary>
+        public string DocumentPath => documentPath;
+
         /// <summary>The node identity of <paramref name="location"/>.</summary>
         public string Identity(string location)
         {
@@ -1698,10 +2026,12 @@ public sealed class FlowSetCollector
                 return trimmed;
             }
 
+            // A trailing separator names the same folder, so it is dropped before the identity is taken.
             string full;
             try
             {
-                full = Path.GetFullPath(Path.IsPathRooted(trimmed) ? trimmed : Path.Combine(folder, trimmed));
+                full = Path.TrimEndingDirectorySeparator(
+                    Path.GetFullPath(Path.IsPathRooted(trimmed) ? trimmed : Path.Combine(_folder, trimmed)));
             }
             catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
             {
