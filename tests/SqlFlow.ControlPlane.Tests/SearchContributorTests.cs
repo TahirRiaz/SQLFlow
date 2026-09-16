@@ -421,6 +421,67 @@ public sealed class SearchContributorTests
     }
 
     /// <summary>A contributor that records what it is asked and answers with <c>answer</c>, or with no hits.</summary>
+    // ---- The result contract, as a contributor's own tests may assert it ---------------------------------------------
+
+    [Fact]
+    public void ContractViolation_PassesAWellFormedPage()
+    {
+        var page = new SearchContribution(
+            [
+                new SearchHitDto("1", "First", "a subtitle", "/records/1"),
+                new SearchHitDto("2", "Second", null, "https://example.org/records/2"),
+                new SearchHitDto("3", "Third", null, null),
+            ],
+            Total: 3);
+
+        Assert.Null(SearchContributors.ContractViolation(page, pageSize: 5));
+    }
+
+    [Fact]
+    public void ContractViolation_NamesWhatIsWrongWithTheAnswerItself()
+    {
+        Assert.Equal("no result.", SearchContributors.ContractViolation(null, 5));
+        Assert.Equal("no hit list.", SearchContributors.ContractViolation(new SearchContribution(null!, 0), 5));
+        Assert.Equal("a negative total (-1).", SearchContributors.ContractViolation(new SearchContribution([], -1), 5));
+
+        var overflowing = new SearchContribution([Hit("1"), Hit("2"), Hit("3")], 3);
+        Assert.Equal("3 hits for a page of 2.", SearchContributors.ContractViolation(overflowing, pageSize: 2));
+    }
+
+    [Theory]
+    [InlineData("", "Title")]
+    [InlineData("  ", "Title")]
+    [InlineData("1", "")]
+    [InlineData("1", "   ")]
+    public void ContractViolation_RefusesAHitWithoutAnIdOrATitle(string id, string title)
+    {
+        var page = new SearchContribution([new SearchHitDto(id, title, null, "/records/1")], 1);
+
+        Assert.Equal("hit 1 has no id or no title.", SearchContributors.ContractViolation(page, 5));
+    }
+
+    [Theory]
+    [InlineData("//evil.example/records/1")]   // protocol relative: leaves the GUI's origin
+    [InlineData("/records\\1")]                 // a backslash is not a GUI path separator
+    [InlineData("ftp://example.org/records/1")]
+    [InlineData("records/1")]                   // relative: the GUI cannot open it
+    public void ContractViolation_RefusesARouteTheGuiCannotOpen(string route)
+    {
+        var page = new SearchContribution([new SearchHitDto("1", "First", null, route)], 1);
+
+        Assert.Equal(
+            "hit 1 has a route that is neither an absolute GUI path nor an http(s) link.",
+            SearchContributors.ContractViolation(page, 5));
+    }
+
+    [Fact]
+    public void ContractViolation_ReportsTheFirstOffendingHitByItsPosition()
+    {
+        var page = new SearchContribution([Hit("1"), new SearchHitDto("2", " ", null, "/records/2"), Hit("3")], 3);
+
+        Assert.Equal("hit 2 has no id or no title.", SearchContributors.ContractViolation(page, 5));
+    }
+
     private sealed class FakeContributor(
         string key,
         string label = "Things",

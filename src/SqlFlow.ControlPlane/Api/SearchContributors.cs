@@ -210,9 +210,12 @@ public static partial class SearchContributors
         return new ContributionOutcome(result, null);
     }
 
-    /// <summary>What is wrong with a contributor's result, or null when it keeps the contract: a result, a
-    /// non-negative total, at most a page of hits, and every hit with an id, a title and a usable route.</summary>
-    internal static string? ContractViolation(SearchContribution? result, int pageSize)
+    /// <summary>
+    /// What is wrong with a contributor's result, or null when it keeps the contract: a result, a non-negative total, at
+    /// most a page of hits, and every hit with an id, a title and a usable route. Public so a contributor's own tests
+    /// hold it to the same rule the search enforces, rather than restating the rule and letting the two drift apart.
+    /// </summary>
+    public static string? ContractViolation(SearchContribution? result, int pageSize)
     {
         if (result is null)
         {
