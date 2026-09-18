@@ -33,6 +33,7 @@ public sealed class CliArguments
         "--remote-url", "--credential-ref", "--credential-user",
         "--ref", "--sample", "--max-columns", "--max-candidates", "--active", "--enabled",
         "--search", "--relation", "--tier", "--server", "--operation", "--last", "--set", "--payload",
+        "--branch", "--default-type", "--drain-seconds",
         // The powerbi verbs.
         "--subscriber", "--report-file",
     }.ToFrozenSet(StringComparer.Ordinal);
@@ -45,9 +46,9 @@ public sealed class CliArguments
     /// </summary>
     internal static readonly FrozenSet<string> BuiltInFlags = new[]
     {
-        "--assertions", "--assertions-only", "--branch", "--catchup", "--columns", "--connect",
-        "--create", "--data", "--default-type", "--definition", "--definitions", "--detect-keys",
-        "--device", "--disabled", "--down", "--drain-seconds", "--dry-run", "--dump-facts",
+        "--assertions", "--assertions-only", "--catchup", "--columns", "--connect",
+        "--create", "--data", "--definition", "--definitions", "--detect-keys",
+        "--device", "--disabled", "--down", "--dry-run", "--dump-facts",
         "--fail-on-anomaly", "--files", "--flow-columns", "--flows", "--follow", "--full",
         "--health-check", "--help", "--include-all", "--include-system", "--json", "--latest",
         "--metrics", "--no-db-sync", "--no-expiry", "--no-metadata", "--no-observed", "--no-push",

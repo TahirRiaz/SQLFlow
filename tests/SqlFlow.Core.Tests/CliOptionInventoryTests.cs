@@ -31,8 +31,7 @@ public sealed partial class CliOptionInventoryTests
         var scanned = 0;
         foreach (var file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
         {
-            if (file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            if (IsBuildOutput(file))
             {
                 continue;
             }
@@ -68,6 +67,78 @@ public sealed partial class CliOptionInventoryTests
             + "CLI at all. Undeclared: "
             + string.Join("; ", undeclared.Select(entry => $"{entry.Key} ({string.Join(", ", entry.Value)})")));
     }
+
+    [Fact]
+    public void An_option_read_for_its_value_is_declared_as_taking_one()
+    {
+        // An option read through one of these consumes the token after it. Declared as a flag instead, that token is
+        // read as a positional argument: 'sqlflow worker --drain-seconds 30' would take 30 for the verb's file.
+        string[] readers = ["GetOption", "GetOptions", "ParseIntOption", "FindOption", "FindOptions", "GetNonNegativeIntOption"];
+        var directory = Path.Combine(RepositoryRoot(), "src", "SqlFlow.Cli");
+        var flags = Flags().ToHashSet(StringComparer.Ordinal);
+        var undeclared = new SortedDictionary<string, string>(StringComparer.Ordinal);
+
+        foreach (var file in Directory.EnumerateFiles(directory, "*.cs", SearchOption.AllDirectories))
+        {
+            if (file.EndsWith("CliArguments.cs", StringComparison.Ordinal) || IsBuildOutput(file))
+            {
+                continue;
+            }
+
+            var text = File.ReadAllText(file);
+            foreach (var reader in readers)
+            {
+                foreach (var arguments in Arguments(text, reader))
+                {
+                    foreach (Match option in OptionLiteral().Matches(arguments))
+                    {
+                        var name = option.Groups["option"].Value;
+                        if (flags.Contains(name) || !CliArguments.SqlFlowValueOptions.Contains(name))
+                        {
+                            undeclared[name] = Path.GetFileName(file);
+                        }
+                    }
+                }
+            }
+        }
+
+        Assert.True(
+            undeclared.Count == 0,
+            "Read for a value and not declared as taking one, so the value after it becomes a positional argument: "
+            + string.Join("; ", undeclared.Select(entry => $"{entry.Key} ({entry.Value})"))
+            + ". Move each to CliArguments.BuiltInValueOptions.");
+    }
+
+    /// <summary>Each argument list of a call to <paramref name="method"/>, counted across nested parentheses.</summary>
+    private static IEnumerable<string> Arguments(string text, string method)
+    {
+        foreach (Match call in Regex.Matches(text, Regex.Escape(method) + @"\s*\(", RegexOptions.CultureInvariant))
+        {
+            var depth = 1;
+            var start = call.Index + call.Length;
+            var i = start;
+            while (i < text.Length && depth > 0)
+            {
+                if (text[i] == '(')
+                {
+                    depth++;
+                }
+                else if (text[i] == ')')
+                {
+                    depth--;
+                }
+
+                i++;
+            }
+
+            yield return text[start..Math.Max(start, i - 1)];
+        }
+    }
+
+    /// <summary>True for a file under a build output folder rather than the sources.</summary>
+    private static bool IsBuildOutput(string file)
+        => file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+            || file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
 
     [Fact]
     public void An_option_is_either_a_value_option_or_a_flag_and_never_both()
