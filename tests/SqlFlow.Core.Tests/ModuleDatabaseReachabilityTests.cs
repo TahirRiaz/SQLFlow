@@ -38,10 +38,10 @@ public sealed class ModuleDatabaseReachabilityTests
 
     [Theory]
     // Another database on the same server: one statement cannot touch both on Azure SQL.
-    [InlineData("Server=sql1;Database=Osdu;Trusted_Connection=True")]
+    [InlineData("Server=sql1;Database=Reporting;Trusted_Connection=True")]
     // Another server entirely, which is the shape two Azure SQL databases usually take.
-    [InlineData("Server=osdu.database.windows.net;Database=Catalog;Trusted_Connection=True")]
-    [InlineData("Server=osdu.database.windows.net;Database=Osdu;Trusted_Connection=True")]
+    [InlineData("Server=other.database.windows.net;Database=Catalog;Trusted_Connection=True")]
+    [InlineData("Server=other.database.windows.net;Database=Reporting;Trusted_Connection=True")]
     // A connection string that names no database says nothing about where its rows are.
     [InlineData("Server=sql1;Trusted_Connection=True")]
     public void Anything_it_cannot_prove_identical_is_not_reachable(string module)
@@ -57,7 +57,7 @@ public sealed class ModuleDatabaseReachabilityTests
         using var host = Connection("Server=tcp:estate.database.windows.net,1433;Database=sqlflow-catalog;Authentication=Active Directory Default");
 
         Assert.True(ModuleDatabase.IsReachableOn(host, "Server=estate.database.windows.net;Database=sqlflow-catalog;Authentication=Active Directory Default"));
-        Assert.False(ModuleDatabase.IsReachableOn(host, "Server=estate.database.windows.net;Database=sqlflow-osdu;Authentication=Active Directory Default"));
+        Assert.False(ModuleDatabase.IsReachableOn(host, "Server=estate.database.windows.net;Database=sqlflow-reporting;Authentication=Active Directory Default"));
     }
 
     [Fact]
