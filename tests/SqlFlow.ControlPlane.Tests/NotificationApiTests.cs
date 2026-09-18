@@ -242,14 +242,18 @@ public sealed class NotificationApiTests
         using var client = factory.CreateClient();
         var (token, _, _) = await NewUserSessionAsync(client);
 
-        // Exactly what the picker sends for "today": midnight to the end of the day, most of it still to come.
-        var today = DateTime.UtcNow.Date;
+        // Exactly what the picker sends for "today": midnight to the end of the day, most of it still to come. In the
+        // first minutes of a UTC day, today so far is shorter than the smallest period a digest may cover, and the
+        // endpoint refuses it for that reason rather than the one under test; the period then starts the day before,
+        // and still runs into the future, which is what the clamp is for.
+        var now = DateTime.UtcNow;
+        var from = now.TimeOfDay < TimeSpan.FromMinutes(15) ? now.Date.AddDays(-1) : now.Date;
         using var generate = await SendAsync(client, token, HttpMethod.Post, "/api/v1/notifications/digests",
-            new GenerateNotificationDigestRequest(today, today.AddDays(1).AddMilliseconds(-1)));
+            new GenerateNotificationDigestRequest(from, now.Date.AddDays(1).AddMilliseconds(-1)));
         Assert.Equal(HttpStatusCode.Created, generate.StatusCode);
         var digest = await generate.Content.ReadFromJsonAsync<NotificationDigestDto>();
         Assert.NotNull(digest);
-        Assert.Equal(today, digest.Summary.PeriodStartUtc);
+        Assert.Equal(from, digest.Summary.PeriodStartUtc);
         // Today so far: the reported period stops at the present instead of running into the future.
         Assert.True(digest.Summary.PeriodEndUtc <= DateTime.UtcNow.AddMinutes(1));
     }
