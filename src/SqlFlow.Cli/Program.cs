@@ -80,6 +80,15 @@ internal static class Program
             return positional.Length < (needsFile ? 2 : 1) ? 1 : 0;
         }
 
+        // An option nobody reads is a mistake rather than a flag: taken for one, its value becomes a positional
+        // argument, and a command that asked for something specific quietly does something broader instead. SQLFlow's
+        // verbs share one vocabulary; a module verb adds the options it declares.
+        if (modules.UnknownOptions(args, command) is { Count: > 0 } unknown)
+        {
+            Console.Error.WriteLine($"ERROR  {CliArguments.DescribeUnknown(unknown[0], command, modules.KnownOptions(command))}");
+            return 1;
+        }
+
         var file = positional.Length > 1 ? positional[1] : string.Empty;
 
         // The git-ignored .sqlflow/env file supplies local-development secrets for the ${env:...} references

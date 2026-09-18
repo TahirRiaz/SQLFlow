@@ -128,6 +128,38 @@ internal sealed class CliModuleSet
         return CliArguments.ParsePositionals(args, Find(command)?.ValueOptions ?? CliArguments.BuiltInValueOptions);
     }
 
+    /// <summary>
+    /// Every option the command line may carry for <paramref name="command"/>: SQLFlow's own vocabulary, and the
+    /// options the module verb of that name declares. A command that is no module verb knows SQLFlow's alone.
+    /// </summary>
+    public IReadOnlySet<string> KnownOptions(string command)
+    {
+        var verb = Find(command)?.Verb;
+        if (verb is null)
+        {
+            return CliArguments.SqlFlowOptions;
+        }
+
+        var known = new HashSet<string>(CliArguments.SqlFlowOptions, StringComparer.Ordinal);
+        known.UnionWith(verb.ValueOptions);
+        known.UnionWith(verb.Flags);
+        return known;
+    }
+
+    /// <summary>
+    /// The options in <paramref name="args"/> that nothing reading <paramref name="command"/> would know, so the CLI can
+    /// refuse them by name rather than take them for flags whose values become positional arguments.
+    /// </summary>
+    public IReadOnlyList<string> UnknownOptions(string[] args, string command)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        var verb = Find(command)?.Verb;
+        IReadOnlySet<string> valueOptions = verb is null
+            ? CliArguments.BuiltInValueOptions
+            : new HashSet<string>(CliArguments.BuiltInValueOptions.Concat(verb.ValueOptions), StringComparer.Ordinal);
+        return CliArguments.UnknownOptions(args, KnownOptions(command), valueOptions);
+    }
+
     /// <summary>Runs every module's service registration against <paramref name="services"/>, in module order.</summary>
     /// <exception cref="CliModuleException">A module's registration failed; the message names the module.</exception>
     public void ConfigureServices(IServiceCollection services, string[] args, CliServiceScope scope)

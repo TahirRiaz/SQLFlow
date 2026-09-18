@@ -1,4 +1,5 @@
 using System.Collections.Frozen;
+using System.Globalization;
 
 namespace SqlFlow.Cli.Hosting;
 
@@ -32,7 +33,36 @@ public sealed class CliArguments
         "--remote-url", "--credential-ref", "--credential-user",
         "--ref", "--sample", "--max-columns", "--max-candidates", "--active", "--enabled",
         "--search", "--relation", "--tier", "--server", "--operation", "--last", "--set", "--payload",
+        // The powerbi verbs.
+        "--subscriber", "--report-file",
     }.ToFrozenSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Every SQLFlow option that is a plain flag, taking no value. Together with <see cref="BuiltInValueOptions"/> this is
+    /// the whole vocabulary of SQLFlow's own verbs, which is what lets the CLI refuse an option nobody reads rather than
+    /// take it for a flag and read its value as a positional argument (<see cref="UnknownOptions(IReadOnlySet{string})"/>). A verb that starts
+    /// reading a new flag adds it here; <c>CliOptionInventoryTests</c> fails when one is missing.
+    /// </summary>
+    internal static readonly FrozenSet<string> BuiltInFlags = new[]
+    {
+        "--assertions", "--assertions-only", "--branch", "--catchup", "--columns", "--connect",
+        "--create", "--data", "--default-type", "--definition", "--definitions", "--detect-keys",
+        "--device", "--disabled", "--down", "--drain-seconds", "--dry-run", "--dump-facts",
+        "--fail-on-anomaly", "--files", "--flow-columns", "--flows", "--follow", "--full",
+        "--health-check", "--help", "--include-all", "--include-system", "--json", "--latest",
+        "--metrics", "--no-db-sync", "--no-expiry", "--no-metadata", "--no-observed", "--no-push",
+        "--no-store", "--no-tables", "--no-validate", "--no-verify", "--no-views", "--no-wait",
+        "--objects", "--preview", "--provenance", "--recursive", "--remote", "--retrain", "--show-sql",
+        "--statements", "--strict", "--system", "--up", "--values", "--verbose",
+        "--with-token", "--yaml",
+
+        // The short forms, which take no value either.
+        "-h", "-r", "-v",
+    }.ToFrozenSet(StringComparer.Ordinal);
+
+    /// <summary>Every option SQLFlow's own verbs read, value-taking and flag alike.</summary>
+    public static IReadOnlySet<string> SqlFlowOptions { get; } =
+        BuiltInValueOptions.Concat(BuiltInFlags).ToFrozenSet(StringComparer.Ordinal);
 
     private readonly string[] _args;
     private readonly FrozenSet<string> _valueOptions;
@@ -94,6 +124,104 @@ public sealed class CliArguments
     /// <summary>The value of the first of <paramref name="names"/> present as a non-negative integer, or
     /// <paramref name="fallback"/> when it is absent, not an integer, or negative.</summary>
     public int GetNonNegativeIntOption(int fallback, params string[] names) => ParseNonNegativeInt(GetOption(names), fallback);
+
+    /// <summary>
+    /// The options in <paramref name="args"/> that <paramref name="known"/> does not name, in the order they were given
+    /// and without repeats. A token is an option when it starts with <c>-</c> and is not a lone <c>-</c>, a negative
+    /// number, or the value of a value-taking option; everything else is a positional argument.
+    /// <para>
+    /// This is what a verb refuses on. An option no verb reads is a mistake worth stopping for: taken for a flag, its
+    /// value becomes a positional argument, and a command that asked for something specific quietly does something
+    /// broader instead.
+    /// </para>
+    /// </summary>
+    public static IReadOnlyList<string> UnknownOptions(IReadOnlyList<string> args, IReadOnlySet<string> known, IReadOnlySet<string> valueOptions)
+    {
+        ArgumentNullException.ThrowIfNull(args);
+        ArgumentNullException.ThrowIfNull(known);
+        ArgumentNullException.ThrowIfNull(valueOptions);
+        var unknown = new List<string>();
+        for (var i = 0; i < args.Count; i++)
+        {
+            var token = args[i];
+            if (!IsOption(token))
+            {
+                continue;
+            }
+
+            if (valueOptions.Contains(token))
+            {
+                // Its value is the next token, whatever that looks like, so it is never read as an option of its own.
+                i++;
+                continue;
+            }
+
+            if (!known.Contains(token) && !unknown.Contains(token, StringComparer.Ordinal))
+            {
+                unknown.Add(token);
+            }
+        }
+
+        return unknown;
+    }
+
+    /// <summary>The options in this parse that <paramref name="known"/> does not name.</summary>
+    public IReadOnlyList<string> UnknownOptions(IReadOnlySet<string> known) => UnknownOptions(_args, known, _valueOptions);
+
+    /// <summary>
+    /// What to say about an option nobody reads: the option, the nearest known one when there is an obvious near miss
+    /// (a hyphen, a plural or a single letter away), and where to look otherwise.
+    /// </summary>
+    public static string DescribeUnknown(string option, string verb, IReadOnlySet<string> known)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(option);
+        ArgumentNullException.ThrowIfNull(known);
+        var nearest = known
+            .Select(candidate => (Option: candidate, Distance: Distance(option, candidate)))
+            .Where(candidate => candidate.Distance <= 2)
+            .OrderBy(candidate => candidate.Distance)
+            .ThenBy(candidate => candidate.Option, StringComparer.Ordinal)
+            .Select(candidate => candidate.Option)
+            .FirstOrDefault();
+        var where = string.IsNullOrWhiteSpace(verb) ? "sqlflow --help" : $"sqlflow {verb} --help";
+        return nearest is null
+            ? $"'{option}' is not an option this command reads. {where} lists the ones it does."
+            : $"'{option}' is not an option this command reads. Did you mean '{nearest}'? {where} lists them all.";
+    }
+
+    /// <summary>True when a token is an option rather than a positional argument or a negative number.</summary>
+    private static bool IsOption(string token)
+        => token.Length > 1 && token[0] == '-' && !double.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out _);
+
+    /// <summary>The edit distance between two options, capped: only near misses are worth suggesting.</summary>
+    private static int Distance(string a, string b)
+    {
+        if (Math.Abs(a.Length - b.Length) > 2)
+        {
+            return int.MaxValue;
+        }
+
+        var previous = new int[b.Length + 1];
+        var current = new int[b.Length + 1];
+        for (var j = 0; j <= b.Length; j++)
+        {
+            previous[j] = j;
+        }
+
+        for (var i = 1; i <= a.Length; i++)
+        {
+            current[0] = i;
+            for (var j = 1; j <= b.Length; j++)
+            {
+                var substitution = previous[j - 1] + (a[i - 1] == b[j - 1] ? 0 : 1);
+                current[j] = Math.Min(Math.Min(current[j - 1] + 1, previous[j] + 1), substitution);
+            }
+
+            (previous, current) = (current, previous);
+        }
+
+        return previous[b.Length];
+    }
 
     internal static string[] ParsePositionals(IReadOnlyList<string> args, IReadOnlySet<string> valueOptions)
     {

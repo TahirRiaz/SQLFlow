@@ -19,6 +19,60 @@ public sealed class CliModuleTests : IDisposable
     public void Dispose() => Directory.Delete(_anchor, recursive: true);
 
     [Fact]
+    public async Task AnOptionNobodyReads_IsRefusedByName_RatherThanTakenForAFlag()
+    {
+        var module = new ProbeModule();
+        var said = await Refusal(async () => await CliHost.RunAsync(["probe", _anchor, "--lable", "first"], module));
+
+        // Taken for a flag, '--lable' would have made 'first' a positional argument and the verb would have run on it.
+        Assert.Empty(module.Calls);
+        Assert.Contains("'--lable' is not an option this command reads", said, StringComparison.Ordinal);
+        Assert.Contains("Did you mean '--label'?", said, StringComparison.Ordinal);
+        Assert.Contains("sqlflow probe --help", said, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task AnOptionOfSqlFlowsOwnVerbs_IsRefusedTheSameWay()
+    {
+        var module = new ProbeModule();
+
+        // '--label' is the probe verb's, not SQLFlow's: a SQLFlow verb may not be given it either.
+        var said = await Refusal(async () => await CliHost.RunAsync(["validate", _anchor, "--label", "first"], module));
+
+        Assert.Contains("'--label' is not an option this command reads", said, StringComparison.Ordinal);
+        Assert.Contains("sqlflow validate --help", said, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task TheOptionsAVerbDeclares_AndSqlFlowsOwn_AreBothKnownToIt()
+    {
+        var module = new ProbeModule();
+
+        var exit = await CliHost.RunAsync(["probe", _anchor, "--label", "first", "--connect", "--json", "--verbose"], module);
+
+        Assert.Equal(7, exit);
+        Assert.Single(module.Calls);
+    }
+
+    /// <summary>What the CLI wrote to stderr while <paramref name="command"/> ran, with the exit code checked as a refusal.</summary>
+    private static async Task<string> Refusal(Func<Task<int>> command)
+    {
+        var original = Console.Error;
+        var said = new StringWriter();
+        Console.SetError(said);
+        try
+        {
+            Assert.Equal(1, await command().ConfigureAwait(false));
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+
+        return said.ToString();
+    }
+
+    [Fact]
     public async Task AModuleVerb_RunsWithItsArguments_AndTheModuleServices()
     {
         var module = new ProbeModule();
