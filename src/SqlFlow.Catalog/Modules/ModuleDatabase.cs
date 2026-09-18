@@ -1,6 +1,7 @@
 using System.Collections.Frozen;
 using System.Data.Common;
 using System.Text.RegularExpressions;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SqlFlow.Core.Hosting;
@@ -85,6 +86,64 @@ public abstract partial class ModuleDatabase
     public string Module { get; }
 
     /// <summary>The schema holding every table of the module and its migrations history.</summary>
+    /// <summary>
+    /// Whether rows on <paramref name="connectionString"/> are reachable on <paramref name="connection"/>: the same
+    /// server and the same database, so one statement and one transaction can touch both.
+    /// <para>
+    /// This is what a module asks before it reuses a host's connection instead of opening its own. A module database
+    /// may be a database of its own, on its own server, and on Azure SQL there is no cross-database query at all: a
+    /// module that assumed otherwise would write its rows into the host's database, or fail. The comparison is
+    /// conservative, because the answers are not symmetrical in cost: what it cannot prove identical it calls
+    /// different, and the module opens its own connection, which is always correct and sometimes merely slower. Two
+    /// spellings of one server (<c>.</c>, <c>(local)</c>, a listener alias) therefore read as different.
+    /// </para>
+    /// </summary>
+    /// <param name="connection">The host's connection, open or not.</param>
+    /// <param name="connectionString">The module's own connection string, or null when it has none of its own.</param>
+    public static bool IsReachableOn(DbConnection connection, string? connectionString)
+    {
+        ArgumentNullException.ThrowIfNull(connection);
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            // No connection of its own: the module's rows are wherever the host's connection points, by definition.
+            return true;
+        }
+
+        SqlConnectionStringBuilder module;
+        try
+        {
+            module = new SqlConnectionStringBuilder(connectionString);
+        }
+        catch (ArgumentException)
+        {
+            // A connection string this cannot read is one it cannot vouch for.
+            return false;
+        }
+
+        var database = module.InitialCatalog;
+        var server = module.DataSource;
+        if (string.IsNullOrWhiteSpace(database) || string.IsNullOrWhiteSpace(server))
+        {
+            return false;
+        }
+
+        return string.Equals(database, connection.Database, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(Host(server), Host(connection.DataSource), StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>A server as it is compared: trimmed, without the <c>tcp:</c> prefix and without a port.</summary>
+    private static string Host(string? server)
+    {
+        var value = (server ?? string.Empty).Trim();
+        if (value.StartsWith("tcp:", StringComparison.OrdinalIgnoreCase))
+        {
+            value = value[4..];
+        }
+
+        var comma = value.IndexOf(',', StringComparison.Ordinal);
+        return comma < 0 ? value : value[..comma];
+    }
+
     public string Schema { get; }
 
     /// <summary>The module's schema version in this build, handed to the module when it records a migrate.</summary>

@@ -25,6 +25,20 @@ public sealed record CatalogSyncExtensionResult(int Added, int Updated, int Unch
 /// every write back, so the catalog never shows a repository half reconciled. Extensions are registered in the host's
 /// composition root, so the catalog never depends on the modules that exist.
 /// </summary>
+/// <remarks>
+/// <para>
+/// An extension is called inside the sync's transaction, with the catalog's own context. Rows it writes on that
+/// context commit or roll back with the sync, which is what an extension whose tables sit in the catalog's database
+/// should do.
+/// </para>
+/// <para>
+/// A module whose tables are in a database of its own cannot: there is no cross-database statement on Azure SQL, and
+/// the two databases may not even share a server. Such an extension opens its own connection and commits its own
+/// transaction, which means its rows can be a sync ahead of the catalog's if the sync then fails. Reconcile
+/// idempotently, from what the repository holds, so the next sync settles it. <see cref="Modules.ModuleDatabase.IsReachableOn(System.Data.Common.DbConnection, string)"/>
+/// answers which of the two an extension is in.
+/// </para>
+/// </remarks>
 public interface ICatalogSyncExtension
 {
     /// <param name="context">The sync's catalog context, inside its transaction. An extension that keeps its rows in a
