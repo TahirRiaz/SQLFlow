@@ -85,7 +85,6 @@ public abstract partial class ModuleDatabase
     /// <summary>The name of the module the database belongs to.</summary>
     public string Module { get; }
 
-    /// <summary>The schema holding every table of the module and its migrations history.</summary>
     /// <summary>
     /// Whether rows on <paramref name="connectionString"/> are reachable on <paramref name="connection"/>: the same
     /// server and the same database, so one statement and one transaction can touch both.
@@ -144,6 +143,7 @@ public abstract partial class ModuleDatabase
         return comma < 0 ? value : value[..comma];
     }
 
+    /// <summary>The schema holding every table of the module and its migrations history.</summary>
     public string Schema { get; }
 
     /// <summary>The module's schema version in this build, handed to the module when it records a migrate.</summary>
