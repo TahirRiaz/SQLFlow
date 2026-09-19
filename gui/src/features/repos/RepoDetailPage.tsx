@@ -36,6 +36,8 @@ interface RepoFolder {
   project: string;
   pipelines: PipelineSummary[];
   files: RepoTreeEntry[];
+  /** Every folder path under this project, so one holding nothing still appears in its tree. */
+  folders: string[];
 }
 
 /**
@@ -53,7 +55,7 @@ function foldersOf(pipelines: PipelineSummary[], tree: RepoTree | undefined): Re
     if (existing !== undefined) {
       return existing;
     }
-    const created: RepoFolder = { project, pipelines: [], files: [] };
+    const created: RepoFolder = { project, pipelines: [], files: [], folders: [] };
     byProject.set(project, created);
     return created;
   };
@@ -66,9 +68,11 @@ function foldersOf(pipelines: PipelineSummary[], tree: RepoTree | undefined): Re
     const registered = new Set(pipelines.map((p) => p.relativePath));
     for (const entry of tree.entries) {
       if (entry.isFolder) {
-        // A top-level folder anchors a project even when nothing under it was imported. Deeper folders need no entry
-        // of their own: they show through the paths of the files inside them.
-        if (!entry.path.includes("/")) {
+        // A top-level folder anchors a project even when nothing under it was imported; a deeper one is carried into
+        // that project so its tree can show it even when it holds nothing that appears in any path.
+        if (entry.path.includes("/")) {
+          folderFor(projectOf(entry.path)).folders.push(entry.path);
+        } else {
           folderFor(entry.path);
         }
         continue;
@@ -96,6 +100,8 @@ function matchingFolders(folders: RepoFolder[], needle: string): RepoFolder[] {
         project: folder.project,
         pipelines: folder.pipelines.filter((p) => pipelineMatches(p, needle)),
         files: folder.files.filter((f) => f.path.toLowerCase().includes(needle)),
+        // A search narrows a folder to what matched, so an empty folder is not carried into the result.
+        folders: [],
       })
     .filter((folder) => folder.pipelines.length > 0 || folder.files.length > 0);
 }
@@ -206,6 +212,7 @@ function RepoProjects({
           project={folder.project}
           rows={folder.pipelines}
           files={folder.files}
+          folders={folder.folders}
           repoId={repoId}
           filtered={needle !== ""}
           defaultOpen={needle !== ""}

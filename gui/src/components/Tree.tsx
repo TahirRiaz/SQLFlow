@@ -52,6 +52,8 @@ export interface TreeNodeProps {
   children?: ReactNode;
   /** Pseudo rows (loading, empty, load-more): never selectable and skipped by keyboard navigation. */
   disabled?: boolean;
+  /** Test hook on the row itself, for a tree whose rows a suite drives by kind (a folder, a flow, a file). */
+  testId?: string;
 }
 
 /**
@@ -59,7 +61,7 @@ export interface TreeNodeProps {
  * expand chevron for branches, hover and selection styling per the workbench side bar, and roving-focus
  * keyboard navigation (ArrowUp/ArrowDown move, ArrowLeft/ArrowRight collapse/expand, Enter selects).
  */
-export function TreeNode({ id, label, children, disabled = false }: TreeNodeProps) {
+export function TreeNode({ id, label, children, disabled = false, testId }: TreeNodeProps) {
   const tree = useTreeState();
   const depth = useContext(DepthContext);
   const hasChildren = children !== undefined;
@@ -121,6 +123,7 @@ export function TreeNode({ id, label, children, disabled = false }: TreeNodeProp
         aria-selected={selectable ? isSelected : undefined}
         aria-disabled={disabled || undefined}
         tabIndex={disabled ? undefined : -1}
+        data-testid={testId}
         data-tree-row={disabled ? undefined : ""}
         data-depth={disabled ? undefined : depth}
         data-id={disabled ? undefined : id}

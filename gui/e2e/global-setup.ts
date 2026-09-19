@@ -25,6 +25,11 @@ export default function globalSetup(): void {
   writeFileSync(join(repoDir, "csv-basic.flow.yaml"), flowYaml);
   cpSync(join(samplesDir, "data", "orders.csv"), join(repoDir, "data", "orders.csv"));
 
+  // A file nested two folders deep, so the repo outline has a real sub-folder to render rather than only the
+  // top-level ones. Nothing reads it: it is there for the folder tree to have depth to show.
+  mkdirSync(join(repoDir, "data", "archive", "2026"), { recursive: true });
+  cpSync(join(samplesDir, "data", "orders.csv"), join(repoDir, "data", "archive", "2026", "orders-2026.csv"));
+
   const git = (...args: string[]) =>
     execFileSync("git", args, { cwd: repoDir, stdio: "pipe" }).toString("utf8").trim();
 

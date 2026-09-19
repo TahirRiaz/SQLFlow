@@ -46,7 +46,39 @@ test.describe.serial("new features", () => {
     const rootFolder = adminPage.getByTestId("repo-project").filter({ hasText: "(root)" });
     await expect(rootFolder).toBeVisible();
     await rootFolder.getByText("(root)").click();
-    await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first()).toBeVisible();
+    await expect(adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first()).toBeVisible();
+  });
+
+  test("a project lists its contents as a folder tree, not as one flat list of paths", async ({ adminPage }) => {
+    await adminPage.getByTestId("nav-repos").click();
+    await adminPage.getByTestId("table-row").filter({ hasText: "e2e-repo" }).first().click();
+    await expect(adminPage.getByTestId("page-repo-detail")).toBeVisible({ timeout: 15_000 });
+
+    // The fixture keeps its CSV under data/, and an older copy under data/archive/2026/, so the outline has real
+    // depth to show. The data project holds no flow, so it starts collapsed: opening it reveals the folder itself
+    // rather than the file paths flattened into rows.
+    const dataProject = adminPage.getByTestId("repo-project").filter({ hasText: "data" }).first();
+    await expect(dataProject).toBeVisible({ timeout: 15_000 });
+    await dataProject.getByText("data", { exact: true }).click();
+
+    // One row per folder, nested: archive holds 2026, which holds the file. Each level has to be opened, which is
+    // what tells the folders apart from a flat listing that merely prints slashes inside a path.
+    const archive = dataProject.getByTestId("repo-folder").filter({ hasText: "archive" });
+    await expect(archive).toBeVisible();
+    await expect(dataProject.getByTestId("repo-file").filter({ hasText: "orders-2026.csv" })).toHaveCount(0);
+    await archive.click();
+    const year = dataProject.getByTestId("repo-folder").filter({ hasText: "2026" });
+    await expect(year).toBeVisible();
+    await year.click();
+
+    // The leaf carries its own name, not the whole path: the folders above it already said where it is.
+    const nested = dataProject.getByTestId("repo-file").filter({ hasText: "orders-2026.csv" });
+    await expect(nested).toBeVisible();
+    await expect(nested).not.toContainText("data/archive");
+
+    // And the tree is a tree to the keyboard too, which is what the shared workbench primitive buys.
+    await expect(dataProject.getByRole("tree")).toHaveCount(1);
+    await expect(archive).toHaveAttribute("aria-expanded", "true");
   });
 
   test("a catch-up schedule shows the catchup chip", async ({ adminPage }) => {

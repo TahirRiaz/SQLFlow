@@ -9,7 +9,7 @@ test.describe.serial("pipelines", () => {
     await expect(adminPage.getByTestId("page-pipelines")).toBeVisible();
 
     await adminPage.getByTestId("filter-name").fill("Csv_Basic");
-    await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first())
+    await expect(adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first())
       .toBeVisible({ timeout: 15_000 });
 
     await adminPage.getByTestId("filter-name").fill("no-such-pipeline-name");
@@ -30,7 +30,7 @@ test.describe.serial("pipelines", () => {
     const rootFolder = adminPage.getByTestId("repo-project").filter({ hasText: "(root)" });
     await expect(rootFolder).toBeVisible({ timeout: 15_000 });
     await rootFolder.getByText("(root)").click();
-    await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first())
+    await expect(adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first())
       .toBeVisible({ timeout: 15_000 });
   });
 
@@ -47,14 +47,14 @@ test.describe.serial("pipelines", () => {
     await expect(adminPage).not.toHaveURL(/[?&]kind=/);
     await expect(adminPage.getByTestId("filter-kind")).toHaveText("all kinds");
     await adminPage.getByTestId("filter-name").fill("Csv_Basic");
-    await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first())
+    await expect(adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first())
       .toBeVisible({ timeout: 15_000 });
 
     // A link to the flow's own kind lists it, whatever was picked before.
     await adminPage.goto("/pipelines?kind=file");
     await expect(adminPage.getByTestId("filter-kind")).toHaveText("file");
     await adminPage.getByTestId("filter-name").fill("Csv_Basic");
-    await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first())
+    await expect(adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first())
       .toBeVisible({ timeout: 15_000 });
     await adminPage.getByTestId("filter-name").fill("");
   });
@@ -63,7 +63,7 @@ test.describe.serial("pipelines", () => {
     await adminPage.getByTestId("nav-pipelines").click();
     // The folder tree starts collapsed; a search expands it and surfaces the flow row.
     await adminPage.getByTestId("filter-name").fill("Csv_Basic");
-    await adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first().click();
+    await adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first().click();
     await expect(adminPage.getByTestId("page-pipeline-detail")).toBeVisible();
 
     const tabs = adminPage.getByTestId("pipeline-tabs");
@@ -86,7 +86,7 @@ test.describe.serial("pipelines", () => {
   test("the header profiles the size of the flow's file deliveries", async ({ adminPage }) => {
     await adminPage.getByTestId("nav-pipelines").click();
     await adminPage.getByTestId("filter-name").fill("Csv_Basic");
-    await adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first().click();
+    await adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first().click();
     await expect(adminPage.getByTestId("page-pipeline-detail")).toBeVisible();
 
     // Every flow carries the profile cell in its header, so the layout does not shift by flow kind.
@@ -105,7 +105,7 @@ test.describe.serial("pipelines", () => {
     await adminPage.getByTestId("nav-pipelines").click();
     // The folder tree starts collapsed; a search expands it and surfaces the flow row.
     await adminPage.getByTestId("filter-name").fill("Csv_Basic");
-    await adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }).first().click();
+    await adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first().click();
     await adminPage.getByTestId("open-trigger-run").click();
     await expect(adminPage.getByTestId("trigger-run-dialog")).toBeVisible();
     // A flow-locked launch must still resolve its own run parameters: a file flow honors full load, so the toggle
