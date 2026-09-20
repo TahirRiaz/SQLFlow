@@ -1,4 +1,6 @@
-import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "./helpers";
 
@@ -108,4 +110,67 @@ test.describe.serial("new features", () => {
     await expect(adminPage.getByTestId("table-row").filter({ hasText: "Csv_Basic" }))
       .toHaveCount(0, { timeout: 15_000 });
   });
+
+  /**
+   * The repository decides what a repo holds. A rename lands on the branch at once while the catalog only moves when
+   * a sync runs, so between the two the catalog still lists a pipeline whose file is gone. It must not be drawn: with
+   * the file that replaced it listed beside it, one flow would appear twice, once under a name it no longer has.
+   *
+   * The window is made deterministic rather than waited for. The source is registered with a sync interval no suite
+   * run can cross, and pulled once by hand; the rename that follows therefore cannot be picked up until this test
+   * says so. The source is its own, so nothing here disturbs the estate the other specs run against.
+   */
+  test("a pipeline whose file left the branch is not listed", async ({ adminPage }) => {
+    const repoDir = join(mkdtempSync(join(tmpdir(), "sqlflow-branch-")), "repo");
+    const git = (...args: string[]) => execFileSync("git", args, { cwd: repoDir, stdio: "pipe" });
+    mkdirSync(join(repoDir, "flows"), { recursive: true });
+    const flow = readFileSync(join(fixtureMeta().repoDir, "csv-basic.flow.yaml"), "utf8")
+      .replace(/^name:.*$/m, "name: Branch_Truth");
+    writeFileSync(join(repoDir, "flows", "branch-truth.flow.yaml"), flow);
+    git("init", "-b", "main");
+    git("config", "user.email", "e2e@sqlflow.test");
+    git("config", "user.name", "SQLFlow E2E");
+    git("add", "-A");
+    git("commit", "-m", "one flow");
+
+    await adminPage.getByTestId("nav-repos").click();
+    await adminPage.getByTestId("open-register-source").click();
+    await adminPage.getByTestId("source-name").fill("e2e-branch");
+    await adminPage.getByTestId("source-remote-url").fill(repoDir.replace(/\\/g, "/"));
+    // Far longer than any suite run, so the managed sync cannot fire between the rename below and the assertions.
+    await adminPage.getByTestId("source-interval").fill("86400");
+    await adminPage.getByTestId("register-source-submit").click();
+
+    const row = adminPage.getByTestId("table-row").filter({ hasText: "e2e-branch" }).first();
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await row.getByTestId("source-sync-now").click();
+
+    // The one pull this source ever gets: the flow is now in the catalog, at the path it was committed under.
+    await row.click();
+    await expect(adminPage.getByTestId("page-repo-detail")).toBeVisible({ timeout: 15_000 });
+    await expect(adminPage.getByTestId("repo-pipeline").filter({ hasText: "Branch_Truth" }).first())
+      .toBeVisible({ timeout: 60_000 });
+
+    // The branch moves and the catalog does not.
+    git("mv", "flows/branch-truth.flow.yaml", "flows/branch-truth-renamed.flow.yaml");
+    git("commit", "-m", "rename the flow");
+    await adminPage.reload();
+    await expect(adminPage.getByTestId("page-repo-detail")).toBeVisible({ timeout: 15_000 });
+
+    // The stale pipeline is gone from the outline, the file that replaced it is listed as a file, and the reader is
+    // told why rather than left to wonder where the flow went.
+    await expect(adminPage.getByTestId("repo-file").filter({ hasText: "branch-truth-renamed.flow.yaml" }).first())
+      .toBeVisible({ timeout: 30_000 });
+    await expect(adminPage.getByTestId("repo-pipeline").filter({ hasText: "Branch_Truth" })).toHaveCount(0);
+    await expect(adminPage.getByTestId("repo-pipelines-not-on-branch")).toContainText("Branch_Truth");
+
+    // This source is this test's own; it leaves with it.
+    await adminPage.getByTestId("nav-repos").click();
+    const registered = adminPage.getByTestId("table-row").filter({ hasText: "e2e-branch" }).first();
+    await registered.getByTestId("repo-delete-open").click();
+    await adminPage.getByTestId("repo-delete-confirm-input").fill("e2e-branch");
+    await adminPage.getByTestId("repo-delete-confirm-button").click();
+    await expect(adminPage.getByTestId("table-row").filter({ hasText: "e2e-branch" })).toHaveCount(0, { timeout: 30_000 });
+  });
+
 });

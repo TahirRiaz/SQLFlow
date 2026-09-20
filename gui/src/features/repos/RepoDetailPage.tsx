@@ -41,6 +41,35 @@ interface RepoFolder {
 }
 
 /**
+ * The pipelines the branch still holds the file of, and the ones it does not.
+ *
+ * The repository is the source of truth for what a repo contains. The two halves of this page do not come from it at
+ * the same speed: the content listing is read from the branch on every request, while the catalog only moves when a
+ * sync runs. Between a rename or a delete and the next sync, the catalog therefore still holds a pipeline whose file
+ * is gone, and the file that replaced it is not registered yet. Rendering both shows one flow twice, once under the
+ * name it no longer has and once as a plain file, with nothing to say which is real.
+ *
+ * So a pipeline whose file is not on the branch is not rendered. The catalog holds it only until the next sync
+ * retires it, and a row for a file that does not exist is not something this page should draw.
+ *
+ * It is only safe to conclude a file is absent when the listing covers the whole branch: a repo with no readable
+ * listing, or one clipped at the server's cap, tells us nothing about what it left out, and there every pipeline is
+ * kept exactly as before.
+ */
+function onBranch(
+  pipelines: PipelineSummary[], tree: RepoTree | undefined,
+): { live: PipelineSummary[]; gone: PipelineSummary[] } {
+  if (tree === undefined || tree.truncated) {
+    return { live: pipelines, gone: [] };
+  }
+  const files = new Set(tree.entries.filter((e) => !e.isFolder).map((e) => e.path));
+  return {
+    live: pipelines.filter((p) => files.has(p.relativePath)),
+    gone: pipelines.filter((p) => !files.has(p.relativePath)),
+  };
+}
+
+/**
  * The repo's folder outline: every top-level folder the REPOSITORY holds, not only the ones the catalog imported a
  * flow from. The catalog knows only the flow files a sync selected, so a folder of SQL scripts or of excluded flows
  * would otherwise be invisible here even though it is part of the repo. The two are merged by project (root folder):
@@ -144,8 +173,21 @@ function RepoProjects({
     return <Skeleton className="h-28 w-full rounded-lg" />;
   }
 
-  const pipelines = result.items;
+  // The branch decides what this repo holds. A pipeline the catalog still lists whose file is not on the branch is
+  // left out, so a rename in flight never draws the same flow twice, once stale and once as the file replacing it.
+  const { live: pipelines, gone } = onBranch(result.items, treeQuery.data);
   const folders = foldersOf(pipelines, treeQuery.data);
+
+  // Left out rather than silently dropped: a reader whose flow is missing from the outline is told the catalog has
+  // not caught up with the branch yet, instead of being left to wonder where the pipeline went.
+  const goneNote = gone.length > 0 && (
+    <p className="text-xs text-muted-foreground" data-testid="repo-pipelines-not-on-branch">
+      {gone.length === 1
+        ? `1 pipeline the catalog imported (${gone[0].name}) is no longer on this branch and is not listed. `
+        : `${gone.length} pipelines the catalog imported are no longer on this branch and are not listed. `}
+      The next sync retires them.
+    </p>
+  );
 
   // Why the outline can be thinner than the repository: said once, under the folders, rather than left to be guessed.
   const treeNote = treeQuery.isError && (
@@ -163,7 +205,8 @@ function RepoProjects({
           description="They appear here after a sync imports the selected flows from git."
           data-testid="repo-no-pipelines"
         />
-        {treeNote}
+        {goneNote}
+      {treeNote}
       </div>
     );
   }
@@ -197,7 +240,8 @@ function RepoProjects({
           description={`Nothing matches "${filter.trim()}". Search by name, path, kind, or project.`}
           data-testid="repo-no-matches"
         />
-        {treeNote}
+        {goneNote}
+      {treeNote}
       </div>
     );
   }
@@ -220,6 +264,7 @@ function RepoProjects({
           onRunBatch={onRunBatch}
         />
       ))}
+      {goneNote}
       {treeNote}
     </div>
   );
