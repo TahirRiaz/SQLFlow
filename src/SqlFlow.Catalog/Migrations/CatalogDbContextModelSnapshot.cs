@@ -1681,6 +1681,8 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.HasIndex("RunId");
 
+                    b.HasIndex("Name", "RunId");
+
                     b.ToTable("RunFile", "catalog");
                 });
 

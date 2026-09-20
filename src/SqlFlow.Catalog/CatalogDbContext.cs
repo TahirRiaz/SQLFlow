@@ -510,6 +510,11 @@ public sealed class CatalogDbContext : DbContext
             // Hex hash: 32 chars for MD5 today, sized to hold a SHA-256 (64) without a future migration.
             entity.Property(f => f.Hash).HasMaxLength(128);
             entity.HasIndex(f => f.RunId);
+            // "Which runs handled this file?", the other direction of the same fact. A run's files answer "what did
+            // this run process"; this answers "what has been done with this file", which is how a row of a table is
+            // traced back through the flows that loaded and landed it. Without it that question scans every file the
+            // estate has ever recorded.
+            entity.HasIndex(f => new { f.Name, f.RunId });
         });
 
         modelBuilder.Entity<CatalogRunAssertion>(entity =>
