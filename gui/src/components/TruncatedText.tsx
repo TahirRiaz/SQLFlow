@@ -8,8 +8,9 @@ interface TruncatedTextProps {
   text: string | null | undefined;
   /**
    * Hard cap on the rendered width in pixels; the cell never grows past this no matter how long the value is,
-   * which is what keeps one long path or URL from stretching a whole table column. Short values render at their
-   * natural width and are not truncated.
+   * which is what keeps one long path or URL from stretching a whole table column. The container still wins when
+   * it is narrower than the cap (`min(100%, cap)`), so a value in a narrow detail column clips at the column
+   * instead of overflowing it. Short values render at their natural width and are not truncated.
    */
   maxWidth?: number;
   /** Render in monospace, for paths, ids, keys, and other code-like values. */
@@ -56,7 +57,9 @@ export function TruncatedText({
         mono && "font-mono text-[12px]",
         className,
       )}
-      style={{ maxWidth }}
+      // An inline max-width beats the `max-w-full` class, so the cap has to carry the container bound itself:
+      // without the min() a 260px cap in a 200px column renders 260px wide and runs under the next column.
+      style={{ maxWidth: `min(100%, ${maxWidth}px)` }}
     >
       {value}
     </span>
