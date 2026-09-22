@@ -1,3 +1,5 @@
+using SqlFlow.Core;
+using SqlFlow.Core.Secrets;
 using System.Text;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication;
@@ -73,6 +75,14 @@ public static class ControlPlaneHost
 
         var builder = WebApplication.CreateBuilder(args);
         builder.Services.AddSingleton(branding);
+
+        // The local development values the CLI has always read, read here too. A host and the documents it runs live in
+        // one checkout, so the nearest .sqlflow/env at the content root or any parent is this deployment's, and the
+        // in-process node resolves a flow's ${env:...} references against this very process. The process environment
+        // always wins, so a container's or CI's variable is never shadowed, and only the NAMES applied are logged.
+        // A host that must not read it (a test estate that would otherwise pick up a developer's real credentials) sets
+        // SQLFLOW_LOCAL_ENV_FILE to false.
+        ApplyLocalEnvFile(builder.Environment.ContentRootPath);
 
         // ---- Configuration (fail fast on a misconfigured deployment) -------------------------------------------------
         var options = builder.Configuration.GetSection(ControlPlaneOptions.SectionName).Get<ControlPlaneOptions>() ?? new ControlPlaneOptions();
@@ -605,4 +615,36 @@ public static class ControlPlaneHost
         => user.FindFirst("scope")?.Value
             .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Contains(scope) == true;
+
+    /// <summary>The environment variable a host sets to false to keep the local development env file from being read.</summary>
+    public const string LocalEnvFileVariable = "SQLFLOW_LOCAL_ENV_FILE";
+
+    /// <summary>
+    /// Applies the nearest <c>.sqlflow/env</c> at <paramref name="contentRoot"/> or any parent, unless this host was told
+    /// not to. Returns the names applied; none when no file is found or the host opted out. A file that cannot be opened
+    /// is reported and skipped, because an unreadable file says nothing about what the values should be.
+    /// </summary>
+    /// <exception cref="SqlFlowException">
+    /// The file holds a malformed line. A half-loaded secrets file is a debugging trap: the host would start with some
+    /// values and not others, and a flow would fail later on a reference that looks like it should have resolved. The
+    /// message names the file and the line.
+    /// </exception>
+    internal static IReadOnlyList<string> ApplyLocalEnvFile(string contentRoot)
+    {
+        if (Environment.GetEnvironmentVariable(LocalEnvFileVariable) is { } opt
+            && (opt.Equals("false", StringComparison.OrdinalIgnoreCase) || opt == "0"))
+        {
+            return [];
+        }
+
+        try
+        {
+            return LocalEnvFile.ApplyNearest(contentRoot).Applied;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Console.Error.WriteLine($"The local environment file could not be applied ({ex.Message}); every reference resolves from the process environment alone.");
+            return [];
+        }
+    }
 }
