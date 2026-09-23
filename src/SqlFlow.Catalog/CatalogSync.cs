@@ -469,6 +469,38 @@ public sealed class CatalogSync
         repo.SubscriberInputHash = fingerprint;
     }
 
+    /// <summary>
+    /// The folder a recorded run's flow path is relative to, so the pipeline keeps the path the repository sync gives it
+    /// rather than moving to the repository's top level until the next sync: the repo's recorded root when the flow lies
+    /// inside it, else the root of the repository the flow is checked out in (the nearest folder holding <c>.git</c>, a
+    /// folder in a clone or a file in a worktree), else, outside any repository, the flow's own folder.
+    /// </summary>
+    internal static string RunRecordRoot(string fullFlowPath, string flowFolder, string? recordedRoot)
+    {
+        if (!string.IsNullOrWhiteSpace(recordedRoot) && IsWithin(fullFlowPath, recordedRoot))
+        {
+            return Path.GetFullPath(recordedRoot);
+        }
+
+        for (var folder = new DirectoryInfo(flowFolder); folder is not null; folder = folder.Parent)
+        {
+            var git = Path.Combine(folder.FullName, ".git");
+            if (Directory.Exists(git) || File.Exists(git))
+            {
+                return folder.FullName;
+            }
+        }
+
+        return flowFolder;
+    }
+
+    private static bool IsWithin(string path, string folder)
+    {
+        var root = Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return Path.GetFullPath(path).StartsWith(root, comparison);
+    }
+
     private static async Task UpsertRepoAsync(
         CatalogDbContext context, Guid repoId, string repoName, string? remoteUrl, string root, DateTime nowUtc, CancellationToken ct)
     {
@@ -1167,9 +1199,14 @@ public sealed class CatalogSync
         ArgumentException.ThrowIfNullOrWhiteSpace(repoName);
 
         var fullFlowPath = Path.GetFullPath(flowFilePath);
-        var root = Path.GetDirectoryName(fullFlowPath)
+        var folder = Path.GetDirectoryName(fullFlowPath)
             ?? throw new SqlFlow.Core.SqlFlowException($"'{flowFilePath}' has no parent directory.");
         var repoId = FlowIdentity.FromName(repoName);
+        var recordedRoot = await context.Repos.AsNoTracking()
+            .Where(r => r.Id == repoId)
+            .Select(r => r.RootPath)
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        var root = RunRecordRoot(fullFlowPath, folder, recordedRoot);
         // One serializable transaction, run through the context's execution strategy so it is a single retriable
         // unit. The control plane enables connection resiliency (EnableRetryOnFailure); EF then forbids a
         // user-initiated transaction unless it is wrapped this way. The work rebuilds all its state from the flow
