@@ -1110,8 +1110,10 @@ mod tests {
         let doc = FlowDocument::parse(src);
         let off = src.find("type").unwrap();
         let pos = doc.line_index.position_of(off);
-        let h = hover(&doc, pos);
-        assert!(h.is_some());
+        let h = hover(&doc, pos).expect("a known key has a hover");
+        // The key and its type head the hover, written without the em dash the writing style forbids.
+        assert!(h.markdown.starts_with("**`source.type`**: `"), "{}", h.markdown);
+        assert!(!h.markdown.contains('\u{2014}'));
     }
 
     #[test]
