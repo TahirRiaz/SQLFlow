@@ -2,6 +2,7 @@
 //!
 //! Logging goes to stderr so it never corrupts the JSON-RPC channel on stdout.
 
+mod census_dirs;
 mod server;
 
 use tower_lsp::{LspService, Server};

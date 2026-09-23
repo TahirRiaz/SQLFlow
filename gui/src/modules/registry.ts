@@ -9,6 +9,7 @@ import type { LucideIcon } from "lucide-react";
 import type { PipelineDetail, RunDetail, RunSummary, SearchCategory } from "../api/types";
 import type { Column } from "../components/DataTable";
 import { extendNavigation } from "../layout/nav";
+import { registerCensus, type CensusSource } from "../lib/lsp/sqlflowLsp";
 import { installModuleBranding, type BrandingContribution } from "./branding";
 
 /** A page a module adds, rendered inside the signed-in workbench before the catch-all route. */
@@ -143,6 +144,13 @@ export interface DashboardTileContribution {
   component: ComponentType;
 }
 
+/**
+ * A key census file a module supplies for a flow kind it adds (`flowType`) or a document of its own (`documentType`), so
+ * the YAML editor documents, colours and checks those documents as it does SQLFlow's own flows. The file is SQLFlow's
+ * census format (`docs/reference/flow/keys*.json`) with the kind it describes at its top level.
+ */
+export type CensusContribution = CensusSource;
+
 /** A module: the unit a build registers. */
 export interface GuiModule {
   /** Names the module in registration errors. */
@@ -156,6 +164,8 @@ export interface GuiModule {
   dashboardTiles?: readonly DashboardTileContribution[];
   /** The product's branding; at most one registered module may set it. */
   branding?: BrandingContribution;
+  /** Key census files for the module's flow kinds and documents, which the YAML editor analyses them against. */
+  census?: readonly CensusContribution[];
 }
 
 interface Registered {
@@ -192,6 +202,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
   const kindOwners = new Map<string, string>();
   const categoryOwners = new Map<string, string>();
   const tileOwners = new Map<string, string>();
+  const censusOwners = new Map<string, string>();
   const routes: ModuleRoute[] = [];
   const kinds = new Map<string, FlowKindContribution>();
   const searchCategories: SearchCategoryContribution[] = [];
@@ -239,6 +250,12 @@ export function registerModules(modules: readonly GuiModule[]): void {
     for (const tile of module.dashboardTiles ?? []) {
       claim(tileOwners, tile.id, module.id, "the dashboard tile");
       dashboardTiles.push(tile);
+    }
+
+    for (const census of module.census ?? []) {
+      const kind = census.flowType?.trim() ? `flowType '${census.flowType.trim()}'` : `documentType '${census.documentType?.trim() ?? ""}'`;
+      claim(censusOwners, kind, module.id, "the key census for");
+      registerCensus(census);
     }
   }
 

@@ -22,6 +22,8 @@ pub struct SqlFlowLsp {
     client: Client,
     /// URI → current full source text.
     documents: Arc<Mutex<HashMap<Url, String>>>,
+    /// What loading the module census files the client named did, told to the client once it is initialized.
+    census_loaded: Mutex<Vec<crate::census_dirs::Loaded>>,
 }
 
 impl SqlFlowLsp {
@@ -29,6 +31,7 @@ impl SqlFlowLsp {
         SqlFlowLsp {
             client,
             documents: Arc::new(Mutex::new(HashMap::new())),
+            census_loaded: Mutex::new(Vec::new()),
         }
     }
 
@@ -55,7 +58,12 @@ impl SqlFlowLsp {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for SqlFlowLsp {
-    async fn initialize(&self, _: InitializeParams) -> RpcResult<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> RpcResult<InitializeResult> {
+        // The census files of the modules the client's build carries: their flow kinds and documents become
+        // known before the first document is analysed.
+        let directories = crate::census_dirs::directories(params.initialization_options.as_ref());
+        *self.census_loaded.lock().await = crate::census_dirs::load(&directories);
+
         Ok(InitializeResult {
             server_info: Some(ServerInfo {
                 name: "sqlflow-lsp".to_string(),
@@ -94,6 +102,19 @@ impl LanguageServer for SqlFlowLsp {
     }
 
     async fn initialized(&self, _: InitializedParams) {
+        let loaded = std::mem::take(&mut *self.census_loaded.lock().await);
+        for outcome in loaded {
+            let (kind, message) = match outcome {
+                crate::census_dirs::Loaded::Registered { file, kind } => {
+                    (MessageType::INFO, format!("registered the census for {kind} from {}", file.display()))
+                }
+                crate::census_dirs::Loaded::Skipped { path, reason } => {
+                    (MessageType::WARNING, format!("skipped the census at {}: {reason}", path.display()))
+                }
+            };
+            self.client.log_message(kind, message).await;
+        }
+
         self.client
             .log_message(MessageType::INFO, "SQLFlow language server ready")
             .await;

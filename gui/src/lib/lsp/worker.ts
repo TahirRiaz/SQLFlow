@@ -3,7 +3,7 @@
 // blocks rendering. Each message parses the document and calls one engine
 // function; the wasm returns JSON strings which are parsed here and posted back
 // as structured results correlated by request id.
-import init, { hover, diagnostics, semantic_tokens } from "./pkg/sqlflow_lang_wasm.js";
+import init, { hover, diagnostics, semantic_tokens, register_census } from "./pkg/sqlflow_lang_wasm.js";
 
 // Minimal typing of the worker global (the project's tsconfig uses the DOM lib,
 // not WebWorker, so DedicatedWorkerGlobalScope is not in scope here).
@@ -22,7 +22,8 @@ ready.then(() => ctx.postMessage({ type: "ready" }));
 type Request =
   | { id: number; op: "hover"; source: string; line: number; character: number }
   | { id: number; op: "diagnostics"; source: string }
-  | { id: number; op: "semanticTokens"; source: string };
+  | { id: number; op: "semanticTokens"; source: string }
+  | { id: number; op: "registerCensus"; json: string };
 
 ctx.onmessage = async (event: MessageEvent<Request>) => {
   await ready;
@@ -40,6 +41,10 @@ ctx.onmessage = async (event: MessageEvent<Request>) => {
         break;
       case "semanticTokens":
         result = JSON.parse(semantic_tokens(req.source));
+        break;
+      case "registerCensus":
+        // A module's census file for a flow kind or a document kind; the engine names the kind it registered.
+        result = register_census(req.json);
         break;
     }
     ctx.postMessage({ id: req.id, result });

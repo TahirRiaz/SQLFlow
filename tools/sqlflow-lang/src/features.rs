@@ -104,8 +104,22 @@ pub struct SemanticToken {
     pub kind: SemanticTokenKind,
 }
 
-const KNOWN_FLOW_TYPES: &[&str] =
-    &["ing", "exp", "sp", "inv", "hc", "scm", "sch", "batch", "api", "cpy", "sftp", "cal", "trl"];
+/// Whether `flow_type` names a flow kind this editor knows: one of SQLFlow's own, or one a module registered a
+/// census for.
+fn known_flow_type(flow_type: &str) -> bool {
+    crate::census::BUILT_IN_FLOW_TYPES.contains(&flow_type)
+        || crate::census::registered_flow_types().iter().any(|t| t == flow_type)
+}
+
+/// The flow kinds this editor knows, SQLFlow's own first, for the unknown-flowType diagnostic.
+fn known_flow_types() -> String {
+    crate::census::BUILT_IN_FLOW_TYPES
+        .iter()
+        .map(|t| t.to_string())
+        .chain(crate::census::registered_flow_types())
+        .collect::<Vec<_>>()
+        .join(", ")
+}
 
 // --- Rendering -------------------------------------------------------------
 
@@ -355,9 +369,30 @@ pub fn diagnostics(doc: &FlowDocument) -> Vec<Diagnostic> {
     let mut out = Vec::new();
     let census = Census::for_document(doc);
 
+    // A document whose kind no module registered a census for is not a flow, and nothing here describes it:
+    // say so once rather than flag every key it has.
+    if doc.kind == DocumentKind::Document && census.entries.is_empty() {
+        let dt = doc.document_type.as_deref().unwrap_or_default();
+        if let Some(loc) = doc
+            .locations
+            .iter()
+            .find(|l| l.path == vec![AuthoredSeg::Key("documentType".into())])
+        {
+            out.push(Diagnostic {
+                range: loc.value_range,
+                severity: Severity::Information,
+                message: format!(
+                    "no key census is registered for documentType '{dt}' in this editor, so its keys are not checked"
+                ),
+                code: Some("flow-unregistered-document".to_string()),
+            });
+        }
+        return out;
+    }
+
     // Unknown flowType discriminator.
     if let Some(ft) = &doc.flow_type {
-        if !KNOWN_FLOW_TYPES.contains(&ft.as_str()) {
+        if !known_flow_type(ft) {
             if let Some(loc) = doc
                 .locations
                 .iter()
@@ -367,7 +402,8 @@ pub fn diagnostics(doc: &FlowDocument) -> Vec<Diagnostic> {
                     range: loc.value_range,
                     severity: Severity::Error,
                     message: format!(
-                        "unknown flowType '{ft}'. Use one of: ing, exp, sp, inv, hc, scm, sch, batch, api, cpy, sftp, cal, trl, or omit flowType for a file flow."
+                        "unknown flowType '{ft}'. Use one of: {}, or omit flowType for a file flow.",
+                        known_flow_types()
                     ),
                     code: Some("flow-unknown-flowtype".to_string()),
                 });
@@ -408,24 +444,29 @@ pub fn diagnostics(doc: &FlowDocument) -> Vec<Diagnostic> {
                 let subject = match doc.kind {
                     DocumentKind::Subscribers => "a subscriber library",
                     DocumentKind::Flow => "this flow type",
+                    DocumentKind::Document => "this document type",
+                };
+                // A strict loader refuses the whole document over an undocumented key; SQLFlow's own loaders
+                // drop the key and carry on, which reads as "the option did nothing" at run time.
+                let (severity, consequence) = if census.strict {
+                    (Severity::Error, "the loader refuses the document")
+                } else {
+                    (Severity::Warning, "it will be ignored by the loader")
                 };
                 if homes.is_empty() {
                     out.push(Diagnostic {
                         range: key_range,
-                        severity: Severity::Warning,
-                        message: format!(
-                            "unknown key '{name}' for {subject}; it will be ignored by the loader"
-                        ),
+                        severity,
+                        message: format!("unknown key '{name}' for {subject}; {consequence}"),
                         code: Some("flow-unknown-key".to_string()),
                     });
                 } else {
                     out.push(Diagnostic {
                         range: key_range,
-                        severity: Severity::Warning,
+                        severity,
                         message: format!(
-                            "key '{name}' is not documented here for {subject} and will be ignored by \
-                             the loader; a key of that name is documented at: {}. If that is what you \
-                             meant, move it there.",
+                            "key '{name}' is not documented here for {subject}, and {consequence}; a key of that \
+                             name is documented at: {}. If that is what you meant, move it there.",
                             homes.join(", ")
                         ),
                         code: Some("flow-misplaced-key".to_string()),
@@ -1222,5 +1263,129 @@ mod tests {
             .find(|d| d.code.as_deref() == Some("flow-misplaced-key"))
             .expect("expected a misplaced-key warning");
         assert!(hit.message.contains("target.truncateBeforeLoad"));
+    }
+
+    // --- Module census registration --------------------------------------------------------------------------
+    // Each test registers a kind no other test uses, since the registry is shared by the whole process.
+
+    const WIDGET_CENSUS: &str = r#"{
+        "flowType": "tests-widget",
+        "strictKeys": true,
+        "includeEnvelope": true,
+        "keys": [
+            { "path": "name", "type": "string", "required": true, "description": "The widget's name." },
+            { "path": "source.colour", "type": "string", "enumValues": ["red", "blue"], "description": "The widget's colour." },
+            { "path": "source.size", "type": "integer", "description": "How big it is." },
+            { "path": "body", "type": "object", "freeForm": true, "description": "Anything the author writes." }
+        ]
+    }"#;
+
+    #[test]
+    fn a_registered_flow_kind_is_known_completed_hovered_and_checked() {
+        let kind = crate::census::register(WIDGET_CENSUS).expect("the widget census registers");
+        assert_eq!(kind, crate::census::CensusKind::FlowType("tests-widget".into()));
+        assert!(crate::census::registered_flow_types().iter().any(|t| t == "tests-widget"));
+
+        let src = "flowType: tests-widget\nname: w\nsource:\n  colour: green\n  shade: dark\n  \nbody:\n  any:\n    deep: 1\nschedule:\n  cron: \"0 2 * * *\"\n";
+        let doc = FlowDocument::parse(src);
+        let diags = diagnostics(&doc);
+
+        // The kind is known, its enum is checked, and an undocumented key is an error: its loader refuses it.
+        assert!(!diags.iter().any(|d| d.code.as_deref() == Some("flow-unknown-flowtype")), "{diags:?}");
+        assert!(diags.iter().any(|d| d.code.as_deref() == Some("flow-invalid-enum") && d.message.contains("'green'")));
+        let shade = diags
+            .iter()
+            .find(|d| d.code.as_deref() == Some("flow-unknown-key") && d.message.contains("'shade'"))
+            .expect("an undocumented key is flagged");
+        assert_eq!(shade.severity, Severity::Error);
+        assert!(shade.message.contains("the loader refuses the document"));
+
+        // The platform envelope is the kind's too, documented as SQLFlow documents it for the file flow.
+        assert!(!diags.iter().any(|d| d.message.contains("'schedule'") || d.message.contains("'cron'")), "{diags:?}");
+
+        // What the author writes under a free-form attribute is theirs.
+        assert!(!diags.iter().any(|d| d.message.contains("'any'") || d.message.contains("'deep'")), "{diags:?}");
+
+        // Hover documents a key, and completion offers the keys of a block.
+        let hovered = hover(&doc, doc.line_index.position_of(src.find("colour").unwrap())).expect("a hover on colour");
+        assert!(hovered.markdown.contains("The widget's colour."));
+        assert!(hovered.markdown.contains("`red`"));
+        let items = completion(&doc, Position { line: 5, character: 2 });
+        assert!(items.iter().any(|i| i.label == "size"), "{:?}", items.iter().map(|i| &i.label).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn an_unregistered_flow_kind_names_every_kind_this_editor_knows() {
+        crate::census::register(&WIDGET_CENSUS.replace("tests-widget", "tests-listed")).expect("registers");
+        let doc = FlowDocument::parse("flowType: tests-nothing\nname: w\n");
+        let unknown = diagnostics(&doc)
+            .into_iter()
+            .find(|d| d.code.as_deref() == Some("flow-unknown-flowtype"))
+            .expect("an unregistered kind is unknown");
+        assert!(unknown.message.contains("ing, exp"), "{}", unknown.message);
+        assert!(unknown.message.contains("tests-listed"), "{}", unknown.message);
+    }
+
+    #[test]
+    fn a_schema_registration_is_a_built_in_kind() {
+        let doc = FlowDocument::parse("flowType: sch
+name: w
+");
+        assert!(
+            !diagnostics(&doc).iter().any(|d| d.code.as_deref() == Some("flow-unknown-flowtype")),
+            "sch is one of SQLFlow's own kinds"
+        );
+        assert!(crate::census::register(&WIDGET_CENSUS.replace("tests-widget", "sch")).is_err(), "a module cannot claim sch");
+    }
+
+    #[test]
+    fn a_registered_document_type_is_checked_by_its_census_and_an_unregistered_one_is_left_alone() {
+        crate::census::register(r#"{
+            "documentType": "tests-glossary",
+            "keys": [
+                { "path": "documentType", "type": "string", "required": true, "description": "The document kind." },
+                { "path": "terms[].word", "type": "string", "description": "A word." },
+                { "path": "terms[].means", "type": "string", "description": "What it means." }
+            ]
+        }"#)
+        .expect("the glossary census registers");
+
+        let glossary = FlowDocument::parse("documentType: tests-glossary\nterms:\n  - word: a\n    means: b\n    colour: c\n");
+        let diags = diagnostics(&glossary);
+        let colour = diags
+            .iter()
+            .find(|d| d.code.as_deref() == Some("flow-unknown-key"))
+            .expect("an undocumented key of a document is flagged");
+        assert!(colour.message.contains("'colour' for this document type"));
+        // A census that does not say its loader is strict leaves an undocumented key a warning.
+        assert_eq!(colour.severity, Severity::Warning);
+        assert_eq!(diags.len(), 1, "{diags:?}");
+
+        // A document nothing describes is not a file flow: one note, and none of its keys is flagged.
+        let other = FlowDocument::parse("documentType: tests-unregistered\nanything: 1\nnested:\n  deep: 2\n");
+        let notes = diagnostics(&other);
+        assert_eq!(notes.len(), 1, "{notes:?}");
+        assert_eq!(notes[0].code.as_deref(), Some("flow-unregistered-document"));
+        assert_eq!(notes[0].severity, Severity::Information);
+    }
+
+    #[test]
+    fn a_census_file_that_cannot_describe_a_kind_is_refused() {
+        let refused = |json: &str| crate::census::register(json).expect_err("refused");
+        assert!(refused("not json").contains("not a census file"));
+        assert!(refused(r#"{ "keys": [{ "path": "a", "type": "string" }] }"#).contains("names the flowType or the documentType"));
+        assert!(refused(r#"{ "flowType": "x", "documentType": "y", "keys": [{ "path": "a", "type": "string" }] }"#).contains("not both"));
+        assert!(refused(r#"{ "flowType": "ing", "keys": [{ "path": "a", "type": "string" }] }"#).contains("SQLFlow's own flow kinds"));
+        assert!(refused(r#"{ "documentType": "tests-empty", "keys": [] }"#).contains("documents no key"));
+
+        // Registering a kind again replaces it, and a kind can be withdrawn.
+        let first = r#"{ "documentType": "tests-replaced", "keys": [{ "path": "one", "type": "string" }] }"#;
+        let second = r#"{ "documentType": "tests-replaced", "keys": [{ "path": "two", "type": "string" }] }"#;
+        let kind = crate::census::register(first).expect("registers");
+        crate::census::register(second).expect("registers again");
+        let census = Census::for_document_type("tests-replaced").expect("registered");
+        assert!(census.entries.iter().any(|e| e.path == "two") && !census.entries.iter().any(|e| e.path == "one"));
+        assert!(crate::census::unregister(&kind));
+        assert!(Census::for_document_type("tests-replaced").is_none());
     }
 }

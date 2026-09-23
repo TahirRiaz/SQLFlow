@@ -52,6 +52,9 @@ pub enum DocumentKind {
     Flow,
     /// A subscriber library: `subscribers.yaml` or `*.subscribers.yaml`, detected by its root key.
     Subscribers,
+    /// A document that is not a flow, named by its root `documentType`: a module's own document kind, analysed
+    /// against the census the module registered for it, and left unchecked when none is registered.
+    Document,
 }
 
 /// A fully analysed flow document.
@@ -60,6 +63,8 @@ pub struct FlowDocument {
     pub line_index: LineIndex,
     pub kind: DocumentKind,
     pub flow_type: Option<String>,
+    /// The root `documentType` of a document that is not a flow; None for a flow or a subscriber library.
+    pub document_type: Option<String>,
     pub locations: Vec<Located>,
     pub parse_error: Option<ParseError>,
 }
@@ -69,6 +74,7 @@ impl FlowDocument {
         let line_index = LineIndex::new(source);
         let mut locations = Vec::new();
         let mut flow_type = None;
+        let mut document_type = None;
         let mut kind = DocumentKind::Flow;
         let mut parse_error = None;
 
@@ -88,6 +94,17 @@ impl FlowDocument {
                     if flow_type.is_none() && map.get_node("subscribers").is_some() {
                         kind = DocumentKind::Subscribers;
                     }
+                    // A root `documentType` names a document that is not a flow; a flowType still wins, so a flow is
+                    // never analysed as anything else.
+                    if flow_type.is_none() {
+                        if let Some(dt) = map.get_scalar("documentType") {
+                            let t = dt.as_str().trim();
+                            if !t.is_empty() {
+                                document_type = Some(t.to_string());
+                                kind = DocumentKind::Document;
+                            }
+                        }
+                    }
                     walk_mapping(&node, &[], &line_index, &mut locations);
                 }
             }
@@ -101,6 +118,7 @@ impl FlowDocument {
             line_index,
             kind,
             flow_type,
+            document_type,
             locations,
             parse_error,
         }
@@ -271,6 +289,20 @@ mod tests {
     fn file_flow_has_no_flow_type() {
         let doc = FlowDocument::parse("name: demo\nsource:\n  type: csv\n");
         assert_eq!(doc.flow_type, None);
+        assert_eq!(doc.document_type, None);
+        assert_eq!(doc.kind, DocumentKind::Flow);
+    }
+
+    #[test]
+    fn a_document_type_names_a_document_that_is_not_a_flow() {
+        let doc = FlowDocument::parse("documentType: glossary\nname: terms\n");
+        assert_eq!(doc.kind, DocumentKind::Document);
+        assert_eq!(doc.document_type.as_deref(), Some("glossary"));
+
+        // A flowType wins over a documentType, so a flow is never read as anything else.
+        let flow = FlowDocument::parse("flowType: ing\ndocumentType: glossary\n");
+        assert_eq!(flow.kind, DocumentKind::Flow);
+        assert_eq!(flow.document_type, None);
     }
 
     #[test]

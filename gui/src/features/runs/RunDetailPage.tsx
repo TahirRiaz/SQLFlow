@@ -35,6 +35,7 @@ import { formatBytes, formatDurationSeconds, parseUtc } from "../../lib/time";
 import { kindContribution } from "../../modules/registry";
 import { RunTracePanel } from "./RunTracePanel";
 import { TriggerRunDialog } from "./TriggerRunDialog";
+import { hasCensus } from "../../lib/lsp/sqlflowLsp";
 
 /** A compact UTC stamp for a backfill window bound (the API sends UTC timestamps). */
 function fmtBound(value: string): string {
@@ -537,7 +538,7 @@ function RunDetailContent({ runId }: { runId: string }) {
             ? <Skeleton className="h-[560px] w-full rounded-lg" data-testid="source-loading" />
             : pipelineQuery.data !== undefined && (
               // Flow-YAML intelligence knows SQLFlow's own kinds; a module kind's document is not one of them.
-              <CodeView value={pipelineQuery.data.yaml} language="yaml" height={560} lsp={kind === undefined} data-testid="run-source-yaml" />
+              <CodeView value={pipelineQuery.data.yaml} language="yaml" height={560} lsp={kind === undefined || hasCensus({ flowType: run.flowKind })} data-testid="run-source-yaml" />
             )}
         </TabsContent>
         <TabsContent value="files">

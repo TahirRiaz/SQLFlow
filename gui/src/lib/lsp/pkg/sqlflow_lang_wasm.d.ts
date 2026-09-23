@@ -14,6 +14,13 @@ export function diagnostics(source: string): string;
 export function hover(source: string, line: number, character: number): string | undefined;
 
 /**
+ * Registers a module's census file (a `keys` file naming the `flowType` or `documentType` it describes), so the
+ * documents of that kind are analysed against it. Returns the kind registered, as text, or fails with the reason
+ * the file was refused. A kind registered again is replaced.
+ */
+export function register_census(json: string): string;
+
+/**
  * Census-driven semantic tokens, as a JSON array of `{ range, kind }`, sorted
  * by position. The GUI builds Monaco's delta-encoded token array from this.
  */
@@ -30,6 +37,7 @@ export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly diagnostics: (a: number, b: number, c: number) => void;
     readonly hover: (a: number, b: number, c: number, d: number, e: number) => void;
+    readonly register_census: (a: number, b: number, c: number) => void;
     readonly semantic_tokens: (a: number, b: number, c: number) => void;
     readonly version: (a: number) => void;
     readonly __wbindgen_add_to_stack_pointer: (a: number) => number;

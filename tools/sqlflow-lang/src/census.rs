@@ -16,6 +16,11 @@
 //!
 //! These are parsed into [`Seg`] sequences so an authored YAML path can be
 //! matched structurally rather than by fragile string equality.
+//!
+//! A host module registers census files of its own at run time ([`register`]):
+//! one for each flow kind it adds, by `flowType`, and one for each document of
+//! its own, by `documentType`. A document of a registered kind is analysed
+//! against that census exactly as SQLFlow's own flows are against theirs.
 
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -44,6 +49,10 @@ pub struct KeyEntry {
     pub defined_in: Option<String>,
     #[serde(default)]
     pub validation: Option<String>,
+    /// True for an attribute whose value is free-form: any key at any depth below it is valid (a literal JSON
+    /// object an author writes whole, say), so nothing under it is flagged as unknown.
+    #[serde(default, rename = "freeForm")]
+    pub free_form: bool,
     /// Parsed structural form of `path`, computed once at load time.
     #[serde(skip)]
     pub segs: Vec<Seg>,
@@ -173,6 +182,9 @@ impl Seg {
 #[derive(Debug, Clone, Default)]
 pub struct Census {
     pub entries: Vec<KeyEntry>,
+    /// True when the loader of this kind refuses a document carrying an undocumented key, rather than
+    /// ignoring the key, so a diagnostic can say which of the two will happen.
+    pub strict: bool,
 }
 
 /// Outcome of resolving an authored path against the census.
@@ -213,7 +225,24 @@ impl Census {
         match doc.kind {
             crate::document::DocumentKind::Subscribers => Census::for_subscribers(),
             crate::document::DocumentKind::Flow => Census::for_flow_type(doc.flow_type.as_deref()),
+            crate::document::DocumentKind::Document => doc
+                .document_type
+                .as_deref()
+                .and_then(Census::for_document_type)
+                .unwrap_or_default(),
         }
+    }
+
+    /// The census a module registered for a `documentType`, or None when none is registered: such a
+    /// document is not a flow, so no census of SQLFlow's own describes it.
+    pub fn for_document_type(document_type: &str) -> Option<Census> {
+        let kind = CensusKind::DocumentType(document_type.trim().to_string());
+        let module = registered_census(&kind)?;
+        let mut entries = module.entries;
+        if !entries.iter().any(|e| e.path == "documentType") {
+            entries.push(discriminator_entry("documentType", &kind));
+        }
+        Some(Census { entries, strict: module.strict })
     }
 
     /// The subscriber library census: the library's own keys plus the shared `connections` block, which a
@@ -228,11 +257,31 @@ impl Census {
                 .into_iter()
                 .filter(|e| e.path == "connections" || e.path.starts_with("connections.")),
         );
-        Census { entries }
+        Census { entries, strict: false }
     }
 
     pub fn for_flow_type(flow_type: Option<&str>) -> Census {
         let ft = flow_type.map(str::trim).filter(|s| !s.is_empty());
+        // A flow kind a module registered is described by the module's census alone, with SQLFlow's shared
+        // blocks when the module says its kind takes them.
+        if let Some(module) = ft.and_then(|t| registered_census(&CensusKind::FlowType(t.to_string()))) {
+            let mut entries = module.entries;
+            if !entries.iter().any(|e| e.path == "flowType") {
+                entries.push(discriminator_entry("flowType", &module.kind));
+            }
+            if module.envelope {
+                let have: std::collections::HashSet<String> = entries.iter().map(|e| e.path.clone()).collect();
+                entries.extend(Census::parse(FILE_FLOW).unwrap_or_default().into_iter().filter(|e| {
+                    !have.contains(&e.path) && matches!(e.segs.first(), Some(Seg::Key(k)) if ENVELOPE_KEYS.contains(&k.as_str()))
+                }));
+            }
+            if module.shared {
+                let have: std::collections::HashSet<String> = entries.iter().map(|e| e.path.clone()).collect();
+                entries.extend(Census::parse(SHARED).unwrap_or_default().into_iter().filter(|e| !have.contains(&e.path)));
+            }
+            return Census { entries, strict: module.strict };
+        }
+
         let primary = match ft {
             None => FILE_FLOW,
             Some("ing") => ING,
@@ -283,7 +332,7 @@ impl Census {
             .filter(|e| !have.contains(e.path.as_str()))
             .collect();
         entries.extend(extra);
-        Census { entries }
+        Census { entries, strict: false }
     }
 
     /// Resolve an authored path to a census entry, container, or unknown.
@@ -299,6 +348,14 @@ impl Census {
             .any(|e| e.segs.len() > authored.len() && segs_match(&e.segs[..authored.len()], authored))
         {
             return Resolution::Container;
+        }
+        // Anything below a free-form attribute is the author's own content.
+        if (1..authored.len()).any(|depth| {
+            self.entries
+                .iter()
+                .any(|e| e.free_form && segs_match(&e.segs, &authored[..depth]))
+        }) {
+            return Resolution::OpenDictMember;
         }
         // Parent is an open dictionary: entry == parent ++ [Wild].
         if !authored.is_empty() {
@@ -380,6 +437,159 @@ pub struct ChildKey<'a> {
 
 fn segs_match(census: &[Seg], authored: &[AuthoredSeg]) -> bool {
     census.len() == authored.len() && census.iter().zip(authored).all(|(c, a)| c.matches(a))
+}
+
+// --- Module census registry -------------------------------------------------
+// SQLFlow's own document kinds are compiled in below. A module that adds flow kinds, or documents of its own,
+// supplies a census file for each at run time: the language server reads them from the directories its client
+// names, and the WebAssembly engine takes them through a registration call. A file names what it describes with a
+// top-level `flowType` or `documentType`, beside the `keys` every census file carries.
+
+/// What a module's census file describes: a flow kind, by its `flowType`, or another document, by its
+/// `documentType`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CensusKind {
+    FlowType(String),
+    DocumentType(String),
+}
+
+impl std::fmt::Display for CensusKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CensusKind::FlowType(t) => write!(f, "flowType '{t}'"),
+            CensusKind::DocumentType(t) => write!(f, "documentType '{t}'"),
+        }
+    }
+}
+
+/// A census a module registered.
+#[derive(Debug, Clone)]
+pub struct ModuleCensus {
+    pub kind: CensusKind,
+    pub entries: Vec<KeyEntry>,
+    /// True when the kind's loader refuses a document with an undocumented key.
+    pub strict: bool,
+    /// True when SQLFlow's shared blocks (connections, service principals, the invoke hooks) belong to the kind.
+    pub shared: bool,
+    /// True when the platform envelope every flow carries (name, description, batch, schedule, mode, lifecycle)
+    /// belongs to the kind, documented as SQLFlow documents it for the file flow.
+    pub envelope: bool,
+}
+
+/// The top-level keys of the platform envelope the host reads from every flow document, whatever its kind.
+const ENVELOPE_KEYS: &[&str] = &["name", "description", "batch", "schedule", "mode", "lifecycle"];
+
+/// The flow kinds SQLFlow compiles in; a module cannot register a census for one of them.
+pub const BUILT_IN_FLOW_TYPES: &[&str] =
+    &["ing", "exp", "sp", "inv", "hc", "scm", "sch", "batch", "api", "cpy", "sftp", "cal", "trl"];
+
+fn registry() -> &'static std::sync::RwLock<BTreeMap<CensusKind, ModuleCensus>> {
+    static REGISTRY: std::sync::OnceLock<std::sync::RwLock<BTreeMap<CensusKind, ModuleCensus>>> = std::sync::OnceLock::new();
+    REGISTRY.get_or_init(|| std::sync::RwLock::new(BTreeMap::new()))
+}
+
+/// Registers a module's census file, replacing any census registered earlier for the same kind, and returns
+/// the kind it describes. A file is refused, with the reason, when it is not a census, names neither or both of
+/// `flowType` and `documentType`, names one of SQLFlow's own flow kinds, or documents no key.
+pub fn register(json: &str) -> Result<CensusKind, String> {
+    #[derive(Deserialize)]
+    struct ModuleFile {
+        #[serde(default, rename = "flowType")]
+        flow_type: Option<String>,
+        #[serde(default, rename = "documentType")]
+        document_type: Option<String>,
+        #[serde(default)]
+        keys: Vec<KeyEntry>,
+        #[serde(default, rename = "strictKeys")]
+        strict_keys: bool,
+        #[serde(default, rename = "includeShared")]
+        include_shared: bool,
+        #[serde(default, rename = "includeEnvelope")]
+        include_envelope: bool,
+    }
+
+    let file: ModuleFile = serde_json::from_str(json).map_err(|e| format!("not a census file: {e}"))?;
+    let named = |value: Option<String>| value.map(|v| v.trim().to_string()).filter(|v| !v.is_empty());
+    let kind = match (named(file.flow_type), named(file.document_type)) {
+        (Some(flow_type), None) => {
+            if BUILT_IN_FLOW_TYPES.contains(&flow_type.as_str()) {
+                return Err(format!("flowType '{flow_type}' is one of SQLFlow's own flow kinds, whose census is built in"));
+            }
+            CensusKind::FlowType(flow_type)
+        }
+        (None, Some(document_type)) => CensusKind::DocumentType(document_type),
+        (Some(_), Some(_)) => return Err("a census file names either a flowType or a documentType, not both".to_string()),
+        (None, None) => return Err("a census file names the flowType or the documentType it describes".to_string()),
+    };
+    if file.keys.is_empty() {
+        return Err(format!("the census for {kind} documents no key"));
+    }
+
+    let mut entries = file.keys;
+    for entry in &mut entries {
+        entry.segs = parse_path(&entry.path);
+        if entry.segs.is_empty() {
+            return Err(format!("the census for {kind} has an entry with an empty path"));
+        }
+    }
+
+    let census = ModuleCensus {
+        kind: kind.clone(),
+        entries,
+        strict: file.strict_keys,
+        shared: file.include_shared,
+        envelope: file.include_envelope,
+    };
+    registry()
+        .write()
+        .map_err(|_| "the census registry is unavailable".to_string())?
+        .insert(kind.clone(), census);
+    Ok(kind)
+}
+
+/// Removes the census registered for `kind`; true when there was one.
+pub fn unregister(kind: &CensusKind) -> bool {
+    registry().write().map(|mut r| r.remove(kind).is_some()).unwrap_or(false)
+}
+
+/// Every kind a module has registered a census for, in order.
+pub fn registered_kinds() -> Vec<CensusKind> {
+    registry().read().map(|r| r.keys().cloned().collect()).unwrap_or_default()
+}
+
+/// The flow kinds modules registered, beside SQLFlow's own.
+pub fn registered_flow_types() -> Vec<String> {
+    registered_kinds()
+        .into_iter()
+        .filter_map(|k| match k {
+            CensusKind::FlowType(t) => Some(t),
+            CensusKind::DocumentType(_) => None,
+        })
+        .collect()
+}
+
+fn registered_census(kind: &CensusKind) -> Option<ModuleCensus> {
+    registry().read().ok()?.get(kind).cloned()
+}
+
+/// The entry documenting a discriminator (`flowType`, `documentType`) a module's census leaves undocumented.
+fn discriminator_entry(path: &str, kind: &CensusKind) -> KeyEntry {
+    let value = match kind {
+        CensusKind::FlowType(t) | CensusKind::DocumentType(t) => t.clone(),
+    };
+    KeyEntry {
+        path: path.to_string(),
+        ty: "string".to_string(),
+        required: true,
+        default: None,
+        enum_values: Some(vec![value]),
+        description: format!("The document kind: {kind}, as the module that reads it names it."),
+        applies_when: None,
+        defined_in: None,
+        validation: None,
+        free_form: false,
+        segs: parse_path(path),
+    }
 }
 
 // --- Embedded census files -------------------------------------------------

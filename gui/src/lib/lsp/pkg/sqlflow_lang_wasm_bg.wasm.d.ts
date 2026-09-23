@@ -3,6 +3,7 @@
 export const memory: WebAssembly.Memory;
 export const diagnostics: (a: number, b: number, c: number) => void;
 export const hover: (a: number, b: number, c: number, d: number, e: number) => void;
+export const register_census: (a: number, b: number, c: number) => void;
 export const semantic_tokens: (a: number, b: number, c: number) => void;
 export const version: (a: number) => void;
 export const __wbindgen_add_to_stack_pointer: (a: number) => number;

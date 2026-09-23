@@ -151,3 +151,13 @@ mod tests {
         assert!(!version().is_empty());
     }
 }
+
+/// Registers a module's census file (a `keys` file naming the `flowType` or `documentType` it describes), so the
+/// documents of that kind are analysed against it. Returns the kind registered, as text, or fails with the reason
+/// the file was refused. A kind registered again is replaced.
+#[wasm_bindgen]
+pub fn register_census(json: &str) -> Result<String, JsError> {
+    sqlflow_lang::census::register(json)
+        .map(|kind| kind.to_string())
+        .map_err(|reason| JsError::new(&reason))
+}

@@ -16,6 +16,37 @@ The design mirrors DeltaForge's protocol/analysis split, but SQLFlow authors
 **YAML flow documents** (not SQL), so the analysis engine is driven by the
 per-`flowType` `keys*.json` census files rather than a SQL parser.
 
+## Module census files
+
+A host module that adds flow kinds, or documents of its own, gives the engine a census for each at run time, in the
+same `keys` format as SQLFlow's own files with the kind it describes at the top level:
+
+```json
+{
+  "flowType": "widget",
+  "strictKeys": true,
+  "includeEnvelope": true,
+  "keys": [
+    { "path": "source.colour", "type": "enum(red|blue)", "enumValues": ["red", "blue"], "description": "..." },
+    { "path": "body", "type": "object", "freeForm": true, "description": "..." }
+  ]
+}
+```
+
+- `flowType` names a flow kind the module adds, or `documentType` a document of its own (the value of its root
+  `documentType` key). A file names exactly one; SQLFlow's own flow kinds cannot be replaced.
+- `strictKeys: true` says the kind's loader refuses a document with an undocumented key, so the editor reports one as
+  an error rather than as a key the loader ignores.
+- `includeEnvelope: true` documents the platform envelope (`name`, `description`, `batch`, `schedule`, `mode`,
+  `lifecycle`) as the file flow's census does; `includeShared: true` adds the shared blocks (`connections`, the invoke
+  hooks, `servicePrincipals`).
+- An entry with `freeForm: true` takes any content below it, such as an object an author writes whole.
+
+`sqlflow-lsp` registers every `*.json` file of the directories its client names in the initialization options
+(`{ "censusDirectories": ["..."] }`) and logs what it registered and what it skipped; the WebAssembly engine takes a file
+through `register_census(json)`, which the GUI calls for each census a GUI module contributes. A document whose
+`documentType` has no census is not analysed as a flow: the editor says once that its keys are not checked.
+
 ## Build
 
 ```sh

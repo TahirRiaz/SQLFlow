@@ -7,6 +7,12 @@
 // Providers are registered once, globally, for the `yaml` language, but only
 // act on models opted in via `markFlowModel` so unrelated YAML editors are left
 // untouched.
+//
+// The engine compiles in the census of SQLFlow's own flow kinds. A module that
+// adds flow kinds, or documents of its own, registers a census file for each
+// (`registerCensus`); the files are handed to the engine when it starts, before
+// it analyses anything, so every document of those kinds gets the same hovers,
+// colouring and diagnostics.
 import type { Monaco } from "@monaco-editor/react";
 import type { editor, IRange } from "monaco-editor";
 
@@ -55,6 +61,8 @@ const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: unk
 function ensureWorker(): Worker {
   if (!worker) {
     worker = new Worker(new URL("./worker.ts", import.meta.url), { type: "module" });
+    // Every census registered so far goes to the engine first, in order, before any question is asked of it.
+    censusRegistered = censusSources.reduce<Promise<void>>((chain, source) => chain.then(() => sendCensus(source)), Promise.resolve());
     worker.onmessage = (event: MessageEvent) => {
       const data = event.data as
         | { type: "ready" }
@@ -78,13 +86,96 @@ function ensureWorker(): Worker {
   return worker;
 }
 
-function request<T>(message: Record<string, unknown>): Promise<T> {
+/** Sends one message to the engine and waits for its answer. */
+function post<T>(message: Record<string, unknown>): Promise<T> {
   const w = ensureWorker();
   const id = ++seq;
   return new Promise<T>((resolve, reject) => {
     pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
     w.postMessage({ id, ...message });
   });
+}
+
+/** Asks the engine something, once every module census it is to know has been handed to it. */
+function request<T>(message: Record<string, unknown>): Promise<T> {
+  ensureWorker();
+  return (censusRegistered ?? Promise.resolve()).then(() => post<T>(message));
+}
+
+// --- Module census ----------------------------------------------------------
+
+/** A census file a module supplies: for a flow kind it adds (`flowType`), or a document of its own (`documentType`). */
+export interface CensusSource {
+  flowType?: string;
+  documentType?: string;
+  /** Reads the census file's JSON. Called once, when the engine starts. */
+  load: () => Promise<string>;
+}
+
+const censusSources: CensusSource[] = [];
+
+/** Why a registered census could not be handed to the engine, by the kind it describes. */
+const censusProblems = new Map<string, string>();
+
+/** Resolves once every census registered so far is in the engine; null until the engine starts. */
+let censusRegistered: Promise<void> | null = null;
+
+function censusKey(kind: { flowType?: string; documentType?: string }): string {
+  const flowType = kind.flowType?.trim() ?? "";
+  return flowType !== "" ? `flowType:${flowType}` : `documentType:${kind.documentType?.trim() ?? ""}`;
+}
+
+function describeKind(kind: { flowType?: string; documentType?: string }): string {
+  const flowType = kind.flowType?.trim() ?? "";
+  return flowType !== "" ? `flowType '${flowType}'` : `documentType '${kind.documentType?.trim() ?? ""}'`;
+}
+
+/** Hands one census to the engine, recording why when it cannot be. */
+async function sendCensus(source: CensusSource): Promise<void> {
+  try {
+    const json = await source.load();
+    await post<string>({ op: "registerCensus", json });
+    censusProblems.delete(censusKey(source));
+  } catch (error) {
+    censusProblems.set(censusKey(source), error instanceof Error ? error.message : String(error));
+  }
+}
+
+/**
+ * Registers a module's census file for a flow kind or a document kind. Registered before the engine starts, it is
+ * handed over when the engine does; registered after, it is handed over before the next question the engine is asked.
+ */
+export function registerCensus(source: CensusSource): void {
+  const flowType = source.flowType?.trim() ?? "";
+  const documentType = source.documentType?.trim() ?? "";
+  if ((flowType === "") === (documentType === "")) {
+    throw new Error("A census file describes either a flowType or a documentType, and names exactly one of them.");
+  }
+
+  if (censusSources.some((known) => censusKey(known) === censusKey(source))) {
+    throw new Error(`A census for ${describeKind(source)} is registered already.`);
+  }
+
+  censusSources.push(source);
+  if (censusRegistered !== null) {
+    censusRegistered = censusRegistered.then(() => sendCensus(source));
+  }
+}
+
+/** True when a module registered a census for this flow kind or document kind, so the editor can analyse it. */
+export function hasCensus(kind: { flowType?: string; documentType?: string }): boolean {
+  return censusSources.some((source) => censusKey(source) === censusKey(kind));
+}
+
+/** The flow kind or document kind a YAML text declares at its root, when it declares one. */
+function declaredKind(source: string): { flowType?: string; documentType?: string } | null {
+  const flowType = /^flowType:[ \t]*["']?([^"'\s#]+)/m.exec(source)?.[1];
+  if (flowType !== undefined) {
+    return { flowType };
+  }
+
+  const documentType = /^documentType:[ \t]*["']?([^"'\s#]+)/m.exec(source)?.[1];
+  return documentType === undefined ? null : { documentType };
 }
 
 // --- Model opt-in -----------------------------------------------------------
@@ -188,9 +279,21 @@ export function registerSqlflowYamlProviders(monaco: Monaco): void {
 
 /** Recompute and publish diagnostics for a flow model as editor markers. */
 export async function refreshDiagnostics(monaco: Monaco, model: editor.ITextModel): Promise<void> {
-  const diags = await request<DiagnosticResult[]>({ op: "diagnostics", source: model.getValue() });
+  const source = model.getValue();
+  const diags = await request<DiagnosticResult[]>({ op: "diagnostics", source });
   if (model.isDisposed()) {
     return;
+  }
+  // A module census that could not be handed to the engine leaves its documents unanalysed; the marker says why.
+  const kind = declaredKind(source);
+  const problem = kind === null ? undefined : censusProblems.get(censusKey(kind));
+  if (kind !== null && problem !== undefined) {
+    diags.unshift({
+      range: { start: { line: 0, character: 0 }, end: { line: 0, character: 0 } },
+      severity: "warning",
+      message: `The editor could not load the key census for ${describeKind(kind)}, so its keys are not documented or checked here: ${problem}`,
+      code: "census-unavailable",
+    });
   }
   const markers = diags.map((d) => ({
     startLineNumber: d.range.start.line + 1,

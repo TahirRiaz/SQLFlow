@@ -33,6 +33,7 @@ import { formatBytes, formatDurationSeconds } from "../../lib/time";
 import { kindContribution } from "../../modules/registry";
 import { projectOf } from "../repos/project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
+import { hasCensus } from "../../lib/lsp/sqlflowLsp";
 
 /** Definition JSON arrives as one compact string; pretty-print it, falling back to the raw text if malformed. */
 function prettyJson(raw: string): string {
@@ -581,7 +582,7 @@ export default function PipelineDetailPage() {
         ))}
         <TabsContent value="yaml">
           {/* Flow-YAML intelligence knows SQLFlow's own kinds; a module kind's document is not one of them. */}
-          <CodeView value={detail.yaml} language="yaml" height={560} lsp={kind === undefined} data-testid="pipeline-yaml" />
+          <CodeView value={detail.yaml} language="yaml" height={560} lsp={kind === undefined || hasCensus({ flowType: detail.kind })} data-testid="pipeline-yaml" />
         </TabsContent>
         <TabsContent value="transforms">
           <TransformsTab pipelineId={pipelineId} />
