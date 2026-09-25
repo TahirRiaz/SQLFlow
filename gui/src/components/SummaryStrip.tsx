@@ -28,10 +28,19 @@ const toneClasses: Record<NonNullable<SummaryCell["tone"]>, string> = {
  * read against (which version, how many, what is waiting) on one line that costs the height of a toolbar, so the
  * list under it starts above the fold. The cells wrap on a narrow viewport and the hairlines follow them.
  */
-export function SummaryStrip({ cells, "data-testid": testId }: { cells: SummaryCell[]; "data-testid"?: string }) {
+export function SummaryStrip({ cells, minCellWidth = 200, "data-testid": testId }: {
+  cells: SummaryCell[];
+  /**
+   * The narrowest a cell may be, in pixels, before the strip wraps onto a second line. The default suits a strip of
+   * four or five facts; a page with more facts to keep on one line passes a narrower floor its values still fit.
+   */
+  minCellWidth?: number;
+  "data-testid"?: string;
+}) {
   return (
     <Card
-      className="grid gap-px overflow-hidden rounded-lg border bg-border p-0 [grid-template-columns:repeat(auto-fit,minmax(200px,1fr))]"
+      className="grid gap-px overflow-hidden rounded-lg border bg-border p-0"
+      style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${minCellWidth}px, 1fr))` }}
       data-testid={testId}
     >
       {cells.map((cell) => {
