@@ -212,6 +212,52 @@ public sealed class GitHistoryTests
             using var clone = new Repository(third);
             Assert.Contains(clone.Commits.QueryBy(new CommitFilter { IncludeReachableFrom = "origin/master" }),
                 c => c.MessageShort.Trim() == "second");
+
+            // Every reader reads from HEAD (the tree, the log, a comparison), so the fetch brings HEAD there too.
+            Assert.Equal("second", clone.Head.Tip.MessageShort.Trim());
+            Assert.Equal("second", clone.Commits.First().MessageShort.Trim());
+        }
+        finally
+        {
+            DeleteDir(remote);
+            DeleteDir(cache);
+        }
+    }
+
+    [Fact]
+    public void EnsureHistoryClone_FollowsARemoteWhoseHistoryWasReplaced()
+    {
+        var remote = NewTempDir();
+        var cache = NewTempDir();
+        try
+        {
+            Repository.Init(remote);
+            using (var origin = new Repository(remote))
+            {
+                Commit(origin, "old/flow.yaml", "v1", "the old estate", "ada");
+            }
+
+            var materializer = new GitMaterializer(cache);
+            var first = materializer.EnsureHistoryClone(remote, "master", credentials: null, Timeout.InfiniteTimeSpan);
+
+            // The remote is recreated with a history of its own, sharing nothing with the one the clone was made from,
+            // as a fixture repository written afresh is.
+            DeleteDir(remote);
+            Directory.CreateDirectory(remote);
+            Repository.Init(remote);
+            using (var origin = new Repository(remote))
+            {
+                Commit(origin, "new/flow.yaml", "v1", "the new estate", "ada");
+            }
+
+            var fetched = materializer.EnsureHistoryClone(remote, "master", credentials: null, TimeSpan.Zero);
+            Assert.Equal(first, fetched);
+
+            // The clone reads the new history, not the one it was cloned with.
+            using var clone = new Repository(fetched);
+            Assert.Equal("the new estate", clone.Head.Tip.MessageShort.Trim());
+            Assert.NotNull(clone.Head.Tip["new/flow.yaml"]);
+            Assert.Null(clone.Head.Tip["old/flow.yaml"]);
         }
         finally
         {

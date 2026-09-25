@@ -167,7 +167,8 @@ public sealed class GitMaterializer
     /// Ensures a long-lived, read-only clone of <paramref name="remoteUrl"/> exists for HISTORY queries (git log,
     /// diffs, file blame) and returns its working directory. Unlike <see cref="MaterializeBranch"/> this clone is
     /// never torn down: it is created once and brought forward with a fetch when it is older than
-    /// <paramref name="maxAge"/>, so repeated history reads cost a fetch at most and usually nothing at all.
+    /// <paramref name="maxAge"/>, so repeated history reads cost a fetch at most and usually nothing at all. A fetch
+    /// that brings new commits moves HEAD to the fetched tip of the branch, since HEAD is what every reader reads.
     ///
     /// It deliberately occupies its OWN cache directory rather than sharing the sync's branch checkout. The sync
     /// re-clones that path on every pass, which would pull the tree out from under a reader mid-query; keeping the
@@ -224,6 +225,15 @@ public sealed class GitMaterializer
                         Commands.Fetch(
                             repo, origin.Name, origin.FetchRefSpecs.Select(r => r.Specification), fetchOptions,
                             logMessage: null);
+
+                        // A fetch moves only the remote-tracking branch, and every reader of this clone reads from
+                        // HEAD (the tree, the log, a comparison), so HEAD is brought to what was fetched. The clone
+                        // is read-only, so the reset loses nothing, and a remote whose history was rewritten is
+                        // followed rather than read as it was before.
+                        if (repo.Head.TrackedBranch?.Tip is { } fetched && repo.Head.Tip?.Sha != fetched.Sha)
+                        {
+                            repo.Reset(ResetMode.Hard, fetched);
+                        }
                     }
                 }
 
