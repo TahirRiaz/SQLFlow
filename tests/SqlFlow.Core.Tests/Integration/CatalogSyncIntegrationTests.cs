@@ -424,6 +424,61 @@ public sealed class CatalogSyncIntegrationTests : IDisposable
     }
 
     [SkippableFact]
+    public async Task Sync_UnderNoTracking_MovesTheRepoRoot_WhenTheEstateIsSyncedFromAnotherFolder()
+    {
+        var cs = IntegrationDb.Require();
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repo = "cat_root_" + suffix;
+        var repoId = FlowIdentity.FromName(repo);
+        WriteFlow("cat_root_a_" + suffix, "flows/a.flow.yaml");
+        var moved = Path.Combine(Path.GetTempPath(), "sqlflow_catsync_moved_" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(Path.Combine(moved, "flows"));
+        File.Copy(Path.Combine(_dir, "flows", "a.flow.yaml"), Path.Combine(moved, "flows", "a.flow.yaml"));
+        await CatalogDatabase.MigrateAsync(cs);
+
+        static CatalogDbContext NoTracking(string connectionString)
+        {
+            var db = CatalogDatabase.Create(connectionString);
+            db.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+            return db;
+        }
+
+        try
+        {
+            var first = new DateTime(2026, 6, 17, 10, 0, 0, DateTimeKind.Utc);
+            await using (var db = NoTracking(cs))
+            {
+                await new CatalogSync().SyncAsync(db, _dir, repo, "https://example.invalid/first.git", first);
+            }
+
+            // A second sync of the same repository from another folder (a managed clone after a local registration).
+            var second = first.AddHours(1);
+            await using (var db = NoTracking(cs))
+            {
+                await new CatalogSync().SyncAsync(db, moved, repo, "https://example.invalid/second.git", second);
+            }
+
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                var row = await db.Repos.AsNoTracking().SingleAsync(r => r.Id == repoId);
+                Assert.Equal(Path.GetFullPath(moved), row.RootPath);
+                Assert.Equal("https://example.invalid/second.git", row.RemoteUrl);
+                Assert.Equal(second, row.LastSyncUtc);
+                Assert.Equal(first, row.FirstSeenUtc);
+            }
+        }
+        finally
+        {
+            Directory.Delete(moved, recursive: true);
+            await using var db = CatalogDatabase.Create(cs);
+            await db.FlowDependencies.Where(d => d.RepoId == repoId).ExecuteDeleteAsync();
+            await db.LineageEdges.Where(e => e.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
+        }
+    }
+
+    [SkippableFact]
     public async Task Sync_HealsTheDatabaselessTwin_WhenTheIdentityGainsItsDatabase()
     {
         var cs = IntegrationDb.Require();
