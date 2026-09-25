@@ -10,6 +10,7 @@ using SqlFlow.Core.Invoke;
 using SqlFlow.Core.SourceControl;
 using SqlFlow.Core.StoredProcedures;
 using SqlFlow.Execution;
+using SqlFlow.Lineage.Collection;
 using SqlFlow.Orchestration;
 using SqlFlow.Yaml;
 
@@ -69,6 +70,18 @@ internal static class LocalInspectVerbs
         foreach (var file in files)
         {
             var relative = Path.GetRelativePath(root, file);
+            // A library is not a flow: the estate scan reads it on its own terms, so validate does too.
+            if (FlowSetCollector.IsScheduleLibraryFile(file))
+            {
+                results.Add(ValidateScheduleLibrary(file, relative));
+                continue;
+            }
+
+            if (FlowSetCollector.IsSubscriberLibraryFile(file))
+            {
+                continue;
+            }
+
             try
             {
                 // A companion document (a registered kind's mapping, say) validates under its own document type.
@@ -108,6 +121,28 @@ internal static class LocalInspectVerbs
 
         await Task.CompletedTask.ConfigureAwait(false);
         return broken == 0 ? 0 : 1;
+    }
+
+    /// <summary>
+    /// A shared-schedule library, parsed by the loader the estate scan uses. Every warning is an entry the scan would drop,
+    /// leaving the flows that join it without a schedule, so a library with any warning is broken.
+    /// </summary>
+    private static ValidationResult ValidateScheduleLibrary(string file, string relative)
+    {
+        string yaml;
+        try
+        {
+            yaml = File.ReadAllText(file);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new ValidationResult(relative, false, null, null, ex.Message);
+        }
+
+        var library = new YamlScheduleLibraryLoader().Parse(yaml, relative);
+        return library.Warnings.Count > 0
+            ? new ValidationResult(relative, false, null, null, string.Join(" ", library.Warnings))
+            : new ValidationResult(relative, true, "schedules", string.Join(", ", library.Schedules.Select(s => s.Name)), null);
     }
 
     /// <summary>The (kind, name) of a loaded document, mirroring the discriminators single-file validate prints.</summary>

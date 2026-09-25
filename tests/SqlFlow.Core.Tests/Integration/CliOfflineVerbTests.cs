@@ -516,6 +516,48 @@ public sealed class CliOfflineVerbTests : IDisposable
     }
 
     [SkippableFact]
+    public async Task Validate_Folder_ChecksAScheduleLibraryAsALibrary_NotAsAFlow()
+    {
+        RequireCli();
+        var estate = Path.Combine(_dir, "withschedules");
+        Directory.CreateDirectory(estate);
+        File.WriteAllText(Path.Combine(estate, "schedules.yaml"), """
+            schedules:
+              nightly:
+                cron: "0 2 * * *"
+              after-nightly:
+                after: nightly
+            """);
+        File.WriteAllText(Path.Combine(estate, "readers.subscribers.yaml"), "subscribers: []\n");
+
+        var result = await CliBinary.RunAsync(_dll, ["validate", estate], workingDirectory: _dir);
+
+        Assert.True(result.Exit == 0, result.AllOutput);
+        Assert.Contains("OK      schedules.yaml  (schedules 'nightly, after-nightly')", result.StdOut, StringComparison.Ordinal);
+        Assert.DoesNotContain("readers.subscribers.yaml", result.StdOut, StringComparison.Ordinal);
+        Assert.Contains("1 valid, 0 broken of 1", result.StdOut, StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
+    public async Task Validate_Folder_AScheduleLibraryEntryTheScanWouldDrop_IsBroken()
+    {
+        RequireCli();
+        var estate = Path.Combine(_dir, "badschedules");
+        Directory.CreateDirectory(estate);
+        File.WriteAllText(Path.Combine(estate, "team.schedules.yaml"), """
+            schedules:
+              empty:
+                timezone: UTC
+            """);
+
+        var result = await CliBinary.RunAsync(_dll, ["validate", estate], workingDirectory: _dir);
+
+        Assert.Equal(1, result.Exit);
+        Assert.Contains("BROKEN  team.schedules.yaml", result.StdOut, StringComparison.Ordinal);
+        Assert.Contains("schedule 'empty' declares neither a cron, an intervalSeconds, nor an after", result.StdOut, StringComparison.Ordinal);
+    }
+
+    [SkippableFact]
     public async Task Validate_Folder_Json_EmitsTheMachineReadableReport()
     {
         RequireCli();
