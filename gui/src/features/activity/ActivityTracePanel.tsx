@@ -20,6 +20,11 @@ function traceToText(entries: ActivityEvent[]): string {
  * subscribes to its live activity trace for (kind, subject) and renders it through the shared {@link TraceLog}, so
  * it looks identical to the pipeline run trace. Bumping `nonce` restarts the stream (a repeat trigger). Rendered
  * inside the workbench PanelHost via usePanel().
+ *
+ * The stream replays the subject's last few attempts as scrollback before the live one, but the header reports the
+ * newest attempt alone, the way a run's trace reports the run's own status: an earlier failure stays readable above
+ * a later success without turning the panel red. Lines arrive in id order and the stream ends only once the newest
+ * line is terminal, so the last line held is the newest attempt's, and at the end it carries that attempt's outcome.
  */
 export function ActivityTracePanel({
   kind,
@@ -46,7 +51,8 @@ export function ActivityTracePanel({
     [entries],
   );
 
-  const failed = entries.some((e) => e.terminal && e.status === "failed");
+  const latest = entries.length > 0 ? entries[entries.length - 1] : undefined;
+  const failed = latest !== undefined && latest.terminal && latest.status === "failed";
 
   const copy = async () => {
     try {
@@ -63,6 +69,7 @@ export function ActivityTracePanel({
       connected={connected}
       ended={ended}
       failed={failed}
+      currentGroup={latest?.activityId}
       onCopy={copy}
       emptyLive="Waiting for the operation to start…"
       emptyEnded="No trace to show."

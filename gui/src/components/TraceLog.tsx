@@ -277,12 +277,17 @@ function TraceRow({ line, separated }: { line: TraceLine; separated: boolean }) 
  * between groups, and a header carrying Copy trace, Clear (console-style, hides current lines while the stream
  * keeps running), and a live/complete/failed pill. Copy is delegated to the owner (which decides what the whole
  * trace is); Clear is a view-only action.
+ *
+ * `currentGroup` names the group the header reports on. When it is set, the problems count, the problems band and
+ * the problems filter take only that group's lines, so a scrollback of earlier groups (an operation's previous
+ * attempts) stays on screen without its problems being read as the current one's. Unset, every visible line counts.
  */
 export function TraceLog({
   lines,
   connected,
   ended,
   failed,
+  currentGroup,
   onCopy,
   emptyLive = "Waiting for the first line…",
   emptyEnded = "No trace to show.",
@@ -291,6 +296,7 @@ export function TraceLog({
   connected: boolean;
   ended: boolean;
   failed: boolean;
+  currentGroup?: string;
   onCopy: () => void | Promise<void>;
   emptyLive?: string;
   emptyEnded?: string;
@@ -314,8 +320,9 @@ export function TraceLog({
   }, [lines, hiddenUpTo]);
 
   const problems = useMemo(
-    () => visible.filter((l) => l.level === "warning" || l.level === "error" || l.error),
-    [visible],
+    () => visible.filter((l) => (l.level === "warning" || l.level === "error" || l.error)
+      && (currentGroup === undefined || l.groupKey === currentGroup)),
+    [visible, currentGroup],
   );
   const errorCount = useMemo(
     () => problems.filter((l) => l.level === "error" || l.error).length,
