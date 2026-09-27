@@ -138,6 +138,13 @@ export interface FlowKindContribution {
   defaultPipelineTab?: string;
   /** Built-in pipeline tabs that say nothing about this kind (`transforms`, `files`). */
   hiddenPipelineTabs?: readonly string[];
+  /**
+   * Built-in facts of the pipeline header that say nothing about this kind: `sourceServer`, `targetServer`, `batch`,
+   * `wave`. The average file size needs no entry: it profiles the Files tab's history, so it goes with that tab.
+   */
+  hiddenPipelineFacts?: readonly string[];
+  /** Detail pairs the kind adds to the pipeline header, after its source and target: where its flows deliver, say. */
+  pipelineFacts?: (pipeline: PipelineDetail) => ReactNode;
   /** Extra columns on run lists of this kind: the pipeline's Runs tab, and the runs board filtered to the kind. */
   runColumns?: readonly Column<RunSummary>[];
   run?: RunDetailContribution;

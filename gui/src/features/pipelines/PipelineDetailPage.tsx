@@ -369,6 +369,7 @@ export default function PipelineDetailPage() {
   // the kind opens on, the built-in tabs that say nothing about it, and extra run columns.
   const kind = kindContribution(detail.kind);
   const shows = (builtInTab: string) => !(kind?.hiddenPipelineTabs ?? []).includes(builtInTab);
+  const showsFact = (builtInFact: string) => !(kind?.hiddenPipelineFacts ?? []).includes(builtInFact);
   const tabValues = [
     ...(kind?.pipelineTabs ?? []).map((contributed) => contributed.value),
     ...["yaml", "transforms", "runs", "files", "schedules", "definition"].filter(shows),
@@ -539,23 +540,21 @@ export default function PipelineDetailPage() {
           </>
         )}
       >
-        <DetailPair label="Project">
-          <RouterLink
-            to={`/repos/${detail.repoId}`}
-            className="text-primary hover:underline"
-            data-testid="pipeline-project-link"
-          >
-            {projectOf(detail.relativePath)}
-          </RouterLink>
-        </DetailPair>
-        <DetailPair label="Batch">{detail.batch ?? "-"}</DetailPair>
-        <DetailPair label="Wave">{detail.wave === -1 ? "-" : String(detail.wave)}</DetailPair>
-        <DetailPair label="Source server"><ConnectionRef value={detail.sourceServer} copyTestId="copy-pipeline-source" /></DetailPair>
-        <DetailPair label="Target server"><ConnectionRef value={detail.targetServer} copyTestId="copy-pipeline-target" /></DetailPair>
+        {/* The repo chip above is the way to the repository; the project is the folder of it the flow sits in. */}
+        <DetailPair label="Project"><span data-testid="pipeline-project">{projectOf(detail.relativePath)}</span></DetailPair>
+        {showsFact("batch") && <DetailPair label="Batch">{detail.batch ?? "-"}</DetailPair>}
+        {showsFact("wave") && <DetailPair label="Wave">{detail.wave === -1 ? "-" : String(detail.wave)}</DetailPair>}
+        {showsFact("sourceServer") && (
+          <DetailPair label="Source server"><ConnectionRef value={detail.sourceServer} copyTestId="copy-pipeline-source" /></DetailPair>
+        )}
+        {showsFact("targetServer") && (
+          <DetailPair label="Target server"><ConnectionRef value={detail.targetServer} copyTestId="copy-pipeline-target" /></DetailPair>
+        )}
+        {kind?.pipelineFacts?.(detail)}
         <DetailPair label="Path">
           <TruncatedText text={detail.relativePath} mono maxWidth={240} copy copyTestId="copy-pipeline-path" />
         </DetailPair>
-        <DetailPair label="Avg file size"><AvgFileSize pipelineId={pipelineId} /></DetailPair>
+        {shows("files") && <DetailPair label="Avg file size"><AvgFileSize pipelineId={pipelineId} /></DetailPair>}
         <DetailPair label="First seen"><RelativeTime value={detail.firstSeenUtc} absolute /></DetailPair>
         <DetailPair label="Last seen"><RelativeTime value={detail.lastSeenUtc} absolute /></DetailPair>
       </DetailHeaderCard>
