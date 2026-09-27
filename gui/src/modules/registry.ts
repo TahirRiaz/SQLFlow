@@ -12,7 +12,14 @@ import { extendNavigation } from "../layout/nav";
 import { registerCensus, type CensusSource } from "../lib/lsp/sqlflowLsp";
 import { installModuleBranding, type BrandingContribution } from "./branding";
 
-/** A page a module adds, rendered inside the signed-in workbench before the catch-all route. */
+/**
+ * Where a module's page renders: inside the workbench like every page, or in a window of its own, with nothing of the
+ * workbench around it (no activity bar, side bar, tabs or status bar), for a view opened beside the workbench on a
+ * second screen or as a pop-out.
+ */
+export type ModuleRouteFrame = "workbench" | "window";
+
+/** A page a module adds, rendered signed-in before the catch-all route: in the workbench unless it asks for a window. */
 export interface ModuleRoute {
   /** The router path, absolute (`/reports/:reportId`). */
   path: string;
@@ -20,6 +27,11 @@ export interface ModuleRoute {
   component: ComponentType;
   /** A scope the session must hold; without it the route redirects to the dashboard, like the admin pages. */
   requiredScope?: string;
+  /**
+   * Where the page renders; the workbench when absent. A window page holds the whole viewport and lays itself out in it,
+   * and still needs a session: signed out, it goes to the login page like every other.
+   */
+  frame?: ModuleRouteFrame;
 }
 
 /** A navigation group a module adds to the activity bar, side bar and command palette. */
@@ -272,9 +284,9 @@ export function registerModules(modules: readonly GuiModule[]): void {
   registered = { routes, kinds, searchCategories, dashboardTiles };
 }
 
-/** The pages the registered modules add. */
-export function moduleRoutes(): readonly ModuleRoute[] {
-  return (registered ?? NONE).routes;
+/** The pages the registered modules add in one frame: the workbench (the default) or a window of their own. */
+export function moduleRoutes(frame: ModuleRouteFrame = "workbench"): readonly ModuleRoute[] {
+  return (registered ?? NONE).routes.filter((route) => (route.frame ?? "workbench") === frame);
 }
 
 /** What a registered module adds for this flow kind, if any. */
