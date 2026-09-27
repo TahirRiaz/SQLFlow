@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { flowKindIdentity, flowKindToneClasses } from "../../modules/flowKinds";
 import { routeTitle } from "../nav";
 import { useWorkbenchTabs, type WorkbenchTab } from "./TabsContext";
 
@@ -25,6 +26,21 @@ function copyLink(tab: WorkbenchTab): void {
     .writeText(new URL(tab.url, window.location.origin).toString())
     .then(() => toast.success("Link copied"))
     .catch(() => toast.error("Could not copy the link"));
+}
+
+/**
+ * A tab's glyph: the icon of the flow kind its page reported, in the kind's colour, or else its route's icon, quiet.
+ * The kind's colour stays at full strength, so a strip of pipelines of several kinds reads apart at a glance.
+ */
+function TabIcon({ tab }: { tab: WorkbenchTab }) {
+  if (tab.flowKind !== undefined) {
+    const identity = flowKindIdentity(tab.flowKind);
+    const Icon = identity.icon;
+    return <Icon aria-hidden data-kind={tab.flowKind} className={cn("size-3.5 shrink-0", flowKindToneClasses(identity.tone).icon)} />;
+  }
+
+  const { icon: Icon } = routeTitle(tab.path);
+  return <Icon aria-hidden className="size-3.5 shrink-0 opacity-70" />;
 }
 
 /**
@@ -51,7 +67,6 @@ export function TabsBar() {
         className="flex min-w-0 flex-1 items-stretch overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {tabs.map((tab, index) => {
-          const { icon: Icon } = routeTitle(tab.path);
           const isActive = tab.path === activePath;
           const isFirst = index === 0;
           const isLast = index === tabs.length - 1;
@@ -82,7 +97,7 @@ export function TabsBar() {
                   )}
                 >
                   {isActive && <span className="absolute inset-x-0 top-0 h-px bg-primary" />}
-                  <Icon className="size-3.5 shrink-0 opacity-70" />
+                  <TabIcon tab={tab} />
                   <span className="truncate">{tab.title}</span>
                   <button
                     aria-label={`Close ${tab.title}`}
@@ -134,19 +149,16 @@ export function TabsBar() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="max-w-72">
           <DropdownMenuLabel className="text-xs text-muted-foreground">Open pages</DropdownMenuLabel>
-          {tabs.map((tab) => {
-            const { icon: Icon } = routeTitle(tab.path);
-            return (
-              <DropdownMenuItem
-                key={tab.path}
-                onSelect={() => activate(tab)}
-                className={cn("text-xs", tab.path === activePath && "bg-accent/60 text-accent-foreground")}
-              >
-                <Icon className="size-3.5 shrink-0 opacity-70" />
-                <span className="truncate">{tab.title}</span>
-              </DropdownMenuItem>
-            );
-          })}
+          {tabs.map((tab) => (
+            <DropdownMenuItem
+              key={tab.path}
+              onSelect={() => activate(tab)}
+              className={cn("text-xs", tab.path === activePath && "bg-accent/60 text-accent-foreground")}
+            >
+              <TabIcon tab={tab} />
+              <span className="truncate">{tab.title}</span>
+            </DropdownMenuItem>
+          ))}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="text-xs"

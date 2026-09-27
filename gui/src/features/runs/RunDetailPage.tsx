@@ -20,6 +20,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DetailHeaderCard } from "../../components/DetailHeaderCard";
 import { DetailPair } from "../../components/DetailPair";
+import { FlowKindBadge } from "../../components/FlowKindBadge";
 import { IdChip } from "../../components/IdChip";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
@@ -333,7 +334,7 @@ function RunDetailContent({ runId }: { runId: string }) {
                 cancelling
               </Badge>
             )}
-            <Badge variant="outline" data-testid="run-kind">{run.flowKind}</Badge>
+            <FlowKindBadge kind={run.flowKind} testId="run-kind" />
             <Badge variant="outline" data-testid="run-batch">batch: {run.batch}</Badge>
             {run.assertionsOnly && (
               <Badge variant="secondary" className="bg-info/12 text-info" data-testid="run-assertions-only">

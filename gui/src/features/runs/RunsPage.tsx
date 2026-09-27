@@ -14,6 +14,7 @@ import type { RunStatus, RunSummary } from "../../api/types";
 import { pipelineApi, runApi, scheduleApi } from "../../api/endpoints";
 import { activeFilterClass, FilterBar } from "../../components/FilterBar";
 import { FilterCombobox, type FilterOption } from "../../components/FilterCombobox";
+import { FlowKindBadge } from "../../components/FlowKindBadge";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { PagedTable, type Column, type TableGrouping } from "../../components/PagedTable";
@@ -45,7 +46,7 @@ const flowColumn: Column<RunSummary> = {
   header: "Flow",
   render: (row) => <span className="font-mono text-[12px] font-medium">{row.flowName}</span>,
 };
-const kindColumn: Column<RunSummary> = { id: "kind", header: "Kind", render: (row) => row.flowKind };
+const kindColumn: Column<RunSummary> = { id: "kind", header: "Kind", render: (row) => <FlowKindBadge kind={row.flowKind} /> };
 const enqueuedColumn: Column<RunSummary> = {
   id: "enqueued",
   header: "Enqueued",

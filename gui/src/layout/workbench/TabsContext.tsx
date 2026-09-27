@@ -16,6 +16,11 @@ export interface WorkbenchTab {
   /** The full URL (path + search) last seen for this tab, restored on activation. */
   url: string;
   title: string;
+  /**
+   * The flow kind of the pipeline the tab shows, reported by its page through useTabFlowKind, so the tab wears the
+   * kind's icon: two pipelines of different kinds side by side read apart before either is opened again.
+   */
+  flowKind?: string;
 }
 
 interface TabsValue {
@@ -32,6 +37,7 @@ interface TabsValue {
   closeToRight: (path: string) => void;
   closeAll: () => void;
   setTitle: (path: string, title: string) => void;
+  setFlowKind: (path: string, flowKind: string) => void;
 }
 
 const HOME_PATH = "/";
@@ -56,7 +62,8 @@ function loadStoredTabs(): WorkbenchTab[] {
       typeof entry === "object" && entry !== null
       && typeof (entry as WorkbenchTab).path === "string"
       && typeof (entry as WorkbenchTab).url === "string"
-      && typeof (entry as WorkbenchTab).title === "string");
+      && typeof (entry as WorkbenchTab).title === "string"
+      && ((entry as WorkbenchTab).flowKind === undefined || typeof (entry as WorkbenchTab).flowKind === "string"));
   } catch {
     // A corrupt store (manual edit, quota weirdness) just means starting with no restored tabs.
     return [];
@@ -176,6 +183,19 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const setFlowKind = useCallback((path: string, flowKind: string) => {
+    setTabs((current) => {
+      const index = current.findIndex((tab) => tab.path === path);
+      if (index < 0 || current[index].flowKind === flowKind) {
+        return current;
+      }
+
+      const next = [...current];
+      next[index] = { ...next[index], flowKind };
+      return next;
+    });
+  }, []);
+
   const value = useMemo<TabsValue>(() => ({
     tabs,
     activePath: location.pathname,
@@ -186,7 +206,8 @@ export function TabsProvider({ children }: { children: ReactNode }) {
     closeToRight,
     closeAll,
     setTitle,
-  }), [tabs, location.pathname, activate, close, closeOthers, closeToLeft, closeToRight, closeAll, setTitle]);
+    setFlowKind,
+  }), [tabs, location.pathname, activate, close, closeOthers, closeToLeft, closeToRight, closeAll, setTitle, setFlowKind]);
 
   return <TabsContext.Provider value={value}>{children}</TabsContext.Provider>;
 }
@@ -210,4 +231,16 @@ export function useTabTitle(title: string | undefined): void {
       setTitle(pathname, title);
     }
   }, [title, pathname, setTitle]);
+}
+
+/** Reported by a pipeline's page once its data loads, so the tab wears the icon of the pipeline's kind. */
+export function useTabFlowKind(flowKind: string | undefined): void {
+  const { setFlowKind } = useWorkbenchTabs();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (flowKind !== undefined && flowKind !== "") {
+      setFlowKind(pathname, flowKind);
+    }
+  }, [flowKind, pathname, setFlowKind]);
 }

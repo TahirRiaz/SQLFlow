@@ -97,6 +97,24 @@ visible direct labels or an adjacent table view. Chart rules beyond color: one a
 dual-axis); a legend whenever there are 2+ series; hover tooltips on every plot; text in text tokens,
 never in series colors; status colors never appear as series.
 
+### 3.5 Flow kind colors
+
+Every flow kind has a name, a lucide glyph and a tone (`src/modules/flowKinds.ts`; a GUI module gives the kinds it adds
+theirs through `FlowKindContribution.identity`). A tone is a chart slot or the neutral text tone, and SQLFlow's own
+kinds take theirs by what they do with data:
+
+| Tone | Token | Kinds |
+|---|---|---|
+| blue | `chart-1` | bring data in: `file`, `api`, `cpy`, `sftp` |
+| violet | `chart-7` | load and shape tables: `ing`, `sp`, `cal` |
+| orange | `chart-6` | send data out: `exp`, `trl` |
+| neutral | `muted-foreground` | check, register and orchestrate: `hc`, `inv`, `scm`, `sch`, `batch` |
+| magenta | `chart-3` | left for a module's kinds |
+
+Green, yellow and red are never a kind's tone, because they read as a status (3.2), and neither is aqua (slot 5), which
+reads as green on the dark card. The tone colors a glyph, a chip's fill and edge, and a header card's top edge; the
+kind's name stays in the text tokens, so magenta's low contrast on white (3.4) never costs the label.
+
 ## 4. Typography
 
 - Sans: `Inter Variable` (UI text, labels, prose). Mono: `JetBrains Mono Variable` (data).
@@ -232,6 +250,17 @@ surface around the same 14px glyph, with the word on hover and for assistive tec
 configuration state; the default is `outcome`. Features must not hand-roll a status pill: a new state
 goes through `StatePill` so it cannot drift back onto the outcome check mark.
 Testid `status-badge` preserved.
+
+### 7.3.1 Flow kind
+
+A flow's kind is shown the same way wherever a pipeline or a run is (3.5), so two kinds never read as the same page:
+
+- **`FlowKindBadge`**: the kind's glyph in its tone and its name, on a 15% tint of the tone with a 40% edge,
+  `rounded-sm` (square-cornered, so it never reads as an outcome pill or a state ring beside one); the kind's value
+  (`ing`) on hover. Pipeline rows, the runs board's Kind column, a run's header.
+- **`FlowKindTile`**: the glyph at 20px on a 40px tile of the same tint, leading a pipeline's header, with
+  "<name> flow" under the pipeline's name and the card's top edge (3px) in the tone.
+- **Workbench tab**: a pipeline's tab wears its kind's glyph in the tone instead of the route's quiet glyph.
 
 ### 7.4 Dialogs, sheets, and the panel
 

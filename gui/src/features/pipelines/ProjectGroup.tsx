@@ -1,23 +1,28 @@
 import { useState, type FocusEvent } from "react";
-import { ChevronDown, File, FileCode, Folder, FolderOpen, Play } from "lucide-react";
+import { ChevronDown, File, Folder, FolderOpen, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { TreeContext, TreeNode, type TreeState } from "@/components/Tree";
+import { cn } from "@/lib/utils";
 import type { PipelineSummary, RepoTreeEntry } from "../../api/types";
+import { FlowKindBadge } from "../../components/FlowKindBadge";
 import { ActiveBadge } from "../../components/StatusBadge";
 import { formatBytes } from "../../lib/time";
+import { flowKindIdentity, flowKindToneClasses } from "../../modules/flowKinds";
 import { projectOf } from "../repos/project";
 import { baseName, buildFolderTree, type FolderNode } from "./folderTree";
 
 /** Whether a pipeline matches a free-text search over the fields a user eyeballs to find a flow: its name, path,
- * kind, and the project (folder) it groups under. `needle` must already be lower-cased and trimmed. */
+ * kind (its value or the name its chip shows), and the project (folder) it groups under. `needle` must already be
+ * lower-cased and trimmed. */
 export function pipelineMatches(p: PipelineSummary, needle: string): boolean {
   return p.name.toLowerCase().includes(needle)
     || p.relativePath.toLowerCase().includes(needle)
     || p.kind.toLowerCase().includes(needle)
+    || flowKindIdentity(p.kind).label.toLowerCase().includes(needle)
     || projectOf(p.relativePath).toLowerCase().includes(needle);
 }
 
@@ -114,15 +119,18 @@ function FolderLabel({ folder }: { folder: FolderNode }) {
 }
 
 /** A flow row: the name it runs under, its kind, its lineage wave, and whether it is active. The folders above it
- * already say where its file is, so the path is not repeated here. */
+ * already say where its file is, so the path is not repeated here. The row's glyph is its kind's, in the kind's colour,
+ * so a folder of flows reads by kind down its left edge. */
 function PipelineLabel({ pipeline }: { pipeline: PipelineSummary }) {
+  const identity = flowKindIdentity(pipeline.kind);
+  const KindIcon = identity.icon;
   return (
     <>
-      <span className="inline-flex shrink-0 text-muted-foreground">
-        <FileCode className="size-4" />
+      <span className="inline-flex shrink-0">
+        <KindIcon aria-hidden className={cn("size-4", flowKindToneClasses(identity.tone).icon)} />
       </span>
       <span className="min-w-0 flex-1 truncate font-mono text-[12px] font-medium">{pipeline.name}</span>
-      <Badge variant="outline" className="h-[18px] shrink-0 px-1.5 text-[11px]">{pipeline.kind}</Badge>
+      <FlowKindBadge kind={pipeline.kind} testId="repo-pipeline-kind" />
       {pipeline.wave !== -1 && (
         <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">wave {pipeline.wave}</span>
       )}

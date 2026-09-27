@@ -16,6 +16,7 @@ import { CorrelationError } from "../../components/CorrelationError";
 import { DataTable } from "../../components/DataTable";
 import { DetailHeaderCard } from "../../components/DetailHeaderCard";
 import { DetailPair } from "../../components/DetailPair";
+import { FlowKindBadge } from "../../components/FlowKindBadge";
 import { IdChip } from "../../components/IdChip";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
@@ -36,7 +37,7 @@ const memberColumns: Column<RunSummary>[] = [
     header: "Flow",
     render: (row) => <span className="font-mono text-[12px] font-medium">{row.flowName}</span>,
   },
-  { id: "kind", header: "Kind", render: (row) => row.flowKind },
+  { id: "kind", header: "Kind", render: (row) => <FlowKindBadge kind={row.flowKind} /> },
   { id: "batch", header: "Batch", render: (row) => row.batch },
   {
     id: "step",

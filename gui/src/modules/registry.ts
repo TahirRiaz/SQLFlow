@@ -130,9 +130,33 @@ export interface TriggerContribution {
   Fields: ComponentType<TriggerFieldsProps>;
 }
 
+/**
+ * The colour a flow kind wears, a slot of the validated chart palette (DESIGN.md 3.4) or the neutral text tone. SQLFlow's
+ * own kinds take theirs by what they do with data: blue brings it in, violet loads and shapes tables, orange sends it
+ * out, and neutral checks and orchestrates (DESIGN.md 3.5). Magenta is left for a module's kinds, which may take any of
+ * the others too, so that the kinds one estate chains read apart. Green, yellow and red are not offered, because they
+ * read as a status (DESIGN.md 3.2), and neither is aqua, which on the dark theme reads as green.
+ */
+export type FlowKindTone = "blue" | "violet" | "orange" | "magenta" | "neutral";
+
+export const FLOW_KIND_TONES: readonly FlowKindTone[] = ["blue", "violet", "orange", "magenta", "neutral"];
+
+/** How a flow kind is shown wherever a pipeline or run of it is. */
+export interface FlowKindIdentity {
+  /** The kind's name, short enough for a chip in a table row: "Ingestion", "Health check". */
+  label: string;
+  icon: LucideIcon;
+  tone: FlowKindTone;
+}
+
 /** Everything a module adds for one flow kind (a `flowType` the control plane registers). */
 export interface FlowKindContribution {
   kind: string;
+  /**
+   * How the kind is shown wherever a pipeline or run of it is: its name, icon and colour (flowKinds.ts describes
+   * SQLFlow's own kinds the same way). Without it the kind is shown by its value with a neutral icon.
+   */
+  identity?: FlowKindIdentity;
   pipelineTabs?: readonly PipelineTabContribution[];
   /** The tab a pipeline of this kind opens on when the URL names none; the YAML tab otherwise. */
   defaultPipelineTab?: string;
@@ -249,6 +273,19 @@ export function registerModules(modules: readonly GuiModule[]): void {
 
     for (const kind of module.kinds ?? []) {
       claim(kindOwners, kind.kind, module.id, "the flow kind");
+      if (kind.identity !== undefined) {
+        if (kind.identity.label.trim() === "") {
+          throw new Error(`GUI module '${module.id}' names the flow kind '${kind.kind}' with a blank label.`);
+        }
+
+        if (!FLOW_KIND_TONES.includes(kind.identity.tone)) {
+          throw new Error(
+            `GUI module '${module.id}' gives the flow kind '${kind.kind}' the tone '${String(kind.identity.tone)}'; `
+            + `the tones are ${FLOW_KIND_TONES.join(", ")}.`,
+          );
+        }
+      }
+
       const tabValues = new Set<string>();
       for (const tab of kind.pipelineTabs ?? []) {
         if (tabValues.has(tab.value)) {

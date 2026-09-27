@@ -21,15 +21,17 @@ import { DetailHeaderCard } from "../../components/DetailHeaderCard";
 import { IdChip } from "../../components/IdChip";
 import { DetailPair } from "../../components/DetailPair";
 import { EmptyState } from "../../components/EmptyState";
+import { FlowKindTile } from "../../components/FlowKindBadge";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
 import { ActiveBadge, RunStatusBadge, ScheduleStateBadge } from "../../components/StatusBadge";
 import { TruncatedText } from "../../components/TruncatedText";
-import { useTabTitle } from "../../layout/workbench/TabsContext";
+import { useTabFlowKind, useTabTitle } from "../../layout/workbench/TabsContext";
 import { embeddedHealthCheckName } from "../../lib/definition";
 import { formatBytes, formatDurationSeconds } from "../../lib/time";
+import { flowKindIdentity, flowKindToneClasses } from "../../modules/flowKinds";
 import { kindContribution } from "../../modules/registry";
 import { projectOf } from "../repos/project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
@@ -307,8 +309,10 @@ export default function PipelineDetailPage() {
     enabled: pipelineId !== "",
   });
 
-  // The workbench tab reads the pipeline's name once it is known, instead of the generic route title.
+  // The workbench tab reads the pipeline's name once it is known, instead of the generic route title, and wears the
+  // icon of its kind.
   useTabTitle(detailQuery.data?.name);
+  useTabFlowKind(detailQuery.data?.kind);
 
   // The one-click on-demand executions next to the general trigger dialog: "Run assertions" (ingestion flows;
   // evaluates the flow's declared assertions, manual-mode ones included, against the current target and loads
@@ -368,6 +372,9 @@ export default function PipelineDetailPage() {
   // What a GUI module adds for this pipeline's kind: tabs of its own ahead of the built-in ones, the tab a pipeline of
   // the kind opens on, the built-in tabs that say nothing about it, and extra run columns.
   const kind = kindContribution(detail.kind);
+  // What kind of flow this is leads the header: its glyph, its name under the pipeline's, and the card's top edge in its
+  // colour, so two flows of different kinds open side by side never read as the same page.
+  const identity = flowKindIdentity(detail.kind);
   const shows = (builtInTab: string) => !(kind?.hiddenPipelineTabs ?? []).includes(builtInTab);
   const showsFact = (builtInFact: string) => !(kind?.hiddenPipelineFacts ?? []).includes(builtInFact);
   const tabValues = [
@@ -394,9 +401,11 @@ export default function PipelineDetailPage() {
     <Page data-testid="page-pipeline-detail">
       <DetailHeaderCard
         title={detail.name}
+        leading={<FlowKindTile kind={detail.kind} testId="pipeline-kind" />}
+        subtitle={<span data-testid="pipeline-kind-label">{identity.label} flow</span>}
+        edgeClassName={flowKindToneClasses(identity.tone).edge}
         badges={(
           <>
-            <Badge variant="outline">{detail.kind}</Badge>
             <ActiveBadge active={detail.active} />
             {detail.executionMode === "manual" && (
               <Tooltip>
