@@ -646,6 +646,7 @@ export function TriggerRunDialog({
                   <KindFields
                     key={`${fieldsKey}:${selectedKind}`}
                     flowKind={selectedKind}
+                    pipelineId={effectiveFlowId}
                     operation={effectiveOperation}
                     initialValues={initialValues ?? NO_VALUES}
                     initialPayload={initialPayload ?? null}

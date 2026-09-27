@@ -115,6 +115,12 @@ export interface TriggerBodyContribution {
 /** The props the trigger dialog gives a kind's fields. */
 export interface TriggerFieldsProps {
   flowKind: string;
+  /**
+   * The pipeline the run is launched for, when the dialog knows it: the flow the launching context passed, or the one picked
+   * and resolved from the repository's pipelines. Null while no single flow is resolved. Fields that offer choices the flow
+   * itself declares read them through it, so an operator picks from what the flow allows instead of typing it.
+   */
+  pipelineId: string | null;
   /** The operation picked in the dialog, from the kinds the control plane registers; null when it offers none. */
   operation: string | null;
   /** The values of the run being repeated, or of the launching context; empty for a fresh launch. */
