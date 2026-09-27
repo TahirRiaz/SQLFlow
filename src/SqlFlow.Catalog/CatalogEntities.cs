@@ -325,8 +325,9 @@ public class CatalogRun
     /// null. Recorded on the run so the history says exactly what was asked.</summary>
     public string? Payload { get; set; }
 
-    /// <summary>Who asked for the run: the caller's subject for a trigger through the API, null for a schedule fire, a
-    /// run recorded from its artifact, and every run enqueued before this column existed.</summary>
+    /// <summary>Who asked for the run: the caller's subject for a trigger through the API or a schedule's run-now, the
+    /// schedule (<c>schedule:&lt;name&gt;</c>, see <see cref="SqlFlow.Core.Runs.RunActors"/>) for a fire of its own; null
+    /// for a run recorded from its artifact and every run enqueued before either was recorded.</summary>
     public string? RequestedBy { get; set; }
 
     /// <summary>The run this run is a fan-out member of: a running run of the same flow that spread part of its work

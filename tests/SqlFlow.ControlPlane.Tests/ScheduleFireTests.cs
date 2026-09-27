@@ -221,6 +221,67 @@ public sealed class ScheduleFireTests
         }
     }
 
+    [SkippableFact]
+    public async Task Fire_OnItsOwn_RecordsTheScheduleAsWhoAsked_OnEveryRun()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+        string solo = $"a_{suffix}", first = $"b_{suffix}", second = $"c_{suffix}";
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await SeedPipelineAsync(db, repoId, solo, wave: 0, batch: "one");
+            await SeedPipelineAsync(db, repoId, first, wave: 0, batch: "two");
+            await SeedPipelineAsync(db, repoId, second, wave: 1, batch: "two");
+
+            // A single run and a group both name the schedule, so what their runs do is attributed to it, not to nobody.
+            var single = await SeedScheduleAsync(db, repoId, $"hourly_{suffix}", [solo]);
+            var group = await SeedScheduleAsync(db, repoId, $"nightly_{suffix}", [first, second]);
+            await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), single, DateTime.UtcNow, default);
+            await ScheduleFire.EnqueueAsync(db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), group, DateTime.UtcNow, default);
+
+            var runs = await db.Runs.AsNoTracking().Where(r => r.RepoId == repoId).ToListAsync();
+            Assert.Equal($"schedule:hourly_{suffix}", runs.Single(r => r.FlowName == solo).RequestedBy);
+            Assert.All(runs.Where(r => r.FlowName != solo), r => Assert.Equal($"schedule:nightly_{suffix}", r.RequestedBy));
+            Assert.All(runs, r => Assert.Equal(RunTriggerSources.Schedule, r.TriggerSource));
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task Fire_RunNowByAPerson_RecordsThePerson()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+        var solo = $"a_{suffix}";
+
+        try
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await SeedPipelineAsync(db, repoId, solo, wave: 0, batch: "one");
+            var schedule = await SeedScheduleAsync(db, repoId, $"hourly_{suffix}", [solo]);
+
+            // A run-now is a person asking: the run names them, while its trigger source still says a schedule fired it.
+            await ScheduleFire.EnqueueAsync(
+                db, new RecordingDispatcher(), SqlFlow.Yaml.YamlDocumentLoader.CreateDefault(), schedule, DateTime.UtcNow, default,
+                requestedBy: "  alice  ");
+
+            var run = Assert.Single(await db.Runs.AsNoTracking().Where(r => r.RepoId == repoId).ToListAsync());
+            Assert.Equal("alice", run.RequestedBy);
+            Assert.Equal(RunTriggerSources.Schedule, run.TriggerSource);
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
     /// <summary>A dispatcher that enqueues through the real store (so the rows, group and waves are genuine) without
     /// the control plane's in-process signalling, which needs a hosted worker.</summary>
     private sealed class RecordingDispatcher : IRunDispatcher

@@ -56,11 +56,14 @@ public static class ScheduleFire
     /// <remarks>The loader passed in knows the registered flow kinds: a schedule's operation and values reach the members
     /// of a registered kind that declares the operation (or every member of a registered kind when the schedule names
     /// none), each member's kind validates them, and a refusal fails the fire with a
-    /// <see cref="SqlFlow.Core.SqlFlowException"/> instead of quietly running the member as defined.</remarks>
+    /// <see cref="SqlFlow.Core.SqlFlowException"/> instead of quietly running the member as defined.
+    /// <para><paramref name="requestedBy"/> is the person who asked for a run-now fire; every run of the fire records
+    /// them as the one that asked for it. Null (every automatic fire) records the schedule itself
+    /// (<see cref="RunActors.Schedule"/>), so what the runs do is attributed to it rather than to nobody.</para></remarks>
     public static async Task<FireResult> EnqueueAsync(
         CatalogDbContext catalog, IRunDispatcher dispatcher, YamlDocumentLoader documents, CatalogSchedule schedule,
         DateTime nowUtc, CancellationToken ct, IReadOnlyCollection<string>? batchFilter = null,
-        RunParameters? backfillWindow = null)
+        RunParameters? backfillWindow = null, string? requestedBy = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -84,6 +87,7 @@ public static class ScheduleFire
             ? null
             : BuildBackfillParameters(expansion.Members, backfillWindow);
         memberParameters = ApplyKindArguments(documents, schedule, expansion.Members, memberParameters);
+        var actor = string.IsNullOrWhiteSpace(requestedBy) ? RunActors.Schedule(schedule.Name, schedule.Id) : requestedBy.Trim();
 
         // A single member is a single run: enqueuing a one-member group would add a group's bookkeeping and its
         // claim gate for nothing.
@@ -98,7 +102,7 @@ public static class ScheduleFire
                     // Recorded on the run so monitoring can tell an automatic execution from one a person
                     // asked for. Nothing else on the row distinguishes them: a manual trigger takes this same
                     // path with the same shape.
-                    TriggerSource: RunTriggerSources.Schedule, TriggerScheduleId: schedule.Id),
+                    TriggerSource: RunTriggerSources.Schedule, TriggerScheduleId: schedule.Id, RequestedBy: actor),
                 ct).ConfigureAwait(false);
             await ScheduleStore.SetLastRunAsync(catalog, schedule.Id, runId, nowUtc, ct).ConfigureAwait(false);
             return new FireResult(Outcome.Enqueued, runId, null, 1);
@@ -113,7 +117,7 @@ public static class ScheduleFire
             new RunGroupEnqueueRequest(
                 schedule.RepoId, RunGroupModes.Batch, expansion.Anchor, expansion.Members,
                 MemberParameters: memberParameters, MaxConcurrency: schedule.MaxConcurrency,
-                TriggerSource: RunTriggerSources.Schedule, TriggerScheduleId: schedule.Id),
+                TriggerSource: RunTriggerSources.Schedule, TriggerScheduleId: schedule.Id, RequestedBy: actor),
             ct).ConfigureAwait(false);
 
         var firstRunId = result.RunIds.Count > 0 ? result.RunIds[0] : Guid.Empty;

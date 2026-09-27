@@ -69,8 +69,10 @@ public sealed record DocumentExecutionOptions
     /// at completion, so the artifact stays authoritative either way.</summary>
     public IFlowEventSink? EventSink { get; init; }
 
-    /// <summary>Who asked for this run, as the catalog recorded it (the caller's subject for a trigger), so an executor
-    /// can attribute what the run does to a person. Null for a schedule fire, a batch member and a direct CLI run.</summary>
+    /// <summary>Who asked for this run, so an executor can attribute what the run does: as the catalog recorded it for a
+    /// node run (the caller's subject for a trigger, <c>schedule:&lt;name&gt;</c> for a schedule's fire), and the local
+    /// account (<see cref="RunActors.LocalAccount"/>) for a direct CLI run and its batch members. Null only for a run
+    /// enqueued before its requester was recorded.</summary>
     public string? Actor { get; init; }
 
     /// <summary>Spreads part of the run's work across member runs of the same flow executing beside it (see

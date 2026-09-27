@@ -80,8 +80,8 @@ public sealed record NodePollRequest(
 /// (a commit pin, and the content hash of the snapshotted YAML the node fetches through the protocol), the run's
 /// substitution parameters, and the reference (never the value) of the git credential a pinned run may need.
 /// Fields that describe rows which may have left the catalog since the enqueue are nullable, and the node reports
-/// the precise reason when one is missing. <see cref="RequestedBy"/> is who asked for the run (the caller's subject),
-/// null for a schedule fire and for runs enqueued before it was recorded.</summary>
+/// the precise reason when one is missing. <see cref="RequestedBy"/> is who asked for the run (the caller's subject,
+/// or <c>schedule:&lt;name&gt;</c> for a schedule's own fire), null for runs enqueued before it was recorded.</summary>
 public sealed record RunSpec(
     Guid? RepoId,
     Guid PipelineId,

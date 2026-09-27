@@ -1,4 +1,5 @@
 using System.Linq.Expressions;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -379,7 +380,7 @@ public static class ScheduleEndpoints
     private static async Task<Results<Accepted<ScheduleRunAccepted>, ProblemHttpResult>> RunScheduleAsync(
         Guid id, [FromQuery] string[]? batch, DateTime? from, DateTime? to, bool? chain,
         CatalogDbContext db, IRunDispatcher dispatcher, SqlFlow.Yaml.YamlDocumentLoader documents, TimeProvider clock,
-        CancellationToken ct)
+        ClaimsPrincipal user, CancellationToken ct)
     {
         var schedule = await db.Schedules.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id, ct).ConfigureAwait(false);
         if (schedule is null)
@@ -414,7 +415,7 @@ public static class ScheduleEndpoints
         try
         {
             fire = await ScheduleFire
-                .EnqueueAsync(db, dispatcher, documents, schedule, now, ct, filter, backfillWindow).ConfigureAwait(false);
+                .EnqueueAsync(db, dispatcher, documents, schedule, now, ct, filter, backfillWindow, RequestActor.Of(user)).ConfigureAwait(false);
         }
         catch (SqlFlow.Core.SqlFlowException ex)
         {

@@ -23,8 +23,8 @@ namespace SqlFlow.Catalog;
 /// client asking; the scheduler passes <see cref="RunTriggerSources.Schedule"/> and its schedule id. It is
 /// recorded rather than inferred because nothing else on the row distinguishes the two: a schedule fire and a
 /// GUI Run button take this same path and produce otherwise identical rows.</para>
-/// <para><c>RequestedBy</c> is who asked (the caller's subject), recorded on the run and handed to the executor so what
-/// the run does can be attributed to a person; null for a schedule fire.</para>
+/// <para><c>RequestedBy</c> is who asked (the caller's subject, or <c>schedule:&lt;name&gt;</c> for a schedule's own
+/// fire), recorded on the run and handed to the executor so what the run does is attributed to whoever started it.</para>
 public sealed record RunEnqueueRequest(
     Guid RepoId, string FlowName, string FlowKind, string? TargetPool = null, string? CommitSha = null,
     RunParameters? Parameters = null, string TriggerSource = RunTriggerSources.Manual,

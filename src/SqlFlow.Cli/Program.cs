@@ -354,6 +354,8 @@ internal static class Program
                         Echo = json ? null : Console.WriteLine,
                         Parameters = parameters,
                         FlowName = selectedFlow,
+                        // What the run does is attributed to the account running the CLI, as a trigger's is to its caller.
+                        Actor = RunActors.LocalAccount(),
                     };
 
                     DocumentExecutionResult exec;
@@ -2928,6 +2930,8 @@ internal static class Program
             Echo = null,
             // The backfill parameters apply to EVERY member: a batch backfill is one command, not N YAML edits.
             Parameters = parameters,
+            // Every member's work is attributed to the account running the CLI.
+            Actor = RunActors.LocalAccount(),
         };
 
         BatchRunResult result;
