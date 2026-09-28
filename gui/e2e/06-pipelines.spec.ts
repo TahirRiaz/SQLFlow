@@ -59,6 +59,35 @@ test.describe.serial("pipelines", () => {
     await adminPage.getByTestId("filter-name").fill("");
   });
 
+  test("a kind filter opens the tree onto its matches, whatever was folded before", async ({ adminPage }) => {
+    await adminPage.getByTestId("nav-pipelines").click();
+    await expect(adminPage.getByTestId("page-pipelines")).toBeVisible();
+    await adminPage.getByRole("combobox", { name: "Repo" }).click();
+    await adminPage.getByRole("option", { name: "e2e-repo" }).click();
+    const pickKind = async (kind: string) => {
+      await adminPage.getByTestId("filter-kind").click();
+      await adminPage.getByRole("option", { name: kind, exact: true }).click();
+      await expect(adminPage.getByTestId("filter-kind")).toHaveText(kind);
+    };
+
+    // The fixture flow is a file flow: picking its kind shows it with no folder opened by hand.
+    await pickKind("file");
+    const row = adminPage.getByTestId("repo-pipeline").filter({ hasText: "Csv_Basic" }).first();
+    await expect(row).toBeVisible({ timeout: 15_000 });
+
+    // A fold made under one choice of filters is not carried into the next: the repo alone lists its projects folded,
+    // and picking the kind again opens the tree onto the flow once more.
+    const rootProject = adminPage.getByTestId("repo-project").filter({ hasText: "(root)" });
+    await rootProject.getByText("(root)").click();
+    await expect(row).toBeHidden();
+    await pickKind("all kinds");
+    await expect(rootProject).toBeVisible({ timeout: 15_000 });
+    await expect(row).toBeHidden();
+    await pickKind("file");
+    await expect(row).toBeVisible({ timeout: 15_000 });
+    await pickKind("all kinds");
+  });
+
   test("pipeline detail shows YAML, definition, runs, and schedules tabs", async ({ adminPage }) => {
     await adminPage.getByTestId("nav-pipelines").click();
     // The folder tree starts collapsed; a search expands it and surfaces the flow row.

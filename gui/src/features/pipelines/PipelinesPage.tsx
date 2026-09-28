@@ -47,9 +47,9 @@ function RepoGroup({
 }) {
   const inactive = pipelines.filter((p) => !p.active).length;
   return (
-    // Collapsed by default so the page reads as a repo outline; keying on the search state remounts the section so it
-    // springs open when a search starts (surfacing a match inside) and folds shut again when the search clears.
-    <Collapsible key={`${repoId}:${filtered ? "filtered" : "all"}`} defaultOpen={filtered}>
+    // Collapsed by default so the page reads as a repo outline, and open under a narrowing filter so its matches show.
+    // The tree keys the section on the filters, so it re-derives its state whenever they change.
+    <Collapsible defaultOpen={filtered}>
       <div className="flex flex-col gap-2" data-testid="pipelines-repo">
         <CollapsibleTrigger className="group flex min-w-0 items-center gap-2 text-left">
           <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-120 group-data-[state=closed]:-rotate-90" />
@@ -123,6 +123,13 @@ export default function PipelinesPage() {
   });
 
   const needle = search.trim().toLowerCase();
+  // A kind, an active state or a search picks pipelines out of the tree, so it opens onto them: the reader asked for those
+  // flows, not for an outline to dig them out of. The repo alone only scopes the tree to one repo's project outline.
+  const narrowed = needle !== "" || kindFilter !== "" || activeFilter !== "";
+  // What the tree's expansion is derived from. Each change remounts the groups, so a folder opened or closed under the
+  // previous filters never hides a match of the new ones. The search text itself is left out, so typing does not undo
+  // a fold made while the search runs.
+  const view = JSON.stringify([repoFilter, kindFilter, activeFilter, needle !== ""]);
 
   return (
     <Page data-testid="page-pipelines">
@@ -184,6 +191,8 @@ export default function PipelinesPage() {
       <PipelinesTree
         query={query}
         needle={needle}
+        narrowed={narrowed}
+        view={view}
         singleRepo={repoFilter !== ""}
         repoNameById={repoNameById}
         onOpen={(id) => navigate(`/pipelines/${id}`)}
@@ -203,12 +212,15 @@ export default function PipelinesPage() {
 }
 
 /** Renders the fetched pipelines as the grouped tree, plus the load/error/empty/no-match states and the fetch-cap
- * note. Split out so the page component stays about filters and wiring. */
+ * note. Split out so the page component stays about filters and wiring. `narrowed` opens every group and folder onto
+ * the matches; `view` keys the groups so each filter change starts their expansion afresh. */
 function PipelinesTree({
-  query, needle, singleRepo, repoNameById, onOpen, onRunBatch,
+  query, needle, narrowed, view, singleRepo, repoNameById, onOpen, onRunBatch,
 }: {
   query: UseQueryResult<FetchResult>;
   needle: string;
+  narrowed: boolean;
+  view: string;
   singleRepo: boolean;
   repoNameById: Map<string, string>;
   onOpen: (pipelineId: string) => void;
@@ -264,12 +276,12 @@ function PipelinesTree({
         {cappedNote}
         {groupByProject(matches).map(([project, rows]) => (
           <ProjectGroup
-            key={project}
+            key={`${view}:${project}`}
             project={project}
             rows={rows}
             repoId={rows[0].repoId}
-            filtered={needle !== ""}
-            defaultOpen={needle !== ""}
+            filtered={narrowed}
+            defaultOpen={narrowed}
             onOpen={onOpen}
             onRunBatch={onRunBatch}
           />
@@ -297,11 +309,11 @@ function PipelinesTree({
       {cappedNote}
       {repoGroups.map(({ repoId, name, pipelines }) => (
         <RepoGroup
-          key={repoId}
+          key={`${view}:${repoId}`}
           repoId={repoId}
           repoName={name}
           pipelines={pipelines}
-          filtered={needle !== ""}
+          filtered={narrowed}
           onOpen={onOpen}
           onRunBatch={onRunBatch}
         />
