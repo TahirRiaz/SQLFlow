@@ -32,6 +32,15 @@ public static class RepoTreeEndpoints
     /// clipping is reported rather than silent.</summary>
     private const int MaxEntries = 20_000;
 
+    /// <summary>The names that exist only to instruct git: its metadata folder (a file in a worktree or a submodule
+    /// checkout), its ignore, attribute and submodule lists, and the placeholder that keeps an empty folder tracked.
+    /// They are machinery rather than repository content, so neither walk lists them, at any depth. Other dot-named
+    /// entries (an editor config, a CI folder) are content the repository chose to hold and stay listed.</summary>
+    private static readonly HashSet<string> GitMachinery = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".git", ".gitignore", ".gitattributes", ".gitmodules", ".gitkeep",
+    };
+
     public static RouteGroupBuilder MapRepoTreeEndpoints(this RouteGroupBuilder group)
     {
         ArgumentNullException.ThrowIfNull(group);
@@ -103,13 +112,7 @@ public static class RepoTreeEndpoints
                     var workingDir = new GitMaterializer()
                         .EnsureHistoryClone(source.RemoteUrl, source.Branch, credentials, TreeFreshness, ct);
                     using var repository = new Repository(workingDir);
-                    var found = new List<RepoTreeEntryDto>();
-                    if (repository.Head.Tip is { } tip)
-                    {
-                        Walk(tip.Tree, prefix: string.Empty, found, ct);
-                    }
-
-                    return found;
+                    return ReadBranchTip(repository, ct);
                 },
                 ct).ConfigureAwait(false);
 
@@ -121,9 +124,21 @@ public static class RepoTreeEndpoints
         }
     }
 
+    /// <summary>Every folder and file at the checked-out branch's tip, unsorted; an unborn branch holds nothing.</summary>
+    internal static List<RepoTreeEntryDto> ReadBranchTip(Repository repository, CancellationToken ct)
+    {
+        var found = new List<RepoTreeEntryDto>();
+        if (repository.Head.Tip is { } tip)
+        {
+            Walk(tip.Tree, prefix: string.Empty, found, ct);
+        }
+
+        return found;
+    }
+
     /// <summary>Depth-first walk of a commit's tree, emitting a folder before its contents so the outline can be
     /// rebuilt from the paths alone. Stops at <see cref="MaxEntries"/>; submodules (git links) are not entered, since
-    /// their contents belong to another repository.</summary>
+    /// their contents belong to another repository, and git's own files (<see cref="GitMachinery"/>) are left out.</summary>
     private static void Walk(Tree tree, string prefix, List<RepoTreeEntryDto> into, CancellationToken ct)
     {
         foreach (var entry in tree)
@@ -134,6 +149,11 @@ public static class RepoTreeEndpoints
             }
 
             ct.ThrowIfCancellationRequested();
+            if (GitMachinery.Contains(entry.Name))
+            {
+                continue;
+            }
+
             var path = prefix.Length == 0 ? entry.Name : $"{prefix}/{entry.Name}";
             switch (entry.TargetType)
             {
@@ -151,7 +171,7 @@ public static class RepoTreeEndpoints
     }
 
     /// <summary>The same listing for a repo synced from a local path: the working tree on disk, minus git's own
-    /// metadata folder, which is machinery rather than repository content.</summary>
+    /// files (<see cref="GitMachinery"/>), which are machinery rather than repository content.</summary>
     private static List<RepoTreeEntryDto> ReadFromDisk(string rootPath, CancellationToken ct)
     {
         var found = new List<RepoTreeEntryDto>();
@@ -181,12 +201,12 @@ public static class RepoTreeEndpoints
                     break;
                 }
 
-                var isFolder = Directory.Exists(child);
-                if (isFolder && string.Equals(Path.GetFileName(child), ".git", StringComparison.OrdinalIgnoreCase))
+                if (GitMachinery.Contains(Path.GetFileName(child)))
                 {
                     continue;
                 }
 
+                var isFolder = Directory.Exists(child);
                 var relative = Path.GetRelativePath(rootPath, child).Replace('\\', '/');
                 if (isFolder)
                 {

@@ -266,6 +266,40 @@ public sealed class GitHistoryTests
         }
     }
 
+    [Fact]
+    public void RepoTree_AtTheBranchTip_LeavesOutGitsOwnFiles()
+    {
+        var dir = NewTempDir();
+        try
+        {
+            Repository.Init(dir);
+            using var repo = new Repository(dir);
+            Commit(repo, ".gitignore", "bin/\n", "ignore", "ada");
+            Commit(repo, ".gitattributes", "* text=auto\n", "attributes", "ada");
+            Commit(repo, "recall/.gitignore", "*.tmp\n", "nested ignore", "ada");
+            Commit(repo, "recall/empty/.gitkeep", string.Empty, "keep", "ada");
+            Commit(repo, "recall/wells.yaml", "name: wells\n", "flow", "ada");
+            Commit(repo, ".editorconfig", "root = true\n", "editor", "ada");
+
+            var paths = RepoTreeEndpoints.ReadBranchTip(repo, CancellationToken.None).Select(e => e.Path).ToList();
+
+            // A repository whose root holds only a .gitignore must not grow a root project out of it.
+            Assert.DoesNotContain(".gitignore", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain(".gitattributes", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain("recall/.gitignore", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain("recall/empty/.gitkeep", paths, StringComparer.Ordinal);
+
+            // The folder a .gitkeep held open is still part of the outline; the placeholder is what goes.
+            Assert.Contains("recall/empty", paths, StringComparer.Ordinal);
+            Assert.Contains("recall/wells.yaml", paths, StringComparer.Ordinal);
+            Assert.Contains(".editorconfig", paths, StringComparer.Ordinal);
+        }
+        finally
+        {
+            DeleteDir(dir);
+        }
+    }
+
     // ---- The window comparison (the schema page's before/after drill-down) --------------------------------
 
     /// <summary>One table's snapshot path, in the layout an scm flow commits.</summary>

@@ -13,9 +13,9 @@ namespace SqlFlow.ControlPlane.Tests;
 /// The repository content listing (<c>GET /repos/{id}/tree</c>), which is what makes the repo view show the folders a
 /// repository actually holds rather than only the folders the catalog imported a flow from. Exercised over the
 /// local-path read: the test lays out a working tree on disk (a folder of flows, a folder of SQL with no flow in it,
-/// a root file, and git's own metadata folder), seeds a repo pointing at it, and asserts the listing carries every
-/// folder including the one with no pipelines, skips <c>.git</c>, and reports paths forward-slashed and repo-relative.
-/// The git-backed read shares this walk's output shape and is covered by the history clone tests.
+/// a root file, and git's own metadata folder and control files), seeds a repo pointing at it, and asserts the listing
+/// carries every folder including the one with no pipelines, skips git's own files, and reports paths forward-slashed
+/// and repo-relative. The git-backed read shares this walk's output shape and is covered by the history clone tests.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class RepoTreeApiTests
@@ -39,6 +39,11 @@ public sealed class RepoTreeApiTests
         await File.WriteAllTextAsync(Path.Combine(root, "sql", "views", "compat_views.sql"), "create view v as select 1 as x;\n");
         await File.WriteAllTextAsync(Path.Combine(root, "README.md"), "# repo\n");
         await File.WriteAllTextAsync(Path.Combine(root, ".git", "config"), "[core]\n");
+        await File.WriteAllTextAsync(Path.Combine(root, ".gitignore"), "bin/\n");
+        await File.WriteAllTextAsync(Path.Combine(root, ".gitattributes"), "* text=auto\n");
+        await File.WriteAllTextAsync(Path.Combine(root, "sales", ".gitignore"), "*.tmp\n");
+        await File.WriteAllTextAsync(Path.Combine(root, "sql", "views", ".gitkeep"), string.Empty);
+        await File.WriteAllTextAsync(Path.Combine(root, ".editorconfig"), "root = true\n");
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
 
@@ -76,8 +81,15 @@ public sealed class RepoTreeApiTests
             Assert.Contains("sql/views/compat_views.sql", paths, StringComparer.Ordinal);
             Assert.Contains("README.md", paths, StringComparer.Ordinal);
 
-            // git's own metadata is machinery, not repository content.
+            // git's own metadata and control files are machinery, not repository content, at the root or deeper.
             Assert.DoesNotContain(paths, p => p == ".git" || p.StartsWith(".git/", StringComparison.Ordinal));
+            Assert.DoesNotContain(".gitignore", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain(".gitattributes", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain("sales/.gitignore", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain("sql/views/.gitkeep", paths, StringComparer.Ordinal);
+
+            // Any other dot-named file is content the repository chose to hold.
+            Assert.Contains(".editorconfig", paths, StringComparer.Ordinal);
 
             // Folders carry no size; a file carries its real one.
             Assert.True(tree.Entries.Single(e => e.Path == "sql").IsFolder);
