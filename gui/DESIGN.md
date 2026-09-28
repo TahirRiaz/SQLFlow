@@ -204,7 +204,9 @@ never hand-edited except where this book says so). MUI, emotion, and notistack a
 ### 7.1 Page scaffold
 
 `Page` + `PageHeader`: testid `page-<name>` preserved; header carries title (18px semibold), optional
-description (13px muted), and right-aligned toolbar actions (small buttons). Below the header, optional
+description (13px muted), and right-aligned toolbar actions (small buttons) that stay at the top right however
+long the description runs: the title block wraps its description beside them, and they drop below it only when the
+header is too narrow for both. Below the header, optional
 `FilterBar`. No breadcrumbs in v1 except detail pages: parent link + entity name. Filter controls are 32px
 (`h-8`): text `Input`s for free text, `Select` for a short fixed set, and `FilterCombobox` (a searchable
 popover, the empty string meaning "no filter") for a filter over many values like the Runs board's schedule
