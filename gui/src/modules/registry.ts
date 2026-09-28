@@ -194,6 +194,18 @@ export interface DashboardTileContribution {
 }
 
 /**
+ * A control a module adds to the workbench title bar, between the brand and the command palette: a context every page of
+ * the module reads (the environment it works in, say), or a fact the whole workbench should see. It renders on the
+ * title bar's dark ground, inside the router and the signed-in session, so it may read the URL and call the API; one that
+ * has nothing to show renders nothing. Controls appear in registration order.
+ */
+export interface TitleBarContribution {
+  /** Unique across modules; names the control in registration errors. */
+  id: string;
+  component: ComponentType;
+}
+
+/**
  * A key census file a module supplies for a flow kind it adds (`flowType`) or a document of its own (`documentType`), so
  * the YAML editor documents, colours and checks those documents as it does SQLFlow's own flows. The file is SQLFlow's
  * census format (`docs/reference/flow/keys*.json`) with the kind it describes at its top level.
@@ -215,6 +227,8 @@ export interface GuiModule {
   branding?: BrandingContribution;
   /** Key census files for the module's flow kinds and documents, which the YAML editor analyses them against. */
   census?: readonly CensusContribution[];
+  /** Controls the module adds to the workbench title bar. */
+  titleBar?: readonly TitleBarContribution[];
 }
 
 interface Registered {
@@ -222,9 +236,10 @@ interface Registered {
   kinds: ReadonlyMap<string, FlowKindContribution>;
   searchCategories: readonly SearchCategoryContribution[];
   dashboardTiles: readonly DashboardTileContribution[];
+  titleBar: readonly TitleBarContribution[];
 }
 
-const NONE: Registered = { routes: [], kinds: new Map(), searchCategories: [], dashboardTiles: [] };
+const NONE: Registered = { routes: [], kinds: new Map(), searchCategories: [], dashboardTiles: [], titleBar: [] };
 
 let registered: Registered | null = null;
 
@@ -252,10 +267,12 @@ export function registerModules(modules: readonly GuiModule[]): void {
   const categoryOwners = new Map<string, string>();
   const tileOwners = new Map<string, string>();
   const censusOwners = new Map<string, string>();
+  const titleBarOwners = new Map<string, string>();
   const routes: ModuleRoute[] = [];
   const kinds = new Map<string, FlowKindContribution>();
   const searchCategories: SearchCategoryContribution[] = [];
   const dashboardTiles: DashboardTileContribution[] = [];
+  const titleBar: TitleBarContribution[] = [];
 
   for (const module of modules) {
     if (module.id.trim() === "") {
@@ -314,6 +331,15 @@ export function registerModules(modules: readonly GuiModule[]): void {
       dashboardTiles.push(tile);
     }
 
+    for (const control of module.titleBar ?? []) {
+      if (control.id.trim() === "") {
+        throw new Error(`GUI module '${module.id}' adds a title bar control with a blank id.`);
+      }
+
+      claim(titleBarOwners, control.id, module.id, "the title bar control");
+      titleBar.push(control);
+    }
+
     for (const census of module.census ?? []) {
       const kind = census.flowType?.trim() ? `flowType '${census.flowType.trim()}'` : `documentType '${census.documentType?.trim() ?? ""}'`;
       claim(censusOwners, kind, module.id, "the key census for");
@@ -331,7 +357,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
     module.branding === undefined ? [] : [{ moduleId: module.id, branding: module.branding }]
   )));
 
-  registered = { routes, kinds, searchCategories, dashboardTiles };
+  registered = { routes, kinds, searchCategories, dashboardTiles, titleBar };
 }
 
 /** The pages the registered modules add in one frame: the workbench (the default) or a window of their own. */
@@ -357,4 +383,9 @@ export function moduleSearchCategories(): readonly SearchCategoryContribution[] 
 /** The dashboard tiles the registered modules add, in registration order. */
 export function moduleDashboardTiles(): readonly DashboardTileContribution[] {
   return (registered ?? NONE).dashboardTiles;
+}
+
+/** The title bar controls the registered modules add, in registration order. */
+export function moduleTitleBarItems(): readonly TitleBarContribution[] {
+  return (registered ?? NONE).titleBar;
 }
