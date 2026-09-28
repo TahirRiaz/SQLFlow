@@ -6,6 +6,7 @@
 
 import type { ComponentType, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
+import { setModuleRequestHeaders } from "../api/client";
 import type { PipelineDetail, RunDetail, RunSummary, SearchCategory } from "../api/types";
 import type { Column } from "../components/DataTable";
 import { extendNavigation } from "../layout/nav";
@@ -206,6 +207,25 @@ export interface TitleBarContribution {
 }
 
 /**
+ * A header a module adds to every authenticated call the workbench makes to the control plane: a selection its title bar
+ * control holds (the scope every one of its pages is read in, say), which the module's endpoints read. `value` is read as
+ * each call is made, so a new selection reaches the next call; null or blank leaves the header out of that call. A module
+ * cannot replace a header SQLFlow sets itself (`Accept`, `Authorization`, `Content-Type`), and two modules cannot add the
+ * same one.
+ */
+export interface RequestHeaderContribution {
+  /** The header's name, an HTTP token (letters, digits and `!#$%&'*+-.^_`|~`), unique across modules regardless of case. */
+  name: string;
+  value: () => string | null;
+}
+
+/** The headers SQLFlow sets on its calls itself, which no module may replace. */
+const RESERVED_HEADERS = new Set(["accept", "authorization", "content-type"]);
+
+/** What an HTTP header name may be made of (RFC 9110 section 5.1, a token). */
+const HEADER_NAME = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
+
+/**
  * A key census file a module supplies for a flow kind it adds (`flowType`) or a document of its own (`documentType`), so
  * the YAML editor documents, colours and checks those documents as it does SQLFlow's own flows. The file is SQLFlow's
  * census format (`docs/reference/flow/keys*.json`) with the kind it describes at its top level.
@@ -229,6 +249,8 @@ export interface GuiModule {
   census?: readonly CensusContribution[];
   /** Controls the module adds to the workbench title bar. */
   titleBar?: readonly TitleBarContribution[];
+  /** Headers the module adds to every authenticated call to the control plane. */
+  requestHeaders?: readonly RequestHeaderContribution[];
 }
 
 interface Registered {
@@ -268,6 +290,8 @@ export function registerModules(modules: readonly GuiModule[]): void {
   const tileOwners = new Map<string, string>();
   const censusOwners = new Map<string, string>();
   const titleBarOwners = new Map<string, string>();
+  const headerOwners = new Map<string, string>();
+  const requestHeaders: RequestHeaderContribution[] = [];
   const routes: ModuleRoute[] = [];
   const kinds = new Map<string, FlowKindContribution>();
   const searchCategories: SearchCategoryContribution[] = [];
@@ -340,6 +364,19 @@ export function registerModules(modules: readonly GuiModule[]): void {
       titleBar.push(control);
     }
 
+    for (const header of module.requestHeaders ?? []) {
+      if (!HEADER_NAME.test(header.name)) {
+        throw new Error(`GUI module '${module.id}' adds the request header '${header.name}', which is not an HTTP header name.`);
+      }
+
+      if (RESERVED_HEADERS.has(header.name.toLowerCase())) {
+        throw new Error(`GUI module '${module.id}' adds the request header '${header.name}', which SQLFlow sets on every call itself.`);
+      }
+
+      claim(headerOwners, header.name.toLowerCase(), module.id, "the request header");
+      requestHeaders.push(header);
+    }
+
     for (const census of module.census ?? []) {
       const kind = census.flowType?.trim() ? `flowType '${census.flowType.trim()}'` : `documentType '${census.documentType?.trim() ?? ""}'`;
       claim(censusOwners, kind, module.id, "the key census for");
@@ -357,6 +394,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
     module.branding === undefined ? [] : [{ moduleId: module.id, branding: module.branding }]
   )));
 
+  setModuleRequestHeaders(requestHeaders);
   registered = { routes, kinds, searchCategories, dashboardTiles, titleBar };
 }
 

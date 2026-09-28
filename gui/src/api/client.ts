@@ -35,6 +35,43 @@ export function setUnauthorizedHandler(handler: (() => void) | null): void {
   onUnauthorized = handler;
 }
 
+// ---- Headers the registered modules add (installed by the module registry) -----------------------------------------
+
+/** A header a module adds to every authenticated call, read as each call is made; null or blank leaves it out of that call. */
+export interface RequestHeaderSource {
+  name: string;
+  value: () => string | null;
+}
+
+let headerSources: readonly RequestHeaderSource[] = [];
+
+/** The module registry installs the headers the registered modules add (modules/registry.ts), once, before the app renders. */
+export function setModuleRequestHeaders(sources: readonly RequestHeaderSource[]): void {
+  headerSources = sources;
+}
+
+/** Characters an HTTP header value can carry: visible ASCII, space, tab and the obs-text range, never a line break. */
+const HEADER_VALUE = /^[\t\x20-\x7e\x80-\xff]*$/;
+
+/**
+ * Adds the module headers to one authenticated call. A value no header can carry is refused here, naming the header, rather
+ * than left to fetch, whose TypeError would read as an unreachable control plane.
+ */
+function addModuleHeaders(headers: Record<string, string>): void {
+  for (const source of headerSources) {
+    const value = source.value();
+    if (value === null || value.trim() === "") {
+      continue;
+    }
+
+    if (!HEADER_VALUE.test(value)) {
+      throw new Error(`The header '${source.name}' a module adds to every call has a value no HTTP header can carry.`);
+    }
+
+    headers[source.name] = value;
+  }
+}
+
 // ---- Rate-limit pause (the 120/min budget) --------------------------------------------------------------------------
 
 type RateLimitListener = (pausedUntilMs: number | null) => void;
@@ -98,6 +135,9 @@ async function request<T>(options: RequestOptions): Promise<T> {
   }
 
   const headers: Record<string, string> = { Accept: "application/json" };
+  if (!options.anonymous) {
+    addModuleHeaders(headers);
+  }
   if (!options.anonymous && currentToken) {
     headers.Authorization = `Bearer ${currentToken}`;
   }
@@ -178,6 +218,7 @@ export async function getText(path: string, signal?: AbortSignal): Promise<strin
   const base = runtimeConfig().apiBaseUrl;
   const url = new URL(`${base}${path}`);
   const headers: Record<string, string> = { Accept: "text/plain" };
+  addModuleHeaders(headers);
   if (currentToken) {
     headers.Authorization = `Bearer ${currentToken}`;
   }
@@ -233,6 +274,7 @@ export async function streamSse(
   }
 
   const headers: Record<string, string> = { Accept: "text/event-stream" };
+  addModuleHeaders(headers);
   if (currentToken) {
     headers.Authorization = `Bearer ${currentToken}`;
   }
@@ -333,6 +375,7 @@ export async function postBinary<T>(
   }
 
   const headers: Record<string, string> = { Accept: "application/json", "Content-Type": contentType };
+  addModuleHeaders(headers);
   if (currentToken) {
     headers.Authorization = `Bearer ${currentToken}`;
   }
