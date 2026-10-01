@@ -363,8 +363,8 @@ public sealed record ProjectGraphObjectDto(string Key, string Name, string Kind,
 /// <summary>One resolved, drawable edge of the project graph. <c>Source</c>/<c>Target</c> are node ids (a
 /// pipeline id or an object key). <c>Label</c> is what the arrow says (<c>writes</c>/<c>creates</c>/<c>reads</c>/
 /// <c>view</c> in the flows view; the flow name in the objects view). <c>PipelineId</c> is the flow the edge is
-/// attributed to, for stable per-flow coloring; null for a DB-managed view's derivation edge, which no flow
-/// maintains.</summary>
+/// attributed to, for stable per-flow coloring; null for a DB-managed view's derivation edge and for the edge from
+/// a source into a derived dataset, which no flow maintains.</summary>
 public sealed record ProjectGraphDrawEdgeDto(string Source, string Target, string Label, Guid? PipelineId);
 
 /// <summary>A project's lineage as one cross-repo subgraph. <c>Pipelines</c> and <c>Edges</c> are the underlying
@@ -2536,8 +2536,11 @@ public static class LineageEndpoints
     /// is a code dependency, not data movement, and draws nothing. The objects view composes the same facts as
     /// object-to-object movement per flow. A data subscriber is a module whose body reads but which no flow
     /// maintains, so it draws base-to-subscriber and terminates the chain: the graph ends where the data is
-    /// actually consumed, not at the last table SQLFlow writes. Self-edges never draw; the first spelling of a
-    /// duplicate wins.
+    /// actually consumed, not at the last table SQLFlow writes. A derived dataset (a dataset a registered flow kind
+    /// declares as derived from other datasets) is a module too, one no flow writes: its sources draw into it and it
+    /// draws into the flows reading it, so a read a flow inherits through it is drawn along that path and never as
+    /// a second, direct edge from the source to the flow. Self-edges never draw; the first spelling of a duplicate
+    /// wins.
     /// </summary>
     private static (List<ProjectGraphObjectDto> Objects, List<ProjectGraphDrawEdgeDto> FlowGraph, List<ProjectGraphDrawEdgeDto> ObjectGraph) DeriveDrawableGraph(
         IReadOnlyList<EdgeRow> includedEdges,
@@ -2589,8 +2592,13 @@ public static class LineageEndpoints
         var subscriberKeys = moduleReads.Keys
             .Where(subscriberNames.ContainsKey)
             .ToHashSet(StringComparer.Ordinal);
+        // A derived dataset is told apart by its key: the registry knows it as a dataset, and its sources are the
+        // reads its own node carries. It is never a view, whether or not a flow also writes it.
+        var derivedKeys = moduleReads.Keys
+            .Where(key => !subscriberKeys.Contains(key) && ServerIdentity.DatasetSystem(key) is not null)
+            .ToHashSet(StringComparer.Ordinal);
         var viewKeys = moduleReads.Keys
-            .Where(key => !subscriberKeys.Contains(key))
+            .Where(key => !subscriberKeys.Contains(key) && !derivedKeys.Contains(key))
             .Where(key => writtenKeys.Contains(key)
                 || (locations.TryGetValue(key, out var l) && string.Equals(l.Kind, "View", StringComparison.OrdinalIgnoreCase)))
             .ToHashSet(StringComparer.Ordinal);
@@ -2698,6 +2706,13 @@ public static class LineageEndpoints
 
             foreach (var read in group.Reads)
             {
+                // A read inherited through a derived dataset on the canvas is drawn through it (source to dataset
+                // below, dataset to flow by the flow's own read of it), so it adds no direct edge of its own.
+                if (read.ViaModule is { } through && derivedKeys.Contains(through) && includedSet.Contains(through))
+                {
+                    continue;
+                }
+
                 AddFlowEdge(read.ObjectKey, pid.ToString(), "reads", pid);
                 foreach (var write in group.Writes)
                 {
@@ -2724,6 +2739,25 @@ public static class LineageEndpoints
                 {
                     AddFlowEdge(baseKey, viewKey, "view", owner);
                     AddObjectEdge(baseKey, viewKey, label, owner);
+                }
+            }
+        }
+
+        // A derived dataset is fed by what it is derived from. No pipeline maintains it, so the edge carries no
+        // pipeline id and takes no per-flow colour; the flows reading the dataset draw from it as from any object.
+        foreach (var derivedKey in derivedKeys.OrderBy(key => key, StringComparer.Ordinal))
+        {
+            if (!includedSet.Contains(derivedKey))
+            {
+                continue;
+            }
+
+            foreach (var baseKey in moduleReads[derivedKey].OrderBy(key => key, StringComparer.Ordinal))
+            {
+                if (includedSet.Contains(baseKey))
+                {
+                    AddFlowEdge(baseKey, derivedKey, "reads", null);
+                    AddObjectEdge(baseKey, derivedKey, "reads", null);
                 }
             }
         }

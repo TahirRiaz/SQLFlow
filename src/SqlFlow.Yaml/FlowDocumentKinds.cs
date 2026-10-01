@@ -126,9 +126,10 @@ public abstract record RegisteredFlowDocument : FlowDocument
 
     /// <summary>
     /// Everything the flow contributes to lineage: the database objects it reads and writes, the file locations it reads
-    /// and the file drops it lands, the datasets of external systems it reads and writes, and the warnings describing
-    /// them raised. The estate scan calls this once per document with the document's own file and the estate it is
-    /// scanning, so a kind can read the companion documents a flow names from the checkout. A kind that only relates to
+    /// and the file drops it lands, the datasets of external systems it reads and writes, the datasets it reads that
+    /// are derived from other datasets, and the warnings describing them raised. The estate scan calls this once per
+    /// document with the document's own file, the estate it is scanning and the documents of registered kinds it
+    /// found there, so a kind can read the companion documents a flow names from the checkout. A kind that only relates to
     /// database objects keeps the default, which is <see cref="DeclaredObjects"/>. A declaration the scan cannot use
     /// skips the document with a warning, and so does a description that throws.
     /// </summary>
@@ -145,6 +146,14 @@ public abstract record RegisteredFlowDocument : FlowDocument
 /// only.</param>
 public sealed record RegisteredLineageContext(string DocumentPath, string EstateRoot)
 {
+    /// <summary>
+    /// Every document of a registered kind the scan found in the estate, the one being described among them, in path
+    /// order and as the loader parsed them. A flow whose reads depend on what another flow declares (a lookup resolved
+    /// by what a store holds rather than by a name the document writes) describes them from here, without reading
+    /// the estate a second time. Empty when a document is described on its own, outside a scan.
+    /// </summary>
+    public IReadOnlyList<RegisteredEstateDocument> Estate { get; init; } = [];
+
     /// <summary>The folder the document sits in, which a relative location of the document is relative to.</summary>
     public string DocumentFolder => Path.GetDirectoryName(DocumentPath) ?? EstateRoot;
 
@@ -160,6 +169,11 @@ public sealed record RegisteredLineageContext(string DocumentPath, string Estate
     }
 }
 
+/// <summary>A document of a registered kind as an estate scan found it.</summary>
+/// <param name="Path">The document's full path.</param>
+/// <param name="Document">The document as the loader parsed it.</param>
+public sealed record RegisteredEstateDocument(string Path, RegisteredFlowDocument Document);
+
 /// <summary>What a registered flow contributes to lineage (<see cref="RegisteredFlowDocument.DescribeLineage"/>).</summary>
 public sealed record RegisteredFlowLineage
 {
@@ -174,6 +188,9 @@ public sealed record RegisteredFlowLineage
 
     /// <summary>The datasets of external systems the flow reads and writes.</summary>
     public IReadOnlyList<DeclaredDataset> Datasets { get; init; } = [];
+
+    /// <summary>The datasets the flow reads that are themselves derived from other datasets.</summary>
+    public IReadOnlyList<DeclaredDerivation> Derivations { get; init; } = [];
 
     /// <summary>What the description could not declare and why, one sentence each. The scan reports each against the
     /// document's file; the declarations above still count.</summary>
@@ -249,6 +266,24 @@ public sealed record DeclaredDataset
 
     /// <summary>True when <see cref="Name"/> carries a wildcard.</summary>
     public bool IsPattern => Name.Contains('*', StringComparison.Ordinal);
+}
+
+/// <summary>
+/// A dataset a registered flow reads that is itself derived from other datasets, with no flow of its own producing it:
+/// a companion document the flow renders through, a model, a rule set. The derived dataset is a node the flow reads,
+/// and what it is derived from is read by that node, as a view reads its base tables: the graph draws each source into
+/// the derived dataset and the derived dataset into the flow, and the flow is ordered after whatever writes a source.
+/// Every flow reading the same derived dataset shares its node, and the sources they declare for it add up.
+/// </summary>
+public sealed record DeclaredDerivation
+{
+    /// <summary>The derived dataset: a <see cref="LineageRelation.Reads"/> of the flow, named without wildcards.</summary>
+    public required DeclaredDataset Dataset { get; init; }
+
+    /// <summary>The datasets it is derived from, each a <see cref="LineageRelation.Reads"/>. A name may carry
+    /// <c>*</c> wildcards, bound as a flow's own wildcard read is, to every matching dataset the estate writes except
+    /// those written by a flow reading the derived dataset.</summary>
+    public IReadOnlyList<DeclaredDataset> From { get; init; } = [];
 }
 
 /// <summary>

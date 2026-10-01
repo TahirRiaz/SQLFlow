@@ -1700,11 +1700,15 @@ public sealed class CatalogSync
         // object registry applies to definitions and columns. Offline recompute preserves every stored Derived
         // edge; a connected pass preserves the Derived edges of exactly its degraded servers (keys are
         // case-folded, so the server-reference prefix identifies them on either end of the fact).
+        // What a flow inherits through a derived dataset is the exception: a dataset is described by the documents
+        // alone and never harvested from a live catalog, so this pass re-derived everything there is to know of it, and
+        // an inherited edge it did not produce is one the documents let go of, not knowledge to keep.
         var preserve = new List<CatalogLineageEdge>();
         if (!includeDerived)
         {
             preserve = await context.LineageEdges.AsNoTracking()
-                .Where(e => e.RepoId == repoId && e.Tier == "Derived")
+                .Where(e => e.RepoId == repoId && e.Tier == "Derived"
+                    && (e.ViaModule == null || !e.ViaModule.StartsWith(ServerIdentity.DatasetPrefix)))
                 .ToListAsync(ct).ConfigureAwait(false);
         }
         else if (report.DegradedDerivedServers.Count > 0)
@@ -2423,7 +2427,9 @@ public sealed class CatalogSync
     /// Computes every object's depth in the data-movement graph the facts describe, mirroring how the GUI's
     /// object lineage graph is built: data moves from each object a flow reads to each table it writes, a
     /// module-derived read connects a VIEW to its base table (a view target is fed by its base, never by the
-    /// file the flow read), and a <c>Requires</c> fact is a code dependency that moves no data. Levels are a
+    /// file the flow read) and a derived dataset to what it is derived from (the flow reading the dataset is fed
+    /// by the dataset, never by its sources directly), and a <c>Requires</c> fact is a code dependency that moves
+    /// no data. Levels are a
     /// longest-path layering with cycles broken first (a DFS drops the edges that close a cycle, so a flow that
     /// reads a view derived from its own output still levels cleanly): 0 for a source nothing produces, and one
     /// more than the deepest producer otherwise. Objects that take part in no movement get no entry.
@@ -2445,7 +2451,12 @@ public sealed class CatalogSync
 
                 if (fact.Relation == nameof(Core.Lineage.LineageRelation.Reads))
                 {
-                    group.Reads.Add(fact.ObjectKey);
+                    // What a flow inherits through a derived dataset moves through that dataset, which the flow reads
+                    // in its own right, so the source is not also a direct input of the flow.
+                    if (fact.ViaModule is null || !fact.ViaModule.StartsWith(ServerIdentity.DatasetPrefix, StringComparison.Ordinal))
+                    {
+                        group.Reads.Add(fact.ObjectKey);
+                    }
                 }
                 else if (fact.Relation is nameof(Core.Lineage.LineageRelation.Writes)
                          or nameof(Core.Lineage.LineageRelation.Creates))
@@ -2467,8 +2478,11 @@ public sealed class CatalogSync
             }
         }
 
-        // A view is a module a flow also writes/creates; a procedure is only required, so it stays out.
-        var viewKeys = new HashSet<string>(moduleReads.Keys.Where(writtenKeys.Contains), StringComparer.Ordinal);
+        // A view is a module a flow also writes/creates; a procedure is only required, so it stays out. A derived
+        // dataset is fed by what it is derived from exactly as a view is by its base, with no flow writing it.
+        var viewKeys = new HashSet<string>(
+            moduleReads.Keys.Where(key => writtenKeys.Contains(key) || key.StartsWith(ServerIdentity.DatasetPrefix, StringComparison.Ordinal)),
+            StringComparer.Ordinal);
 
         var outgoing = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         var inDegree = new Dictionary<string, int>(StringComparer.Ordinal);

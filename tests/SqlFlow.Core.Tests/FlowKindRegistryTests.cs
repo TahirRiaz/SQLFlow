@@ -442,6 +442,10 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
 
         public List<DatasetBody>? Datasets { get; set; }
 
+        public List<DerivationBody>? Derivations { get; set; }
+
+        public bool EstateEcho { get; set; }
+
         public List<string>? LineageWarnings { get; set; }
 
         public string? LineageFailure { get; set; }
@@ -480,6 +484,13 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
         public string? Name { get; set; }
 
         public string? Separator { get; set; }
+    }
+
+    private sealed class DerivationBody
+    {
+        public DatasetBody? Dataset { get; set; }
+
+        public List<DatasetBody>? From { get; set; }
     }
 
     public string FlowType => flowType;
@@ -553,21 +564,31 @@ internal sealed class ProbeFlowKind(string flowType = "probe", string? reportedK
                 Location = f.Location ?? string.Empty,
                 FilePattern = f.Pattern,
             }).ToList(),
-            Datasets = (body.Datasets ?? []).Select(d => new DeclaredDataset
+            Datasets = (body.Datasets ?? []).Select(Declared).ToList(),
+            Derivations = (body.Derivations ?? []).Select(d => new DeclaredDerivation
             {
-                Relation = Relation(d.Relation),
-                System = d.System ?? string.Empty,
-                Instance = d.Instance,
-                Namespace = d.Namespace ?? string.Empty,
-                Group = d.Group ?? string.Empty,
-                Name = d.Name ?? string.Empty,
-                Separator = string.IsNullOrEmpty(d.Separator) ? null : d.Separator[0],
+                // A derivation written without its dataset reaches the platform as it is, so its refusal is what the tests see.
+                Dataset = d.Dataset is null ? null! : Declared(d.Dataset),
+                From = (d.From ?? []).Select(Declared).ToList(),
             }).ToList(),
+            EstateEcho = body.EstateEcho,
             LineageWarnings = body.LineageWarnings ?? [],
             LineageFailure = body.LineageFailure,
             Companion = body.Companion,
         };
     }
+
+    /// <summary>A dataset declaration as written, passed to the platform unchecked so its own checks are what the tests see.</summary>
+    private static DeclaredDataset Declared(DatasetBody dataset) => new()
+    {
+        Relation = Relation(dataset.Relation),
+        System = dataset.System ?? string.Empty,
+        Instance = dataset.Instance,
+        Namespace = dataset.Namespace ?? string.Empty,
+        Group = dataset.Group ?? string.Empty,
+        Name = dataset.Name ?? string.Empty,
+        Separator = string.IsNullOrEmpty(dataset.Separator) ? null : dataset.Separator[0],
+    };
 
     /// <summary>A declared relation as written (<c>reads</c>, <c>writes</c>, <c>requires</c>), so the platform's own
     /// refusal of a relation other than reads and writes is what the tests see.</summary>
@@ -605,6 +626,12 @@ internal sealed record ProbeFlowDocument : RegisteredFlowDocument
 
     public IReadOnlyList<DeclaredDataset> Datasets { get; init; } = [];
 
+    public IReadOnlyList<DeclaredDerivation> Derivations { get; init; } = [];
+
+    /// <summary>When set, describing the lineage warns with the registered documents the scan handed it, in the order
+    /// it handed them: each as its file name and the flow it declares.</summary>
+    public bool EstateEcho { get; init; }
+
     public IReadOnlyList<string> LineageWarnings { get; init; } = [];
 
     /// <summary>When set, describing the lineage throws an <see cref="InvalidOperationException"/> with this message.</summary>
@@ -616,8 +643,8 @@ internal sealed record ProbeFlowDocument : RegisteredFlowDocument
 
     public override IReadOnlyList<DeclaredDataObject> DeclaredObjects => Objects;
 
-    /// <summary>The declared objects through the default, plus the files, datasets and warnings the document names,
-    /// plus what its companion lists.</summary>
+    /// <summary>The declared objects through the default, plus the files, datasets, derivations and warnings the
+    /// document names, plus what its companion lists.</summary>
     public override RegisteredFlowLineage DescribeLineage(RegisteredLineageContext context)
     {
         var lineage = base.DescribeLineage(context);
@@ -628,6 +655,11 @@ internal sealed record ProbeFlowDocument : RegisteredFlowDocument
 
         var datasets = Datasets.ToList();
         var warnings = LineageWarnings.ToList();
+        if (EstateEcho)
+        {
+            warnings.Add("the estate holds " + string.Join(", ", context.Estate.Select(entry => $"{Path.GetFileName(entry.Path)}={entry.Document.Name}")) + ".");
+        }
+
         if (Companion is not null)
         {
             var path = Path.Combine(context.DocumentFolder, Companion);
@@ -648,7 +680,7 @@ internal sealed record ProbeFlowDocument : RegisteredFlowDocument
             }
         }
 
-        return lineage with { Files = Files, Datasets = datasets, Warnings = warnings };
+        return lineage with { Files = Files, Datasets = datasets, Derivations = Derivations, Warnings = warnings };
     }
 
     public override string Name => FlowName;

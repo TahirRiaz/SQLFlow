@@ -75,31 +75,43 @@ public sealed class FlowSetCollector
         // the estate writes that the pattern matches.
         var patternReads = new List<DatasetPatternRead>();
 
+        // Every document is loaded before any is collected, so a registered kind describing its lineage can see the
+        // other registered documents of the estate (RegisteredLineageContext.Estate) from the one parse the scan makes.
+        var loaded = new List<(string File, string Relative, FlowDocument Document)>();
         foreach (var file in files)
         {
             var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
-            FlowDocument document;
             try
             {
-                document = _documents.LoadFile(file);
+                loaded.Add((file, relative, _documents.LoadFile(file)));
             }
             catch (SqlFlowException)
             {
                 // The .yaml did not parse as a flow document: under extension-based discovery it is a non-flow file
                 // (a library, config, or unrelated yaml), so it is ignored rather than reported as a broken flow.
-                continue;
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 // The file matched but could not be read: a real problem worth surfacing, distinct from a non-flow file.
                 result.Warnings.Add($"{relative}: skipped: {ex.Message}");
-                continue;
             }
+        }
 
+        var estate = loaded
+            .Where(entry => entry.Document is RegisteredFlowDocument)
+            .Select(entry => new RegisteredEstateDocument(entry.File, (RegisteredFlowDocument)entry.Document))
+            .ToList();
+
+        // What each derived dataset is derived from is declared by every flow reading it; each source is one fact
+        // however many flows declare it.
+        var derivedSources = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var (file, relative, document) in loaded)
+        {
             try
             {
-                var anchor = new FileAnchor(root, file);
-                Collect(result, document, relative, File.GetLastWriteTimeUtc(file), anchor, producers, consumers, patternReads);
+                var anchor = new FileAnchor(root, file, estate);
+                Collect(result, document, relative, File.GetLastWriteTimeUtc(file), anchor, producers, consumers, patternReads, derivedSources);
             }
             catch (SqlFlowException ex)
             {
@@ -1020,7 +1032,8 @@ public sealed class FlowSetCollector
 
     private static void Collect(
         CollectionResult result, FlowDocument document, string file, DateTime fileWriteUtc, FileAnchor files,
-        List<FileProducer> producers, List<FileConsumer> consumers, List<DatasetPatternRead> patternReads)
+        List<FileProducer> producers, List<FileConsumer> consumers, List<DatasetPatternRead> patternReads,
+        HashSet<string> derivedSources)
     {
         // The flow nodes come from the shared header projection, the single authority for what a document
         // declares (name, kind, batch, servers, mode, lifecycle, schedule), shared with the catalog's per-run
@@ -1376,7 +1389,8 @@ public sealed class FlowSetCollector
                 // flow node was added. Its database objects become declared facts on the same node identities an
                 // ingestion flow's source and target use, its file reads and drops join the file reconciliation exactly
                 // as a file ingestion's source and a copy flow's target do, and its datasets become dataset nodes, so
-                // waves order the registered flow after what it reads and before what reads what it writes.
+                // waves order the registered flow after what it reads and before what reads what it writes. A dataset it
+                // reads that is derived from other datasets is a node between them and the flow.
                 var description = declared!;
                 foreach (var (fact, connectionReference, provider) in description.Objects)
                 {
@@ -1397,6 +1411,19 @@ public sealed class FlowSetCollector
 
                 result.Facts.AddRange(description.Datasets);
                 patternReads.AddRange(description.PatternReads);
+
+                // What a derived dataset is derived from belongs to the dataset, not to the flow declaring it: the facts
+                // carry the dataset's node as their module and no flow, exactly as a view's reads of its base tables
+                // do, so every flow reading the dataset inherits them. Several flows declaring one derived dataset
+                // contribute each source once.
+                foreach (var source in description.DerivedSources)
+                {
+                    if (derivedSources.Add($"{source.ViaModuleKey}|{NodeKey.For(source.ServerRef, source.Database, source.Schema, source.Name)}"))
+                    {
+                        result.Facts.Add(source);
+                    }
+                }
+
                 foreach (var warning in description.Warnings)
                 {
                     result.Warnings.Add($"{file}: {warning}");
@@ -1415,17 +1442,18 @@ public sealed class FlowSetCollector
     /// <summary>
     /// A registered flow's lineage (<see cref="RegisteredFlowDocument.DescribeLineage"/>), validated and in the form the
     /// scan collects: its database object facts with the connection each registers in the server inventory, its file
-    /// reads and drops with their locations as node identities, its dataset facts, its wildcard dataset reads awaiting
-    /// binding, and its warnings. A declaration the graph cannot use refuses the document with a message naming the
-    /// flow, what is wrong and the declaration's position, never a connection or instance reference (a literal would be
-    /// a secret); so does a description that throws. A repeated declaration is one fact.
+    /// reads and drops with their locations as node identities, its dataset facts, what its derived datasets are
+    /// derived from, its wildcard dataset reads awaiting binding, and its warnings. A declaration the graph cannot use
+    /// refuses the document with a message naming the flow, what is wrong and the declaration's position, never a
+    /// connection or instance reference (a literal would be a secret); so does a description that throws. A repeated
+    /// declaration is one fact.
     /// </summary>
     private static RegisteredDescription DescribeRegistered(RegisteredFlowDocument document, string flow, FileAnchor files)
     {
         RegisteredFlowLineage lineage;
         try
         {
-            lineage = document.DescribeLineage(new RegisteredLineageContext(files.DocumentPath, files.Root))
+            lineage = document.DescribeLineage(new RegisteredLineageContext(files.DocumentPath, files.Root) { Estate = files.Estate })
                 ?? throw new SqlFlowException($"{document.Kind} flow '{flow}' described no lineage.");
         }
         catch (SqlFlowException)
@@ -1440,9 +1468,9 @@ public sealed class FlowSetCollector
 
         var objects = DeclaredObjectFacts(document, flow, lineage.Objects ?? []);
         var (reads, drops) = DeclaredFiles(document, flow, lineage.Files ?? [], files);
-        var (datasets, patterns) = DeclaredDatasets(document, flow, lineage.Datasets ?? []);
+        var (datasets, derivedSources, patterns) = DeclaredDatasets(document, flow, lineage.Datasets ?? [], lineage.Derivations ?? []);
         var warnings = (lineage.Warnings ?? []).Where(w => !string.IsNullOrWhiteSpace(w)).Select(w => w.Trim()).ToList();
-        return new RegisteredDescription(objects, reads, drops, datasets, patterns, warnings);
+        return new RegisteredDescription(objects, reads, drops, datasets, derivedSources, patterns, warnings);
     }
 
     /// <summary>The database object facts of a registered flow, with the connection each registers.</summary>
@@ -1596,87 +1624,159 @@ public sealed class FlowSetCollector
     }
 
     /// <summary>
-    /// The dataset facts of a registered flow, and its wildcard reads awaiting binding. The node is identified by the
-    /// system and its instance (<see cref="ServerIdentity.Dataset"/>), the namespace as its database, the group as its
-    /// schema and the name.
+    /// The dataset facts of a registered flow, what its derived datasets are derived from, and the wildcard reads
+    /// awaiting binding. A node is identified by the system and its instance (<see cref="ServerIdentity.Dataset"/>),
+    /// the namespace as its database, the group as its schema and the name. A derived dataset is a read of the flow;
+    /// each of its sources is a read of the derived dataset's own node, attributed to no flow.
     /// </summary>
-    private static (List<LineageFact> Facts, List<DatasetPatternRead> Patterns) DeclaredDatasets(
-        RegisteredFlowDocument document, string flow, IReadOnlyList<DeclaredDataset> declarations)
+    private static (List<LineageFact> Facts, List<LineageFact> DerivedSources, List<DatasetPatternRead> Patterns) DeclaredDatasets(
+        RegisteredFlowDocument document, string flow, IReadOnlyList<DeclaredDataset> declarations, IReadOnlyList<DeclaredDerivation> derivations)
     {
         var facts = new List<LineageFact>();
+        var derivedSources = new List<LineageFact>();
         var patterns = new List<DatasetPatternRead>();
         var seen = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 0; i < declarations.Count; i++)
         {
             var declaration = declarations[i];
-            var at = $"{document.Kind} flow '{flow}' declared dataset {i + 1}";
-            if (declaration is null)
-            {
-                throw new SqlFlowException($"{at} is missing.");
-            }
-
-            if (declaration.Relation is not (LineageRelation.Reads or LineageRelation.Writes))
-            {
-                throw new SqlFlowException($"{at} has the relation '{declaration.Relation}'; a flow declares only reads and writes.");
-            }
-
-            var system = declaration.System?.Trim() ?? string.Empty;
-            if (!IsDatasetSystem(system))
-            {
-                throw new SqlFlowException(
-                    $"{at} names the system '{system}'; a system is lower-case letters, digits and hyphens, starting with a letter, at most 32 characters.");
-            }
-
-            var ns = DatasetPart(declaration.Namespace, "namespace", at);
-            var group = DatasetPart(declaration.Group, "group", at);
-            var name = DatasetPart(declaration.Name, "name", at);
-            if (declaration.Separator is { } separator && (separator == '*' || separator == '|' || char.IsWhiteSpace(separator) || char.IsControl(separator)))
-            {
-                throw new SqlFlowException($"{at} has a segment separator that is a wildcard, a '|' or blank.");
-            }
-
-            var pattern = name.Contains('*', StringComparison.Ordinal);
-            if (pattern && declaration.Relation == LineageRelation.Writes)
-            {
-                throw new SqlFlowException($"{at} writes '{name}', a wildcard; a flow writes named datasets only.");
-            }
-
-            if (declaration.Instance is { } instance && instance.Trim().Length > DeclaredDataset.MaxInstanceLength)
-            {
-                throw new SqlFlowException($"{at} has an instance longer than {DeclaredDataset.MaxInstanceLength} characters.");
-            }
-
-            var server = ServerIdentity.Dataset(system, declaration.Instance);
-            var key = NodeKey.For(server, ns, group, name);
-            if (key.Length > DeclaredDataset.MaxIdentityLength)
-            {
-                throw new SqlFlowException(
-                    $"{at} has an identity of {key.Length} characters; the catalog keeps at most {DeclaredDataset.MaxIdentityLength}.");
-            }
-
-            if (!seen.Add($"{declaration.Relation}|{key}"))
+            var identity = DatasetIdentity(declaration, $"{document.Kind} flow '{flow}' declared dataset {i + 1}");
+            if (!seen.Add($"{declaration.Relation}|{identity.Key}"))
             {
                 continue;
             }
 
-            facts.Add(new LineageFact
+            facts.Add(DatasetFact(flow, viaModuleKey: null, declaration.Relation, identity));
+            if (identity.IsPattern)
             {
-                Flow = flow,
-                Relation = declaration.Relation,
-                ServerRef = server,
-                Database = ns,
-                Schema = group,
-                Name = name,
-                Tier = LineageTier.Declared,
-                KindHint = LineageNodeKind.Dataset,
-            });
-            if (pattern)
-            {
-                patterns.Add(new DatasetPatternRead(flow, server, ns, name, declaration.Separator));
+                patterns.Add(new DatasetPatternRead(flow, ViaModuleKey: null, identity.ServerRef, identity.Namespace, identity.Name, identity.Separator));
             }
         }
 
-        return (facts, patterns);
+        var seenSources = new HashSet<string>(StringComparer.Ordinal);
+        for (var i = 0; i < derivations.Count; i++)
+        {
+            var derivation = derivations[i];
+            var at = $"{document.Kind} flow '{flow}' declared derivation {i + 1}";
+            if (derivation is null)
+            {
+                throw new SqlFlowException($"{at} is missing.");
+            }
+
+            var derived = DatasetIdentity(derivation.Dataset, at);
+            if (derivation.Dataset.Relation != LineageRelation.Reads)
+            {
+                throw new SqlFlowException($"{at} has the relation '{derivation.Dataset.Relation}'; a flow reads the dataset it declares a derivation of.");
+            }
+
+            if (derived.IsPattern)
+            {
+                throw new SqlFlowException($"{at} names '{derived.Name}', a wildcard; a derived dataset is named.");
+            }
+
+            // The flow reads the derived dataset, whether or not it lists that read among its datasets as well.
+            if (seen.Add($"{LineageRelation.Reads}|{derived.Key}"))
+            {
+                facts.Add(DatasetFact(flow, viaModuleKey: null, LineageRelation.Reads, derived));
+            }
+
+            var sources = derivation.From ?? [];
+            for (var j = 0; j < sources.Count; j++)
+            {
+                var sourceAt = $"{at} source {j + 1}";
+                var source = DatasetIdentity(sources[j], sourceAt);
+                if (sources[j].Relation != LineageRelation.Reads)
+                {
+                    throw new SqlFlowException($"{sourceAt} has the relation '{sources[j].Relation}'; a derived dataset only reads what it is derived from.");
+                }
+
+                if (string.Equals(source.Key, derived.Key, StringComparison.Ordinal))
+                {
+                    throw new SqlFlowException($"{sourceAt} is the derived dataset itself.");
+                }
+
+                if (!seenSources.Add($"{derived.Key}|{source.Key}"))
+                {
+                    continue;
+                }
+
+                derivedSources.Add(DatasetFact(flow: null, derived.Key, LineageRelation.Reads, source));
+                if (source.IsPattern)
+                {
+                    patterns.Add(new DatasetPatternRead(Flow: null, derived.Key, source.ServerRef, source.Namespace, source.Name, source.Separator));
+                }
+            }
+        }
+
+        return (facts, derivedSources, patterns);
+    }
+
+    /// <summary>A declared-tier fact relating <paramref name="flow"/>, or the derived dataset <paramref name="viaModuleKey"/>
+    /// names, to a dataset.</summary>
+    private static LineageFact DatasetFact(string? flow, string? viaModuleKey, LineageRelation relation, DatasetNode dataset)
+        => new()
+        {
+            Flow = flow,
+            ViaModuleKey = viaModuleKey,
+            Relation = relation,
+            ServerRef = dataset.ServerRef,
+            Database = dataset.Namespace,
+            Schema = dataset.Group,
+            Name = dataset.Name,
+            Tier = LineageTier.Declared,
+            KindHint = LineageNodeKind.Dataset,
+        };
+
+    /// <summary>
+    /// The node a dataset declaration names, checked: its relation, system, parts, separator, instance and the width of
+    /// its identity. A refusal names <paramref name="at"/> and what is wrong, never the instance.
+    /// </summary>
+    private static DatasetNode DatasetIdentity(DeclaredDataset? declaration, string at)
+    {
+        if (declaration is null)
+        {
+            throw new SqlFlowException($"{at} is missing.");
+        }
+
+        if (declaration.Relation is not (LineageRelation.Reads or LineageRelation.Writes))
+        {
+            throw new SqlFlowException($"{at} has the relation '{declaration.Relation}'; a flow declares only reads and writes.");
+        }
+
+        var system = declaration.System?.Trim() ?? string.Empty;
+        if (!IsDatasetSystem(system))
+        {
+            throw new SqlFlowException(
+                $"{at} names the system '{system}'; a system is lower-case letters, digits and hyphens, starting with a letter, at most 32 characters.");
+        }
+
+        var ns = DatasetPart(declaration.Namespace, "namespace", at);
+        var group = DatasetPart(declaration.Group, "group", at);
+        var name = DatasetPart(declaration.Name, "name", at);
+        if (declaration.Separator is { } separator && (separator == '*' || separator == '|' || char.IsWhiteSpace(separator) || char.IsControl(separator)))
+        {
+            throw new SqlFlowException($"{at} has a segment separator that is a wildcard, a '|' or blank.");
+        }
+
+        var pattern = name.Contains('*', StringComparison.Ordinal);
+        if (pattern && declaration.Relation == LineageRelation.Writes)
+        {
+            throw new SqlFlowException($"{at} writes '{name}', a wildcard; a flow writes named datasets only.");
+        }
+
+        if (declaration.Instance is { } instance && instance.Trim().Length > DeclaredDataset.MaxInstanceLength)
+        {
+            throw new SqlFlowException($"{at} has an instance longer than {DeclaredDataset.MaxInstanceLength} characters.");
+        }
+
+        var server = ServerIdentity.Dataset(system, declaration.Instance);
+        var key = NodeKey.For(server, ns, group, name);
+        if (key.Length > DeclaredDataset.MaxIdentityLength)
+        {
+            throw new SqlFlowException(
+                $"{at} has an identity of {key.Length} characters; the catalog keeps at most {DeclaredDataset.MaxIdentityLength}.");
+        }
+
+        return new DatasetNode(server, ns, group, name, key, pattern, declaration.Separator);
     }
 
     /// <summary>A trimmed namespace, group or name, refused when blank, oversized, or carrying a character the node key
@@ -1709,9 +1809,10 @@ public sealed class FlowSetCollector
 
     /// <summary>
     /// Binds every wildcard dataset read to each dataset the estate writes on the same system instance and namespace
-    /// whose name the pattern matches, segment by segment when the read names a separator: the reading flow reads the
-    /// written node too, so waves order it after the writer. A flow's own writes are never bound to its reads. A
-    /// pattern nothing matches keeps only its own node.
+    /// whose name the pattern matches, segment by segment when the read names a separator: the reader reads the
+    /// written node too, so waves order it after the writer. A flow's own writes are never bound to its reads, and a
+    /// derived dataset's read is never bound to what a flow reading that dataset writes, which is the same rule one
+    /// step removed. A pattern nothing matches keeps only its own node.
     /// </summary>
     private static void BindDatasetPatterns(CollectionResult result, List<DatasetPatternRead> reads)
     {
@@ -1723,12 +1824,36 @@ public sealed class FlowSetCollector
         var writes = result.Facts
             .Where(f => f.Relation == LineageRelation.Writes && f.KindHint == LineageNodeKind.Dataset && f.Flow is not null)
             .ToList();
+
+        // The flows reading each derived dataset, by the dataset's node: what they write is their own, not a source of
+        // the dataset they read.
+        var derivedKeys = reads.Where(r => r.ViaModuleKey is not null).Select(r => r.ViaModuleKey!).ToHashSet(StringComparer.Ordinal);
+        var readersOf = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        if (derivedKeys.Count > 0)
+        {
+            foreach (var fact in result.Facts)
+            {
+                if (fact.Flow is null || fact.Relation != LineageRelation.Reads || fact.KindHint != LineageNodeKind.Dataset)
+                {
+                    continue;
+                }
+
+                var key = NodeKey.For(fact.ServerRef, fact.Database, fact.Schema, fact.Name);
+                if (derivedKeys.Contains(key))
+                {
+                    (readersOf.TryGetValue(key, out var flows) ? flows : readersOf[key] = new HashSet<string>(StringComparer.OrdinalIgnoreCase)).Add(fact.Flow);
+                }
+            }
+        }
+
         var bound = new HashSet<string>(StringComparer.Ordinal);
         foreach (var read in reads)
         {
+            var own = read.ViaModuleKey is { } module && readersOf.TryGetValue(module, out var readers) ? readers : null;
             foreach (var write in writes)
             {
-                if (string.Equals(write.Flow, read.Flow, StringComparison.OrdinalIgnoreCase)
+                if ((read.Flow is not null && string.Equals(write.Flow, read.Flow, StringComparison.OrdinalIgnoreCase))
+                    || (own is not null && own.Contains(write.Flow!))
                     || !string.Equals(write.ServerRef, read.ServerRef, StringComparison.OrdinalIgnoreCase)
                     || !string.Equals(write.Database, read.Namespace, StringComparison.OrdinalIgnoreCase)
                     || !DatasetNameMatches(read.Pattern, write.Name, read.Separator))
@@ -1737,11 +1862,17 @@ public sealed class FlowSetCollector
                 }
 
                 var key = NodeKey.For(write.ServerRef, write.Database, write.Schema, write.Name);
-                if (bound.Add($"{read.Flow}|{key}"))
+                if (string.Equals(key, read.ViaModuleKey, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (bound.Add($"{read.Flow}|{read.ViaModuleKey}|{key}"))
                 {
                     result.Facts.Add(new LineageFact
                     {
                         Flow = read.Flow,
+                        ViaModuleKey = read.ViaModuleKey,
                         Relation = LineageRelation.Reads,
                         ServerRef = write.ServerRef,
                         Database = write.Database,
@@ -1993,8 +2124,12 @@ public sealed class FlowSetCollector
     /// against, whose location is that same identity.</summary>
     private sealed record FileConsumer(string Flow, string Node, FileSelectionSpec Spec);
 
-    /// <summary>A dataset read naming its datasets with a wildcard, awaiting binding to the datasets the estate writes.</summary>
-    private sealed record DatasetPatternRead(string Flow, string ServerRef, string Namespace, string Pattern, char? Separator);
+    /// <summary>A dataset read naming its datasets with a wildcard, awaiting binding to the datasets the estate writes:
+    /// a flow's own read, or (with no flow) a read of the derived dataset whose node key is given.</summary>
+    private sealed record DatasetPatternRead(string? Flow, string? ViaModuleKey, string ServerRef, string Namespace, string Pattern, char? Separator);
+
+    /// <summary>A dataset declaration as a node: its identity parts, its key, and how a wildcard in its name binds.</summary>
+    private sealed record DatasetNode(string ServerRef, string Namespace, string Group, string Name, string Key, bool IsPattern, char? Separator);
 
     /// <summary>A registered flow's validated lineage, in the form the scan collects.</summary>
     private sealed record RegisteredDescription(
@@ -2002,6 +2137,7 @@ public sealed class FlowSetCollector
         List<FileSelectionSpec> FileReads,
         List<FileOutput> FileDrops,
         List<LineageFact> Datasets,
+        List<LineageFact> DerivedSources,
         List<DatasetPatternRead> PatternReads,
         List<string> Warnings);
 
@@ -2013,7 +2149,7 @@ public sealed class FlowSetCollector
     /// location in its canonical form, so two URI shapes of one folder are one node); a location that is a reference
     /// (<c>${...}</c> or an <c>@alias</c>) is kept as written, because lineage never resolves one.
     /// </summary>
-    private sealed class FileAnchor(string root, string documentPath)
+    private sealed class FileAnchor(string root, string documentPath, IReadOnlyList<RegisteredEstateDocument> estate)
     {
         private readonly string _folder = Path.GetDirectoryName(documentPath) ?? root;
 
@@ -2022,6 +2158,9 @@ public sealed class FlowSetCollector
 
         /// <summary>The full path of the document the locations belong to.</summary>
         public string DocumentPath => documentPath;
+
+        /// <summary>The documents of registered kinds the scan found in the estate.</summary>
+        public IReadOnlyList<RegisteredEstateDocument> Estate => estate;
 
         /// <summary>The node identity of <paramref name="location"/>.</summary>
         public string Identity(string location)

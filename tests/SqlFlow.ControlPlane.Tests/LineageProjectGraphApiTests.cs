@@ -235,6 +235,155 @@ public sealed class LineageProjectGraphApiTests
         }
     }
 
+    /// <summary>
+    /// A derived dataset (a dataset a registered flow kind declares as derived from other datasets) sits between its
+    /// sources and the flow reading it. The sync stores the dataset's own reads with no pipeline (its node as their
+    /// module), the flow's read of the dataset, and what the flow inherits through it; the graph draws each source
+    /// into the dataset and the dataset into the flow, and never a second, direct edge from a source to the flow. A
+    /// read the flow makes in its own right still draws, the walk reaches the reading flow from the flow writing a
+    /// source, and a deep link onto the dataset shows what it is derived from.
+    /// </summary>
+    [SkippableFact]
+    public async Task ProjectGraph_DrawsADerivedDatasetBetweenItsSourcesAndTheFlowReadingIt()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var serverRef = "${env:SQLFLOW_PG_DRV_" + suffix + "}";
+        var storeRef = "dataset:probe-store-" + suffix;
+        var modelRef = "dataset:probe-model-" + suffix;
+        var repo = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var writer = Guid.NewGuid();
+        var reader = Guid.NewGuid();
+        var written = $"{storeRef}|tenant1|master|wks:unit:1.0.0";
+        var unwritten = $"{storeRef}|tenant1|master|wks:code:1.0.0";
+        var model = $"{modelRef}|tenant1|models|well-model";
+        var direct = $"{serverRef}|dw|arc|wells";
+        var target = $"{serverRef}|dw|mart|wells_out";
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Repos.Add(new CatalogRepo { Id = repo, Name = "drv_" + suffix, FirstSeenUtc = now, LastSyncUtc = now });
+                db.Objects.Add(SeedDataset(written, storeRef, "tenant1", "master", "wks:unit:1.0.0", now));
+                db.Objects.Add(SeedDataset(unwritten, storeRef, "tenant1", "master", "wks:code:1.0.0", now));
+                db.Objects.Add(SeedDataset(model, modelRef, "tenant1", "models", "Well-Model", now));
+                db.Objects.Add(SeedTable(direct, serverRef, "DW", "arc", "Wells", now));
+                db.Objects.Add(SeedTable(target, serverRef, "DW", "mart", "Wells_out", now));
+
+                db.Pipelines.Add(SeedPipeline(writer, repo, "Units_capture", "probe", "Units/capture.yaml", 1, now));
+                db.Pipelines.Add(SeedPipeline(reader, repo, "Wells_render", "probe", "Wells/render.yaml", 2, now));
+
+                db.LineageEdges.Add(Edge(repo, writer, "Units_capture", "Writes", written, "wks:unit:1.0.0"));
+
+                // The dataset's own reads: no pipeline, its node as the module.
+                db.LineageEdges.Add(ModuleEdge(repo, model, written, "wks:unit:1.0.0"));
+                db.LineageEdges.Add(ModuleEdge(repo, model, unwritten, "wks:code:1.0.0"));
+
+                // The flow reads the dataset and a table of its own, inherits the dataset's sources, and writes a table.
+                db.LineageEdges.Add(Edge(repo, reader, "Wells_render", "Reads", model, "Well-Model"));
+                db.LineageEdges.Add(Edge(repo, reader, "Wells_render", "Reads", direct, "Wells"));
+                db.LineageEdges.Add(Inherited(repo, reader, "Wells_render", model, written, "wks:unit:1.0.0"));
+                db.LineageEdges.Add(Inherited(repo, reader, "Wells_render", model, unwritten, "wks:code:1.0.0"));
+                db.LineageEdges.Add(Edge(repo, reader, "Wells_render", "Writes", target, "Wells_out"));
+                await db.SaveChangesAsync();
+            }
+
+            using var client = factory.CreateClient();
+            var token = await IssueReadTokenAsync(client);
+
+            // Seeded on the project of the flow writing a source: the walk reaches the reading flow through what it
+            // inherits, so the whole chain is one graph.
+            var graph = await GetJsonAsync<ProjectGraphDto>(
+                client, token, $"/api/v1/lineage/project-graph?repoId={repo}&project=Units");
+            Assert.Equal([writer, reader], graph.Pipelines.OrderBy(p => p.Depth).Select(p => p.Id).ToList());
+
+            var node = Assert.Single(graph.Objects, o => o.Key == model);
+            Assert.Equal(("Well-Model", "probe model " + suffix, "tenant1.models"), (node.Name, node.Kind, node.Location));
+
+            var flows = graph.FlowGraph.Select(e => (e.Source, e.Target, e.Label, e.PipelineId)).ToHashSet();
+            Assert.Contains((writer.ToString(), written, "writes", (Guid?)writer), flows);
+            Assert.Contains((written, model, "reads", (Guid?)null), flows);
+            Assert.Contains((unwritten, model, "reads", (Guid?)null), flows);
+            Assert.Contains((model, reader.ToString(), "reads", (Guid?)reader), flows);
+            Assert.Contains((direct, reader.ToString(), "reads", (Guid?)reader), flows);
+            Assert.Contains((reader.ToString(), target, "writes", (Guid?)reader), flows);
+            Assert.DoesNotContain(graph.FlowGraph, e => (e.Source == written || e.Source == unwritten) && e.Target == reader.ToString());
+            Assert.Equal(6, flows.Count);
+
+            var objects = graph.ObjectGraph.Select(e => (e.Source, e.Target, e.Label, e.PipelineId)).ToHashSet();
+            Assert.Contains((written, model, "reads", (Guid?)null), objects);
+            Assert.Contains((unwritten, model, "reads", (Guid?)null), objects);
+            Assert.Contains((model, target, "Wells_render", (Guid?)reader), objects);
+            Assert.Contains((direct, target, "Wells_render", (Guid?)reader), objects);
+            Assert.DoesNotContain(graph.ObjectGraph, e => (e.Source == written || e.Source == unwritten) && e.Target == target);
+            Assert.Equal(4, objects.Count);
+
+            // A deep link onto the dataset itself: the flow reading it, and what it is derived from.
+            var fromModel = await GetJsonAsync<ProjectGraphDto>(
+                client, token, $"/api/v1/lineage/project-graph?expand={Uri.EscapeDataString(model)}");
+            Assert.Contains(reader, fromModel.Pipelines.Select(p => p.Id));
+            Assert.Contains(fromModel.FlowGraph, e => e.Source == written && e.Target == model && e.Label == "reads");
+            Assert.Contains(fromModel.FlowGraph, e => e.Source == model && e.Target == reader.ToString());
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.LineageEdges.Where(e => e.RepoId == repo).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.RepoId == repo).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.ServerRef == serverRef || o.ServerRef == storeRef || o.ServerRef == modelRef).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repo).ExecuteDeleteAsync();
+        }
+    }
+
+    private static CatalogObject SeedDataset(
+        string key, string serverRef, string ns, string group, string name, DateTime now)
+        => new()
+        {
+            Key = key,
+            ServerRef = serverRef,
+            Database = ns,
+            Schema = group,
+            Name = name,
+            Kind = "Dataset",
+            FirstSeenUtc = now,
+            LastSeenUtc = now,
+        };
+
+    /// <summary>A read a derived dataset makes of one of its sources: no pipeline, the dataset's node as the module.</summary>
+    private static CatalogLineageEdge ModuleEdge(Guid repoId, string moduleKey, string objectKey, string objectName)
+        => new()
+        {
+            RepoId = repoId,
+            Flow = null,
+            PipelineId = null,
+            ViaModule = moduleKey,
+            Relation = "Reads",
+            ObjectKey = objectKey,
+            ObjectName = objectName,
+            Tier = "Declared",
+        };
+
+    /// <summary>A read a flow inherits through a module it reads, as the graph builder attributes it to the flow.</summary>
+    private static CatalogLineageEdge Inherited(
+        Guid repoId, Guid pipelineId, string flow, string moduleKey, string objectKey, string objectName)
+        => new()
+        {
+            RepoId = repoId,
+            PipelineId = pipelineId,
+            Flow = flow,
+            ViaModule = moduleKey,
+            Relation = "Reads",
+            ObjectKey = objectKey,
+            ObjectName = objectName,
+            Tier = "Derived",
+        };
+
     private static CatalogObject SeedTable(
         string key, string serverRef, string database, string schema, string name, DateTime now)
         => new()
