@@ -183,7 +183,7 @@ export default function ReposPage() {
       id: "remoteUrl",
       header: "Remote URL",
       render: (row) => {
-        const url = row.source?.remoteUrl ?? row.repo?.remoteUrl;
+        const url = row.source?.remoteUrl ?? row.source?.localPath ?? row.repo?.remoteUrl;
         if (url === null || url === undefined || url === "") {
           return "-";
         }

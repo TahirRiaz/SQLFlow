@@ -10,23 +10,29 @@ using SqlFlow.Node;
 
 namespace SqlFlow.ControlPlane.Api;
 
-/// <summary>A tracked git repo the control plane auto-syncs into the catalog, with its schedule and last result.
-/// <see cref="CredentialReference"/> is a secret reference (never a secret value), safe to return to clients.
-/// <see cref="ExcludedFlowPaths"/> is the preview-first selection of flow files this source does NOT import.</summary>
+/// <summary>A tracked repo source the control plane auto-syncs into the catalog, with its schedule and last
+/// result: a git remote (<see cref="RemoteUrl"/> set) it clones and pulls, or a directory (<see cref="LocalPath"/>
+/// set) it reads live with no git step, for a working copy that has never been committed or pushed. Exactly one of
+/// the two is set. <see cref="CredentialReference"/> is a secret reference (never a secret value), safe to return
+/// to clients, and applies only to a git source. <see cref="ExcludedFlowPaths"/> is the preview-first selection of
+/// flow files this source does NOT import.</summary>
 public sealed record RepoSourceDto(
-    Guid Id, string Name, string RemoteUrl, string Branch, bool Enabled, int SyncIntervalSeconds,
+    Guid Id, string Name, string? RemoteUrl, string? LocalPath, string Branch, bool Enabled, int SyncIntervalSeconds,
     DateTime? NextSyncUtc, DateTime? LastSyncUtc, string? LastSyncedSha, string? LastError,
     string? CredentialReference, string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths,
     DateTime CreatedUtc, DateTime UpdatedUtc);
 
-/// <summary>The body to register (or update) a tracked repo source. <see cref="CredentialReference"/> is a secret
-/// reference (<c>${keyvault:vault/secret}</c> / <c>${env:NAME}</c>) for a private remote's token, never a raw
-/// token: the secret is created and maintained in the vault, SQLFlow only references it.
-/// <see cref="ExcludedFlowPaths"/> are the repo-relative flow files to leave out of the import (from a discover
-/// preview); null or empty imports every <c>*.flow.yaml</c>.</summary>
+/// <summary>The body to register (or update) a tracked repo source: exactly one of <see cref="RemoteUrl"/> (a git
+/// remote the managed sync clones and pulls) and <see cref="LocalPath"/> (a directory the control-plane host reads
+/// live, with no git step) must be given. <see cref="CredentialReference"/> is a secret reference
+/// (<c>${keyvault:vault/secret}</c> / <c>${env:NAME}</c>) for a private remote's token, never a raw token: the
+/// secret is created and maintained in the vault, SQLFlow only references it; it is ignored for a local-path
+/// source. <see cref="ExcludedFlowPaths"/> are the repo-relative flow files to leave out of the import (from a
+/// discover preview); null or empty imports every <c>*.flow.yaml</c>.</summary>
 public sealed record RegisterRepoSourceRequest(
-    string Name, string RemoteUrl, string? Branch, int? SyncIntervalSeconds, bool? Enabled,
-    string? CredentialReference = null, string? CredentialUsername = null, string[]? ExcludedFlowPaths = null);
+    string Name, string? RemoteUrl, string? Branch, int? SyncIntervalSeconds, bool? Enabled,
+    string? CredentialReference = null, string? CredentialUsername = null, string[]? ExcludedFlowPaths = null,
+    string? LocalPath = null);
 
 /// <summary>The body to preview a repo's flows before importing anything: a git remote plus optional branch and a
 /// credential reference. Read-only; the clone lives in a cache and nothing is written to the catalog.</summary>
@@ -87,10 +93,26 @@ public static class RepoSourceEndpoints
     private static async Task<Results<Created<RepoSourceRegistered>, ProblemHttpResult>> RegisterSourceAsync(
         RegisterRepoSourceRequest request, CatalogDbContext db, TimeProvider clock, CancellationToken ct)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.Name) || string.IsNullOrWhiteSpace(request.RemoteUrl))
+        if (request is null || string.IsNullOrWhiteSpace(request.Name))
         {
             return TypedResults.Problem(
-                detail: "A repo source requires a non-blank name and remoteUrl.",
+                detail: "A repo source requires a non-blank name.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+        }
+
+        var hasRemote = !string.IsNullOrWhiteSpace(request.RemoteUrl);
+        var hasLocal = !string.IsNullOrWhiteSpace(request.LocalPath);
+        if (hasRemote == hasLocal)
+        {
+            return TypedResults.Problem(
+                detail: "A repo source requires exactly one of remoteUrl (a git remote the managed sync clones and pulls) and localPath (a directory the control-plane host reads live, with no git step).",
+                statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+        }
+
+        if (hasLocal && !Directory.Exists(request.LocalPath))
+        {
+            return TypedResults.Problem(
+                detail: $"The control-plane host cannot see localPath '{request.LocalPath}'. A local-path source only works when the control plane runs on the machine that holds the directory.",
                 statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
         }
 
@@ -105,8 +127,9 @@ public static class RepoSourceEndpoints
         }
 
         var id = await RepoSourceStore.UpsertAsync(
-            db, request.Name.Trim(), request.RemoteUrl.Trim(), request.Branch ?? "main",
+            db, request.Name.Trim(), hasRemote ? request.RemoteUrl!.Trim() : null, request.Branch ?? "main",
             request.Enabled ?? true, request.SyncIntervalSeconds ?? 300, clock.GetUtcNow().UtcDateTime,
+            hasLocal ? request.LocalPath!.Trim() : null,
             credentialReference, request.CredentialUsername, request.ExcludedFlowPaths, ct).ConfigureAwait(false);
 
         return TypedResults.Created($"/api/v1/repos/sources/{id}", new RepoSourceRegistered(id));
@@ -238,7 +261,7 @@ public static class RepoSourceEndpoints
     // A method (not an EF expression) so the stored ExcludedFlowPaths JSON can be deserialized; the repo-source
     // table is tiny, so materializing the row before mapping is free.
     private static RepoSourceDto ToDto(CatalogRepoSource s) => new(
-        s.Id, s.Name, s.RemoteUrl, s.Branch, s.Enabled, s.SyncIntervalSeconds,
+        s.Id, s.Name, s.RemoteUrl, s.LocalPath, s.Branch, s.Enabled, s.SyncIntervalSeconds,
         s.NextSyncUtc, s.LastSyncUtc, s.LastSyncedSha, s.LastError,
         s.CredentialReference, s.CredentialUsername,
         RepoSourceStore.ParseExcludedPaths(s.ExcludedFlowPaths).OrderBy(p => p, StringComparer.Ordinal).ToArray(),

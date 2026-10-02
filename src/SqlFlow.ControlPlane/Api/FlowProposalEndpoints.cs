@@ -111,6 +111,15 @@ public static class FlowProposalEndpoints
             return Problem($"No repo source '{id}'.", StatusCodes.Status404NotFound, "Not found");
         }
 
+        if (string.IsNullOrWhiteSpace(source.RemoteUrl))
+        {
+            return Problem(
+                "This source reads a local path and has no git remote to push a proposal to; edit the files there instead.",
+                StatusCodes.Status400BadRequest);
+        }
+
+        var remoteUrl = source.RemoteUrl;
+
         // Preflight with the engine's own loaders BEFORE anything touches git: a flow that would not import is
         // rejected here with the loader's message (merging it would land nothing), and softer findings (an
         // endpoint change on a revised flow, a duplicate flow name) ride into the response and the pull-request
@@ -130,7 +139,7 @@ public static class FlowProposalEndpoints
                 StatusCodes.Status422UnprocessableEntity, "Proposal failed preflight");
         }
 
-        var coordinates = RemoteUrlParser.Parse(source.RemoteUrl);
+        var coordinates = RemoteUrlParser.Parse(remoteUrl);
         if (coordinates is null)
         {
             return Problem(
@@ -179,7 +188,7 @@ public static class FlowProposalEndpoints
         {
             publish = await gitPublisher.PublishAsync(
                 new ProposalPublishRequest(
-                    source.RemoteUrl, effectiveBase, effectiveHead, commitMessage,
+                    remoteUrl, effectiveBase, effectiveHead, commitMessage,
                     authorName, authorEmail, credentials.Username, credentials.Secret, files),
                 ct).ConfigureAwait(false);
         }
@@ -210,7 +219,7 @@ public static class FlowProposalEndpoints
             // The branch is already on the remote but the pull request did not open. Roll the branch back so a retry
             // starts clean, then surface the real cause.
             await gitPublisher.TryDeleteRemoteBranchAsync(
-                new RemoteBranchRef(source.RemoteUrl, publish.HeadBranch, credentials.Username, credentials.Secret), ct)
+                new RemoteBranchRef(remoteUrl, publish.HeadBranch, credentials.Username, credentials.Secret), ct)
                 .ConfigureAwait(false);
             return Problem(
                 $"The proposal branch was pushed but the pull request could not be opened (the branch was rolled back): "

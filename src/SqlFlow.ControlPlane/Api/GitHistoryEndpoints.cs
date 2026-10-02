@@ -92,7 +92,7 @@ public static class GitHistoryEndpoints
         }
 
         return await ReadAsync(
-            secrets, source.RemoteUrl, source.Branch, source.CredentialReference, source.CredentialUsername,
+            secrets, HistoryRemote(source), source.Branch, source.CredentialReference, source.CredentialUsername,
             repo => Log(repo, path, author, message, since, until, limit), ct).ConfigureAwait(false);
     }
 
@@ -121,7 +121,7 @@ public static class GitHistoryEndpoints
         }
 
         return await ReadAsync(
-            secrets, source.RemoteUrl, source.Branch, source.CredentialReference, source.CredentialUsername,
+            secrets, HistoryRemote(source), source.Branch, source.CredentialReference, source.CredentialUsername,
             repo => Log(repo, pipeline.RelativePath, author: null, message: null, since: null, until: null, limit),
             ct).ConfigureAwait(false);
     }
@@ -143,7 +143,7 @@ public static class GitHistoryEndpoints
         }
 
         return await ReadDiffAsync(
-            secrets, source.RemoteUrl, source.Branch, source.CredentialReference, source.CredentialUsername,
+            secrets, HistoryRemote(source), source.Branch, source.CredentialReference, source.CredentialUsername,
             sha, path, ct).ConfigureAwait(false);
     }
 
@@ -311,6 +311,12 @@ public static class GitHistoryEndpoints
         var sources = await db.RepoSources.AsNoTracking().Take(2).ToListAsync(ct).ConfigureAwait(false);
         return sources.Count == 1 ? sources[0] : null;
     }
+
+    /// <summary>Where a source's committed history is cloned from: its remote, or for a local-path source the working
+    /// copy itself (a directory that is no git working copy answers "History unavailable").</summary>
+    private static string HistoryRemote(CatalogRepoSource source)
+        => source.RemoteUrl ?? source.LocalPath
+            ?? throw new InvalidOperationException($"Repo source '{source.Name}' has neither a remote URL nor a local path.");
 
     private static async Task<Results<Ok<IReadOnlyList<GitCommitDto>>, ProblemHttpResult>> ReadAsync(
         ISecretResolver secrets, string remoteUrl, string branch, string? credentialReference, string? username,

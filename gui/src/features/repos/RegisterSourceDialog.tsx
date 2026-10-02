@@ -45,7 +45,9 @@ export function RegisterSourceDialog({
   // different name would create a second, unrelated source instead of updating/merging onto this one.
   const nameLocked = isEdit || presetName !== undefined;
   const [name, setName] = useState(source?.name ?? presetName ?? "");
+  const [mode, setMode] = useState<"git" | "local">(source?.localPath ? "local" : "git");
   const [remoteUrl, setRemoteUrl] = useState(source?.remoteUrl ?? "");
+  const [localPath, setLocalPath] = useState(source?.localPath ?? "");
   const [branch, setBranch] = useState(source?.branch ?? "main");
   const [intervalText, setIntervalText] = useState(source ? String(source.syncIntervalSeconds) : "300");
   const [enabled, setEnabled] = useState(source?.enabled ?? true);
@@ -109,8 +111,9 @@ export function RegisterSourceDialog({
     [discovered, included, source],
   );
 
-  const canDiscover = remoteUrl.trim() !== "" && referenceValid && !discover.isPending;
-  const canSubmit = name.trim() !== "" && remoteUrl.trim() !== "" && intervalValid && referenceValid && !register.isPending;
+  const location = mode === "git" ? remoteUrl.trim() : localPath.trim();
+  const canDiscover = mode === "git" && remoteUrl.trim() !== "" && referenceValid && !discover.isPending;
+  const canSubmit = name.trim() !== "" && location !== "" && intervalValid && referenceValid && !register.isPending;
   const includedCount = discovered === null ? 0 : discovered.filter((f) => included.has(f.relativePath)).length;
 
   const toggle = (path: string) =>
@@ -128,7 +131,8 @@ export function RegisterSourceDialog({
   const submit = () => {
     register.mutate({
       name: name.trim(),
-      remoteUrl: remoteUrl.trim(),
+      remoteUrl: mode === "git" ? remoteUrl.trim() : null,
+      localPath: mode === "local" ? localPath.trim() : null,
       branch: branch.trim() === "" ? null : branch.trim(),
       syncIntervalSeconds: Number.parseInt(intervalText.trim(), 10),
       enabled,
@@ -188,17 +192,51 @@ export function RegisterSourceDialog({
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="source-remote-url">Remote URL</Label>
-              <Input
-                id="source-remote-url"
-                className="h-8 font-mono text-[12px]"
-                required
-                placeholder="https://git.example.com/org/repo.git"
-                value={remoteUrl}
-                onChange={(e) => setRemoteUrl(e.target.value)}
-                data-testid="source-remote-url"
-              />
+              <Label className="flex items-center gap-2 text-[13px] font-normal">
+                <Switch
+                  checked={mode === "local"}
+                  onCheckedChange={(local) => {
+                    setMode(local ? "local" : "git");
+                    setDiscovered(null);
+                  }}
+                  data-testid="source-local-mode"
+                />
+                Local path (read live, no git step)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {mode === "local"
+                  ? "The control plane reads this directory as it is on disk, uncommitted files included, on the sync interval. It must run on the machine that holds the directory."
+                  : "The control plane clones and pulls this remote's branch on the sync interval; only committed changes sync."}
+              </p>
             </div>
+
+            {mode === "local" ? (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="source-local-path">Local path</Label>
+                <Input
+                  id="source-local-path"
+                  className="h-8 font-mono text-[12px]"
+                  required
+                  placeholder="C:\\projects\\my-flows"
+                  value={localPath}
+                  onChange={(e) => setLocalPath(e.target.value)}
+                  data-testid="source-local-path"
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="source-remote-url">Remote URL</Label>
+                <Input
+                  id="source-remote-url"
+                  className="h-8 font-mono text-[12px]"
+                  required
+                  placeholder="https://git.example.com/org/repo.git"
+                  value={remoteUrl}
+                  onChange={(e) => setRemoteUrl(e.target.value)}
+                  data-testid="source-remote-url"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="source-branch">Branch</Label>

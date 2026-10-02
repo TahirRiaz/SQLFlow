@@ -333,7 +333,7 @@ internal static partial class RemoteVerbs
                     foreach (var repo in repos.OrderBy(r => r.Name, StringComparer.OrdinalIgnoreCase))
                     {
                         var source = sources.GetValueOrDefault(repo.Name);
-                        var kind = source is not null ? "git" : repo.RootPath is not null ? "local" : "-";
+                        var kind = source is null ? (repo.RootPath is not null ? "local" : "-") : source.LocalPath is not null ? "path" : "git";
                         var sha = source?.LastSyncedSha is { Length: >= 8 } s ? s[..8] : "-";
                         Console.WriteLine(
                             $"{Truncate(repo.Name, 28),-28}  {kind,-6}  {repo.LastSyncUtc:yyyy-MM-dd HH:mm:ss}  {sha,-12}  {repo.RemoteUrl ?? repo.RootPath ?? "-"}");
@@ -365,9 +365,11 @@ internal static partial class RemoteVerbs
                 {
                     var name = Program.GetOption(args, "--name");
                     var remote = Program.GetOption(args, "--remote-url");
-                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(remote))
+                    var localPath = Program.GetOption(args, "--local-path");
+                    if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(remote) == string.IsNullOrWhiteSpace(localPath))
                     {
-                        Console.Error.WriteLine("ERROR  'repos register' requires --name <repo> and --remote-url <git url>.");
+                        Console.Error.WriteLine(
+                            "ERROR  'repos register' requires --name <repo> and exactly one of --remote-url <git url> and --local-path <dir> (read live by the control plane, no git step).");
                         return 1;
                     }
 
@@ -385,7 +387,8 @@ internal static partial class RemoteVerbs
                         Enabled: !args.Contains("--disabled"),
                         CredentialReference: credential,
                         CredentialUsername: Program.GetOption(args, "--credential-user"),
-                        ExcludedFlowPaths: null), ct).ConfigureAwait(false);
+                        ExcludedFlowPaths: null,
+                        LocalPath: string.IsNullOrWhiteSpace(localPath) ? null : Path.GetFullPath(localPath)), ct).ConfigureAwait(false);
                     Note(json, $"OK   source '{name}' registered ({registered.Id}); the control plane syncs it on its interval, or force it: sqlflow repos sync {name}");
                     if (json)
                     {

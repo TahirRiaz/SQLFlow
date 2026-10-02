@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Configuration;
@@ -143,18 +144,10 @@ public sealed partial class RepoSyncService : BackgroundService
         {
             await trace.InfoAsync("start", $"Sync started for '{source.Name}' (branch {source.Branch}).", ct).ConfigureAwait(false);
 
-            // Resolve the source's git credential from its stored ${...} reference (Key Vault / env); the secret
-            // value is never stored in the catalog, only fetched here for the clone. A source with no reference
-            // falls back to the host environment (public remotes, single-credential deployments).
-            await trace.InfoAsync("credentials", "Resolving git credentials.", ct).ConfigureAwait(false);
             var resolver = scope.ServiceProvider.GetRequiredService<ISecretResolver>();
-            var credentials = await GitMaterializer
-                .ResolveCredentialsAsync(resolver, source.CredentialReference, source.CredentialUsername, ct)
-                .ConfigureAwait(false);
-
-            await trace.InfoAsync("clone", $"Cloning {source.RemoteUrl} (branch {source.Branch}).", ct).ConfigureAwait(false);
-            var (workingDir, sha) = _materializer.MaterializeBranch(source.RemoteUrl, source.Branch, credentials, ct);
-            await trace.InfoAsync("clone", $"Checked out {sha}.", ct).ConfigureAwait(false);
+            var (workingDir, sha) = source.LocalPath is { Length: > 0 } localPath
+                ? await ReadLocalPathAsync(catalog, trace, source.Name, localPath, ct).ConfigureAwait(false)
+                : await CloneAsync(trace, resolver, source, ct).ConfigureAwait(false);
 
             // The preview-first selection: only the flows the source includes are projected as pipelines (an
             // excluded flow never becomes a catalog pipeline, so the scheduler never picks it up).
@@ -238,6 +231,64 @@ public sealed partial class RepoSyncService : BackgroundService
         }
     }
 
+    /// <summary>Pulls a git source's branch tip into the node cache. The credential is resolved from the source's
+    /// stored ${...} reference, or the host environment when it has none; the secret is never stored.</summary>
+    private async Task<(string WorkingDir, string Sha)> CloneAsync(
+        ActivityTrace trace, ISecretResolver resolver, CatalogRepoSource source, CancellationToken ct)
+    {
+        var remoteUrl = source.RemoteUrl
+            ?? throw new InvalidOperationException($"Repo source '{source.Name}' has neither a remote URL nor a local path.");
+        await trace.InfoAsync("credentials", "Resolving git credentials.", ct).ConfigureAwait(false);
+        var credentials = await GitMaterializer
+            .ResolveCredentialsAsync(resolver, source.CredentialReference, source.CredentialUsername, ct)
+            .ConfigureAwait(false);
+
+        await trace.InfoAsync("clone", $"Cloning {remoteUrl} (branch {source.Branch}).", ct).ConfigureAwait(false);
+        var (workingDir, sha) = _materializer.MaterializeBranch(remoteUrl, source.Branch, credentials, ct);
+        await trace.InfoAsync("clone", $"Checked out {sha}.", ct).ConfigureAwait(false);
+        return (workingDir, sha);
+    }
+
+    /// <summary>
+    /// Reads a local-path source live, with no git step, so uncommitted and untracked files sync exactly as they sit
+    /// on disk. The repo's remote is cleared first: a run is pinned to a commit only when its repo has a remote, so
+    /// runs of this repo read the directory itself rather than a commit that does not hold the working tree. The
+    /// recorded version is <c>worktree</c>, with the checkout's HEAD beside it when the directory is a git working copy.
+    /// </summary>
+    private static async Task<(string WorkingDir, string Sha)> ReadLocalPathAsync(
+        CatalogDbContext catalog, ActivityTrace trace, string repoName, string localPath, CancellationToken ct)
+    {
+        await trace.InfoAsync("read", $"Reading {localPath} live (no git step).", ct).ConfigureAwait(false);
+        if (!Directory.Exists(localPath))
+        {
+            throw new DirectoryNotFoundException(
+                $"The control-plane host cannot see local path '{localPath}'. A local-path source only syncs where the control plane runs on the machine that holds the directory.");
+        }
+
+        await catalog.Repos
+            .Where(r => r.Name == repoName && r.RemoteUrl != null)
+            .ExecuteUpdateAsync(r => r.SetProperty(x => x.RemoteUrl, (string?)null), ct)
+            .ConfigureAwait(false);
+
+        var head = WorkingCopyHead(localPath);
+        var version = head is null ? "worktree" : $"worktree@{head}";
+        await trace.InfoAsync("read", $"Read the working tree ({version}).", ct).ConfigureAwait(false);
+        return (localPath, version);
+    }
+
+    /// <summary>The HEAD commit of the git working copy at <paramref name="path"/>, or null when it is none or has no commit yet.</summary>
+    private static string? WorkingCopyHead(string path)
+    {
+        var discovered = LibGit2Sharp.Repository.Discover(path);
+        if (discovered is null)
+        {
+            return null;
+        }
+
+        using var repository = new LibGit2Sharp.Repository(discovered);
+        return repository.Head?.Tip?.Sha;
+    }
+
     /// <summary>Expands the sync result into a concise activity line plus one warning line per warning, so the panel
     /// shows what the reconcile did and surfaces every warning the sync collected.</summary>
     private static async Task EmitResultAsync(ActivityTrace trace, CatalogSyncResult result, CancellationToken ct)
@@ -310,7 +361,7 @@ public sealed partial class RepoSyncService : BackgroundService
         }
     }
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Synced repo source '{Source}' from git at commit {CommitSha}.")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Synced repo source '{Source}' at {CommitSha}.")]
     private partial void LogSynced(string source, string commitSha);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Repo source '{Source}' sync failed: {Error}")]

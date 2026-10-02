@@ -94,6 +94,9 @@ sqlflow schedules list | show <id> | create --repo r --flow f (--cron "0 6 * * *
 sqlflow repos list | show <name> | sync <name>     # git source sync-now, or local-path re-sync
 sqlflow repos register --name bb --remote-url https://... --credential-ref '${env:GIT_TOKEN}'
                  [--branch main] [--interval 3600] [--credential-user git] [--disabled]
+sqlflow repos register --name bb --local-path C:\flows [--interval 60]
+                 # a directory the control plane reads live on its interval, no git step: uncommitted and
+                 # untracked files sync as they sit on disk; the control plane must run where the directory is
 sqlflow repos discover --remote-url https://...    # preview a remote's flows without importing
 sqlflow pipelines list [--repo r --kind ing --active true] | show <id> [--yaml|--definition]
                  | columns <id> | files <id>

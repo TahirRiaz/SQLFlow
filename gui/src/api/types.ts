@@ -931,7 +931,10 @@ export interface WorkerPoolScaleRequest {
 export interface RepoSource {
   id: string;
   name: string;
-  remoteUrl: string;
+  /** The git remote the sync clones and pulls; null for a local-path source. */
+  remoteUrl: string | null;
+  /** The directory the control plane reads live with no git step; null for a git source. */
+  localPath: string | null;
   branch: string;
   enabled: boolean;
   syncIntervalSeconds: number;
@@ -951,7 +954,9 @@ export interface RepoSource {
 
 export interface RegisterRepoSourceRequest {
   name: string;
-  remoteUrl: string;
+  /** Exactly one of remoteUrl and localPath. */
+  remoteUrl?: string | null;
+  localPath?: string | null;
   branch?: string | null;
   syncIntervalSeconds?: number | null;
   enabled?: boolean | null;

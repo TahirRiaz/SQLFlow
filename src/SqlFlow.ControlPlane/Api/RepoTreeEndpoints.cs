@@ -71,26 +71,26 @@ public static class RepoTreeEndpoints
 
         var source = await db.RepoSources.AsNoTracking()
             .FirstOrDefaultAsync(s => s.Name == repo.Name, ct).ConfigureAwait(false);
-        if (source is not null)
+        if (source is { RemoteUrl: { Length: > 0 } })
         {
             return await ReadFromGitAsync(secrets, source, ct).ConfigureAwait(false);
         }
 
-        if (string.IsNullOrWhiteSpace(repo.RootPath))
+        var rootPath = source?.LocalPath ?? repo.RootPath;
+        if (string.IsNullOrWhiteSpace(rootPath))
         {
             return BadRequest(
                 "Contents unavailable",
                 $"Repo '{repo.Name}' has no registered git source and no recorded root path, so its files cannot be listed.");
         }
 
-        if (!Directory.Exists(repo.RootPath))
+        if (!Directory.Exists(rootPath))
         {
             return BadRequest(
                 "Contents unavailable",
-                $"The control-plane host cannot see the repo's root path '{repo.RootPath}', so its files cannot be listed. A repo synced from a local path is browsable only where the flow files live.");
+                $"The control-plane host cannot see the repo's root path '{rootPath}', so its files cannot be listed. A repo synced from a local path is browsable only where the flow files live.");
         }
 
-        var rootPath = repo.RootPath;
         var entries = await Task.Run(() => ReadFromDisk(rootPath, ct), ct).ConfigureAwait(false);
         return TypedResults.Ok(Listing("disk", entries));
     }
@@ -110,7 +110,7 @@ public static class RepoTreeEndpoints
                 () =>
                 {
                     var workingDir = new GitMaterializer()
-                        .EnsureHistoryClone(source.RemoteUrl, source.Branch, credentials, TreeFreshness, ct);
+                        .EnsureHistoryClone(source.RemoteUrl!, source.Branch, credentials, TreeFreshness, ct);
                     using var repository = new Repository(workingDir);
                     return ReadBranchTip(repository, ct);
                 },

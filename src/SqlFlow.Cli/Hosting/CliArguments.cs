@@ -30,7 +30,7 @@ public sealed class CliArguments
         "--scope", "--batch", "--pool", "--poll-seconds", "--commit", "--flow", "--status", "--kind", "--group",
         "--page", "--page-size", "--from", "--to", "--file-pattern", "--source-filter",
         "--cron", "--interval", "--timezone", "--max-concurrency",
-        "--remote-url", "--credential-ref", "--credential-user",
+        "--remote-url", "--local-path", "--credential-ref", "--credential-user",
         "--ref", "--sample", "--max-columns", "--max-candidates", "--active", "--enabled",
         "--search", "--relation", "--tier", "--server", "--operation", "--last", "--set", "--payload",
         "--branch", "--default-type", "--drain-seconds",

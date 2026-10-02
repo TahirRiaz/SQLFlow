@@ -1293,6 +1293,10 @@ namespace SqlFlow.Catalog.Migrations
                     b.Property<string>("LastSyncedSha")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("LocalPath")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -1302,7 +1306,6 @@ namespace SqlFlow.Catalog.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("RemoteUrl")
-                        .IsRequired()
                         .HasMaxLength(1024)
                         .HasColumnType("nvarchar(1024)");
 

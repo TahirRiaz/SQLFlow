@@ -792,7 +792,10 @@ public sealed class CatalogDbContext : DbContext
             entity.ToTable("RepoSource");
             entity.HasKey(s => s.Id);
             entity.Property(s => s.Name).HasMaxLength(256).IsRequired();
-            entity.Property(s => s.RemoteUrl).HasMaxLength(1024).IsRequired();
+            // Exactly one of the two is set (enforced at registration): a git remote, or a local-path source's own
+            // directory, read live with no clone.
+            entity.Property(s => s.RemoteUrl).HasMaxLength(1024);
+            entity.Property(s => s.LocalPath).HasMaxLength(1024);
             entity.Property(s => s.Branch).HasMaxLength(256).IsRequired();
             // A secret reference (${keyvault:...}/${env:...}), not a secret value: bounded, never a blob.
             entity.Property(s => s.CredentialReference).HasMaxLength(512);

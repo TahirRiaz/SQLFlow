@@ -21,20 +21,31 @@ public static class RepoSourceStore
 {
     /// <summary>Registers or refreshes a tracked repo (keyed by name, so re-registering updates in place). A new
     /// source is due to sync immediately; an existing one keeps its schedule but takes the refreshed settings.
-    /// <paramref name="credentialReference"/> is a secret reference (never a secret value) for the git token, and
-    /// <paramref name="credentialUsername"/> the paired username; both are optional and null clears them.</summary>
+    /// Exactly one of <paramref name="remoteUrl"/> (a git remote the managed sync clones and pulls) and
+    /// <paramref name="localPath"/> (a directory the control-plane host reads live, with no git step, for a
+    /// working copy that has never been committed or pushed) must be given. <paramref name="credentialReference"/>
+    /// is a secret reference (never a secret value) for the git token, and <paramref name="credentialUsername"/>
+    /// the paired username; both are optional, apply only to a git source, and null clears them.</summary>
     public static Task<Guid> UpsertAsync(
-        CatalogDbContext catalog, string name, string remoteUrl, string branch, bool enabled, int syncIntervalSeconds,
-        DateTime nowUtc, string? credentialReference = null, string? credentialUsername = null,
+        CatalogDbContext catalog, string name, string? remoteUrl, string branch, bool enabled, int syncIntervalSeconds,
+        DateTime nowUtc, string? localPath = null, string? credentialReference = null, string? credentialUsername = null,
         IReadOnlyList<string>? excludedFlowPaths = null, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        ArgumentException.ThrowIfNullOrWhiteSpace(remoteUrl);
+        var hasRemote = !string.IsNullOrWhiteSpace(remoteUrl);
+        var hasLocal = !string.IsNullOrWhiteSpace(localPath);
+        if (hasRemote == hasLocal)
+        {
+            throw new ArgumentException(
+                "A repo source needs exactly one of remoteUrl (a git remote) and localPath (a directory read live, with no git step).");
+        }
 
         var id = FlowIdentity.FromName($"reposource/{name}");
         var interval = Math.Max(1, syncIntervalSeconds);
         var effectiveBranch = string.IsNullOrWhiteSpace(branch) ? "main" : branch.Trim();
+        var effectiveRemoteUrl = hasRemote ? remoteUrl!.Trim() : null;
+        var effectiveLocalPath = hasLocal ? Path.GetFullPath(localPath!.Trim()) : null;
         var reference = string.IsNullOrWhiteSpace(credentialReference) ? null : credentialReference.Trim();
         var username = string.IsNullOrWhiteSpace(credentialUsername) ? null : credentialUsername.Trim();
         var excludedJson = SerializeExcludedPaths(excludedFlowPaths);
@@ -49,7 +60,8 @@ public static class RepoSourceStore
                 {
                     Id = id,
                     Name = name,
-                    RemoteUrl = remoteUrl,
+                    RemoteUrl = effectiveRemoteUrl,
+                    LocalPath = effectiveLocalPath,
                     Branch = effectiveBranch,
                     Enabled = enabled,
                     SyncIntervalSeconds = interval,
@@ -63,7 +75,8 @@ public static class RepoSourceStore
                 return id;
             }
 
-            existing.RemoteUrl = remoteUrl;
+            existing.RemoteUrl = effectiveRemoteUrl;
+            existing.LocalPath = effectiveLocalPath;
             existing.Branch = effectiveBranch;
             existing.Enabled = enabled;
             existing.SyncIntervalSeconds = interval;

@@ -169,20 +169,129 @@ public sealed class RepoSourceTests
         }
     }
 
+    [Theory]
+    [InlineData("https://example/repo.git", ".")]
+    [InlineData(null, null)]
+    public async Task RegisterRepoSource_WithoutExactlyOneOfRemoteUrlAndLocalPath_Returns400(string? remoteUrl, string? localPath)
+    {
+        await using var factory = new ControlPlaneAppFactory();
+        using var client = factory.CreateClient();
+        var token = await IssueTokenAsync(client, ["operate"]);
+
+        using var response = await PostAsync(client, token, "/api/v1/repos/sources",
+            new RegisterRepoSourceRequest("repo", remoteUrl, "main", 300, true, LocalPath: localPath));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task RegisterRepoSource_WithALocalPathTheHostCannotSee_Returns400()
+    {
+        await using var factory = new ControlPlaneAppFactory();
+        using var client = factory.CreateClient();
+        var token = await IssueTokenAsync(client, ["operate"]);
+        var missing = Path.Combine(Path.GetTempPath(), "sqlflow_missing_" + Guid.NewGuid().ToString("N"));
+
+        using var response = await PostAsync(client, token, "/api/v1/repos/sources",
+            new RegisterRepoSourceRequest("repo", null, "main", 300, true, LocalPath: missing));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task ManagedSync_OfALocalPath_ReadsTheWorkingTreeLive_IncludingUncommittedFlows()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoName = "src_local_" + suffix;
+        var committedFlow = "src_committed_" + suffix;
+        var uncommittedFlow = "src_uncommitted_" + suffix;
+        var syncedRepoId = FlowIdentity.FromName(repoName);
+        var sourceId = FlowIdentity.FromName($"reposource/{repoName}");
+        var dir = NewTempDir();
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+
+        try
+        {
+            // One flow committed, one only on disk: a git source would see the first alone.
+            SeedGitRepoWithFlow(dir, committedFlow);
+            File.WriteAllText(Path.Combine(dir, "flows", "draft.flow.yaml"), FlowYaml(uncommittedFlow));
+
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["operate"]);
+
+            using (var register = await PostAsync(client, token, "/api/v1/repos/sources",
+                new RegisterRepoSourceRequest(repoName, null, "main", 3600, true, LocalPath: dir)))
+            {
+                Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            }
+
+            RepoSourceDto? source = null;
+            for (var attempt = 0; attempt < 80 && source?.LastSyncedSha is null; attempt++)
+            {
+                await Task.Delay(250);
+                var list = await GetJsonAsync<PagedResult<RepoSourceDto>>(client, token, "/api/v1/repos/sources?pageSize=200");
+                source = list.Items.FirstOrDefault(s => s.Id == sourceId);
+            }
+
+            Assert.NotNull(source);
+            Assert.Null(source.LastError);
+            Assert.StartsWith("worktree@", source.LastSyncedSha, StringComparison.Ordinal);
+            Assert.Null(source.RemoteUrl);
+            Assert.Equal(Path.GetFullPath(dir), source.LocalPath);
+
+            await using var db = CatalogDatabase.Create(cs);
+            var names = await db.Pipelines.AsNoTracking().Where(p => p.RepoId == syncedRepoId).Select(p => p.Name).ToListAsync();
+            Assert.Contains(committedFlow, names);
+            Assert.Contains(uncommittedFlow, names);
+
+            // The repo reads the directory itself: no remote, so no run is pinned to a commit that lacks the working tree.
+            var repo = await db.Repos.AsNoTracking().SingleAsync(r => r.Id == syncedRepoId);
+            Assert.Null(repo.RemoteUrl);
+            Assert.Equal(Path.GetFullPath(dir), Path.GetFullPath(repo.RootPath!));
+
+            var trace = await db.ActivityEvents.AsNoTracking()
+                .Where(e => e.Kind == "repo-sync" && e.SubjectKey == sourceId.ToString())
+                .OrderBy(e => e.Id).ToListAsync();
+            Assert.Contains(trace, e => e.Step == "read");
+            Assert.DoesNotContain(trace, e => e.Step == "clone");
+            Assert.Equal("succeeded", trace[^1].Status);
+        }
+        finally
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await db.FlowDependencies.Where(d => d.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.LineageEdges.Where(e => e.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.Pipelines.Where(p => p.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.Repos.Where(r => r.Id == syncedRepoId).ExecuteDeleteAsync();
+                await db.RepoSources.Where(s => s.Id == sourceId).ExecuteDeleteAsync();
+                await db.ActivityEvents.Where(e => e.SubjectKey == sourceId.ToString()).ExecuteDeleteAsync();
+            }
+
+            DeleteDir(dir);
+        }
+    }
+
+    private static string FlowYaml(string flowName) => """
+        name: __NAME__
+        source:
+          type: csv
+          location: ./data.csv
+        target:
+          connection: ${env:SQLFlowSinkConStr}
+          schema: dbo
+          table: __NAME__
+        """.Replace("__NAME__", flowName, StringComparison.Ordinal);
+
     private static string SeedGitRepoWithFlow(string path, string flowName)
     {
         Repository.Init(path);
         Directory.CreateDirectory(Path.Combine(path, "flows"));
-        File.WriteAllText(Path.Combine(path, "flows", "orders.flow.yaml"), """
-            name: __NAME__
-            source:
-              type: csv
-              location: ./data.csv
-            target:
-              connection: ${env:SQLFlowSinkConStr}
-              schema: dbo
-              table: SrcOrders
-            """.Replace("__NAME__", flowName, StringComparison.Ordinal));
+        File.WriteAllText(Path.Combine(path, "flows", "orders.flow.yaml"), FlowYaml(flowName));
 
         using var repo = new Repository(path);
         var signature = new Signature("Test", "test@example.com", DateTimeOffset.UtcNow);

@@ -1811,7 +1811,16 @@ public class CatalogRepoSource
     /// <summary>The repo's name in the catalog (the synced pipelines/runs are attributed to it). Unique.</summary>
     public string Name { get; set; } = string.Empty;
 
-    public string RemoteUrl { get; set; } = string.Empty;
+    /// <summary>The git remote this source clones and pulls from. Null for a local-path source
+    /// (<see cref="LocalPath"/> set instead): exactly one of the two is ever set, enforced where a source is
+    /// registered.</summary>
+    public string? RemoteUrl { get; set; }
+
+    /// <summary>The directory a local-path source is read live from, with no git step: the control-plane host's own
+    /// filesystem, so a working copy that has never been committed (or not yet pushed) still syncs on this source's
+    /// own schedule, exactly as a git source does. Null for a git source (<see cref="RemoteUrl"/> set instead).
+    /// Only reachable where the control plane runs on the machine that holds the directory.</summary>
+    public string? LocalPath { get; set; }
 
     public string Branch { get; set; } = "main";
 

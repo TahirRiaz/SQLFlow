@@ -2507,7 +2507,7 @@ internal static class Program
                                                  The scheduling surface: a schedule owns a member SET (what a fire
                                                  runs, wave-ordered); 'run' fires it now without moving its cadence.
               sqlflow repos    list | show <name|id> | sync <name|id>
-                               | register --name r --remote-url u [--branch b] [--interval s]
+                               | register --name r (--remote-url u | --local-path <dir>) [--branch b] [--interval s]
                                  [--credential-ref ${env:GIT_TOKEN}] [--credential-user u] [--disabled]
                                | discover --remote-url u [--branch b] [--credential-ref ...]
                                                  Synced repos and their managed git sources: register a source (the
