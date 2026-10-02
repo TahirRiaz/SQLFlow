@@ -1,4 +1,4 @@
-//! Streamable HTTP transport for the MCP server (`sqlflow-mcp http`).
+//! Streamable HTTP transport for the MCP server (`sqlflow-mcp http`, or a host's own program).
 //!
 //! Hosts rmcp's [`StreamableHttpService`] behind a small hyper front end with two routes: `GET /healthz`
 //! (unauthenticated readiness probe for the container platform) and `/mcp` (the MCP endpoint). Every `/mcp` request
@@ -30,7 +30,6 @@ use rmcp::transport::streamable_http_server::session::local::LocalSessionManager
 use rmcp::transport::streamable_http_server::{StreamableHttpServerConfig, StreamableHttpService};
 
 use crate::control_plane::ControlPlane;
-use crate::docs::DocsIndex;
 use crate::server::{bearer_token, SqlFlowMcp};
 
 /// The MCP endpoint path clients are pointed at, e.g. `https://host/mcp`.
@@ -54,14 +53,28 @@ pub struct HttpServerOptions {
     pub allowed_hosts: Vec<String>,
 }
 
-pub async fn serve(
-    docs: Arc<DocsIndex>,
-    cp: Arc<ControlPlane>,
-    opts: HttpServerOptions,
+/// Serves `server` over HTTP on `opts.bind` until the process is asked to stop: every session gets a
+/// copy of it, so the host's composition (its modules' tools, pages and links) is the same for all of
+/// them.
+pub async fn serve(server: SqlFlowMcp, opts: HttpServerOptions) -> Result<()> {
+    let listener = tokio::net::TcpListener::bind(opts.bind)
+        .await
+        .with_context(|| format!("could not bind {}", opts.bind))?;
+    serve_on(server, listener, opts.allowed_hosts, tokio::signal::ctrl_c()).await
+}
+
+/// The same on a listener the caller bound, until `shutdown` resolves: what [`serve`] runs, and what
+/// lets the transport be driven on a port the system picked.
+pub async fn serve_on(
+    server: SqlFlowMcp,
+    listener: tokio::net::TcpListener,
+    allowed_hosts: Vec<String>,
+    shutdown: impl std::future::Future<Output = std::io::Result<()>>,
 ) -> Result<()> {
-    let config = if !opts.allowed_hosts.is_empty() {
-        StreamableHttpServerConfig::default().with_allowed_hosts(opts.allowed_hosts.clone())
-    } else if opts.bind.ip().is_loopback() {
+    let bind = listener.local_addr().context("the listener has no local address")?;
+    let config = if !allowed_hosts.is_empty() {
+        StreamableHttpServerConfig::default().with_allowed_hosts(allowed_hosts)
+    } else if bind.ip().is_loopback() {
         // Loopback bind: rmcp's localhost-only default already matches.
         StreamableHttpServerConfig::default()
     } else {
@@ -74,22 +87,24 @@ configured); every MCP request still requires a bearer token the control plane a
     // Cancelling this token ends open SSE streams and in-flight sessions on shutdown.
     let cancel = config.cancellation_token.clone();
 
-    let session_cp = cp.clone();
+    // The challenges a request without an accepted bearer gets name the program that is serving. Built once here, so
+    // a name no header can carry stops the server at start rather than failing a request.
+    let challenges = Arc::new(Challenges::for_program(server.name())?);
+    let cp = server.control_plane();
+
     let mcp_service = StreamableHttpService::new(
-        move || Ok(SqlFlowMcp::new_http(docs.clone(), session_cp.clone())),
+        move || Ok(server.clone()),
         LocalSessionManager::default().into(),
         config,
     );
     let verified = Arc::new(VerifiedBearers::new(VERIFIED_TTL, VERIFIED_CAPACITY));
 
-    let listener = tokio::net::TcpListener::bind(opts.bind)
-        .await
-        .with_context(|| format!("could not bind {}", opts.bind))?;
-    tracing::info!("MCP over HTTP listening on http://{}{}", opts.bind, MCP_PATH);
+    tracing::info!("MCP over HTTP listening on http://{}{}", bind, MCP_PATH);
 
+    tokio::pin!(shutdown);
     loop {
         tokio::select! {
-            signal = tokio::signal::ctrl_c() => {
+            signal = &mut shutdown => {
                 if let Err(e) = signal {
                     tracing::error!("shutdown signal listener failed: {e}; stopping the server");
                 } else {
@@ -111,11 +126,14 @@ configured); every MCP request still requires a bearer token the control plane a
                 let service = mcp_service.clone();
                 let cp = cp.clone();
                 let verified = verified.clone();
+                let challenges = challenges.clone();
                 tokio::spawn(async move {
                     let io = TokioIo::new(stream);
                     let conn = hyper::server::conn::http1::Builder::new().serve_connection(
                         io,
-                        service_fn(move |req| route(service.clone(), cp.clone(), verified.clone(), req)),
+                        service_fn(move |req| {
+                            route(service.clone(), cp.clone(), verified.clone(), challenges.clone(), req)
+                        }),
                     );
                     if let Err(e) = conn.await {
                         // Client disconnects mid-SSE land here; not a server fault.
@@ -131,6 +149,7 @@ async fn route(
     mcp: StreamableHttpService<SqlFlowMcp, LocalSessionManager>,
     cp: Arc<ControlPlane>,
     verified: Arc<VerifiedBearers>,
+    challenges: Arc<Challenges>,
     req: Request<Incoming>,
 ) -> Result<Response<BoxBody<Bytes, std::convert::Infallible>>, std::convert::Infallible> {
     let path = req.uri().path();
@@ -145,7 +164,7 @@ async fn route(
     }
     let Some(token) = bearer_token(req.headers()) else {
         return Ok(unauthorized(
-            "Bearer realm=\"sqlflow-mcp\"",
+            &challenges.missing,
             "missing or malformed Authorization header; expected: Bearer <SQLFlow access token>",
         ));
     };
@@ -156,7 +175,7 @@ async fn route(
             Ok(true) => verified.remember(&token, now),
             Ok(false) => {
                 return Ok(unauthorized(
-                    "Bearer realm=\"sqlflow-mcp\", error=\"invalid_token\"",
+                    &challenges.invalid,
                     "the SQLFlow control plane rejected this bearer token (invalid, expired, or revoked)",
                 ));
             }
@@ -215,15 +234,32 @@ impl VerifiedBearers {
 }
 
 fn unauthorized(
-    challenge: &'static str,
+    challenge: &http::HeaderValue,
     body: &'static str,
 ) -> Response<BoxBody<Bytes, std::convert::Infallible>> {
     let mut resp = text(StatusCode::UNAUTHORIZED, body);
-    resp.headers_mut().insert(
-        http::header::WWW_AUTHENTICATE,
-        http::HeaderValue::from_static(challenge),
-    );
+    resp.headers_mut().insert(http::header::WWW_AUTHENTICATE, challenge.clone());
     resp
+}
+
+/// The `WWW-Authenticate` challenges of a request without an accepted bearer, in the realm of the program serving.
+struct Challenges {
+    /// No bearer, or one that is not a bearer.
+    missing: http::HeaderValue,
+    /// A bearer the control plane rejected.
+    invalid: http::HeaderValue,
+}
+
+impl Challenges {
+    fn for_program(name: &str) -> Result<Self> {
+        let realm = format!("Bearer realm=\"{name}\"");
+        Ok(Challenges {
+            missing: http::HeaderValue::from_str(&realm)
+                .context("the server's name cannot be sent in a WWW-Authenticate header")?,
+            invalid: http::HeaderValue::from_str(&format!("{realm}, error=\"invalid_token\""))
+                .context("the server's name cannot be sent in a WWW-Authenticate header")?,
+        })
+    }
 }
 
 fn text(status: StatusCode, body: &'static str) -> Response<BoxBody<Bytes, std::convert::Infallible>> {

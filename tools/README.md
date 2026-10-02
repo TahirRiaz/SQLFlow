@@ -9,7 +9,7 @@ reference corpus under [`../docs/reference`](../docs/reference).
 | --- | --- | --- |
 | [`sqlflow-lang`](sqlflow-lang) | Rust (lib) | Protocol-free analysis engine: parses `.flow.yaml`, resolves cursor→path against the key census, and produces completion / hover / diagnostics / document symbols / code actions. |
 | [`sqlflow-lsp`](sqlflow-lsp) | Rust (bin) | Language Server Protocol server over stdio, a thin shell over `sqlflow-lang`. |
-| [`sqlflow-mcp`](sqlflow-mcp) | Rust (bin) | Model Context Protocol server: the embedded reference corpus (doc tools) plus a live proxy over the control plane's `/api/v1` surface (catalog, lineage, runs, schedules, search) with device-flow auth. |
+| [`sqlflow-mcp`](sqlflow-mcp) | Rust (lib + bin) | Model Context Protocol server: the embedded reference corpus (doc tools) plus a live proxy over the control plane's `/api/v1` surface (catalog, lineage, runs, schedules, search) with device-flow auth. A library a host composes with modules of its own; the binary is that library run with none. |
 | [`sqlflow-vscode`](sqlflow-vscode) | TypeScript | VSCode extension: registers the `.flow.yaml` language, launches the LSP, browses the catalog / runs / schedules, triggers runs, searches the bundled docs, and generates MCP registration snippets. |
 
 The design mirrors DeltaForge's protocol/analysis split, but SQLFlow authors
@@ -122,3 +122,61 @@ Environment: `SQLFLOW_CONTROL_PLANE_URL` (default `http://localhost:8080`),
 (public GUI base URL; makes those links absolute instead of root-relative),
 `SQLFLOW_MCP_LOG` (log filter). Config and token are persisted under
 `~/.sqlflow/`.
+
+A flow of a kind a host module registers is run with `trigger_run` like any other, with the kind's own arguments in
+place of the built-in overrides: `operation` (what the run does, by the name the kind gives it), `values` (the flow's
+parameter values) and `payload` (a JSON object the kind owns). The control plane hands them to the kind, which
+validates them; SQLFlow's own kinds refuse them.
+
+### Host modules
+
+A product built on SQLFlow composes the control plane, the CLI and the GUI with modules of its own, and its MCP server
+the same way. `sqlflow-mcp` is a library (`sqlflow_mcp`) whose binary is the host with no modules; a host crate depends
+on it, names its program, and adds what its module contributes:
+
+```rust
+use sqlflow_mcp::rmcp::handler::server::wrapper::Parameters;
+use sqlflow_mcp::rmcp::{self, schemars, tool, tool_router};
+use sqlflow_mcp::{EmptyInput, McpContext, McpHost, McpModule};
+
+#[derive(Clone)]
+struct WidgetTools { ctx: McpContext }
+
+#[tool_router(router = router)]
+impl WidgetTools {
+    #[tool(description = "List the widgets the estate holds.")]
+    async fn list_widgets(&self, Parameters(_): Parameters<EmptyInput>) -> String {
+        self.ctx.get("/api/v1/widgets", &[]).await
+    }
+}
+
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    let module = McpModule::new("widget")
+        .tools(|ctx| (WidgetTools { ctx }, WidgetTools::router()))
+        .instructions("WIDGETS:\n- list_widgets lists them.");
+    sqlflow_mcp::run(
+        McpHost::new("widget-mcp", env!("CARGO_PKG_VERSION"))
+            .registered_as("widget")
+            .state_prefix("widget-mcp")
+            .with_module(module),
+    )
+    .await
+}
+```
+
+| A module adds | With | What it gets |
+| --- | --- | --- |
+| Tools | `McpModule::tools` | A service type of its own carrying `#[tool]` methods, listed beside SQLFlow's and called through the server's one dispatch. `McpContext` is the control-plane client (`get`, `get_about`, `post`, and `follow_task` for a compute task an endpoint queued), the GUI links, and whether the server runs over HTTP. Over HTTP a module's requests carry the calling user's bearer, as SQLFlow's do. |
+| Instructions | `McpModule::instructions` | Its section of the text a client reads at `initialize`, after SQLFlow's own. |
+| Reference pages | `McpModule::docs` | `DocPage`s (metadata plus an `include_str!` body) the doc tools search and fetch beside the embedded corpus. |
+| GUI links | `McpModule::link_rule` | A rule that recognises its rows and links them to its pages. A rule that returns a `page` claims the row, so it is not read as one of SQLFlow's that carries the same fields; the row's references (its run, its flow) are still linked. |
+| Key census files | `McpModule::census` | The census of each flow kind and document it adds (the format above), so `validate_flow`, `list_flow_keys` and `describe_flow_key` cover them. |
+
+The host itself names the program (`--version`, the server's reported implementation, the user agent, the label of the
+access token it mints), the name `install` registers it under, and the prefix of its two state files under
+`~/.sqlflow/`, so it can be installed beside `sqlflow-mcp` and signed in to a control plane of its own.
+
+Everything a module declares is checked when the host starts, and a problem stops the server with a message naming the
+module: a name another module took, a tool SQLFlow's server already has, a page id already indexed, a census that does
+not parse. `tests/host_module.rs` composes a probe module through this public API and drives it over both transports.

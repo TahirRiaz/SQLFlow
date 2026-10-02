@@ -22,6 +22,13 @@
 //! `SQLFLOW_GUI_URL` makes the links absolute, which is what a client rendering outside the GUI (the
 //! Slack assistant, a desktop MCP client) needs. Unset, they stay root-relative: correct for the chat
 //! assistant, which renders inside the GUI itself.
+//!
+//! A host module's pages are routes of the same GUI, and the rows its endpoints return carry identities
+//! this module has no rule for. A module adds rules of its own ([`LinkRule`]); they are asked about a row
+//! before the rules below, so a row a module claims is linked as the module says and never mistaken for
+//! one of SQLFlow's that happens to carry the same fields.
+
+use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
@@ -35,7 +42,7 @@ const NULL_SEGMENT: &str = "~";
 /// Percent-encodes one URL component, escaping everything outside RFC 3986's unreserved set. Object
 /// keys and file paths carry `/`, `:`, spaces and (in this estate) Norwegian letters, all of which
 /// have to survive the round trip into a query value.
-fn encode(value: &str) -> String {
+pub fn encode(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     for byte in value.as_bytes() {
         match byte {
@@ -77,10 +84,32 @@ fn is_guid(value: &str) -> bool {
             })
 }
 
+/// A host module's link rule: given one row of a control-plane payload, the links the module knows
+/// for it, or `None` when the row is not one of the module's. Build each link with
+/// [`GuiLinks::route`], so it carries the GUI base like every other.
+///
+/// A rule that returns a `page` claims the row: the page is the module's, and the rules that would
+/// have made the row a table, a flow, a schedule or a repo are not asked. The references the row
+/// carries (`runId`, `pipelineId`, `scheduleId`, an object key) are still linked under their own
+/// names, so a module's row keeps its run and its flow. A rule that returns links without a `page`
+/// only adds them; the row's page is then whatever the other rules find.
+pub type LinkRule = Arc<dyn Fn(&GuiLinks, &Map<String, Value>) -> Option<Map<String, Value>> + Send + Sync>;
+
 /// The GUI's public base URL (empty for root-relative links) and the routes built from it.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct GuiLinks {
     base: String,
+    /// The rules host modules added, asked in registration order before the built-in ones.
+    rules: Arc<Vec<LinkRule>>,
+}
+
+impl std::fmt::Debug for GuiLinks {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GuiLinks")
+            .field("base", &self.base)
+            .field("rules", &self.rules.len())
+            .finish()
+    }
 }
 
 impl GuiLinks {
@@ -92,7 +121,20 @@ impl GuiLinks {
     pub fn new(base: &str) -> Self {
         GuiLinks {
             base: base.trim().trim_end_matches('/').to_string(),
+            rules: Arc::default(),
         }
+    }
+
+    /// The same links with host modules' rules, asked in this order before the built-in ones.
+    pub fn with_rules(mut self, rules: Vec<LinkRule>) -> Self {
+        self.rules = Arc::new(rules);
+        self
+    }
+
+    /// A GUI route on the configured base: `path_and_query` starts with `/`, and every value in it is
+    /// already encoded ([`encode`]). What a module's link rule builds its links with.
+    pub fn route(&self, path_and_query: &str) -> String {
+        self.at(path_and_query)
     }
 
     /// The configured base, or "" when links are relative.
@@ -256,6 +298,33 @@ impl GuiLinks {
 
         let mut links = Map::new();
 
+        // A host module's rules first: a row one of them gives a page is the module's, and is not
+        // offered to the subject rules, which would otherwise read a module's row as whichever of
+        // SQLFlow's rows carries the same fields.
+        let mut claimed = false;
+        for rule in self.rules.iter() {
+            if let Some(found) = rule(self, map) {
+                for (name, link) in found {
+                    claimed = claimed || name == "page";
+                    links.entry(name).or_insert(link);
+                }
+            }
+        }
+        if !claimed {
+            self.subject_links(map, &mut links);
+        }
+        self.reference_links(map, &mut links);
+
+        if links.is_empty() {
+            None
+        } else {
+            Some(Value::Object(links))
+        }
+    }
+
+    /// The row's own page, when the row is one of SQLFlow's: an object, a folder of the catalog tree,
+    /// a schema change, a flow, a schedule, a repo.
+    fn subject_links(&self, map: &Map<String, Value>, links: &mut Map<String, Value>) {
         // ---- The row's own subject, by the identity it is keyed on ----------------------------
         match (text(map, "key"), text(map, "kind"), text(map, "type")) {
             // A data subscriber (a report or dashboard): `type` is the tool that consumes the estate.
@@ -345,7 +414,11 @@ impl GuiLinks {
                 links.insert("page".to_string(), self.pipeline(id).into());
             }
         }
+    }
 
+    /// What a row references, and the pages that fall to a row nothing more specific claimed: its
+    /// run, its schedule, its flow, its repo. Each takes the row's `page` only while it is free.
+    fn reference_links(&self, map: &Map<String, Value>, links: &mut Map<String, Value>) {
         // A run: `runId` is its identity in every shape that carries it, so it becomes the row's page
         // unless the row is already something else (a flow that reports its latest run, say).
         if let Some(run_id) = text(map, "runId") {
@@ -448,12 +521,6 @@ impl GuiLinks {
                 }
             }
         }
-
-        if links.is_empty() {
-            None
-        } else {
-            Some(Value::Object(links))
-        }
     }
 }
 
@@ -475,6 +542,102 @@ mod tests {
             GuiLinks::new("http://localhost:8081/").query_result("01a0a5e7-18fa-71c1-a2b3-842b8df8dfd2"),
             "http://localhost:8081/query-results/01a0a5e7-18fa-71c1-a2b3-842b8df8dfd2"
         );
+    }
+
+    /// A module whose rows are probes (`probeId`) and probe groups (`probeGroup`, which has no page).
+    fn probe_rules() -> Vec<LinkRule> {
+        vec![
+            Arc::new(|links: &GuiLinks, row: &Map<String, Value>| {
+                let id = row.get("probeId")?.as_str()?;
+                let mut found = Map::new();
+                found.insert("page".to_string(), links.route(&format!("/probes/{}", encode(id))).into());
+                Some(found)
+            }),
+            Arc::new(|links: &GuiLinks, row: &Map<String, Value>| {
+                let group = row.get("probeGroup")?.as_str()?;
+                let mut found = Map::new();
+                found.insert("group".to_string(), links.route(&format!("/probes?group={}", encode(group))).into());
+                Some(found)
+            }),
+        ]
+    }
+
+    #[test]
+    fn a_module_rule_claims_its_rows_and_keeps_their_references() {
+        let links = GuiLinks::new("https://gui.example.com").with_rules(probe_rules());
+        // A probe carries the very fields that make a row a flow (id, repoId, name, kind): without the
+        // module's claim it would be linked as a pipeline it is not.
+        let mut payload = json!([{
+            "probeId": "wells/a 1",
+            "id": "5f0f8c1e-58a5-4d6f-9d1e-0a4b6f1c2d3e",
+            "repoId": "repo-1",
+            "name": "wells",
+            "kind": "probe",
+            "runId": "run-9",
+            "pipelineId": "pipe-7",
+            "flowName": "wells_probe"
+        }]);
+        links.decorate(&mut payload);
+
+        let row = &payload[0]["links"];
+        assert_eq!(row["page"], json!("https://gui.example.com/probes/wells%2Fa%201"));
+        assert!(row["lineage"].is_null(), "the row is not a flow, so it has no flow lineage");
+        // The references it carries are still linked, each under its own name.
+        assert_eq!(row["run"], json!("https://gui.example.com/runs/run-9"));
+        assert_eq!(row["flow"], json!("https://gui.example.com/pipelines/pipe-7"));
+    }
+
+    #[test]
+    fn a_module_rule_without_a_page_only_adds_its_links() {
+        let links = GuiLinks::new("").with_rules(probe_rules());
+        let mut payload = json!([{ "key": "dw.arc.citybike_bikes", "kind": "Table", "probeGroup": "nightly" }]);
+        links.decorate(&mut payload);
+
+        let row = &payload[0]["links"];
+        // The row is still SQLFlow's table; the module only added a link of its own.
+        assert_eq!(row["page"], json!("/catalog?node=obj%3Adw.arc.citybike_bikes"));
+        assert_eq!(row["lineage"], json!("/lineage?focus=dw.arc.citybike_bikes"));
+        assert_eq!(row["group"], json!("/probes?group=nightly"));
+    }
+
+    #[test]
+    fn module_rules_leave_rows_they_do_not_know_exactly_as_they_were() {
+        let plain = GuiLinks::new("https://gui.example.com");
+        let ruled = GuiLinks::new("https://gui.example.com").with_rules(probe_rules());
+        let payload = json!({
+            "items": [
+                { "key": "dw.arc.citybike_bikes", "kind": "Table", "serverRef": "dw" },
+                { "id": "5f0f8c1e-58a5-4d6f-9d1e-0a4b6f1c2d3e", "repoId": "repo-1", "name": "flow", "kind": "ing" },
+                { "runId": "run-1", "pipelineId": "pipe-1", "flowName": "flow" },
+                { "columnName": "bike_id" }
+            ]
+        });
+        let (mut a, mut b) = (payload.clone(), payload);
+        plain.decorate(&mut a);
+        ruled.decorate(&mut b);
+        assert_eq!(a, b);
+        assert!(b["items"][3]["links"].is_null());
+    }
+
+    #[test]
+    fn the_first_module_to_name_a_link_keeps_it() {
+        let rules: Vec<LinkRule> = vec![
+            Arc::new(|links: &GuiLinks, _: &Map<String, Value>| {
+                let mut found = Map::new();
+                found.insert("page".to_string(), links.route("/first").into());
+                Some(found)
+            }),
+            Arc::new(|links: &GuiLinks, _: &Map<String, Value>| {
+                let mut found = Map::new();
+                found.insert("page".to_string(), links.route("/second").into());
+                found.insert("extra".to_string(), links.route("/extra").into());
+                Some(found)
+            }),
+        ];
+        let links = GuiLinks::new("").with_rules(rules);
+        let mut payload = json!({ "anything": 1 });
+        links.decorate(&mut payload);
+        assert_eq!(payload["links"], json!({ "page": "/first", "extra": "/extra" }));
     }
 
     fn links_of(value: &Value, pointer: &str) -> Value {

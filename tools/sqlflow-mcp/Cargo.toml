@@ -5,6 +5,12 @@ edition.workspace = true
 license.workspace = true
 description = "Model Context Protocol server for SQLFlow: embedded reference docs plus a live control-plane proxy for catalog, lineage, runs, and schedules"
 
+# The server is a library a host composes with modules of its own (src/host.rs, src/module.rs);
+# sqlflow-mcp is that library run with none.
+[lib]
+name = "sqlflow_mcp"
+path = "src/lib.rs"
+
 [[bin]]
 name = "sqlflow-mcp"
 path = "src/main.rs"

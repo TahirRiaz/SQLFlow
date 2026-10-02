@@ -5,6 +5,9 @@
 //! and answers the doc tools the reference README prescribes: `search_docs`,
 //! `get_doc`, `get_doc_by_yaml_path`, `get_doc_by_cli_command`, `related_docs`,
 //! and `list_docs`.
+//!
+//! A host module adds reference pages of its own ([`DocPage`], [`DocsIndex::add`]):
+//! they are indexed beside the embedded corpus and answered by the same tools.
 
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -38,6 +41,52 @@ pub struct DocMeta {
     pub source_refs: Vec<String>,
 }
 
+impl DocMeta {
+    /// The metadata of a page a host module adds: its id (unique across the whole index), title,
+    /// type (one of the corpus's own: cli-command, flow-reference, source-type, concept, guide), the
+    /// path it is shown under, its one-line summary, and the keywords a search matches it on.
+    pub fn page(id: &str, title: &str, doc_type: &str, path: &str, summary: &str, keywords: &[&str]) -> DocMeta {
+        DocMeta {
+            id: id.to_string(),
+            path: path.to_string(),
+            title: title.to_string(),
+            doc_type: doc_type.to_string(),
+            summary: summary.to_string(),
+            keywords: keywords.iter().map(|k| k.to_string()).collect(),
+            yaml_path: None,
+            cli_command: None,
+            related: Vec::new(),
+            source_refs: Vec::new(),
+        }
+    }
+
+    /// The `.flow.yaml` dot-path the page documents, so `get_doc_by_yaml_path` finds it.
+    pub fn for_yaml_path(mut self, yaml_path: &str) -> DocMeta {
+        self.yaml_path = Some(yaml_path.to_string());
+        self
+    }
+
+    /// The top-level CLI command the page documents, so `get_doc_by_cli_command` finds it.
+    pub fn for_cli_command(mut self, command: &str) -> DocMeta {
+        self.cli_command = Some(command.to_string());
+        self
+    }
+
+    /// The ids of the pages `related_docs` lists for this one.
+    pub fn related_to(mut self, ids: &[&str]) -> DocMeta {
+        self.related = ids.iter().map(|id| id.to_string()).collect();
+        self
+    }
+}
+
+/// A reference page with its body: what a host module adds to the index. The body is compiled into
+/// the module's own binary (`include_str!`), as the embedded corpus is compiled into this one.
+#[derive(Debug, Clone)]
+pub struct DocPage {
+    pub meta: DocMeta,
+    pub body: &'static str,
+}
+
 #[derive(Deserialize)]
 struct Manifest {
     #[serde(default)]
@@ -56,7 +105,7 @@ pub struct Hit<'a> {
 pub struct DocsIndex {
     pub product: String,
     docs: Vec<DocMeta>,
-    bodies: HashMap<&'static str, &'static str>,
+    bodies: HashMap<String, &'static str>,
 }
 
 impl DocsIndex {
@@ -64,7 +113,7 @@ impl DocsIndex {
     pub fn load() -> DocsIndex {
         let manifest: Manifest =
             serde_json::from_str(MANIFEST_JSON).expect("embedded manifest.json is invalid");
-        let bodies = DOC_BODIES.iter().copied().collect();
+        let bodies = DOC_BODIES.iter().map(|(id, body)| (id.to_string(), *body)).collect();
         DocsIndex {
             product: manifest.product,
             docs: manifest.docs,
@@ -72,8 +121,40 @@ impl DocsIndex {
         }
     }
 
+    /// Indexes a host module's pages beside the embedded corpus. Nothing is added unless every page
+    /// can be: an id has to be a non-empty token and unique across the whole index (it is what
+    /// `get_doc` fetches by), and a page needs a title, a type and a body.
+    pub fn add(&mut self, pages: Vec<DocPage>) -> Result<(), String> {
+        let mut seen: Vec<&str> = Vec::with_capacity(pages.len());
+        for page in &pages {
+            let id = page.meta.id.as_str();
+            if id.is_empty() || id.chars().any(|c| c.is_whitespace() || c.is_control()) {
+                return Err(format!("a reference page has the id '{id}', which is not one token"));
+            }
+            if self.bodies.contains_key(id) || self.docs.iter().any(|d| d.id == id) || seen.contains(&id) {
+                return Err(format!("the reference page id '{id}' is already indexed; a page's id is its own"));
+            }
+            if page.meta.title.trim().is_empty() || page.meta.doc_type.trim().is_empty() {
+                return Err(format!("the reference page '{id}' has no title or no type"));
+            }
+            if page.body.trim().is_empty() {
+                return Err(format!("the reference page '{id}' has no body"));
+            }
+            seen.push(id);
+        }
+        for page in pages {
+            self.bodies.insert(page.meta.id.clone(), page.body);
+            self.docs.push(page.meta);
+        }
+        Ok(())
+    }
+
     pub fn len(&self) -> usize {
         self.docs.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.docs.is_empty()
     }
 
     /// The product label from the manifest (e.g. "SQLFlow V3").
@@ -189,5 +270,54 @@ mod tests {
         assert!(!hits.is_empty());
         // yamlPath fallback to the longest documented prefix.
         assert!(idx.by_yaml_path("source.options.header").is_some());
+    }
+
+    fn page(id: &str, body: &'static str) -> DocPage {
+        DocPage {
+            meta: DocMeta::page(id, "Probe targets", "concept", "probe/targets.md", "What a probe target is.", &["probe", "target"])
+                .for_yaml_path("probe.target")
+                .for_cli_command("probe")
+                .related_to(&["cli-run"]),
+            body,
+        }
+    }
+
+    #[test]
+    fn a_module_page_is_answered_by_every_doc_lookup() {
+        let mut idx = DocsIndex::load();
+        let before = idx.len();
+        idx.add(vec![page("probe-targets", "# Probe targets")]).expect("the page is added");
+
+        assert_eq!(idx.len(), before + 1);
+        assert_eq!(idx.body("probe-targets"), Some("# Probe targets"));
+        assert_eq!(idx.get_meta("probe-targets").map(|m| m.path.as_str()), Some("probe/targets.md"));
+        assert_eq!(idx.search("probe target", None, 3)[0].meta.id, "probe-targets");
+        assert_eq!(idx.search("probe", Some("concept"), 3)[0].meta.id, "probe-targets");
+        assert_eq!(idx.by_yaml_path("probe.target.timeout").map(|m| m.id.as_str()), Some("probe-targets"));
+        assert_eq!(idx.by_cli_command("probe").map(|m| m.id.as_str()), Some("probe-targets"));
+        assert_eq!(idx.related("probe-targets").iter().map(|m| m.id.as_str()).collect::<Vec<_>>(), ["cli-run"]);
+        // The embedded corpus is untouched.
+        assert!(idx.body("cli-run").is_some());
+    }
+
+    #[test]
+    fn a_page_that_cannot_be_indexed_adds_nothing() {
+        let mut idx = DocsIndex::load();
+        let before = idx.len();
+
+        // One good page beside one that takes an embedded page's id: neither is added.
+        let refused = idx.add(vec![page("probe-targets", "# ok"), page("cli-run", "# clash")]).unwrap_err();
+        assert!(refused.contains("'cli-run' is already indexed"), "{refused}");
+        assert_eq!(idx.len(), before);
+        assert!(idx.body("probe-targets").is_none());
+
+        assert!(idx.add(vec![page("probe-a", "# a"), page("probe-a", "# b")]).unwrap_err().contains("already indexed"));
+        assert!(idx.add(vec![page("probe targets", "# a")]).unwrap_err().contains("not one token"));
+        assert!(idx.add(vec![page("", "# a")]).unwrap_err().contains("not one token"));
+        assert!(idx.add(vec![page("probe-empty", "  ")]).unwrap_err().contains("has no body"));
+        let mut untitled = page("probe-untitled", "# a");
+        untitled.meta.title = " ".to_string();
+        assert!(idx.add(vec![untitled]).unwrap_err().contains("no title"));
+        assert_eq!(idx.len(), before);
     }
 }

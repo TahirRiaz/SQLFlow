@@ -7,7 +7,7 @@
 //! alive by [`ControlPlane::spawn_session_keeper`], which rolls it at `POST /api/v1/auth/renew` on the GUI's own
 //! schedule. Over HTTP this process holds no credential at all: every call runs as the bearer on the inbound request.
 
-use crate::config::{self, TokenCache};
+use crate::config::{self, StateStore, TokenCache};
 use anyhow::{anyhow, bail, Context, Result};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -140,8 +140,49 @@ pub enum RenewOutcome {
 /// the wall clock afresh, a laptop waking from sleep catches up on its next tick instead of trusting a stale timer.
 const SESSION_KEEPER_TICK: Duration = Duration::from_secs(60);
 
+/// How one server names itself to the control plane, and where it keeps its sign-in: the program's
+/// name and version (the user agent and the device grant's client id) and its state files. SQLFlow's own server is the default; a host that composes the
+/// server under a name of its own passes its own.
+#[derive(Debug, Clone)]
+pub struct ClientIdentity {
+    name: String,
+    version: String,
+    state: StateStore,
+}
+
+impl ClientIdentity {
+    pub fn new(name: &str, version: &str, state: StateStore) -> Self {
+        ClientIdentity {
+            name: name.to_string(),
+            version: version.to_string(),
+            state,
+        }
+    }
+
+    /// The program's name, for example `sqlflow-mcp`.
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+
+    /// Where this program keeps its control-plane URL and its token.
+    pub fn state(&self) -> &StateStore {
+        &self.state
+    }
+}
+
+impl Default for ClientIdentity {
+    fn default() -> Self {
+        ClientIdentity::new("sqlflow-mcp", env!("CARGO_PKG_VERSION"), StateStore::default())
+    }
+}
+
 pub struct ControlPlane {
     http: reqwest::Client,
+    identity: ClientIdentity,
     base_url: RwLock<String>,
     token: RwLock<Option<TokenCache>>,
     /// The device code of an in-flight `login`, so `check_auth_status` can poll without the caller re-supplying it.
@@ -157,11 +198,11 @@ pub struct ControlPlane {
 }
 
 impl ControlPlane {
-    /// Build the client from the persisted config (overridden by `SQLFLOW_CONTROL_PLANE_URL`). With
+    /// Build the client from the identity's persisted config (overridden by `SQLFLOW_CONTROL_PLANE_URL`). With
     /// `ambient_credentials` (stdio) the persisted token is loaded too, overridden by a live
     /// `SQLFLOW_CONTROL_PLANE_TOKEN`; without it (HTTP) no token is loaded from anywhere.
-    pub fn from_env(ambient_credentials: bool) -> Self {
-        let cfg = config::load_config();
+    pub fn from_env(identity: &ClientIdentity, ambient_credentials: bool) -> Self {
+        let cfg = identity.state.load_config();
         let base_url = std::env::var("SQLFLOW_CONTROL_PLANE_URL")
             .ok()
             .or(cfg.control_plane_url)
@@ -181,22 +222,41 @@ impl ControlPlane {
                 // A lapsed environment credential must not shadow the stored one, or every restart would send the
                 // user back to the sign-in they just completed, with no way out but editing the environment.
                 .filter(|t| !t.is_expired(config::EXPIRY_FLOOR_SECS))
-                .or_else(config::load_token)
+                .or_else(|| identity.state.load_token())
         } else {
             None
         };
+        ControlPlane::new(identity, &base_url, token, ambient_credentials)
+    }
+
+    /// The client for the control plane at `base_url`, holding `token` when the caller has one. With
+    /// `ambient_credentials` it presents that token itself (stdio); without it every call needs the bearer of the
+    /// inbound request (HTTP). Nothing is read from the environment or from disk; [`from_env`](Self::from_env) is
+    /// this with both resolved.
+    pub fn new(
+        identity: &ClientIdentity,
+        base_url: &str,
+        token: Option<TokenCache>,
+        ambient_credentials: bool,
+    ) -> Self {
         ControlPlane {
             http: reqwest::Client::builder()
-                .user_agent(concat!("sqlflow-mcp/", env!("CARGO_PKG_VERSION")))
+                .user_agent(format!("{}/{}", identity.name, identity.version))
                 .build()
                 .expect("failed to build HTTP client"),
-            base_url: RwLock::new(normalize_base(&base_url)),
+            identity: identity.clone(),
+            base_url: RwLock::new(normalize_base(base_url)),
             token: RwLock::new(token),
             pending_device_code: RwLock::new(None),
             ambient_credentials,
             session_ended: RwLock::new(None),
             renew_lock: tokio::sync::Mutex::new(()),
         }
+    }
+
+    /// The program this client names itself as.
+    pub fn identity(&self) -> &ClientIdentity {
+        &self.identity
     }
 
     pub fn pending_device_code(&self) -> Option<String> {
@@ -209,9 +269,9 @@ impl ControlPlane {
 
     pub fn set_base_url(&self, url: &str) {
         *self.base_url.write().unwrap() = normalize_base(url);
-        let mut cfg = config::load_config();
+        let mut cfg = self.identity.state.load_config();
         cfg.control_plane_url = Some(self.base_url());
-        let _ = config::save_config(&cfg);
+        let _ = self.identity.state.save_config(&cfg);
     }
 
     pub fn is_authenticated(&self) -> bool {
@@ -235,13 +295,13 @@ impl ControlPlane {
     }
 
     pub fn set_token(&self, token: TokenCache) {
-        let _ = config::save_token(&token);
+        let _ = self.identity.state.save_token(&token);
         *self.token.write().unwrap() = Some(token);
         *self.session_ended.write().unwrap() = None;
     }
 
     pub fn clear_token(&self) {
-        let _ = config::clear_token();
+        let _ = self.identity.state.clear_token();
         *self.token.write().unwrap() = None;
         *self.session_ended.write().unwrap() = None;
     }
@@ -325,7 +385,7 @@ impl ControlPlane {
         let resp = self
             .http
             .post(self.url("/api/v1/auth/device"))
-            .json(&json!({ "clientId": "sqlflow-mcp", "scope": "read operate author" }))
+            .json(&json!({ "clientId": self.identity.name, "scope": "read operate author" }))
             .send()
             .await
             .context("could not start device authorization")?;
@@ -398,7 +458,7 @@ impl ControlPlane {
         // Another sqlflow-mcp process (a second editor window) shares the token file and may already have rolled the
         // session. Renewing the older token again would work, but adopting the newer one keeps the processes on one
         // token instead of each holding its own.
-        if let Some(disk) = config::load_token() {
+        if let Some(disk) = self.identity.state.load_token() {
             if disk.renews && disk.access_token != current.access_token && disk.expires_at > current.expires_at {
                 let still_due = disk.renewal_due(now);
                 *self.token.write().unwrap() = Some(disk);
@@ -604,9 +664,17 @@ mod tests {
 
     #[tokio::test]
     async fn an_http_mode_client_holds_no_credential_and_refuses_a_call_without_a_bearer() {
-        let cp = ControlPlane::from_env(false);
+        let cp = ControlPlane::from_env(&ClientIdentity::default(), false);
         assert!(!cp.has_token());
         let err = cp.get("/api/v1/repos", &[]).await.unwrap_err();
         assert!(err.to_string().contains("no bearer on this request"), "{err:#}");
+    }
+
+    #[test]
+    fn the_default_identity_is_sqlflows_own() {
+        let identity = ClientIdentity::default();
+        assert_eq!(identity.name(), "sqlflow-mcp");
+        assert_eq!(identity.version(), env!("CARGO_PKG_VERSION"));
+        assert_eq!(identity.state, StateStore::default());
     }
 }

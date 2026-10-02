@@ -6,7 +6,12 @@
 //!   * **Online**: a proxy over the control plane's `/api/v1` read surface
 //!     (catalog, lineage, runs, schedules, search, summary) plus the operate
 //!     surface (trigger/cancel), gated by device-flow authentication.
+//!
+//! A host composes the server with modules of its own (`crate::module`): their tools are listed
+//! beside the ones defined here and called through the same dispatch, and their instructions follow
+//! this server's own.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use rmcp::handler::server::router::tool::ToolRouter;
@@ -20,6 +25,7 @@ use serde_json::{json, Value};
 use crate::control_plane::{ControlPlane, PollOutcome, WhoAmI};
 use crate::docs::DocsIndex;
 use crate::links::GuiLinks;
+use crate::module::{McpContext, ModuleSet, TASK_TEXT_LIMIT};
 use sqlflow_lang::census::Census;
 
 #[derive(Clone)]
@@ -34,6 +40,11 @@ pub struct SqlFlowMcp {
     /// inert, the control-plane URL is operator-fixed, and tools that read files on
     /// the server host are disabled.
     http_mode: bool,
+    /// The same control plane, links and transport as one value: what the shared GET-and-render and
+    /// the task poll run through, here and in a host module's tools alike.
+    ctx: McpContext,
+    /// What the host's modules add to dispatch and to the instructions; empty for SQLFlow's own server.
+    modules: Arc<ModuleSet>,
     tool_router: ToolRouter<Self>,
 }
 
@@ -50,11 +61,26 @@ impl SqlFlowMcp {
     }
 
     fn with_mode(docs: Arc<DocsIndex>, cp: Arc<ControlPlane>, http_mode: bool) -> Self {
+        Self::composed(docs, cp, GuiLinks::from_env(), Arc::new(ModuleSet::default()), http_mode)
+    }
+
+    /// The server a host composed: its docs index (the host's modules' pages included), its links
+    /// (their rules included), and what the modules add to dispatch. It reports itself as the program
+    /// the control-plane client names.
+    pub fn composed(
+        docs: Arc<DocsIndex>,
+        cp: Arc<ControlPlane>,
+        links: GuiLinks,
+        modules: Arc<ModuleSet>,
+        http_mode: bool,
+    ) -> Self {
         SqlFlowMcp {
             docs,
+            ctx: McpContext::new(cp.clone(), links.clone(), http_mode),
             cp,
-            links: GuiLinks::from_env(),
+            links,
             http_mode,
+            modules,
             tool_router: Self::grounded_router(),
         }
     }
@@ -71,6 +97,25 @@ impl SqlFlowMcp {
             route.attr.description = Some(format!("{description}\n\n{GROUNDING_RULE}").into());
         }
         router
+    }
+
+    /// The names of the tools this server defines itself, which a host module's tools may not take.
+    pub fn tool_names() -> std::collections::HashSet<String> {
+        Self::tool_router()
+            .list_all()
+            .into_iter()
+            .map(|tool| tool.name.to_string())
+            .collect()
+    }
+
+    /// The name of the program this server reports itself as.
+    pub fn name(&self) -> &str {
+        self.cp.identity().name()
+    }
+
+    /// The control-plane client every tool call goes through; the HTTP transport verifies inbound bearers with it.
+    pub(crate) fn control_plane(&self) -> Arc<ControlPlane> {
+        self.cp.clone()
     }
 }
 
@@ -108,7 +153,7 @@ mod grounding_tests {
     /// instead, shipping ungrounded descriptions while a test calling `grounded_router()` still passed.
     #[test]
     fn every_tool_description_ends_with_the_grounding_rule() {
-        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(&crate::control_plane::ClientIdentity::default(), true)));
 
         // Through ServerHandler::get_tool, which the #[tool_handler] macro generates from the SAME router
         // expression as list_tools. Reading server.tool_router directly would pass even with the macro left on
@@ -833,18 +878,28 @@ pub struct TriggerRunInput {
     /// File-pattern override for file flows.
     #[serde(rename = "filePattern")]
     pub file_pattern: Option<String>,
+    /// For a flow of a kind a host module registers: the operation this run performs, by the name the
+    /// kind gives it. Omit for the kind's default. SQLFlow's own flow kinds take none and refuse one.
+    pub operation: Option<String>,
+    /// For a flow of a registered kind: its parameter values for this run, by name.
+    pub values: Option<HashMap<String, String>>,
+    /// For a flow of a registered kind: a JSON object the kind owns and validates (what narrows or
+    /// directs the run beyond its parameters). The kind's own reference says what it reads.
+    pub payload: Option<Value>,
 }
 
 // --- Helpers ---------------------------------------------------------------
 
-fn done(result: anyhow::Result<String>) -> String {
+/// A tool's answer: the rendered result, or the failure as text a model can read and act on.
+pub fn done(result: anyhow::Result<String>) -> String {
     match result {
         Ok(s) => s,
         Err(e) => format!("Error: {e:#}"),
     }
 }
 
-fn json_str(v: &Value) -> String {
+/// A JSON value as the text a tool returns.
+pub fn json_str(v: &Value) -> String {
     serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string())
 }
 
@@ -1036,7 +1091,7 @@ fn attach_answer_format(value: &mut Value, links: &GuiLinks) {
 /// Caps every string in a JSON document to `max` characters (marking the cut), recursively. The warehouse
 /// probes carry statement bodies that can run to kilobytes each; the model reading the tool result needs the
 /// shape and the head of the text, and the untruncated document stays on the compute task for the GUI.
-fn truncate_long_strings(value: &mut Value, max: usize) {
+pub(crate) fn truncate_long_strings(value: &mut Value, max: usize) {
     match value {
         Value::String(s) => {
             if s.chars().count() > max {
@@ -2786,7 +2841,9 @@ and fix every finding first."
     // ---- Operate (write) -------------------------------------------------
 
     #[tool(
-        description = "Trigger a run of a flow (requires the 'operate' scope). Returns the queued run id; poll get_run for the outcome."
+        description = "Trigger a run of a flow (requires the 'operate' scope). Returns the queued run id; poll get_run for the outcome. \
+A flow of a kind a host module registers takes that kind's own arguments (operation, values, payload) instead of the \
+built-in overrides (fullLoad, the backfill window, filePattern), which it refuses."
     )]
     async fn trigger_run(&self, Parameters(i): Parameters<TriggerRunInput>) -> String {
         let mut body = json!({
@@ -2799,6 +2856,14 @@ and fix every finding first."
         if let Some(f) = i.backfill_from { body["backfillFrom"] = json!(f); }
         if let Some(t) = i.backfill_to { body["backfillTo"] = json!(t); }
         if let Some(fp) = i.file_pattern { body["filePattern"] = json!(fp); }
+        if let Some(op) = i.operation.filter(|o| !o.trim().is_empty()) { body["operation"] = json!(op.trim()); }
+        if let Some(values) = i.values.filter(|v| !v.is_empty()) { body["values"] = json!(values); }
+        if let Some(payload) = i.payload.filter(|p| !p.is_null()) {
+            if !payload.is_object() {
+                return "Error: payload is a JSON object the flow's kind reads, not a bare value or a list.".to_string();
+            }
+            body["payload"] = payload;
+        }
         done(self.cp.post("/api/v1/runs", body).await.map(|mut v| {
             // The acknowledgement carries the minted run (or group) id, so the answer can hand back a
             // link to watch it rather than only the id.
@@ -2986,7 +3051,7 @@ then propose_pipelines. Runs the local `sqlflow` CLI (`catalog scaffold`), so it
 /// Puts a subject's links on a payload's envelope: an object keeps any links it already carries (the row rules
 /// know the row better than the caller does), and a bare array is wrapped in an envelope naming the subject, so
 /// there is somewhere for them to live without touching the rows themselves.
-fn with_subject(value: Value, subject: (&str, &str), links: Value) -> Value {
+pub(crate) fn with_subject(value: Value, subject: (&str, &str), links: Value) -> Value {
     match value {
         Value::Object(mut map) => {
             map.entry("links").or_insert(links);
@@ -3038,10 +3103,7 @@ impl SqlFlowMcp {
     }
 
     async fn get(&self, path: &str, query: &[(&str, String)]) -> String {
-        done(self.cp.get(path, query).await.map(|mut v| {
-            self.links.decorate(&mut v);
-            json_str(&v)
-        }))
+        self.ctx.get(path, query).await
     }
 
     /// [`Self::get`] plus a reading guide on the payload. Used by the tools whose descriptions used to carry
@@ -3072,10 +3134,7 @@ impl SqlFlowMcp {
         subject: (&str, &str),
         links: Value,
     ) -> String {
-        done(self.cp.get(path, query).await.map(|mut v| {
-            self.links.decorate(&mut v);
-            json_str(&with_subject(v, subject, links))
-        }))
+        self.ctx.get_about(path, query, subject, links).await
     }
 
     /// [`Self::get_about`] plus a reading guide, for a subject payload whose fields need interpreting.
@@ -3132,29 +3191,8 @@ impl SqlFlowMcp {
     /// probe budget, so a hung task still terminates here carrying the task's own timeout error.
     async fn run_compute_task(&self, label: &str, body: Value) -> anyhow::Result<String> {
         let accepted = self.cp.post("/api/v1/datasources/tasks", body).await?;
-        let task_id = accepted["taskId"]
-            .as_str()
-            .map(String::from)
-            .ok_or_else(|| anyhow::anyhow!("The control plane's accept response carried no taskId: {accepted}"))?;
-
-        for _ in 0..12 {
-            let mut task = self
-                .cp
-                .get(&format!("/api/v1/datasources/tasks/{task_id}"), &[("waitMs", "20000".to_string())])
-                .await?;
-            match task["status"].as_str() {
-                Some("succeeded") | Some("failed") | Some("cancelled") | Some("skipped") => {
-                    truncate_long_strings(&mut task, 400);
-                    return Ok(json_str(&task));
-                }
-                _ => {}
-            }
-        }
-
-        anyhow::bail!(
-            "The {label} task {task_id} did not reach a terminal state in time; check it with the \
-             datasources task list."
-        )
+        let task = self.ctx.follow_task(label, &accepted, Some(TASK_TEXT_LIMIT)).await?;
+        Ok(json_str(&task))
     }
 
     /// The four warehouse-health DMV probes. They keep their own operation (and therefore their historical
@@ -3655,6 +3693,7 @@ impl ServerHandler for SqlFlowMcp {
     /// `http::request::Parts` into the context extensions, and the caller's bearer is
     /// scoped into `HTTP_BEARER` around the tool call so every control-plane request
     /// runs as that caller. Over stdio there are no parts and dispatch is unchanged.
+    /// A host module's tool is called inside the same scope, so its requests run as the caller too.
     async fn call_tool(
         &self,
         request: rmcp::model::CallToolRequestParams,
@@ -3663,8 +3702,7 @@ impl ServerHandler for SqlFlowMcp {
         let parts = context.extensions.get::<http::request::Parts>();
         let bearer = parts.and_then(|parts| bearer_token(&parts.headers));
         let surface = parts.and_then(|parts| request_surface(parts.uri.query()));
-        let tcc = rmcp::handler::server::tool::ToolCallContext::new(self, request, context);
-        let call = self.tool_router.call(tcc);
+        let call = self.dispatch(request, context);
         match (bearer, surface) {
             (Some(token), Some(surface)) => {
                 crate::control_plane::HTTP_BEARER
@@ -3676,13 +3714,56 @@ impl ServerHandler for SqlFlowMcp {
         }
     }
 
+    /// Every tool a client can call: this server's own, then each module's in registration order.
+    async fn list_tools(
+        &self,
+        _request: Option<rmcp::model::PaginatedRequestParams>,
+        _context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<rmcp::model::ListToolsResult, rmcp::ErrorData> {
+        let mut tools = self.tool_router.list_all();
+        tools.extend(self.modules.list().iter().cloned());
+        Ok(rmcp::model::ListToolsResult {
+            tools,
+            meta: None,
+            next_cursor: None,
+        })
+    }
+
+    fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
+        self.tool_router
+            .get(name)
+            .or_else(|| self.modules.get(name))
+            .cloned()
+    }
+
     fn get_info(&self) -> ServerInfo {
         let online_setup = if self.http_mode { ONLINE_SETUP_HTTP } else { ONLINE_SETUP_STDIO };
         let discovery = if self.http_mode { "" } else { DISCOVERY_STDIO };
+        let modules = self.modules.instructions();
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
-            .with_instructions(format!(
-                "{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}"
+            .with_server_info(rmcp::model::Implementation::new(
+                self.cp.identity().name().to_string(),
+                self.cp.identity().version().to_string(),
             ))
+            .with_instructions(format!(
+                "{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{modules}"
+            ))
+    }
+}
+
+impl SqlFlowMcp {
+    /// One tool call: a host module's tool goes to the module that added it, everything else to this
+    /// server's own router (which answers an unknown name with "tool not found").
+    async fn dispatch(
+        &self,
+        request: rmcp::model::CallToolRequestParams,
+        context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<rmcp::model::CallToolResult, rmcp::ErrorData> {
+        if let Some(module) = self.modules.owner_of(&request.name) {
+            return module.call(request, context).await;
+        }
+        let tcc = rmcp::handler::server::tool::ToolCallContext::new(self, request, context);
+        self.tool_router.call(tcc).await
     }
 }
 
@@ -4156,7 +4237,7 @@ mod tests {
     /// that none of them stood out.
     #[test]
     fn capitals_are_rationed_to_routing_and_safety() {
-        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(&crate::control_plane::ClientIdentity::default(), true)));
 
         let mut start_here = Vec::new();
         for tool in server.tool_router.list_all() {
@@ -4203,7 +4284,7 @@ mod tests {
         assert!(failed["readingThis"].is_null());
 
         // And the descriptions that moved their semantics out must not still carry them.
-        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(&crate::control_plane::ClientIdentity::default(), true)));
         for (tool, moved) in [
             ("describe_semantic_table", "isRangeJoin"),
             ("describe_subscriber_report", "tableName"),
@@ -4229,7 +4310,7 @@ mod tests {
         // CONSTRUCTED server rather than a hand-copied list, so this cannot go stale the way a duplicate
         // roster does. The subscribers surface is paged by list_subscribers rather than by `search`: that
         // tool already filters by the same fields, so a second path to the same rows would be a parallel one.
-        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(&crate::control_plane::ClientIdentity::default(), true)));
         let shipped: Vec<String> =
             server.tool_router.list_all().into_iter().map(|t| t.name.to_string()).collect();
 
