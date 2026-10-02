@@ -139,10 +139,14 @@ public sealed record FlowVersionResponse(string ContentHash, string Yaml);
 /// document and knows the flow participates: the downstream-anchored watermark table for an incremental flow
 /// (<see cref="ResolveWatermark"/>) and the landing-reset verdict for a chained landing flow
 /// (<see cref="ResolveLandingReset"/>). <see cref="TargetSchema"/> and <see cref="TargetTable"/> name the flow's
-/// own target, which both resolutions are relative to. <see cref="Node"/> and <see cref="Attempt"/> are the fence:
-/// the dispatcher answers only while the run still carries exactly that lease.</summary>
+/// own target, which both resolutions are relative to. <see cref="IncrementalLanding"/> says the landing flow
+/// declares an incremental watermark, so a plain run of it lands only a delta: that is what lets a window- or
+/// filter-bounded run of the same flow reset under the normal gate. A node that does not send it is read as false,
+/// the conservative answer. <see cref="Node"/> and <see cref="Attempt"/> are the fence: the dispatcher answers only
+/// while the run still carries exactly that lease.</summary>
 public sealed record RunContextRequest(
-    string Node, int Attempt, string TargetSchema, string TargetTable, bool ResolveWatermark, bool ResolveLandingReset);
+    string Node, int Attempt, string TargetSchema, string TargetTable, bool ResolveWatermark, bool ResolveLandingReset,
+    bool IncrementalLanding = false);
 
 /// <summary>The dispatcher's answer to a context request. <see cref="Held"/> is false when the run no longer
 /// carries the caller's lease, in which case the node aborts the execution and reports nothing. Otherwise

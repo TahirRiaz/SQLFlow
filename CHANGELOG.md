@@ -28,6 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reason on the run's events. A plain forced full load keeps the gate and, when authorized, becomes
   a clean staging rebuild instead of doubling the table. Fixes landing tables growing without bound
   (the `pre` estate had accumulated 794M rows / 232 GB of already-consolidated staging data).
+- A window- or filter-bounded backfill of an INCREMENTAL landing flow now takes the normal
+  `load.resetWhenConsolidated` gate instead of being refused outright. A plain run of such a flow lands
+  only its delta, so a slice is the same kind of load: once every direct consumer has a successful run
+  after the last load, the backfill resets the landing table and lands the slice alone. Before, every
+  backfill appended to rows the consumers already held, and because a plain run resets only after it
+  finds new files, a source that had gone quiet never cleared them. A flow that re-lands its whole
+  selection on every run (no `incremental:` block) still keeps its rows through a bounded run, since a
+  reset there would leave only the slice for a consumer that rebuilds from it. The node states the
+  fact on the run-context request (`incrementalLanding`); a node that does not send it is refused as
+  before.
 - The ing-side `load.truncateSourceWhenConsolidated` gate now scopes its target-side `MAX(watermark)`
   probe by `source.incrementalClause`, so on a shared target (several operators merging into one arc
   table) another operator's fresher load can no longer fake the catch-up and truncate un-consolidated

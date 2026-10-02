@@ -882,6 +882,12 @@ public sealed partial class RunWorker : IDisposable
                 ? (targetDoc.Flow.Target.Schema, targetDoc.Flow.Target.Table)
                 : (ownSchema, ownName);
 
+            // Whether the landing flow is declared incremental (for a file document, the same fact that makes it
+            // a watermark participant above). A plain run of such a flow lands only its delta, so a bounded
+            // backfill of it may reset under the normal gate; a flow that re-lands its whole selection on every
+            // run keeps its rows through a bounded run.
+            var incrementalLanding = landingResetCandidate && incrementalWatermark;
+
             RelationalObject? watermarkSourceTable = null;
             LandingReset? landingReset = null;
             if (incrementalWatermark || landingResetCandidate)
@@ -889,7 +895,9 @@ public sealed partial class RunWorker : IDisposable
                 var context = await CallDispatcherAsync(
                     runId, "context", DispatcherRetry.SupportWaits,
                     token => _transport.ResolveRunContextAsync(
-                        runId, new RunContextRequest(_node, attempt, targetSchema, targetTable, incrementalWatermark, landingResetCandidate), token),
+                        runId,
+                        new RunContextRequest(_node, attempt, targetSchema, targetTable, incrementalWatermark, landingResetCandidate, incrementalLanding),
+                        token),
                     ct).ConfigureAwait(false);
                 if (!context.Held)
                 {

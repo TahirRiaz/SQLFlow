@@ -73,7 +73,8 @@ public static class RunContextStore
                 ReprocessFromSourceMin = run.ReprocessFromSourceMin,
             };
             landingReset = await ResolveLandingResetAsync(
-                catalog, repoId, run.PipelineId, request.TargetSchema, request.TargetTable, parameters, ct).ConfigureAwait(false);
+                catalog, repoId, run.PipelineId, request.TargetSchema, request.TargetTable, parameters,
+                request.IncrementalLanding, ct).ConfigureAwait(false);
         }
 
         return new RunContextResponse(true, watermark, landingReset);
@@ -159,8 +160,13 @@ public static class RunContextStore
     /// (the chained landing contract; a consumer reading the base table, or through a hand-written object, may
     /// depend on rows accumulating, so the reset is refused rather than guessed), and this flow must have a
     /// prior successful run to anchor the comparison (a seeded table with no run history is never truncated on
-    /// faith). A run bounded to a window or filter (an operator backfill of a slice) is refused outright: the
-    /// whole staged dataset must reach the downstream merge, so a partial re-land never truncates first; a plain
+    /// faith). A run bounded to a window or filter (an operator backfill of a slice) depends on what the flow's
+    /// plain run leaves in the table. An incremental flow (<paramref name="incrementalLanding"/>) lands only its
+    /// delta on a plain run, so its bounded run is the same kind of load and passes through the same gate: once
+    /// every consumer has caught up, the slice replaces the consolidated rows instead of piling on top of them,
+    /// which matters because such a flow's later plain runs often find no new files and so never reach a reset
+    /// of their own. A flow that re-lands its whole selection on every run is refused: its table normally holds
+    /// the whole dataset, and a reset would leave only the slice for a consumer that rebuilds from it. A plain
     /// forced full load keeps the normal gate and becomes a clean staging rebuild when authorized. Returns null
     /// when the flow has no lineage consumers at all: a plain append flow that is nobody's staging area is left
     /// alone without comment. Every blocked verdict carries the reason, so a landing table that keeps growing
@@ -168,7 +174,7 @@ public static class RunContextStore
     /// </summary>
     public static async Task<LandingReset?> ResolveLandingResetAsync(
         CatalogDbContext catalog, Guid repoId, Guid pipelineId, string targetSchema, string targetTable,
-        RunParameters parameters, CancellationToken ct = default)
+        RunParameters parameters, bool incrementalLanding, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(targetSchema);
@@ -186,18 +192,24 @@ public static class RunContextStore
         }
 
         // A window- or filter-bounded run (an operator backfilling a specific slice) deliberately re-lands only
-        // part of the source, and the whole staged dataset must reach the downstream merge: resetting first
-        // would leave the landing table holding just the slice, which a downstream full-refresh consumer could
-        // then rebuild from. Never reset a bounded run. A plain forced full load (--full, no window or filter)
-        // keeps the normal gate below: it re-lands everything the definition selects, so an authorized reset
+        // part of the source. Whether that may reset turns on what a plain run of the flow leaves behind. A flow
+        // that re-lands its whole selection on every run keeps the whole dataset in the landing table, so
+        // resetting for a slice would leave just the slice, which a downstream full-refresh consumer could then
+        // rebuild from: refused. An incremental flow's plain run already leaves only its delta, so the slice is
+        // the same kind of load and takes the normal gate below; refusing it would only stack the slice on rows
+        // the consumers already hold, and since a later plain run of such a flow resets only when it finds new
+        // files, nothing would ever clear them. A plain forced full load (--full, no window or filter) keeps
+        // the normal gate either way: it re-lands everything the definition selects, so an authorized reset
         // turns it into a clean staging rebuild instead of doubling the table.
-        if (parameters.BackfillFrom is not null || parameters.BackfillTo is not null
-            || !string.IsNullOrWhiteSpace(parameters.FilePattern) || !string.IsNullOrWhiteSpace(parameters.SourceFilter))
+        var bounded = parameters.BackfillFrom is not null || parameters.BackfillTo is not null
+            || !string.IsNullOrWhiteSpace(parameters.FilePattern) || !string.IsNullOrWhiteSpace(parameters.SourceFilter);
+        if (bounded && !incrementalLanding)
         {
             return new LandingReset
             {
                 Authorized = false,
-                Reason = "this run is bounded to a window/filter (backfill); a partial re-land never resets the landing table",
+                Reason = "this run is bounded to a window/filter (backfill) and the flow re-lands its whole selection "
+                    + "on a plain run; a partial re-land never resets such a landing table",
             };
         }
 
