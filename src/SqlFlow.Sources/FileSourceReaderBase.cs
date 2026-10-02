@@ -869,8 +869,49 @@ public abstract class FileSourceReaderBase : ISourceReader
 
         return new NoSourceFilesException(
             NoSourceFilesReason.NoneSelected,
-            $"No files under '{options.SrcPath}' matched the filters ({string.Join(", ", filters)}); {Examined(tally)}.");
+            $"No files under '{options.SrcPath}' matched the filters ({string.Join(", ", filters)}); {Examined(tally)}."
+            + RejectedDates(tally, options.FileDate));
     }
+
+    /// <summary>
+    /// What the date-rejected files are dated, and where that date was read from. A window that excludes every
+    /// file is only explicable next to the dates it was compared with: a file dated by its modified time carries
+    /// the moment it was last written (a fresh checkout or a re-upload stamps it "now"), which is rarely the date
+    /// the operator had in mind when choosing the window. Empty when no file was rejected on its date.
+    /// </summary>
+    private static string RejectedDates(FileDateTally tally, FileDateSpec? fileDate)
+    {
+        if (tally.DateRejected == 0)
+        {
+            return string.Empty;
+        }
+
+        var detail = new StringBuilder();
+        var dated = tally.DateRejected - tally.Undated;
+        if (dated > 0 && tally.EarliestRejected is { } earliest && tally.LatestRejected is { } latest)
+        {
+            var span = earliest == latest
+                ? FormatFileDate(earliest)
+                : $"{FormatFileDate(earliest)} .. {FormatFileDate(latest)}";
+            var source = fileDate?.Source switch
+            {
+                FileDateSource.Path => "read from the path",
+                FileDateSource.Name => "read from the file name",
+                _ => "the file's modified time",
+            };
+            detail.Append(CultureInfo.InvariantCulture, $" {dated} file(s) outside the date bounds are dated {span} UTC ({source}).");
+        }
+
+        if (tally.Undated > 0)
+        {
+            var where = fileDate?.Source == FileDateSource.Path ? "path" : "file name";
+            detail.Append(CultureInfo.InvariantCulture, $" {tally.Undated} file(s) carry no date in the {where}, so a dated selection never includes them.");
+        }
+
+        return detail.ToString();
+    }
+
+    private static string FormatFileDate(DateTime date) => date.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 
     /// <summary>
     /// What the walk covered, so an empty result carries its evidence and not just its verdict: "examined 128

@@ -119,7 +119,7 @@ Invalid cell reference '<cell>' in sheetRange (use e.g. A1:D100).
 | `fileDate.hive` | bool | `false` | Read the file date from Hive `key=value` partition tokens in the path. |
 | `fileDate.pattern` | string | empty | Regex over the path/name whose `year`/`month`/`day`/`hour` groups yield the file date. |
 
-Matched files are processed in ascending modified-date order (name as tiebreaker). When nothing matches, the run fails with `No files under '<path>' matched the filters (...)` listing every active filter. The same selection applies to every file format; see the shared pipeline page for details.
+Matched files are processed in ascending modified-date order (name as tiebreaker). When nothing matches, the run loads nothing and ends as a success, reporting `No files under '<path>' matched the filters (...)` with every active filter; the line is a warning unless an incremental run simply found nothing new (see [incremental](../incremental.md)). The same selection applies to every file format; see the shared pipeline page for details.
 
 ### File lifecycle (post-load)
 

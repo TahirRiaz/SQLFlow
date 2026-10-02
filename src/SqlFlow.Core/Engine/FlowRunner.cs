@@ -346,18 +346,24 @@ public sealed class FlowRunner
                 DataSetConvention = read.DataSetConvention,
             };
         }
-        catch (NoSourceFilesException ex) when (flow.Incremental is { FullLoad: false })
+        catch (NoSourceFilesException ex)
         {
-            // Incremental runs commonly find nothing new; that is a clean no-op, not a failure. The
-            // probe runs before any target mutation, so there is nothing to roll back here.
+            // A read that selects no files is a clean no-op, never a failure: there was nothing to load, and the
+            // selection runs before any target mutation, so there is nothing to roll back here. This holds for
+            // every kind of run (incremental, full load, an explicit backfill window, a flow with no incremental
+            // spec): the run did what it was asked and the answer was "nothing".
             var totalMs = Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds;
 
-            // A location holding no candidate file at all is also a no-op, but not an unremarkable one: it is
-            // indistinguishable from a wrong path or pattern, and a flow that quietly loads nothing forever is
-            // the failure mode this warning exists to catch. Files that are merely all older than the watermark
-            // are the opposite - the expected resting state - and stay at info.
-            var noCandidates = ex.Reason == NoSourceFilesReason.NoCandidates;
-            if (noCandidates)
+            // What separates the cases is how loudly the no-op is reported. An incremental run that found
+            // candidate files and selected none of them (nothing newer than the watermark, within whatever window
+            // or mask the flow declares) is in its expected resting state and stays at info. Everything else is a
+            // warning, because it is indistinguishable from a mistake: a location holding no candidate file at all
+            // looks like a wrong path or pattern, and a full load or a backfill window that selects nothing looks
+            // like a window that does not match the files' dates. A flow that quietly loads nothing forever is the
+            // failure mode the warning exists to catch.
+            var incremental = flow.Incremental is { FullLoad: false };
+            var warn = !incremental || ex.Reason == NoSourceFilesReason.NoCandidates;
+            if (warn)
             {
                 _logger.LogWarning("Flow '{Flow}' loaded nothing: {Reason}", flow.Name, ex.Message);
             }
@@ -366,7 +372,7 @@ public sealed class FlowRunner
                 _logger.LogInformation("Flow '{Flow}': {Reason}", flow.Name, ex.Message);
             }
 
-            Emit(context, $"Flow '{flow.Name}': {ex.Message}", noCandidates ? FlowEventLevel.Warning : FlowEventLevel.Info);
+            Emit(context, $"Flow '{flow.Name}': {ex.Message}", warn ? FlowEventLevel.Warning : FlowEventLevel.Info);
 
             return new FlowResult
             {
@@ -722,14 +728,13 @@ public sealed class FlowRunner
         var connectionString = resolvedConnection ?? await _secrets.ResolveAsync(flow.Target.Connection, ct).ConfigureAwait(false);
         var reader = ResolveReader(flow.Source.Type);
 
-        // An incremental read that selects no files is a no-op, not a failure: RunAsync turns it into a clean
-        // zero-row success, so the stage reports it as an outcome. A full load has no such fallback, and there an
-        // empty source really is the failure it looks like.
+        // A read that selects no files is a no-op, not a failure: RunAsync turns it into a clean zero-row success
+        // (with a warning where the empty selection looks like a mistake), so the stage reports it as an outcome.
         var sourceColumns = await StageAsync(
             "source.columns",
             context,
             () => reader.GetColumnsAsync(flow.Source, ct),
-            benign: ex => ex is NoSourceFilesException && flow.Incremental is { FullLoad: false }).ConfigureAwait(false);
+            benign: ex => ex is NoSourceFilesException).ConfigureAwait(false);
         var desired = DesiredSchemaBuilder.Build(flow.Target, sourceColumns, flow.Schema, _typeMapper);
         var actual = await StageAsync("target.introspect", context, () => _schema.GetTableSchemaAsync(connectionString, flow.Target.Schema, flow.Target.Table, ct)).ConfigureAwait(false);
         var delta = SchemaDiffer.Diff(desired, actual, flow.Schema.Evolve, _typeReconciler);

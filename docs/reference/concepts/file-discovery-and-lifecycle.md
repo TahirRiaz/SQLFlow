@@ -56,7 +56,7 @@ All keys below live under `source.options` in the flow YAML.
 
 A missing path raises `Path not found: '<location>'.`. An invalid `srcPathMask` raises `Invalid 'srcPathMask' regular expression '<mask>': <cause>`. During a recursive walk, a directory that becomes unreadable mid-walk (permissions, a concurrent delete) is skipped rather than aborting the listing.
 
-Matched files are consolidated into one load, ordered by modified timestamp and then by name. If nothing survives the filters, the run fails with `No files under '<location>' matched the filters (...)`, listing the pattern, path mask, file-date source, date window, and incremental watermark that were active.
+Matched files are consolidated into one load, ordered by modified timestamp and then by name. If nothing survives the filters, the run loads nothing and ends as a success, reporting `No files under '<location>' matched the filters (...)`, which lists the pattern, path mask, file-date source, date window, and incremental watermark that were active, followed by the dates the excluded files carry and where those dates were read from. The line is a warning unless an incremental run simply found nothing new (see [incremental](../flow/incremental.md)).
 
 Each discovered file is represented by a storage-agnostic `FileRef` (src/SqlFlow.Core/Model/FileRef.cs): `Path` (full path or URI), `Name` (file name only), `Size` (bytes), and `Modified` (nullable UTC `DateTimeOffset`).
 

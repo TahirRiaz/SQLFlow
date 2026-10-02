@@ -106,7 +106,7 @@ dotnet run --project src/SqlFlow.Cli -- run samples/csv/csv-basic.flow.yaml
 
 The `fileDate.*` option group (for example `fileDate.from: path` with `fileDate.hive: "true"`) redirects where the file's business date is read from (path tokens or file name instead of the modified timestamp); see [File discovery, date windows, and lifecycle](../../concepts/file-discovery-and-lifecycle.md) for the full contract.
 
-Files are processed in ascending modified-date order, ties broken by name. When no file survives the filters, the run fails with `No files under '<path>' matched the filters (...)` listing the active filters (pattern, path mask, file date source, date window, incremental watermark).
+Files are processed in ascending modified-date order, ties broken by name. When no file survives the filters, the run loads nothing and ends as a success, reporting `No files under '<path>' matched the filters (...)` with the active filters (pattern, path mask, file date source, date window, incremental watermark) and the dates the excluded files carry; the line is a warning unless an incremental run simply found nothing new (see [incremental](../incremental.md)).
 
 `incrementalAfterDate` is not meant to be authored directly: when the flow has a file-date-based `incremental` watermark, the engine resolves it against the target and injects `incrementalAfterDate` into `source.options` before files are listed (src/SqlFlow.Core/Engine/FlowRunner.cs), so only files modified strictly after that watermark are read.
 

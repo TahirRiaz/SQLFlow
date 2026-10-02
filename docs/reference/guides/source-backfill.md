@@ -183,7 +183,9 @@ run still shows `target MAX`, it was executed by a worker that does not yet have
   **flow** scope, where the window is applied to the date column directly.
 - **File-date source.** A root `file` flow's window filters by the file's business date only when the flow declares a
   `fileDate` (path/name) spec; without one it filters the file's modified timestamp. This is a flow-definition choice,
-  not a routing choice.
+  not a routing choice. A window that selects no file does not fail the run: it ends as a success that loaded nothing,
+  with a warning naming the dates the files carry and where they were read from, so a window that misses (a file dated
+  by a recent checkout or re-upload, say) is visible without failing the flows after it.
 - **Cursor-based API flows.** An `api` flow whose incremental is a bind-variable cursor (not a date window) has its
   watermark bypassed by a backfill, so it re-fetches from its seed. A date window cannot bound a cursor fetch, so the
   effect is a full reprocess rather than a date-bounded one.

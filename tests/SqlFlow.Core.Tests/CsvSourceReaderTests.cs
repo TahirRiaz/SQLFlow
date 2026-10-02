@@ -720,6 +720,42 @@ public sealed class CsvSourceReaderTests : IDisposable
         // The window, not an absent file, is what emptied the selection: the one candidate was examined.
         Assert.Equal(NoSourceFilesReason.NoneSelected, error.Reason);
         Assert.Contains("examined 1 file(s)", error.Message, StringComparison.Ordinal);
+
+        // The message carries the date the window was compared with and where it was read, so a window that
+        // misses is explicable from the message alone.
+        Assert.Contains(
+            "1 file(s) outside the date bounds are dated 2024-01-01 00:00:00 UTC (the file's modified time).",
+            error.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Open_DateWindow_NameDerivedDates_ReportsTheSpanAndTheUndatedFiles()
+    {
+        Csv("orders_20240105.csv", "OrderId\n1\n");
+        Csv("orders_20240220.csv", "OrderId\n2\n");
+        Csv("orders_latest.csv", "OrderId\n3\n");
+
+        var source = Folder(new()
+        {
+            ["srcFile"] = "*.csv",
+            ["fileDate.from"] = "name",
+            ["fileDate.pattern"] = @"(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})",
+            ["initFromFileDate"] = "2030-01-01",
+        });
+
+        var error = await Assert.ThrowsAsync<NoSourceFilesException>(() => _reader.GetColumnsAsync(source));
+
+        Assert.Equal(NoSourceFilesReason.NoneSelected, error.Reason);
+        Assert.Contains("examined 3 file(s)", error.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "2 file(s) outside the date bounds are dated 2024-01-05 00:00:00 .. 2024-02-20 00:00:00 UTC (read from the file name).",
+            error.Message,
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "1 file(s) carry no date in the file name, so a dated selection never includes them.",
+            error.Message,
+            StringComparison.Ordinal);
     }
 
     /// <summary>

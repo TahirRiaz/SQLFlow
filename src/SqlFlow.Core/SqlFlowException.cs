@@ -86,7 +86,8 @@ public enum NoSourceFilesReason
 /// Thrown when a source read selected no files. <see cref="Reason"/> separates a location that holds nothing from
 /// one whose files are simply all older than the watermark: the second is the normal resting state of an
 /// incremental flow and the first usually means a misconfigured path, so the two must never be reported alike.
-/// The engine treats this as a clean no-op for an incremental run and as a failure otherwise.
+/// The engine treats this as a clean no-op for every run: a success that loaded nothing, reported at info when an
+/// incremental run simply found nothing new and as a warning otherwise.
 /// </summary>
 public sealed class NoSourceFilesException : SqlFlowException
 {

@@ -14,7 +14,17 @@ namespace SqlFlow.Sources;
 /// <param name="MaskRejected">Of those, how many the path mask rejected.</param>
 /// <param name="DateRejected">Of those, how many passed the mask but fell outside the date window.</param>
 /// <param name="PrunedDirectories">Folders skipped whole as provably out of window.</param>
-internal readonly record struct FileDateTally(int Tested, int MaskRejected, int DateRejected, int PrunedDirectories);
+/// <param name="Undated">Of the date-rejected files, how many carried no parsable date in their name or path.</param>
+/// <param name="EarliestRejected">The earliest date (UTC) a date-rejected file carried; null when none carried one.</param>
+/// <param name="LatestRejected">The latest date (UTC) a date-rejected file carried; null when none carried one.</param>
+internal readonly record struct FileDateTally(
+    int Tested,
+    int MaskRejected,
+    int DateRejected,
+    int PrunedDirectories,
+    int Undated = 0,
+    DateTime? EarliestRejected = null,
+    DateTime? LatestRejected = null);
 
 /// <summary>
 /// The discovery-time file selector: the optional path mask and the date window, applied during listing so an
@@ -37,6 +47,14 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
     private int _maskRejected;
     private int _dateRejected;
     private int _prunedDirectories;
+    private int _undated;
+
+    // The span of dates the date-rejected files carried, so an empty selection can say what the files are dated
+    // and not only that the window excluded them. Two values move together, so they are guarded by a lock rather
+    // than interlocked; it is taken only for a rejected file, never for one the run reads.
+    private readonly Lock _rejectedDatesLock = new();
+    private DateTime? _earliestRejected;
+    private DateTime? _latestRejected;
 
     public FileDateFilter(FileDateSpec? spec, DateTime? from, DateTime? to, DateTime? after, Regex? pathMask)
     {
@@ -55,11 +73,28 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
     /// handed to a store (see <see cref="IsActive"/>) reports all zeros, which reads correctly as "nothing was
     /// filtered out", leaving the glob as the only possible explanation for an empty result.
     /// </summary>
-    public FileDateTally Tally => new(
-        Volatile.Read(ref _tested),
-        Volatile.Read(ref _maskRejected),
-        Volatile.Read(ref _dateRejected),
-        Volatile.Read(ref _prunedDirectories));
+    public FileDateTally Tally
+    {
+        get
+        {
+            DateTime? earliest;
+            DateTime? latest;
+            lock (_rejectedDatesLock)
+            {
+                earliest = _earliestRejected;
+                latest = _latestRejected;
+            }
+
+            return new(
+                Volatile.Read(ref _tested),
+                Volatile.Read(ref _maskRejected),
+                Volatile.Read(ref _dateRejected),
+                Volatile.Read(ref _prunedDirectories),
+                Volatile.Read(ref _undated),
+                earliest,
+                latest);
+        }
+    }
 
     public bool ShouldEnterDirectory(string directoryPath)
     {
@@ -101,10 +136,12 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
         }
 
         bool inWindow;
+        DateTime? fileDate;
         if (_spec is null)
         {
             var modified = (file.Modified ?? DateTimeOffset.UtcNow).UtcDateTime;
             inWindow = Overlaps(new DateInterval(modified, modified));
+            fileDate = modified;
         }
         else
         {
@@ -114,14 +151,40 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
             // A file that carries no parsable date is not part of a date-scoped selection: exclude it rather than
             // guess. With no window set (HasWindow false) we returned true above, so an undated file still loads then.
             inWindow = interval is not null && Overlaps(interval.Value);
+
+            // The start of the interval is the file's business timestamp, the same instant FileDate_DW is stamped with.
+            fileDate = interval?.Lo;
         }
 
         if (!inWindow)
         {
             Interlocked.Increment(ref _dateRejected);
+            NoteRejected(fileDate);
         }
 
         return inWindow;
+    }
+
+    private void NoteRejected(DateTime? fileDate)
+    {
+        if (fileDate is not { } date)
+        {
+            Interlocked.Increment(ref _undated);
+            return;
+        }
+
+        lock (_rejectedDatesLock)
+        {
+            if (_earliestRejected is null || date < _earliestRejected)
+            {
+                _earliestRejected = date;
+            }
+
+            if (_latestRejected is null || date > _latestRejected)
+            {
+                _latestRejected = date;
+            }
+        }
     }
 
     private bool HasWindow => _from is not null || _to is not null || _after is not null;
