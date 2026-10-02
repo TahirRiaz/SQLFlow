@@ -15,6 +15,13 @@ public sealed class ControlPlaneLocalEnvFileTests : IDisposable
     private readonly string _root = Path.Combine(Path.GetTempPath(), "sqlflow-cp-env-" + Guid.NewGuid().ToString("N"));
     private readonly List<string> _touched = [];
 
+    /// <summary>What the opt-out held when the test began. Every test host sets it, so a host started earlier in this
+    /// process leaves it set; these tests are the ones that read the file, so they clear it for their own duration and
+    /// put it back.</summary>
+    private readonly string? _optOut = Environment.GetEnvironmentVariable(ControlPlaneHost.LocalEnvFileVariable);
+
+    public ControlPlaneLocalEnvFileTests() => Environment.SetEnvironmentVariable(ControlPlaneHost.LocalEnvFileVariable, null);
+
     private string Write(string relativeDirectory, params string[] lines)
     {
         var directory = Path.Combine(_root, relativeDirectory, ".sqlflow");
@@ -61,11 +68,22 @@ public sealed class ControlPlaneLocalEnvFileTests : IDisposable
     {
         // A test estate opts out so it never picks up a developer's real credentials from the checkout it runs in.
         var contentRoot = Write("host", "SQLFLOW_TEST_OPTED_OUT=applied");
-        Remember("SQLFLOW_TEST_OPTED_OUT", ControlPlaneHost.LocalEnvFileVariable);
+        Remember("SQLFLOW_TEST_OPTED_OUT");
         Environment.SetEnvironmentVariable(ControlPlaneHost.LocalEnvFileVariable, opt);
 
         Assert.Empty(ControlPlaneHost.ApplyLocalEnvFile(contentRoot));
         Assert.Null(Environment.GetEnvironmentVariable("SQLFLOW_TEST_OPTED_OUT"));
+    }
+
+    [Fact]
+    public void The_test_host_opts_out()
+    {
+        // The suites run inside a checkout whose file may hold a developer's real connections. A host that applied it
+        // would leave them in this process for every later host and every CLI the suites start.
+        using var factory = new ControlPlaneAppFactory();
+        using var client = factory.CreateClient();
+
+        Assert.Equal("false", Environment.GetEnvironmentVariable(ControlPlaneHost.LocalEnvFileVariable));
     }
 
     [Fact]
@@ -95,6 +113,8 @@ public sealed class ControlPlaneLocalEnvFileTests : IDisposable
         {
             Environment.SetEnvironmentVariable(name, null);
         }
+
+        Environment.SetEnvironmentVariable(ControlPlaneHost.LocalEnvFileVariable, _optOut);
 
         try
         {

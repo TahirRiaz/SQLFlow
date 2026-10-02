@@ -75,6 +75,9 @@ public sealed class ControlPlaneProcessFixture : IAsyncLifetime
             psi.Environment["ControlPlane__RateLimit__WindowSeconds"] = "60";
             psi.Environment["ControlPlane__Scheduler__PollSeconds"] = "1";
             psi.Environment["ControlPlane__ManagedSync__PollSeconds"] = "1";
+            // The child runs out of the build output, inside the checkout: without this it would apply the checkout's
+            // local development file, and a flow it runs would resolve its references against a developer's real values.
+            psi.Environment[Hosting.ControlPlaneHost.LocalEnvFileVariable] = "false";
             _process = Process.Start(psi)!;
             // Drain the streams so the child never blocks on a full pipe, and keep every line in a per-incarnation
             // log file: a child that dies mid-suite is otherwise invisible (the next test simply cannot connect).

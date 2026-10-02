@@ -111,6 +111,12 @@ public sealed class ControlPlaneAppFactory : WebApplicationFactory<Program>
     {
         ArgumentNullException.ThrowIfNull(builder);
 
+        // A test estate never reads the local development file. The suites run inside a checkout that may hold a
+        // developer's real connections and credentials, and whatever a host applies stays in this process: every later
+        // host reads it as configuration, and every CLI the suites start inherits it. Set before the entry point runs,
+        // and on every host, because the tests of the file itself clear it for their own duration.
+        Environment.SetEnvironmentVariable(ControlPlaneHost.LocalEnvFileVariable, "false");
+
         builder.UseEnvironment(Environments.Production);
 
         // The top-level Program reads ControlPlane configuration eagerly during host build and fails fast on a
