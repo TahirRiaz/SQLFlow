@@ -348,6 +348,8 @@ pub struct ModuleSet {
     /// Every module's tools, in registration order and by name within a module.
     listed: Vec<Tool>,
     instructions: String,
+    /// The tools of SQLFlow's own server the host leaves out, by name, in order.
+    withheld: Vec<String>,
 }
 
 impl ModuleSet {
@@ -396,6 +398,32 @@ impl ModuleSet {
         }
         self.instructions.push_str("\n\n");
         self.instructions.push_str(text);
+    }
+
+    /// Records the tools of SQLFlow's own the host leaves out. They are named at the end of the instructions,
+    /// because other tools' descriptions still refer to them: a model told plainly that a tool is not offered
+    /// does not go looking for it.
+    pub(crate) fn withhold(&mut self, mut names: Vec<String>) {
+        names.sort();
+        names.dedup();
+        self.withheld = names;
+    }
+
+    /// The tools of SQLFlow's own server this host does not offer.
+    pub fn withheld(&self) -> &[String] {
+        &self.withheld
+    }
+
+    /// The line the instructions end with when the host leaves tools out; empty when it leaves none.
+    pub fn withheld_note(&self) -> String {
+        if self.withheld.is_empty() {
+            return String::new();
+        }
+        format!(
+            "\n\nNot offered by this server, although other tools' descriptions may name them: {}. Do not look for \
+             them, and say so when a question needs one.",
+            self.withheld.join(", ")
+        )
     }
 
     /// The module tools that own `name`, when a module added it.

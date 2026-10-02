@@ -177,6 +177,12 @@ The host itself names the program (`--version`, the server's reported implementa
 access token it mints), the name `install` registers it under, and the prefix of its two state files under
 `~/.sqlflow/`, so it can be installed beside `sqlflow-mcp` and signed in to a control plane of its own.
 
+A host also says which of SQLFlow's own tools it does not offer (`McpHost::without_tools`): a product that answers from
+metadata alone leaves out the tools that read rows (`prepare_query`, `run_query` and the rest of the data-operations
+surface). A tool left out is neither listed nor callable, and the instructions end by naming what is not offered, since
+other tools' descriptions still refer to it.
+
 Everything a module declares is checked when the host starts, and a problem stops the server with a message naming the
 module: a name another module took, a tool SQLFlow's server already has, a page id already indexed, a census that does
-not parse. `tests/host_module.rs` composes a probe module through this public API and drives it over both transports.
+not parse. The same goes for a tool the host leaves out that SQLFlow's server does not have, so one renamed upstream is
+never offered again by accident. `tests/host_module.rs` composes a probe module through this public API and drives it over both transports.

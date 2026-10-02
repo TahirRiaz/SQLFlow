@@ -48,6 +48,7 @@ pub struct McpHost {
     registration: String,
     state_prefix: String,
     modules: Vec<McpModule>,
+    withheld: Vec<String>,
 }
 
 impl McpHost {
@@ -66,6 +67,7 @@ impl McpHost {
             registration: SQLFLOW_REGISTRATION.to_string(),
             state_prefix: DEFAULT_STATE_PREFIX.to_string(),
             modules: Vec::new(),
+            withheld: Vec::new(),
         }
     }
 
@@ -81,6 +83,19 @@ impl McpHost {
     /// its own, takes a prefix of its own so neither reads the other's token.
     pub fn state_prefix(mut self, prefix: impl Into<String>) -> Self {
         self.state_prefix = prefix.into();
+        self
+    }
+
+    /// Leaves tools of SQLFlow's own server out of this host's: each is neither listed nor callable, and the
+    /// instructions say it is not offered. For a product that does not offer part of what SQLFlow's server does
+    /// (one that answers from metadata alone leaves out the tools that read rows). A name that is not one of
+    /// SQLFlow's tools stops the host at start, so a tool renamed upstream is never offered again by accident.
+    pub fn without_tools<I, S>(mut self, names: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.withheld.extend(names.into_iter().map(Into::into));
         self
     }
 
@@ -131,13 +146,14 @@ impl McpHost {
     /// the environment; calling it directly is how a host's own tests drive its server.
     pub fn server(self, cp: Arc<ControlPlane>, gui_base: &str, http_mode: bool) -> anyhow::Result<SqlFlowMcp> {
         self.validate()?;
-        Ok(McpHost::compose(self.modules, cp, gui_base, http_mode)?.into_server(http_mode))
+        Ok(McpHost::compose(self.modules, self.withheld, cp, gui_base, http_mode)?.into_server(http_mode))
     }
 
     /// Composes the host's modules into the parts of the server that own each contribution. The
     /// control plane and the transport are known by now, since a module's tools are built with them.
     fn compose(
         modules: Vec<McpModule>,
+        withheld: Vec<String>,
         cp: Arc<ControlPlane>,
         gui_base: &str,
         http_mode: bool,
@@ -185,7 +201,15 @@ impl McpHost {
         let context = McpContext::new(cp.clone(), links.clone(), http_mode);
 
         let own = SqlFlowMcp::tool_names();
+        for name in &withheld {
+            anyhow::ensure!(
+                own.contains(name),
+                "the MCP host leaves out '{name}', which is not a tool of SQLFlow's server; a tool that was renamed \
+                 or removed has to be named as it is now"
+            );
+        }
         let mut set = ModuleSet::default();
+        set.withhold(withheld);
         for (name, build) in builders {
             let tools = build(context.clone());
             set.add_tools(&name, tools, |tool| own.contains(tool))
@@ -251,7 +275,7 @@ pub async fn run(host: McpHost) -> anyhow::Result<()> {
     // Over HTTP the server holds no credential of its own: every call runs as the bearer on the inbound request.
     let cp = Arc::new(ControlPlane::from_env(&identity, !http_mode));
     let gui_base = std::env::var("SQLFLOW_GUI_URL").unwrap_or_default();
-    let composed = McpHost::compose(host.modules, cp, &gui_base, http_mode)?;
+    let composed = McpHost::compose(host.modules, host.withheld, cp, &gui_base, http_mode)?;
 
     tracing::info!(
         "loaded {} reference pages for {}",
@@ -264,6 +288,9 @@ pub async fn run(host: McpHost) -> anyhow::Result<()> {
             composed.module_names.join(", "),
             composed.modules.list().len()
         );
+    }
+    if !composed.modules.withheld().is_empty() {
+        tracing::info!("not offered: {}", composed.modules.withheld().join(", "));
     }
     tracing::info!("control plane: {}", composed.cp.base_url());
     match composed.links.base() {
@@ -424,7 +451,7 @@ mod tests {
     }
 
     fn compose(modules: Vec<McpModule>) -> anyhow::Result<Composition> {
-        McpHost::compose(modules, control_plane(), "https://gui.example.com", true)
+        McpHost::compose(modules, Vec::new(), control_plane(), "https://gui.example.com", true)
     }
 
     /// Why a set of modules was refused; fails when it composed.
@@ -530,6 +557,30 @@ mod tests {
         let known = sqlflow_lang::census::Census::for_flow_type(Some("probekind"));
         assert!(known.entries.iter().any(|e| e.path == "probe.target"));
         sqlflow_lang::census::unregister(&sqlflow_lang::census::CensusKind::FlowType("probekind".into()));
+    }
+
+    #[test]
+    fn a_host_leaves_out_tools_of_sqlflows_by_name() {
+        let withheld = vec!["run_query".to_string(), "prepare_query".to_string(), "run_query".to_string()];
+        let composed = McpHost::compose(Vec::new(), withheld, control_plane(), "", true).expect("the host composes");
+        // Named once each, in order, whatever order and however often the host named them.
+        assert_eq!(composed.modules.withheld(), ["prepare_query", "run_query"]);
+        let note = composed.modules.withheld_note();
+        assert!(note.starts_with("\n\nNot offered by this server"), "{note}");
+        assert!(note.contains("prepare_query, run_query"), "{note}");
+
+        // A host that leaves nothing out says nothing about it.
+        assert_eq!(compose(Vec::new()).expect("no modules compose").modules.withheld_note(), "");
+    }
+
+    #[test]
+    fn leaving_out_a_tool_sqlflow_does_not_have_is_refused() {
+        let refused = match McpHost::compose(Vec::new(), vec!["run_querry".to_string()], control_plane(), "", true) {
+            Ok(_) => panic!("a name that is no tool was accepted"),
+            Err(e) => e.to_string(),
+        };
+        assert!(refused.contains("'run_querry'"), "{refused}");
+        assert!(refused.contains("not a tool of SQLFlow's server"), "{refused}");
     }
 
     #[test]

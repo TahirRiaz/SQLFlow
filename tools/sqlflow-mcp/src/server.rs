@@ -74,6 +74,11 @@ impl SqlFlowMcp {
         modules: Arc<ModuleSet>,
         http_mode: bool,
     ) -> Self {
+        // A tool the host leaves out is neither listed nor callable: a call of it is answered as an unknown tool.
+        let mut tool_router = Self::grounded_router();
+        for name in modules.withheld() {
+            tool_router.disable_route(name.clone());
+        }
         SqlFlowMcp {
             docs,
             ctx: McpContext::new(cp.clone(), links.clone(), http_mode),
@@ -81,7 +86,7 @@ impl SqlFlowMcp {
             links,
             http_mode,
             modules,
-            tool_router: Self::grounded_router(),
+            tool_router,
         }
     }
 
@@ -3740,13 +3745,14 @@ impl ServerHandler for SqlFlowMcp {
         let online_setup = if self.http_mode { ONLINE_SETUP_HTTP } else { ONLINE_SETUP_STDIO };
         let discovery = if self.http_mode { "" } else { DISCOVERY_STDIO };
         let modules = self.modules.instructions();
+        let withheld = self.modules.withheld_note();
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(rmcp::model::Implementation::new(
                 self.cp.identity().name().to_string(),
                 self.cp.identity().version().to_string(),
             ))
             .with_instructions(format!(
-                "{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{modules}"
+                "{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{modules}{withheld}"
             ))
     }
 }

@@ -485,6 +485,34 @@ async fn a_run_of_a_registered_kind_carries_the_kinds_own_arguments() {
     assert!(refused.starts_with("Error: payload is a JSON object"), "{refused}");
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn a_tool_the_host_leaves_out_is_neither_listed_nor_callable() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .without_tools(["run_query", "prepare_query"])
+        .server(control_plane(&estate, None), "", true)
+        .expect("the probe host composes");
+    let (url, _stop) = start_http(server).await;
+    let (mut session, initialized) = HttpSession::open(&url, "caller-a").await;
+
+    let names = tool_names(&session.request("tools/list", json!({})).await);
+    assert!(!names.contains(&"run_query".to_string()) && !names.contains(&"prepare_query".to_string()), "{names:?}");
+    // Everything else of SQLFlow's, and the module's own, is still there.
+    assert_eq!(names.len(), SqlFlowMcp::tool_names().len() - 2 + 2);
+    assert!(names.contains(&"list_repos".to_string()) && names.contains(&"list_probes".to_string()));
+
+    let called = session
+        .request("tools/call", json!({ "name": "run_query", "arguments": { "planId": "p-1" } }))
+        .await;
+    assert!(called["error"]["message"].as_str().unwrap_or_default().contains("tool not found"), "{called}");
+
+    // The instructions end by saying so, after the module's own section.
+    let instructions = initialized["result"]["instructions"].as_str().expect("instructions");
+    assert!(instructions.contains("run_probe runs one and waits for it.\n\nNot offered by this server"), "{instructions}");
+    assert!(instructions.trim_end().ends_with("say so when a question needs one."), "{instructions}");
+    assert!(instructions.contains("prepare_query, run_query"), "{instructions}");
+}
+
 // ---- The server over stdio --------------------------------------------------------------------------
 
 /// A client's end of a stdio session: one JSON-RPC message per line, each way.
