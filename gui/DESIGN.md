@@ -23,15 +23,27 @@ panel-based tool an operator keeps open all day. Every design choice follows fro
 ## 2. Identity
 
 - Product name: **SQLFlow** (logo in `public/brand/`).
-- Brand anchors: deep navy `#283e56` (`--brand-navy`), navy-deep `#1b2c40`, warm cream `#fdf3e7`.
-- The navy lives in the chrome (activity bar, title bar); the blue accent carries interaction; the cream
-  appears only in the logo mark. No other decorative color.
+- Brand anchors: deep navy `#283e56` (`--brand-navy`), navy-deep `#1b2c40`, warm cream `#fdf3e7`, and one
+  blue, `#2264c2` (`--brand-blue`).
+- The navy lives in the chrome (activity bar, title bar); the blue carries interaction and the status bar; the
+  cream appears only in the logo mark. No other decorative color.
 
 ## 3. Color system
 
 All colors are CSS custom properties defined in `src/index.css`. Components never use raw hex values;
 they use the semantic Tailwind utilities (`bg-background`, `text-muted-foreground`, `border-border`,
 `bg-primary`, ...). Dark mode is keyed on the `dark` class on `<html>`.
+
+**Three families, and nothing else.** Every color on a screen is one of: the navy neutrals (surfaces,
+hairlines and text, all cut from one hue), the one blue (anything a person acts on, anything in motion), and
+the status hues of 3.2. A token that is the same thing as another refers to it (`--ring`, `--info` and
+`--activity-bar-badge` are `var(--primary)`) instead of repeating a value that then drifts: two blues a few
+points apart side by side read as a mistake, not as a palette.
+
+**Each mode declares itself.** `:root` sets `color-scheme: only light` and `.dark` sets `color-scheme: dark`,
+so the controls and scrollbars the browser draws follow the workbench's switch rather than the operating
+system's, and `index.html` carries `<meta name="darkreader-lock">`: an extension that recolors pages would
+otherwise redraw both themes over the tokens, and neither would be the one designed here.
 
 ### 3.1 Semantic surfaces and text
 
@@ -42,13 +54,16 @@ they use the semantic Tailwind utilities (`bg-background`, `text-muted-foregroun
 | `popover` | `#ffffff` | `#16202f` | menus, popovers, palettes |
 | `foreground` | `#1d2733` | `#dce6f2` | primary text |
 | `muted-foreground` | `#5b6b7f` | `#8b9db3` | secondary text, table headers |
-| `border` | `#dfe5ee` | `#223146` | hairlines everywhere |
-| `input` | `#ccd6e3` | `#2a3b53` | form control borders |
-| `primary` | `#2f6fce` | `#4d9dff` | actions, links, selection, focus ring |
+| `border` | `#d7dee8` | `#27364b` | hairlines everywhere |
+| `input` | `#b8c2cf` | `#3c4e67` | form control borders, graph node outlines |
+| `primary` | `#2264c2` | `#4d9dff` | actions, links, selection, focus ring |
 | `secondary` | `#e8edf4` | `#1c2839` | secondary buttons, quiet chips |
 | `muted` | `#edf1f6` | `#1a2536` | subtle fills, skeletons, hover washes |
 | `accent` | `#e4ecf6` | `#1d2c40` | hover/selected rows and menu items |
-| `destructive` | `#d1242f` | `#e5484d` | destructive actions only |
+| `destructive` | `#c41b27` | `#f87171` | destructive actions only |
+
+A hairline (`border`) separates; it sits at 1.3:1 on the card so a table of it stays quiet. A control's edge
+(`input`) has to be found, so it sits at 1.8:1 or more.
 
 ### 3.2 Status colors (reserved)
 
@@ -57,11 +72,25 @@ label; color never carries meaning alone.
 
 | Token | Light | Dark | States |
 |---|---|---|---|
-| `success` | `#1a7f37` | `#3fb950` | succeeded, online, active, enabled |
-| `warning` | `#9a6700` | `#d29922` | queued, degraded, paused, rate-limited |
-| `info` | `#0969da` | `#58a6ff` | running, syncing, informational |
-| `destructive` | `#d1242f` | `#e5484d` | failed, offline, error |
+| `success` | `#09762f` | `#49b861` | succeeded, online, active, enabled |
+| `warning` | `#8c5d00` | `#d29922` | queued, degraded, paused, rate-limited |
+| `info` | `primary` | `primary` | running, syncing, informational |
+| `destructive` | `#c41b27` | `#f87171` | failed, offline, error |
 | `muted-foreground` | | | cancelled, skipped, disabled, unknown |
+
+**A status color is measured on its own tint.** A chip fills with 12% to 15% of the color and writes its label
+in the color itself, so the pair that has to reach 4.5:1 is the color against that tint, not against the card.
+The values above are the lightest (light mode) and darkest (dark mode) steps of each hue that do, and the four
+sit level with each other in lightness, so no status is louder than its neighbors in a row of chips. Moving one
+means measuring it again against its tint in both modes.
+
+**Informational is the interaction blue.** A second blue for "running" beside the blue of links and buttons
+is two near-identical colors with nothing to tell them apart; there is one.
+
+**A status color marks a status.** A count is not one, and neither is a kind of thing: a zero takes no tone
+(nothing succeeded, is queued or failed), and a category that wants telling apart takes a glyph in the tone
+inside a neutral chip, never a tinted chip per category. A table where every cell is tinted has no status left
+to show.
 
 ### 3.3 Workbench chrome
 
@@ -72,7 +101,7 @@ label; color never carries meaning alone.
 | `tab-bar` | `#eef2f7` | `#0c1420` |
 | `tab-active` | `#ffffff` | `#111a28` |
 | `panel` | `#ffffff` | `#0f1826` |
-| `status-bar` | `#2f6fce` (brand blue, both modes) | `#2f6fce` |
+| `status-bar` | `#2264c2` (`--brand-blue`, both modes) | `#2264c2` |
 
 ### 3.4 Chart palette (validated)
 
@@ -114,6 +143,15 @@ kinds take theirs by what they do with data:
 Green, yellow and red are never a kind's tone, because they read as a status (3.2), and neither is aqua (slot 5), which
 reads as green on the dark card. The tone colors a glyph, a chip's fill and edge, and a header card's top edge; the
 kind's name stays in the text tokens, so magenta's low contrast on white (3.4) never costs the label.
+
+### 3.6 Surfaces a library draws
+
+A library that brings a palette of its own is bound to the tokens at the library's override points, in
+`src/index.css`, never styled around per page. React Flow (the lineage graph) reads the `--xy-*` variables set
+on `.react-flow`: the canvas is `background`, a node is a `card` outlined in `input`, an edge's label is
+`muted-foreground` on the canvas color (so it interrupts the line it names and draws no box), and the minimap
+and zoom controls are cards. A rule on one of the library's classes is the wrong tool: its stylesheet loads
+with the graph's chunk, after ours, and wins.
 
 ## 4. Typography
 

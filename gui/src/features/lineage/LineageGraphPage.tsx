@@ -97,7 +97,7 @@ interface GraphAccents {
 
 function readAccents(): GraphAccents {
   return {
-    focus: cssColor("--primary", "#2f6fce"),
+    focus: cssColor("--primary", "#2264c2"),
     upstream: cssColor("--chart-7", "#4a3aa7"),
     downstream: cssColor("--chart-2", "#008300"),
     outline: cssColor("--muted-foreground", "#5b6b7f"),
@@ -1391,7 +1391,7 @@ export default function LineageGraphPage() {
       text: cssColor("--foreground", "#1d2733"),
       textMuted: cssColor("--muted-foreground", "#5b6b7f"),
       paper: cssColor("--card", "#ffffff"),
-      border: cssColor("--border", "#dfe5ee"),
+      border: cssColor("--border", "#d7dee8"),
     });
     if (svg === "") {
       return;
@@ -1670,7 +1670,7 @@ export default function LineageGraphPage() {
       data-testid="page-lineage-graph"
       // Full-bleed: negative margins cancel the editor's content padding so the canvas runs edge to edge, and
       // the height claims the viewport below the fixed chrome (title bar 36px + tab strip 35px + status bar 22px).
-      className="relative -m-4 h-[calc(100vh-93px)] min-w-0 overflow-hidden bg-card md:-m-6"
+      className="relative -m-4 h-[calc(100vh-93px)] min-w-0 overflow-hidden bg-background md:-m-6"
     >
       {/* The focused node's emphasis: its label text is forced to the primary contrast color (it sits on a solid
           primary fill), and it plays a brief glow pulse when it becomes the focus so the eye lands on it. */}

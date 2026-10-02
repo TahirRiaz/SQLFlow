@@ -8,6 +8,11 @@
   Dark mode is keyed on the `dark` class the theme provider sets on <html>; shadcn semantic tokens
   (--background, --primary, ...) are the single source of truth, and the workbench chrome tokens
   (--activity-bar, --status-bar, ...) extend them for the shell.
+
+  The palette is three families and nothing else (DESIGN.md section 3): the navy neutrals every surface, hairline and
+  text step is cut from, one blue for everything a person acts on or that is in motion, and three status hues. Each
+  status color is set where its own text still reads at 4.5:1 on the 15% tint of itself a chip is filled with, in
+  both modes, so a token that is moved is measured again against its tint and not only against the card.
 */
 
 @import "tailwindcss";
@@ -18,10 +23,14 @@
 :root {
   --radius: 0.375rem;
 
-  /* Identity (from the logo) */
+  /* Identity (from the logo), and the one blue the chrome wears in both modes. */
   --brand-navy: #283e56;
   --brand-navy-deep: #1b2c40;
   --brand-cream: #fdf3e7;
+  --brand-blue: #2264c2;
+
+  /* Controls and scrollbars the browser draws itself follow the workbench's mode, not the operating system's. */
+  color-scheme: only light;
 
   /* Core surfaces: light mode reads like VS Code Light, with the brand navy kept for the activity bar. */
   --background: #f6f8fb;
@@ -30,7 +39,7 @@
   --card-foreground: #1d2733;
   --popover: #ffffff;
   --popover-foreground: #1d2733;
-  --primary: #2f6fce;
+  --primary: var(--brand-blue);
   --primary-foreground: #ffffff;
   --secondary: #e8edf4;
   --secondary-foreground: #33455c;
@@ -38,29 +47,29 @@
   --muted-foreground: #5b6b7f;
   --accent: #e4ecf6;
   --accent-foreground: #1d2733;
-  --destructive: #d1242f;
+  --destructive: #c41b27;
   --destructive-foreground: #ffffff;
-  --border: #dfe5ee;
-  --input: #ccd6e3;
-  --ring: #2f6fce;
+  --border: #d7dee8;
+  --input: #b8c2cf;
+  --ring: var(--primary);
 
-  /* Status semantics (badges, toasts, run states) */
-  --success: #1a7f37;
+  /* Status semantics (badges, toasts, run states). Informational is the interaction blue, not a second blue. */
+  --success: #09762f;
   --success-foreground: #ffffff;
-  --warning: #9a6700;
+  --warning: #8c5d00;
   --warning-foreground: #ffffff;
-  --info: #0969da;
-  --info-foreground: #ffffff;
+  --info: var(--primary);
+  --info-foreground: var(--primary-foreground);
 
   /* Workbench chrome: activity bar and status bar stay branded in both modes. */
   --activity-bar: var(--brand-navy);
   --activity-bar-foreground: #b6c4d6;
   --activity-bar-active: #ffffff;
-  --activity-bar-badge: #2f6fce;
+  --activity-bar-badge: var(--primary);
   --side-bar: #eef2f7;
   --side-bar-foreground: #33455c;
   --panel: #ffffff;
-  --status-bar: #2f6fce;
+  --status-bar: var(--brand-blue);
   --status-bar-foreground: #ffffff;
   --tab-bar: #eef2f7;
   --tab-active: #ffffff;
@@ -73,7 +82,7 @@
   --sidebar-primary-foreground: var(--primary-foreground);
   --sidebar-accent: #dde6f0;
   --sidebar-accent-foreground: #1d2733;
-  --sidebar-border: #dfe5ee;
+  --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
 
   /* Chart series: the validated categorical palette (DESIGN.md 3.4). Fixed slot order, never cycled;
@@ -89,6 +98,8 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   /* Core surfaces: navy-family darks (never neutral gray), editor a shade lighter than the chrome. */
   --background: #111a28;
   --foreground: #dce6f2;
@@ -104,27 +115,27 @@
   --muted-foreground: #8b9db3;
   --accent: #1d2c40;
   --accent-foreground: #e6eef8;
-  --destructive: #e5484d;
-  --destructive-foreground: #ffffff;
-  --border: #223146;
-  --input: #2a3b53;
-  --ring: #4d9dff;
+  --destructive: #f87171;
+  --destructive-foreground: #081524;
+  --border: #27364b;
+  --input: #3c4e67;
+  --ring: var(--primary);
 
-  --success: #3fb950;
+  --success: #49b861;
   --success-foreground: #081524;
   --warning: #d29922;
   --warning-foreground: #081524;
-  --info: #58a6ff;
-  --info-foreground: #081524;
+  --info: var(--primary);
+  --info-foreground: var(--primary-foreground);
 
   --activity-bar: #0c1420;
   --activity-bar-foreground: #7d90a8;
   --activity-bar-active: #ffffff;
-  --activity-bar-badge: #4d9dff;
+  --activity-bar-badge: var(--primary);
   --side-bar: #0f1826;
   --side-bar-foreground: #b7c4d4;
   --panel: #0f1826;
-  --status-bar: #2f6fce;
+  --status-bar: var(--brand-blue);
   --status-bar-foreground: #ffffff;
   --tab-bar: #0c1420;
   --tab-active: #111a28;
@@ -268,22 +279,52 @@
   }
 }
 
-/* React Flow (lineage graph) picks up the workbench tokens instead of the library defaults. */
-.react-flow__node {
-  border-color: var(--primary);
-  color: var(--foreground);
-  background: var(--card);
+/*
+  React Flow (lineage graph) draws from the workbench tokens in both modes. The library ships a palette of its own per
+  color mode (neutral grays in dark) behind `--xy-*-default` variables, and its stylesheet loads with the graph's
+  chunk, after this one, so a rule here on one of its classes loses to it. The unsuffixed variables below are the
+  library's own override points and win over its defaults wherever they are read: the canvas is the editor surface,
+  a node is a card on it, and an edge's label sits on the canvas color, so it interrupts the line it names without
+  drawing a box around itself.
+*/
+.react-flow {
+  --xy-background-color: var(--background);
+  --xy-background-pattern-color: color-mix(in srgb, var(--muted-foreground) 45%, transparent);
+  --xy-attribution-background-color: color-mix(in srgb, var(--background) 70%, transparent);
+
+  --xy-node-color: var(--foreground);
+  --xy-node-background-color: var(--card);
+  --xy-node-border: 1px solid var(--input);
+  --xy-node-boxshadow-hover: 0 1px 4px 1px color-mix(in srgb, var(--foreground) 10%, transparent);
+  --xy-node-boxshadow-selected: 0 0 0 2px color-mix(in srgb, var(--primary) 40%, transparent);
+  --xy-handle-background-color: var(--muted-foreground);
+  --xy-handle-border-color: var(--card);
+
+  --xy-edge-stroke: var(--muted-foreground);
+  --xy-edge-stroke-selected: var(--primary);
+  --xy-connectionline-stroke: var(--muted-foreground);
+  --xy-edge-label-background-color: var(--background);
+  --xy-edge-label-color: var(--muted-foreground);
+
+  --xy-selection-background-color: color-mix(in srgb, var(--primary) 8%, transparent);
+  --xy-selection-border: 1px dotted color-mix(in srgb, var(--primary) 80%, transparent);
+
+  --xy-minimap-background-color: var(--card);
+  --xy-minimap-mask-background-color: color-mix(in srgb, var(--background) 70%, transparent);
+  --xy-minimap-node-background-color: var(--input);
+
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--accent);
+  --xy-controls-button-color: var(--foreground);
+  --xy-controls-button-color-hover: var(--accent-foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-controls-box-shadow: 0 0 0 1px var(--border);
 }
 
-.react-flow__node.selected {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 40%, transparent);
-}
-
-.react-flow__edge-path {
-  stroke: var(--muted-foreground);
-}
-
-.react-flow__minimap {
-  background: var(--background);
+/* The minimap and the zoom controls float over the canvas, so each wears the hairline and corner of a card. */
+.react-flow__minimap,
+.react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }

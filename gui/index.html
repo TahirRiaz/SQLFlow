@@ -6,6 +6,10 @@
     <link rel="apple-touch-icon" href="/brand/logo-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
+    <!-- The workbench has a light and a dark theme of its own. An extension that recolours pages (Dark Reader) would
+         redraw both over them, turning the light theme dark and the dark theme's fills light; this is its documented
+         opt-out for a page that brings its own dark theme. -->
+    <meta name="darkreader-lock" />
     <meta name="theme-color" content="#283e56" />
     <title>SQLFlow</title>
   </head>
