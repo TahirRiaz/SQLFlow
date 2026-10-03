@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { RunDock } from "../features/runs/RunDock";
@@ -9,6 +9,7 @@ import { CommandPalette } from "./workbench/CommandPalette";
 import { PanelHost } from "./workbench/PanelHost";
 import { PanelProvider, usePanel } from "./workbench/PanelContext";
 import { SideBar } from "./workbench/SideBar";
+import { SideBarRoomContext, type SideBarRoom } from "./workbench/SideBarRoom";
 import { StatusBar } from "./workbench/StatusBar";
 import { TabsBar } from "./workbench/TabsBar";
 import { TabsProvider } from "./workbench/TabsContext";
@@ -37,22 +38,54 @@ function WorkbenchFrame() {
     window.localStorage.setItem(SIDEBAR_KEY, open ? "open" : "closed");
   }, []);
 
+  // A page may fold the side bar for the room while it needs it (useSideBarFold). The person's own choice is kept apart
+  // and never overwritten: the side bar comes back as they left it once no page holds it folded, and opening it while a
+  // page does keeps it open until they fold it again or the pages let go.
+  const [folds, setFolds] = useState(0);
+  const [openedWhileFolded, setOpenedWhileFolded] = useState(false);
+  const fold = useCallback(() => {
+    setFolds((held) => held + 1);
+    setOpenedWhileFolded(false);
+    let released = false;
+    return () => {
+      if (!released) {
+        released = true;
+        setFolds((held) => held - 1);
+      }
+    };
+  }, []);
+  const room = useMemo((): SideBarRoom => ({ fold }), [fold]);
+  const shown = sidebarOpen && (folds === 0 || openedWhileFolded);
+
   const selectGroup = useCallback((group: NavGroup) => {
-    if (!sidebarOpen) {
-      persistSidebar(true);
+    if (!shown) {
+      if (!sidebarOpen) {
+        persistSidebar(true);
+      }
+
+      if (folds > 0) {
+        setOpenedWhileFolded(true);
+      }
+
       setReveal({ id: group.id, nonce: Date.now() });
       return;
     }
 
-    // Clicking the already-revealed group collapses the side bar, VS Code style.
+    // Clicking the already-revealed group collapses the side bar, VS Code style; while a page holds it folded, that folds
+    // it back for the page and leaves the person's choice as it was.
     const revealedId = reveal?.id ?? activeGroup.id;
     if (group.id === revealedId) {
-      persistSidebar(false);
+      if (folds > 0) {
+        setOpenedWhileFolded(false);
+      } else {
+        persistSidebar(false);
+      }
+
       return;
     }
 
     setReveal({ id: group.id, nonce: Date.now() });
-  }, [sidebarOpen, reveal, activeGroup.id, persistSidebar]);
+  }, [shown, sidebarOpen, folds, reveal, activeGroup.id, persistSidebar]);
 
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground">
@@ -65,7 +98,7 @@ function WorkbenchFrame() {
           onLayoutChanged={horizontalLayout.onLayoutChanged}
           className="min-w-0 flex-1"
         >
-          {sidebarOpen && (
+          {shown && (
             <>
               <ResizablePanel id="side-bar" defaultSize={240} minSize={180} maxSize={420} className="hidden md:block">
                 <SideBar reveal={reveal} />
@@ -84,7 +117,9 @@ function WorkbenchFrame() {
                 <ResizablePanel id="editor-content" minSize="20">
                   <main className="h-full overflow-y-auto bg-background">
                     <div className="mx-auto max-w-[1600px] p-4 md:p-6">
-                      <Outlet />
+                      <SideBarRoomContext.Provider value={room}>
+                        <Outlet />
+                      </SideBarRoomContext.Provider>
                     </div>
                   </main>
                 </ResizablePanel>
