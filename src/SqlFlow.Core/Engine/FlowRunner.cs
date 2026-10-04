@@ -122,6 +122,7 @@ public sealed class FlowRunner
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(flow);
+        flow = SettleFileDateReads(flow);
 
         var runEvents = events is null ? _events : new CompositeFlowEventSink(_events, events);
         var context = new RunContext(runId ?? Guid.CreateVersion7(), flow.FlowId, flow.Name, runEvents, runHistoryDirectory);
@@ -256,6 +257,13 @@ public sealed class FlowRunner
             foreach (var file in read.ProcessedFiles)
             {
                 Emit(context, $"read '{file.Name}' ({file.Rows} row(s))", stage: "source.open");
+            }
+
+            if (read.DeferredFiles > 0)
+            {
+                Emit(context, $"{read.DeferredFiles} file(s) modified after this run began listing the source, or dated ahead of "
+                    + "its clock, wait for the next run, so no file written later in their second falls behind the watermark",
+                    stage: "source.open");
             }
 
             if (disabledIndexes.Count > 0)
@@ -430,6 +438,27 @@ public sealed class FlowRunner
                 Incremental = incrementalSummary,
             };
         }
+    }
+
+    /// <summary>
+    /// Makes the read of a flow whose incremental watermark is the file date settled-only
+    /// (<see cref="SourceOptions.SettledFilesOnly"/>), on every run of it. A backfill or a forced full load writes the
+    /// <c>FileDate_DW</c> the next incremental run takes its watermark from, so it must not load a file whose second has
+    /// not ended any more than an incremental run may. A row-level watermark, or a flow with no incremental block,
+    /// keeps its read as it is.
+    /// </summary>
+    private static FlowDefinition SettleFileDateReads(FlowDefinition flow)
+    {
+        if (flow.Incremental is not { } incremental || !string.IsNullOrWhiteSpace(incremental.WatermarkColumn))
+        {
+            return flow;
+        }
+
+        var options = new Dictionary<string, string?>(flow.Source.Options, StringComparer.OrdinalIgnoreCase)
+        {
+            [SourceOptions.SettledFilesOnly] = "true",
+        };
+        return flow with { Source = flow.Source with { Options = options } };
     }
 
     /// <summary>

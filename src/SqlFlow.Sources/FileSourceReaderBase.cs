@@ -138,7 +138,13 @@ public abstract class FileSourceReaderBase : ISourceReader
         }
     }
 
-    private sealed record ResolvedFiles(IFileStore Store, IReadOnlyList<FileRef> Files);
+    /// <summary>The run's file selection: the store, the files to read, and how many files the selection left for the
+    /// next run because they were modified after the run began listing the store, or are dated ahead of its clock
+    /// (see <see cref="FileDateFilter"/>).</summary>
+    private sealed record ResolvedFiles(IFileStore Store, IReadOnlyList<FileRef> Files)
+    {
+        public int Deferred { get; init; }
+    }
 
     /// <summary>
     /// A single file's schema: the cleaned columns the pipeline unions and maps by, plus the raw (pre-cleanup)
@@ -428,7 +434,8 @@ public abstract class FileSourceReaderBase : ISourceReader
         ArgumentNullException.ThrowIfNull(columns);
         var options = ReadOptions(source);
         var run = RunStateFor(source);
-        var (store, files) = await GetOrResolveAsync(run, options, ct).ConfigureAwait(false);
+        var snapshot = await GetOrResolveAsync(run, options, ct).ConfigureAwait(false);
+        var (store, files) = snapshot;
 
         var manifest = new List<ProcessedFile>();
         var names = new string[columns.Count];
@@ -451,6 +458,7 @@ public abstract class FileSourceReaderBase : ISourceReader
             Reader = reader,
             ProcessedFiles = manifest,
             DataSetConvention = options.IncludeDataSet ? dataSetSpec.Convention : null,
+            DeferredFiles = snapshot.Deferred,
         };
     }
 
@@ -759,8 +767,11 @@ public abstract class FileSourceReaderBase : ISourceReader
     /// JSON structure discovery) selects the same files on the one code path instead of re-listing. Shares the
     /// per-run snapshot, so repeated calls within one operation list the store once.
     /// </summary>
-    protected Task<(IFileStore Store, IReadOnlyList<FileRef> Files)> ResolveFilesAsync(SourceSpec source, CancellationToken ct)
-        => GetOrResolveAsync(RunStateFor(source), ReadOptions(source), ct);
+    protected async Task<(IFileStore Store, IReadOnlyList<FileRef> Files)> ResolveFilesAsync(SourceSpec source, CancellationToken ct)
+    {
+        var (store, files) = await GetOrResolveAsync(RunStateFor(source), ReadOptions(source), ct).ConfigureAwait(false);
+        return (store, files);
+    }
 
     private RunState RunStateFor(SourceSpec source) => _runs.GetOrCreateValue(source);
 
@@ -770,18 +781,10 @@ public abstract class FileSourceReaderBase : ISourceReader
     /// <see cref="CompleteAsync"/>), so all three stages act on one stable set of files: a file appearing
     /// mid-run does not surface in the data pass when it was absent from the schema pass.
     /// </summary>
-    private async Task<(IFileStore Store, IReadOnlyList<FileRef> Files)> GetOrResolveAsync(RunState run, FileSourceOptions options, CancellationToken ct)
-    {
-        var snapshot = await run.ResolveOnceAsync(async () =>
-        {
-            var (store, files) = await ResolveAsync(options, ct).ConfigureAwait(false);
-            return new ResolvedFiles(store, files);
-        }).ConfigureAwait(false);
+    private Task<ResolvedFiles> GetOrResolveAsync(RunState run, FileSourceOptions options, CancellationToken ct)
+        => run.ResolveOnceAsync(() => ResolveAsync(options, ct));
 
-        return (snapshot.Store, snapshot.Files);
-    }
-
-    private async Task<(IFileStore Store, IReadOnlyList<FileRef> Files)> ResolveAsync(FileSourceOptions options, CancellationToken ct)
+    private async Task<ResolvedFiles> ResolveAsync(FileSourceOptions options, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(options.SrcPath))
         {
@@ -798,18 +801,26 @@ public abstract class FileSourceReaderBase : ISourceReader
         var to = ParseFileDateBound(options.InitToFileDate, "initToFileDate");
         var after = ParseFileDateBound(options.IncrementalAfterDate, "incrementalAfterDate");
 
-        // The selection (path mask + date window, read where fileDate says) is pushed into the store so it can
-        // prune whole out-of-window partition folders during the walk instead of listing the lake and discarding
-        // most of it. When nothing is being filtered the discovery carries no filter and the store lists plainly.
-        var filter = new FileDateFilter(options.FileDate, from, to, after, pathMask);
-        var discovery = new FileDiscovery
+        // A settled-only read takes the second the listing starts in as its cutoff, before the walk: a file the walk
+        // meets that was modified during that second may yet have a sibling written later in the same second, which a
+        // whole-second watermark would never see as newer (FileDateFilter explains why). Rather than leave such a file
+        // for the next run, which may be a day away, the read waits for that second to end and lists again: every file
+        // of it is complete by then and is read now. Only a file modified after the run began listing, or dated ahead
+        // of the clock, is left for the next run, which reads it because its second is newer than anything this run
+        // loads. A listing that met no such file is used as it is, with no wait.
+        var settledBefore = options.SettledFilesOnly ? FileDateFilter.WholeSecond(DateTime.UtcNow) : (DateTime?)null;
+        var (listed, tally) = await ListAsync(store, options, pattern, pathMask, from, to, after, settledBefore, ct).ConfigureAwait(false);
+        if (settledBefore is { } listingSecond && tally.Deferred > 0)
         {
-            Pattern = pattern,
-            Recursive = options.SearchSubDirectories,
-            Filter = filter.IsActive ? filter : null,
-        };
+            var settled = listingSecond.AddSeconds(1);
+            var remaining = settled - DateTime.UtcNow;
+            if (remaining > TimeSpan.Zero)
+            {
+                await Task.Delay(remaining, ct).ConfigureAwait(false);
+            }
 
-        var listed = await store.ListAsync(options.SrcPath, discovery, ct).ConfigureAwait(false);
+            (listed, tally) = await ListAsync(store, options, pattern, pathMask, from, to, after, settled, ct).ConfigureAwait(false);
+        }
 
         var files = listed
             .OrderBy(f => f.Modified ?? DateTimeOffset.MinValue)
@@ -818,10 +829,32 @@ public abstract class FileSourceReaderBase : ISourceReader
 
         if (files.Count == 0)
         {
-            throw NoFilesSelected(options, pattern, pathMask, from, to, after, filter.Tally);
+            throw NoFilesSelected(options, pattern, pathMask, from, to, after, tally);
         }
 
-        return (store, files);
+        return new ResolvedFiles(store, files) { Deferred = tally.Deferred };
+    }
+
+    /// <summary>
+    /// One walk of the store with the selection pushed into it (path mask and date window, read where fileDate says),
+    /// so it can prune whole out-of-window partition folders instead of listing the lake and discarding most of it.
+    /// When nothing is being filtered the discovery carries no filter and the store lists plainly. Returns what the
+    /// walk selected and the tally of what it examined and rejected.
+    /// </summary>
+    private static async Task<(IReadOnlyList<FileRef> Files, FileDateTally Tally)> ListAsync(
+        IFileStore store, FileSourceOptions options, string pattern, Regex? pathMask, DateTime? from, DateTime? to,
+        DateTime? after, DateTime? settledBefore, CancellationToken ct)
+    {
+        var filter = new FileDateFilter(options.FileDate, from, to, after, pathMask, settledBefore);
+        var discovery = new FileDiscovery
+        {
+            Pattern = pattern,
+            Recursive = options.SearchSubDirectories,
+            Filter = filter.IsActive ? filter : null,
+        };
+
+        var listed = await store.ListAsync(options.SrcPath, discovery, ct).ConfigureAwait(false);
+        return (listed, filter.Tally);
     }
 
     /// <summary>
@@ -847,6 +880,17 @@ public abstract class FileSourceReaderBase : ISourceReader
             return new NoSourceFilesException(
                 NoSourceFilesReason.NoCandidates,
                 $"No files under '{options.SrcPath}' match pattern '{pattern}'.");
+        }
+
+        // Every file the selection would have read was modified after this run began listing the store (or is dated
+        // ahead of its clock), so all of them wait for the next run. That is not "nothing new": the files are new, and
+        // the next run reads them.
+        if (tally.Deferred > 0)
+        {
+            return new NoSourceFilesException(
+                NoSourceFilesReason.NoneSettled,
+                $"No files under '{options.SrcPath}' are ready to read yet ({Examined(tally)}): {Deferral(tally.Deferred, pattern)}"
+                + RejectedDates(tally, options.FileDate));
         }
 
         // The watermark is the only date bound in play and it is what emptied the selection: nothing is new. When
@@ -910,6 +954,17 @@ public abstract class FileSourceReaderBase : ISourceReader
 
         return detail.ToString();
     }
+
+    /// <summary>
+    /// Why files that matched were left for the next run. The watermark is kept to the whole second, so reading a file
+    /// whose second has not ended would let a file written later in that second fall behind the watermark and never be
+    /// read. The read already waited out the second its listing started in, so what is left was modified after the run
+    /// began listing, or carries a time ahead of the clock; the next run takes it.
+    /// </summary>
+    private static string Deferral(int deferred, string pattern)
+        => $"{deferred} file(s) matching pattern '{pattern}' were modified after this run began listing the store, or "
+            + "carry a modified time ahead of its clock, so they wait for the next run (the watermark is kept to the whole "
+            + "second, and reading a file whose second has not ended could let a file written later in it fall behind).";
 
     private static string FormatFileDate(DateTime date) => date.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
 

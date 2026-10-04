@@ -45,6 +45,7 @@ public sealed class XlsSourceReader : FileSourceReaderBase
             InitFromFileDate = meta.InitFromFileDate,
             InitToFileDate = meta.InitToFileDate,
             IncrementalAfterDate = meta.IncrementalAfterDate,
+            SettledFilesOnly = source.Options.GetBool(SourceOptions.SettledFilesOnly, fallback: false),
             FileDate = FileDateSpec.FromOptions(source.Options),
             DataSetDate = DataSetDateSpec.FromOptions(source.Options),
             ReadAhead = FileSourceOptions.ParseReadAhead(source.Options, FileSourceOptions.WholeFileDefaultReadAhead),

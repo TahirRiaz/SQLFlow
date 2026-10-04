@@ -30,4 +30,8 @@ public sealed record SourceReadResult
     /// file set)</c> or <c>last-modified</c>), for the run's detected-convention audit line. Null when the reader
     /// produces no <c>DataSet_DW</c> column.</summary>
     public string? DataSetConvention { get; init; }
+
+    /// <summary>How many files the selection left for the next run because they were written during the second the
+    /// store was listed (a settled-only read, see <see cref="SourceOptions.SettledFilesOnly"/>); zero otherwise.</summary>
+    public int DeferredFiles { get; init; }
 }

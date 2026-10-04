@@ -17,6 +17,8 @@ namespace SqlFlow.Sources;
 /// <param name="Undated">Of the date-rejected files, how many carried no parsable date in their name or path.</param>
 /// <param name="EarliestRejected">The earliest date (UTC) a date-rejected file carried; null when none carried one.</param>
 /// <param name="LatestRejected">The latest date (UTC) a date-rejected file carried; null when none carried one.</param>
+/// <param name="Deferred">Of those, how many passed every bound but were modified in or after the filter's settling
+/// second, and so are not read by this listing (see <see cref="FileDateFilter"/>).</param>
 internal readonly record struct FileDateTally(
     int Tested,
     int MaskRejected,
@@ -24,7 +26,8 @@ internal readonly record struct FileDateTally(
     int PrunedDirectories,
     int Undated = 0,
     DateTime? EarliestRejected = null,
-    DateTime? LatestRejected = null);
+    DateTime? LatestRejected = null,
+    int Deferred = 0);
 
 /// <summary>
 /// The discovery-time file selector: the optional path mask and the date window, applied during listing so an
@@ -32,6 +35,23 @@ internal readonly record struct FileDateTally(
 /// The date is read where the fileDate spec says (path or name); a null spec keeps the legacy behavior of
 /// reading the file's modified timestamp. The window bounds come from the flow's init date window and the injected
 /// incremental watermark, so init-load and incremental share this one selection path.
+/// <para>
+/// A file dated by its modified time is compared at the precision <c>FileDate_DW</c> stores that time: the whole
+/// second. The watermark is read back from that column, so comparing the file's full-precision time against it
+/// would find the file that set the watermark newer than itself (05:51:27.139 is after 05:51:27) and reload it on
+/// every run, while the next flow, which compares the stored seconds, finds nothing new in it. Comparing seconds
+/// makes a file the watermark already covers read as covered.
+/// </para>
+/// <para>
+/// Whole seconds have one consequence the selection must handle: a file loaded during the second it was written
+/// fixes the watermark at that second, and a second file written later in the same second would then never be
+/// newer than it. With <c>settledBefore</c> set (the engine sets it on every run of a file-date incremental flow), a
+/// file whose modified second is not before it is not read by this listing. The reader starts with the second its
+/// listing began in; when that holds a file back, it waits for the second to end and lists again with the next
+/// second as the bound, so every file of the first second is read and only a file modified after the run began
+/// listing waits for the next run. A file with a modified time in the future waits the same way, so a skewed clock
+/// cannot push the watermark past files that have yet to arrive.
+/// </para>
 /// </summary>
 internal sealed class FileDateFilter : IFileDiscoveryFilter
 {
@@ -40,6 +60,7 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
     private readonly DateTime? _to;
     private readonly DateTime? _after;
     private readonly Regex? _pathMask;
+    private readonly DateTime? _settledBefore;
 
     // What the walk saw, for <see cref="Tally"/>. A store may enumerate sibling folders concurrently
     // (AzureBlobFileStore fans out its descent), so every mutation is interlocked.
@@ -48,6 +69,7 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
     private int _dateRejected;
     private int _prunedDirectories;
     private int _undated;
+    private int _deferred;
 
     // The span of dates the date-rejected files carried, so an empty selection can say what the files are dated
     // and not only that the window excluded them. Two values move together, so they are guarded by a lock rather
@@ -56,17 +78,34 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
     private DateTime? _earliestRejected;
     private DateTime? _latestRejected;
 
-    public FileDateFilter(FileDateSpec? spec, DateTime? from, DateTime? to, DateTime? after, Regex? pathMask)
+    /// <param name="spec">Where a file's date is read; null reads its modified time.</param>
+    /// <param name="from">The inclusive lower bound of the init date window, or null.</param>
+    /// <param name="to">The inclusive upper bound of the init date window, or null.</param>
+    /// <param name="after">The incremental watermark a file must be newer than, or null.</param>
+    /// <param name="pathMask">The regex a file's path must match, or null.</param>
+    /// <param name="settledBefore">The whole second (UTC) the store is listed in: a file dated by its modified time
+    /// whose second is not before it waits for the next run. Null reads every file whatever its age.</param>
+    public FileDateFilter(FileDateSpec? spec, DateTime? from, DateTime? to, DateTime? after, Regex? pathMask, DateTime? settledBefore = null)
     {
         _spec = spec;
         _from = from;
         _to = to;
         _after = after;
         _pathMask = pathMask;
+        _settledBefore = settledBefore;
     }
 
     /// <summary>True when at least one of the filters is active; a filter with nothing to enforce is not built.</summary>
-    public bool IsActive => _spec is not null || _from is not null || _to is not null || _after is not null || _pathMask is not null;
+    public bool IsActive => _spec is not null || _from is not null || _to is not null || _after is not null || _pathMask is not null
+        || IsSettling;
+
+    // Only a file dated by its modified time can be unsettled: a name or path carries a date the writer chose, not
+    // the moment the write happened.
+    private bool IsSettling => _settledBefore is not null && _spec is null;
+
+    /// <summary>The whole second <paramref name="utc"/> falls in, the precision <c>FileDate_DW</c> stores a file date at.</summary>
+    internal static DateTime WholeSecond(DateTime utc)
+        => new(utc.Ticks - (utc.Ticks % TimeSpan.TicksPerSecond), DateTimeKind.Utc);
 
     /// <summary>
     /// What this filter saw and rejected. Meaningful once the listing has completed; a filter that was never
@@ -92,7 +131,8 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
                 Volatile.Read(ref _prunedDirectories),
                 Volatile.Read(ref _undated),
                 earliest,
-                latest);
+                latest,
+                Volatile.Read(ref _deferred));
         }
     }
 
@@ -130,16 +170,30 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
             return false;
         }
 
-        if (!HasWindow)
+        if (HasWindow && !InWindow(file))
         {
-            return true;
+            return false;
         }
 
+        // Checked last, so a file is deferred only when it would otherwise be read, and the tally's deferred count
+        // means exactly "these wait for the next run".
+        if (IsSettling && file.Modified is { } written && WholeSecond(written.UtcDateTime) >= _settledBefore!.Value)
+        {
+            Interlocked.Increment(ref _deferred);
+            return false;
+        }
+
+        return true;
+    }
+
+    private bool InWindow(FileRef file)
+    {
         bool inWindow;
         DateTime? fileDate;
         if (_spec is null)
         {
-            var modified = (file.Modified ?? DateTimeOffset.UtcNow).UtcDateTime;
+            // The second FileDate_DW stamps, not the full-precision time (see the class remarks).
+            var modified = WholeSecond((file.Modified ?? DateTimeOffset.UtcNow).UtcDateTime);
             inWindow = Overlaps(new DateInterval(modified, modified));
             fileDate = modified;
         }
@@ -149,7 +203,7 @@ internal sealed class FileDateFilter : IFileDiscoveryFilter
             var interval = _spec.Extract(text);
 
             // A file that carries no parsable date is not part of a date-scoped selection: exclude it rather than
-            // guess. With no window set (HasWindow false) we returned true above, so an undated file still loads then.
+            // guess. With no window set (HasWindow false) the caller never asks, so an undated file still loads then.
             inWindow = interval is not null && Overlaps(interval.Value);
 
             // The start of the interval is the file's business timestamp, the same instant FileDate_DW is stamped with.

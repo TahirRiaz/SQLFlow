@@ -21,6 +21,14 @@ public sealed record FileSourceOptions
     public string? IncrementalAfterDate { get; init; }
 
     /// <summary>
+    /// Read only files whose modified second has ended: the read waits out the second its listing started in when a
+    /// file of that second is found, then lists again, and a file modified after that, or dated ahead of the clock,
+    /// waits for the next run (<see cref="SourceOptions.SettledFilesOnly"/>, set by the engine). Applies to files dated
+    /// by their modified time only.
+    /// </summary>
+    public bool SettledFilesOnly { get; init; }
+
+    /// <summary>
     /// Where the date window reads a file's business date: null keeps the legacy modified-timestamp behavior; a
     /// present spec reads the date from the path (Hive partitions) or the file name, which lets discovery prune
     /// whole out-of-window partition folders instead of enumerating the whole lake.

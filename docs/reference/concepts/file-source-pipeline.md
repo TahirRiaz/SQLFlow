@@ -61,19 +61,20 @@ Everything else is owned by the base and is therefore identical across formats: 
 
 Selected files are processed in deterministic order: modified timestamp ascending (files without one sort first), then name with ordinal comparison.
 
-When no files survive, a `NoSourceFilesException` reports which of three distinct outcomes it was, carried on its `Reason` (src/SqlFlow.Core/SqlFlowException.cs). "The location holds nothing" and "every file is older than the watermark" have different causes and different fixes, so they are never reported as the same thing. The `FileDateFilter` tallies what it examined and why it rejected it during the walk, which classifies the outcome without a second, unpruned listing of the tree:
+When no files survive, a `NoSourceFilesException` reports which of four distinct outcomes it was, carried on its `Reason` (src/SqlFlow.Core/SqlFlowException.cs). "The location holds nothing" and "every file is older than the watermark" have different causes and different fixes, so they are never reported as the same thing. The `FileDateFilter` tallies what it examined and why it rejected it during the walk, which classifies the outcome without a second, unpruned listing of the tree:
 
 | Reason | When | Message |
 | --- | --- | --- |
 | `NoCandidates` | The glob matched nothing anywhere under the location, so no filter was ever reached. An empty folder, or a wrong path or pattern. | `No files under './data' match pattern '*.csv'.` |
 | `NoneAfterWatermark` | The watermark is the only date bound and it excluded everything: an incremental flow with nothing new. | `No new files under './data': nothing matching pattern '*.csv' is newer than 2026-06-01 00:00:00Z (examined 128 file(s), pruned 12 out-of-window folder(s)).` |
 | `NoneSelected` | Candidates exist but the init window or path mask excluded them (or a window and a watermark are both set, so no single bound can be blamed). | `No files under './data' matched the filters (pattern '*.csv', path mask 'orders_\d{8}', date window [2026-01-01 .. max]); examined 128 file(s). 120 file(s) outside the date bounds are dated 2024-03-01 00:00:00 .. 2025-12-31 00:00:00 UTC (read from the file name). 8 file(s) carry no date in the file name, so a dated selection never includes them.` |
+| `NoneSettled` | Candidates would be read, but each was modified after the run began listing the store, or is dated ahead of its clock, so it waits for the next run (a settled-only read; see [incremental](../flow/incremental.md)). | `No files under './data' are ready to read yet (examined 1 file(s)): 1 file(s) matching pattern '*.csv' were modified after this run began listing the store, or carry a modified time ahead of its clock, so they wait for the next run (the watermark is kept to the whole second, and reading a file whose second has not ended could let a file written later in it fall behind).` |
 
 Because a `NoCandidates` result never reached the date test, its message never mentions the watermark: an empty location must not be explained by a filter that excluded nothing. Every non-`NoCandidates` message states what the walk covered, so an empty result carries its evidence and not just its verdict.
 
 A `NoneSelected` message also says what the date-rejected files are dated and where that date was read: `the file's modified time` (the default), `read from the file name`, or `read from the path` (the `fileDate.from` setting). One date is printed when every rejected file shares it, an `earliest .. latest` span otherwise, and files with no parsable date in their name or path are counted separately. A window is only explicable next to the dates it was compared with: a file dated by its modified time carries the moment it was last written, so a file checked out of a repository or re-uploaded to a store is dated "now" and no window in the past selects it.
 
-None of the three outcomes fails a run. The engine turns each into a success that loaded nothing, at info or as a warning depending on the outcome and the kind of run (see [incremental](../flow/incremental.md)).
+None of the four outcomes fails a run. The engine turns each into a success that loaded nothing, at info or as a warning depending on the outcome and the kind of run (see [incremental](../flow/incremental.md)).
 
 ### Cross-file schema union
 

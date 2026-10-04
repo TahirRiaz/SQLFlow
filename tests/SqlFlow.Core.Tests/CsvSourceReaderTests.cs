@@ -700,6 +700,145 @@ public sealed class CsvSourceReaderTests : IDisposable
         Assert.Equal(2, rows.Count);
     }
 
+    private void WriteDated(string name, string content, DateTime utc)
+    {
+        var path = Path.Combine(_dir, name);
+        File.WriteAllText(path, content);
+        File.SetLastWriteTimeUtc(path, utc);
+    }
+
+    /// <summary>
+    /// FileDate_DW keeps a file's modified time to the whole second and the watermark is read back from it, so the
+    /// file that set the watermark is covered by it however many milliseconds its modified time carries. Compared at
+    /// full precision it was newer than its own watermark and was reloaded on every run, while the next flow, which
+    /// compares the stored seconds, found nothing new in it.
+    /// </summary>
+    [Fact]
+    public async Task Open_IncrementalAfterDate_FileInTheWatermarkSecond_IsCoveredByIt()
+    {
+        WriteDated("loaded.csv", "OrderId\n1\n", new DateTime(2024, 2, 1, 12, 0, 0, 139, DateTimeKind.Utc));
+        WriteDated("next.csv", "OrderId\n2\n3\n", new DateTime(2024, 2, 1, 12, 0, 1, 2, DateTimeKind.Utc));
+
+        var source = Folder(new() { ["incrementalAfterDate"] = "2024-02-01T12:00:00.0000000Z" });
+        var (_, rows) = await ReadAllAsync(source);
+
+        // next.csv is in a later second and is read; loaded.csv is in the watermark's own second and is not.
+        Assert.Equal(2, rows.Count);
+    }
+
+    [Fact]
+    public async Task Open_IncrementalAfterDate_OnlyTheWatermarkFile_ReportsNoneAfterWatermark()
+    {
+        WriteDated("loaded.csv", "OrderId\n1\n", new DateTime(2024, 2, 1, 12, 0, 0, 999, DateTimeKind.Utc));
+
+        var source = Folder(new() { ["incrementalAfterDate"] = "2024-02-01T12:00:00.0000000Z" });
+        var error = await Assert.ThrowsAsync<NoSourceFilesException>(() => _reader.GetColumnsAsync(source));
+
+        Assert.Equal(NoSourceFilesReason.NoneAfterWatermark, error.Reason);
+    }
+
+    /// <summary>
+    /// A settled-only read never loads a file whose second has not ended: loading it would fix the whole-second
+    /// watermark at that second, and a file written later in the same second would then never be newer than it. A file
+    /// written just now is read once its second ends (the read waits that out and lists again), so it is not pushed to
+    /// the next run.
+    /// </summary>
+    [Fact]
+    public async Task Open_SettledFilesOnly_AFileWrittenJustNow_IsReadOnceItsSecondEnds()
+    {
+        WriteDated("landing.csv", "OrderId\n1\n2\n", DateTime.UtcNow);
+
+        var source = Folder(new() { [SourceOptions.SettledFilesOnly] = "true" });
+        var columns = await _reader.GetColumnsAsync(source);
+        var read = await _reader.OpenAsync(source, columns);
+        var rows = 0;
+        await using (var data = read.Reader)
+        {
+            while (await data.ReadAsync())
+            {
+                rows++;
+            }
+        }
+
+        Assert.Equal(2, rows);
+        Assert.Equal(0, read.DeferredFiles);
+    }
+
+    /// <summary>A modified time ahead of the clock is never in a second that has ended, so such a file waits for a run
+    /// that comes after it; the wait for the listing's own second does not change that.</summary>
+    [Fact]
+    public async Task Open_SettledFilesOnly_AFileDatedAheadOfTheClock_WaitsForTheNextRun()
+    {
+        WriteDated("landing.csv", "OrderId\n1\n", DateTime.UtcNow.AddHours(1));
+
+        var source = Folder(new() { [SourceOptions.SettledFilesOnly] = "true" });
+        var error = await Assert.ThrowsAsync<NoSourceFilesException>(() => _reader.GetColumnsAsync(source));
+
+        Assert.Equal(NoSourceFilesReason.NoneSettled, error.Reason);
+        Assert.Contains("examined 1 file(s)", error.Message, StringComparison.Ordinal);
+        Assert.Contains(
+            "1 file(s) matching pattern '*.csv' were modified after this run began listing the store, or carry a modified time ahead of its clock, so they wait for the next run",
+            error.Message,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Open_SettledFilesOnly_ReadsTheSettledFilesAndCountsTheOnesLeft()
+    {
+        WriteDated("settled.csv", "OrderId\n1\n2\n", new DateTime(2024, 2, 1, 12, 0, 1, DateTimeKind.Utc));
+        WriteDated("landing.csv", "OrderId\n3\n", DateTime.UtcNow.AddHours(1));
+
+        var source = Folder(new()
+        {
+            ["incrementalAfterDate"] = "2024-02-01T12:00:00.0000000Z",
+            [SourceOptions.SettledFilesOnly] = "true",
+        });
+        var columns = await _reader.GetColumnsAsync(source);
+        var read = await _reader.OpenAsync(source, columns);
+        var rows = 0;
+        await using (var data = read.Reader)
+        {
+            while (await data.ReadAsync())
+            {
+                rows++;
+            }
+        }
+
+        Assert.Equal(2, rows);
+        Assert.Equal("settled.csv", Assert.Single(read.ProcessedFiles).Name);
+        Assert.Equal(1, read.DeferredFiles);
+    }
+
+    /// <summary>A date read from the file name is the date the writer chose, not the moment of the write, so a
+    /// settled-only read never holds a name-dated file back, whatever its modified time.</summary>
+    [Fact]
+    public async Task Open_SettledFilesOnly_LeavesANameDatedFileAlone()
+    {
+        WriteDated("orders_20240105.csv", "OrderId\n1\n", DateTime.UtcNow.AddHours(1));
+
+        var source = Folder(new()
+        {
+            ["fileDate.from"] = "name",
+            ["fileDate.pattern"] = @"(?<year>\d{4})(?<month>\d{2})(?<day>\d{2})",
+            [SourceOptions.SettledFilesOnly] = "true",
+        });
+        var (_, rows) = await ReadAllAsync(source);
+
+        Assert.Single(rows);
+    }
+
+    /// <summary>Only a file-date incremental flow is settled-only (the engine sets the option); any other read takes a
+    /// file the moment it is listed, as before.</summary>
+    [Fact]
+    public async Task Open_WithoutSettledFilesOnly_ReadsAFileStillInTheListingSecond()
+    {
+        WriteDated("landing.csv", "OrderId\n1\n", DateTime.UtcNow.AddHours(1));
+
+        var (_, rows) = await ReadAllAsync(Folder());
+
+        Assert.Single(rows);
+    }
+
     [Fact]
     public async Task Open_InitFromToFileDate_NoFilesInWindow_Throws()
     {

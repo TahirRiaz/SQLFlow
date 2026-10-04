@@ -80,6 +80,14 @@ public enum NoSourceFilesReason
     /// date window combined with a watermark, where no single bound can be singled out as the cause).
     /// </summary>
     NoneSelected,
+
+    /// <summary>
+    /// Candidate files exist and would be read, but each was modified after the run began listing the store, or is
+    /// dated ahead of its clock, so they wait for the next run (see <c>SourceOptions.SettledFilesOnly</c>). Like
+    /// <see cref="NoneAfterWatermark"/> this is an incremental flow's normal state between a file landing and the next
+    /// run, not a fault.
+    /// </summary>
+    NoneSettled,
 }
 
 /// <summary>
