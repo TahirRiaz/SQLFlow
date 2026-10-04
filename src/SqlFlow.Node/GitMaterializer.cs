@@ -9,6 +9,10 @@ namespace SqlFlow.Node;
 /// BitBucket app password). A node resolves these from its own environment; they live in memory only for the clone.</summary>
 public sealed record GitMaterializerCredentials(string? Username, string Secret);
 
+/// <summary>A branch materialized for a sync: the commit folder it is checked out in, the commit at the branch's tip,
+/// and whether that folder already held the commit (nothing was cloned).</summary>
+public sealed record BranchCheckout(string WorkingDirectory, string CommitSha, bool Reused);
+
 /// <summary>
 /// Materializes a flow's exact committed version on a node: it ensures the repository is checked out at a specific
 /// commit SHA in a local cache and returns that working directory, so a run executes the precise version that was
@@ -20,6 +24,14 @@ public sealed record GitMaterializerCredentials(string? Username, string Secret)
 /// ones reuse the finished checkout, rather than racing into the same <c>.git</c> and colliding on git's
 /// <c>config.lock</c>. The lock is process-wide (keyed by the absolute working directory), so every materializer
 /// instance in the process coordinates on the shared cache; different nodes use their own caches and processes.
+/// <para>
+/// A published checkout is never deleted or rewritten in place, because something may be reading it: a run executing
+/// from it, the catalog sync, or an operation that resolved a flow file under the repo's root path. On Windows a folder
+/// that something holds open cannot be removed or renamed, and a deleted folder keeps its name until the last handle
+/// closes, so replacing a checkout in place fails part way and leaves no folder at all. The managed sync therefore
+/// materializes the branch tip into the same immutable per-commit folders runs use (<see cref="MaterializeBranch"/>),
+/// and a name that cannot be taken is published under a unique sibling instead (<see cref="Publish"/>).
+/// </para>
 /// </summary>
 public sealed class GitMaterializer
 {
@@ -43,9 +55,43 @@ public sealed class GitMaterializer
     /// <summary>
     /// Ensures <paramref name="remoteUrl"/> is checked out at <paramref name="commitSha"/> in the cache and returns
     /// the working directory. Reuses an already-materialized commit; otherwise clones the remote and checks the
-    /// commit out (fetching first if the commit is not yet present in an existing cache clone).
+    /// commit out. The directory is normally <c>&lt;cache&gt;/&lt;repo&gt;/&lt;sha&gt;</c>, or a unique sibling of it when
+    /// that name could not be taken (see <see cref="Publish"/>); callers use the path returned.
     /// </summary>
     public string Materialize(string remoteUrl, string commitSha, GitMaterializerCredentials? credentials, CancellationToken ct = default)
+        => MaterializeCommit(remoteUrl, commitSha, credentials, ct).WorkingDirectory;
+
+    /// <summary>
+    /// Materializes the tip of <paramref name="branch"/> for the managed catalog sync and returns the commit folder,
+    /// the commit, and whether the folder already held it. The tip is read from the remote without cloning (a
+    /// <c>git ls-remote</c>), and the commit is materialized into the same immutable per-commit folder a run pinned to
+    /// it uses: a sync of an unchanged branch touches nothing on disk, a new commit gets a folder of its own, and the
+    /// folder an earlier sync recorded as the repo's root is never removed or rewritten, so a reader resolving a flow
+    /// file under it never finds it missing, and a sync that fails leaves it exactly as it was.
+    /// </summary>
+    public BranchCheckout MaterializeBranch(
+        string remoteUrl, string branch, GitMaterializerCredentials? credentials, CancellationToken ct = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(remoteUrl);
+        ct.ThrowIfCancellationRequested();
+
+        string sha;
+        try
+        {
+            sha = ResolveBranchTip(remoteUrl, branch, credentials);
+        }
+        catch (Exception ex) when (ex is LibGit2SharpException or IOException or UnauthorizedAccessException)
+        {
+            throw new SqlFlowNodeException($"could not read the tip of '{remoteUrl}' (branch '{branch}'): {ex.Message}", ex);
+        }
+
+        SweepAbandoned(Path.Combine(_cacheRoot, StableFolder(remoteUrl)), DateTime.UtcNow);
+        var (workingDir, reused) = MaterializeCommit(remoteUrl, sha, credentials, ct);
+        return new BranchCheckout(workingDir, sha, reused);
+    }
+
+    private (string WorkingDirectory, bool Reused) MaterializeCommit(
+        string remoteUrl, string commitSha, GitMaterializerCredentials? credentials, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(remoteUrl);
         ArgumentException.ThrowIfNullOrWhiteSpace(commitSha);
@@ -59,23 +105,28 @@ public sealed class GitMaterializer
         // fast-path below. Runs for other commits take other locks and stay parallel.
         lock (LockFor(workingDir))
         {
-            // Reuse: a cache directory already checked out at this exact commit is taken as-is (this is the fast path
-            // a waiter lands on once the first materialization of this commit has finished).
-            if (Repository.IsValid(workingDir) && HeadIsAt(workingDir, commitSha))
+            try
             {
-                return workingDir;
+                // Reuse: a folder already checked out at this exact commit is taken as-is (the fast path a waiter
+                // lands on once the first materialization has finished, and every sync of an unchanged branch).
+                if (FindCheckout(workingDir, commitSha) is { } existing)
+                {
+                    return (existing, true);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                throw new SqlFlowNodeException($"could not materialize '{remoteUrl}' at '{commitSha}': {ex.Message}", ex);
             }
 
             ct.ThrowIfCancellationRequested();
 
-            // Build into a private staging directory and publish it atomically (see PublishAtomically). An
-            // interrupted clone therefore never leaves a half-written tree at the published path: at worst it
-            // orphans a staging directory, which the next run removes. This is what makes the reuse check above
-            // trustworthy, and it is why a killed run no longer wedges every later attempt on a corrupt .git.
+            // Build into a private staging directory and publish it atomically (see Publish). An interrupted clone
+            // therefore never leaves a half-written tree at the published path: at worst it orphans a staging
+            // directory, which a later sync sweeps. This is what makes the reuse check above trustworthy.
             var staging = StagingPath(workingDir);
             try
             {
-                DeleteDirectory(staging);
                 Directory.CreateDirectory(staging);
 
                 var options = new CloneOptions { Checkout = false };
@@ -91,8 +142,7 @@ public sealed class GitMaterializer
                     Commands.Checkout(repo, commit);
                 }
 
-                PublishAtomically(staging, workingDir);
-                return workingDir;
+                return (Publish(staging, workingDir, commitSha), false);
             }
             catch (Exception ex) when (ex is LibGit2SharpException or IOException or UnauthorizedAccessException)
             {
@@ -110,69 +160,15 @@ public sealed class GitMaterializer
     }
 
     /// <summary>
-    /// Materializes the current HEAD of a branch into a stable per-repo working directory and returns that
-    /// directory plus the resolved commit SHA. Used by the managed catalog sync to pull a tracked repo before
-    /// syncing it. Each call refreshes to the branch tip (a fresh checkout), so the synced estate always reflects
-    /// the latest commit; the returned SHA is recorded so the sync is attributable to an exact commit.
-    /// </summary>
-    public (string WorkingDirectory, string CommitSha) MaterializeBranch(
-        string remoteUrl, string branch, GitMaterializerCredentials? credentials, CancellationToken ct = default)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(remoteUrl);
-
-        var workingDir = Path.Combine(_cacheRoot, StableFolder(remoteUrl), "branch");
-        ct.ThrowIfCancellationRequested();
-
-        // A branch sync tears down and re-clones this one per-repo directory, so two concurrent syncs of the same
-        // repo (a second control-plane node, or a fast poll interval) would collide on it; the per-directory lock
-        // serializes them. The key differs from any commit directory, so branch syncs and pinned runs never contend.
-        lock (LockFor(workingDir))
-        {
-            // A fresh checkout each sync keeps the logic simple and correct (no fetch/merge edge cases); the synced
-            // estate is small and the sync runs on an interval, so re-cloning the branch tip is an acceptable cost.
-            // The clone lands in a private staging directory and is published atomically, so an interrupted sync
-            // never leaves a partial tree at the branch path and a concurrent reader never sees a half-written one.
-            var staging = StagingPath(workingDir);
-            try
-            {
-                DeleteDirectory(staging);
-                Directory.CreateDirectory(staging);
-
-                var options = new CloneOptions { BranchName = string.IsNullOrWhiteSpace(branch) ? null : branch };
-                options.FetchOptions.CredentialsProvider = CredentialsProvider(credentials);
-                Repository.Clone(remoteUrl, staging, options);
-
-                string sha;
-                using (var repo = new Repository(staging))
-                {
-                    sha = repo.Head.Tip?.Sha
-                        ?? throw new SqlFlowNodeException($"'{remoteUrl}' (branch '{branch}') has no commits to sync.");
-                }
-
-                PublishAtomically(staging, workingDir);
-                return (workingDir, sha);
-            }
-            catch (Exception ex) when (ex is LibGit2SharpException or IOException or UnauthorizedAccessException)
-            {
-                throw new SqlFlowNodeException($"could not pull '{remoteUrl}' (branch '{branch}'): {ex.Message}", ex);
-            }
-            finally
-            {
-                TryDeleteDirectory(staging);
-            }
-        }
-    }
-
-    /// <summary>
     /// Ensures a long-lived, read-only clone of <paramref name="remoteUrl"/> exists for HISTORY queries (git log,
     /// diffs, file blame) and returns its working directory. Unlike <see cref="MaterializeBranch"/> this clone is
     /// never torn down: it is created once and brought forward with a fetch when it is older than
     /// <paramref name="maxAge"/>, so repeated history reads cost a fetch at most and usually nothing at all. A fetch
     /// that brings new commits moves HEAD to the fetched tip of the branch, since HEAD is what every reader reads.
     ///
-    /// It deliberately occupies its OWN cache directory rather than sharing the sync's branch checkout. The sync
-    /// re-clones that path on every pass, which would pull the tree out from under a reader mid-query; keeping the
-    /// history clone separate means the two never contend, at the cost of one extra checkout per repository.
+    /// It deliberately occupies its OWN cache directory rather than sharing a commit folder: a history read follows
+    /// the branch as it moves (a fetch and a reset in this clone), while a commit folder is immutable once published,
+    /// so the two never contend, at the cost of one extra checkout per repository.
     /// </summary>
     /// <param name="remoteUrl">The repository to read.</param>
     /// <param name="branch">The branch to check out on first clone.</param>
@@ -266,10 +262,10 @@ public sealed class GitMaterializer
         => Path.Combine(Path.GetDirectoryName(workingDir)!, ".staging-" + Guid.NewGuid().ToString("N"));
 
     /// <summary>
-    /// Publishes a fully materialized <paramref name="staging"/> tree to its final cache path by renaming it into
-    /// place, which is atomic on the same volume. Whatever occupies the target first (a partial checkout an
-    /// interrupted run left behind, or a wrong/older tree) is removed, so the published path is only ever observed
-    /// as absent or as a complete checkout, never mid-write.
+    /// Publishes the history clone's fully cloned <paramref name="staging"/> tree to its path by renaming it into
+    /// place, which is atomic on the same volume. It runs only when that path holds no valid repository, so what it
+    /// removes first is a partial tree an interrupted clone left behind, never a clone in use. Commit folders are
+    /// published by <see cref="Publish"/>, which never removes a checkout.
     /// </summary>
     private static void PublishAtomically(string staging, string finalDir)
     {
@@ -283,6 +279,199 @@ public sealed class GitMaterializer
             // The target reappeared between the cleanup and the rename, which happens only when the cache is a
             // volume shared across nodes and another node published this same commit first. Its checkout is
             // identical content, so adopt it; the caller's finally-block discards this staging copy.
+        }
+    }
+
+    /// <summary>What marks a unique sibling published when a commit folder's own name could not be taken.</summary>
+    private const string AlternateMarker = ".alt-";
+
+    /// <summary>What marks a tree moved aside to free a name; nothing reads it, so any sweep may remove it.</summary>
+    private const string StaleMarker = ".stale-";
+
+    /// <summary>How old an orphaned staging directory must be before a sweep removes it: a clone in progress (in this
+    /// process or another sharing the cache) writes into its staging directory and is never this old.</summary>
+    private static readonly TimeSpan AbandonedStagingAge = TimeSpan.FromHours(1);
+
+    /// <summary>How long the per-repo <c>branch</c> folder of the previous layout is kept after it was last written:
+    /// long enough that no reader still holds a root path recorded before the upgrade.</summary>
+    private static readonly TimeSpan LegacyBranchAge = TimeSpan.FromDays(1);
+
+    /// <summary>
+    /// Publishes a fully materialized <paramref name="staging"/> tree as the checkout of <paramref name="commitSha"/>
+    /// and returns where it was published. Every step is a rename on the same volume, which is atomic, so a published
+    /// path is only ever observed as absent or as a complete checkout, and nothing that is already a checkout is
+    /// deleted or rewritten:
+    /// <list type="number">
+    /// <item>the commit's own folder name is free: the tree is renamed into it;</item>
+    /// <item>another process published this commit there meanwhile (a cache shared by several nodes): that checkout
+    /// is adopted and the caller discards this copy;</item>
+    /// <item>the name holds something that is not this commit's checkout (a partial tree a killed process left): it is
+    /// moved aside, which frees the name at once, and the tree is renamed in;</item>
+    /// <item>the name cannot be taken (a handle in the old tree blocks the move, or Windows keeps a deleted folder's
+    /// name until its last handle closes): the tree is published under a unique sibling,
+    /// <c>&lt;sha&gt;.alt-&lt;guid&gt;</c>, which <see cref="FindCheckout"/> finds from then on.</item>
+    /// </list>
+    /// </summary>
+    private static string Publish(string staging, string preferred, string commitSha)
+    {
+        if (TryMove(staging, preferred))
+        {
+            return preferred;
+        }
+
+        if (IsCheckoutOf(preferred, commitSha))
+        {
+            return preferred;
+        }
+
+        if (Directory.Exists(preferred))
+        {
+            var aside = preferred + StaleMarker + Guid.NewGuid().ToString("N");
+            if (TryMove(preferred, aside))
+            {
+                TryPurgeOnce(aside);
+                if (TryMove(staging, preferred))
+                {
+                    return preferred;
+                }
+            }
+        }
+
+        var alternate = preferred + AlternateMarker + Guid.NewGuid().ToString("N");
+        Directory.Move(staging, alternate);
+        return alternate;
+    }
+
+    private static bool TryMove(string source, string destination)
+    {
+        try
+        {
+            Directory.Move(source, destination);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The folder holding <paramref name="commitSha"/>'s checkout: its own name, or a unique sibling published
+    /// when that name could not be taken; null when neither exists yet.</summary>
+    private static string? FindCheckout(string workingDir, string commitSha)
+    {
+        if (IsCheckoutOf(workingDir, commitSha))
+        {
+            return workingDir;
+        }
+
+        var parent = Path.GetDirectoryName(workingDir)!;
+        if (!Directory.Exists(parent))
+        {
+            return null;
+        }
+
+        return Directory.EnumerateDirectories(parent, Path.GetFileName(workingDir) + AlternateMarker + "*")
+            .Order(StringComparer.Ordinal)
+            .FirstOrDefault(candidate => IsCheckoutOf(candidate, commitSha));
+    }
+
+    private static bool IsCheckoutOf(string directory, string commitSha)
+        => Directory.Exists(directory) && Repository.IsValid(directory) && HeadIsAt(directory, commitSha);
+
+    /// <summary>
+    /// The commit at the tip of <paramref name="branch"/> on <paramref name="remoteUrl"/>, read with a
+    /// <c>git ls-remote</c>, so nothing is cloned to learn it. A blank branch follows the remote's HEAD.
+    /// </summary>
+    private static string ResolveBranchTip(string remoteUrl, string branch, GitMaterializerCredentials? credentials)
+    {
+        var references = Repository.ListRemoteReferences(remoteUrl, CredentialsProvider(credentials)).ToList();
+        if (references.Count == 0)
+        {
+            throw new SqlFlowNodeException($"'{remoteUrl}' (branch '{branch}') has no commits to sync.");
+        }
+
+        var wanted = string.IsNullOrWhiteSpace(branch)
+            ? "HEAD"
+            : branch.StartsWith("refs/", StringComparison.Ordinal) ? branch : "refs/heads/" + branch;
+        var tip = references.FirstOrDefault(r => string.Equals(r.CanonicalName, wanted, StringComparison.Ordinal));
+
+        // HEAD names the branch it points at; follow it to the commit (a short chain, bounded against a cycle).
+        for (var hops = 0; tip is SymbolicReference symbolic && hops < 5; hops++)
+        {
+            tip = references.FirstOrDefault(r => string.Equals(r.CanonicalName, symbolic.TargetIdentifier, StringComparison.Ordinal));
+        }
+
+        return tip is DirectReference direct && !string.IsNullOrWhiteSpace(direct.TargetIdentifier)
+            ? direct.TargetIdentifier
+            : throw new SqlFlowNodeException($"'{remoteUrl}' has no branch '{branch}' to sync.");
+    }
+
+    /// <summary>
+    /// Best-effort removal, in one repo's cache folder, of what no reader can be using: trees moved aside to free a
+    /// name, staging directories older than any clone in progress, and the per-repo <c>branch</c> folder of the
+    /// previous layout once it has not been written for a day. One attempt each; anything still held open is left for
+    /// a later sweep, and a sweep never fails the sync it runs in.
+    /// </summary>
+    internal static void SweepAbandoned(string repoFolder, DateTime nowUtc)
+    {
+        if (!Directory.Exists(repoFolder))
+        {
+            return;
+        }
+
+        List<string> entries;
+        try
+        {
+            entries = Directory.EnumerateDirectories(repoFolder).ToList();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return;
+        }
+
+        foreach (var entry in entries)
+        {
+            var name = Path.GetFileName(entry);
+            bool abandoned;
+            try
+            {
+                var age = nowUtc - Directory.GetLastWriteTimeUtc(entry);
+                abandoned = name.Contains(StaleMarker, StringComparison.Ordinal)
+                    || (name.StartsWith(".staging-", StringComparison.Ordinal) && age > AbandonedStagingAge)
+                    || (string.Equals(name, "branch", StringComparison.Ordinal) && age > LegacyBranchAge);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                continue;
+            }
+
+            if (abandoned)
+            {
+                TryPurgeOnce(entry);
+            }
+        }
+    }
+
+    /// <summary>One attempt to remove a tree nothing should be reading (git keeps read-only objects, so the attribute
+    /// is cleared first); a tree still held open is left for a later sweep.</summary>
+    private static void TryPurgeOnce(string path)
+    {
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories))
+            {
+                var attributes = File.GetAttributes(file);
+                if (attributes.HasFlag(FileAttributes.ReadOnly))
+                {
+                    File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
+                }
+            }
+
+            Directory.Delete(path, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Left for a later sweep: a handle is still open on something inside.
         }
     }
 

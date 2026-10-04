@@ -138,6 +138,204 @@ public sealed class GitMaterializerTests
         }
     }
 
+    /// <summary>
+    /// The managed sync materializes the branch tip into the commit's own folder and records it as the repo's root.
+    /// While the tip stays, every sync reuses that folder and writes nothing, so nothing a reader holds is replaced.
+    /// </summary>
+    [Fact]
+    public void MaterializeBranch_UsesTheCommitFolder_AndReusesItWhileTheTipStays()
+    {
+        var remote = NewTempDir();
+        var cache = NewTempDir();
+        try
+        {
+            var (_, secondSha) = SeedRepoWithTwoVersions(remote);
+            var materializer = new GitMaterializer(cache);
+
+            var first = materializer.MaterializeBranch(remote, CurrentBranch(remote), credentials: null);
+            var again = materializer.MaterializeBranch(remote, CurrentBranch(remote), credentials: null);
+
+            Assert.Equal(secondSha, first.CommitSha);
+            Assert.Equal(secondSha, Path.GetFileName(first.WorkingDirectory));
+            Assert.Equal("v2", File.ReadAllText(Path.Combine(first.WorkingDirectory, "flow.yaml")));
+            Assert.False(first.Reused);
+            Assert.Equal(first.WorkingDirectory, again.WorkingDirectory);
+            Assert.True(again.Reused);
+
+            // The pinned run of the same commit reads the very same folder.
+            Assert.Equal(first.WorkingDirectory, materializer.Materialize(remote, secondSha, credentials: null));
+        }
+        finally
+        {
+            DeleteDir(remote);
+            DeleteDir(cache);
+        }
+    }
+
+    /// <summary>A new commit gets a folder of its own; the folder an earlier sync recorded as the root stays exactly as
+    /// it was, so a reader that resolved a flow file under it a moment before still finds it.</summary>
+    [Fact]
+    public void MaterializeBranch_OnANewCommit_LeavesThePreviousFolderUntouched()
+    {
+        var remote = NewTempDir();
+        var cache = NewTempDir();
+        try
+        {
+            var (_, secondSha) = SeedRepoWithTwoVersions(remote);
+            var materializer = new GitMaterializer(cache);
+            var before = materializer.MaterializeBranch(remote, CurrentBranch(remote), credentials: null);
+
+            var thirdSha = CommitVersion(remote, "v3");
+            var after = materializer.MaterializeBranch(remote, CurrentBranch(remote), credentials: null);
+
+            Assert.Equal(thirdSha, after.CommitSha);
+            Assert.NotEqual(before.WorkingDirectory, after.WorkingDirectory);
+            Assert.Equal("v3", File.ReadAllText(Path.Combine(after.WorkingDirectory, "flow.yaml")));
+            Assert.Equal("v2", File.ReadAllText(Path.Combine(before.WorkingDirectory, "flow.yaml")));
+            using var previous = new Repository(before.WorkingDirectory);
+            Assert.Equal(secondSha, previous.Head.Tip.Sha);
+        }
+        finally
+        {
+            DeleteDir(remote);
+            DeleteDir(cache);
+        }
+    }
+
+    /// <summary>A sync that fails (here a branch the remote does not have) changes nothing in the cache: the root an
+    /// earlier sync recorded is still there for every reader.</summary>
+    [Fact]
+    public void MaterializeBranch_ThatFails_LeavesTheCacheAsItWas()
+    {
+        var remote = NewTempDir();
+        var cache = NewTempDir();
+        try
+        {
+            SeedRepoWithTwoVersions(remote);
+            var materializer = new GitMaterializer(cache);
+            var synced = materializer.MaterializeBranch(remote, CurrentBranch(remote), credentials: null);
+
+            var ex = Assert.Throws<SqlFlowNodeException>(
+                () => materializer.MaterializeBranch(remote, "no-such-branch", credentials: null));
+
+            Assert.Contains("no branch 'no-such-branch'", ex.Message, StringComparison.Ordinal);
+            Assert.Equal("v2", File.ReadAllText(Path.Combine(synced.WorkingDirectory, "flow.yaml")));
+        }
+        finally
+        {
+            DeleteDir(remote);
+            DeleteDir(cache);
+        }
+    }
+
+    /// <summary>
+    /// When a commit folder's name cannot be taken (here a leftover tree with a file held open, which on Windows blocks
+    /// both removing and renaming it, as a deleted folder's name stays blocked until its last handle closes), the
+    /// checkout is published under a unique sibling instead of failing, the held tree is not touched, and the sibling
+    /// is reused from then on. Elsewhere the leftover can be moved aside, and the commit's own name is used.
+    /// </summary>
+    [Fact]
+    public void Materialize_WhenTheCommitFolderNameIsHeld_PublishesBesideIt_AndReusesThat()
+    {
+        var remote = NewTempDir();
+        var cache = NewTempDir();
+        try
+        {
+            var (firstSha, secondSha) = SeedRepoWithTwoVersions(remote);
+            var materializer = new GitMaterializer(cache);
+            var repoFolder = Path.GetDirectoryName(materializer.Materialize(remote, firstSha, credentials: null))!;
+
+            var held = Path.Combine(repoFolder, secondSha);
+            Directory.CreateDirectory(held);
+            var heldFile = Path.Combine(held, "held.txt");
+            File.WriteAllText(heldFile, "in use");
+
+            string published;
+            using (new FileStream(heldFile, FileMode.Open, FileAccess.Read, FileShare.None))
+            {
+                published = materializer.Materialize(remote, secondSha, credentials: null);
+
+                Assert.Equal("v2", File.ReadAllText(Path.Combine(published, "flow.yaml")));
+                if (OperatingSystem.IsWindows())
+                {
+                    Assert.StartsWith(held + ".alt-", published, StringComparison.OrdinalIgnoreCase);
+                    Assert.True(File.Exists(heldFile));
+                }
+            }
+
+            Assert.Equal(published, materializer.Materialize(remote, secondSha, credentials: null));
+        }
+        finally
+        {
+            DeleteDir(remote);
+            DeleteDir(cache);
+        }
+    }
+
+    /// <summary>A sync sweeps what no reader can be using (trees moved aside, staging older than any clone in progress,
+    /// and the previous layout's branch folder once unwritten for a day) and leaves everything else alone: commit
+    /// folders, a staging directory a clone may be writing, and a recent branch folder.</summary>
+    [Fact]
+    public void MaterializeBranch_SweepsOnlyWhatIsAbandoned()
+    {
+        var remote = NewTempDir();
+        var cache = NewTempDir();
+        try
+        {
+            var (firstSha, _) = SeedRepoWithTwoVersions(remote);
+            var materializer = new GitMaterializer(cache);
+            var pinned = materializer.Materialize(remote, firstSha, credentials: null);
+            var repoFolder = Path.GetDirectoryName(pinned)!;
+
+            string Folder(string name, TimeSpan age)
+            {
+                var path = Path.Combine(repoFolder, name);
+                Directory.CreateDirectory(path);
+                File.WriteAllText(Path.Combine(path, "x"), "x");
+                Directory.SetLastWriteTimeUtc(path, DateTime.UtcNow - age);
+                return path;
+            }
+
+            var stale = Folder(firstSha + ".stale-0001", TimeSpan.Zero);
+            var oldStaging = Folder(".staging-old", TimeSpan.FromHours(2));
+            var liveStaging = Folder(".staging-live", TimeSpan.Zero);
+            var legacyBranch = Folder("branch", TimeSpan.FromDays(2));
+
+            materializer.MaterializeBranch(remote, CurrentBranch(remote), credentials: null);
+
+            Assert.False(Directory.Exists(stale));
+            Assert.False(Directory.Exists(oldStaging));
+            Assert.False(Directory.Exists(legacyBranch));
+            Assert.True(Directory.Exists(liveStaging));
+            Assert.Equal("v1", File.ReadAllText(Path.Combine(pinned, "flow.yaml")));
+
+            // A branch folder written recently may still be a root an older host recorded: it stays.
+            var recentBranch = Folder("branch", TimeSpan.FromHours(1));
+            GitMaterializer.SweepAbandoned(repoFolder, DateTime.UtcNow);
+            Assert.True(Directory.Exists(recentBranch));
+        }
+        finally
+        {
+            DeleteDir(remote);
+            DeleteDir(cache);
+        }
+    }
+
+    private static string CurrentBranch(string path)
+    {
+        using var repo = new Repository(path);
+        return repo.Head.FriendlyName;
+    }
+
+    private static string CommitVersion(string path, string content)
+    {
+        using var repo = new Repository(path);
+        var signature = new Signature("Test", "test@example.com", DateTimeOffset.UtcNow);
+        File.WriteAllText(Path.Combine(path, "flow.yaml"), content);
+        Commands.Stage(repo, "*");
+        return repo.Commit(content, signature, signature).Sha;
+    }
+
     private static (string FirstSha, string SecondSha) SeedRepoWithTwoVersions(string path)
     {
         Repository.Init(path);

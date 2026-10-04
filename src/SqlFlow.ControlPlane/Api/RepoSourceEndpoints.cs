@@ -262,7 +262,7 @@ public static class RepoSourceEndpoints
             var flows = await Task.Run(
                 () =>
                 {
-                    var (workingDir, _) = new GitMaterializer().MaterializeBranch(remoteUrl, branch, credentials, ct);
+                    var workingDir = new GitMaterializer().MaterializeBranch(remoteUrl, branch, credentials, ct).WorkingDirectory;
                     return FlowDiscovery.Discover(workingDir, documents, ct);
                 },
                 ct).ConfigureAwait(false);

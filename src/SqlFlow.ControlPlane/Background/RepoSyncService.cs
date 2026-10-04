@@ -235,8 +235,10 @@ public sealed partial class RepoSyncService : BackgroundService
         }
     }
 
-    /// <summary>Pulls a git source's branch tip into the node cache. The credential is resolved from the source's
-    /// stored ${...} reference, or the host environment when it has none; the secret is never stored.</summary>
+    /// <summary>Materializes a git source's branch tip into its commit folder in the node cache (reused when the tip
+    /// has not moved; see <see cref="GitMaterializer.MaterializeBranch"/>), which the catalog sync then records as
+    /// the repo's root. The credential is resolved from the source's stored ${...} reference, or the host environment
+    /// when it has none; the secret is never stored.</summary>
     private async Task<(string WorkingDir, string Sha)> CloneAsync(
         ActivityTrace trace, ISecretResolver resolver, CatalogRepoSource source, CancellationToken ct)
     {
@@ -247,10 +249,12 @@ public sealed partial class RepoSyncService : BackgroundService
             .ResolveCredentialsAsync(resolver, source.CredentialReference, source.CredentialUsername, ct)
             .ConfigureAwait(false);
 
-        await trace.InfoAsync("clone", $"Cloning {remoteUrl} (branch {source.Branch}).", ct).ConfigureAwait(false);
-        var (workingDir, sha) = _materializer.MaterializeBranch(remoteUrl, source.Branch, credentials, ct);
-        await trace.InfoAsync("clone", $"Checked out {sha}.", ct).ConfigureAwait(false);
-        return (workingDir, sha);
+        await trace.InfoAsync("clone", $"Reading the tip of {remoteUrl} (branch {source.Branch}).", ct).ConfigureAwait(false);
+        var checkout = _materializer.MaterializeBranch(remoteUrl, source.Branch, credentials, ct);
+        await trace.InfoAsync("clone", checkout.Reused
+            ? $"{checkout.CommitSha} is already checked out at {checkout.WorkingDirectory}; nothing to clone."
+            : $"Checked out {checkout.CommitSha} at {checkout.WorkingDirectory}.", ct).ConfigureAwait(false);
+        return (checkout.WorkingDirectory, checkout.CommitSha);
     }
 
     /// <summary>
