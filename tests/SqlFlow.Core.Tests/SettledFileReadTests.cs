@@ -74,6 +74,19 @@ public sealed class SettledFileReadTests
             StringComparison.Ordinal));
     }
 
+    /// <summary>Each file read says when it was modified, to the millisecond: the time the file-date watermark is
+    /// compared with, so a trace tells a changed file from a stale copy of it.</summary>
+    [Fact]
+    public async Task EachFileRead_SaysWhenTheFileWasModified()
+    {
+        var source = new RecordingSource { Modified = new DateTimeOffset(2026, 10, 4, 5, 51, 27, 139, TimeSpan.Zero) };
+        var events = new RecordingEvents();
+
+        await BuildRunner(source, events).RunAsync(Flow(new IncrementalSpec()));
+
+        Assert.Contains("read 'x.csv' (1 row(s), modified 2026-10-04 05:51:27.139Z)", events.Messages);
+    }
+
     private static FlowDefinition Flow(IncrementalSpec? incremental) => new()
     {
         Name = "t",
@@ -104,6 +117,8 @@ public sealed class SettledFileReadTests
 
         public int Deferred { get; init; }
 
+        public DateTimeOffset? Modified { get; init; }
+
         /// <summary>The value of <paramref name="key"/> on the spec the read was opened with, or null when absent.</summary>
         public string? SeenOption(string key)
         {
@@ -125,7 +140,7 @@ public sealed class SettledFileReadTests
             return Task.FromResult(new SourceReadResult
             {
                 Reader = table.CreateDataReader(),
-                ProcessedFiles = [new ProcessedFile { Name = "x.csv", Rows = 1 }],
+                ProcessedFiles = [new ProcessedFile { Name = "x.csv", Rows = 1, Modified = Modified }],
                 DeferredFiles = Deferred,
             });
         }

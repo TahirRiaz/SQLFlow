@@ -69,6 +69,31 @@ public sealed record DocumentExecutionOptions
     /// at completion, so the artifact stays authoritative either way.</summary>
     public IFlowEventSink? EventSink { get; init; }
 
+    /// <summary>Where the executed document came from, in words an operator reads (the commit and the folder it was
+    /// checked out to, the catalog snapshot, or the synced copy the run read), set by the node worker for a run it
+    /// executes. When set it is the first event of the run (see <see cref="CreateEventCollector"/>), so a trace says
+    /// which version of the flow and its sibling files ran before it says anything else. Null (every direct CLI run,
+    /// which runs the file it was given) adds nothing.</summary>
+    public string? Origin { get; init; }
+
+    /// <summary>
+    /// The collector that gathers this run's events into the <c>run.json</c> <c>events</c> array and forwards each to
+    /// <see cref="EventSink"/>, with <see cref="Origin"/> already published as its first event. Every executor builds
+    /// its run's collector here, so the origin line leads every kind's trace, and the live feed and the artifact count
+    /// the same events in the same order (the completion projection appends the artifact's events past the live
+    /// feed's last ordinal, so the two must agree).
+    /// </summary>
+    public RunEventCollector CreateEventCollector()
+    {
+        var events = new RunEventCollector(EventSink);
+        if (!string.IsNullOrWhiteSpace(Origin))
+        {
+            events.Publish(new SqlFlow.Core.Model.FlowEvent { RunId = RunId ?? Guid.Empty, FlowName = FlowName, Message = Origin, Stage = "run.origin" });
+        }
+
+        return events;
+    }
+
     /// <summary>Who asked for this run, so an executor can attribute what the run does: as the catalog recorded it for a
     /// node run (the caller's subject for a trigger, <c>schedule:&lt;name&gt;</c> for a schedule's fire), and the local
     /// account (<see cref="RunActors.LocalAccount"/>) for a direct CLI run and its batch members. Null only for a run

@@ -253,10 +253,15 @@ public sealed class FlowRunner
             var rows = await StageAsync("target.load", context, () => _loader.LoadAsync(connectionString, flow.Target, data, flow.Load, ct), r => r).ConfigureAwait(false);
 
             // The manifest is populated as the reader streams, so per-file row counts are known only
-            // once the load has drained it.
+            // once the load has drained it. The modified time is the one the file-date watermark is compared with
+            // (FileDate_DW keeps its whole second), so a reader of the trace can tell a changed file from a stale
+            // copy of it without opening the table.
             foreach (var file in read.ProcessedFiles)
             {
-                Emit(context, $"read '{file.Name}' ({file.Rows} row(s))", stage: "source.open");
+                var modified = file.Modified is { } written
+                    ? ", modified " + written.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff", CultureInfo.InvariantCulture) + "Z"
+                    : string.Empty;
+                Emit(context, $"read '{file.Name}' ({file.Rows} row(s){modified})", stage: "source.open");
             }
 
             if (read.DeferredFiles > 0)

@@ -775,6 +775,11 @@ public sealed partial class RunWorker : IDisposable
             }
 
             string flowRoot;
+            // Where the executed document came from, said once as the first event of the run's trace: which commit (or
+            // snapshot, or synced copy) and which folder its sibling files are read from. A run that reads a data file
+            // out of the repository reads the copy in that folder, so this is what tells an operator why a file they
+            // just edited was or was not the one the run saw.
+            string origin;
             // Snapshot-first: the enqueue stamped the run with the content hash of the exact YAML to execute and
             // staged that version in the catalog, so the node fetches it once through the protocol, writes it into
             // its local version cache and runs it with no git access at all. This is what keeps a schedule fanning
@@ -792,6 +797,10 @@ public sealed partial class RunWorker : IDisposable
             if (snapshotRoot is not null)
             {
                 flowRoot = snapshotRoot;
+                var version = run.FlowVersionHash![..Math.Min(12, run.FlowVersionHash!.Length)];
+                origin = string.IsNullOrWhiteSpace(run.CommitSha)
+                    ? $"executing repository '{repoName}' from the catalog's snapshot of the flow file (version {version})"
+                    : $"executing commit {run.CommitSha} of repository '{repoName}' from the catalog's snapshot of the flow file (version {version})";
             }
             else if (!string.IsNullOrWhiteSpace(run.CommitSha))
             {
@@ -815,6 +824,7 @@ public sealed partial class RunWorker : IDisposable
                     .ConfigureAwait(false);
                 flowRoot = _materializer.Materialize(run.RepoRemoteUrl, run.CommitSha, credentials, ct);
                 LogMaterialized(runId, repoName, run.CommitSha);
+                origin = $"executing commit {run.CommitSha} of repository '{repoName}', checked out at {flowRoot}";
             }
             else
             {
@@ -826,6 +836,7 @@ public sealed partial class RunWorker : IDisposable
                 }
 
                 flowRoot = run.RepoRootPath;
+                origin = $"executing repository '{repoName}' as it stands in {flowRoot} (no commit pinned)";
             }
 
             var flowFile = Path.GetFullPath(Path.Combine(flowRoot, relativePath));
@@ -935,6 +946,7 @@ public sealed partial class RunWorker : IDisposable
                 {
                     RunId = runId, Echo = null, Parameters = parameters, StatementSink = trace,
                     EventSink = trace, WatermarkSourceTable = watermarkSourceTable, LandingReset = landingReset,
+                    Origin = origin,
                     // The handed-out run's flow name selects WHICH flow of the document executes: for an ingestion
                     // document with an embedded healthCheck: block, the derived hc pipeline runs from the same file.
                     FlowName = run.FlowName,

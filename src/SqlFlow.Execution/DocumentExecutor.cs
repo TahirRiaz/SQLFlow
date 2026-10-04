@@ -223,7 +223,7 @@ public sealed class DocumentExecutor : IDocumentRunner
         // The file flow publishes its canonical events (file reads, watermark decisions, stage summaries)
         // natively; the collector rides alongside the host-wide sink so they land in run.json and, when the node
         // attached a live sink, in the catalog while the run executes.
-        var events = new RunEventCollector(options.EventSink);
+        var events = options.CreateEventCollector();
 
         // The run-history anchor (the flow document's folder) is the same one RunHistory.Write uses below, so the
         // incremental probe reads the durable last-processed watermark from exactly the runs written here.
@@ -272,7 +272,7 @@ public sealed class DocumentExecutor : IDocumentRunner
         DocumentExecutionOptions options, string flowName)
     {
         var runLogger = new RunLogger(options.LogLevel, options.Echo);
-        var events = new RunEventCollector(options.EventSink);
+        var events = options.CreateEventCollector();
         return (runLogger, events, new RunLogEventBridge(runLogger, events, options.RunId, flowName));
     }
 
@@ -706,7 +706,7 @@ public sealed class DocumentExecutor : IDocumentRunner
         // the collector forwards each event live (the node streams it into the catalog, which is what the trace
         // panel tails) and keeps the records for run.json. Without this a run that walks thousands of objects
         // for minutes shows nothing until it is over.
-        var events = new RunEventCollector(options.EventSink);
+        var events = options.CreateEventCollector();
         var result = await service.RunAsync(
             flow,
             new SourceControlRunOptions
