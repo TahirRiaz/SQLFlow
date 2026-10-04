@@ -1864,6 +1864,17 @@ public class CatalogRepoSource
     /// request and the sync worker can run on different control-plane nodes.</summary>
     public bool ForceLineageOnNextSync { get; set; }
 
+    /// <summary>When an operator last asked for a sync now (UTC), set by the sync-now action. The request is answered
+    /// once an attempt that started at or after it has recorded an outcome (<see cref="SyncStartedUtc"/> at or after
+    /// this, and <see cref="LastSyncUtc"/> at or after that start), which is what the sync-now action waits for before
+    /// it answers, so the commit it reports is the one runs are pinned to from then on.</summary>
+    public DateTime? SyncRequestedUtc { get; set; }
+
+    /// <summary>When the latest sync attempt started (UTC), set as the sync loop claims the source. The attempt is
+    /// running while this is later than <see cref="LastSyncUtc"/>; an attempt whose host stopped before it recorded an
+    /// outcome clears it.</summary>
+    public DateTime? SyncStartedUtc { get; set; }
+
     public DateTime CreatedUtc { get; set; }
 
     public DateTime UpdatedUtc { get; set; }

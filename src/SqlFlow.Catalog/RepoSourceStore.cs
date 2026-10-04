@@ -182,7 +182,8 @@ public static class RepoSourceStore
     }
 
     /// <summary>Atomically claims a due source by advancing its next-sync from the observed value, so exactly one
-    /// control-plane node syncs it this interval. Returns true if this caller won.</summary>
+    /// control-plane node syncs it this interval, and stamps the attempt's start
+    /// (<see cref="CatalogRepoSource.SyncStartedUtc"/>). Returns true if this caller won.</summary>
     public static async Task<bool> TryClaimSyncAsync(
         CatalogDbContext catalog, Guid id, DateTime observedNextSyncUtc, DateTime newNextSyncUtc, DateTime nowUtc,
         CancellationToken ct = default)
@@ -192,13 +193,16 @@ public static class RepoSourceStore
             .Where(s => s.Id == id && s.NextSyncUtc == observedNextSyncUtc)
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.NextSyncUtc, newNextSyncUtc)
+                .SetProperty(x => x.SyncStartedUtc, nowUtc)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
             .ConfigureAwait(false);
         return affected > 0;
     }
 
     /// <summary>Records a successful sync: the pulled commit and the time, clearing any prior error and the
-    /// one-shot force-lineage request (a manual sync-now has now been honored).</summary>
+    /// one-shot force-lineage request a manual sync-now made, when this attempt answered it. A sync-now made while the
+    /// attempt was already running is not answered by it: its flag stays, and the source, made due by the request,
+    /// syncs again on the next tick with the full recompute the operator asked for.</summary>
     public static Task RecordSuccessAsync(
         CatalogDbContext catalog, Guid id, string commitSha, DateTime nowUtc, CancellationToken ct = default)
     {
@@ -209,7 +213,9 @@ public static class RepoSourceStore
                 .SetProperty(x => x.LastSyncUtc, nowUtc)
                 .SetProperty(x => x.LastSyncedSha, commitSha)
                 .SetProperty(x => x.LastError, (string?)null)
-                .SetProperty(x => x.ForceLineageOnNextSync, false)
+                .SetProperty(
+                    x => x.ForceLineageOnNextSync,
+                    x => x.SyncRequestedUtc != null && x.SyncStartedUtc != null && x.SyncRequestedUtc > x.SyncStartedUtc)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct);
     }
 
@@ -244,10 +250,65 @@ public static class RepoSourceStore
             : null;
     }
 
+    /// <summary>Ends an attempt that recorded no outcome because its host is stopping, so the attempt does not look
+    /// as if it were still running. The sync-now it would have answered stays unanswered, and the next attempt
+    /// answers it.</summary>
+    public static Task RecordAbandonedAsync(
+        CatalogDbContext catalog, Guid id, DateTime nowUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        return catalog.RepoSources
+            .Where(s => s.Id == id && s.SyncStartedUtc != null && (s.LastSyncUtc == null || s.SyncStartedUtc > s.LastSyncUtc))
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(x => x.SyncStartedUtc, (DateTime?)null)
+                .SetProperty(x => x.UpdatedUtc, nowUtc), ct);
+    }
+
+    /// <summary>Whether a sync attempt of <paramref name="source"/> is running: one started and has not yet
+    /// recorded an outcome.</summary>
+    public static bool IsSyncRunning(CatalogRepoSource source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return source.SyncStartedUtc is { } started && (source.LastSyncUtc is not { } finished || started > finished);
+    }
+
+    /// <summary>Whether the sync-now made at <paramref name="requestedUtc"/> has been answered: an attempt that started
+    /// at or after it has recorded an outcome, success or failure (<see cref="CatalogRepoSource.LastError"/> tells which).
+    /// An attempt already running when the request was made does not answer it, because it may have cloned the branch
+    /// before the commit the operator synced for.</summary>
+    public static bool IsSyncAnswered(CatalogRepoSource source, DateTime requestedUtc)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        return source.SyncStartedUtc is { } started && started >= requestedUtc
+            && source.LastSyncUtc is { } finished && finished >= started;
+    }
+
+    /// <summary>
+    /// Whether a sync of this source is in progress from an operator's point of view: a sync-now not yet answered, or
+    /// an attempt running. A request or an attempt older than <paramref name="abandonedAfter"/> does not count: a
+    /// request no sync loop ever picked up, or an attempt whose host died without recording an outcome, would
+    /// otherwise show as in progress for ever.
+    /// </summary>
+    public static bool IsSyncPending(CatalogRepoSource source, DateTime nowUtc, TimeSpan abandonedAfter)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (!source.Enabled)
+        {
+            return false;
+        }
+
+        var cutoff = nowUtc - abandonedAfter;
+        var requestOpen = source.SyncRequestedUtc is { } requested && requested > cutoff && !IsSyncAnswered(source, requested);
+        var attemptRunning = IsSyncRunning(source) && source.SyncStartedUtc > cutoff;
+        return requestOpen || attemptRunning;
+    }
+
     /// <summary>Makes a source due immediately (the sync-now action), so the next tick pulls it, and requests a
     /// full lineage recompute on that sync: a manual trigger is a deliberate "refresh everything", so it bypasses
     /// the unchanged-estate shortcut that a periodic sync relies on (which is what recomputes waves and populates
-    /// object bodies/columns from the persisted run trace). The flag clears once the sync succeeds.</summary>
+    /// object bodies/columns from the persisted run trace). The flag clears once the sync succeeds. The request's time
+    /// is recorded (<see cref="CatalogRepoSource.SyncRequestedUtc"/>), so the caller can tell when an attempt has
+    /// answered it (<see cref="IsSyncAnswered"/>).</summary>
     public static async Task<RepoSourceMutation> TriggerNowAsync(
         CatalogDbContext catalog, Guid id, DateTime nowUtc, CancellationToken ct = default)
     {
@@ -257,6 +318,7 @@ public static class RepoSourceStore
             .ExecuteUpdateAsync(s => s
                 .SetProperty(x => x.NextSyncUtc, nowUtc)
                 .SetProperty(x => x.ForceLineageOnNextSync, true)
+                .SetProperty(x => x.SyncRequestedUtc, nowUtc)
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct)
             .ConfigureAwait(false);
         return affected > 0 ? RepoSourceMutation.Applied : RepoSourceMutation.NotFound;

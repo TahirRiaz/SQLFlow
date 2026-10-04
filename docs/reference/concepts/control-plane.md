@@ -23,6 +23,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs
   - src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs
   - src/SqlFlow.ControlPlane/Background/RepoSyncService.cs
+  - src/SqlFlow.ControlPlane/Background/RepoSyncWaiter.cs
   - src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs
@@ -188,6 +189,8 @@ All settings bind from the `ControlPlane` configuration section (environment var
 | `RateLimit:NodePermitPerWindow` | `6000` | The per-node window for the node protocol, keyed by the token subject plus the node name each call carries; must be positive |
 | `Scheduler:PollSeconds` | `15` | Schedule scan cadence; must be positive |
 | `ManagedSync:PollSeconds` | `30` | Repo-source scan cadence |
+| `ManagedSync:SyncNowWaitSeconds` | `90` | How long `POST /repos/sources/{id}/sync` waits for the sync it requested before it answers; 0 to 900, 0 answers at once |
+| `ManagedSync:SyncAbandonedAfterMinutes` | `30` | Age past which an unanswered sync-now or a running attempt no longer counts as in progress (`syncPending`); 1 to 1440 |
 | `Worker:Enabled` | `true` | `false` makes the replica API-only (no in-process node) |
 | `Worker:Pools` | `[]` | Empty takes only untargeted runs |
 | `Worker:MaxConcurrentRuns` / `Worker:MaxConcurrentComputeTasks` | `4` / `2` | The in-process node's slots; both at least 1 |
@@ -222,13 +225,15 @@ Order of operations, all idempotent:
 
 A `CatalogRepoSource` (src/SqlFlow.Catalog/CatalogEntities.cs) registers a git repository the control plane keeps synced: it periodically pulls the branch HEAD and runs the catalog sync, so nobody runs `sqlflow db sync` by hand and git stays the source of truth. Defaults: `Branch` `main`, `SyncIntervalSeconds` `300`, `Enabled` `true`. `Name` is unique and the synced pipelines and runs are attributed to it. A source's id is `FlowIdentity.FromName("reposource/{name}")`, so re-registering the same name updates in place; a new source is due immediately (`NextSyncUtc = now`).
 
-`RepoSyncService` (src/SqlFlow.ControlPlane/Background/RepoSyncService.cs) scans every `ManagedSync:PollSeconds` (default 30, at most 50 sources per tick) for sources due to sync. Each due sync is claimed by compare-and-swap on `NextSyncUtc` (`RepoSourceStore.TryClaimSyncAsync`), so several control-plane nodes never sync the same source twice in one interval. The winner then:
+`RepoSyncService` (src/SqlFlow.ControlPlane/Background/RepoSyncService.cs) scans every `ManagedSync:PollSeconds` (default 30, at most 50 sources per tick) for sources due to sync. Each due sync is claimed by compare-and-swap on `NextSyncUtc` (`RepoSourceStore.TryClaimSyncAsync`), so several control-plane nodes never sync the same source twice in one interval; the claim stamps the attempt's start (`SyncStartedUtc`). The winner then:
 
 1. Clones the branch tip fresh into `<cache>/<repoHash>/branch` (`GitMaterializer.MaterializeBranch`, src/SqlFlow.Node/GitMaterializer.cs). A repo with no commits fails with `'<remote>' (branch '<branch>') has no commits to sync.`
 2. Runs the exact same `CatalogSync` as the CLI's `sqlflow db sync` (the offline tier; the connected/derived tier is a separate opt-in of the CLI's `--connect`), passing the source's flow selection (see below).
-3. Records the pulled commit SHA on success (`LastSyncedSha`, clearing `LastError`) or a secret-redacted error on failure (`LastError`, keeping the last successful SHA).
+3. Records the pulled commit SHA on success (`LastSyncedSha`, clearing `LastError`) or a secret-redacted error on failure (`LastError`, keeping the last successful SHA), stamping `LastSyncUtc` either way. An attempt cut short because its host is stopping records no outcome but clears `SyncStartedUtc`, so it does not show as running.
 
 One source's failure never stops the others or the loop.
+
+A run started without an explicit `commitSha` is pinned to `LastSyncedSha` when it is queued, so what a run executes is whatever the last finished sync pulled. That is why a sync-now answers only once its sync has happened (below): answering when the sync was merely queued let an operator commit, click "sync now", start a run, and have the run execute the previous commit.
 
 ### Git credentials (a reference, never a secret)
 
@@ -240,9 +245,9 @@ A source imports every `*.flow.yaml` by default. To onboard a subset, `POST /rep
 
 API:
 
-- `GET /repos/sources` (read): paged list of `RepoSourceDto` with fields `id`, `name`, `remoteUrl`, `branch`, `enabled`, `syncIntervalSeconds`, `nextSyncUtc`, `lastSyncUtc`, `lastSyncedSha`, `lastError`, `credentialReference`, `credentialUsername`, `excludedFlowPaths`, `createdUtc`, `updatedUtc`.
+- `GET /repos/sources` (read): paged list of `RepoSourceDto` with fields `id`, `name`, `remoteUrl`, `branch`, `enabled`, `syncIntervalSeconds`, `nextSyncUtc`, `lastSyncUtc`, `lastSyncedSha`, `lastError`, `credentialReference`, `credentialUsername`, `excludedFlowPaths`, `createdUtc`, `updatedUtc`, `syncRequestedUtc` (the latest sync-now), `syncStartedUtc` (the start of the latest attempt) and `syncPending` (a sync-now not yet answered, or an attempt running, either younger than `ManagedSync:SyncAbandonedAfterMinutes`; `RepoSourceStore.IsSyncPending`). The GUI shows a source as syncing, and keeps its "Sync now" button busy, while `syncPending` is true.
 - `POST /repos/sources` (operate): upsert with body `{name, remoteUrl, branch?, syncIntervalSeconds?, enabled?, credentialReference?, credentialUsername?, excludedFlowPaths?}`; `branch` defaults to `main`, `syncIntervalSeconds` to 300, `enabled` to true, and an omitted `excludedFlowPaths` imports every flow. A blank `name` or `remoteUrl`, or a `credentialReference` that is not a `${...}` reference, is 400. Returns 201 Created with the source id.
-- `POST /repos/sources/{id}/sync` (operate): makes the source due now; 404 for an unknown or disabled source ("No enabled repo source '{id}'.").
+- `POST /repos/sources/{id}/sync` (operate): makes the source due now (recording `syncRequestedUtc` and a full lineage recompute), then waits up to `ManagedSync:SyncNowWaitSeconds` for the attempt that answers the request: one that started at or after it and has recorded an outcome (`RepoSourceStore.IsSyncAnswered`; an attempt already running at the request may have cloned before the commit asked for, so it does not count). 200 with the `RepoSourceDto` once answered: `lastSyncedSha` is the commit runs started from then on are pinned to, and a non-null `lastError` means the sync failed. 202 with the source still `syncPending` when the sync outlasted the wait. 404 for an unknown or disabled source ("No enabled repo source '{id}'.").
 - `POST /repos/discover` (operate): body `{remoteUrl, branch?, credentialReference?, credentialUsername?}`; clones and returns the flow list for the selection wizard. Read-only; nothing is written to the catalog. A clone or credential failure is a 400 with a redacted message.
 - `POST /repos/sources/{id}/proposals` (author): propose pipelines to the source's repo as a pull request. Body `{title, body?, baseBranch?, headBranch?, files:[{path, content}]}`; `baseBranch` defaults to the source's tracked branch and `headBranch` to a content-derived `sqlflow/proposal-*` name. The control plane pushes the files onto a fresh branch off the base and opens a pull request using the source's own stored credential (github.com or bitbucket.org over HTTPS); it never writes the catalog directly, so a human reviews and merges before the managed sync imports the flows. `files[].path` must be repo-relative and end in `.yaml`/`.yml`/`.sql`/`.json`/`.md`; a bad path, an unsupported remote host, or a source with no configured credential is a 400. Returns 201 with `{pullRequestUrl, pullRequestNumber, headBranch, commitSha, filesChanged}`. Feed `commitSha` to `POST /runs` (`commitSha`) to test the proposal pinned to the pull-request commit before it merges. If the branch pushes but the pull request cannot be opened, the branch is rolled back and the response is 502. The git clone is staged in a throwaway temp directory deleted when the request finishes; the whole staging root (`{temp}/sqlflow/proposals`) is also swept on control-plane startup and shutdown, so a staged clone never outlives the session and a crash leak is reclaimed on the next start.
 

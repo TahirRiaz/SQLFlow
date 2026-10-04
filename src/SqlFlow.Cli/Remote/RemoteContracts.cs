@@ -184,7 +184,8 @@ internal sealed record RepoSourceDto(
     Guid Id, string Name, string? RemoteUrl, string? LocalPath, string Branch, bool Enabled, int SyncIntervalSeconds,
     DateTime? NextSyncUtc, DateTime? LastSyncUtc, string? LastSyncedSha, string? LastError,
     string? CredentialReference, string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths,
-    DateTime CreatedUtc, DateTime UpdatedUtc);
+    DateTime CreatedUtc, DateTime UpdatedUtc,
+    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false);
 
 /// <summary>Registers (upserts by name) a managed source, with exactly one of a git remote and a local path; the
 /// credential is a ${...} reference, never a raw token.</summary>

@@ -1312,6 +1312,12 @@ namespace SqlFlow.Catalog.Migrations
                     b.Property<int>("SyncIntervalSeconds")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("SyncRequestedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("SyncStartedUtc")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("datetime2");
 

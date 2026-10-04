@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
+using SqlFlow.ControlPlane.Background;
 using SqlFlow.Core;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Node;
@@ -15,12 +16,16 @@ namespace SqlFlow.ControlPlane.Api;
 /// set) it reads live with no git step, for a working copy that has never been committed or pushed. Exactly one of
 /// the two is set. <see cref="CredentialReference"/> is a secret reference (never a secret value), safe to return
 /// to clients, and applies only to a git source. <see cref="ExcludedFlowPaths"/> is the preview-first selection of
-/// flow files this source does NOT import.</summary>
+/// flow files this source does NOT import. <see cref="SyncRequestedUtc"/> is the latest sync-now,
+/// <see cref="SyncStartedUtc"/> the start of the latest attempt, and <see cref="SyncPending"/> whether a sync is in
+/// progress for an operator (a sync-now not yet answered, or an attempt running; see <see cref="RepoSyncWaiter"/>), so
+/// a client shows a sync as running until the commit it pulls is the one runs are pinned to.</summary>
 public sealed record RepoSourceDto(
     Guid Id, string Name, string? RemoteUrl, string? LocalPath, string Branch, bool Enabled, int SyncIntervalSeconds,
     DateTime? NextSyncUtc, DateTime? LastSyncUtc, string? LastSyncedSha, string? LastError,
     string? CredentialReference, string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths,
-    DateTime CreatedUtc, DateTime UpdatedUtc);
+    DateTime CreatedUtc, DateTime UpdatedUtc,
+    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false);
 
 /// <summary>The body to register (or update) a tracked repo source: exactly one of <see cref="RemoteUrl"/> (a git
 /// remote the managed sync clones and pulls) and <see cref="LocalPath"/> (a directory the control-plane host reads
@@ -80,13 +85,13 @@ public static class RepoSourceEndpoints
     }
 
     private static async Task<Ok<PagedResult<RepoSourceDto>>> ListSourcesAsync(
-        CatalogDbContext db, int? page, int? pageSize, CancellationToken ct)
+        CatalogDbContext db, RepoSyncWaiter syncWaiter, int? page, int? pageSize, CancellationToken ct)
     {
         var (p, size) = PageRequest.Normalize(page, pageSize);
         var ordered = db.RepoSources.AsNoTracking().OrderBy(s => s.Name);
         var total = await ordered.LongCountAsync(ct).ConfigureAwait(false);
         var rows = await ordered.Skip((p - 1) * size).Take(size).ToListAsync(ct).ConfigureAwait(false);
-        var items = rows.Select(ToDto).ToList();
+        var items = rows.Select(s => ToDto(s, syncWaiter)).ToList();
         return TypedResults.Ok(new PagedResult<RepoSourceDto>(items, p, size, total));
     }
 
@@ -135,17 +140,33 @@ public static class RepoSourceEndpoints
         return TypedResults.Created($"/api/v1/repos/sources/{id}", new RepoSourceRegistered(id));
     }
 
-    private static async Task<Results<Ok<RepoSourceDto>, ProblemHttpResult>> SyncNowAsync(
-        Guid id, CatalogDbContext db, TimeProvider clock, CancellationToken ct)
+    /// <summary>
+    /// Syncs a source now and answers once the sync has happened: the source is made due, and the response waits (up to
+    /// <c>ManagedSync:SyncNowWaitSeconds</c>) for the attempt that answers this request, so it carries the commit that
+    /// attempt pulled (<c>lastSyncedSha</c>), which is the commit a run started afterwards is pinned to, or the error it
+    /// failed with (<c>lastError</c>). 200 when the attempt answered, success or failure; 202 with the source still
+    /// <c>syncPending</c> when it outlasted the wait; 404 for an unknown or disabled source.
+    /// </summary>
+    private static async Task<Results<Ok<RepoSourceDto>, Accepted<RepoSourceDto>, ProblemHttpResult>> SyncNowAsync(
+        Guid id, CatalogDbContext db, TimeProvider clock, RepoSyncWaiter syncWaiter, CancellationToken ct)
     {
-        if (!await QueueSyncAsync(db, id, "Sync requested", clock, ct).ConfigureAwait(false))
+        var requestedUtc = clock.GetUtcNow().UtcDateTime;
+        if (!await QueueSyncAsync(db, id, "Sync requested", requestedUtc, clock, ct).ConfigureAwait(false))
         {
             return TypedResults.Problem(
                 detail: $"No enabled repo source '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
         }
 
-        var row = await db.RepoSources.AsNoTracking().Where(s => s.Id == id).FirstAsync(ct).ConfigureAwait(false);
-        return TypedResults.Ok(ToDto(row));
+        var (row, answered) = await syncWaiter.WaitForAnswerAsync(db, id, requestedUtc, ct).ConfigureAwait(false);
+        if (row is null)
+        {
+            return TypedResults.Problem(
+                detail: $"Repo source '{id}' was removed while its sync was pending.",
+                statusCode: StatusCodes.Status404NotFound, title: "Not found");
+        }
+
+        var dto = ToDto(row, syncWaiter);
+        return answered ? TypedResults.Ok(dto) : TypedResults.Accepted("/api/v1/repos/sources", dto);
     }
 
     /// <summary>
@@ -167,12 +188,13 @@ public static class RepoSourceEndpoints
         return true;
     }
 
-    /// <summary>Queues one source's sync now (the single path behind "sync now" and every change that needs the graph
-    /// recomputed). False when no enabled source has the id.</summary>
+    /// <summary>Queues one source's sync, requested at <paramref name="requestedUtc"/> (the single path behind "sync
+    /// now" and every change that needs the graph recomputed; a sync-now waits for the attempt that answers that
+    /// instant). False when no enabled source has the id.</summary>
     private static async Task<bool> QueueSyncAsync(
-        CatalogDbContext db, Guid id, string reason, TimeProvider clock, CancellationToken ct)
+        CatalogDbContext db, Guid id, string reason, DateTime requestedUtc, TimeProvider clock, CancellationToken ct)
     {
-        var outcome = await RepoSourceStore.TriggerNowAsync(db, id, clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
+        var outcome = await RepoSourceStore.TriggerNowAsync(db, id, requestedUtc, ct).ConfigureAwait(false);
         if (outcome == RepoSourceMutation.NotFound)
         {
             return false;
@@ -260,10 +282,11 @@ public static class RepoSourceEndpoints
 
     // A method (not an EF expression) so the stored ExcludedFlowPaths JSON can be deserialized; the repo-source
     // table is tiny, so materializing the row before mapping is free.
-    private static RepoSourceDto ToDto(CatalogRepoSource s) => new(
+    private static RepoSourceDto ToDto(CatalogRepoSource s, RepoSyncWaiter syncWaiter) => new(
         s.Id, s.Name, s.RemoteUrl, s.LocalPath, s.Branch, s.Enabled, s.SyncIntervalSeconds,
         s.NextSyncUtc, s.LastSyncUtc, s.LastSyncedSha, s.LastError,
         s.CredentialReference, s.CredentialUsername,
         RepoSourceStore.ParseExcludedPaths(s.ExcludedFlowPaths).OrderBy(p => p, StringComparer.Ordinal).ToArray(),
-        s.CreatedUtc, s.UpdatedUtc);
+        s.CreatedUtc, s.UpdatedUtc,
+        s.SyncRequestedUtc, s.SyncStartedUtc, syncWaiter.IsPending(s));
 }

@@ -446,16 +446,22 @@ internal static partial class RemoteVerbs
                             return 1;
                         }
 
+                        // The control plane answers once the sync has happened, so the commit printed here is the one a
+                        // run started next is pinned to. A sync that outlasted its wait is still running: say so rather
+                        // than report the previous commit as if it were the new one.
+                        var failed = !synced.SyncPending && synced.LastError is { Length: > 0 };
                         if (json)
                         {
                             Console.WriteLine(JsonSerializer.Serialize(synced, ControlPlaneClient.JsonIndented));
                             return 0;
                         }
 
-                        Console.WriteLine(synced.LastError is { Length: > 0 } error
-                            ? $"FAILED  sync of '{repo.Name}': {error}"
-                            : $"OK   '{repo.Name}' synced to {synced.LastSyncedSha} at {FormatUtc(synced.LastSyncUtc)} UTC.");
-                        return synced.LastError is { Length: > 0 } ? 1 : 0;
+                        Console.WriteLine(synced.SyncPending
+                            ? $"PENDING  the sync of '{repo.Name}' is still running; runs stay pinned to {synced.LastSyncedSha ?? "no synced commit"} until it finishes."
+                            : failed
+                                ? $"FAILED  sync of '{repo.Name}': {synced.LastError}"
+                                : $"OK   '{repo.Name}' synced to {synced.LastSyncedSha} at {FormatUtc(synced.LastSyncUtc)} UTC.");
+                        return synced.SyncPending || failed ? 1 : 0;
                     }
 
                     var result = await client.SyncLocalRepoAsync(repo.Id, ct).ConfigureAwait(false);

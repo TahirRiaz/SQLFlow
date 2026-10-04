@@ -55,6 +55,10 @@ internal sealed class ControlPlaneClient : IDisposable
     /// tool's own five-minute run.</summary>
     private static readonly TimeSpan ExtractionTimeout = TimeSpan.FromMinutes(10);
 
+    /// <summary>The budget of a sync-now, which the control plane answers only once the sync has happened: its longest
+    /// configurable wait (ManagedSync:SyncNowWaitSeconds, at most 900 seconds) plus room for the response.</summary>
+    private static readonly TimeSpan SyncNowTimeout = TimeSpan.FromSeconds(900 + 60);
+
     private readonly HttpClient _http;
     private readonly bool _ownsClient;
 
@@ -406,9 +410,10 @@ internal sealed class ControlPlaneClient : IDisposable
     public Task<IReadOnlyList<DiscoveredFlowDto>> DiscoverRepoAsync(DiscoverRepoRequest request, CancellationToken ct)
         => PostAsync<IReadOnlyList<DiscoveredFlowDto>>("/api/v1/repos/discover", request, ct);
 
-    /// <summary>Forces a managed source's sync now; null when no enabled source has the id.</summary>
+    /// <summary>Syncs a managed source now and returns it once the sync has happened (or is still running when the
+    /// control plane's wait ran out, <see cref="RepoSourceDto.SyncPending"/>); null when no enabled source has the id.</summary>
     public Task<RepoSourceDto?> SyncRepoSourceAsync(Guid sourceId, CancellationToken ct)
-        => PostOrNullAsync<RepoSourceDto>($"/api/v1/repos/sources/{sourceId}/sync", null, ct);
+        => PostOrNullAsync<RepoSourceDto>($"/api/v1/repos/sources/{sourceId}/sync", null, SyncNowTimeout, ct);
 
     /// <summary>Re-syncs a local-path repo (the CLI-registered kind) through the control plane.</summary>
     public Task<RepoSyncResultDto?> SyncLocalRepoAsync(Guid repoId, CancellationToken ct)
@@ -593,7 +598,11 @@ internal sealed class ControlPlaneClient : IDisposable
     private static string Paging(int page, int pageSize)
         => $"?page={page.ToString(CultureInfo.InvariantCulture)}&pageSize={pageSize.ToString(CultureInfo.InvariantCulture)}";
 
-    private async Task<T?> PostOrNullAsync<T>(string path, object? body, CancellationToken ct)
+    private Task<T?> PostOrNullAsync<T>(string path, object? body, CancellationToken ct)
+        where T : class
+        => PostOrNullAsync<T>(path, body, RequestTimeout, ct);
+
+    private async Task<T?> PostOrNullAsync<T>(string path, object? body, TimeSpan budget, CancellationToken ct)
         where T : class
     {
         using var request = NewRequest(HttpMethod.Post, path);
@@ -602,7 +611,7 @@ internal sealed class ControlPlaneClient : IDisposable
             request.Content = JsonContent(body);
         }
 
-        using var timeout = Budget(ct);
+        using var timeout = Budget(budget, ct);
         using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
         if (response.StatusCode == HttpStatusCode.NotFound)
         {
@@ -712,10 +721,12 @@ internal sealed class ControlPlaneClient : IDisposable
     private static StringContent JsonContent(object body)
         => new(JsonSerializer.Serialize(body, body.GetType(), Json), Encoding.UTF8, "application/json");
 
-    private static CancellationTokenSource Budget(CancellationToken ct)
+    private static CancellationTokenSource Budget(CancellationToken ct) => Budget(RequestTimeout, ct);
+
+    private static CancellationTokenSource Budget(TimeSpan budget, CancellationToken ct)
     {
         var source = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        source.CancelAfter(RequestTimeout);
+        source.CancelAfter(budget);
         return source;
     }
 

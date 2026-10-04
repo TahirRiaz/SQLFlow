@@ -26,6 +26,7 @@ import { groupByProject, pipelineMatches, ProjectGroup } from "../pipelines/Proj
 import { projectOf } from "./project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { useSyncTracePanel } from "./useSyncTracePanel";
+import { announceSyncOutcome, repoSourcesRefetchInterval } from "./syncOutcome";
 
 /** The most repos/sources a single control plane realistically holds; one page covers the by-name lookup. */
 const SOURCE_LOOKUP_CAP = 200;
@@ -296,16 +297,18 @@ export default function RepoDetailPage() {
   const sourcesQuery = useQuery({
     queryKey: ["repo-sources", "list", SOURCE_LOOKUP_CAP],
     queryFn: () => repoSourceApi.list({ page: 1, pageSize: SOURCE_LOOKUP_CAP }),
-    refetchInterval: 8000,
+    refetchInterval: (query) => repoSourcesRefetchInterval(query.state.data),
   });
   const source = repo === undefined
     ? undefined
     : sourcesQuery.data?.items.find((s) => s.name === repo.name);
 
+  // The control plane answers a sync-now once the sync has happened, so the button spins for as long as the sync
+  // takes, and a sync still running when the server stopped waiting keeps it spinning through the source's state.
   const syncNow = useMutation({
     mutationFn: (id: string) => repoSourceApi.syncNow(id),
-    onSuccess: () => {
-      toast.success("Sync requested");
+    onSuccess: (synced) => {
+      announceSyncOutcome(synced);
       void queryClient.invalidateQueries({ queryKey: ["repo-sources"] });
       void queryClient.invalidateQueries({ queryKey: ["repos"] });
     },
@@ -384,15 +387,15 @@ export default function RepoDetailPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={!source.enabled || syncNow.isPending}
+                  disabled={!source.enabled || syncNow.isPending || source.syncPending}
                   onClick={() => {
                     syncNow.mutate(source.id);
                     openSyncTrace(source.id, repo.name);
                   }}
                   data-testid="repo-sync-now"
                 >
-                  {syncNow.isPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-                  Sync now
+                  {syncNow.isPending || source.syncPending ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+                  {syncNow.isPending || source.syncPending ? "Syncing" : "Sync now"}
                 </Button>
               ) : repo.rootPath ? (
                 <Tooltip>

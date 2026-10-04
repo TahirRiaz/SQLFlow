@@ -34,8 +34,9 @@ export default function CatalogPage() {
   const queryClient = useQueryClient();
 
   // The catalog is built by the managed sync of the registered git sources, so "recompute" forces each enabled
-  // source to re-sync now (a full lineage recompute, including the object body/column enrichment), then waits for
-  // the background sync to finish before refreshing the tree and details from the freshly-synced catalog.
+  // source to re-sync now (a full lineage recompute, including the object body/column enrichment). The control plane
+  // answers each sync-now once its sync has happened; a sync still running when the server stopped waiting is followed
+  // through the source's syncPending, so the refresh below reads the recomputed catalog rather than the stale one.
   const sourcesQuery = useQuery({
     queryKey: ["repo-sources", "list", SOURCE_FETCH_CAP],
     queryFn: () => repoSourceApi.list({ page: 1, pageSize: SOURCE_FETCH_CAP }),
@@ -48,22 +49,15 @@ export default function CatalogPage() {
         throw new Error("No enabled git source to recompute. Register or enable one on the Repos page first.");
       }
 
-      const before = new Map(sources.map((source) => [source.id, source.lastSyncUtc]));
-      await Promise.all(sources.map((source) => repoSourceApi.syncNow(source.id)));
+      const synced = await Promise.all(sources.map((source) => repoSourceApi.syncNow(source.id)));
 
-      // Each source's last-sync stamp advances once its sync (success or failure) completes; wait for all of them
-      // so the refresh below reads the recomputed catalog rather than the stale one, bounded by a timeout.
+      // Bounded, so a sync that never ends cannot hold the page.
+      let pending = new Set(synced.filter((source) => source.syncPending).map((source) => source.id));
       const deadline = Date.now() + RECOMPUTE_TIMEOUT_MS;
-      while (Date.now() < deadline) {
+      while (pending.size > 0 && Date.now() < deadline) {
         await delay(RECOMPUTE_POLL_MS);
         const latest = await repoSourceApi.list({ page: 1, pageSize: SOURCE_FETCH_CAP });
-        const settled = sources.every((source) => {
-          const now = latest.items.find((item) => item.id === source.id)?.lastSyncUtc ?? null;
-          return now !== null && now !== before.get(source.id);
-        });
-        if (settled) {
-          break;
-        }
+        pending = new Set(latest.items.filter((item) => pending.has(item.id) && item.syncPending).map((item) => item.id));
       }
 
       return sources.length;

@@ -950,6 +950,12 @@ export interface RepoSource {
   excludedFlowPaths: string[];
   createdUtc: string;
   updatedUtc: string;
+  /** The latest sync-now; null when none was ever made. */
+  syncRequestedUtc: string | null;
+  /** The start of the latest sync attempt; null when none started (or the last one was abandoned). */
+  syncStartedUtc: string | null;
+  /** Whether a sync is in progress: a sync-now not yet answered, or an attempt running. */
+  syncPending: boolean;
 }
 
 export interface RegisterRepoSourceRequest {

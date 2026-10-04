@@ -744,6 +744,7 @@
         "src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs",
         "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
         "src/SqlFlow.ControlPlane/Background/RepoSyncService.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncWaiter.cs",
         "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",

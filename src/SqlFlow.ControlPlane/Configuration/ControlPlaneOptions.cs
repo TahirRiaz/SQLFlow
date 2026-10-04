@@ -116,6 +116,7 @@ public sealed class ControlPlaneOptions
             throw new InvalidOperationException("ControlPlane:" + ex.Message, ex);
         }
 
+        ManagedSync.Validate();
         AzureAd.Validate();
         Bootstrap.Validate();
         Proxy.Validate();
@@ -534,6 +535,37 @@ public sealed class ManagedSyncOptions
     /// tiers still land and the failure is recorded as a warning). Turn it off for a deployment whose control
     /// plane cannot reach the data-plane SQL Servers, so those syncs stay purely offline.</summary>
     public bool ConnectLineage { get; set; } = true;
+
+    /// <summary>The longest <see cref="SyncNowWaitSeconds"/> may be: the request is held open while it waits.</summary>
+    public const int MaxSyncNowWaitSeconds = 900;
+
+    /// <summary>How long a sync-now (<c>POST /repos/sources/{id}/sync</c>) waits for the attempt that answers it
+    /// before it responds. A run is pinned to the repo's last synced commit, so a sync-now that answered at once, while
+    /// the sync was still only queued, let an operator start a run on the commit before the one they had just synced
+    /// for. Waiting means the answer carries the commit the sync pulled (or its error), and that commit is what a run
+    /// started afterwards executes. A sync that outlasts the wait is answered 202 with the source still marked
+    /// <c>syncPending</c>. 0 answers at once, as before. The default stays inside the CLI's 100-second request budget
+    /// for ordinary calls (its sync call allows the maximum).</summary>
+    public int SyncNowWaitSeconds { get; set; } = 90;
+
+    /// <summary>How old a sync-now request, or a running sync attempt, may be before it no longer counts as in
+    /// progress: past this the request is taken as one no sync loop picked up, or the attempt as one whose host died
+    /// without recording an outcome, so neither shows as pending for ever.</summary>
+    public int SyncAbandonedAfterMinutes { get; set; } = 30;
+
+    public void Validate()
+    {
+        if (SyncNowWaitSeconds is < 0 or > MaxSyncNowWaitSeconds)
+        {
+            throw new InvalidOperationException(
+                $"ControlPlane:ManagedSync:SyncNowWaitSeconds must be between 0 (no wait) and {MaxSyncNowWaitSeconds}.");
+        }
+
+        if (SyncAbandonedAfterMinutes is < 1 or > 1440)
+        {
+            throw new InvalidOperationException("ControlPlane:ManagedSync:SyncAbandonedAfterMinutes must be between 1 and 1440.");
+        }
+    }
 }
 
 /// <summary>

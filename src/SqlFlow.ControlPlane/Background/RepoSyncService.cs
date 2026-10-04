@@ -220,6 +220,10 @@ public sealed partial class RepoSyncService : BackgroundService
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
+            // The host is stopping mid-attempt: no outcome is recorded, but the attempt is ended, so it does not show as
+            // running (and keep a sync-now waiting) when nobody is running it. The request it would have answered stays
+            // for the next attempt.
+            await RecordAbandonedAsync(catalog, source.Id).ConfigureAwait(false);
             throw;
         }
         catch (Exception ex)
@@ -341,6 +345,21 @@ public sealed partial class RepoSyncService : BackgroundService
         {
             using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
             await trace.CompleteAsync(ActivityStatuses.Failed, $"Sync failed: {error}", cts.Token).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogScanError(SecretHygiene.RedactedMessage(ex));
+        }
+    }
+
+    /// <summary>Best-effort end of an attempt whose host is stopping, on its own short deadline because the sync's
+    /// token has already been cancelled (mirrors <see cref="RecordFailureAsync"/>).</summary>
+    private async Task RecordAbandonedAsync(CatalogDbContext catalog, Guid id)
+    {
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            await RepoSourceStore.RecordAbandonedAsync(catalog, id, _clock.GetUtcNow().UtcDateTime, cts.Token).ConfigureAwait(false);
         }
         catch (Exception ex)
         {

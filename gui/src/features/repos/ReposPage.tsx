@@ -19,6 +19,7 @@ import { CopyButton } from "../../components/CopyButton";
 import { RegisterSourceDialog } from "./RegisterSourceDialog";
 import { RepoDeleteDialog } from "./RepoDeleteDialog";
 import { useSyncTracePanel } from "./useSyncTracePanel";
+import { announceSyncOutcome, repoSourcesRefetchInterval } from "./syncOutcome";
 
 // Repos and their git sources are two facets of one thing, joined by name: a source is the git registration that
 // drives auto-sync; a repo is what a sync produced (its pipelines and lineage). One list shows both so a source
@@ -88,13 +89,14 @@ export default function ReposPage() {
   const sourcesQuery = useQuery({
     queryKey: ["repo-sources", "list", FETCH_CAP],
     queryFn: () => repoSourceApi.list({ page: 1, pageSize: FETCH_CAP }),
-    refetchInterval: 8000,
+    refetchInterval: (query) => repoSourcesRefetchInterval(query.state.data),
   });
 
+  // Answered once the sync has happened (see RepoDetailPage), so the row's button spins for the sync's length.
   const syncNow = useMutation({
     mutationFn: (id: string) => repoSourceApi.syncNow(id),
-    onSuccess: () => {
-      toast.success("Sync requested");
+    onSuccess: (synced) => {
+      announceSyncOutcome(synced);
       void queryClient.invalidateQueries({ queryKey: ["repo-sources"] });
       void queryClient.invalidateQueries({ queryKey: ["repos"] });
     },
@@ -241,7 +243,7 @@ export default function ReposPage() {
             <Button
               variant="ghost"
               size="xs"
-              disabled={!row.source.enabled || syncNow.isPending}
+              disabled={!row.source.enabled || row.source.syncPending || (syncNow.isPending && syncNow.variables === row.source.id)}
               onClick={(e) => {
                 e.stopPropagation();
                 if (row.source !== undefined) {
@@ -251,10 +253,10 @@ export default function ReposPage() {
               }}
               data-testid="source-sync-now"
             >
-              {syncNow.isPending && syncNow.variables === row.source.id
+              {row.source.syncPending || (syncNow.isPending && syncNow.variables === row.source.id)
                 ? <Loader2 className="animate-spin" />
                 : <RefreshCw />}
-              Sync now
+              {row.source.syncPending || (syncNow.isPending && syncNow.variables === row.source.id) ? "Syncing" : "Sync now"}
             </Button>
           )}
           <Button

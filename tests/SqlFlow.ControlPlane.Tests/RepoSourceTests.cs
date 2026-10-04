@@ -169,6 +169,204 @@ public sealed class RepoSourceTests
         }
     }
 
+    /// <summary>
+    /// The columns a sync-now waits on move as the sync does: the request is stamped by sync-now, the start by the
+    /// claim, and an attempt that was already running when the request arrived does not settle it, so the request's
+    /// forced lineage survives for the attempt that answers it. A host stopping mid-attempt clears the start.
+    /// </summary>
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task SyncProgress_IsRecordedByTheRequestTheClaimAndTheOutcome()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var name = "src_progress_" + Guid.NewGuid().ToString("N")[..8];
+        var id = FlowIdentity.FromName($"reposource/{name}");
+        var t0 = new DateTime(2026, 10, 4, 6, 0, 0, DateTimeKind.Utc);
+
+        async Task<CatalogRepoSource> ReadAsync()
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            return await db.RepoSources.AsNoTracking().SingleAsync(s => s.Id == id);
+        }
+
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await RepoSourceStore.UpsertAsync(db, name, "https://example/repo.git", "main", enabled: true, syncIntervalSeconds: 3600, t0);
+                var due = (await ReadAsync()).NextSyncUtc!.Value;
+
+                // A periodic attempt starts; the operator asks for a sync while it runs.
+                Assert.True(await RepoSourceStore.TryClaimSyncAsync(db, id, due, t0.AddHours(1), t0.AddSeconds(10)));
+                Assert.Equal(RepoSourceMutation.Applied, await RepoSourceStore.TriggerNowAsync(db, id, t0.AddSeconds(11)));
+                await RepoSourceStore.RecordSuccessAsync(db, id, "old", t0.AddSeconds(12));
+            }
+
+            var afterPeriodic = await ReadAsync();
+            Assert.Equal(t0.AddSeconds(10), afterPeriodic.SyncStartedUtc);
+            Assert.Equal(t0.AddSeconds(11), afterPeriodic.SyncRequestedUtc);
+            Assert.False(RepoSourceStore.IsSyncAnswered(afterPeriodic, t0.AddSeconds(11)));
+            Assert.True(afterPeriodic.ForceLineageOnNextSync);
+
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                // The attempt the request made due answers it, and clears the forced lineage it carried out.
+                Assert.True(await RepoSourceStore.TryClaimSyncAsync(db, id, t0.AddSeconds(11), t0.AddHours(1), t0.AddSeconds(13)));
+                await RepoSourceStore.RecordSuccessAsync(db, id, "new", t0.AddSeconds(15));
+            }
+
+            var answered = await ReadAsync();
+            Assert.True(RepoSourceStore.IsSyncAnswered(answered, t0.AddSeconds(11)));
+            Assert.Equal("new", answered.LastSyncedSha);
+            Assert.False(answered.ForceLineageOnNextSync);
+
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                // An attempt whose host stops records no outcome, but no longer shows as running.
+                Assert.True(await RepoSourceStore.TryClaimSyncAsync(db, id, t0.AddHours(1), t0.AddHours(2), t0.AddSeconds(20)));
+                Assert.True(RepoSourceStore.IsSyncRunning(await ReadAsync()));
+                await RepoSourceStore.RecordAbandonedAsync(db, id, t0.AddSeconds(21));
+            }
+
+            var abandoned = await ReadAsync();
+            Assert.Null(abandoned.SyncStartedUtc);
+            Assert.False(RepoSourceStore.IsSyncRunning(abandoned));
+            Assert.Equal("new", abandoned.LastSyncedSha);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.RepoSources.Where(s => s.Id == id).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// The scenario that made a run execute the previous commit: commit to the tracked branch, press "sync now", start
+    /// a run. Sync-now now answers only once its sync has happened, with the commit it pulled, so that commit is what a
+    /// run started afterwards is pinned to.
+    /// </summary>
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task SyncNow_AnswersOnceTheSyncHasHappened_WithTheCommitItPulled()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoName = "src_now_" + suffix;
+        var flowName = "src_now_orders_" + suffix;
+        var syncedRepoId = FlowIdentity.FromName(repoName);
+        var sourceId = FlowIdentity.FromName($"reposource/{repoName}");
+        var gitDir = NewTempDir();
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+
+        try
+        {
+            var branch = SeedGitRepoWithFlow(gitDir, flowName);
+
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["operate"]);
+            using (var register = await PostAsync(client, token, "/api/v1/repos/sources",
+                new RegisterRepoSourceRequest(repoName, gitDir, branch, 3600, true)))
+            {
+                Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            }
+
+            // The first sync happens on registration; wait for it, so the sync-now below is the only one pending.
+            for (var attempt = 0; attempt < 120; attempt++)
+            {
+                var list = await GetJsonAsync<PagedResult<RepoSourceDto>>(client, token, "/api/v1/repos/sources?pageSize=200");
+                if (list.Items.FirstOrDefault(s => s.Id == sourceId) is { LastSyncedSha: not null, SyncPending: false })
+                {
+                    break;
+                }
+
+                await Task.Delay(250);
+            }
+
+            var committed = CommitChange(gitDir, "data/logtype_seed.csv", "id,code,tag6\n1,a,x\n");
+
+            using var response = await PostAsync(client, token, $"/api/v1/repos/sources/{sourceId}/sync", new { });
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var synced = await response.Content.ReadFromJsonAsync<RepoSourceDto>();
+            Assert.NotNull(synced);
+            Assert.Equal(committed, synced.LastSyncedSha);
+            Assert.Null(synced.LastError);
+            Assert.False(synced.SyncPending);
+        }
+        finally
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await db.FlowDependencies.Where(d => d.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.LineageEdges.Where(e => e.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.Pipelines.Where(p => p.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.Repos.Where(r => r.Id == syncedRepoId).ExecuteDeleteAsync();
+                await db.RepoSources.Where(s => s.Id == sourceId).ExecuteDeleteAsync();
+                await db.ActivityEvents.Where(e => e.SubjectKey == sourceId.ToString()).ExecuteDeleteAsync();
+            }
+
+            DeleteDir(gitDir);
+        }
+    }
+
+    /// <summary>A sync that outlasts the wait (here no sync loop runs at all) is answered 202 with the source still
+    /// marked as syncing, never as if the previous commit were the one asked for.</summary>
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task SyncNow_ThatOutlastsTheWait_IsAccepted_AndStillPending()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var name = "src_wait_" + Guid.NewGuid().ToString("N")[..8];
+        var id = FlowIdentity.FromName($"reposource/{name}");
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
+            .WithSetting("ControlPlane:ManagedSync:Enabled", "false")
+            .WithSetting("ControlPlane:ManagedSync:SyncNowWaitSeconds", "1");
+
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await RepoSourceStore.UpsertAsync(db, name, "https://example/repo.git", "main", enabled: true, syncIntervalSeconds: 3600, DateTime.UtcNow);
+            }
+
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["operate"]);
+            using var response = await PostAsync(client, token, $"/api/v1/repos/sources/{id}/sync", new { });
+
+            Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+            var pending = await response.Content.ReadFromJsonAsync<RepoSourceDto>();
+            Assert.NotNull(pending);
+            Assert.True(pending.SyncPending);
+            Assert.NotNull(pending.SyncRequestedUtc);
+            Assert.Null(pending.LastSyncedSha);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.RepoSources.Where(s => s.Id == id).ExecuteDeleteAsync();
+            await db.ActivityEvents.Where(e => e.SubjectKey == id.ToString()).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>Commits <paramref name="content"/> at <paramref name="relativePath"/> on the repo's current branch and
+    /// returns the new commit's id.</summary>
+    private static string CommitChange(string path, string relativePath, string content)
+    {
+        var file = Path.Combine(path, relativePath);
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        File.WriteAllText(file, content);
+
+        using var repo = new Repository(path);
+        var signature = new Signature("Test", "test@example.com", DateTimeOffset.UtcNow);
+        Commands.Stage(repo, "*");
+        return repo.Commit("change", signature, signature).Sha;
+    }
+
     [Theory]
     [InlineData("https://example/repo.git", ".")]
     [InlineData(null, null)]
