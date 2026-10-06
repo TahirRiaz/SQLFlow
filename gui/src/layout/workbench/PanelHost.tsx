@@ -12,7 +12,7 @@ export function PanelHost() {
   }
 
   return (
-    <section className="flex h-full flex-col bg-panel" aria-label={content.title}>
+    <section className="flex h-full flex-col bg-panel" aria-label={content.title} data-testid="bottom-panel">
       {/* The window titlebar: a distinct accent surface with a primary accent strip, so the panel reads as its own
           surface rather than blending into the page/editor behind it. */}
       <header className="flex h-8 shrink-0 items-center justify-between border-b border-border bg-accent px-3 shadow-sm">

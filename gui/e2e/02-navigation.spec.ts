@@ -44,6 +44,45 @@ test.describe("navigation", () => {
     await expect(adminPage.getByTestId("search-input")).toHaveValue("orders");
   });
 
+  test("going to another page from a menu closes the bottom panel, choosing the page shown keeps it", async ({ adminPage }) => {
+    const panel = adminPage.getByTestId("bottom-panel");
+    // A discovery raises its trace in the bottom panel before the scan answers, so a location that does not exist
+    // opens it as well as one that does.
+    const openTrace = async () => {
+      await adminPage.getByTestId("nav-discover").click();
+      await expect(adminPage.getByTestId("discover-page")).toBeVisible();
+      await adminPage.getByTestId("discover-location").fill("e2e-bottom-panel/missing.csv");
+      await adminPage.getByTestId("discover-submit").click();
+      await expect(panel).toBeVisible();
+    };
+
+    await openTrace();
+    await adminPage.getByTestId("nav-discover").click();
+    await expect(panel).toBeVisible();
+
+    await adminPage.getByTestId("nav-runs").click();
+    await expect(adminPage.getByTestId("page-runs")).toBeVisible();
+    await expect(panel).toHaveCount(0);
+
+    await openTrace();
+    await adminPage.getByTestId("command-palette-button").click();
+    await adminPage.getByRole("option", { name: "Runs", exact: true }).click();
+    await expect(adminPage.getByTestId("page-runs")).toBeVisible();
+    await expect(panel).toHaveCount(0);
+
+    await openTrace();
+    await adminPage.getByTestId("account-menu-button").click();
+    await adminPage.getByTestId("account-notifications").click();
+    await expect(adminPage.getByTestId("page-notifications")).toBeVisible();
+    await expect(panel).toHaveCount(0);
+
+    await openTrace();
+    await adminPage.getByTestId("global-search").fill("orders");
+    await adminPage.getByTestId("global-search").press("Enter");
+    await expect(adminPage.getByTestId("page-search")).toBeVisible();
+    await expect(panel).toHaveCount(0);
+  });
+
   test("unknown routes fall back to the dashboard", async ({ adminPage }) => {
     await adminPage.goto("/definitely-not-a-page");
     await expect(adminPage.getByTestId("page-dashboard")).toBeVisible();

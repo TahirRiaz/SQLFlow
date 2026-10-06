@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Search } from "lucide-react";
 import {
   CommandDialog,
@@ -12,6 +11,7 @@ import {
 } from "@/components/ui/command";
 import { useAuth } from "../../auth/AuthContext";
 import { navGroups } from "../nav";
+import { useMenuNavigate } from "./useMenuNavigate";
 
 interface CommandPaletteProps {
   open: boolean;
@@ -23,7 +23,7 @@ interface CommandPaletteProps {
  * as in the side bar, plus the catalog search hand-off.
  */
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
-  const navigate = useNavigate();
+  const navigate = useMenuNavigate();
   const { hasScope } = useAuth();
 
   useEffect(() => {

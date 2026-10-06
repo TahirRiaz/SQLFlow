@@ -226,7 +226,10 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 - **Editor**: the routed page inside a scroll container with the measure cap. Pages never add their own
   outer padding.
 - **Bottom panel** (resizable 15-70%, closable): live surfaces opened by features through `usePanel()`
-  (e.g. a run's streaming trace). Header: uppercase 11px title + close. One content at a time.
+  (e.g. a run's streaming trace). Header: uppercase 11px title + close. One content at a time. What it
+  shows belongs to the page that opened it, so going to another page from a menu (side bar, its search,
+  command palette, account menu) closes it through `useMenuNavigate()`; choosing the page already shown
+  keeps it.
 - **Status bar** (`h-[22px]`, `bg-status-bar`, white text, 11px): left segments show live workload
   (running/queued run counts, click-through to filtered Runs) and the rate-limit pause (testid
   `rate-limit-banner`); right segments show the signed-in subject and role. Segments are flat text +

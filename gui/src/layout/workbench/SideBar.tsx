@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { ChevronDown } from "lucide-react";
 import { SearchInput } from "@/components/SearchInput";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../../auth/AuthContext";
 import { navGroups, selectedNavPath, type NavGroup } from "../nav";
+import { useMenuNavigate } from "./useMenuNavigate";
 
 const SECTIONS_KEY = "sqlflow.workbench.sections";
 
@@ -37,7 +38,7 @@ interface SideBarSectionsProps {
 export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
   const { hasScope } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
+  const navigate = useMenuNavigate();
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(loadCollapsed);
 
   const selected = selectedNavPath(location.pathname);
@@ -131,7 +132,7 @@ export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
  * shared by the desktop side bar and the mobile navigation sheet.
  */
 export function SideBarSearch({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
-  const navigate = useNavigate();
+  const navigate = useMenuNavigate();
   const [term, setTerm] = useState("");
 
   const submit = (event: FormEvent) => {

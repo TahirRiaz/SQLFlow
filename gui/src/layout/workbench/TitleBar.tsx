@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Command, Menu, Moon, Sun } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -17,6 +16,7 @@ import { branding } from "../../modules/branding";
 import { moduleTitleBarItems } from "../../modules/registry";
 import { useThemeMode } from "../../theme/ThemeModeContext";
 import { SideBarSearch, SideBarSections } from "./SideBar";
+import { useMenuNavigate } from "./useMenuNavigate";
 
 /**
  * The workbench title bar (DESIGN.md section 6): brand on the left, command palette, theme toggle and
@@ -27,7 +27,7 @@ export function TitleBar({ onOpenPalette }: { onOpenPalette: () => void }) {
   const brand = branding();
   const { session, logout } = useAuth();
   const { mode, toggle } = useThemeMode();
-  const navigate = useNavigate();
+  const navigate = useMenuNavigate();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
