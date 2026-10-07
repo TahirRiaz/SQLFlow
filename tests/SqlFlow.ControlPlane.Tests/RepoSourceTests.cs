@@ -312,6 +312,83 @@ public sealed class RepoSourceTests
         }
     }
 
+    /// <summary>
+    /// Sync now means now: with the loop's scan an hour apart, registering a source and pressing "sync now" each start
+    /// their sync at once, because they wake the loop rather than leaving the source for its next scan. Without the
+    /// wake, neither sync would happen within the test's wait.
+    /// </summary>
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task SyncNow_StartsTheSyncAtOnce_NotOnTheLoopsNextScan()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoName = "src_wake_" + suffix;
+        var flowName = "src_wake_orders_" + suffix;
+        var syncedRepoId = FlowIdentity.FromName(repoName);
+        var sourceId = FlowIdentity.FromName($"reposource/{repoName}");
+        var gitDir = NewTempDir();
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
+            .WithSetting("ControlPlane:ManagedSync:PollSeconds", "3600")
+            .WithSetting("ControlPlane:ManagedSync:SyncNowWaitSeconds", "60");
+
+        try
+        {
+            var branch = SeedGitRepoWithFlow(gitDir, flowName);
+
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["operate"]);
+            using (var register = await PostAsync(client, token, "/api/v1/repos/sources",
+                new RegisterRepoSourceRequest(repoName, gitDir, branch, 3600, true)))
+            {
+                Assert.Equal(HttpStatusCode.Created, register.StatusCode);
+            }
+
+            // The registration woke the loop: its first sync lands well inside the hour the next scan is away.
+            RepoSourceDto? first = null;
+            for (var attempt = 0; attempt < 240; attempt++)
+            {
+                var list = await GetJsonAsync<PagedResult<RepoSourceDto>>(client, token, "/api/v1/repos/sources?pageSize=200");
+                first = list.Items.FirstOrDefault(s => s.Id == sourceId);
+                if (first is { LastSyncedSha: not null, SyncPending: false })
+                {
+                    break;
+                }
+
+                await Task.Delay(250);
+            }
+
+            Assert.NotNull(first?.LastSyncedSha);
+            Assert.Null(first.LastError);
+
+            var committed = CommitChange(gitDir, "data/logtype_seed.csv", "id,code,tag6\n1,a,x\n");
+
+            using var response = await PostAsync(client, token, $"/api/v1/repos/sources/{sourceId}/sync", new { });
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var synced = await response.Content.ReadFromJsonAsync<RepoSourceDto>();
+            Assert.NotNull(synced);
+            Assert.Equal(committed, synced.LastSyncedSha);
+            Assert.Null(synced.LastError);
+        }
+        finally
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                await db.FlowDependencies.Where(d => d.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.LineageEdges.Where(e => e.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.Pipelines.Where(p => p.RepoId == syncedRepoId).ExecuteDeleteAsync();
+                await db.Repos.Where(r => r.Id == syncedRepoId).ExecuteDeleteAsync();
+                await db.RepoSources.Where(s => s.Id == sourceId).ExecuteDeleteAsync();
+                await db.ActivityEvents.Where(e => e.SubjectKey == sourceId.ToString()).ExecuteDeleteAsync();
+            }
+
+            DeleteDir(gitDir);
+        }
+    }
+
     /// <summary>A sync that outlasts the wait (here no sync loop runs at all) is answered 202 with the source still
     /// marked as syncing, never as if the previous commit were the one asked for.</summary>
     [SkippableFact]

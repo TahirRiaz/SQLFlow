@@ -18,6 +18,10 @@ namespace SqlFlow.ControlPlane.Background;
 /// Robustness: one source's failure (an unreachable remote, a bad branch) is recorded on that source and never
 /// stops the others or the loop; a scan error is logged and retried next tick. Git credentials are resolved from
 /// the control plane's own environment, never stored in the catalog. All diagnostics are secret-redacted.
+/// <para>
+/// The scan runs every <see cref="ManagedSyncOptions.PollSeconds"/> for the periodic syncs, and at once when a
+/// sync-now or a new source wakes it (<see cref="RepoSyncSignal"/>), so an operator never waits out the scan interval.
+/// </para>
 /// </remarks>
 public sealed partial class RepoSyncService : BackgroundService
 {
@@ -28,18 +32,22 @@ public sealed partial class RepoSyncService : BackgroundService
     private readonly TimeSpan _pollInterval;
     private readonly bool _connectLineage;
     private readonly bool _enabled;
+    private readonly RepoSyncSignal _wake;
     private readonly GitMaterializer _materializer = new();
     private readonly ILogger<RepoSyncService> _logger;
 
     public RepoSyncService(
-        IServiceProvider services, TimeProvider clock, IOptions<ControlPlaneOptions> options, ILogger<RepoSyncService> logger)
+        IServiceProvider services, TimeProvider clock, IOptions<ControlPlaneOptions> options, RepoSyncSignal wake,
+        ILogger<RepoSyncService> logger)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(clock);
         ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(wake);
         ArgumentNullException.ThrowIfNull(logger);
         _services = services;
         _clock = clock;
+        _wake = wake;
         _pollInterval = TimeSpan.FromSeconds(Math.Max(1, options.Value.ManagedSync.PollSeconds));
         _connectLineage = options.Value.ManagedSync.ConnectLineage;
         // NOTE: the sync CANNOT be routed to the estate's compute workers - those containers run the CLI's
@@ -82,9 +90,10 @@ public sealed partial class RepoSyncService : BackgroundService
                 LogScanError(SecretHygiene.RedactedMessage(ex));
             }
 
+            // Sleep until the next periodic scan, or until a sync-now or a new source wakes the loop, whichever is first.
             try
             {
-                await Task.Delay(_pollInterval, stoppingToken).ConfigureAwait(false);
+                await _wake.WaitAsync(_pollInterval, stoppingToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {

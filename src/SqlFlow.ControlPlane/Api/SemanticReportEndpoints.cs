@@ -159,7 +159,7 @@ public static class SemanticReportEndpoints
     /// </summary>
     private static async Task<Results<Ok<QuestionGenerationDto>, ProblemHttpResult>> SetQuestionGenerationAsync(
         SetQuestionGenerationRequest request, QuestionGenerationSwitch questionGeneration, CatalogDbContext db,
-        TimeProvider clock, ClaimsPrincipal user, CancellationToken ct)
+        TimeProvider clock, ClaimsPrincipal user, RepoSyncSignal syncSignal, CancellationToken ct)
     {
         if (request is null)
         {
@@ -190,7 +190,7 @@ public static class SemanticReportEndpoints
             foreach (var repoName in repoNames)
             {
                 if (await RepoSourceEndpoints.QueueSyncForRepoAsync(
-                        db, repoName, "Power BI question generation turned on", clock, ct).ConfigureAwait(false))
+                        db, repoName, "Power BI question generation turned on", clock, syncSignal, ct).ConfigureAwait(false))
                 {
                     queued++;
                 }
@@ -427,7 +427,7 @@ public static class SemanticReportEndpoints
     /// </summary>
     private static async Task<Results<Ok<StoreSemanticReportSpecResult>, ProblemHttpResult>> StoreAsync(
         StoreSemanticReportSpecRequest request, CatalogDbContext db, TimeProvider clock, ClaimsPrincipal user,
-        CancellationToken ct)
+        RepoSyncSignal syncSignal, CancellationToken ct)
     {
         if (request is null)
         {
@@ -517,7 +517,7 @@ public static class SemanticReportEndpoints
         }, ct).ConfigureAwait(false);
 
         var queued = await RepoSourceEndpoints.QueueSyncForRepoAsync(
-            db, repoName, $"Power BI report '{reportFile}' uploaded", clock, ct).ConfigureAwait(false);
+            db, repoName, $"Power BI report '{reportFile}' uploaded", clock, syncSignal, ct).ConfigureAwait(false);
 
         var stored = await db.SemanticReportSpecs.AsNoTracking()
             .FirstAsync(s => s.IdentityHash == identity, ct).ConfigureAwait(false);
@@ -591,7 +591,7 @@ public static class SemanticReportEndpoints
     /// <summary>Deletes a stored report and asks the repo's managed sync to drop what it contributed. A sync's own copy
     /// of a declared report can be deleted too; the next sync that can extract that report stores it again.</summary>
     private static async Task<Results<Ok<DeleteSemanticReportSpecResult>, ProblemHttpResult>> DeleteAsync(
-        long id, CatalogDbContext db, TimeProvider clock, CancellationToken ct)
+        long id, CatalogDbContext db, TimeProvider clock, RepoSyncSignal syncSignal, CancellationToken ct)
     {
         var row = await db.SemanticReportSpecs.AsNoTracking()
             .Where(s => s.Id == id)
@@ -612,7 +612,7 @@ public static class SemanticReportEndpoints
             .Where(r => r.Id == row.RepoId).Select(r => r.Name)
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
         var queued = repoName is not null && await RepoSourceEndpoints.QueueSyncForRepoAsync(
-            db, repoName, $"Power BI report '{row.ReportFile}' removed", clock, ct).ConfigureAwait(false);
+            db, repoName, $"Power BI report '{row.ReportFile}' removed", clock, syncSignal, ct).ConfigureAwait(false);
         return TypedResults.Ok(new DeleteSemanticReportSpecResult(queued));
     }
 

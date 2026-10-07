@@ -7,8 +7,8 @@ namespace SqlFlow.ControlPlane.Background;
 
 /// <summary>
 /// Lets a sync-now answer when its sync has happened rather than when it was queued. A run is pinned to the repo's last
-/// synced commit, and the sync loop only picks a sync-now up on its next tick (then clones, reconciles the catalog and
-/// recomputes lineage before it records the commit), so a sync-now that answered at once let an operator start a run
+/// synced commit, and the sync loop records the commit only after the sync a sync-now wakes it for (it clones,
+/// reconciles the catalog and recomputes lineage first), so a sync-now that answered at once let an operator start a run
 /// on the commit before the one they had just synced for. The sync-now action waits here, for at most
 /// <see cref="ManagedSyncOptions.SyncNowWaitSeconds"/>, until an attempt that started after its request has recorded
 /// an outcome (<see cref="RepoSourceStore.IsSyncAnswered"/>); its answer then carries the commit that attempt pulled,

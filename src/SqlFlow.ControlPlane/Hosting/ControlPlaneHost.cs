@@ -161,6 +161,7 @@ public static class ControlPlaneHost
         builder.Services.AddHostedService<DispatchService>();
         builder.Services.AddSingleton<IRunDispatcher, InProcessRunDispatcher>();
         builder.Services.AddSingleton<RepoSyncWaiter>();
+        builder.Services.AddSingleton<RepoSyncSignal>();
         // The shared node runtime (also run standalone by `sqlflow worker`), hosted here as a background service that
         // polls the dispatcher in-process, so a triggered run starts on this node the instant it is enqueued. API-only
         // replicas (Worker:Enabled=false) skip hosting it so the HTTP tier can scale on request load behind an ingress
