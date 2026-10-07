@@ -1,14 +1,14 @@
 import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { TraceLog, type TraceLine } from "@/components/TraceLog";
+import { downloadFileName } from "@/lib/download";
 import { runApi } from "../../api/endpoints";
 import type { RunTraceEntry } from "../../api/types";
 import { pollingInterval } from "../../hooks/usePolling";
 import { useRunTraceStream } from "./useRunTraceStream";
 
-/** The most trace entries a run's panel loads at rest: a run's trace is bounded, and "Copy trace" always fetches
- * the complete server-rendered document, so this cap only bounds the on-screen scrollback. */
+/** The most trace entries a run's panel loads at rest: a run's trace is bounded, and Copy trace and Download always
+ * fetch the complete server-rendered document, so this cap only bounds the on-screen scrollback. */
 const AT_REST_CAP = 2000;
 
 function toLine(entry: RunTraceEntry): TraceLine {
@@ -31,8 +31,9 @@ function toLine(entry: RunTraceEntry): TraceLine {
  * The bottom-panel trace view for a pipeline run: self-contained given a run id, so the workbench panel keeps it
  * alive independent of the run detail page. While the run is queued/running it streams the live trace (SSE, the
  * moment the executing node persists each entry); once terminal it shows the authoritative at-rest trace. Rendered
- * through the shared {@link TraceLog}, so it looks identical to the repository sync trace. Copy fetches the same
- * canonical plain-text document the LLM-facing /trace/text endpoint serves.
+ * through the shared {@link TraceLog}, so it looks identical to the repository sync trace. Copy trace and Download
+ * fetch the same canonical plain-text document the LLM-facing /trace/text endpoint serves, saved under the flow's
+ * name and the run id.
  */
 export function RunTracePanel({ runId }: { runId: string }) {
   const queryClient = useQueryClient();
@@ -75,23 +76,14 @@ export function RunTracePanel({ runId }: { runId: string }) {
   const ended = run !== undefined && !live;
   const failed = run?.status === "failed";
 
-  const copy = async () => {
-    try {
-      const text = await runApi.traceText(runId);
-      await navigator.clipboard.writeText(text);
-      toast.success("Trace copied to clipboard.");
-    } catch {
-      toast.error("Could not copy the trace.");
-    }
-  };
-
   return (
     <TraceLog
       lines={lines}
       connected={connected}
       ended={ended}
       failed={failed}
-      onCopy={copy}
+      text={() => runApi.traceText(runId)}
+      fileName={downloadFileName([run?.flowName, "run", runId, "trace"], "log")}
       emptyLive={run?.status === "queued"
         ? "The run is queued; the trace streams in once a node claims it."
         : "Waiting for the first trace entry…"}

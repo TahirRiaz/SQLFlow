@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { downloadText } from "@/lib/download";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { CodeView } from "../../components/CodeView";
@@ -173,15 +174,7 @@ export default function DiscoverPage() {
     if (!result) {
       return;
     }
-    const blob = new Blob([result.generatedYaml], { type: "text/yaml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = yamlFileName(location);
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    downloadText(yamlFileName(location), result.generatedYaml, "text/yaml");
   };
 
   const submit = () => {

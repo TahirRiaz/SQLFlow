@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Check, CheckCircle2, CircleAlert, Copy, Eraser, Loader2, Maximize2, OctagonAlert, Radio, TriangleAlert,
+  Check, CheckCircle2, CircleAlert, Copy, Download, Eraser, Loader2, Maximize2, OctagonAlert, Radio, TriangleAlert,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { downloadText } from "@/lib/download";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { prettyPrintSql } from "@/lib/sql";
 import { parseUtc } from "../lib/time";
@@ -78,7 +80,7 @@ function StatusPill({ connected, ended, failed }: { connected: boolean; ended: b
   );
 }
 
-/** A small ghost icon+label button for the panel header (copy, clear). */
+/** A small ghost icon+label button for the panel header (copy, download, clear). */
 function HeaderButton({
   icon: Icon, label, onClick, disabled, "data-testid": testId,
 }: {
@@ -100,6 +102,11 @@ function HeaderButton({
       {label}
     </button>
   );
+}
+
+/** Why a copy or a download failed (a denied clipboard, a trace the server could not render), for its toast. */
+function reasonOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /** Flatten any run of whitespace (incl. newlines) to single spaces, for the single-line row preview of a SQL/multi
@@ -274,9 +281,9 @@ function TraceRow({ line, separated }: { line: TraceLine; separated: boolean }) 
  * The shared bottom-panel trace view: a terminal-style output log for a stream of {@link TraceLine}s, newest line
  * at the bottom, auto-scrolling while it streams. One look for every trace (a pipeline run, a repository sync, a
  * lineage computation): level-tinted lines with a fixed tag column, indented SQL/error blocks, a thin separator
- * between groups, and a header carrying Copy trace, Clear (console-style, hides current lines while the stream
- * keeps running), and a live/complete/failed pill. Copy is delegated to the owner (which decides what the whole
- * trace is); Clear is a view-only action.
+ * between groups, and a header carrying Copy trace, Download, Clear (console-style, hides current lines while the
+ * stream keeps running), and a live/complete/failed pill. The owner supplies the whole trace as text, since it decides
+ * what the whole trace is, and Copy trace and Download both carry that one document; Clear is a view-only action.
  *
  * `currentGroup` names the group the header reports on. When it is set, the problems count, the problems band and
  * the problems filter take only that group's lines, so a scrollback of earlier groups (an operation's previous
@@ -288,7 +295,8 @@ export function TraceLog({
   ended,
   failed,
   currentGroup,
-  onCopy,
+  text,
+  fileName,
   emptyLive = "Waiting for the first line…",
   emptyEnded = "No trace to show.",
 }: {
@@ -297,7 +305,11 @@ export function TraceLog({
   ended: boolean;
   failed: boolean;
   currentGroup?: string;
-  onCopy: () => void | Promise<void>;
+  /** The whole trace as plain text, called on a click (never per render). It can reach past the lines on screen: a
+   * run's trace fetches the complete document its server renders. */
+  text: () => string | Promise<string>;
+  /** The name Download saves the trace under, extension included (see downloadFileName). */
+  fileName: string;
   emptyLive?: string;
   emptyEnded?: string;
 }) {
@@ -305,7 +317,8 @@ export function TraceLog({
   // Clear hides every line up to and including this key (console-style). New lines still arrive; a wholesale
   // replacement of the array (the live->at-rest swap) drops the watermark, showing everything again.
   const [hiddenUpTo, setHiddenUpTo] = useState<string | null>(null);
-  const [copying, setCopying] = useState(false);
+  // The header action waiting on the trace's text, which a run fetches from the server.
+  const [busy, setBusy] = useState<"copy" | "download" | null>(null);
   // Problems-only filter: one click isolates every warning/error line, so a buried failure (a lineage server
   // the sync could not reach, a degraded tier) is caught without scrolling a hundred info lines.
   const [problemsOnly, setProblemsOnly] = useState(false);
@@ -339,11 +352,25 @@ export function TraceLog({
   }, [shown.length, ended]);
 
   const doCopy = async () => {
-    setCopying(true);
+    setBusy("copy");
     try {
-      await onCopy();
+      await navigator.clipboard.writeText(await text());
+      toast.success("Trace copied to clipboard.");
+    } catch (error) {
+      toast.error("Could not copy the trace.", { description: reasonOf(error) });
     } finally {
-      setCopying(false);
+      setBusy(null);
+    }
+  };
+
+  const doDownload = async () => {
+    setBusy("download");
+    try {
+      downloadText(fileName, await text());
+    } catch (error) {
+      toast.error("Could not download the trace.", { description: reasonOf(error) });
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -371,11 +398,18 @@ export function TraceLog({
             </button>
           ) : null}
           <HeaderButton
-            icon={copying ? Loader2 : Copy}
+            icon={busy === "copy" ? Loader2 : Copy}
             label="Copy trace"
             onClick={doCopy}
-            disabled={copying || lines.length === 0}
+            disabled={busy !== null || lines.length === 0}
             data-testid="trace-copy"
+          />
+          <HeaderButton
+            icon={busy === "download" ? Loader2 : Download}
+            label="Download"
+            onClick={doDownload}
+            disabled={busy !== null || lines.length === 0}
+            data-testid="trace-download"
           />
           <HeaderButton
             icon={Eraser}

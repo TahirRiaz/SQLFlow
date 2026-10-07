@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { toast } from "sonner";
 import { TraceLog, type TraceLine } from "@/components/TraceLog";
+import { downloadFileName } from "@/lib/download";
 import { parseUtc } from "../../lib/time";
 import type { ActivityEvent } from "../../api/types";
 import { useActivityTraceStream } from "./useActivityTraceStream";
 
-/** The whole trace as one plain-text block, for Copy (the panel's terminal-log layout). */
+/** The whole trace as one plain-text block, for Copy trace and Download (the panel's terminal-log layout). */
 function traceToText(entries: ActivityEvent[]): string {
   return entries
     .map((e) => {
@@ -54,15 +54,6 @@ export function ActivityTracePanel({
   const latest = entries.length > 0 ? entries[entries.length - 1] : undefined;
   const failed = latest !== undefined && latest.terminal && latest.status === "failed";
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(traceToText(entries));
-      toast.success("Trace copied");
-    } catch {
-      toast.error("Could not copy the trace");
-    }
-  };
-
   return (
     <TraceLog
       lines={lines}
@@ -70,7 +61,8 @@ export function ActivityTracePanel({
       ended={ended}
       failed={failed}
       currentGroup={latest?.activityId}
-      onCopy={copy}
+      text={() => traceToText(entries)}
+      fileName={downloadFileName([kind, subject, "trace"], "log")}
       emptyLive="Waiting for the operation to start…"
       emptyEnded="No trace to show."
     />

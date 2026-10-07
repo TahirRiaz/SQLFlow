@@ -45,6 +45,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { downloadText } from "@/lib/download";
 import { cn } from "@/lib/utils";
 import { isApiError } from "../../api/client";
 import { dataStreamApi, lineageApi, searchApi } from "../../api/endpoints";
@@ -1397,15 +1398,7 @@ export default function LineageGraphPage() {
       return;
     }
     const safeName = (repoName || repoId || "graph").replace(/[^\w.-]+/g, "_");
-    const blob = new Blob([svg], { type: "image/svg+xml" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `lineage-${safeName}-${graphView}.svg`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
+    downloadText(`lineage-${safeName}-${graphView}.svg`, svg, "image/svg+xml");
   }, [graph, graphView, repoId, repoName]);
 
   // Whether the context-menu node is a runnable flow: a pipeline in the seed repo (only a seed-repo flow can be
