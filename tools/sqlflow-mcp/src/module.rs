@@ -350,9 +350,26 @@ pub struct ModuleSet {
     instructions: String,
     /// The tools of SQLFlow's own server the host leaves out, by name, in order.
     withheld: Vec<String>,
+    /// How the host's server introduces itself at the top of the instructions; empty for SQLFlow's own.
+    introduction: String,
 }
 
 impl ModuleSet {
+    /// Records how the host's server introduces itself (see `McpHost::introduced_as`).
+    pub(crate) fn introduce(&mut self, text: &str) {
+        self.introduction = text.trim().to_string();
+    }
+
+    /// The line the instructions open with in place of SQLFlow's own, when the host gave one.
+    pub fn introduction(&self) -> Option<&str> {
+        (!self.introduction.is_empty()).then_some(self.introduction.as_str())
+    }
+
+    /// Whether the host leaves the SQLFlow tool `name` out.
+    pub fn withholds(&self, name: &str) -> bool {
+        self.withheld.iter().any(|tool| tool == name)
+    }
+
     /// Adds one module's tools. `taken` says whether a name is one of SQLFlow's own.
     pub(crate) fn add_tools(
         &mut self,

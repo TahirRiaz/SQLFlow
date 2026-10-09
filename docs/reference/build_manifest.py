@@ -14,8 +14,16 @@ still resolve reference pages, which are emitted with corpus "reference".
 Run after adding, removing, or renaming a page in either tree, or after editing any page's
 frontmatter (id, title, type, summary, keywords, yamlPath, cliCommand, related, sourceRefs).
 Usage: python docs/reference/build_manifest.py
+
+A product that extends SQLFlow and keeps a corpus of its own in the same format builds its manifest
+with the same script, naming its trees and its name. Its pages may name SQLFlow's pages in `related`,
+so the manifests whose ids are known as well are given with --known:
+
+  python docs/reference/build_manifest.py --reference <dir> [--wiki <dir>] --product <name>
+                                          [--known <manifest.json>]... [--out <manifest.json>]
 """
 
+import argparse
 import glob
 import json
 import os
@@ -28,8 +36,13 @@ DOCS_ROOT = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(DOCS_ROOT, "..", ".."))
 WIKI_ROOT = os.path.join(REPO_ROOT, "docs", "wiki")
 
-# corpus name -> root directory holding that corpus's pages.
+# corpus name -> root directory holding that corpus's pages. SQLFlow's own trees unless the command
+# line names others (main).
 CORPORA = (("reference", DOCS_ROOT), ("wiki", WIKI_ROOT))
+PRODUCT = "SQLFlow V3"
+OUT_PATH = os.path.join(DOCS_ROOT, "manifest.json")
+# Ids of pages in other manifests (--known) that a page of this corpus may name in `related`.
+KNOWN_IDS = set()
 
 REFERENCE_TYPES = {"cli-command", "flow-reference", "source-type", "concept", "guide"}
 WIKI_TYPES = {"narrative", "decision", "incident", "map", "pattern"}
@@ -101,7 +114,48 @@ def derive_summary(body_text):
     return ""
 
 
-def main():
+def configure(argv):
+    """Points the run at the trees, product and output the command line names; SQLFlow's own without arguments."""
+    global CORPORA, PRODUCT, OUT_PATH, KNOWN_IDS
+    parser = argparse.ArgumentParser(description="Regenerate a documentation corpus's manifest.json.")
+    parser.add_argument("--reference", help="the reference tree (default: this script's folder)")
+    parser.add_argument("--wiki", help="the wiki tree (default: docs/wiki beside SQLFlow's reference tree, "
+                                       "or none when --reference names another tree)")
+    parser.add_argument("--product", help="the product the manifest names (default: SQLFlow V3)")
+    parser.add_argument("--known", action="append", default=[],
+                        help="another manifest whose ids pages may name in `related`; repeatable")
+    parser.add_argument("--out", help="where to write the manifest (default: manifest.json in the reference tree)")
+    args = parser.parse_args(argv)
+
+    reference = os.path.abspath(args.reference) if args.reference else DOCS_ROOT
+    if not os.path.isdir(reference):
+        parser.error(f"--reference {reference} is not a folder")
+    if args.wiki:
+        wiki = os.path.abspath(args.wiki)
+        if not os.path.isdir(wiki):
+            parser.error(f"--wiki {wiki} is not a folder")
+    else:
+        wiki = WIKI_ROOT if reference == DOCS_ROOT else None
+    CORPORA = (("reference", reference),) + ((("wiki", wiki),) if wiki else ())
+    PRODUCT = args.product or PRODUCT
+    OUT_PATH = os.path.abspath(args.out) if args.out else os.path.join(reference, "manifest.json")
+
+    known = set()
+    for path in args.known:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                other = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            parser.error(f"--known {path} could not be read as a manifest: {e}")
+        docs = other.get("docs") if isinstance(other, dict) else None
+        if not isinstance(docs, list):
+            parser.error(f"--known {path} has no 'docs' list")
+        known.update(d["id"] for d in docs if isinstance(d, dict) and isinstance(d.get("id"), str))
+    KNOWN_IDS = known
+
+
+def main(argv=None):
+    configure(sys.argv[1:] if argv is None else argv)
     pages = find_pages()
     docs = []
     issues = []
@@ -128,6 +182,9 @@ def main():
             continue
         if doc_id in seen_ids:
             issues.append(f"{label}: duplicate id '{doc_id}' (also used by {seen_ids[doc_id]}); kept first occurrence only")
+            continue
+        if doc_id in KNOWN_IDS:
+            errors.append(f"{label}: id '{doc_id}' is already a page of a --known manifest; one index cannot hold both")
             continue
         seen_ids[doc_id] = label
         all_ids.add(doc_id)
@@ -162,8 +219,8 @@ def main():
             issues.append(f"{label}: missing/empty 'keywords'")
 
         related = fm.get("related") or []
-        pruned_related = [r for r in related if r in all_ids]
-        dropped = [r for r in related if r not in all_ids]
+        pruned_related = [r for r in related if r in all_ids or r in KNOWN_IDS]
+        dropped = [r for r in related if r not in all_ids and r not in KNOWN_IDS]
         if dropped:
             issues.append(f"{label}: pruned {len(dropped)} dangling related id(s) from manifest entry: {dropped}")
 
@@ -199,11 +256,11 @@ def main():
 
     manifest = {
         "version": 1,
-        "product": "SQLFlow V3",
+        "product": PRODUCT,
         "docs": docs,
     }
 
-    out_path = os.path.join(DOCS_ROOT, "manifest.json")
+    out_path = OUT_PATH
     with open(out_path, "w", encoding="utf-8", newline="\n") as f:
         json.dump(manifest, f, indent=2, ensure_ascii=False)
         f.write("\n")

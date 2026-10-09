@@ -3743,7 +3743,15 @@ impl ServerHandler for SqlFlowMcp {
 
     fn get_info(&self) -> ServerInfo {
         let online_setup = if self.http_mode { ONLINE_SETUP_HTTP } else { ONLINE_SETUP_STDIO };
-        let discovery = if self.http_mode { "" } else { DISCOVERY_STDIO };
+        // The paragraph about source discovery is about one tool; a host that leaves it out does not recommend it.
+        let discovery =
+            if self.http_mode || self.modules.withholds("discover_source") { "" } else { DISCOVERY_STDIO };
+        let introduction = self.modules.introduction().unwrap_or(INTRODUCTION);
+        let opening = if self.modules.withholds("find_similar_questions") {
+            format!("{introduction} ")
+        } else {
+            format!("{introduction}\n\n{ROUTING_CWD}\n\n")
+        };
         let modules = self.modules.instructions();
         let withheld = self.modules.withheld_note();
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
@@ -3752,7 +3760,7 @@ impl ServerHandler for SqlFlowMcp {
                 self.cp.identity().version().to_string(),
             ))
             .with_instructions(format!(
-                "{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{modules}{withheld}"
+                "{opening}{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{modules}{withheld}"
             ))
     }
 }
@@ -3773,17 +3781,21 @@ impl SqlFlowMcp {
     }
 }
 
-const INSTRUCTIONS_OFFLINE: &str = "\
-SQLFlow MCP server.
+/// How SQLFlow's own server introduces itself; a host may replace it (`McpHost::introduced_as`).
+const INTRODUCTION: &str = "SQLFlow MCP server.";
 
+/// The rule that follows the introduction while find_similar_questions is offered: a `!cwd` question goes to it before
+/// anything else. A host that leaves the tool out does not get the rule, so it is never told to call a tool it lacks.
+const ROUTING_CWD: &str = "\
 ROUTING, BEFORE ANYTHING ELSE: a message beginning with the literal `!cwd` is a question to be answered
 from warehouse data. Strip the prefix and call find_similar_questions FIRST, before any schema lookup,
 any semantic-layer search, and any word to the person. It returns SQL that already answers the question,
 confirmed by a human; a `trusted` match with an `exampleId` is then run with auto_run_trusted_match. Do
 not compose SQL by hand until that path has come up empty. A message WITHOUT the `!cwd` prefix never goes
 to find_similar_questions, however much it reads like a question the warehouse could answer. The fuller
-rule, including how to lay out the answer, is in the online section below.
+rule, including how to lay out the answer, is in the online section below.";
 
+const INSTRUCTIONS_OFFLINE: &str = "\
 Two tiers of tools:
 
 OFFLINE (always available):

@@ -549,13 +549,8 @@ impl LineSession {
     }
 }
 
-#[tokio::test(flavor = "multi_thread")]
-async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
-    let estate = start_control_plane().await;
-    let server = probe_host()
-        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
-        .expect("the probe host composes");
-
+/// Serves `server` over an in-memory stdio pair and initializes a session: the session, and the answer to `initialize`.
+async fn open_stdio(server: SqlFlowMcp) -> (LineSession, Value) {
     let (client_end, server_end) = tokio::io::duplex(1 << 16);
     let (server_read, server_write) = tokio::io::split(server_end);
     tokio::spawn(async move {
@@ -576,8 +571,21 @@ async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
         )
         .await;
     session.send(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).await;
+    (session, initialized)
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes");
+    let (mut session, initialized) = open_stdio(server).await;
 
     let instructions = initialized["result"]["instructions"].as_str().expect("instructions");
+    // SQLFlow's introduction, then the `!cwd` routing rule, since find_similar_questions is offered.
+    assert!(instructions.starts_with("SQLFlow MCP server.\n\nROUTING, BEFORE ANYTHING ELSE"), "{instructions}");
+    assert!(instructions.contains("\n\nTwo tiers of tools:"), "{instructions}");
     assert!(instructions.contains("login (device flow)"), "the stdio setup text: {instructions}");
     assert!(instructions.contains("discover_source"), "{instructions}");
     assert!(instructions.ends_with("run_probe runs one and waits for it."), "{instructions}");
@@ -591,6 +599,43 @@ async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
         serde_json::from_str(called["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
     assert_eq!(probes[0]["seenAuthorization"], json!("Bearer stored-sign-in"));
     assert_eq!(probes[0]["links"]["page"], json!("/probes/wells%20a"));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_host_introduces_its_product_and_does_not_recommend_a_tool_it_leaves_out() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .introduced_as("Probe MCP server. Probes extend SQLFlow; the PROBES section covers what they add.")
+        .without_tools(["discover_source", "find_similar_questions"])
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes");
+    let (_session, initialized) = open_stdio(server).await;
+
+    // The host's line opens the instructions in place of SQLFlow's, and SQLFlow's tiers follow it.
+    let instructions = initialized["result"]["instructions"].as_str().expect("instructions");
+    assert!(
+        instructions.starts_with("Probe MCP server. Probes extend SQLFlow; the PROBES section covers what they add. Two tiers of tools:"),
+        "{instructions}"
+    );
+    assert!(!instructions.contains("SQLFlow MCP server."), "{instructions}");
+
+    // The paragraph recommending source discovery and the rule routing `!cwd` to find_similar_questions are gone; the
+    // closing note still names both tools as not offered.
+    assert!(!instructions.contains("Source discovery"), "{instructions}");
+    assert!(!instructions.contains("ROUTING, BEFORE ANYTHING ELSE"), "{instructions}");
+    assert!(instructions.trim_end().ends_with("say so when a question needs one."), "{instructions}");
+    assert!(
+        instructions.contains(
+            "Not offered by this server, although other tools' descriptions may name them: discover_source, find_similar_questions."
+        ),
+        "{instructions}"
+    );
+}
+
+#[test]
+fn a_blank_introduction_is_refused() {
+    let refused = probe_host().introduced_as("   ").identity().expect_err("a blank introduction");
+    assert!(refused.to_string().contains("introduction is blank"), "{refused}");
 }
 
 #[test]
