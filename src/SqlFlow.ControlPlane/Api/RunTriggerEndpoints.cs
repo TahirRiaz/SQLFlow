@@ -113,7 +113,7 @@ public static class RunTriggerEndpoints
 
         return scope.Value == RunScope.Flow
             ? await TriggerSingleFlowAsync(request, db, dispatcher, documents, requestedBy, ct).ConfigureAwait(false)
-            : await TriggerGroupAsync(request, scope.Value, db, dispatcher, requestedBy, ct).ConfigureAwait(false);
+            : await TriggerGroupAsync(request, scope.Value, db, dispatcher, documents, requestedBy, ct).ConfigureAwait(false);
     }
 
     private static async Task<Results<Accepted<RunTriggerAccepted>, Accepted<RunGroupAccepted>, ProblemHttpResult>> TriggerSingleFlowAsync(
@@ -129,8 +129,8 @@ public static class RunTriggerEndpoints
         }
 
         // The substitution parameters are validated at this trust boundary, so a run no engine path could honor
-        // (an inverted window, a control character in a glob) is refused before it is ever queued. The built-in
-        // backfill is a single-flow concept, so it lives only on this path (a group always runs default parameters).
+        // (an inverted window, a control character in a glob) is refused before it is ever queued. Every built-in
+        // override applies here; a node run takes only a backfill window, which TriggerGroupAsync routes per member.
         var parameters = new RunParameters
         {
             FullLoad = request.FullLoad,
@@ -210,8 +210,8 @@ public static class RunTriggerEndpoints
     }
 
     private static async Task<Results<Accepted<RunTriggerAccepted>, Accepted<RunGroupAccepted>, ProblemHttpResult>> TriggerGroupAsync(
-        RunTriggerRequest request, RunScope scope, CatalogDbContext db, IRunDispatcher dispatcher, string? requestedBy,
-        CancellationToken ct)
+        RunTriggerRequest request, RunScope scope, CatalogDbContext db, IRunDispatcher dispatcher,
+        SqlFlow.Yaml.YamlDocumentLoader documents, string? requestedBy, CancellationToken ct)
     {
         // Kind arguments belong to one flow's kind; a group mixes kinds. A schedule is how a set of flows is given an
         // operation and values, so a group trigger that carries them is refused rather than applied to some members.
@@ -231,6 +231,33 @@ public static class RunTriggerEndpoints
         {
             return TypedResults.Problem(
                 detail: "assertionsOnly applies to a single ingestion flow; a node/batch scope always runs its members normally.",
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid run parameters");
+        }
+
+        // A full load, a file pattern and a source filter select what ONE flow reads; a node run takes only a backfill
+        // window (applied to its anchor, below). Refusing them beats queueing a group that silently runs as defined.
+        var singleFlowOnly = new List<string>();
+        if (request.FullLoad)
+        {
+            singleFlowOnly.Add("fullLoad");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.FilePattern))
+        {
+            singleFlowOnly.Add("filePattern");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.SourceFilter))
+        {
+            singleFlowOnly.Add("sourceFilter");
+        }
+
+        if (singleFlowOnly.Count > 0)
+        {
+            return TypedResults.Problem(
+                detail: $"{string.Join(", ", singleFlowOnly)} apply to a single flow; a node scope takes only a backfill "
+                        + "window, which its anchor reads. Trigger the flow on its own (scope 'flow') to apply them.",
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Invalid run parameters");
         }
@@ -307,6 +334,29 @@ public static class RunTriggerEndpoints
                     // no other kind. A file/copy descendant is left at defaults (it catches the re-landed files
                     // through its own incremental), and a kind with no backfill role (sp, hc, exp, ...) runs as defined.
                     memberParameters[member.FlowName] = reprocess;
+                }
+            }
+
+            // Each routed member's parameters pass the loader's one rule for its kind, as a single flow's do: an anchor
+            // of a registered kind decides itself whether it takes the window, and refuses it here, before anything is
+            // queued, rather than failing (or running as defined) once its node picks it up.
+            foreach (var member in expansion.Members)
+            {
+                if (!memberParameters.TryGetValue(member.FlowName, out var routed))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    documents.ValidateRunParameters(member.FlowKind, routed);
+                }
+                catch (SqlFlowException ex)
+                {
+                    return TypedResults.Problem(
+                        detail: $"'{member.FlowName}': {ex.Message}",
+                        statusCode: StatusCodes.Status400BadRequest,
+                        title: "Invalid run parameters");
                 }
             }
         }

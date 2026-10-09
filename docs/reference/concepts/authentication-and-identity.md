@@ -34,6 +34,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs
   - src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs
   - src/SqlFlow.ControlPlane/Program.cs
+  - src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs
   - src/SqlFlow.Catalog/UserStore.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
 ---
@@ -82,7 +83,7 @@ The call is authenticated by the very token it replaces, so there is no second l
 
 Renewal is refused outright (403) for any credential with no `auth_time`: a personal access token (which already carries its own lifetime), the break-glass bootstrap token, an assistant run's delegated token (see [Assistant run tokens](#assistant-run-tokens)), and a device token approved by one of those. A device token approved from an interactive session carries that session's `auth_time` and rolls like it.
 
-Authorization has exactly two tiers, defined in src/SqlFlow.ControlPlane/Program.cs. Any authenticated caller gets the whole operational product: reading (catalog, runs, lineage, search, schedules, nodes, repo sources, summary), triggering and cancelling runs, schedule and repo-source writes, and proposing pipelines to a repo source as a pull request. Only user and role administration is fenced off, behind the `admin` scope. So the `read`, `operate`, and `author` policies all resolve to "authenticated", and `admin` alone consults the token's `scope` claim. This is deliberate: a signed-in user is never stuck unable to use a feature the UI shows them, and elevating an account is only ever needed to let it administer other accounts. The `operate` and `author` scopes still exist on tokens and roles (a token minted with only `read` is perfectly usable across the operational surface), but no policy other than `admin` enforces a scope.
+Authorization has exactly two tiers, defined in src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs and mirrored by the GUI's `hasScope` (gui/src/auth/AuthContext.tsx), which grants every page and action to a live session and checks only `admin`. Any authenticated caller gets the whole operational product: reading (catalog, runs, lineage, search, schedules, nodes, repo sources, summary), triggering and cancelling runs, schedule and repo-source writes, and proposing pipelines to a repo source as a pull request. Only user and role administration is fenced off, behind the `admin` scope. So the `read`, `operate`, and `author` policies all resolve to "authenticated", and `admin` alone consults the token's `scope` claim. This is deliberate: a signed-in user is never stuck unable to use a feature the UI shows them, and elevating an account is only ever needed to let it administer other accounts. The `operate` and `author` scopes still exist on tokens and roles (a token minted with only `read` is perfectly usable across the operational surface), but no policy other than `admin` enforces a scope.
 
 ## Assistant run tokens
 

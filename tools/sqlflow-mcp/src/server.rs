@@ -2529,9 +2529,10 @@ and fix every finding first."
     // ---- Schedules, nodes, sources, summary (read) -----------------------
 
     #[tool(
-        description = "List schedules: when each fires (cron/interval, timezone, next fire) and its scope \
-                       ('flow' runs one flow; 'node'/'batch' expand through lineage and run a whole set in wave \
-                       order). Start here to answer 'when does <source> get updated'."
+        description = "List schedules: when each fires (cron/interval, timezone, next fire; a chained schedule \
+                       fires behind its afterSchedules instead) and its members (the flows that joined it with \
+                       'schedule: <name>', all run by one fire in wave order). Start here to answer 'when does \
+                       <source> get updated'."
     )]
     async fn list_schedules(&self, Parameters(_): Parameters<EmptyInput>) -> String {
         self.get("/api/v1/schedules", &[]).await
@@ -3907,9 +3908,9 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   widening the search (uncovered schemas, the flow surfaces, subscribers, the docs corpus); work it before
   answering that the name does not exist, and say which surfaces you checked.
 - \"When does <source> update?\": list_schedules finds the schedule (its cron/timezone/next fire), then
-  get_schedule_plan returns both the cadence AND the wave-ordered flows that fire runs. A schedule whose
-  scope is 'node'/'batch' runs a whole set resolved through lineage, so the plan (not the schedule's own
-  flow name) is what actually gets updated; members sharing a wave run concurrently.
+  get_schedule_plan returns both the cadence AND the wave-ordered flows that fire runs. A schedule runs every
+  flow that joined it, ordered by lineage wave, so the plan (not the schedule's name) is what actually gets
+  updated; members sharing a wave run concurrently.
 - \"Is this delivery normal / how big are this source's files?\": pipeline_file_stats returns the flow's
   size profile (average, median, spread, extremes, totals) over its whole file history plus a window over
   the newest files. Read it before calling a load small, large, or missing: judge a file against the

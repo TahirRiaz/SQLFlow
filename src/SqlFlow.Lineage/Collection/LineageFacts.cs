@@ -70,7 +70,9 @@ public sealed record CollectedSchedule
     /// <summary>The schedule's name: its reference target and its identity in the catalog.</summary>
     public required string Name { get; init; }
 
-    /// <summary>The cadence (cron or interval, time zone, enabled, catchup).</summary>
+    /// <summary>The schedule as declared: its cadence (cron or interval and time zone) or the schedules it chains
+    /// after, and its options (enabled, catchup, maxConcurrency, parentFreshnessHours, and the operation and values
+    /// its fires pass to members of a registered kind).</summary>
     public required SqlFlow.Core.ScheduleSpec Spec { get; init; }
 
     /// <summary>The repo-relative path of the file the cadence is written in: a <c>schedules.yaml</c> library file,
@@ -332,6 +334,10 @@ public sealed record CollectedRegisteredObject
     public bool FromCurrentRepo { get; init; }
 }
 
+/// <summary>A document that is recognisably a flow but does not load: its repo-relative path (forward slashes) and
+/// the loader's error, secret-redacted.</summary>
+public sealed record BrokenFlowDocument(string File, string Error);
+
 /// <summary>What one collector hands the builder.</summary>
 public sealed class CollectionResult
 {
@@ -400,6 +406,12 @@ public sealed class CollectionResult
     /// </summary>
     public string SubscriberInputHash { get; set; } = string.Empty;
 
+    /// <summary>The documents that are recognisably flows (<see cref="Yaml.FlowDocumentRecognition"/>) but do not load,
+    /// each with the loader's error, in path order. They are left out of <see cref="Flows"/>, and every one is also a
+    /// warning; a consumer persisting the estate (the catalog sync) holds what it last recorded for such a file rather
+    /// than reading its absence as the flow having left the repository.</summary>
+    public List<BrokenFlowDocument> BrokenFlows { get; } = [];
+
     /// <summary>Server identities whose DERIVED collection was requested but failed (unreachable, unresolvable
     /// secret): the connected pass produced no module facts for them, so a consumer persisting this result must
     /// treat previously-derived knowledge for these servers as still authoritative rather than wiping it with
@@ -423,6 +435,7 @@ public sealed class CollectionResult
         RegisteredObjects.AddRange(other.RegisteredObjects);
         PriorRegistrations.AddRange(other.PriorRegistrations);
         Warnings.AddRange(other.Warnings);
+        BrokenFlows.AddRange(other.BrokenFlows);
         DegradedServers.UnionWith(other.DegradedServers);
         if (SubscriberInputHash.Length == 0)
         {

@@ -131,10 +131,13 @@ public sealed class DocumentExecutor : IDocumentRunner
                 "evaluated against an ingestion flow's target.");
         }
 
-        // Kind arguments (an operation, values, a payload) are accepted only by a registered kind that declares them. A
-        // trigger and a schedule already applied this rule; a batch member and a direct CLI run reach the executor
-        // without either, so the same rule is applied here rather than letting a built-in kind silently ignore them.
-        if (options.Parameters.HasKindArguments)
+        // The loader's one rule for a run's parameters. A trigger and a schedule already applied it; a batch member and a
+        // direct CLI run reach the executor without either, so it is applied here too. A document of a registered kind
+        // is always checked, because the kind alone knows which built-in overrides (a full load, a backfill window, a
+        // file pattern, a source filter) it applies, and one it does not apply must be refused rather than ignored. A
+        // built-in document is checked when it carries kind arguments (an operation, values, a payload), which it never
+        // takes.
+        if (document is RegisteredFlowDocument || options.Parameters.HasKindArguments)
         {
             _provider.GetRequiredService<YamlDocumentLoader>().ValidateRunParameters(
                 document is RegisteredFlowDocument registered ? registered.Kind : "built-in", options.Parameters);

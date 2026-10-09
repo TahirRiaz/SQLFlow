@@ -787,7 +787,7 @@ public sealed class IngestionFlowRunner
 
             // 8b. Pre-ingestion transform view: refresh the typed view over the loaded target (the external-DB
             //     landing contract: the flow's target is the pre/staging table, and the downstream chained flow
-            //     reads [schema].[v<Table>] for correctly-typed data). Native SQL-to-SQL flows leave the policy
+            //     reads [schema].[v_<Table>] for correctly-typed data). Native SQL-to-SQL flows leave the policy
             //     at its default and generate nothing. A failure here fails the run (a stale view must be loud);
             //     the committed load stands, and CREATE OR ALTER makes the re-run idempotent.
             TransformViewResult? transformView = null;
@@ -1157,7 +1157,7 @@ public sealed class IngestionFlowRunner
     /// <summary>
     /// The pre-ingestion transform post-process for the relational path: profiles the loaded target when
     /// inference is on (authored transforms alone need no profiling), merges the authored transforms over the
-    /// inferred columns, and refreshes <c>[schema].[v&lt;Table&gt;]</c> with the resolved projection. The target's
+    /// inferred columns, and refreshes <c>[schema].[v_&lt;Table&gt;]</c> with the resolved projection. The target's
     /// just-applied desired columns are the projection base, so evolved columns are included.
     /// </summary>
     private async Task<TransformViewResult> GenerateTransformViewAsync(
@@ -1266,6 +1266,8 @@ public sealed class IngestionFlowRunner
                 ReloadColumn = reloadColumn,
                 SkipInsert = flow.Load.SkipInsertNew,
                 InsertedDateColumn = flow.SystemColumns.InsertedDate ? "InsertedDate_DW" : null,
+                // Every row a reload writes is an insert, so without this its UpdatedDate_DW would stay NULL for good.
+                UpdatedDateColumn = flow.SystemColumns.UpdatedDate ? "UpdatedDate_DW" : null,
                 RowStatusColumn = flow.SystemColumns.RowStatus ? "RowStatus_DW" : null,
                 HashAlgorithm = string.IsNullOrWhiteSpace(flow.Change.HashType) ? HashKey.DefaultAlgorithm : flow.Change.HashType!,
             })
@@ -1395,6 +1397,10 @@ public sealed class IngestionFlowRunner
             s.CountFromScalar,
             s.CountFromResultSet);
 
+    /// <summary>The keyless append: every staged row inserted, stamped with the system columns the policy turns on exactly
+    /// as the keyed insert stamps a new row (<see cref="UpsertGenerator"/>): the merge time in both audit columns and
+    /// <c>'I'</c> as its row status. A keyless table is insert-only, so an audit column left out here would stay NULL on
+    /// every row it ever holds.</summary>
     private static string BuildInsertAll(RelationalObject target, RelationalObject staging, IReadOnlyList<string> dataColumns, SystemColumnsPolicy system)
     {
         var insertColumns = dataColumns.Select(c => $"[{Escape(c)}]").ToList();
@@ -1403,6 +1409,18 @@ public sealed class IngestionFlowRunner
         {
             insertColumns.Add("[InsertedDate_DW]");
             selectColumns.Add("SYSUTCDATETIME()");
+        }
+
+        if (system.UpdatedDate)
+        {
+            insertColumns.Add("[UpdatedDate_DW]");
+            selectColumns.Add("SYSUTCDATETIME()");
+        }
+
+        if (system.RowStatus)
+        {
+            insertColumns.Add("[RowStatus_DW]");
+            selectColumns.Add("'I'");
         }
 
         return $"INSERT INTO {SchemaQualified(target)} ({string.Join(", ", insertColumns)}) " +
@@ -1809,7 +1827,7 @@ public sealed class IngestionFlowRunner
         => flow.Incremental.Columns.FirstOrDefault(c => !string.IsNullOrWhiteSpace(c))
            ?? (string.IsNullOrWhiteSpace(flow.Incremental.DateColumn) ? null : flow.Incremental.DateColumn);
 
-    // The [pre] landing table behind a chained flow's source view [pre].[v<Table>]: the same database and schema
+    // The [pre] landing table behind a chained flow's source view [pre].[v_<Table>]: the same database and schema
     // with the leading "v_" view prefix stripped. A source that is already a base table (no prefix) is returned
     // unchanged, so the truncate targets it directly.
     private static RelationalObject LandingTableOf(RelationalObject sourceObject)

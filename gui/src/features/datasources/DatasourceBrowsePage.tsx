@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, ChevronLeft, ChevronRight, CircleAlert, Loader2, Lock,
+  ArrowLeft, ChevronLeft, ChevronRight, CircleAlert, Loader2,
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import type {
   DatasourceDatabase, DatasourceObject, DatasourceObjectPage, DatasourceSchema,
 } from "../../api/types";
-import { useAuth } from "../../auth/AuthContext";
 import { ComboBoxField } from "../../components/ComboBoxField";
 import { DataTable, type Column } from "../../components/DataTable";
 import { EmptyState } from "../../components/EmptyState";
@@ -55,8 +54,6 @@ export default function DatasourceBrowsePage() {
   const [params] = useSearchParams();
   const reference = params.get("ref") ?? "";
   const kind = params.get("kind");
-  const { hasScope } = useAuth();
-  const canOperate = hasScope("operate");
   useTabTitle(reference === "" ? undefined : `Browse ${reference}`);
 
   const databases = useCompute<{ databases: DatasourceDatabase[] }>();
@@ -76,7 +73,9 @@ export default function DatasourceBrowsePage() {
   const [pageSize, setPageSize] = useState(50);
   const [selected, setSelected] = useState<DatasourceObject | null>(null);
 
-  const usable = reference !== "" && canOperate;
+  // Any signed-in user may browse (the control plane's operate policy admits every authenticated caller), so the only
+  // thing the page needs is a reference to browse.
+  const usable = reference !== "";
 
   // Databases load once per datasource; schemas reload when the database scope changes.
   useEffect(() => {
@@ -137,19 +136,6 @@ export default function DatasourceBrowsePage() {
               </Link>
             </Button>
           )}
-        />
-      </Page>
-    );
-  }
-
-  if (!canOperate) {
-    return (
-      <Page data-testid="page-datasource-browse">
-        <PageHeader title="Browse datasource" />
-        <EmptyState
-          icon={<Lock />}
-          title="Operate scope required"
-          description="Browsing runs live queries against the source through a worker node, so it needs the operate scope. Ask an administrator for the operator role."
         />
       </Page>
     );

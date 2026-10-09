@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "schedules",
+  "generatedFrom": "source code: src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs, src/SqlFlow.Core/ScheduleSpec.cs, src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+  "naming": "The loader builds its YamlDotNet IDeserializer with CamelCaseNamingConvention + IgnoreUnmatchedProperties. A C# PascalCase property binds to the camelCase YAML key. A schedule library is NOT a flow document: it is a file named schedules.yaml or ending in .schedules.yaml, selected by its root 'schedules:' key rather than by a flowType, and never becomes a pipeline. Flows join its schedules by name ('schedule: <name>').",
+  "keyCount": 13,
+  "keys": [
+    {
+      "path": "schedules",
+      "type": "map<name, schedule>",
+      "required": true,
+      "default": "none",
+      "description": "The schedules this file defines, keyed by NAME. The name is the schedule's identity in the repo: flows join it with 'schedule: <name>' (or a list of names), and every fire runs the flows that joined as one wave-ordered group. Names form one case-insensitive namespace per repo with named and unnamed inline schedule blocks; the first definition wins and a redefinition is warned. A file with no entries is warned and publishes nothing.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs",
+      "validation": "\"<file>: no 'schedules:' entries; nothing to publish.\" and \"<file>: invalid schedule library - <message>\" (YamlScheduleLibraryLoader.Parse)"
+    },
+    {
+      "path": "schedules.<name>",
+      "type": "object",
+      "required": false,
+      "description": "One schedule: a cadence (cron or intervalSeconds) or a chain (after), plus its options. An entry that declares none of cron, intervalSeconds or after is dropped, and so is one with a blank name.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (ScheduleEntryYaml)",
+      "validation": "\"<file>: schedule '<name>' declares neither a cron, an intervalSeconds, nor an after; ignored.\" and \"<file>: a schedule with a blank name is ignored.\""
+    },
+    {
+      "path": "schedules.<name>.cron",
+      "type": "string",
+      "required": false,
+      "description": "A cron expression: 5 fields (minute granularity) or 6 with a leading seconds field, evaluated in timezone. Trimmed. Validated when the schedule is armed (a catalog sync drops an invalid schedule with the warning \"schedule '<name>' (<file>) is invalid: <reason>\"), not when the file is read. Ignored, with a warning, on an entry that also sets after.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs"
+    },
+    {
+      "path": "schedules.<name>.intervalSeconds",
+      "type": "int",
+      "required": false,
+      "description": "A fixed number of seconds between fires, as the alternative to cron. Must be positive. Ignored, with a warning, on an entry that also sets after.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs"
+    },
+    {
+      "path": "schedules.<name>.after",
+      "type": "string | list<string>",
+      "required": false,
+      "description": "Makes the entry a chained schedule: the name (or names) of the schedules it fires behind. It has no cadence of its own and fires once every parent has completed a fire newer than the one it last reacted to (with several parents, a fan-in, it waits for all of them); whether a parent succeeded is not considered. Blanks are dropped and repeats collapse. A cron or interval beside it is dropped with a warning, and an entry chained after itself is ignored.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (ScheduleEntryYaml.After, NormalizeAfter)",
+      "validation": "\"<file>: schedule '<name>' sets 'after: <names>' together with a cron/intervalSeconds; a chained schedule has no cadence of its own, so the cron is ignored.\" and \"<file>: schedule '<name>' chains after itself; ignored.\""
+    },
+    {
+      "path": "schedules.<name>.parentFreshnessHours",
+      "type": "int",
+      "required": false,
+      "default": "24",
+      "description": "For a chained schedule: how recently every parent must have fired for a fire to count as fed by current data. A parent older than the window does not hold the fire back; it is recorded on the schedule (lastStaleParents) and logged. 0 disables the check; a negative value falls back to the default with a warning.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (NormalizeFreshness)"
+    },
+    {
+      "path": "schedules.<name>.timezone",
+      "type": "string",
+      "required": false,
+      "default": "UTC",
+      "description": "The IANA time zone id the cron expression is evaluated in. A blank value is UTC. Ignored for interval and chained schedules.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs"
+    },
+    {
+      "path": "schedules.<name>.enabled",
+      "type": "bool",
+      "required": false,
+      "default": "true",
+      "description": "Whether the schedule fires on its own. A disabled schedule keeps its members but is never fired by the clock or by a chain (so the schedules chained behind it stop too); a run-now request still fires it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs"
+    },
+    {
+      "path": "schedules.<name>.catchup",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Whether missed occurrences are replayed: with false an overdue schedule fires once and its next fire is computed from now; with true every missed occurrence fires, one per scheduler tick, until the schedule is current.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs"
+    },
+    {
+      "path": "schedules.<name>.maxConcurrency",
+      "type": "int",
+      "required": false,
+      "default": "4",
+      "description": "How many of the schedule's members execute at the same time when a fire has more than one (the width of the running wave). 1 is strictly serial; 0 is unbounded. A negative value falls back to the default with a warning.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (NormalizeMaxConcurrency)"
+    },
+    {
+      "path": "schedules.<name>.operation",
+      "type": "string",
+      "required": false,
+      "description": "The operation each fire runs on the members whose registered flow kind declares it; left out, each member runs its default. 1 to 32 characters of lowercase letters, digits and '-', starting with a letter. SQLFlow's built-in kinds take no operation, so their members run as defined.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (shape checked by RunParameters.ValidateKindArguments)",
+      "validation": "An unusable value drops the entry: \"<file>: schedule '<name>': <message> The schedule is ignored.\""
+    },
+    {
+      "path": "schedules.<name>.values",
+      "type": "map",
+      "required": false,
+      "description": "Parameter values each fire passes to the members of a registered flow kind, by parameter name. At most 32 entries; each name an identifier of at most 64 characters, each value at most 1000 characters without control characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (shape checked by RunParameters.ValidateKindArguments)",
+      "validation": "An unusable value drops the entry: \"<file>: schedule '<name>': <message> The schedule is ignored.\""
+    },
+    {
+      "path": "schedules.<name>.values.<parameter>",
+      "type": "string",
+      "required": false,
+      "description": "The value a fire gives the parameter of this name."
+    }
+  ]
+}

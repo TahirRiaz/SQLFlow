@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Ban, CircleAlert, Info, KeyRound, Loader2, Lock, X,
+  Ban, CircleAlert, Info, KeyRound, Loader2, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -24,10 +24,8 @@ import type {
   ComputeTask, ComputeTaskSummary, DatasourceDatabase, DatasourceObject, DatasourceObjectPage,
   DatasourceSchema, UniqueKeyReport,
 } from "../../api/types";
-import { useAuth } from "../../auth/AuthContext";
 import { ComboBoxField } from "../../components/ComboBoxField";
 import { CorrelationError } from "../../components/CorrelationError";
-import { EmptyState } from "../../components/EmptyState";
 import { Mono } from "../../components/Mono";
 import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
@@ -155,8 +153,6 @@ function HistoryTaskSheet({ taskId, onClose }: { taskId: string; onClose: () => 
  */
 export default function UniqueKeyDetectionPage() {
   const [params, setParams] = useSearchParams();
-  const { hasScope } = useAuth();
-  const canOperate = hasScope("operate");
 
   const reference = params.get("ref") ?? "";
   const kind = params.get("kind");
@@ -190,7 +186,9 @@ export default function UniqueKeyDetectionPage() {
   const { run: runObjects } = objects;
 
   const [objectInput, setObjectInput] = useState("");
-  const usable = reference !== "" && canOperate;
+  // Any signed-in user may run a detection (the control plane's operate policy admits every authenticated caller), so
+  // the only thing the page needs is a reference to profile.
+  const usable = reference !== "";
 
   useEffect(() => {
     if (usable) {
@@ -328,19 +326,6 @@ export default function UniqueKeyDetectionPage() {
       render: (row) => row.requestedBy ?? <span className="text-[13px] text-muted-foreground">-</span>,
     },
   ];
-
-  if (!canOperate) {
-    return (
-      <Page data-testid="page-key-detection">
-        <PageHeader title="Unique key detection" />
-        <EmptyState
-          icon={<Lock />}
-          title="Operate scope required"
-          description="Detection profiles the live source through a worker node, so it needs the operate scope. Ask an administrator for the operator role."
-        />
-      </Page>
-    );
-  }
 
   return (
     <Page data-testid="page-key-detection">

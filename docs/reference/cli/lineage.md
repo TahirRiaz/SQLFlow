@@ -43,7 +43,7 @@ sqlflow lineage <folder> [--connect] [--no-observed]
 
 ## Description
 
-Computes AST-based lineage over a flow estate: the folder tree containing your `*.flow.yaml` documents. Every `*.flow.yaml` under `<folder>` (recursively) joins the graph. The command builds a `LineageReport` (flows, objects, tier-tagged edges, flow dependencies, an execution plan of concurrency waves, and any dependency cycles), always writes the canonical artifact `<folder>/.sqlflow/lineage/lineage.json`, and prints either a human summary or JSON.
+Computes AST-based lineage over a flow estate: the folder tree containing your flow documents. Every `*.yaml` file under `<folder>` (recursively, the historical `.flow.yaml` suffix included) is read as a flow document, except schedule libraries (`schedules.yaml`, `*.schedules.yaml`) and subscriber libraries (`subscribers.yaml`, `*.subscribers.yaml`), which are read on their own terms; every file that parses as a flow joins the graph (src/SqlFlow.Lineage/Collection/FlowSetCollector.cs, `Collect`). A `.yaml` file that does not parse is left out of the graph: without a warning when it is not a flow at all (a companion document, a config file), and with the warning `<file>: is a flow document that does not load, so it is left out of this scan (...): <error>` when it is recognisably one: it declares a `flowType`, or (declaring no `documentType`) it carries the `.flow.yaml` suffix or the `source` and `target` a file flow requires (src/SqlFlow.Yaml/FlowDocumentRecognition.cs). A `.yml` file is not read. The command builds a `LineageReport` (flows, objects, tier-tagged edges, flow dependencies, an execution plan of concurrency waves, and any dependency cycles), always writes the canonical artifact `<folder>/.sqlflow/lineage/lineage.json`, and prints either a human summary or JSON.
 
 Facts come from up to three tiers, and every edge carries the tier that vouches for it:
 
@@ -61,7 +61,7 @@ The CLI is a thin shell over `LineageService.ComputeDetailedAsync` in src/SqlFlo
 
 | Argument | Required | Description |
 | --- | --- | --- |
-| `<folder>` | yes | The flow-estate root. Every `*.flow.yaml` under it, recursively, is collected. A missing directory fails with `ERROR  Flow directory not found: '<full path>'.` (the argument resolved to a full path) and exit code 1; omitting the argument prints usage and exits 1. |
+| `<folder>` | yes | The flow-estate root. Every `*.yaml` file under it that parses as a flow document, recursively, is collected; schedule and subscriber libraries are read as libraries, a file that cannot be read is skipped with the warning `<file>: skipped: <message>`, and a recognisable flow that does not load is reported (see Description). A missing directory fails with `ERROR  Flow directory not found: '<full path>'.` (the argument resolved to a full path) and exit code 1; omitting the argument prints usage and exits 1. |
 
 ## Options
 
@@ -200,7 +200,7 @@ Why is a flow in its wave:
 sqlflow lineage samples/lineage-demo --connect --explain demo-ing-orders
 ```
 
-This prints the rationale in the format above: `demo-ing-orders` is an `ing` flow in wave 2; it depends on `demo-land-orders` (wave 1); its reads (the typed view `demo.vOrders_Pre`) and writes (`demo.Orders`) print as node keys with their tier labels, the observed ones stamped with the sample's shipped runs; and `demo-build-order-fact` (wave 3) appears under `required by`.
+This prints the rationale in the format above: `demo-ing-orders` is an `ing` flow in wave 2; it depends on `demo-land-orders` (wave 1); its reads (the typed view `demo.v_Orders_Pre`) and writes (`demo.Orders`) print as node keys with their tier labels, the observed ones stamped with the sample's shipped runs; and `demo-build-order-fact` (wave 3) appears under `required by`.
 
 CI gate: fail the build on dependency cycles and keep the machine-readable report:
 

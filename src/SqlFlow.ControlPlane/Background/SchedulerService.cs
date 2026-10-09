@@ -6,18 +6,21 @@ using SqlFlow.Core.Secrets;
 namespace SqlFlow.ControlPlane.Background;
 
 /// <summary>
-/// Scans the catalog for due schedules and fires them by enqueuing a run onto the durable queue (the exact path a
-/// manual trigger takes, so a scheduled run is in no way special). A schedule is fired by atomically advancing its
-/// next-fire time, so when more than one control-plane node runs this service the compare-and-swap guarantees each
-/// occurrence is enqueued exactly once. Missed occurrences (the host was down) are not backfilled: the next fire is
-/// computed strictly after now, so a schedule fires once and resumes its cadence.
+/// Scans the catalog for due clock schedules and ready chained schedules and fires each through
+/// <see cref="ScheduleFire"/>: its member set is enqueued onto the durable queue (the exact path a manual trigger takes,
+/// so a scheduled run is in no way special), one run for a single member and one wave-gated run group for several. A
+/// clock schedule is fired by atomically advancing its next-fire time, so when more than one control-plane node runs
+/// this service the compare-and-swap guarantees each occurrence is enqueued exactly once. An overdue occurrence fires
+/// once; without <c>catchup</c> the next fire is then computed strictly after now, so further missed occurrences are
+/// dropped, and with it the next fire follows the occurrence just fired, so each missed one is replayed in turn.
 /// </summary>
 /// <remarks>
 /// Robustness: a bad cron / time zone on one schedule is logged and that schedule is parked (its next fire is
 /// cleared) rather than re-scanned forever or stopping the loop; a tick error (a transient database outage) is
-/// logged and retried next tick; an inactive or removed pipeline is skipped, not enqueued. Due schedules fire
-/// with bounded concurrency, each on its own scope (and so its own DbContext); one schedule's failure is logged
-/// and never stops the others. All diagnostics are secret-redacted.
+/// logged and retried next tick; a member that is inactive, removed, <c>mode: manual</c> or <c>mode: disabled</c> is
+/// left out of the fire, and a fire with no runnable member enqueues nothing. Schedules fire with bounded
+/// concurrency, each on its own scope (and so its own DbContext); one schedule's failure is logged and never stops the
+/// others. All diagnostics are secret-redacted.
 /// </remarks>
 public sealed partial class SchedulerService : BackgroundService
 {

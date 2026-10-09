@@ -38,9 +38,9 @@ sourceRefs:
 
 ```text
 orders.csv    -> demo.Orders_Pre    -> demo.v_Orders_Pre    -> demo.Orders    \
-                                                                              -> demo.Fact_OrderSummary
+                                                                               -> demo.Fact_OrderSummary
 customers.csv -> demo.Customers_Pre -> demo.v_Customers_Pre -> demo.Customers /       |
-                                                                                     v
+                                                                                      v
                        demo.Fact_OrderSummary -> demo.Fact_CountryRollup -> demo.Kpi_Executive
                                      (usp_BuildCountryRollup)      (usp_BuildExecKpi)
 ```

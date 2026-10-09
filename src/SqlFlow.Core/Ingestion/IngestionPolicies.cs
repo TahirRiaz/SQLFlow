@@ -48,7 +48,7 @@ public sealed record IngestionLoadPolicy
     /// one row per key so the target's unique key is not violated. Not combinable with
     /// <see cref="DataSetColumn"/> (the ordered upsert loop), SCD2 versioning, the match-key delete pass, or
     /// <c>target.truncateBeforeLoad</c>. Null (the default) applies the normal upsert. Designed for the chained
-    /// file landing pattern where the ods flow reads <c>[pre].[v&lt;Table&gt;]</c> and the provenance columns ride
+    /// file landing pattern where the ods flow reads <c>[pre].[v_&lt;Table&gt;]</c> and the provenance columns ride
     /// through the view onto the target.
     /// </summary>
     public string? ReloadColumn { get; init; }
@@ -77,8 +77,8 @@ public sealed record IngestionLoadPolicy
     /// only once the target has caught up: the truncate fires only when MAX(the incremental watermark) in the
     /// target is greater than or equal to MAX in the landing table, proving every landed row has been
     /// consolidated. Designed for the chained file landing pattern
-    /// (<c>file -&gt; [pre].[&lt;Table&gt;] -&gt; view [pre].[v&lt;Table&gt;] -&gt; target</c>): the source is the
-    /// typed view <c>[pre].[v&lt;Table&gt;]</c> and the table truncated is the landing table <c>[pre].[&lt;Table&gt;]</c>
+    /// (<c>file -&gt; [pre].[&lt;Table&gt;] -&gt; view [pre].[v_&lt;Table&gt;] -&gt; target</c>): the source is the
+    /// typed view <c>[pre].[v_&lt;Table&gt;]</c> and the table truncated is the landing table <c>[pre].[&lt;Table&gt;]</c>
     /// (the leading <c>v_</c> is stripped; a source that is already a base table is truncated as-is). A FAILED
     /// run never truncates (the truncate is on the success path); an empty landing table is a no-op; a target
     /// that has NOT caught up leaves the landing table intact so no un-consolidated data is lost. Requires an

@@ -13,7 +13,7 @@ public sealed class RunActorsTests
 
     [Fact]
     public void Schedule_IsNamedByItsName()
-        => Assert.Equal("schedule:recall-welllog", RunActors.Schedule("  recall-welllog ", ScheduleId));
+        => Assert.Equal("schedule:welldb-welllog", RunActors.Schedule("  welldb-welllog ", ScheduleId));
 
     [Theory]
     [InlineData(null)]

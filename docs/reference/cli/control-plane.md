@@ -74,7 +74,9 @@ external identity provider, not the catalog. A `--db` value that embeds a litera
 ```
 sqlflow trigger --repo bb --flow load_orders [--pool p] [--commit sha] [--full|--from d --to d|--file-pattern g]
 sqlflow trigger --repo bb --flow load_orders --scope node --preview   # the flow + descendants, shown, not enqueued
-sqlflow trigger --repo bb --scope batch --batch nightly --follow      # whole batch, live-streamed to the outcome
+sqlflow trigger --repo bb --flow load_orders --scope node [--from d --to d] --follow
+                                                  # the flow + descendants, live-streamed; only a window applies
+sqlflow schedules run <id>                        # a whole source: its schedule's members (--scope batch is gone)
 sqlflow runs list [--status failed --flow orders --latest]            # the run inbox
 sqlflow runs show <runId> [--files --statements --assertions --keys --metrics]
 sqlflow runs trace <runId> [--follow]                                 # consolidated trace; --follow rides the live SSE

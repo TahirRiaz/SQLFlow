@@ -7,8 +7,9 @@ namespace SqlFlow.Catalog;
 /// <summary>
 /// One flow document discovered in a repo during a preview-first scan: enough for a user to select it and preview it
 /// before any sync writes to the catalog. <see cref="Content"/> is secret-redacted (and omitted for a pathologically
-/// large file). <see cref="ParseOk"/>/<see cref="ParseError"/> report a read failure of an already-identified flow;
-/// a <c>.yaml</c> that is not a flow at all is simply not listed (extension-based discovery ignores non-flow files).
+/// large file). <see cref="ParseOk"/>/<see cref="ParseError"/> report a flow that cannot be read, or a document that is
+/// recognisably a flow but does not load (its name and kind are then null); a <c>.yaml</c> that is not a flow at all is
+/// simply not listed (extension-based discovery ignores non-flow files).
 /// </summary>
 public sealed record DiscoveredFlow(
     string RelativePath, string? FlowName, string? Kind, long SizeBytes, bool ParseOk, string? ParseError, string? Content);
@@ -17,9 +18,9 @@ public sealed record DiscoveredFlow(
 /// Lists the flow documents under a materialized estate directory WITHOUT importing them, so the GUI can preview a
 /// repo's flows and pick a subset before a sync activates them in the catalog. It reuses the exact same
 /// <see cref="FlowSetCollector"/> the sync uses, so a flow that parses here parses on sync (one discovery/parse
-/// code path). Discovery is extension-based: every <c>*.yaml</c> that parses as a flow is listed; a <c>.yaml</c>
-/// that is not a flow (a library, config, or unrelated file) is ignored, never surfaced as broken. Discovery never
-/// touches the database.
+/// code path). Discovery is extension-based: every <c>*.yaml</c> that parses as a flow is listed, and so is one that is
+/// recognisably a flow but does not load, with its error; a <c>.yaml</c> that is not a flow (a library, config, or
+/// unrelated file) is ignored, never surfaced as broken. Discovery never touches the database.
 /// </summary>
 public static class FlowDiscovery
 {
@@ -73,6 +74,30 @@ public static class FlowDiscovery
                 results.Add(new DiscoveredFlow(
                     relative, flow.Node.Name, flow.Node.Kind, 0, false, SecretHygiene.RedactedMessage(ex), null));
             }
+        }
+
+        // A document that is recognisably a flow but does not load is listed with the loader's error, so the preview
+        // shows what a sync would warn about instead of leaving the file out as though it were not a flow.
+        foreach (var broken in collected.BrokenFlows)
+        {
+            ct.ThrowIfCancellationRequested();
+            var relative = Normalize(broken.File);
+            if (byPath.ContainsKey(relative))
+            {
+                continue;
+            }
+
+            long length;
+            try
+            {
+                length = new FileInfo(Path.Combine(root, relative)).Length;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                length = 0;
+            }
+
+            results.Add(new DiscoveredFlow(relative, null, null, length, false, broken.Error, null));
         }
 
         return results.OrderBy(r => r.RelativePath, StringComparer.Ordinal).ToList();

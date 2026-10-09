@@ -704,7 +704,7 @@ public sealed class FlowRunner
     /// <summary>
     /// The pre-ingestion transform post-process: introspects the just-loaded table (fresh, so evolved columns are
     /// included), profiles it when inference is on, merges the authored transforms over the inferred columns, and
-    /// refreshes <c>[schema].[v&lt;Table&gt;]</c> with the resolved projection. The view is what the downstream
+    /// refreshes <c>[schema].[v_&lt;Table&gt;]</c> with the resolved projection. The view is what the downstream
     /// chained flow reads, so the resolved columns ride back on the result for the run log and the catalog.
     /// </summary>
     /// <summary>Builds the transformation view's <c>CREATE OR ALTER VIEW</c> DDL and resolved projection without

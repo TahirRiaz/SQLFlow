@@ -12,7 +12,8 @@ using SqlFlow.Core.Runs;
 
 namespace SqlFlow.ControlPlane.Api;
 
-/// <summary>A schedule as the API returns it: its timing, scope, lifecycle flags, source, and the next/last fire.
+/// <summary>A schedule as the API returns it: its timing, its members (<paramref name="MemberPipelineIds"/>, the flows
+/// that joined it, which every fire runs), lifecycle flags, source, and the next/last fire.
 /// <paramref name="MaxConcurrency"/> is how many members one fire runs at once (null = unbounded).
 /// <paramref name="LastCounts"/> is how the last fire actually ended: its members tallied by lifecycle state (the one
 /// run's own state for a single-member fire), null when the schedule has never fired or its runs have aged out. It is
@@ -68,8 +69,9 @@ public sealed record CreateScheduleRequest(
 /// <summary>The created-schedule acknowledgement.</summary>
 public sealed record ScheduleCreated(Guid Id, DateTime? NextFireUtc);
 
-/// <summary>The manual run-now acknowledgement: the run the fire enqueued (the group's first member for a scoped
-/// schedule), plus the run group and member count when the scope expanded to a wave-ordered set.</summary>
+/// <summary>The manual run-now acknowledgement: the run the fire enqueued (the group's first member when several
+/// members fired), plus the run group and member count when the fire ran several members as one wave-ordered
+/// group.</summary>
 public sealed record ScheduleRunAccepted(Guid RunId, Guid? GroupId = null, int MemberCount = 1);
 
 /// <summary>One flow a schedule runs: the wave that orders it within the fire and the batch it carries, so the run
@@ -335,23 +337,28 @@ public static class ScheduleEndpoints
             }
         }
 
-        // The name is this schedule's identity in the repo, so a collision with a git-declared or existing API
-        // schedule is rejected here rather than left to the unique index to surface as a 500.
+        // The name is this schedule's identity in the repo. The store checks it and inserts under the repo's
+        // schedule-name lock, the one a catalog sync takes too, so a name a git-declared or API schedule holds (or a
+        // concurrent sync is writing) is a 409, never a race into the unique index.
         var name = string.IsNullOrWhiteSpace(request.Name) ? members[0] : request.Name.Trim();
-        if (await db.Schedules.AsNoTracking()
-                .AnyAsync(s => s.RepoId == request.RepoId && s.Name == name, ct).ConfigureAwait(false))
-        {
-            return TypedResults.Problem(
-                detail: $"Repo '{request.RepoId}' already has a schedule named '{name}'.",
-                statusCode: StatusCodes.Status409Conflict, title: "Duplicate schedule");
-        }
-
         var now = clock.GetUtcNow().UtcDateTime;
         var next = ScheduleClock.NextFire(request.Cron, request.IntervalSeconds, timezone, now);
-        var id = await ScheduleStore.CreateApiScheduleAsync(
-            db, request.RepoId, name, members, request.Cron, request.IntervalSeconds, timezone,
-            request.Enabled ?? true, request.Catchup ?? false, ScheduleDefaults.Resolve(request.MaxConcurrency, out _),
-            next ?? now, now, operation, values, ct).ConfigureAwait(false);
+        Guid id;
+        try
+        {
+            id = await ScheduleStore.CreateApiScheduleAsync(
+                db, request.RepoId, name, members, request.Cron, request.IntervalSeconds, timezone,
+                request.Enabled ?? true, request.Catchup ?? false, ScheduleDefaults.Resolve(request.MaxConcurrency, out _),
+                next ?? now, now, operation, values, ct).ConfigureAwait(false);
+        }
+        catch (ScheduleNameTakenException ex)
+        {
+            return TypedResults.Problem(detail: ex.Message, statusCode: StatusCodes.Status409Conflict, title: "Duplicate schedule");
+        }
+        catch (ScheduleNamesBusyException ex)
+        {
+            return TypedResults.Problem(detail: ex.Message, statusCode: StatusCodes.Status503ServiceUnavailable, title: "Schedules busy");
+        }
 
         return TypedResults.Created($"/api/v1/schedules/{id}", new ScheduleCreated(id, next));
     }
@@ -465,7 +472,10 @@ public static class ScheduleEndpoints
         var now = clock.GetUtcNow().UtcDateTime;
 
         // On resume, recompute the next fire from now so a schedule paused across many missed occurrences does not
-        // fire a burst when it is resumed.
+        // fire a burst when it is resumed. A schedule with no computable next fire keeps none: a chained schedule is
+        // driven by its parents and never by the clock, and a parked one (an invalid or exhausted cron) has nothing to
+        // fire. Arming either at "now" would let the clock scan claim an occurrence that runs nothing, stamp its last
+        // fire, and set off every schedule chained behind it.
         DateTime? nextOnResume = null;
         if (!paused)
         {
@@ -476,7 +486,7 @@ public static class ScheduleEndpoints
                 return TypedResults.Problem(detail: $"No schedule '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
             }
 
-            nextOnResume = ScheduleClock.NextFire(spec.Cron, spec.IntervalSeconds, spec.Timezone, now) ?? now;
+            nextOnResume = ScheduleClock.NextFire(spec.Cron, spec.IntervalSeconds, spec.Timezone, now);
         }
 
         var outcome = await ScheduleStore.SetPausedAsync(db, id, paused, nextOnResume, now, ct).ConfigureAwait(false);

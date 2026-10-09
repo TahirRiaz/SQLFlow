@@ -402,9 +402,10 @@ public sealed class WorkerOptions
 
     public string[] Pools { get; set; } = [];
 
-    /// <summary>How many claimed runs this node executes at once. The queue's atomic claim already supports
-    /// concurrent claimants, so this only sizes the node's own in-flight work; a saturated node stops claiming
-    /// and leaves queued runs for other nodes. Minimum 1 (a strictly serial node).</summary>
+    /// <summary>How many runs this node executes at once. The node asks the control plane's dispatcher for work with
+    /// its free slots, so it is handed at most this many; a saturated node takes nothing and leaves queued runs for
+    /// other nodes. It sizes this node only: every run it executes counts, whatever schedule or source it belongs to
+    /// (a schedule's own <c>maxConcurrency</c> is what bounds one fire). Minimum 1 (a strictly serial node).</summary>
     public int MaxConcurrentRuns { get; set; } = 4;
 
     /// <summary>How many compute tasks (interactive datasource inspections) this node executes at once, on a gate

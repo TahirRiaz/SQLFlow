@@ -30,7 +30,7 @@ sourceRefs:
 
 # Type inference: profiling, decision rules, and server locale
 
-Type inference turns a table of raw strings into correctly typed columns. File loads land their columns as strings in the raw table, with one exception: Parquet's own schema already supplies real types, so a Parquet-sourced table needs no inference. For the string-landing sources, the inference layer profiles each column against SQL Server's own conversion functions, decides the optimal SQL type per column, and emits the `CONVERT`/`TRY_CONVERT` SELECT expressions that produce it. Inside a pipeline flow, those expressions become the pre-ingestion transformation view `[schema].[v<Table>]` over the just-loaded table; standalone, they become a JSON `InferenceReport` with a runnable transform SELECT.
+Type inference turns a table of raw strings into correctly typed columns. File loads land their columns as strings in the raw table, with one exception: Parquet's own schema already supplies real types, so a Parquet-sourced table needs no inference. For the string-landing sources, the inference layer profiles each column against SQL Server's own conversion functions, decides the optimal SQL type per column, and emits the `CONVERT`/`TRY_CONVERT` SELECT expressions that produce it. Inside a pipeline flow, those expressions become the pre-ingestion transformation view `[schema].[v_<Table>]` over the just-loaded table; standalone, they become a JSON `InferenceReport` with a runnable transform SELECT.
 
 The design principle: SQL Server is the oracle. Every candidate type is counted by running `TRY_CONVERT` server-side over the actual data, so a chosen type is by construction convertible by the same engine that will later execute the conversion. The profiler, the emitted transform, and the validator all build their SQL from the same code (src/SqlFlow.Core/Engine/LocaleConversion.cs), so the probe, the load, and the validation are guaranteed identical.
 
@@ -113,7 +113,7 @@ When the locale uses a `,` decimal, the profiler probes both the locale conventi
 
 ## The transform view (pipeline integration)
 
-Inside a flow, inference is part of the `transform:` block. When the flow generates a view, the run's `transform.view` stage emits `CREATE OR ALTER VIEW [schema].[v<Table>]` over the just-loaded table; downstream chained flows read that view as their source, which is how raw string tables get correct data types.
+Inside a flow, inference is part of the `transform:` block. When the flow generates a view, the run's `transform.view` stage emits `CREATE OR ALTER VIEW [schema].[v_<Table>]` over the just-loaded table; downstream chained flows read that view as their source, which is how raw string tables get correct data types.
 
 - `transform.inferTypes` (default `false`) enables inference.
 - `transform.generateView` (default `true`) controls whether the view post-process runs. Nothing is generated when neither inference nor authored `transform.columns` entries ask for any typing (`GeneratesView` in src/SqlFlow.Core/Model/TypeInference.cs).
@@ -172,7 +172,7 @@ preserveLeadingZeros: true
 sqlflow infer orders.infer.yaml --out types.json
 ```
 
-The same policy inside a flow, driving the generated `[stage].[vOrders]` view:
+The same policy inside a flow, driving the generated `[stage].[v_Orders]` view:
 
 ```yaml
 transform:

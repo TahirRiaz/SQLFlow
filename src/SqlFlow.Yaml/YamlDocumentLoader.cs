@@ -17,11 +17,13 @@ public abstract record FlowDocument
     /// plane turns it into actual runs (the engine itself never schedules anything).</summary>
     public ScheduleSpec? Schedule { get; init; }
 
-    /// <summary>The flow's declared execution mode from its top-level <c>mode:</c> key (auto | manual; absent is
-    /// auto). Captured at the document envelope so every flow kind carries it the same way: a <c>mode: manual</c>
-    /// pipeline is excluded from every group expansion (a schedule's member set, and a Node run's descendant
-    /// set), and runs only when named directly, which IS the manual trigger. This is how a deactivated pipeline
-    /// (a retired source, a run-once replay) is kept out of automatic execution while staying runnable by hand.
+    /// <summary>The flow's declared execution mode from its top-level <c>mode:</c> key (auto | manual | disabled;
+    /// absent is auto). Captured at the document envelope so every flow kind carries it the same way: a
+    /// <c>mode: manual</c> or <c>mode: disabled</c> pipeline is excluded from every group expansion (a schedule's member
+    /// set, and a Node run's descendant set unless that run asks for every descendant), and runs only when named
+    /// directly, which IS the manual trigger. Manual reserves a working flow for direct triggers; disabled is how a
+    /// deactivated pipeline (a retired source, a run-once replay) is kept out of automatic execution while staying
+    /// runnable by hand.
     /// A health-check document reads the same key into its own flow model as well; the two never disagree
     /// because they bind the same YAML scalar.</summary>
     public Core.Runs.ExecutionMode Mode { get; init; }
@@ -432,21 +434,27 @@ public sealed class YamlDocumentLoader
     /// The one rule every trust boundary applies to a run's parameters for a flow of kind <paramref name="flowKind"/>
     /// (a trigger, a schedule, the CLI, the executor): the parameters are valid on their own, and kind arguments
     /// (<see cref="Core.Runs.RunParameters.Operation"/>, <c>Values</c>, <c>Payload</c>) are accepted only by a registered
-    /// kind, with the operation one the kind declares and the rest accepted by the kind itself. Throws
-    /// <see cref="SqlFlowException"/> naming what was refused.
+    /// kind, with the operation one the kind declares. A registered kind's own check
+    /// (<see cref="IFlowDocumentKind.ValidateParameters"/>) runs for every run of the kind, whether or not it carries
+    /// kind arguments: the kind alone knows which of the built-in overrides (a full load, a backfill window, a file
+    /// pattern, a source filter) it applies, so one it does not apply is refused there instead of being ignored.
+    /// Throws <see cref="SqlFlowException"/> naming what was refused.
     /// </summary>
     public void ValidateRunParameters(string? flowKind, Core.Runs.RunParameters parameters)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         parameters.Validate();
-        if (!parameters.HasKindArguments)
+        var kind = FindKind(flowKind);
+        if (kind is null)
         {
+            if (parameters.HasKindArguments)
+            {
+                throw new SqlFlowException(
+                    $"operation, values and payload apply to flows of a registered kind; '{flowKind}' flows take none.");
+            }
+
             return;
         }
-
-        var kind = FindKind(flowKind)
-            ?? throw new SqlFlowException(
-                $"operation, values and payload apply to flows of a registered kind; '{flowKind}' flows take none.");
 
         if (parameters.Operation is { } operation
             && !kind.Operations.Any(o => string.Equals(o.Name, operation, StringComparison.Ordinal)))

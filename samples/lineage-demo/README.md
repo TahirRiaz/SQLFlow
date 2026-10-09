@@ -3,19 +3,19 @@
 A seven-flow estate that exercises the full chained topology and lands a five-wave execution
 plan in the catalog:
 
-```
-orders.csv    -> demo.Orders_Pre    -> demo.vOrders_Pre    -> demo.Orders    \
-                                                                              -> demo.Fact_OrderSummary
-customers.csv -> demo.Customers_Pre -> demo.vCustomers_Pre -> demo.Customers /       |
-                                                                                     v
+```text
+orders.csv    -> demo.Orders_Pre    -> demo.v_Orders_Pre    -> demo.Orders    \
+                                                                               -> demo.Fact_OrderSummary
+customers.csv -> demo.Customers_Pre -> demo.v_Customers_Pre -> demo.Customers /       |
+                                                                                      v
                                               demo.Fact_OrderSummary -> demo.Fact_CountryRollup -> demo.Kpi_Executive
                                                             (usp_BuildCountryRollup)      (usp_BuildExecKpi)
 ```
 
 | Flow | Kind | Wave | What it does |
 | --- | --- | --- | --- |
-| demo-land-orders | file | 1 | CSV -> raw pre table; refreshes the typed view `demo.vOrders_Pre` (inference + a declared `vehicle_type_clean` transform) |
-| demo-land-customers | file | 1 | CSV -> raw pre table; refreshes `demo.vCustomers_Pre` (inference only) |
+| demo-land-orders | file | 1 | CSV -> raw pre table; refreshes the typed view `demo.v_Orders_Pre` (inference + a declared `vehicle_type_clean` transform) |
+| demo-land-customers | file | 1 | CSV -> raw pre table; refreshes `demo.v_Customers_Pre` (inference only) |
 | demo-ing-orders | ing | 2 | Reads THE VIEW -> keyed upsert into `demo.Orders` |
 | demo-ing-customers | ing | 2 | Reads THE VIEW -> keyed upsert into `demo.Customers` |
 | demo-build-order-fact | sp | 3 | `demo.usp_BuildOrderFact` joins both targets into `demo.Fact_OrderSummary` |

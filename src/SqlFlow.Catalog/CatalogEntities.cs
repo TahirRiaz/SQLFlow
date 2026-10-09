@@ -422,7 +422,8 @@ public static class RunGroupModes
     /// <summary>A flow and all of its transitive descendants (the legacy "Node" execution), run in wave order.</summary>
     public const string Node = "node";
 
-    /// <summary>Every active flow in one batch / data source (the legacy "Batch" execution), run in wave order.</summary>
+    /// <summary>A schedule's fire: the schedule's member set (the legacy "Batch" execution of a data source), run in
+    /// wave order.</summary>
     public const string Batch = "batch";
 
     /// <summary>The member runs a running run spread part of its work across (<see cref="CatalogRun.FanOutRoot"/>),
@@ -2285,14 +2286,15 @@ public class CatalogAccessToken
 }
 
 /// <summary>
-/// One schedule that fires a pipeline on a cron expression or a fixed interval by enqueuing a run onto the durable
-/// queue (the same path a manual trigger takes). A schedule is either declared in the flow YAML and synced from git
-/// (<see cref="Source"/> = <c>yaml</c>, the version-controlled source of truth) or created through the control-plane
-/// API (<c>api</c>, ad-hoc). <see cref="Paused"/> is an operational override applied through the API that survives a
-/// git re-sync, so pausing a git schedule from the GUI is not undone the next time the estate syncs. The scheduler
-/// fires a schedule when it is <see cref="Enabled"/>, not <see cref="Paused"/>, and <see cref="NextFireUtc"/> has
-/// arrived; firing advances <see cref="NextFireUtc"/> to the next future occurrence (missed occurrences are not
-/// backfilled).
+/// One named schedule of a repo: on a cron expression, a fixed interval, or behind the schedules it chains after, it
+/// enqueues its member set (<see cref="CatalogScheduleMember"/>, the flows that joined it) onto the durable queue, the
+/// same path a manual trigger takes, as one run or one wave-gated run group. A schedule is either declared in git and
+/// synced (<see cref="Source"/> = <c>yaml</c>, the version-controlled source of truth) or created through the
+/// control-plane API (<c>api</c>, ad-hoc); one name per repo whichever its source. <see cref="Paused"/> is an
+/// operational override applied through the API that survives a git re-sync, so pausing a git schedule from the GUI is
+/// not undone the next time the estate syncs. The scheduler fires a clock schedule when it is <see cref="Enabled"/>,
+/// not <see cref="Paused"/>, and <see cref="NextFireUtc"/> has arrived; firing advances <see cref="NextFireUtc"/> to the
+/// next occurrence, after now or, with <see cref="Catchup"/>, after the occurrence just fired.
 /// </summary>
 public class CatalogSchedule
 {
@@ -2363,17 +2365,20 @@ public class CatalogSchedule
     /// <summary>Whether the schedule is active per its definition (the YAML <c>enabled</c> flag or the API create).</summary>
     public bool Enabled { get; set; } = true;
 
-    /// <summary>Whether missed occurrences are backfilled. False (the default) skips a fire the host missed and
-    /// resumes at the next occurrence after now; true catches up, firing one missed occurrence per scheduler tick
-    /// until current. Applied by the scheduler when it advances <see cref="NextFireUtc"/>.</summary>
+    /// <summary>Whether missed occurrences are replayed. An overdue occurrence fires once either way; false (the
+    /// default) then computes the next fire after now, dropping any further missed occurrences, and true computes it
+    /// after the occurrence just fired, so each missed one fires in turn, one per scheduler tick, until current.
+    /// Applied by the scheduler when it advances <see cref="NextFireUtc"/>.</summary>
     public bool Catchup { get; set; }
 
     /// <summary>
-    /// How many of this schedule's members may EXECUTE concurrently, or null (the default) for unbounded. Because a
-    /// group's waves are gated, this is the width of the running wave: 1 makes a fire strictly serial. It bounds the
-    /// FIRE rather than the estate, so one fragile upstream can be protected without throttling every other source's
-    /// throughput. Stamped onto each member run at enqueue (<see cref="CatalogRun.GroupMaxConcurrency"/>) and applied
-    /// by the queue's claim gate.
+    /// How many of this schedule's members may EXECUTE concurrently, or null for unbounded (a schedule declared
+    /// without the key stores the product default, <see cref="Core.ScheduleDefaults.MaxConcurrency"/>; a row stored
+    /// before the column existed stays null). Because a group's waves are gated, this is the width of the running wave:
+    /// 1 makes a fire strictly serial. It bounds the FIRE rather than the estate, so one fragile upstream can be
+    /// protected without throttling every other source's throughput. Stamped onto each member run at enqueue
+    /// (<see cref="CatalogRun.GroupMaxConcurrency"/>) and applied by the control plane's dispatcher, which hands out no
+    /// member while that many of its group are reserved or running.
     /// </summary>
     public int? MaxConcurrency { get; set; }
 

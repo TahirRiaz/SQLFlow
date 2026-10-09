@@ -12,7 +12,6 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { isApiError } from "../../api/client";
 import { datasourceApi } from "../../api/endpoints";
 import type { ConnectionTestResult, Datasource } from "../../api/types";
-import { useAuth } from "../../auth/AuthContext";
 import { ConnectionRef } from "../../components/ConnectionRef";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DataTable, type Column } from "../../components/DataTable";
@@ -85,8 +84,6 @@ function TestConnectionSheet({ datasource, onClose }: { datasource: Datasource; 
  */
 export default function DatasourcesPage() {
   const navigate = useNavigate();
-  const { hasScope } = useAuth();
-  const canOperate = hasScope("operate");
   const [testTarget, setTestTarget] = useState<Datasource | null>(null);
 
   const datasources = useQuery({
@@ -142,7 +139,7 @@ export default function DatasourcesPage() {
           <Button
             variant="ghost"
             size="xs"
-            disabled={!canOperate || !row.resolvable}
+            disabled={!row.resolvable}
             onClick={(e) => {
               e.stopPropagation();
               setTestTarget(row);
@@ -155,7 +152,7 @@ export default function DatasourcesPage() {
           <Button
             variant="outline"
             size="xs"
-            disabled={!canOperate || !row.resolvable}
+            disabled={!row.resolvable}
             onClick={(e) => {
               e.stopPropagation();
               navigate(`/datasources/browse?ref=${encodeURIComponent(row.reference)}${row.kind !== null ? `&kind=${encodeURIComponent(row.kind)}` : ""}`);
@@ -174,9 +171,7 @@ export default function DatasourcesPage() {
     <Page data-testid="page-datasources">
       <PageHeader
         title="Datasources"
-        subtitle={canOperate
-          ? "The connection references the estate's pipelines declare. Browse runs live against the source on a worker node; nothing here ever carries a secret."
-          : "The connection references the estate's pipelines declare. Live browse and connection tests need the operate scope."}
+        subtitle="The connection references the estate's pipelines declare. Browse runs live against the source on a worker node; nothing here ever carries a secret."
       />
 
       {datasources.isError && (isApiError(datasources.error)

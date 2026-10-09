@@ -17,8 +17,8 @@ public interface IRunDispatcher
     /// point a client at <c>GET /api/v1/runs/{runId}</c>.</summary>
     Task<Guid> EnqueueAsync(CatalogDbContext catalog, RunEnqueueRequest request, CancellationToken ct = default);
 
-    /// <summary>Enqueues a whole run group (a Node or Batch execution) as one wave-ordered set and returns the group
-    /// id with its member run ids, so the caller can point a client at the group view.</summary>
+    /// <summary>Enqueues a whole run group (a node-scoped trigger or a schedule's fire) as one wave-ordered set and
+    /// returns the group id with its member run ids, so the caller can point a client at the group view.</summary>
     Task<RunGroupEnqueueResult> EnqueueGroupAsync(
         CatalogDbContext catalog, RunGroupEnqueueRequest request, CancellationToken ct = default);
 

@@ -20,7 +20,7 @@ public sealed class RunOriginTests
         var options = new DocumentExecutionOptions
         {
             EventSink = live,
-            Origin = "executing commit 17662b51513bb2a7102c2587f8dbd9201fef2b94 of repository 'recall', checked out at C:\\cache\\17662b5",
+            Origin = "executing commit 17662b51513bb2a7102c2587f8dbd9201fef2b94 of repository 'welldb', checked out at C:\\cache\\17662b5",
         };
 
         var events = options.CreateEventCollector();

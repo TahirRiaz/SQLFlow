@@ -57,10 +57,11 @@ public sealed class FlowSetCollector
 
         var result = new CollectionResult();
         // A flow document is any *.yaml under the estate; the historical .flow.yaml suffix is no longer required (it
-        // still matches, so existing repos keep working). A .yaml that does not parse as a flow is a library, config,
-        // or unrelated file and is silently ignored, not reported as broken. Shared-schedule libraries are handled by
-        // ResolveSchedules, subscriber libraries by CollectSubscribers, and report specifications by the subscriber
-        // that declares them, so all three are excluded from the flow parse here.
+        // still matches, so existing repos keep working). A .yaml that does not parse as a flow is left out: quietly
+        // when it is not a flow at all (a config or unrelated file), and with a warning when it is recognisably a flow
+        // that does not load (FlowDocumentRecognition). Shared-schedule libraries are handled by ResolveSchedules,
+        // subscriber libraries by CollectSubscribers, and report specifications by the subscriber that declares them,
+        // so all three are excluded from the flow parse here.
         var files = Directory.EnumerateFiles(root, "*.yaml", SearchOption.AllDirectories)
             .Where(f => !IsScheduleLibraryFile(f) && !IsSubscriberLibraryFile(f) && !ReportSpecs.IsSpecFile(f))
             .OrderBy(f => f, StringComparer.Ordinal);
@@ -81,19 +82,36 @@ public sealed class FlowSetCollector
         foreach (var file in files)
         {
             var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+            string text;
             try
             {
-                loaded.Add((file, relative, _documents.LoadFile(file)));
-            }
-            catch (SqlFlowException)
-            {
-                // The .yaml did not parse as a flow document: under extension-based discovery it is a non-flow file
-                // (a library, config, or unrelated yaml), so it is ignored rather than reported as a broken flow.
+                text = File.ReadAllText(file);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 // The file matched but could not be read: a real problem worth surfacing, distinct from a non-flow file.
                 result.Warnings.Add($"{relative}: skipped: {ex.Message}");
+                continue;
+            }
+
+            try
+            {
+                loaded.Add((file, relative, _documents.Parse(text, file)));
+            }
+            catch (SqlFlowException ex)
+            {
+                // Discovery is by extension, so a .yaml the loader refuses is usually not a flow at all (a config file,
+                // a companion document, unrelated yaml) and is left out quietly. One that is recognisably a flow is a
+                // flow that does not load: it is reported, and recorded so a sync holds what it last recorded for the
+                // file instead of retiring the pipeline as though the flow had left the repository.
+                if (FlowDocumentRecognition.IsRecognisableFlow(file, text))
+                {
+                    var error = Core.Secrets.SecretHygiene.RedactedMessage(ex);
+                    result.BrokenFlows.Add(new BrokenFlowDocument(relative, error));
+                    result.Warnings.Add(
+                        $"{relative}: is a flow document that does not load, so it is left out of this scan (a sync keeps " +
+                        $"its pipeline and schedules as last recorded until the file is fixed): {error}");
+                }
             }
         }
 
@@ -1083,7 +1101,7 @@ public sealed class FlowSetCollector
                 result.Facts.Add(ObjectFact(name, LineageRelation.Writes, target, flow.Target.Table, LineageNodeKind.Table));
 
                 // The transformation view is a run output too (external-DB landings): the flow refreshes
-                // [schema].[v<Table>] over its target, and the downstream chained flow reads THE VIEW. Declaring
+                // [schema].[v_<Table>] over its target, and the downstream chained flow reads THE VIEW. Declaring
                 // it written here connects "landing flow -> view -> downstream flow" so waves order the chain.
                 if (flow.Transform.GeneratesView)
                 {
@@ -1236,7 +1254,7 @@ public sealed class FlowSetCollector
                     KindHint = LineageNodeKind.Table,
                 });
 
-                // The pre-ingestion transform view is a run output too: the flow refreshes [schema].[v<Table>]
+                // The pre-ingestion transform view is a run output too: the flow refreshes [schema].[v_<Table>]
                 // over its loaded table, and downstream chained flows read THE VIEW, not the table. Declaring the
                 // view as written here is what connects "landing flow -> view -> downstream ingestion flow" in
                 // the graph, so flow dependencies and execution waves order the chain correctly.

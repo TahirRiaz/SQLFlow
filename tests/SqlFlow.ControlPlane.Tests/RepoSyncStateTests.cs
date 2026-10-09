@@ -15,7 +15,7 @@ public sealed class RepoSyncStateTests
 
     private static CatalogRepoSource Source(DateTime? requested, DateTime? started, DateTime? finished, bool enabled = true) => new()
     {
-        Name = "recall",
+        Name = "welldb",
         Branch = "main",
         Enabled = enabled,
         SyncRequestedUtc = requested,

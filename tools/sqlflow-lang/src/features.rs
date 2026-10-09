@@ -443,6 +443,7 @@ pub fn diagnostics(doc: &FlowDocument) -> Vec<Diagnostic> {
                 let homes = documented_homes(&census, &name);
                 let subject = match doc.kind {
                     DocumentKind::Subscribers => "a subscriber library",
+                    DocumentKind::Schedules => "a schedule library",
                     DocumentKind::Flow => "this flow type",
                     DocumentKind::Document => "this document type",
                 };
@@ -1082,6 +1083,56 @@ mod tests {
         assert!(
             diags.iter().any(|d| d.message.contains("'notez'") && d.message.contains("subscriber library")),
             "expected an unknown-key warning for 'notez', got: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn schedule_library_is_clean_and_still_catches_typos() {
+        let src = concat!(
+            "schedules:\n",
+            "  nightly:\n    cron: \"0 2 * * *\"\n    timezone: Europe/Oslo\n    maxConcurrency: 2\n",
+            "    catchup: true\n    enabled: true\n    operation: refresh\n    values:\n      region: north\n",
+            "  hourly: { intervalSeconds: 3600 }\n",
+            "  after_nightly:\n    after: [nightly, hourly]\n    parentFreshnessHours: 30\n",
+        );
+        let doc = FlowDocument::parse(src);
+        assert_eq!(doc.kind, DocumentKind::Schedules);
+        let diags = diagnostics(&doc);
+        assert!(diags.is_empty(), "a valid schedule library should be clean, got: {diags:?}");
+
+        // A key no library entry takes is still reported, under the library's own name.
+        let typo = src.replace("    catchup: true", "    scope: batch");
+        let diags = diagnostics(&FlowDocument::parse(&typo));
+        assert!(
+            diags.iter().any(|d| d.message.contains("'scope'") && d.message.contains("schedule library")),
+            "expected an unknown-key warning for 'scope', got: {diags:?}"
+        );
+    }
+
+    #[test]
+    fn every_built_in_kind_but_batch_takes_the_schedule_and_mode_the_loader_reads_for_it() {
+        let shapes = [
+            "schedule: nightly\n",
+            "schedule: [nightly, hourly]\n",
+            "schedule:\n  name: nightly\n  cron: \"0 2 * * *\"\n  timezone: UTC\n  enabled: true\n  catchup: false\n  maxConcurrency: 2\n",
+        ];
+        for kind in ["ing", "exp", "sp", "inv", "hc", "scm", "api", "cpy", "sftp", "cal", "trl"] {
+            for shape in shapes {
+                let src = format!("flowType: {kind}\nname: orders\nmode: manual\n{shape}");
+                let diags = diagnostics(&FlowDocument::parse(&src));
+                let flagged: Vec<_> = diags
+                    .iter()
+                    .filter(|d| matches!(d.code.as_deref(), Some("flow-unknown-key" | "flow-misplaced-key")))
+                    .collect();
+                assert!(flagged.is_empty(), "flowType {kind} flagged its envelope ({shape:?}): {flagged:?}");
+            }
+        }
+
+        // A batch projects no pipeline, so a schedule on it is parsed and then has no effect: it is still flagged.
+        let diags = diagnostics(&FlowDocument::parse("flowType: batch\nname: nightly-set\nschedule: nightly\n"));
+        assert!(
+            diags.iter().any(|d| d.code.as_deref() == Some("flow-unknown-key") && d.message.contains("'schedule'")),
+            "a batch's schedule should be flagged, got: {diags:?}"
         );
     }
 

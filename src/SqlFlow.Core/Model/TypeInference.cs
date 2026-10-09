@@ -93,7 +93,7 @@ public sealed record TypeInferencePolicy
     public string? Culture { get; init; }
 
     /// <summary>
-    /// Generate the typed transformation view (<c>[schema].[v&lt;Table&gt;]</c>) over the flow's just-loaded
+    /// Generate the typed transformation view (<c>[schema].[v_&lt;Table&gt;]</c>) over the flow's just-loaded
     /// table as a post-process of the load - the V3 form of the SQLFlow pre-ingestion transform view. The
     /// downstream (chained) ingestion flow reads the view as its source, which is how the raw/target tables get
     /// correct data types and how dynamic schema evolution propagates. On by default; set

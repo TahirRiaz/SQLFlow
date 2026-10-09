@@ -52,6 +52,9 @@ pub enum DocumentKind {
     Flow,
     /// A subscriber library: `subscribers.yaml` or `*.subscribers.yaml`, detected by its root key.
     Subscribers,
+    /// A schedule library: `schedules.yaml` or `*.schedules.yaml`, detected by its root `schedules:` key. It defines
+    /// named schedules that flows join, and is analysed against its own census rather than the file flow's.
+    Schedules,
     /// A document that is not a flow, named by its root `documentType`: a module's own document kind, analysed
     /// against the census the module registered for it, and left unchecked when none is registered.
     Document,
@@ -93,6 +96,11 @@ impl FlowDocument {
                     // so a flow with a genuine `subscribers` attribute could never be misread as a library.
                     if flow_type.is_none() && map.get_node("subscribers").is_some() {
                         kind = DocumentKind::Subscribers;
+                    }
+                    // A schedule library is recognised the same way, by its root `schedules:` key: a flow's own
+                    // schedule is the singular `schedule:`, so a flow is never misread as a library.
+                    if flow_type.is_none() && map.get_node("schedules").is_some() {
+                        kind = DocumentKind::Schedules;
                     }
                     // A root `documentType` names a document that is not a flow; a flowType still wins, so a flow is
                     // never analysed as anything else.

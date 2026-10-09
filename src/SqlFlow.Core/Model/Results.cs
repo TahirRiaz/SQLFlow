@@ -143,7 +143,7 @@ public sealed record FlowResult
 /// </summary>
 public sealed record TransformViewResult
 {
-    /// <summary>The view's unqualified name (<c>v&lt;Table&gt;</c>), in the loaded table's schema and database.</summary>
+    /// <summary>The view's unqualified name (<c>v_&lt;Table&gt;</c>), in the loaded table's schema and database.</summary>
     public required string ViewName { get; init; }
 
     /// <summary>The exact <c>CREATE OR ALTER VIEW</c> statement the run executed.</summary>

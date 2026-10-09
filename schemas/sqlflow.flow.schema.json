@@ -42,27 +42,61 @@
       "description": "Execution mode. auto (default): runs on schedule fires and in batch/node group runs. manual: reserved for direct triggers. disabled: deactivated (a retired source or run-once replay); excluded from automatic execution and from descendant selection unless the run opts into find-all, still runnable directly."
     },
     "schedule": {
-      "type": "object",
-      "description": "When the catalog scheduler should run this flow. Mirrored into the catalog on sync; the engine itself never schedules anything. A block with neither cron nor intervalSeconds is treated as absent.",
-      "additionalProperties": false,
-      "properties": {
-        "cron": {
+      "description": "The named schedules this flow belongs to: a schedule name (schedule: nightly), a list of names (schedule: [nightly, hourly]), or an inline block declaring a cadence on the flow itself (named after the flow unless it carries name). Every fire of a schedule runs all the flows that joined it, in wave order. Recorded in the catalog on sync; the engine itself never schedules anything. An inline block with neither cron nor intervalSeconds is treated as absent.",
+      "oneOf": [
+        {
           "type": "string",
-          "description": "Cron expression (5-field standard, or 6+ fields with a leading seconds field), evaluated in timezone via the Cronos library. Mutually exclusive with intervalSeconds."
+          "description": "The name of a schedule this flow joins: an entry of a schedules.yaml library, or another flow's inline block."
         },
-        "intervalSeconds": {
-          "type": "integer",
-          "description": "Fixed interval in seconds between runs, as an alternative to cron. Must be positive. Mutually exclusive with cron."
+        {
+          "type": "array",
+          "description": "The names of several schedules this flow joins; each of them runs it.",
+          "items": { "type": "string" }
         },
-        "enabled": {
-          "type": "boolean",
-          "description": "Whether the schedule is active. Default true. A disabled schedule still syncs to the catalog but never fires."
-        },
-        "timezone": {
-          "type": "string",
-          "description": "IANA time zone identifier the cron expression evaluates in, for example Europe/Oslo. Default UTC. Not consulted for intervalSeconds schedules."
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The schedule's name, which other flows join with schedule: <name>. Default: the declaring flow's name."
+            },
+            "cron": {
+              "type": "string",
+              "description": "Cron expression (5-field standard, or 6+ fields with a leading seconds field), evaluated in timezone via the Cronos library. Mutually exclusive with intervalSeconds."
+            },
+            "intervalSeconds": {
+              "type": "integer",
+              "description": "Fixed interval in seconds between runs, as an alternative to cron. Must be positive. Mutually exclusive with cron."
+            },
+            "enabled": {
+              "type": "boolean",
+              "description": "Whether the schedule fires on its own. Default true. A disabled schedule still syncs to the catalog with its members but is never fired by the clock or a chain; a run-now request still fires it."
+            },
+            "timezone": {
+              "type": "string",
+              "description": "IANA time zone identifier the cron expression evaluates in, for example Europe/Oslo. Default UTC. Not consulted for intervalSeconds schedules."
+            },
+            "catchup": {
+              "type": "boolean",
+              "description": "Whether missed occurrences are replayed, one per scheduler tick, until the schedule is current. Default false: an overdue schedule fires once and further missed occurrences are dropped."
+            },
+            "maxConcurrency": {
+              "type": "integer",
+              "description": "How many of the schedule's members execute at once when a fire has more than one. Default 4; 1 is strictly serial; 0 is unbounded."
+            },
+            "operation": {
+              "type": "string",
+              "description": "The operation each fire runs on members of a registered flow kind that declares it. SQLFlow's built-in kinds take none, and a built-in flow declaring one fails to load."
+            },
+            "values": {
+              "type": "object",
+              "description": "Parameter values each fire passes to members of a registered flow kind, by parameter name.",
+              "additionalProperties": { "type": "string" }
+            }
+          }
         }
-      }
+      ]
     },
     "source": {
       "type": "object",
@@ -908,7 +942,7 @@
         },
         "generateView": {
           "type": "boolean",
-          "description": "Generate the typed transformation view [schema].[v<Table>] over the flow's loaded table as a post-process (default true); downstream flows read the view for correct types. Set false to skip it."
+          "description": "Generate the typed transformation view [schema].[v_<Table>] over the flow's loaded table as a post-process (default true); downstream flows read the view for correct types. Set false to skip it."
         },
         "columns": {
           "type": "array",

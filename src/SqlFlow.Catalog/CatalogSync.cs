@@ -226,6 +226,25 @@ public sealed class CatalogSync
         var (pipelines, presentIds, schedules, anyUnreadable) =
             PreparePipelines(root, repoId, flows, collected.Schedules, nowUtc, warnings, ct);
 
+        // A flow document that is still in the repo but does not load (the scan already warned, naming the file and the
+        // error) has not left the estate: the pipeline it last synced as, its memberships and the schedules it declares
+        // are held as recorded rather than retired, the way an unreadable file's row is, until the file loads again.
+        var brokenPaths = collected.BrokenFlows.Select(b => Normalize(b.File)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (brokenPaths.Count > 0)
+        {
+            var brokenList = brokenPaths.ToList();
+            var held = await context.Pipelines.AsNoTracking()
+                .Where(p => p.RepoId == repoId && brokenList.Contains(p.RelativePath))
+                .Select(p => new { p.Name, p.RelativePath })
+                .ToListAsync(ct).ConfigureAwait(false);
+            foreach (var pipeline in held.OrderBy(p => p.RelativePath, StringComparer.Ordinal))
+            {
+                warnings.Add(
+                    $"'{pipeline.Name}' ({pipeline.RelativePath}) does not load, so this sync holds its pipeline, schedules and " +
+                    "schedule memberships as the last sync recorded them and leaves it out of lineage until the file is fixed.");
+            }
+        }
+
         // The stored state this pass reconciles against, read outside the transaction: the known run ids (so only
         // new artifacts are parsed and retained) and the active pipelines' content hashes (the lineage gate).
         var knownRunIds = (await context.Runs.Where(r => r.RepoId == repoId).Select(r => r.RunId)
@@ -300,8 +319,20 @@ public sealed class CatalogSync
             // retried attempt re-stages its rows from the phase-one artifacts, never from half-tracked state.
             return await CatalogTransaction.InSerializableAsync(context, async () =>
             {
+                // The repo's schedule-name lock comes first, before this transaction takes any other lock, so the
+                // name check below and the schedule writes later in this transaction are one step against an API
+                // create (which takes the same lock first): neither can land between the other's check and write.
+                await ScheduleStore.LockScheduleNamesAsync(context, repoId, ct).ConfigureAwait(false);
+
+                // One schedule per name per repo, whichever way it was made: a git schedule whose name an API-created
+                // schedule holds is not synced (the API schedule is the operator's and a sync never touches it), and
+                // the collision is reported naming both, rather than failing the whole sync on the unique name. Read
+                // afresh on every attempt, so a retried attempt warns once and sees what the last one committed.
+                var scheduleWarnings = new List<string>();
+                var stageable = await DropSchedulesNamedByApiAsync(context, repoId, schedules, scheduleWarnings, ct).ConfigureAwait(false);
+
                 await UpsertRepoAsync(context, repoId, repoName, repoRemoteUrl, root, nowUtc, ct).ConfigureAwait(false);
-                var pipelineTally = await ApplyPipelinesAsync(context, repoId, nowUtc, pipelines, presentIds, schedules, excludedFlowPaths, ct).ConfigureAwait(false);
+                var pipelineTally = await ApplyPipelinesAsync(context, repoId, nowUtc, pipelines, presentIds, stageable, excludedFlowPaths, brokenPaths, ct).ConfigureAwait(false);
                 var runTally = await ApplyRunsAsync(context, repoId, runs, runsSkipped, runsFailed, nowUtc, ct).ConfigureAwait(false);
 
                 (int Objects, int Superseded, int Columns, int Edges, int FlowDeps, int Waves, bool Connected, int PreservedDerived) lineage;
@@ -380,7 +411,7 @@ public sealed class CatalogSync
                     FlowDependencies = lineage.FlowDeps,
                     Waves = lineage.Waves,
                     LineageConnected = lineage.Connected,
-                    Warnings = [.. warnings, .. extensionWarnings],
+                    Warnings = [.. warnings, .. scheduleWarnings, .. extensionWarnings],
                 };
             }, ct).ConfigureAwait(false);
         }
@@ -631,6 +662,56 @@ public sealed class CatalogSync
         return (pipelines, present, schedules, anyUnreadable);
     }
 
+    /// <summary>
+    /// Leaves out every git schedule whose name an API-created schedule of the same repo already holds, matched
+    /// case-insensitively as names are everywhere else, with a warning naming both. A repo holds one schedule per name
+    /// (a unique index covers both sources), the API refuses a name git already uses, and a sync never touches an API
+    /// schedule, so the git one is the one that cannot land; staging it anyway would fail the whole sync on the index.
+    /// Read inside the sync's transaction under the repo's schedule-name lock
+    /// (<see cref="ScheduleStore.LockScheduleNamesAsync"/>), so no API create can take a name between this read and
+    /// the sync's write of it.
+    /// </summary>
+    private static async Task<List<PreparedSchedule>> DropSchedulesNamedByApiAsync(
+        CatalogDbContext context, Guid repoId, List<PreparedSchedule> schedules, List<string> warnings, CancellationToken ct)
+    {
+        if (schedules.Count == 0)
+        {
+            return schedules;
+        }
+
+        var apiSchedules = await context.Schedules.AsNoTracking()
+            .Where(s => s.RepoId == repoId && s.Source == "api")
+            .Select(s => new { s.Id, s.Name })
+            .ToListAsync(ct).ConfigureAwait(false);
+        if (apiSchedules.Count == 0)
+        {
+            return schedules;
+        }
+
+        var apiByName = apiSchedules
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
+        var kept = new List<PreparedSchedule>(schedules.Count);
+        foreach (var schedule in schedules)
+        {
+            if (apiByName.TryGetValue(schedule.Name, out var api))
+            {
+                var origin = schedule.Definition.Flow is { } flow
+                    ? $"'{flow}' ({schedule.Definition.Path})"
+                    : schedule.Definition.Path;
+                warnings.Add(
+                    $"schedule '{schedule.Name}' ({origin}) is not synced: the repo already has an API-created schedule " +
+                    $"named '{api.Name}' (id {api.Id}), and a repo holds one schedule per name. Rename the one in git, or " +
+                    "delete the API schedule, and sync again.");
+                continue;
+            }
+
+            kept.Add(schedule);
+        }
+
+        return kept;
+    }
+
     /// <summary>Whether any extension reports that a document it owns changed in a way the lineage of the flows depends
     /// on (a companion document a registered flow reads while describing its lineage). Asked only when nothing else
     /// already requires a recompute.</summary>
@@ -677,7 +758,8 @@ public sealed class CatalogSync
     private static async Task<(int Added, int Updated, int Unchanged, int Deactivated, int Deleted)> ApplyPipelinesAsync(
         CatalogDbContext context, Guid repoId, DateTime nowUtc,
         IReadOnlyList<PreparedPipeline> pipelines, IReadOnlySet<Guid> presentIds,
-        IReadOnlyList<PreparedSchedule> schedules, IReadOnlySet<string>? excludedFlowPaths, CancellationToken ct)
+        IReadOnlyList<PreparedSchedule> schedules, IReadOnlySet<string>? excludedFlowPaths, IReadOnlySet<string> brokenPaths,
+        CancellationToken ct)
     {
         // Only this repo's pipelines: another repo's flows in the same catalog must not be touched by this sync.
         // AsTracking so the update/deactivate mutations below persist even when the host's context defaults to
@@ -735,8 +817,11 @@ public sealed class CatalogSync
         // catalog instead of piling up as an inactive tombstone across renames. Its run history is KEPT (each run
         // carries the flow name, so the traces stand on their own), but its schedule is removed so nothing fires for
         // a flow that is gone. Lineage edges/objects/dependencies are repo-scoped and rebuilt later in this pass.
+        // A flow whose file is still in the repo but does not load is held: its row is left exactly as the last sync
+        // recorded it (neither refreshed nor removed), and so are its memberships below.
         var deactivated = 0;
         var removedIds = new List<Guid>();
+        var heldIds = new HashSet<Guid>();
         foreach (var (id, row) in existing)
         {
             if (presentIds.Contains(id))
@@ -752,10 +837,27 @@ public sealed class CatalogSync
                     deactivated++;
                 }
             }
+            else if (brokenPaths.Contains(row.RelativePath))
+            {
+                heldIds.Add(id);
+            }
             else
             {
                 removedIds.Add(id);
             }
+        }
+
+        // The schedules a held flow had joined keep it as a member: git cannot say this pass what the flow joins, so
+        // what the last sync recorded stands.
+        var heldMemberships = new List<(Guid ScheduleId, string FlowName)>();
+        if (heldIds.Count > 0)
+        {
+            var heldList = heldIds.ToList();
+            heldMemberships.AddRange((await context.ScheduleMembers.AsNoTracking()
+                    .Where(m => heldList.Contains(m.PipelineId))
+                    .Select(m => new { m.ScheduleId, m.FlowName })
+                    .ToListAsync(ct).ConfigureAwait(false))
+                .Select(m => (m.ScheduleId, m.FlowName)));
         }
 
         var deleted = removedIds.Count;
@@ -774,12 +876,29 @@ public sealed class CatalogSync
         var scheduleKeep = new HashSet<Guid>();
         foreach (var schedule in schedules)
         {
+            var yamlId = CatalogIdentity.YamlSchedule(repoId, schedule.Name);
+            var members = schedule.Members
+                .Concat(heldMemberships.Where(m => m.ScheduleId == yamlId).Select(m => m.FlowName))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
             var scheduleId = await ScheduleStore.StageYamlUpsertAsync(
-                context, repoId, schedule.Name, schedule.Members, schedule.Spec.Cron, schedule.Spec.IntervalSeconds,
+                context, repoId, schedule.Name, members, schedule.Spec.Cron, schedule.Spec.IntervalSeconds,
                 schedule.Spec.Timezone, schedule.Spec.Enabled, schedule.Spec.Catchup, schedule.Spec.MaxConcurrency,
                 schedule.NextFireUtc, nowUtc, schedule.Definition, schedule.Spec.After,
                 schedule.Spec.ParentFreshnessHours, schedule.Spec.Operation, schedule.Spec.Values, ct).ConfigureAwait(false);
             scheduleKeep.Add(scheduleId);
+        }
+
+        // A schedule a held flow declares inline cannot be read from it this pass, so it is kept, with its members, as
+        // the last sync recorded it rather than removed as though git had dropped it.
+        if (brokenPaths.Count > 0)
+        {
+            var brokenList = brokenPaths.ToList();
+            scheduleKeep.UnionWith(await context.Schedules.AsNoTracking()
+                .Where(s => s.RepoId == repoId && s.Source == "yaml" && s.DefinitionPath != null
+                            && brokenList.Contains(s.DefinitionPath))
+                .Select(s => s.Id)
+                .ToListAsync(ct).ConfigureAwait(false));
         }
 
         await ScheduleStore.StageRemoveYamlSchedulesNotInAsync(context, repoId, scheduleKeep, ct).ConfigureAwait(false);

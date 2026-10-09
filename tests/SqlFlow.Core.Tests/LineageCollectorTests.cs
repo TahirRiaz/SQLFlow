@@ -88,17 +88,21 @@ public sealed class LineageCollectorTests : IDisposable
     }
 
     [Fact]
-    public void FlowSet_UnparseableYaml_IgnoredSilently()
+    public void FlowSet_UnparseableYaml_IsIgnoredWhenNotAFlow_AndReportedWhenItIsOne()
     {
-        // Extension-based discovery: a .yaml that does not parse as a flow is a non-flow file (a library, config, or
-        // unrelated yaml), so it is ignored rather than reported as broken; the valid flows still collect.
+        // Extension-based discovery: a .yaml that does not parse and is not a flow at all (a config or unrelated yaml)
+        // is ignored rather than reported as broken; one that declares a flowType is a flow that does not load, and is
+        // reported naming the file. The valid flows still collect.
         Write("good.flow.yaml", IngestionYaml);
-        Write("not-a-flow.yaml", "flowType: ing\nname: [not, a, name");
+        Write("not-a-flow.yaml", "settings:\n  retries: [1, 2");
+        Write("broken-flow.yaml", "flowType: ing\nname: [not, a, name");
 
         var collected = new FlowSetCollector().Collect(_root);
 
         Assert.Single(collected.Flows);
         Assert.DoesNotContain(collected.Warnings, w => w.Contains("not-a-flow.yaml", StringComparison.Ordinal));
+        Assert.Contains(collected.Warnings, w => w.StartsWith("broken-flow.yaml: is a flow document that does not load", StringComparison.Ordinal));
+        Assert.Equal("broken-flow.yaml", Assert.Single(collected.BrokenFlows).File);
     }
 
     [Fact]

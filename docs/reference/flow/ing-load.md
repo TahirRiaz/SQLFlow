@@ -98,9 +98,9 @@ With `load.keyColumns` set, matched rows whose data changed are updated and new 
 
 | Key | Type | Required | Default | Description |
 | --- | --- | --- | --- | --- |
-| `insertedDate` | bool | no | `true` | Inject and maintain `InsertedDate_DW` (datetime2(3)). |
-| `updatedDate` | bool | no | `true` | Inject and maintain `UpdatedDate_DW` (datetime2(3)). |
-| `deletedDate` | bool | no | `false` | Inject `DeletedDate_DW` (datetime2(3)), the soft-delete marker. |
+| `insertedDate` | bool | no | `true` | Inject and maintain `InsertedDate_DW` (datetime). |
+| `updatedDate` | bool | no | `true` | Inject and maintain `UpdatedDate_DW` (datetime). |
+| `deletedDate` | bool | no | `false` | Inject `DeletedDate_DW` (datetime), the soft-delete marker. |
 | `rowStatus` | bool | no | `false` | Inject and maintain `RowStatus_DW` (char(1)). |
 
 ## load details
@@ -136,7 +136,7 @@ Per-file (per-dataset) full replace, for the chained file-landing pattern where 
 
 The two statements always run in one transaction, so a resend is atomic (the old rows are gone and the new ones in, or neither). Purged rows are reported as `RowsDeleted`.
 
-Use `FileName_DW` as the reload column, and set the upstream pre flow's `showPathWithFileName` so `FileName_DW` carries the full path, the collision-free identity (two files with the same name in different folders stay distinct). The provenance columns ride through the `[pre].[v<Table>]` view onto this ods target, so the reload column is a real target column here. Combined with an incremental watermark on `FileDate_DW`, only the resent file (its rows carry a newer file date) is read into staging, so only that file is purged and reloaded; the other landed files are never touched. This is the crucial difference from a keyed upsert, which would leave behind records that the new version of the file dropped.
+Use `FileName_DW` as the reload column, and set the upstream pre flow's `showPathWithFileName` so `FileName_DW` carries the full path, the collision-free identity (two files with the same name in different folders stay distinct). The provenance columns ride through the `[pre].[v_<Table>]` view onto this ods target, so the reload column is a real target column here. Combined with an incremental watermark on `FileDate_DW`, only the resent file (its rows carry a newer file date) is read into staging, so only that file is purged and reloaded; the other landed files are never touched. This is the crucial difference from a keyed upsert, which would leave behind records that the new version of the file dropped.
 
 On the run that creates the target, an `NCI_ReloadColumn` nonclustered index is added so the purge seeks (skipped when the column is already the leading column of the key, date, or dataset index).
 
@@ -169,7 +169,7 @@ This governs the flow's staging table (`[raw].[<targetSchema>_<targetTable>_<flo
 
 ### load.truncateSourceWhenConsolidated
 
-For the chained landing pattern `file -> [pre].[<Table>] -> view [pre].[v<Table>] -> target`, the landing (`pre`) table is written by a file flow and read by this ingestion flow through the typed view. The default cleanup lives on the WRITER: the file flow's `load.resetWhenConsolidated` (on by default, see docs/reference/flow/load.md) truncates the landing table at the start of its next run once every direct consumer has consolidated it. This ingestion-side flag is the explicit consumer-side alternative for the same table. Setting `truncateSourceWhenConsolidated: true` reclaims it safely: after a successful load, the engine compares `MAX(watermark)` in the landing table against `MAX(watermark)` in the target and truncates the landing table only when the target has caught up (target mark `>=` landing mark). The target-side probe is scoped by `source.incrementalClause` when the flow declares one, so on a shared target (several operators merging into one arc table) another operator's fresher load can never fake the catch-up. The watermark is the first `incremental.columns` entry, else `incremental.dateColumn`, and must exist under the same name on both sides (the clean `FileDate_DW` system column and its siblings do). The landing table is the source object with a leading `v_` stripped; a source that is already a base table is truncated as-is.
+For the chained landing pattern `file -> [pre].[<Table>] -> view [pre].[v_<Table>] -> target`, the landing (`pre`) table is written by a file flow and read by this ingestion flow through the typed view. The default cleanup lives on the WRITER: the file flow's `load.resetWhenConsolidated` (on by default, see docs/reference/flow/load.md) truncates the landing table at the start of its next run once every direct consumer has consolidated it. This ingestion-side flag is the explicit consumer-side alternative for the same table. Setting `truncateSourceWhenConsolidated: true` reclaims it safely: after a successful load, the engine compares `MAX(watermark)` in the landing table against `MAX(watermark)` in the target and truncates the landing table only when the target has caught up (target mark `>=` landing mark). The target-side probe is scoped by `source.incrementalClause` when the flow declares one, so on a shared target (several operators merging into one arc table) another operator's fresher load can never fake the catch-up. The watermark is the first `incremental.columns` entry, else `incremental.dateColumn`, and must exist under the same name on both sides (the clean `FileDate_DW` system column and its siblings do). The landing table is the source object with a leading `v_` stripped; a source that is already a base table is truncated as-is.
 
 This is the safe alternative to `target.truncateBeforeLoad` on the landing flow: it never removes un-consolidated data. A failed run never truncates (the step is on the success path, after the load commits); an empty landing table is a no-op; and a target that has not caught up leaves the landing rows in place, so the next run re-consolidates them rather than losing them. The flag requires an incremental watermark and a SQL Server source; both are checked at run start, so a misconfigured flow fails immediately rather than after a committed load:
 
@@ -214,17 +214,20 @@ The four `_DW` audit columns are injected into the desired schema when enabled:
 
 | YAML key | Column | Type | Default |
 | --- | --- | --- | --- |
-| `insertedDate` | `InsertedDate_DW` | datetime2(3) | on |
-| `updatedDate` | `UpdatedDate_DW` | datetime2(3) | on |
-| `deletedDate` | `DeletedDate_DW` | datetime2(3) | off |
+| `insertedDate` | `InsertedDate_DW` | datetime | on |
+| `updatedDate` | `UpdatedDate_DW` | datetime | on |
+| `deletedDate` | `DeletedDate_DW` | datetime | off |
 | `rowStatus` | `RowStatus_DW` | char(1) | off |
 
-Behavior, from src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs and src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs:
+The audit stamps are `datetime` rather than `datetime2`, matching the original SQLFlow arc/ods tables so migrated targets are schema-identical to production.
+
+Behavior, from src/SqlFlow.SqlServer/Schema/IngestionSchemaBuilder.cs, src/SqlFlow.SqlServer/Schema/UpsertGenerator.cs and src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs:
 
 - All system columns are created nullable, so an `ALTER TABLE ... ADD` onto an already-populated target succeeds. They are computed by the engine (never bulk-copied) and always sort last in the column order.
 - An existing column with the same name is not injected twice (case-insensitive existence check).
-- `InsertedDate_DW` is stamped `SYSUTCDATETIME()` on insert. On update, a matched row whose `InsertedDate_DW` is NULL (it predates the column) is stamped the first time it is touched; an existing value is preserved.
-- `UpdatedDate_DW` is stamped `SYSUTCDATETIME()` on update. The SCD2 close of a current row also stamps it, using the run's fixed as-of instant so every row closed in the run carries the same timestamp.
+- Every statement that inserts a row stamps it the same way, whichever load path it belongs to (the keyed upsert, the dataset-partitioned loop, the per-file reload of `load.reloadColumn`, or the keyless append of a flow without `keyColumns`): `InsertedDate_DW` and `UpdatedDate_DW` both get `SYSUTCDATETIME()`, and `RowStatus_DW` gets `'I'`. A new row therefore reads as changed when it arrived, so `MAX(UpdatedDate_DW)` advances on a table that is only ever inserted into.
+- On update, `UpdatedDate_DW` is stamped `SYSUTCDATETIME()` and `RowStatus_DW` `'U'`; a matched row whose `InsertedDate_DW` is NULL (it predates the column) is stamped the first time it is touched, and an existing value is preserved.
+- With SCD2, the close of a current row and the insert of its new version both stamp the run's fixed as-of instant, so every row closed or opened in the run carries the same timestamp.
 - `RowStatus_DW` values written by the engine: `'I'` on insert, `'U'` on update (including SCD2 close and match-keys resurrection), `'D'` on a match-keys tag.
 - `deletedDate` is auto-enabled when `load.matchKeysInSourceAndTarget: true` with `matchKeys.action: tag`.
 

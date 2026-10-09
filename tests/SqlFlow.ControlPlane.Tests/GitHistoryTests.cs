@@ -276,9 +276,9 @@ public sealed class GitHistoryTests
             using var repo = new Repository(dir);
             Commit(repo, ".gitignore", "bin/\n", "ignore", "ada");
             Commit(repo, ".gitattributes", "* text=auto\n", "attributes", "ada");
-            Commit(repo, "recall/.gitignore", "*.tmp\n", "nested ignore", "ada");
-            Commit(repo, "recall/empty/.gitkeep", string.Empty, "keep", "ada");
-            Commit(repo, "recall/wells.yaml", "name: wells\n", "flow", "ada");
+            Commit(repo, "welldb/.gitignore", "*.tmp\n", "nested ignore", "ada");
+            Commit(repo, "welldb/empty/.gitkeep", string.Empty, "keep", "ada");
+            Commit(repo, "welldb/wells.yaml", "name: wells\n", "flow", "ada");
             Commit(repo, ".editorconfig", "root = true\n", "editor", "ada");
 
             var paths = RepoTreeEndpoints.ReadBranchTip(repo, CancellationToken.None).Select(e => e.Path).ToList();
@@ -286,12 +286,12 @@ public sealed class GitHistoryTests
             // A repository whose root holds only a .gitignore must not grow a root project out of it.
             Assert.DoesNotContain(".gitignore", paths, StringComparer.Ordinal);
             Assert.DoesNotContain(".gitattributes", paths, StringComparer.Ordinal);
-            Assert.DoesNotContain("recall/.gitignore", paths, StringComparer.Ordinal);
-            Assert.DoesNotContain("recall/empty/.gitkeep", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain("welldb/.gitignore", paths, StringComparer.Ordinal);
+            Assert.DoesNotContain("welldb/empty/.gitkeep", paths, StringComparer.Ordinal);
 
             // The folder a .gitkeep held open is still part of the outline; the placeholder is what goes.
-            Assert.Contains("recall/empty", paths, StringComparer.Ordinal);
-            Assert.Contains("recall/wells.yaml", paths, StringComparer.Ordinal);
+            Assert.Contains("welldb/empty", paths, StringComparer.Ordinal);
+            Assert.Contains("welldb/wells.yaml", paths, StringComparer.Ordinal);
             Assert.Contains(".editorconfig", paths, StringComparer.Ordinal);
         }
         finally

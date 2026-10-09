@@ -30,15 +30,16 @@ public sealed record RunEnqueueRequest(
     RunParameters? Parameters = null, string TriggerSource = RunTriggerSources.Manual,
     Guid? TriggerScheduleId = null, string? RequestedBy = null);
 
-/// <summary>What to enqueue as one multi-flow run group (a Node or Batch execution): the resolved, ordered member
-/// flows (with their waves) plus the shared routing. Every member is enqueued under one <see cref="RunGroupModes"/>
-/// header and gated by wave, so a dependency never runs before what it depends on.
-/// <para>A node backfill carries per-member parameters through <paramref name="MemberParameters"/> (keyed by flow
-/// name): the caller decides, per member, whether it takes the backfill window (the anchor and every window-honoring
-/// descendant, so each layer re-reads the same historical slice) or <see cref="RunParameters.ReprocessFromSourceMin"/>
-/// (a relational descendant, so the back-dated rows an upstream flow re-lands are re-pulled instead of stopping below
-/// the target's high-water mark). A member absent from the map runs with default parameters, so an ordinary group (or
-/// a schedule fire) passes no map and every member runs as defined.</para>
+/// <summary>What to enqueue as one multi-flow run group (a node-scoped trigger, or a schedule's fire, recorded as a
+/// <see cref="RunGroupModes.Batch"/> group): the resolved, ordered member flows (with their waves) plus the shared
+/// routing. Every member is enqueued under one <see cref="RunGroupModes"/> header and gated by wave, so a dependency
+/// never runs before what it depends on.
+/// <para>Per-member parameters travel in <paramref name="MemberParameters"/> (keyed by flow name). A backfill (a node
+/// trigger with a window, or a schedule's run-now with one) routes each member to the window or to
+/// <see cref="RunParameters.ReprocessFromSourceMin"/> (a relational member, so the back-dated rows an upstream flow
+/// re-lands are re-pulled instead of stopping below the target's high-water mark), and a schedule's operation and
+/// values reach the members of a registered kind the same way. A member absent from the map runs with default
+/// parameters, so an ordinary group passes no map and every member runs as defined.</para>
 /// <para><paramref name="MaxConcurrency"/> bounds how many members may execute at once (null = unbounded, the
 /// historical behavior). It is stamped onto every member run and applied by the dispatcher's group gate; because
 /// waves are gated, it is effectively the width of the running wave.</para></summary>
@@ -194,11 +195,12 @@ public static class RunQueueStore
             runId, new DispatchRun(runId, pipelineId, targetPool, null, 0, null, nowUtc, 0, false));
     }
 
-    /// <summary>Enqueues a whole run group (a Node or Batch execution) atomically: inserts one
+    /// <summary>Enqueues a whole run group (a node-scoped trigger or a schedule's fire) atomically: inserts one
     /// <see cref="CatalogRunGroup"/> header and one <c>queued</c> <see cref="CatalogRun"/> per member, each stamped
     /// with the shared <see cref="CatalogRun.GroupId"/> and its own <see cref="CatalogRun.GroupWave"/> so the
     /// dispatcher runs them in wave order. Every member is pinned to the same resolved commit (so the whole set
-    /// executes one consistent version) and carries default run parameters (backfill is single-flow only). Returns
+    /// executes one consistent version) and carries the parameters
+    /// <see cref="RunGroupEnqueueRequest.MemberParameters"/> routes to it, or the defaults. Returns
     /// the group id, the member run ids in wave order, and their placement rows. Members are validated non-empty by
     /// the caller (an empty scope is a request error, not something to enqueue).</summary>
     public static async Task<RunGroupEnqueueResult> EnqueueGroupAsync(

@@ -2,9 +2,9 @@
 id: concept-pre-ingestion-transform
 title: Pre-ingestion transform views and chained-flow topology
 type: concept
-summary: How the typed v<Table> view is generated over the pre table, and how a downstream ingestion flow reads it to carry types into raw and target.
+summary: How the typed v_<Table> view is generated over the pre table, and how a downstream ingestion flow reads it to carry types into raw and target.
 keywords:
-  - v<table> view
+  - v_<table> view
   - typed view
   - chained flows
   - create or alter view
@@ -32,7 +32,7 @@ sourceRefs:
 
 # Pre-ingestion transform views and chained-flow topology
 
-A pre-ingestion transform is the typed view a landing flow refreshes over its just-loaded raw table. Files land as strings in a pre table; the view named `v<Table>` projects those strings through casts, expressions, and renames so every downstream consumer sees correctly typed data without a second physical copy. The composition is chained flows: the landing flow ends at the pre table plus the view, and a separate downstream ingestion flow reads the view (not the table) as its source into raw/target through the existing staging and keyed-upsert machinery. No new load path exists for the typed hop; it reuses the standard ingestion flow.
+A pre-ingestion transform is the typed view a landing flow refreshes over its just-loaded raw table. Files land as strings in a pre table; the view named `v_<Table>` projects those strings through casts, expressions, and renames so every downstream consumer sees correctly typed data without a second physical copy. The composition is chained flows: the landing flow ends at the pre table plus the view, and a separate downstream ingestion flow reads the view (not the table) as its source into raw/target through the existing staging and keyed-upsert machinery. No new load path exists for the typed hop; it reuses the standard ingestion flow.
 
 ## Topology
 
@@ -40,13 +40,13 @@ A pre-ingestion transform is the typed view a landing flow refreshes over its ju
 file --> pre table (raw strings)          landing flow (file), or external-DB ing flow
              |
              v
-         [schema].[v<Table>]              refreshed by the landing flow as a post-process
+         [schema].[v_<Table>]             refreshed by the landing flow as a post-process
              |
              v
          raw / target table               downstream ing flow reads THE VIEW as its source
 ```
 
-The two flows are separate documents. In samples/lineage-demo, `10-land-orders.flow.yaml` lands `data/orders.csv` into `demo.Orders_Pre` and refreshes `demo.vOrders_Pre`; `20-ing-orders.flow.yaml` is an `ing` flow whose source object is `SqlFlowCatalogTests.demo.vOrders_Pre` and whose target is `demo.Orders`. Reading the view is also what connects the two flows in lineage (see below).
+The two flows are separate documents. In samples/lineage-demo, `10-land-orders.flow.yaml` lands `data/orders.csv` into `demo.Orders_Pre` and refreshes `demo.v_Orders_Pre`; `20-ing-orders.flow.yaml` is an `ing` flow whose source object is `SqlFlowCatalogTests.demo.v_Orders_Pre` and whose target is `demo.Orders`. Reading the view is also what connects the two flows in lineage (see below).
 
 ## When the view is generated
 
@@ -63,11 +63,11 @@ Two runners share the post-process:
 - File flows (src/SqlFlow.Core/Engine/FlowRunner.cs): trace stage `transform.view`, running after `source.complete`. The ordering is deliberate: a view failure never leaves files un-finalized. The load stands, the files are marked ingested, and a re-run regenerates the view without re-reading anything. The failure still fails the run, because downstream flows read the view and a stale one must be loud.
 - Ingestion flows (src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs, step 8b): the same post-process runs after staging cleanup when `flow.Transform.GeneratesView`. `IngestionFlow.Transform` gives external-database landings the same policy: the flow's target is the pre/staging table and the downstream chained flow reads the view. A native SQL-to-SQL flow leaves `Transform` at its default (inference off, no columns) and generates nothing. If `transform.inferTypes` is on but no inference service is wired into the runner, the run fails with: `transform.inferTypes is on, but no inference service is wired into this runner. Register one (the engine host does by default), or declare the transforms explicitly under transform.columns.`
 
-In both runners the success log line is `transformation view [schema].[vTable] refreshed (N column(s), M typed)`.
+In both runners the success log line is `transformation view [schema].[v_Table] refreshed (N column(s), M typed)`.
 
 ## Naming, refresh, and schema evolution
 
-The view is named `v` plus the flow's target table (`Orders_Pre` gets `vOrders_Pre`), created in the same database and schema as the target, via `CREATE OR ALTER VIEW`. The statement is idempotent and executed on every run, and the runner introspects the just-loaded table fresh before building it, so evolved columns are included. That refresh is the mechanism by which dynamic schema evolution propagates pre -> view -> raw -> target: a new column appears in the pre table, the next run's view projects it, and the downstream ingestion flow's schema sync carries it into raw/target.
+The view is named `v_` plus the flow's target table (`Orders_Pre` gets `v_Orders_Pre`; `FlowRunner.BuildTransformViewAsync` and `IngestionFlowRunner.GenerateTransformViewAsync` build the name the same way, and lineage declares the same one), created in the same database and schema as the target, via `CREATE OR ALTER VIEW`. The statement is idempotent and executed on every run, and the runner introspects the just-loaded table fresh before building it, so evolved columns are included. That refresh is the mechanism by which dynamic schema evolution propagates pre -> view -> raw -> target: a new column appears in the pre table, the next run's view projects it, and the downstream ingestion flow's schema sync carries it into raw/target.
 
 ## How the projection is resolved
 
@@ -93,7 +93,7 @@ The resolver's output type is `InferredColumn { ColumnName, DataType, SelectExpr
 `TransformViewBuilder.Build` (src/SqlFlow.Core/Engine/TransformViewBuilder.cs) is pure string construction (no database access) and emits exactly:
 
 ```sql
-CREATE OR ALTER VIEW [schema].[vTable]
+CREATE OR ALTER VIEW [schema].[v_Table]
 AS
 SELECT
     <expr> AS [col],
@@ -155,7 +155,7 @@ transform:
       type: varchar(50)
 ```
 
-Every run refreshes `demo.vOrders_Pre`: `vehicle_type` gets the authored expression aliased to `vehicle_type_clean`, inference types the remaining columns, and anything inference cannot type passes through as-is.
+Every run refreshes `demo.v_Orders_Pre`: `vehicle_type` gets the authored expression aliased to `vehicle_type_clean`, inference types the remaining columns, and anything inference cannot type passes through as-is.
 
 The downstream typed hop (samples/lineage-demo/20-ing-orders.flow.yaml) reads the view:
 
@@ -167,7 +167,7 @@ connections:
   dwh: ${env:SQLFLOW_DEMO_DB}
 source:
   server: src
-  object: SqlFlowCatalogTests.demo.vOrders_Pre
+  object: SqlFlowCatalogTests.demo.v_Orders_Pre
 target:
   server: dwh
   object: SqlFlowCatalogTests.demo.Orders

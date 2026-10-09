@@ -44,11 +44,12 @@ public sealed record RunScopeMember(string FlowName, string FlowKind, int Wave, 
 public sealed record RunScopeExpansion(RunScope Scope, string Anchor, IReadOnlyList<RunScopeMember> Members);
 
 /// <summary>
-/// Turns a run scope (Flow / Node / Batch) into the concrete, ordered set of flows to enqueue. This is the single
-/// place that answers "which flows does this execution touch", shared by the read-only preview endpoint and the
-/// trigger endpoint so the two can never disagree. It reads exactly the data the lineage graph does: the flow-to-flow
-/// dependency edges (<see cref="CatalogFlowDependency"/>) for descendants, the batch label for a batch, and the
-/// topological wave (<see cref="CatalogPipeline.Wave"/>) for ordering. Only active pipelines are ever selected, so a
+/// Turns a run scope (Flow / Node) or a schedule's member set into the concrete, ordered set of flows to enqueue.
+/// This is the single place that answers "which flows does this execution touch", shared by the read-only preview
+/// endpoint, the trigger endpoint and a schedule's fire and plan, so they can never disagree. It reads exactly the data
+/// the lineage graph does: the flow-to-flow dependency edges (<see cref="CatalogFlowDependency"/>) for descendants,
+/// the schedule's members (<see cref="CatalogScheduleMember"/>) for a schedule, and the topological wave
+/// (<see cref="CatalogPipeline.Wave"/>) for ordering. Only active pipelines are ever selected, so a
 /// flow that has left the estate is never enqueued; a <c>mode: manual</c> or <c>mode: disabled</c> pipeline is
 /// likewise excluded from group membership by default (a Node's anchor is the one exception: naming it IS the
 /// manual trigger; and a Node expansion can opt into "find all" to replay them deliberately). Stateless, like the
@@ -65,9 +66,9 @@ public static class RunScopeExpander
     };
 
     /// <summary>
-    /// Expands <paramref name="scope"/> into its ordered member flows. For Flow/Node the <paramref name="anchorFlow"/>
-    /// identifies the starting flow; for Batch either a <c>batch</c> names the batch directly, or the
-    /// anchor flow's own batch is used. The returned members are active pipelines ordered by wave then name; a wave
+    /// Expands <paramref name="scope"/> into its ordered member flows, starting from the flow
+    /// <paramref name="anchorFlow"/> names (a whole source runs through its schedule instead: see
+    /// <see cref="ExpandScheduleAsync"/>). The returned members are active pipelines ordered by wave then name; a wave
     /// that lineage has not computed yet (-1) collapses to 0 so an un-analyzed set runs as a single parallel wave
     /// rather than in an undefined order. A Node expansion selects only <c>mode: auto</c> descendants by default
     /// (find only active); <paramref name="includeAll"/> widens it to every descendant, manual and disabled alike

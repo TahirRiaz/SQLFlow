@@ -89,7 +89,7 @@ Staging is collapsed to one row per business key on insert with `ROW_NUMBER() OV
 
 When the corresponding system columns are enabled (see `systemColumns` in [ing-load](../flow/ing-load.md)):
 
-- Insert branch: `InsertedDate_DW = SYSUTCDATETIME()` and `RowStatus_DW = 'I'`.
+- Insert branch: `InsertedDate_DW = SYSUTCDATETIME()`, `UpdatedDate_DW = SYSUTCDATETIME()` and `RowStatus_DW = 'I'`. A new row carries the merge time in both audit columns (legacy parity), so `UpdatedDate_DW` always reads as when the row last changed and never stays NULL until a first update. The per-file reload (`load.reloadColumn`) and the keyless append stamp their inserts the same way.
 - Update branch: `UpdatedDate_DW = SYSUTCDATETIME()`, `RowStatus_DW = 'U'`, and a NULL-only backfill of `InsertedDate_DW` (a matched row that predates the column gets stamped the first time it is touched; an existing value is preserved).
 
 ### Skips and validation

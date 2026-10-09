@@ -199,8 +199,9 @@ public static class ScheduleStore
         ArgumentException.ThrowIfNullOrWhiteSpace(parentName);
         // Only children for which this parent is their ONLY parent are suppressed. A fan-in child is left alone on
         // purpose: stamping it here would mark its whole parent set as consumed on the strength of one parent that
-        // chose not to run, and the fire it is actually waiting for (all of them) would be skipped rather than
-        // deferred. Such a child simply stays unready until this parent fires for real.
+        // chose not to carry its chain, and the fire it is actually waiting for (all of them) would be skipped. It is
+        // not held back either: this fire still counts as the parent's newest, so the fan-in child fires once every
+        // other parent has fired since it last reacted, exactly as it would after an ordinary fire of this parent.
         var soleParentChildren = catalog.ScheduleParents
             .Where(p => p.RepoId == repoId && p.ParentName == parentName
                         && !catalog.ScheduleParents.Any(o => o.ScheduleId == p.ScheduleId && o.ParentName != parentName))
@@ -294,7 +295,12 @@ public static class ScheduleStore
         CancellationToken ct = default)
         => CatalogTransaction.InSerializableAsync(
             catalog,
-            () => StageYamlUpsertAsync(catalog, repoId, scheduleName, members, cron, intervalSeconds, timezone, enabled, catchup, maxConcurrency, computedNextFireUtc, nowUtc, definition, afterSchedules, parentFreshnessHours, operation, values, ct),
+            async () =>
+            {
+                // A writer of the repo's schedule names, like the sync and an API create: the same lock, first.
+                await LockScheduleNamesAsync(catalog, repoId, ct).ConfigureAwait(false);
+                return await StageYamlUpsertAsync(catalog, repoId, scheduleName, members, cron, intervalSeconds, timezone, enabled, catchup, maxConcurrency, computedNextFireUtc, nowUtc, definition, afterSchedules, parentFreshnessHours, operation, values, ct).ConfigureAwait(false);
+            },
             ct);
 
     /// <summary>The transaction-free core of the YAML upsert: it stages the insert/update on the context but does
@@ -522,9 +528,72 @@ public static class ScheduleStore
         catalog.Schedules.RemoveRange(stale);
     }
 
+    /// <summary>How long a writer of a repo's schedules waits for another one (a sync, an API create) to commit before
+    /// giving up with <see cref="ScheduleNamesBusyException"/>.</summary>
+    public const int ScheduleNamesLockTimeoutMs = 120_000;
+
+    /// <summary>The application-lock resource every writer of <paramref name="repoId"/>'s schedule names takes
+    /// (<see cref="LockScheduleNamesAsync"/>). Public so a test can stand in for one writer while the other runs.</summary>
+    public static string ScheduleNamesLockResource(Guid repoId) => $"sqlflow/catalog/schedule-names/{repoId:N}";
+
+    /// <summary>
+    /// Takes, inside the caller's open transaction, the exclusive lock on <paramref name="repoId"/>'s schedule names
+    /// (<c>sp_getapplock</c>, owned by the transaction, so it is released at commit or rollback, and a retried attempt
+    /// takes it afresh). Every writer that decides what a name may hold takes it before it reads the names: the catalog
+    /// sync, first thing in its transaction, and an API create. Their read of who holds a name and their write of a
+    /// schedule are therefore one step, and a create can never land between a sync's check and its insert (or the
+    /// other way round) to fail the second on the unique (repo, name) index. Taking it first in both keeps their lock
+    /// order the same, so the two never deadlock on each other. Throws <see cref="ScheduleNamesBusyException"/> when it
+    /// is not granted within <see cref="ScheduleNamesLockTimeoutMs"/>.
+    /// </summary>
+    public static async Task LockScheduleNamesAsync(CatalogDbContext catalog, Guid repoId, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        if (catalog.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException(
+                "The schedule-name lock belongs to a transaction; take it inside the writer's transaction.");
+        }
+
+        var result = new Microsoft.Data.SqlClient.SqlParameter("@result", System.Data.SqlDbType.Int)
+        {
+            Direction = System.Data.ParameterDirection.Output,
+        };
+
+        // The wait is bounded server-side by @LockTimeout; the command timeout must outlast it, or the client would
+        // abort the round trip first and the typed outcome below would never be reached.
+        var previousTimeout = catalog.Database.GetCommandTimeout();
+        catalog.Database.SetCommandTimeout((ScheduleNamesLockTimeoutMs / 1000) + 30);
+        try
+        {
+            await catalog.Database.ExecuteSqlRawAsync(
+                "DECLARE @code int; " +
+                "EXEC @code = sys.sp_getapplock @Resource = @resource, @LockMode = N'Exclusive', " +
+                "@LockOwner = N'Transaction', @LockTimeout = @timeout; " +
+                "SET @result = @code;",
+                [
+                    new Microsoft.Data.SqlClient.SqlParameter("@resource", ScheduleNamesLockResource(repoId)),
+                    new Microsoft.Data.SqlClient.SqlParameter("@timeout", ScheduleNamesLockTimeoutMs),
+                    result,
+                ],
+                ct).ConfigureAwait(false);
+        }
+        finally
+        {
+            catalog.Database.SetCommandTimeout(previousTimeout);
+        }
+
+        if (result.Value is not int code || code < 0)
+        {
+            throw new ScheduleNamesBusyException(repoId, result.Value is int failed ? failed : -999);
+        }
+    }
+
     /// <summary>Creates an ad-hoc API schedule with a fresh id and an explicit member set. A repo can carry its git
-    /// schedules plus API ones; the name must not collide with a git schedule's (the caller checks, and the unique
-    /// index is the backstop).</summary>
+    /// schedules plus API ones, one schedule per name: under the repo's schedule-name lock
+    /// (<see cref="LockScheduleNamesAsync"/>) the name is checked and the schedule inserted as one step, so a name
+    /// another schedule holds, or takes in a concurrent sync, is refused with
+    /// <see cref="ScheduleNameTakenException"/> rather than failing on the unique index.</summary>
     public static Task<Guid> CreateApiScheduleAsync(
         CatalogDbContext catalog, Guid repoId, string scheduleName, IReadOnlyCollection<string> members, string? cron,
         int? intervalSeconds, string timezone, bool enabled, bool catchup, int? maxConcurrency,
@@ -539,6 +608,16 @@ public static class ScheduleStore
         var id = Guid.CreateVersion7();
         return CatalogTransaction.InSerializableAsync(catalog, async () =>
         {
+            await LockScheduleNamesAsync(catalog, repoId, ct).ConfigureAwait(false);
+            var holder = await catalog.Schedules.AsNoTracking()
+                .Where(s => s.RepoId == repoId && s.Name == scheduleName)
+                .Select(s => new { s.Id, s.Source })
+                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+            if (holder is not null)
+            {
+                throw new ScheduleNameTakenException(repoId, scheduleName, holder.Source, holder.Id);
+            }
+
             catalog.Schedules.Add(new CatalogSchedule
             {
                 Id = id,

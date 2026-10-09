@@ -22,6 +22,7 @@ sourceRefs:
   - src/SqlFlow.Core/Lineage/LineageReport.cs
   - src/SqlFlow.Lineage/LineageService.cs
   - src/SqlFlow.Lineage/Collection/FlowSetCollector.cs
+  - src/SqlFlow.Yaml/FlowDocumentRecognition.cs
   - src/SqlFlow.Lineage/Collection/RunArtifactCollector.cs
   - src/SqlFlow.Lineage/Collection/CatalogCollector.cs
   - src/SqlFlow.Lineage/Collection/ScriptFactBuilder.cs
@@ -51,7 +52,7 @@ Tier selection lives in `LineageOptions` (src/SqlFlow.Lineage/LineageService.cs)
 
 ## Declared: what each flow kind contributes from its YAML
 
-`FlowSetCollector` (src/SqlFlow.Lineage/Collection/FlowSetCollector.cs) scans the folder recursively for `*.flow.yaml`, ordinal-sorted. A document that fails to parse becomes the warning `<file>: skipped: <message>` and the scan continues; one broken file never blinds the estate.
+`FlowSetCollector` (src/SqlFlow.Lineage/Collection/FlowSetCollector.cs) scans the folder recursively for every `*.yaml` file (the historical `.flow.yaml` suffix still matches, but is no longer required), ordinal-sorted, leaving schedule libraries (`schedules.yaml`, `*.schedules.yaml`) and subscriber libraries (`subscribers.yaml`, `*.subscribers.yaml`) to their own loaders. Discovery is by extension, so a `.yaml` file the loader refuses is first asked whether it is a flow at all (src/SqlFlow.Yaml/FlowDocumentRecognition.cs): one that declares a `flowType`, or that declares no `documentType` and carries the `.flow.yaml` suffix or the `source` and `target` a file flow requires, is a flow that does not load, and becomes the warning `<file>: is a flow document that does not load, so it is left out of this scan (a sync keeps its pipeline and schedules as last recorded until the file is fixed): <error>` (and an entry of `CollectionResult.BrokenFlows`); anything else (a companion document, a config file, unrelated YAML) is left out without a warning. A file that cannot be read at all (an IO or permission failure) becomes the warning `<file>: skipped: <message>`. Either way the scan continues; one bad file never blinds the estate.
 
 Each flow kind contributes fixed facts:
 

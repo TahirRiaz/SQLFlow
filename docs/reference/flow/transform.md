@@ -34,7 +34,7 @@ sourceRefs:
 
 # `transform` section: type inference and column transforms
 
-The `transform` block is the pre-ingestion transform layer: it turns the raw (string-typed) landing table into a typed projection by combining datatype inference (`inferTypes`) with explicitly authored per-column transforms (`columns`). The resolved projection is materialized as a transformation view named `v<Table>` in the target's schema, refreshed as a post-process of every load with `CREATE OR ALTER VIEW`. Downstream chained flows read the view, not the raw table, which is how correctly typed data and dynamic schema evolution propagate down the chain. The exact same block shape and validation are shared by file flows and relational ingestion (`flowType: ing`) documents; both loaders map it through `YamlFlowLoader.MapInference` (src/SqlFlow.Yaml/YamlFlowLoader.cs, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs).
+The `transform` block is the pre-ingestion transform layer: it turns the raw (string-typed) landing table into a typed projection by combining datatype inference (`inferTypes`) with explicitly authored per-column transforms (`columns`). The resolved projection is materialized as a transformation view named `v_<Table>` in the target's schema, refreshed as a post-process of every load with `CREATE OR ALTER VIEW`. Downstream chained flows read the view, not the raw table, which is how correctly typed data and dynamic schema evolution propagate down the chain. The exact same block shape and validation are shared by file flows and relational ingestion (`flowType: ing`) documents; both loaders map it through `YamlFlowLoader.MapInference` (src/SqlFlow.Yaml/YamlFlowLoader.cs, src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs).
 
 Minimal working example (adapted from samples/lineage-demo/11-land-customers.flow.yaml):
 
@@ -51,7 +51,7 @@ transform:
   inferTypes: true
 ```
 
-This lands `customers.csv` into `demo.Customers_Pre` as raw strings, profiles the loaded table, and refreshes `demo.vCustomers_Pre` with each column cast to its inferred type.
+This lands `customers.csv` into `demo.Customers_Pre` as raw strings, profiles the loaded table, and refreshes `demo.v_Customers_Pre` with each column cast to its inferred type.
 
 ## Keys reference
 
@@ -62,7 +62,7 @@ This lands `customers.csv` into `demo.Customers_Pre` as raw strings, profiles th
 | `transform.threshold` | double | no | `1.0` | Fraction of non-null sampled values that must convert before a type is chosen (`1.0` = all). |
 | `transform.sample` | int | no | `0` | Rows to sample when profiling; `0` = full scan. |
 | `transform.preserveLeadingZeros` | bool | no | `true` | Keep integer-looking values with significant leading zeros (zip codes, IDs) as string. |
-| `transform.generateView` | bool | no | `true` | Generate the typed transformation view `[schema].[v<Table>]` as a post-process of the load. |
+| `transform.generateView` | bool | no | `true` | Generate the typed transformation view `[schema].[v_<Table>]` as a post-process of the load. |
 | `transform.columns` | list | no | `[]` | Authored per-column transforms; each overrides inference for its column. |
 
 Per entry under `transform.columns`:
@@ -175,7 +175,7 @@ Drops the column from the view's final projection. The entry is recorded as hand
 `TransformViewBuilder.Build` (src/SqlFlow.Core/Engine/TransformViewBuilder.cs) then emits:
 
 ```sql
-CREATE OR ALTER VIEW [demo].[vOrders_Pre]
+CREATE OR ALTER VIEW [demo].[v_Orders_Pre]
 AS
 SELECT
     UPPER(CAST([vehicle_type] AS varchar(50))) AS [vehicle_type_clean],
@@ -218,7 +218,7 @@ transform:
       type: int
 ```
 
-Here `vehicle_type` and `unit_price` are authored (inference does not touch them), `internal_batch_code` never appears in the view (its `type` satisfies validation and is recorded in the catalog, but no cast is emitted), `order_year` is a computed column appended after the raw columns, and every remaining column gets its inferred type. The run refreshes `demo.vOrders_Pre`; the downstream chained ingestion flow reads the view.
+Here `vehicle_type` and `unit_price` are authored (inference does not touch them), `internal_batch_code` never appears in the view (its `type` satisfies validation and is recorded in the catalog, but no cast is emitted), `order_year` is a computed column appended after the raw columns, and every remaining column gets its inferred type. The run refreshes `demo.v_Orders_Pre`; the downstream chained ingestion flow reads the view.
 
 ## See also
 

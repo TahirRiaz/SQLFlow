@@ -84,7 +84,7 @@ public sealed record IngestionFlow
 
     /// <summary>
     /// The pre-ingestion transform policy: inference and authored per-column transforms projected into the typed
-    /// transformation view (<c>[schema].[v&lt;Table&gt;]</c>) refreshed over the target after the load. Used by
+    /// transformation view (<c>[schema].[v_&lt;Table&gt;]</c>) refreshed over the target after the load. Used by
     /// external-database landings (the flow's target is the pre/staging table, and the downstream chained flow
     /// reads the view); a native SQL-to-SQL flow leaves this at its default (inference off, no columns), which
     /// generates nothing.

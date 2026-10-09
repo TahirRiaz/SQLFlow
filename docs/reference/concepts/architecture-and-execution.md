@@ -125,7 +125,7 @@ Contract details, all verifiable in the source:
 - **CLI commands:** `sqlflow run <pipeline.yaml>` (with `--full`, `--from`, `--to`, `--file-pattern` backfill parameters, `--json`, `--show-sql`, `--log-level info|debug|trace`), `sqlflow worker` (`--url`, `--token`, `--poll-seconds`, `--pool`), `sqlflow db migrate|sync|status` for the shadow catalog.
 - **Environment variables:** `SQLFLOW_URL` and `SQLFLOW_TOKEN` (a worker's control plane and node token), `SQLFLOW_CATALOG_DB` (the default catalog connection for `db` and the control plane), `SQLFLOW_CONN_<NAME>` (a bare connection alias in a document resolves this canonical family), `SQLFLOW_AZURE_AUTH` (the Azure auth mode behind the one credential factory). Container deployments add `SQLFLOW_WORKER_POOL` and `SQLFLOW_WORKER_POLL_SECONDS`, which the worker entrypoint maps to the CLI flags.
 - **YAML:** connection references in flow documents use `${env:NAME}` or `${keyvault:vault/secret}` forms, or a bare alias resolving `${env:SQLFLOW_CONN_<NAME>}`. Secrets never rest in the document; `sqlflow validate` and `sqlflow run` print a hygiene warning whenever a document embeds a `Password=`-style literal, without echoing the value.
-- **API:** `POST /api/v1/runs` triggers a run (requires the `operate` scope); `POST /api/v1/runs/{runId}/cancel` cancels one; `GET /api/v1/runs/{runId}` reflects it from queued through terminal.
+- **API:** `POST /api/v1/runs` triggers a run (mapped under the `operate` policy, which any signed-in caller meets); `POST /api/v1/runs/{runId}/cancel` cancels one; `GET /api/v1/runs/{runId}` reflects it from queued through terminal.
 
 ## Example: the same flow, three hosts
 
