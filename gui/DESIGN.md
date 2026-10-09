@@ -212,9 +212,14 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 - **Side bar** (resizable 12-35%, persisted): the global search first (`SearchInput`, testid
   `global-search`, Enter navigates to `/search?q=`), pinned above the scroll area on its own hairline so a
   long nav never scrolls it away; then all nav groups as collapsible sections (uppercase 11px headers),
-  items 28px tall with 16px lucide icons, nav testids preserved (`nav-runs`, ...). Selection follows the
-  longest-prefix rule; selected item gets `bg-sidebar-accent` plus a 2px accent inset. The mobile nav
-  sheet renders the same search over the same sections.
+  items 28px tall with 16px lucide icons, nav testids preserved (`nav-runs`, ...). A group whose entries
+  are of more than one sort (a module's group) declares sections: each is labelled under the group's
+  header in 11px sentence case, muted, aligned with the entries' icons, and does not collapse on its own;
+  entries of no section come first, unlabelled. SQLFlow's own groups declare none. Selection follows the
+  longest-prefix rule over each entry's path and the paths it owns (a page reached from the entry rather
+  than from the menu, such as a builder opened from its list, lights that entry); selected item gets
+  `bg-sidebar-accent` plus a 2px accent inset. The mobile nav sheet renders the same search over the same
+  sections.
 - **Tab strip** (`h-[35px]`, `bg-tab-bar`): one tab per visited route; active tab wears `bg-tab-active`,
   a 1px top accent line, and its close button always visible; inactive tabs reveal close on hover.
   Middle-click closes. Tabs keep their label (max `w-52`, never squeezed to an icon), so a long strip
@@ -235,7 +240,8 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   `rate-limit-banner`); right segments show the signed-in subject and role. Segments are flat text +
   14px icons with hover wash; no borders.
 - **Command palette** (Ctrl+K, also Ctrl+Shift+P): cmdk dialog listing every nav destination grouped as
-  in the side bar, plus a catalog-search action. Fuzzy filter, Enter navigates.
+  in the side bar, a group's sections headed `Group · Section`, plus a catalog-search action. Fuzzy
+  filter, Enter navigates.
 
 ## 7. Components
 

@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 import { SearchInput } from "@/components/SearchInput";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../../auth/AuthContext";
-import { navGroups, selectedNavPath, type NavGroup } from "../nav";
+import { navGroups, navListing, selectedNavPath, type NavGroup, type NavItem } from "../nav";
 import { useMenuNavigate } from "./useMenuNavigate";
 
 const SECTIONS_KEY = "sqlflow.workbench.sections";
@@ -32,8 +32,8 @@ interface SideBarSectionsProps {
 
 /**
  * The grouped navigation: every group as a collapsible section (so each nav item stays reachable
- * regardless of the active activity-bar group), the longest-prefix item highlighted. Shared between
- * the desktop side bar and the mobile sheet.
+ * regardless of the active activity-bar group), a group's own sections labelled under its header, the
+ * longest-prefix item highlighted. Shared between the desktop side bar and the mobile sheet.
  */
 export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
   const { hasScope } = useAuth();
@@ -78,6 +78,31 @@ export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
     });
   };
 
+  const renderItem = (item: NavItem) => {
+    const isSelected = item.to === selected;
+    return (
+      <button
+        key={item.to}
+        data-testid={item.testId}
+        aria-current={isSelected ? "page" : undefined}
+        onClick={() => {
+          navigate(item.to);
+          onNavigate?.();
+        }}
+        className={cn(
+          "relative mx-1 flex h-7 w-[calc(100%-8px)] items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
+          isSelected
+            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+            : "text-sidebar-foreground hover:bg-sidebar-accent/60",
+        )}
+      >
+        {isSelected && <span className="absolute -left-1 h-4 w-0.5 rounded-r bg-primary" />}
+        <item.icon className={cn("size-4 shrink-0", isSelected ? "opacity-100" : "opacity-75")} />
+        <span className="truncate">{item.label}</span>
+      </button>
+    );
+  };
+
   const renderGroup = (group: NavGroup) => {
     const isCollapsed = collapsed.has(group.id);
     return (
@@ -90,29 +115,21 @@ export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
           <ChevronDown className={cn("size-3.5 transition-transform duration-120", isCollapsed && "-rotate-90")} />
           {group.label}
         </button>
-        {!isCollapsed && group.items.map((item) => {
-          const isSelected = item.to === selected;
-          return (
-            <button
-              key={item.to}
-              data-testid={item.testId}
-              onClick={() => {
-                navigate(item.to);
-                onNavigate?.();
-              }}
-              className={cn(
-                "relative mx-1 flex h-7 w-[calc(100%-8px)] items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
-                isSelected
-                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent/60",
-              )}
-            >
-              {isSelected && <span className="absolute -left-1 h-4 w-0.5 rounded-r bg-primary" />}
-              <item.icon className={cn("size-4 shrink-0", isSelected ? "opacity-100" : "opacity-75")} />
-              <span className="truncate">{item.label}</span>
-            </button>
-          );
-        })}
+        {!isCollapsed && navListing(group).map((part) => (
+          <div
+            key={part.section?.id ?? ""}
+            role={part.section === null ? undefined : "group"}
+            aria-label={part.section === null ? undefined : `${group.label}: ${part.section.label}`}
+            data-testid={part.section === null ? undefined : `sidebar-part-${group.id}-${part.section.id}`}
+          >
+            {part.section !== null && (
+              <div className="flex h-6 items-end px-3 pb-0.5 text-[11px] font-medium text-muted-foreground">
+                <span className="truncate">{part.section.label}</span>
+              </div>
+            )}
+            {part.items.map(renderItem)}
+          </div>
+        ))}
       </section>
     );
   };

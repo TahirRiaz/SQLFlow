@@ -37,6 +37,19 @@ export interface NavItem {
   to: string;
   icon: LucideIcon;
   testId: string;
+  /** The id of the group's section the entry is listed under; none, it is listed before the group's first section. */
+  section?: string;
+  /**
+   * Paths the entry owns besides its own: pages reached from it rather than from the menu (a tool, an editor), which
+   * light the entry while they are shown and take its title until they report one of their own.
+   */
+  owns?: string[];
+}
+
+/** A labelled part of a group, for a group whose entries are of more than one sort. */
+export interface NavSection {
+  id: string;
+  label: string;
 }
 
 export interface NavGroup {
@@ -44,6 +57,8 @@ export interface NavGroup {
   label: string;
   icon: LucideIcon;
   items: NavItem[];
+  /** The sections the group's entries are listed under, in this order; none, the entries are one list. */
+  sections?: NavSection[];
   /** Renders only for sessions holding this scope (the Admin group). */
   requiresScope?: string;
   /** Anchored at the bottom of the activity bar (the Settings group), like VS Code's gear. */
@@ -127,16 +142,46 @@ export function allNavItems(): NavItem[] {
   return navGroups.flatMap((group) => group.items);
 }
 
+/** A group's entries as they are listed: those of no section first, then each section's in the group's order. */
+export interface NavListing {
+  /** Null for the entries of no section, which are listed without a label. */
+  section: NavSection | null;
+  items: NavItem[];
+}
+
+/** A group's entries part by part, for the side bar and the command palette; a section with no entries is left out. */
+export function navListing(group: NavGroup): NavListing[] {
+  const parts: NavListing[] = [
+    { section: null, items: group.items.filter((item) => item.section === undefined) },
+    ...(group.sections ?? []).map((section) => ({ section, items: group.items.filter((item) => item.section === section.id) })),
+  ];
+  return parts.filter((part) => part.items.length > 0);
+}
+
+/** Every path that selects an entry: each entry's own and those it owns. */
+function claimedPaths(): string[] {
+  return allNavItems().flatMap((item) => [item.to, ...(item.owns ?? [])]);
+}
+
 /**
- * Exactly one item matches: the one whose path is the longest prefix of the current location, so a nested
- * route (e.g. /schedules/timeline) owns the highlight instead of also lighting up its parent (/schedules).
- * Returns the empty string when nothing matches (e.g. /login).
+ * Exactly one item matches: the one with the longest path (its own, or one it owns) that prefixes the current location,
+ * so a nested route (e.g. /schedules/timeline) owns the highlight instead of also lighting up its parent (/schedules).
+ * Returns the matching item's own path, or the empty string when nothing matches (e.g. /login).
  */
 export function selectedNavPath(pathname: string): string {
-  return allNavItems().reduce((best, item) => {
-    const matches = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
-    return matches && item.to.length > best.length ? item.to : best;
-  }, "");
+  let selected = "";
+  let longest = 0;
+  for (const item of allNavItems()) {
+    for (const path of [item.to, ...(item.owns ?? [])]) {
+      const matches = path === "/" ? pathname === "/" : pathname.startsWith(path);
+      if (matches && path.length > longest) {
+        selected = item.to;
+        longest = path.length;
+      }
+    }
+  }
+
+  return selected;
 }
 
 /** The group owning the current location (via the longest-prefix item), defaulting to Operate. */
@@ -170,9 +215,10 @@ export function routeTitle(pathname: string): { title: string; icon: LucideIcon 
 }
 
 /**
- * Adds the navigation of the registered GUI modules: their groups, their entries (into existing groups or their own),
- * and the initial titles of their detail routes. Called once by registerModules, before the app renders; a group or
- * entry that already exists, or an anchor that does not, fails with a message naming the module.
+ * Adds the navigation of the registered GUI modules: their groups and the sections they declare, their entries (into
+ * existing groups or their own), and the initial titles of their detail routes. Called once by registerModules, before
+ * the app renders; a group, section, entry or owned path that already exists, or an anchor or section that does not,
+ * fails with a message naming the module.
  */
 export function extendNavigation(contributions: readonly ModuleNavigation[]): void {
   for (const contribution of contributions) {
@@ -185,11 +231,25 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
         fail(`adds the navigation group '${group.id}', which already exists.`);
       }
 
+      const sections: NavSection[] = [];
+      for (const section of group.sections ?? []) {
+        if (section.id.trim() === "" || section.label.trim() === "") {
+          fail(`declares a section of the navigation group '${group.id}' without an id or a label.`);
+        }
+
+        if (sections.some((existing) => existing.id === section.id)) {
+          fail(`declares the section '${section.id}' of the navigation group '${group.id}' twice.`);
+        }
+
+        sections.push({ id: section.id, label: section.label });
+      }
+
       const entry: NavGroup = {
         id: group.id,
         label: group.label,
         icon: group.icon,
         items: [],
+        sections: sections.length > 0 ? sections : undefined,
         requiresScope: group.requiresScope,
         bottom: group.bottom,
       };
@@ -210,11 +270,33 @@ export function extendNavigation(contributions: readonly ModuleNavigation[]): vo
     for (const item of contribution.items) {
       const group = navGroups.find((existing) => existing.id === item.group)
         ?? fail(`adds the navigation entry '${item.to}' to the group '${item.group}', which does not exist.`);
-      if (allNavItems().some((existing) => existing.to === item.to)) {
+      if (claimedPaths().includes(item.to)) {
         fail(`adds the navigation entry '${item.to}', which already exists.`);
       }
 
-      const entry: NavItem = { label: item.label, to: item.to, icon: item.icon, testId: item.testId };
+      if (item.section !== undefined && !(group.sections ?? []).some((section) => section.id === item.section)) {
+        fail(`places the navigation entry '${item.to}' in the section '${item.section}', which the group '${item.group}' does not declare.`);
+      }
+
+      const owns = [...(item.owns ?? [])];
+      for (const path of owns) {
+        if (!path.startsWith("/") || path === "/") {
+          fail(`gives the navigation entry '${item.to}' the path '${path}' to own, which is not a path below the root.`);
+        }
+
+        if (path === item.to || claimedPaths().includes(path) || owns.indexOf(path) !== owns.lastIndexOf(path)) {
+          fail(`gives the navigation entry '${item.to}' the path '${path}' to own, which an entry already has.`);
+        }
+      }
+
+      const entry: NavItem = {
+        label: item.label,
+        to: item.to,
+        icon: item.icon,
+        testId: item.testId,
+        section: item.section,
+        owns: owns.length > 0 ? owns : undefined,
+      };
       if (item.after !== undefined) {
         const anchor = group.items.findIndex((existing) => existing.to === item.after);
         if (anchor < 0) {

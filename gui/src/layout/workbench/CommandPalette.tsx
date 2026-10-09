@@ -10,7 +10,7 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useAuth } from "../../auth/AuthContext";
-import { navGroups } from "../nav";
+import { navGroups, navListing } from "../nav";
 import { useMenuNavigate } from "./useMenuNavigate";
 
 interface CommandPaletteProps {
@@ -20,7 +20,7 @@ interface CommandPaletteProps {
 
 /**
  * The command palette (Ctrl+K, or VS Code muscle memory Ctrl+Shift+P): every nav destination grouped
- * as in the side bar, plus the catalog search hand-off.
+ * as in the side bar (a group's sections headed by the group and the section), plus the catalog search hand-off.
  */
 export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const navigate = useMenuNavigate();
@@ -52,16 +52,19 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
         <CommandEmpty>No matching pages.</CommandEmpty>
         {navGroups
           .filter((group) => group.requiresScope === undefined || hasScope(group.requiresScope))
-          .map((group) => (
-            <CommandGroup key={group.id} heading={group.label}>
-              {group.items.map((item) => (
-                <CommandItem key={item.to} value={`${group.label} ${item.label}`} onSelect={() => go(item.to)}>
-                  <item.icon />
-                  {item.label}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          ))}
+          .flatMap((group) => navListing(group).map((part) => {
+            const heading = part.section === null ? group.label : `${group.label} · ${part.section.label}`;
+            return (
+              <CommandGroup key={`${group.id}:${part.section?.id ?? ""}`} heading={heading}>
+                {part.items.map((item) => (
+                  <CommandItem key={item.to} value={`${heading} ${item.label}`} onSelect={() => go(item.to)}>
+                    <item.icon />
+                    {item.label}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            );
+          }))}
         <CommandSeparator />
         <CommandGroup heading="Catalog">
           <CommandItem value="search objects columns definitions" onSelect={() => go("/search")}>

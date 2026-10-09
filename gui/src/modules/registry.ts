@@ -45,6 +45,17 @@ export interface ModuleNavGroup {
   bottom?: boolean;
   /** The id of the group this one follows; omitted, it goes after the last top group. */
   after?: string;
+  /**
+   * Labelled sections the group's entries are listed under, in the side bar and the command palette, in this order;
+   * omitted, the entries are one list. Ids are unique within the group.
+   */
+  sections?: readonly ModuleNavSection[];
+}
+
+/** A labelled part of a module's navigation group. */
+export interface ModuleNavSection {
+  id: string;
+  label: string;
 }
 
 /** A navigation entry a module adds to an existing group or to one of its own groups. */
@@ -57,6 +68,13 @@ export interface ModuleNavItem {
   testId: string;
   /** The `to` of the entry this one follows within its group; omitted, it is appended to the group. */
   after?: string;
+  /** The id of a section its group declares; omitted, the entry is listed before the group's first section. */
+  section?: string;
+  /**
+   * Paths below the root the entry owns besides its own: pages reached from it rather than from the menu, which light
+   * the entry while they are shown and take its title unless a detail title names them. A path another entry has fails.
+   */
+  owns?: readonly string[];
 }
 
 /** The initial tab and title bar title of a detail route, before the page reports a richer one through useTabTitle. */
