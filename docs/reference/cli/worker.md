@@ -30,6 +30,7 @@ related:
   - concept-cli-conventions
 sourceRefs:
   - src/SqlFlow.Cli/Program.cs
+  - src/SqlFlow.Cli/Hosting/NodeHostedServices.cs
   - src/SqlFlow.Node/RunWorker.cs
   - src/SqlFlow.Node/NodeTraceFeed.cs
   - src/SqlFlow.Node/DispatcherRetry.cs
@@ -90,7 +91,14 @@ The worker verb takes no positional argument. `worker` is in the parser's no-fil
 
 1. The control plane URL and the node token are resolved. On any failure the process exits 1 before anything else happens.
 2. The node's identity is its machine name (`Environment.MachineName`). It is stamped onto every run this node is handed (`ClaimedByNode`) so work is attributable and recoverable, and sent as the `X-SqlFlow-Node` header on every call so the control plane rate-limits per node rather than per shared token.
-3. The worker prints its banner and starts polling:
+3. The hosted services the node's services hold (`IHostedService`, registered by a host module for the worker, such as a metrics exporter) are started as a generic host starts them: every `IHostedLifecycleService.StartingAsync`, then every `StartAsync`, then every `StartedAsync`, in registration order (src/SqlFlow.Cli/Hosting/NodeHostedServices.cs). A node runs from a plain service provider, which starts nothing by itself. One that fails to start stops the ones already started, newest first, and the node exits 1 before it takes any work:
+
+   ```text
+   ERROR  the worker refuses to start: hosted service <type> failed to start: <reason>
+   ```
+
+   SQLFlow itself registers none; a command's provider starts none either, since a command ends when its verb does.
+4. The worker prints its banner and starts polling:
 
    ```text
    SQLFlow worker 'ETL-NODE-01' polling https://sqlflow.example.com/ for work (poll 30s, pools: untargeted runs only, drain 540s). Press Ctrl+C to stop, again to stop without draining.
@@ -176,7 +184,8 @@ Both are registered through `PosixSignalRegistration` with `Cancel = true` (src/
 1. **Stops taking work.** Queued runs stay available to other nodes.
 2. **Drains.** Runs already in flight keep executing under a cancellation token that is deliberately NOT linked to the stopping token, so they finish and report their own outcomes. The node keeps polling (with no free slots) for the whole drain, which is load-bearing: a silent node's leases lapse and its runs are requeued, so a draining node that stopped polling would have the very work it is finishing re-executed underneath it.
 3. **Severs only on timeout.** If work is still in flight after `--drain-seconds`, it is cancelled and left for the dispatcher's lease expiry, with a warning naming the expired window. A severed run's trace feed drops whatever it still had queued rather than retrying it, so a node never hangs on the trace of a run it has abandoned. A node cannot drain forever, because the platform that asked it to stop will kill it regardless.
-4. Prints `SQLFlow worker stopped.` and exits 0.
+4. **Stops the hosted services** it started, newest first (`StoppingAsync`, `StopAsync`, `StoppedAsync`), within 15 seconds in all, so what they hold (metrics not yet exported, say) is let go before the node's services are disposed. One that fails to stop, or that the time runs out on, is named in a `WARN` line on stderr, and the others still stop.
+5. Prints `SQLFlow worker stopped.` and exits 0.
 
 A **second** stop signal skips the drain: it falls through to the runtime's default termination, so a worker is never unkillable. The severed runs' leases lapse and the dispatcher requeues them exactly as a crash would.
 
@@ -250,4 +259,5 @@ docker compose -f deploy/compose/docker-compose.yml up -d --scale worker=3
 | --- | --- | --- |
 | Clean stop after a drain (Ctrl+C, SIGTERM, or an operator restart request) | 0 | `SQLFlow worker stopped.` |
 | No control plane URL, no node credential, or a token reference that does not resolve | 1 | `ERROR  ...` on stderr before the banner |
+| A hosted service a module registered for the node fails to start | 1 | `ERROR  the worker refuses to start: hosted service <type> failed to start: <reason>` on stderr before the banner |
 | A second stop signal during the drain | the runtime's default termination | nothing further; the severed runs are requeued by the dispatcher |

@@ -114,6 +114,16 @@ public abstract record RegisteredFlowDocument : FlowDocument
     /// materialization.</summary>
     public virtual bool RequiresRepoTree => false;
 
+    /// <summary>
+    /// What an offline check of the document finds wrong that parsing it cannot: a companion file the document names
+    /// that is not on disk where the document says, looked for around <paramref name="documentPath"/> (the document's
+    /// full path) the way a run of the flow looks for it. <c>validate</c> refuses a document with any problem; every
+    /// other consumer (the estate scan, the catalog sync, a node) parses the document as it stands and reports a missing
+    /// companion in its own terms, so such a document keeps its place in lineage and the catalog. One sentence per
+    /// problem, naming the key and the file looked for; empty by default.
+    /// </summary>
+    public virtual IReadOnlyList<string> CheckOffline(string documentPath) => [];
+
     /// <summary>Whether the flow belongs in the lineage graph: true for a flow that moves catalog data, false for one
     /// that runs on the estate rather than through it.</summary>
     public virtual bool ParticipatesInLineage => true;
@@ -307,9 +317,13 @@ public interface IFlowDocumentKind
     /// operation, which then accepts no <see cref="RunParameters.Operation"/>.</summary>
     IReadOnlyList<FlowKindOperation> Operations { get; }
 
-    /// <summary>Validates a run's kind arguments (<see cref="RunParameters.Operation"/>, already known to be one of
-    /// <see cref="Operations"/> when set, <see cref="RunParameters.Values"/> and <see cref="RunParameters.Payload"/>)
-    /// at the trust boundary: a trigger, a schedule, the CLI and the executor all call it through
+    /// <summary>Validates a run's parameters for a flow of this kind at the trust boundary: its kind arguments
+    /// (<see cref="RunParameters.Operation"/>, already known to be one of <see cref="Operations"/> when set,
+    /// <see cref="RunParameters.Values"/> and <see cref="RunParameters.Payload"/>), and the built-in overrides
+    /// (<see cref="RunParameters.FullLoad"/>, the backfill window, <see cref="RunParameters.FilePattern"/>,
+    /// <see cref="RunParameters.SourceFilter"/>, <see cref="RunParameters.ReprocessFromSourceMin"/>), each of which the
+    /// kind either applies or refuses, never ignores. It is called for every run of the kind, kind arguments or not: a
+    /// trigger, a schedule, the CLI and the executor all call it through
     /// <see cref="YamlDocumentLoader.ValidateRunParameters"/>. A refusal is a <see cref="SqlFlow.Core.SqlFlowException"/>
     /// whose message names the offending argument.</summary>
     void ValidateParameters(RunParameters parameters);

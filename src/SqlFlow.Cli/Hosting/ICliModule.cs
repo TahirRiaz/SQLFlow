@@ -23,7 +23,9 @@ public interface ICliModule
     /// <summary>
     /// Registers the module's services. Called after SQLFlow's own registrations (so a module may extend or replace them),
     /// once for the provider every command runs with and once for the <c>worker</c> node's provider; <see cref="CliModuleServices.Scope"/>
-    /// says which.
+    /// says which. On the node, every <c>IHostedService</c> registered is started before the node takes work and stopped
+    /// after it drains, as a generic host does (<see cref="NodeHostedServices"/>); a command's provider starts none, since a
+    /// command ends when its verb does.
     /// </summary>
     void ConfigureServices(CliModuleServices services);
 }

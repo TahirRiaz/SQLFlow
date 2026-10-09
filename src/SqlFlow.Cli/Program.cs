@@ -274,6 +274,8 @@ internal static class Program
 
                         case RegisteredFlowDocument doc:
                         {
+                            // What the document names beside it is checked on disk too, as the estate form checks it.
+                            DocumentLoader.CheckOffline(doc, file);
                             var sides = string.Join(" -> ", new[] { doc.SourceReference, doc.TargetReference }.Where(s => !string.IsNullOrWhiteSpace(s)));
                             Console.WriteLine($"OK  '{doc.Name}' is valid ({doc.Kind}{(sides.Length == 0 ? string.Empty : ": " + sides)}).");
                             return 0;
@@ -788,6 +790,25 @@ internal static class Program
         using var sigterm = PosixSignalRegistration.Create(PosixSignal.SIGTERM, RequestStop);
         using var sigint = PosixSignalRegistration.Create(PosixSignal.SIGINT, RequestStop);
 
+        // The hosted services the node's services hold (a module's background work, such as a metrics exporter) start with
+        // the node, as a generic host starts them, and stop after it has drained; a node runs from a plain provider, which
+        // starts nothing by itself. One that fails to start stops the node before it takes any work.
+        NodeHostedServices hosted;
+        try
+        {
+            hosted = await NodeHostedServices.StartAsync(workerProvider, line => Console.Error.WriteLine($"WARN  {line}"), cts.Token).ConfigureAwait(false);
+        }
+        catch (NodeHostedServiceException ex)
+        {
+            Console.Error.WriteLine($"ERROR  the worker refuses to start: {ex.Message}");
+            return 1;
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            Console.WriteLine("SQLFlow worker stopped before it started.");
+            return 0;
+        }
+
         var poolLabel = pools.Length > 0 ? string.Join(", ", pools) : "untargeted runs only";
         Console.WriteLine($"SQLFlow worker '{worker.NodeName}' polling {controlPlane} for work (poll {pollSeconds}s, pools: {poolLabel}, drain {drainSeconds}s). Press Ctrl+C to stop, again to stop without draining.");
         try
@@ -812,6 +833,12 @@ internal static class Program
         catch (OperationCanceledException)
         {
             // A stop signal or an honored restart request: a clean stop.
+        }
+        finally
+        {
+            // After the drain, whether the loop stopped cleanly or failed: what the services hold (metrics not yet
+            // exported, say) is let go before the provider is disposed.
+            await hosted.StopAsync(line => Console.Error.WriteLine($"WARN  {line}")).ConfigureAwait(false);
         }
 
         Console.WriteLine("SQLFlow worker stopped.");

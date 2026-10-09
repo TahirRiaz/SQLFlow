@@ -37,6 +37,29 @@ public static class DocumentLoader
         return document;
     }
 
+    /// <summary>
+    /// The offline check <c>validate</c> adds to a load, for the single-file and the estate form alike: a document of a
+    /// registered kind whose companion files are not on disk where it says
+    /// (<see cref="RegisteredFlowDocument.CheckOffline"/>) is refused with every problem, naming the file. Only
+    /// <c>validate</c> calls it; a run, the estate scan and the catalog sync load the document as it stands.
+    /// </summary>
+    /// <exception cref="SqlFlow.Core.FlowValidationException">The document names a companion that is not there.</exception>
+    public static void CheckOffline(FlowDocument document, string file)
+    {
+        ArgumentNullException.ThrowIfNull(document);
+        ArgumentException.ThrowIfNullOrWhiteSpace(file);
+        if (document is not RegisteredFlowDocument registered)
+        {
+            return;
+        }
+
+        var problems = registered.CheckOffline(Path.GetFullPath(file));
+        if (problems.Count > 0)
+        {
+            throw new SqlFlow.Core.FlowValidationException($"{file}: {string.Join(" ", problems)}");
+        }
+    }
+
     /// <summary>The source-control guard: a connection literal that embeds a credential gets a loud warning
     /// naming the canonical alternatives, routed to the supplied sink. The value itself is never echoed.</summary>
     private static void WarnOnEmbeddedSecrets(FlowDocument document, string file, Action<string> onSecretWarning)

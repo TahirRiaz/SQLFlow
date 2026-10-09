@@ -93,6 +93,7 @@ internal static class LocalInspectVerbs
 
                 // Parse warnings go to stderr exactly as single-file validate routes them.
                 var document = DocumentLoader.Load(documents, file, Console.Error.WriteLine);
+                DocumentLoader.CheckOffline(document, file);
                 var (kind, name) = Describe(document);
                 results.Add(new ValidationResult(relative, true, kind, name, null));
             }

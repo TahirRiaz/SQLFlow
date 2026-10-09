@@ -75,6 +75,8 @@
          with the MCP connector calling the same SQLFlow MCP server). -->
     <PackageVersion Include="Anthropic" Version="12.55.0" />
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
+    <!-- IHostedService, which a worker node starts and stops with it (src/SqlFlow.Cli/Hosting/NodeHostedServices.cs). -->
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
     <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.12" />
