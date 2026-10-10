@@ -12,6 +12,10 @@ keywords:
   - linked server
   - migration reconciliation
   - compute task
+  - column policy
+  - sensitive column
+  - pii
+  - data access control
 related:
   - concept-control-plane
   - concept-shadow-catalog
@@ -25,7 +29,14 @@ sourceRefs:
   - src/SqlFlow.SqlServer/Quality/SqlServerDuplicateKeyProbe.cs
   - src/SqlFlow.SqlServer/Query/ReadOnlyQueryGuard.cs
   - src/SqlFlow.SqlServer/Query/SqlServerQueryRunner.cs
+  - src/SqlFlow.SqlServer/Query/SqlColumnAccessExtractor.cs
   - src/SqlFlow.ControlPlane/Api/QueryEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/ColumnPolicyGuard.cs
+  - src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs
+  - src/SqlFlow.Catalog/CatalogEntities.cs
   - src/SqlFlow.SqlServer/Comparison/SqlServerBaselineComparer.cs
   - src/SqlFlow.Execution/ComputeTaskExecutor.cs
   - src/SqlFlow.ControlPlane/Api/DatasourceEndpoints.cs
@@ -97,8 +108,8 @@ A question like "what were the daily boarding totals on route 5200 last month" n
 paste elsewhere. That runs here, in **two steps**, and the split is the whole design:
 
 ```
-1. POST /api/v1/dataops/queries/prepare   { sql, reference }
-   -> { planId, sql, expiresUtc }      NOTHING HAS RUN
+1. POST /api/v1/dataops/queries/prepare   { sql, reference? }
+   -> { planId, sql, reference, expiresUtc }      NOTHING HAS RUN
 
 2. (the caller shows that exact sql to a person and gets agreement)
 
@@ -132,6 +143,132 @@ It is validated at **both** ends: at prepare in the control plane, and again on 
 because the queue row is data from the database. On top of that, the query runs inside a transaction that is
 **always rolled back**, so even a statement that somehow passed the parser leaves nothing behind. Belt and
 braces is warranted where the cost of being wrong is data.
+
+Being read-only says nothing about *which* data a SELECT may read - that is a separate check, described below.
+
+### Which datasource a query runs against
+
+`reference` is optional on prepare. Omitted, `DatasourceInference` (`src/SqlFlow.ControlPlane/Api/DatasourceInference.cs`)
+parses the statement, takes every table in its FROM clauses (a `COUNT(*)` that names no column still counts),
+looks those tables up in the catalog by schema and name, and maps the connection references they were reached
+through onto the references active pipelines declare. Exactly one match is used and echoed back as
+`reference`; none, or several (the same table known under two datasources), answers **422** naming the
+candidates, and the caller names one. It never guesses between them. The same resolver fills the datasource
+for PowerAI's confirmed examples and retrieval matches, where the lineage object keys (whose first segment is
+the connection reference) are consulted before the SQL. An inferred reference passes the same known-reference
+gate an explicit one does, so inference cannot reach a connection the estate does not declare.
+
+Registered objects come first. A table or view that a [schema registration flow](../flow/sch.md)
+(`flowType: sch`) registered carries a `Registers` edge to that flow, and an active registration's source server
+is where its data is fetched from: inference follows those edges before anything else (for the caller's object
+keys, then for the tables the SQL names), and when every registered object lives in one database it also fills
+the query's `database`, so the query runs where the objects were registered even if the connection opens
+elsewhere. A registration's connection is therefore a declared datasource like any pipeline's.
+
+The known-reference gate is one check, `DatasourceInference.IsDeclaredAsync`, used by prepare, by confirming an
+example with an explicit datasource, and by the datasource compute tasks: a whole `${...}` reference passes only
+when an **active** pipeline declares it as its source or target (an `@alias` resolves against the node's registry
+instead). A deactivated pipeline no longer opens its connection to ad-hoc queries.
+
+### Running a query from the chat GUI
+
+The two-step surface above is not MCP-only: the chat thread (`docs/reference/guides/chat-assistant.md`) can
+run a `sql`-fenced block the assistant hands back, through the *exact same* prepare/run pair, one call each,
+never a third path. The SQL is already fully visible in the block, so clicking Run is the person's approval;
+there is no second confirmation dialog, the same reasoning `auto_run_trusted_match` uses for a confirmed
+example (Section "Confirming an answer" of the chat guide) - a click on text a person already read is not a
+step that benefits from a second click on the same text. The click names no datasource; prepare works it out
+(see "Which datasource a query runs against" below), and a picker (filtered to `resolvable` datasources only)
+appears only when prepare answers 422 because it cannot tell.
+
+The result renders as a fitting chart (a stat tile for one row, a bar for one category column against one
+measure, a line for a date column against up to four measures, small multiples instead of a shared axis when
+those measures' scales are far apart) with a table always one click away, or a table alone when no chart
+shape fits; `gui/src/features/chat/QueryResultView.tsx` is the classifier. Gated by `dataOpsRunQuery` on
+`GET /api/v1/chat/capabilities` (mirroring `DataOps:Enabled`), so a deployment with the surface off shows no
+Run button rather than one that can only answer 403.
+
+## Column policy: what the assistant may read at all
+
+Read-only is a statement-shape guarantee: it says a query cannot write, not that every column it names is fair
+game. `CatalogColumnPolicy` (the `ColumnPolicy` table; see [Shadow catalog](shadow-catalog.md#column-access-policy))
+is a per-column, admin-authored **allow-list**, orthogonal to the `DataOps` switch and the RBAC scopes: it does
+not gate the surface, it narrows what the surface may touch. The model is **default-deny**: a column with no
+policy row at all - never reviewed - is exactly as blocked as one an admin has explicitly denied. Policy rows are
+per column; the bulk route below writes one for every column of an object at once. The allow-list is also the
+[semantic layer](semantic-layer.md)'s membership: an object with at least one allowed column is in the layer, and
+a policy row carries the column's semantic `description` and `synonyms`.
+
+Default-deny also applies one level up, to the table itself: a query naming a table, view, or synonym the
+catalog has no `CatalogObject` record for at all has no allow-list to check it against, and is refused outright
+rather than passed through unchecked. This is what closes the gap a blacklist could not - a synonym pointed at a
+sensitive table, or any other object type the harvester does not track, can never "just not have a policy row"
+and slip through, because the same default-deny rule that blocks an unreviewed column also blocks an unresolved
+table.
+
+An admin sets a column's allow state through the admin-scope API, never through a sync:
+
+| Route | Purpose |
+| --- | --- |
+| `GET /api/v1/powerai/column-policies` | Every column currently NOT allowed, across the whole catalog - denied, or never reviewed |
+| `GET /api/v1/powerai/column-policies/objects/{key}` | Every column of one object with its current allow state |
+| `PUT /api/v1/powerai/column-policies` | Full upsert of one column's row (`objectKey`, `columnName`, `isAllowed`, `reason`, `description`, `synonyms`) |
+| `PUT /api/v1/powerai/column-policies/objects` | Allow or deny every column of one object (`objectKey`, `isAllowed`), keeping each row's reason and annotations |
+
+The GUI edits all of this on the AI knowledge page (`/semantic-layer`, Admin; the old `/column-policies` link
+redirects there).
+
+A column that is not allowed disappears from every surface that could otherwise teach an assistant it exists or
+let it read it:
+
+- **Schema discovery**: the chat assistants' only schema readers are the semantic layer tools
+  (`get_semantic_layer`, `search_semantic_layer`, `list_semantic_tables`, `describe_semantic_table`), which serve
+  nothing outside the allow-list, not even inside a key, join, measure, or example query; see
+  [Semantic layer](semantic-layer.md). The raw readers stay filtered too: `search_schema`'s `columns` surface
+  (`SearchEndpoints.ColumnsQuery`), the object's paged column list (`GET /api/v1/lineage/objects/columns`), and the
+  object dossier's column list (`GET /api/v1/lineage/objects/dossier`, behind `describe_object`) show only columns
+  with an `IsAllowed` row.
+- **Execution**: `ColumnPolicyGuard.EnsureAllowedAsync` checks every SELECT that reaches `prepare_query`,
+  `confirm_question`, or `auto_run_trusted_match` against the allow-list, and refuses one that would read a
+  column not on it - refuses it even unnamed, if a `SELECT *` (bare or table-qualified) would expose it. This
+  runs in addition to, not instead of, `ReadOnlyQueryGuard`; both must pass. For the chat assistants, a
+  `check_duplicate_keys` or `compare_baseline` task is checked the same way, as the SELECT it would read; see
+  [Semantic layer](semantic-layer.md#the-assistant-surface).
+
+`confirm_question` matters here as much as `prepare_query`: a confirmed example is precedent every future
+similar question can be matched against and auto-run, so a not-allowed column must be refused when an example
+naming it is stored, not only when it is later run. And because a column's allow state can change *after* an
+example was confirmed, `auto_run_trusted_match` re-checks the policy immediately before every run, even for an
+example that passed the check when it was confirmed.
+
+### How a query is checked
+
+`SqlColumnAccessExtractor` walks the already-parsed SELECT and resolves every (table, column) pair it touches.
+Table references resolve to catalog objects by schema/name (case-insensitive; an unqualified reference matches
+any schema) - never by which datasource the query happens to be prepared against, because a policy is set once
+per object and must hold regardless of which connection reaches it. A common table expression's own name is
+recognized from the statement's `WITH` clause and exempted from table resolution (it is never a catalog object),
+but every real table its body reads is still resolved and checked normally.
+
+The extractor is deliberately **fail-closed**, matching `ReadOnlyQueryGuard`'s own stance that a refused query
+that was actually safe costs a rewrite, while an accepted one that was not costs data:
+
+- Every non-CTE table name the statement reads must resolve to at least one `CatalogObject`; if any does not,
+  the whole query is refused before any column is even checked.
+- A column reference it cannot bind to exactly one table with certainty - an **unqualified column**, or a
+  qualifier that matches no alias or table it saw - is attributed to **every** table the statement reads,
+  rather than dropped or guessed at. If any of those tables lacks an allow-list row for a column by that name,
+  the query is refused, even though the column the author meant might belong to an unrelated table.
+- A bare `SELECT *` is recorded as reading **every column of every table** in scope; `alias.*` is recorded as
+  reading every column of just that table. Either is refused outright unless every column of that table has an
+  `IsAllowed` row, since naming individually allowed columns is the only way past the block.
+- Only a flat, whole-statement alias map is built (every `FROM`/`JOIN` in the statement and in any subquery it
+  contains, all at once). An alias this pass cannot place falls back to the same fan-out as an unqualified
+  column.
+
+This means the guard can occasionally refuse a query that, read carefully, would not actually have touched a
+not-allowed column (an unqualified column name that happens to collide with a not-allowed one on an unrelated
+joined table). That is accepted by design: guessing narrower here would risk the opposite mistake.
 
 ### Bounds
 
@@ -249,14 +386,28 @@ the builder, so a name carrying its own bracket is refused rather than escaped.
 | `POST /api/v1/dataops/queries/{planId}/run` | Redeem an approved token and queue the query (202 + taskId) |
 | `POST /api/v1/datasources/tasks` | `operation: "duplicateKeys"` or `"compareBaseline"` |
 | `GET /api/v1/datasources/tasks/{id}?waitMs=20000` | Long-poll the result |
+| `GET /api/v1/powerai/column-policies` | Every column currently NOT allowed, across the whole catalog (admin scope) |
+| `GET /api/v1/powerai/column-policies/objects/{key}` | One object's columns with their allow state (admin scope) |
+| `PUT /api/v1/powerai/column-policies` | Allow or deny one column, with its annotations (admin scope) |
+| `PUT /api/v1/powerai/column-policies/objects` | Allow or deny every column of one object (admin scope) |
 
 ## MCP tools
 
 - `dataops_capabilities` - call first; reports whether the surface is enabled here
-- `prepare_query` - step 1: validate a SELECT, get the exact statement plus a token. Nothing runs
-- `run_query` - step 2: redeem an approved token and return the rows
+- `prepare_query` - step 1: validate a SELECT, get the exact statement plus a token. Nothing runs. Refused if
+  the statement would read a column not on the allow-list, or names a table the catalog has no record of
+  (see "Column policy" above). The response carries `approvalFormat`, how to offer the statement to a person
+- `run_query` - step 2: redeem an approved token and return the rows, with `answerFormat`, `sqlIntro`, `sqlBlock`,
+  and (when the MCP server has `SQLFLOW_GUI_URL`) `chartLink` for laying out the answer
+- `auto_run_trusted_match` - run a trusted saved answer's SQL with no fresh approval, under the deployment's
+  AutoRun row and timeout caps; a successful result carries the same layout fields as `run_query`
 - `check_duplicate_keys` - the duplicate check, including the ask-back path
 - `compare_baseline` - inventory, schema, or data comparison
+
+The semantic layer tools (`describe_semantic_table` above all) never surface a column outside the allow-list, in
+any field, so composing SQL from what they return cannot name one by accident. They are the chat assistants'
+schema surface; `search_schema`'s `columns` surface and `describe_object`'s column list are filtered the same way for other MCP
+clients.
 
 ## Composing SQL against these tables
 
@@ -274,6 +425,11 @@ to know that a general-purpose aggregate happens to contain the answer:
 (`GET /api/v1/lineage/objects/dossier`), trimmed to one answer each: a narrow question should not spend a
 wide answer's worth of context. `describe_object` still returns the whole dossier when a model genuinely
 wants everything at once.
+
+These three tools, and `describe_object`, are not given to the GUI or Slack chat assistants. Those assistants
+compose SQL from `describe_semantic_table`, which serves the same key and the same discovered joins (through
+the same relationship folding), restricted to allow-listed columns and joined by admin-declared relationships;
+see [Semantic layer](semantic-layer.md). The tables below still describe the tools for other MCP clients.
 
 The join graph is the part worth understanding. SQLFlow does not rely on declared foreign keys, because a
 warehouse rarely has them. `TSqlLineageExtractor` reads the AND-connected column equalities out of every view

@@ -1,7 +1,7 @@
-using System.Globalization;
 using Microsoft.Data.SqlClient;
 using SqlFlow.Core.Connections;
 using SqlFlow.Core.Lineage;
+using SqlFlow.SqlServer.Catalog;
 
 namespace SqlFlow.Lineage.Collection;
 
@@ -105,17 +105,17 @@ public sealed class CatalogCollector
             await using var connection = new SqlConnection(connectionString);
             await connection.OpenAsync(ct).ConfigureAwait(false);
 
-            var database = (string?)await Scalar(connection, "SELECT DB_NAME();", ct).ConfigureAwait(false)
-                ?? throw new InvalidOperationException("the connection has no default database");
+            var harvest = await SqlServerObjectHarvester.HarvestAsync(
+                connection, new ObjectHarvestRequest { IncludeProgrammability = true }, ct).ConfigureAwait(false);
+            var database = harvest.Database;
 
             // The connected default catalog is node-identity ground truth: the builder completes this
             // server's two-part identities (database-less facts) against it.
             result.ServerDefaultDatabases[serverRef] = database;
 
-            await InventoryAsync(result, connection, serverRef, database, ct).ConfigureAwait(false);
+            AddInventory(result, harvest, serverRef);
             await SynonymsAsync(result, connection, serverRef, database, ct).ConfigureAwait(false);
-            await ModulesAsync(result, connection, serverRef, database, ct).ConfigureAwait(false);
-            await TableScriptsAsync(result, connection, serverRef, database, ct).ConfigureAwait(false);
+            AddModules(result, harvest, serverRef, ct);
 
             var modules = result.Facts
                 .Where(f => f.ViaModuleKey is not null)
@@ -137,219 +137,40 @@ public sealed class CatalogCollector
         return result;
     }
 
-    private static async Task InventoryAsync(
-        CollectionResult result, SqlConnection connection, string serverRef, string database, CancellationToken ct)
+    /// <summary>
+    /// The harvested inventory as catalog objects (with their columns) plus a derived-tier script artifact per base
+    /// table: SQL Server keeps no CREATE TABLE text (unlike a module's <c>sys.sql_modules</c> body), so the catalog
+    /// would otherwise hold a script for views and procedures but never for tables.
+    /// </summary>
+    private static void AddInventory(CollectionResult result, ObjectHarvest harvest, string serverRef)
     {
-        var columnsByObject = await ColumnsAsync(connection, ct).ConfigureAwait(false);
-
-        const string sql = """
-            SELECT s.name, o.name, o.type
-            FROM sys.objects o
-            JOIN sys.schemas s ON s.schema_id = o.schema_id
-            WHERE o.type IN ('U','V','P','FN','IF','TF','TR') AND o.is_ms_shipped = 0
-            ORDER BY s.name, o.name;
-            """;
-
-        await using var command = new SqlCommand(sql, connection) { CommandTimeout = 0 };
-        await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        foreach (var item in harvest.Objects)
         {
-            var schema = reader.GetString(0);
-            var name = reader.GetString(1);
             result.CatalogObjects.Add(new CatalogObject
             {
                 ServerRef = serverRef,
-                Database = database,
-                Schema = schema,
-                Name = name,
-                Kind = reader.GetString(2).TrimEnd() switch
+                Database = harvest.Database,
+                Schema = item.Schema,
+                Name = item.Name,
+                Kind = item.Kind,
+                Columns = item.Columns,
+            });
+
+            if (item.TableScript is not null)
+            {
+                result.ObjectArtifacts.Add(new CollectedObjectArtifact
                 {
-                    "U" => LineageNodeKind.Table,
-                    "V" => LineageNodeKind.View,
-                    "P" => LineageNodeKind.Procedure,
-                    "FN" or "IF" or "TF" => LineageNodeKind.Function,
-                    "TR" => LineageNodeKind.Trigger,
-                    _ => LineageNodeKind.Unknown,
-                },
-                Columns = columnsByObject.TryGetValue(schema + "|" + name, out var columns) ? columns : [],
-            });
+                    ServerRef = serverRef,
+                    Database = harvest.Database,
+                    Schema = item.Schema,
+                    Name = item.Name,
+                    Kind = LineageNodeKind.Table,
+                    Script = item.TableScript,
+                    Tier = LineageTier.Derived,
+                });
+            }
         }
     }
-
-    /// <summary>The columns of every table/view/table-valued function, keyed by <c>schema|name</c>
-    /// (case-insensitive, matching SQL Server's default object-name collation), so the inventory can attach a
-    /// data dictionary to each object for cross-repo column search.</summary>
-    private static async Task<Dictionary<string, List<LineageColumn>>> ColumnsAsync(SqlConnection connection, CancellationToken ct)
-    {
-        const string sql = """
-            SELECT s.name, o.name, c.column_id, c.name, t.name, c.max_length, c.precision, c.scale, c.is_nullable
-            FROM sys.columns c
-            JOIN sys.objects o ON o.object_id = c.object_id
-            JOIN sys.schemas s ON s.schema_id = o.schema_id
-            JOIN sys.types t ON t.user_type_id = c.user_type_id
-            WHERE o.type IN ('U','V','IF','TF') AND o.is_ms_shipped = 0
-            ORDER BY s.name, o.name, c.column_id;
-            """;
-
-        var map = new Dictionary<string, List<LineageColumn>>(StringComparer.OrdinalIgnoreCase);
-        await using var command = new SqlCommand(sql, connection) { CommandTimeout = 0 };
-        await using var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false);
-        while (await reader.ReadAsync(ct).ConfigureAwait(false))
-        {
-            var key = reader.GetString(0) + "|" + reader.GetString(1);
-            if (!map.TryGetValue(key, out var columns))
-            {
-                map[key] = columns = [];
-            }
-
-            columns.Add(new LineageColumn
-            {
-                Ordinal = reader.GetInt32(2),
-                Name = reader.GetString(3),
-                DataType = RenderType(reader.GetString(4), reader.GetInt16(5), reader.GetByte(6), reader.GetByte(7)),
-                Nullable = reader.GetBoolean(8),
-            });
-        }
-
-        return map;
-    }
-
-    /// <summary>
-    /// Reconstructs a <c>CREATE TABLE</c> script for every base table from the live schema - columns (with
-    /// identity, computed expressions, nullability) and the primary key - and attaches it as a derived-tier
-    /// artifact. SQL Server keeps no CREATE TABLE text (unlike a module's <c>sys.sql_modules</c> body), so the
-    /// catalog would otherwise hold a script for views/procedures but never for tables. A generating script per
-    /// object is required to recreate the estate in a new environment and to reason about it offline, so tables
-    /// are scripted here the way <see cref="ModulesAsync"/> harvests module bodies.
-    /// </summary>
-    private static async Task TableScriptsAsync(
-        CollectionResult result, SqlConnection connection, string serverRef, string database, CancellationToken ct)
-    {
-        const string columnsSql = """
-            SELECT s.name, o.name, c.name, t.name, c.max_length, c.precision, c.scale, c.is_nullable, c.is_identity,
-                   CONVERT(bigint, ISNULL(ic.seed_value, 1)), CONVERT(bigint, ISNULL(ic.increment_value, 1)),
-                   c.is_computed, cc.definition
-            FROM sys.columns c
-            JOIN sys.objects o ON o.object_id = c.object_id
-            JOIN sys.schemas s ON s.schema_id = o.schema_id
-            JOIN sys.types t ON t.user_type_id = c.user_type_id
-            LEFT JOIN sys.identity_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id
-            LEFT JOIN sys.computed_columns cc ON cc.object_id = c.object_id AND cc.column_id = c.column_id
-            WHERE o.type = 'U' AND o.is_ms_shipped = 0
-            ORDER BY s.name, o.name, c.column_id;
-            """;
-
-        var tables = new Dictionary<string, TableScript>(StringComparer.Ordinal);
-        TableScript Table(string schema, string name)
-        {
-            var key = schema + "|" + name;
-            if (!tables.TryGetValue(key, out var t))
-            {
-                tables[key] = t = new TableScript { Schema = schema, Name = name };
-            }
-
-            return t;
-        }
-
-        await using (var command = new SqlCommand(columnsSql, connection) { CommandTimeout = 0 })
-        await using (var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false))
-        {
-            while (await reader.ReadAsync(ct).ConfigureAwait(false))
-            {
-                var table = Table(reader.GetString(0), reader.GetString(1));
-                var columnName = reader.GetString(2);
-                if (reader.GetBoolean(11))
-                {
-                    // A computed column: [name] AS (expression); it carries no type or nullability of its own.
-                    var definition = reader.IsDBNull(12) ? "NULL" : reader.GetString(12);
-                    table.Columns.Add($"    [{columnName}] AS {definition}");
-                    continue;
-                }
-
-                var type = RenderType(reader.GetString(3), reader.GetInt16(4), reader.GetByte(5), reader.GetByte(6));
-                var identity = reader.GetBoolean(8)
-                    ? string.Create(CultureInfo.InvariantCulture, $" IDENTITY({reader.GetInt64(9)},{reader.GetInt64(10)})")
-                    : string.Empty;
-                var nullability = reader.GetBoolean(7) ? "NULL" : "NOT NULL";
-                table.Columns.Add($"    [{columnName}] {type}{identity} {nullability}");
-            }
-        }
-
-        const string pkSql = """
-            SELECT s.name, o.name, kc.name, i.type_desc, col.name
-            FROM sys.indexes i
-            JOIN sys.objects o ON o.object_id = i.object_id
-            JOIN sys.schemas s ON s.schema_id = o.schema_id
-            JOIN sys.index_columns ic ON ic.object_id = i.object_id AND ic.index_id = i.index_id
-            JOIN sys.columns col ON col.object_id = ic.object_id AND col.column_id = ic.column_id
-            JOIN sys.key_constraints kc ON kc.parent_object_id = i.object_id AND kc.unique_index_id = i.index_id
-            WHERE i.is_primary_key = 1 AND o.type = 'U' AND o.is_ms_shipped = 0
-            ORDER BY s.name, o.name, ic.key_ordinal;
-            """;
-
-        await using (var command = new SqlCommand(pkSql, connection) { CommandTimeout = 0 })
-        await using (var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false))
-        {
-            while (await reader.ReadAsync(ct).ConfigureAwait(false))
-            {
-                var table = Table(reader.GetString(0), reader.GetString(1));
-                table.PrimaryKeyName = reader.GetString(2);
-                table.PrimaryKeyClustered = reader.GetString(3);   // CLUSTERED / NONCLUSTERED
-                table.PrimaryKeyColumns.Add(reader.GetString(4));
-            }
-        }
-
-        foreach (var table in tables.Values)
-        {
-            var lines = new List<string>(table.Columns);
-            if (table.PrimaryKeyColumns.Count > 0)
-            {
-                var keyColumns = string.Join(", ", table.PrimaryKeyColumns.Select(c => $"[{c}] ASC"));
-                lines.Add($"    CONSTRAINT [{table.PrimaryKeyName}] PRIMARY KEY {table.PrimaryKeyClustered} ({keyColumns})");
-            }
-
-            result.ObjectArtifacts.Add(new CollectedObjectArtifact
-            {
-                ServerRef = serverRef,
-                Database = database,
-                Schema = table.Schema,
-                Name = table.Name,
-                Kind = LineageNodeKind.Table,
-                Script = $"CREATE TABLE [{table.Schema}].[{table.Name}] (\n{string.Join(",\n", lines)}\n);",
-                Tier = LineageTier.Derived,
-            });
-        }
-    }
-
-    /// <summary>Accumulates one base table's rendered column lines and primary key while the schema is read.</summary>
-    private sealed class TableScript
-    {
-        public required string Schema { get; init; }
-
-        public required string Name { get; init; }
-
-        public List<string> Columns { get; } = [];
-
-        public string? PrimaryKeyName { get; set; }
-
-        public string PrimaryKeyClustered { get; set; } = "CLUSTERED";
-
-        public List<string> PrimaryKeyColumns { get; } = [];
-    }
-
-    /// <summary>Renders a SQL Server type with its length/precision the way it reads in DDL (best-effort, for
-    /// display and search): <c>nvarchar(100)</c>, <c>nvarchar(max)</c>, <c>decimal(18,2)</c>, <c>datetime2(7)</c>.</summary>
-    private static string RenderType(string typeName, short maxLength, byte precision, byte scale)
-        => typeName switch
-        {
-            "nvarchar" or "nchar" => $"{typeName}({Length(maxLength == -1 ? -1 : maxLength / 2)})",
-            "varchar" or "char" or "varbinary" or "binary" => $"{typeName}({Length(maxLength)})",
-            "decimal" or "numeric" => string.Create(CultureInfo.InvariantCulture, $"{typeName}({precision},{scale})"),
-            "datetime2" or "datetimeoffset" or "time" => string.Create(CultureInfo.InvariantCulture, $"{typeName}({scale})"),
-            _ => typeName,
-        };
-
-    private static string Length(int maxLength) => maxLength == -1 ? "max" : maxLength.ToString(CultureInfo.InvariantCulture);
 
     private static async Task SynonymsAsync(
         CollectionResult result, SqlConnection connection, string serverRef, string database, CancellationToken ct)
@@ -402,27 +223,11 @@ public sealed class CatalogCollector
         }
     }
 
-    private static async Task ModulesAsync(
-        CollectionResult result, SqlConnection connection, string serverRef, string database, CancellationToken ct)
+    private static void AddModules(
+        CollectionResult result, ObjectHarvest harvest, string serverRef, CancellationToken ct)
     {
-        const string sql = """
-            SELECT s.name, o.name, m.definition
-            FROM sys.sql_modules m
-            JOIN sys.objects o ON o.object_id = m.object_id
-            JOIN sys.schemas s ON s.schema_id = o.schema_id
-            WHERE o.is_ms_shipped = 0
-            ORDER BY s.name, o.name;
-            """;
-
-        var modules = new List<(string Schema, string Name, string? Definition)>();
-        await using (var command = new SqlCommand(sql, connection) { CommandTimeout = 0 })
-        await using (var reader = await command.ExecuteReaderAsync(ct).ConfigureAwait(false))
-        {
-            while (await reader.ReadAsync(ct).ConfigureAwait(false))
-            {
-                modules.Add((reader.GetString(0), reader.GetString(1), reader.IsDBNull(2) ? null : reader.GetString(2)));
-            }
-        }
+        var database = harvest.Database;
+        var modules = harvest.Modules.Select(m => (m.Schema, m.Name, m.Definition)).ToList();
 
         // The ScriptDom walk is pure CPU and the extractor is thread-safe by construction (one parser and one
         // walk state per call, no shared mutable state), so the readable bodies parse in parallel, bounded by
@@ -498,11 +303,5 @@ public sealed class CatalogCollector
                 result, extracted[i].Deps, serverRef, LineageTier.Derived,
                 NodeKey.For(serverRef, database, schema, name));
         }
-    }
-
-    private static async Task<object?> Scalar(SqlConnection connection, string sql, CancellationToken ct)
-    {
-        await using var command = new SqlCommand(sql, connection) { CommandTimeout = 0 };
-        return await command.ExecuteScalarAsync(ct).ConfigureAwait(false);
     }
 }

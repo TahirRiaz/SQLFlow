@@ -1,0 +1,3092 @@
+[
+  {
+    "id": "q001",
+    "shape": "scalar",
+    "question": "How many reseller sales line items are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "count",
+      "factresellersales"
+    ]
+  },
+  {
+    "id": "q002",
+    "shape": "scalar",
+    "question": "How many products are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "count",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q003",
+    "shape": "scalar",
+    "question": "How many resellers are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimReseller",
+    "tags": [
+      "count",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q004",
+    "shape": "scalar",
+    "question": "How many sales territories are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimSalesTerritory",
+    "tags": [
+      "count",
+      "dimsalesterritory"
+    ]
+  },
+  {
+    "id": "q005",
+    "shape": "scalar",
+    "question": "How many dates are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimDate",
+    "tags": [
+      "count",
+      "dimdate"
+    ]
+  },
+  {
+    "id": "q006",
+    "shape": "scalar",
+    "question": "How many customers are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimCustomer",
+    "tags": [
+      "count",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q007",
+    "shape": "scalar",
+    "question": "What is the total sales amount across all reseller sales?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "sum",
+      "factresellersales",
+      "salesamount"
+    ]
+  },
+  {
+    "id": "q008",
+    "shape": "scalar",
+    "question": "What is the total order quantity across all reseller sales?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "sum",
+      "factresellersales",
+      "orderquantity"
+    ]
+  },
+  {
+    "id": "q009",
+    "shape": "scalar",
+    "question": "What is the total tax across all reseller sales?",
+    "sql": "SELECT SUM(f.TaxAmt) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "sum",
+      "factresellersales",
+      "taxamt"
+    ]
+  },
+  {
+    "id": "q010",
+    "shape": "scalar",
+    "question": "What is the total freight across all reseller sales?",
+    "sql": "SELECT SUM(f.Freight) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "sum",
+      "factresellersales",
+      "freight"
+    ]
+  },
+  {
+    "id": "q011",
+    "shape": "scalar",
+    "question": "What is the total product cost across all reseller sales?",
+    "sql": "SELECT SUM(f.TotalProductCost) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "sum",
+      "factresellersales",
+      "totalproductcost"
+    ]
+  },
+  {
+    "id": "q012",
+    "shape": "scalar",
+    "question": "What is the total discount across all reseller sales?",
+    "sql": "SELECT SUM(f.DiscountAmount) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "sum",
+      "factresellersales",
+      "discountamount"
+    ]
+  },
+  {
+    "id": "q013",
+    "shape": "scalar",
+    "question": "What is the total extended amount across all reseller sales?",
+    "sql": "SELECT SUM(f.ExtendedAmount) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "sum",
+      "factresellersales",
+      "extendedamount"
+    ]
+  },
+  {
+    "id": "q014",
+    "shape": "scalar",
+    "question": "What is the average sale amount on reseller sales?",
+    "sql": "SELECT AVG(f.SalesAmount) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "avg",
+      "factresellersales",
+      "salesamount"
+    ]
+  },
+  {
+    "id": "q015",
+    "shape": "scalar",
+    "question": "What is the average unit price on reseller sales?",
+    "sql": "SELECT AVG(f.UnitPrice) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "avg",
+      "factresellersales",
+      "unitprice"
+    ]
+  },
+  {
+    "id": "q016",
+    "shape": "scalar",
+    "question": "What is the average order quantity on reseller sales?",
+    "sql": "SELECT AVG(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "avg",
+      "factresellersales",
+      "orderquantity"
+    ]
+  },
+  {
+    "id": "q017",
+    "shape": "scalar",
+    "question": "What is the average product standard cost on reseller sales?",
+    "sql": "SELECT AVG(f.ProductStandardCost) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "avg",
+      "factresellersales",
+      "productstandardcost"
+    ]
+  },
+  {
+    "id": "q018",
+    "shape": "scalar",
+    "question": "What is the smallest sale amount on any reseller sales line?",
+    "sql": "SELECT MIN(f.SalesAmount) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "min",
+      "factresellersales",
+      "salesamount"
+    ]
+  },
+  {
+    "id": "q019",
+    "shape": "scalar",
+    "question": "What is the smallest unit price on any reseller sales line?",
+    "sql": "SELECT MIN(f.UnitPrice) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "min",
+      "factresellersales",
+      "unitprice"
+    ]
+  },
+  {
+    "id": "q020",
+    "shape": "scalar",
+    "question": "What is the smallest order quantity on any reseller sales line?",
+    "sql": "SELECT MIN(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "min",
+      "factresellersales",
+      "orderquantity"
+    ]
+  },
+  {
+    "id": "q021",
+    "shape": "scalar",
+    "question": "What is the largest sale amount on any reseller sales line?",
+    "sql": "SELECT MAX(f.SalesAmount) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "max",
+      "factresellersales",
+      "salesamount"
+    ]
+  },
+  {
+    "id": "q022",
+    "shape": "scalar",
+    "question": "What is the largest unit price on any reseller sales line?",
+    "sql": "SELECT MAX(f.UnitPrice) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "max",
+      "factresellersales",
+      "unitprice"
+    ]
+  },
+  {
+    "id": "q023",
+    "shape": "scalar",
+    "question": "What is the largest order quantity on any reseller sales line?",
+    "sql": "SELECT MAX(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "max",
+      "factresellersales",
+      "orderquantity"
+    ]
+  },
+  {
+    "id": "q024",
+    "shape": "scalar",
+    "question": "How many distinct sales orders are there?",
+    "sql": "SELECT COUNT(DISTINCT SalesOrderNumber) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "distinct",
+      "factresellersales",
+      "salesordernumber"
+    ]
+  },
+  {
+    "id": "q025",
+    "shape": "scalar",
+    "question": "How many distinct products sold are there?",
+    "sql": "SELECT COUNT(DISTINCT ProductKey) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "distinct",
+      "factresellersales",
+      "productkey"
+    ]
+  },
+  {
+    "id": "q026",
+    "shape": "scalar",
+    "question": "How many distinct resellers with sales are there?",
+    "sql": "SELECT COUNT(DISTINCT ResellerKey) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "distinct",
+      "factresellersales",
+      "resellerkey"
+    ]
+  },
+  {
+    "id": "q027",
+    "shape": "scalar",
+    "question": "How many distinct territories with sales are there?",
+    "sql": "SELECT COUNT(DISTINCT SalesTerritoryKey) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "distinct",
+      "factresellersales",
+      "salesterritorykey"
+    ]
+  },
+  {
+    "id": "q028",
+    "shape": "scalar",
+    "question": "How many distinct employees with sales are there?",
+    "sql": "SELECT COUNT(DISTINCT EmployeeKey) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "distinct",
+      "factresellersales",
+      "employeekey"
+    ]
+  },
+  {
+    "id": "q029",
+    "shape": "scalar",
+    "question": "How many distinct currencies used are there?",
+    "sql": "SELECT COUNT(DISTINCT CurrencyKey) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "distinct",
+      "factresellersales",
+      "currencykey"
+    ]
+  },
+  {
+    "id": "q030",
+    "shape": "scalar",
+    "question": "How many distinct promotions applied are there?",
+    "sql": "SELECT COUNT(DISTINCT PromotionKey) AS Value FROM dbo.FactResellerSales",
+    "tags": [
+      "distinct",
+      "factresellersales",
+      "promotionkey"
+    ]
+  },
+  {
+    "id": "q031",
+    "shape": "scalar",
+    "question": "How many distinct product colors are there?",
+    "sql": "SELECT COUNT(DISTINCT Color) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "distinct",
+      "dimproduct",
+      "color"
+    ]
+  },
+  {
+    "id": "q032",
+    "shape": "scalar",
+    "question": "How many distinct product models are there?",
+    "sql": "SELECT COUNT(DISTINCT ModelName) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "distinct",
+      "dimproduct",
+      "modelname"
+    ]
+  },
+  {
+    "id": "q033",
+    "shape": "scalar",
+    "question": "How many distinct product lines are there?",
+    "sql": "SELECT COUNT(DISTINCT ProductLine) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "distinct",
+      "dimproduct",
+      "productline"
+    ]
+  },
+  {
+    "id": "q034",
+    "shape": "scalar",
+    "question": "How many distinct product classes are there?",
+    "sql": "SELECT COUNT(DISTINCT Class) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "distinct",
+      "dimproduct",
+      "class"
+    ]
+  },
+  {
+    "id": "q035",
+    "shape": "scalar",
+    "question": "How many distinct product styles are there?",
+    "sql": "SELECT COUNT(DISTINCT Style) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "distinct",
+      "dimproduct",
+      "style"
+    ]
+  },
+  {
+    "id": "q036",
+    "shape": "scalar",
+    "question": "How many distinct product sizes are there?",
+    "sql": "SELECT COUNT(DISTINCT Size) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "distinct",
+      "dimproduct",
+      "size"
+    ]
+  },
+  {
+    "id": "q037",
+    "shape": "scalar",
+    "question": "How many distinct reseller business types are there?",
+    "sql": "SELECT COUNT(DISTINCT BusinessType) AS Value FROM dbo.DimReseller",
+    "tags": [
+      "distinct",
+      "dimreseller",
+      "businesstype"
+    ]
+  },
+  {
+    "id": "q038",
+    "shape": "scalar",
+    "question": "How many distinct reseller product lines are there?",
+    "sql": "SELECT COUNT(DISTINCT ProductLine) AS Value FROM dbo.DimReseller",
+    "tags": [
+      "distinct",
+      "dimreseller",
+      "productline"
+    ]
+  },
+  {
+    "id": "q039",
+    "shape": "scalar",
+    "question": "How many distinct reseller banks are there?",
+    "sql": "SELECT COUNT(DISTINCT BankName) AS Value FROM dbo.DimReseller",
+    "tags": [
+      "distinct",
+      "dimreseller",
+      "bankname"
+    ]
+  },
+  {
+    "id": "q040",
+    "shape": "scalar",
+    "question": "How many distinct countries are there?",
+    "sql": "SELECT COUNT(DISTINCT SalesTerritoryCountry) AS Value FROM dbo.DimSalesTerritory",
+    "tags": [
+      "distinct",
+      "dimsalesterritory",
+      "salesterritorycountry"
+    ]
+  },
+  {
+    "id": "q041",
+    "shape": "scalar",
+    "question": "How many distinct regions are there?",
+    "sql": "SELECT COUNT(DISTINCT SalesTerritoryRegion) AS Value FROM dbo.DimSalesTerritory",
+    "tags": [
+      "distinct",
+      "dimsalesterritory",
+      "salesterritoryregion"
+    ]
+  },
+  {
+    "id": "q042",
+    "shape": "scalar",
+    "question": "How many distinct territory groups are there?",
+    "sql": "SELECT COUNT(DISTINCT SalesTerritoryGroup) AS Value FROM dbo.DimSalesTerritory",
+    "tags": [
+      "distinct",
+      "dimsalesterritory",
+      "salesterritorygroup"
+    ]
+  },
+  {
+    "id": "q043",
+    "shape": "scalar",
+    "question": "How many distinct calendar years are there?",
+    "sql": "SELECT COUNT(DISTINCT CalendarYear) AS Value FROM dbo.DimDate",
+    "tags": [
+      "distinct",
+      "dimdate",
+      "calendaryear"
+    ]
+  },
+  {
+    "id": "q044",
+    "shape": "scalar",
+    "question": "How many distinct customer last names are there?",
+    "sql": "SELECT COUNT(DISTINCT LastName) AS Value FROM dbo.DimCustomer",
+    "tags": [
+      "distinct",
+      "dimcustomer",
+      "lastname"
+    ]
+  },
+  {
+    "id": "q045",
+    "shape": "scalar",
+    "question": "How many distinct customer occupations are there?",
+    "sql": "SELECT COUNT(DISTINCT EnglishOccupation) AS Value FROM dbo.DimCustomer",
+    "tags": [
+      "distinct",
+      "dimcustomer",
+      "englishoccupation"
+    ]
+  },
+  {
+    "id": "q046",
+    "shape": "scalar",
+    "question": "What were total reseller sales in 2010?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2010",
+    "tags": [
+      "sum",
+      "year",
+      "2010"
+    ]
+  },
+  {
+    "id": "q047",
+    "shape": "scalar",
+    "question": "How many reseller sales orders were placed in 2010?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2010",
+    "tags": [
+      "count",
+      "year",
+      "2010"
+    ]
+  },
+  {
+    "id": "q048",
+    "shape": "scalar",
+    "question": "How many units were sold to resellers in 2010?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2010",
+    "tags": [
+      "sum",
+      "year",
+      "2010"
+    ]
+  },
+  {
+    "id": "q049",
+    "shape": "scalar",
+    "question": "What were total reseller sales in 2011?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2011",
+    "tags": [
+      "sum",
+      "year",
+      "2011"
+    ]
+  },
+  {
+    "id": "q050",
+    "shape": "scalar",
+    "question": "How many reseller sales orders were placed in 2011?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2011",
+    "tags": [
+      "count",
+      "year",
+      "2011"
+    ]
+  },
+  {
+    "id": "q051",
+    "shape": "scalar",
+    "question": "How many units were sold to resellers in 2011?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2011",
+    "tags": [
+      "sum",
+      "year",
+      "2011"
+    ]
+  },
+  {
+    "id": "q052",
+    "shape": "scalar",
+    "question": "What were total reseller sales in 2012?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2012",
+    "tags": [
+      "sum",
+      "year",
+      "2012"
+    ]
+  },
+  {
+    "id": "q053",
+    "shape": "scalar",
+    "question": "How many reseller sales orders were placed in 2012?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2012",
+    "tags": [
+      "count",
+      "year",
+      "2012"
+    ]
+  },
+  {
+    "id": "q054",
+    "shape": "scalar",
+    "question": "How many units were sold to resellers in 2012?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2012",
+    "tags": [
+      "sum",
+      "year",
+      "2012"
+    ]
+  },
+  {
+    "id": "q055",
+    "shape": "scalar",
+    "question": "What were total reseller sales in 2013?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2013",
+    "tags": [
+      "sum",
+      "year",
+      "2013"
+    ]
+  },
+  {
+    "id": "q056",
+    "shape": "scalar",
+    "question": "How many reseller sales orders were placed in 2013?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2013",
+    "tags": [
+      "count",
+      "year",
+      "2013"
+    ]
+  },
+  {
+    "id": "q057",
+    "shape": "scalar",
+    "question": "How many units were sold to resellers in 2013?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2013",
+    "tags": [
+      "sum",
+      "year",
+      "2013"
+    ]
+  },
+  {
+    "id": "q058",
+    "shape": "scalar",
+    "question": "What were total reseller sales in United States?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United States'",
+    "tags": [
+      "sum",
+      "country"
+    ]
+  },
+  {
+    "id": "q059",
+    "shape": "scalar",
+    "question": "What were total reseller sales in Canada?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Canada'",
+    "tags": [
+      "sum",
+      "country"
+    ]
+  },
+  {
+    "id": "q060",
+    "shape": "scalar",
+    "question": "What were total reseller sales in France?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'France'",
+    "tags": [
+      "sum",
+      "country"
+    ]
+  },
+  {
+    "id": "q061",
+    "shape": "scalar",
+    "question": "What were total reseller sales in Germany?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Germany'",
+    "tags": [
+      "sum",
+      "country"
+    ]
+  },
+  {
+    "id": "q062",
+    "shape": "scalar",
+    "question": "What were total reseller sales in United Kingdom?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United Kingdom'",
+    "tags": [
+      "sum",
+      "country"
+    ]
+  },
+  {
+    "id": "q063",
+    "shape": "scalar",
+    "question": "What were total reseller sales in Australia?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Australia'",
+    "tags": [
+      "sum",
+      "country"
+    ]
+  },
+  {
+    "id": "q064",
+    "shape": "scalar",
+    "question": "What were total reseller sales in the Europe territory group?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Europe'",
+    "tags": [
+      "sum",
+      "group"
+    ]
+  },
+  {
+    "id": "q065",
+    "shape": "scalar",
+    "question": "What were total reseller sales in the North America territory group?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'North America'",
+    "tags": [
+      "sum",
+      "group"
+    ]
+  },
+  {
+    "id": "q066",
+    "shape": "scalar",
+    "question": "What were total reseller sales in the Pacific territory group?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Pacific'",
+    "tags": [
+      "sum",
+      "group"
+    ]
+  },
+  {
+    "id": "q067",
+    "shape": "scalar",
+    "question": "What were total sales to Specialty Bike Shop resellers?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Specialty Bike Shop'",
+    "tags": [
+      "sum",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q068",
+    "shape": "scalar",
+    "question": "How many Specialty Bike Shop resellers are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimReseller WHERE BusinessType = 'Specialty Bike Shop'",
+    "tags": [
+      "count",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q069",
+    "shape": "scalar",
+    "question": "What were total sales to Value Added Reseller resellers?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Value Added Reseller'",
+    "tags": [
+      "sum",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q070",
+    "shape": "scalar",
+    "question": "How many Value Added Reseller resellers are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimReseller WHERE BusinessType = 'Value Added Reseller'",
+    "tags": [
+      "count",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q071",
+    "shape": "scalar",
+    "question": "What were total sales to Warehouse resellers?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Warehouse'",
+    "tags": [
+      "sum",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q072",
+    "shape": "scalar",
+    "question": "How many Warehouse resellers are there?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimReseller WHERE BusinessType = 'Warehouse'",
+    "tags": [
+      "count",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q073",
+    "shape": "scalar",
+    "question": "How many products are Black?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'Black'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q074",
+    "shape": "scalar",
+    "question": "What were total reseller sales of Black products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Black'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q075",
+    "shape": "scalar",
+    "question": "How many products are Red?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'Red'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q076",
+    "shape": "scalar",
+    "question": "What were total reseller sales of Red products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Red'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q077",
+    "shape": "scalar",
+    "question": "How many products are Silver?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'Silver'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q078",
+    "shape": "scalar",
+    "question": "What were total reseller sales of Silver products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Silver'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q079",
+    "shape": "scalar",
+    "question": "How many products are Blue?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'Blue'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q080",
+    "shape": "scalar",
+    "question": "What were total reseller sales of Blue products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Blue'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q081",
+    "shape": "scalar",
+    "question": "How many products are Yellow?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'Yellow'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q082",
+    "shape": "scalar",
+    "question": "What were total reseller sales of Yellow products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Yellow'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q083",
+    "shape": "scalar",
+    "question": "How many products are White?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'White'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q084",
+    "shape": "scalar",
+    "question": "What were total reseller sales of White products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'White'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q085",
+    "shape": "scalar",
+    "question": "How many products are Multi?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'Multi'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q086",
+    "shape": "scalar",
+    "question": "What were total reseller sales of Multi products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Multi'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q087",
+    "shape": "scalar",
+    "question": "How many products are Grey?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'Grey'",
+    "tags": [
+      "count",
+      "color"
+    ]
+  },
+  {
+    "id": "q088",
+    "shape": "scalar",
+    "question": "What were total reseller sales of Grey products?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Grey'",
+    "tags": [
+      "sum",
+      "color"
+    ]
+  },
+  {
+    "id": "q089",
+    "shape": "scalar",
+    "question": "What is the total profit on reseller sales?",
+    "sql": "SELECT SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "profit"
+    ]
+  },
+  {
+    "id": "q090",
+    "shape": "scalar",
+    "question": "What is the overall gross margin percentage on reseller sales?",
+    "sql": "SELECT CASE WHEN SUM(f.SalesAmount) = 0 THEN NULL ELSE (SUM(f.SalesAmount) - SUM(f.TotalProductCost)) * 100.0 / SUM(f.SalesAmount) END AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "margin"
+    ]
+  },
+  {
+    "id": "q091",
+    "shape": "scalar",
+    "question": "What is the average number of lines per reseller sales order?",
+    "sql": "SELECT CAST(COUNT(*) AS float) / NULLIF(COUNT(DISTINCT f.SalesOrderNumber), 0) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "avg"
+    ]
+  },
+  {
+    "id": "q092",
+    "shape": "scalar",
+    "question": "What is the earliest reseller sales order date?",
+    "sql": "SELECT MIN(f.OrderDate) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "min",
+      "date"
+    ]
+  },
+  {
+    "id": "q093",
+    "shape": "scalar",
+    "question": "What is the latest reseller sales order date?",
+    "sql": "SELECT MAX(f.OrderDate) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "max",
+      "date"
+    ]
+  },
+  {
+    "id": "q094",
+    "shape": "scalar",
+    "question": "What is the highest list price of any product?",
+    "sql": "SELECT MAX(ListPrice) AS Value FROM dbo.DimProduct",
+    "tags": [
+      "max",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q095",
+    "shape": "scalar",
+    "question": "What is the average list price of products that have one?",
+    "sql": "SELECT AVG(ListPrice) AS Value FROM dbo.DimProduct WHERE ListPrice IS NOT NULL",
+    "tags": [
+      "avg",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q096",
+    "shape": "scalar",
+    "question": "How many products have no list price recorded?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE ListPrice IS NULL",
+    "tags": [
+      "null",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q097",
+    "shape": "scalar",
+    "question": "How many products are finished goods?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE FinishedGoodsFlag = 1",
+    "tags": [
+      "count",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q098",
+    "shape": "scalar",
+    "question": "What is the total annual sales reported across all resellers?",
+    "sql": "SELECT SUM(AnnualSales) AS Value FROM dbo.DimReseller",
+    "tags": [
+      "sum",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q099",
+    "shape": "scalar",
+    "question": "What is the average number of employees at a reseller?",
+    "sql": "SELECT AVG(CAST(NumberEmployees AS float)) AS Value FROM dbo.DimReseller",
+    "tags": [
+      "avg",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q100",
+    "shape": "scalar",
+    "question": "How many resellers have never recorded a sale?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimReseller r WHERE NOT EXISTS (SELECT 1 FROM dbo.FactResellerSales f WHERE f.ResellerKey = r.ResellerKey)",
+    "tags": [
+      "antijoin"
+    ]
+  },
+  {
+    "id": "q101",
+    "shape": "scalar",
+    "question": "How many products have never been sold to a reseller?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct p WHERE NOT EXISTS (SELECT 1 FROM dbo.FactResellerSales f WHERE f.ProductKey = p.ProductKey)",
+    "tags": [
+      "antijoin"
+    ]
+  },
+  {
+    "id": "q102",
+    "shape": "scalar",
+    "question": "What is the average yearly income of customers?",
+    "sql": "SELECT AVG(YearlyIncome) AS Value FROM dbo.DimCustomer",
+    "tags": [
+      "avg",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q103",
+    "shape": "scalar",
+    "question": "How many customers own a house?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimCustomer WHERE HouseOwnerFlag = '1'",
+    "tags": [
+      "count",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q104",
+    "shape": "scalar",
+    "question": "What is the largest single reseller sales order by total amount?",
+    "sql": "SELECT MAX(v.Total) AS Value FROM (SELECT f.SalesOrderNumber, SUM(f.SalesAmount) AS Total FROM dbo.FactResellerSales f GROUP BY f.SalesOrderNumber) v",
+    "tags": [
+      "max",
+      "subquery"
+    ]
+  },
+  {
+    "id": "q105",
+    "shape": "scalar",
+    "question": "How many reseller sales lines had a discount applied?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.FactResellerSales f WHERE f.DiscountAmount > 0",
+    "tags": [
+      "count",
+      "discount"
+    ]
+  },
+  {
+    "id": "q106",
+    "shape": "scalar",
+    "question": "What share of reseller sales lines carried a carrier tracking number?",
+    "sql": "SELECT COUNT(f.CarrierTrackingNumber) * 100.0 / NULLIF(COUNT(*), 0) AS Value FROM dbo.FactResellerSales f",
+    "tags": [
+      "ratio",
+      "null"
+    ]
+  },
+  {
+    "id": "q107",
+    "shape": "multivalue",
+    "question": "Give me a summary of reseller sales: order count, units, and total amount.",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Orders, SUM(f.OrderQuantity) AS Units, SUM(f.SalesAmount) AS Sales FROM dbo.FactResellerSales f",
+    "tags": [
+      "summary"
+    ]
+  },
+  {
+    "id": "q108",
+    "shape": "multivalue",
+    "question": "What are the minimum, maximum, and average sale amounts on reseller sales?",
+    "sql": "SELECT MIN(f.SalesAmount) AS MinSales, MAX(f.SalesAmount) AS MaxSales, AVG(f.SalesAmount) AS AvgSales FROM dbo.FactResellerSales f",
+    "tags": [
+      "spread"
+    ]
+  },
+  {
+    "id": "q109",
+    "shape": "multivalue",
+    "question": "Show total sales, cost, and profit for reseller sales.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.TotalProductCost) AS Cost, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f",
+    "tags": [
+      "profit"
+    ]
+  },
+  {
+    "id": "q110",
+    "shape": "multivalue",
+    "question": "What is the date range of reseller sales orders?",
+    "sql": "SELECT MIN(f.OrderDate) AS FirstOrder, MAX(f.OrderDate) AS LastOrder FROM dbo.FactResellerSales f",
+    "tags": [
+      "range",
+      "date"
+    ]
+  },
+  {
+    "id": "q111",
+    "shape": "multivalue",
+    "question": "How many products, resellers, and territories does the warehouse hold?",
+    "sql": "SELECT (SELECT COUNT(*) FROM dbo.DimProduct) AS Products, (SELECT COUNT(*) FROM dbo.DimReseller) AS Resellers, (SELECT COUNT(*) FROM dbo.DimSalesTerritory) AS Territories",
+    "tags": [
+      "counts"
+    ]
+  },
+  {
+    "id": "q112",
+    "shape": "multivalue",
+    "question": "Break down reseller sales into tax, freight, and net amount.",
+    "sql": "SELECT SUM(f.TaxAmt) AS Tax, SUM(f.Freight) AS Freight, SUM(f.SalesAmount) AS Sales FROM dbo.FactResellerSales f",
+    "tags": [
+      "breakdown"
+    ]
+  },
+  {
+    "id": "q113",
+    "shape": "multivalue",
+    "question": "Summarise the product list price range.",
+    "sql": "SELECT MIN(ListPrice) AS MinPrice, MAX(ListPrice) AS MaxPrice, AVG(ListPrice) AS AvgPrice FROM dbo.DimProduct WHERE ListPrice IS NOT NULL",
+    "tags": [
+      "spread",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q114",
+    "shape": "multivalue",
+    "question": "How many distinct products, orders, and resellers appear in the sales fact?",
+    "sql": "SELECT COUNT(DISTINCT f.ProductKey) AS Products, COUNT(DISTINCT f.SalesOrderNumber) AS Orders, COUNT(DISTINCT f.ResellerKey) AS Resellers FROM dbo.FactResellerSales f",
+    "tags": [
+      "distinct"
+    ]
+  },
+  {
+    "id": "q115",
+    "shape": "multivalue",
+    "question": "What were sales, units, and average unit price in 2013?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.OrderQuantity) AS Units, AVG(f.UnitPrice) AS AvgUnitPrice FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2013",
+    "tags": [
+      "year",
+      "2013"
+    ]
+  },
+  {
+    "id": "q116",
+    "shape": "multivalue",
+    "question": "Compare total reseller sales between 2012 and 2013.",
+    "sql": "SELECT SUM(CASE WHEN YEAR(f.OrderDate) = 2012 THEN f.SalesAmount ELSE 0 END) AS Sales2012, SUM(CASE WHEN YEAR(f.OrderDate) = 2013 THEN f.SalesAmount ELSE 0 END) AS Sales2013 FROM dbo.FactResellerSales f",
+    "tags": [
+      "compare",
+      "year"
+    ]
+  },
+  {
+    "id": "q117",
+    "shape": "multivalue",
+    "question": "Show the reseller count for each business type in one row.",
+    "sql": "SELECT SUM(CASE WHEN BusinessType = 'Warehouse' THEN 1 ELSE 0 END) AS Warehouse, SUM(CASE WHEN BusinessType = 'Value Added Reseller' THEN 1 ELSE 0 END) AS ValueAdded, SUM(CASE WHEN BusinessType = 'Specialty Bike Shop' THEN 1 ELSE 0 END) AS SpecialtyBikeShop FROM dbo.DimReseller",
+    "tags": [
+      "pivot",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q118",
+    "shape": "multivalue",
+    "question": "What is the split of reseller sales between North America, Europe, and Pacific?",
+    "sql": "SELECT SUM(CASE WHEN t.SalesTerritoryGroup = 'North America' THEN f.SalesAmount ELSE 0 END) AS NorthAmerica, SUM(CASE WHEN t.SalesTerritoryGroup = 'Europe' THEN f.SalesAmount ELSE 0 END) AS Europe, SUM(CASE WHEN t.SalesTerritoryGroup = 'Pacific' THEN f.SalesAmount ELSE 0 END) AS Pacific FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey",
+    "tags": [
+      "pivot",
+      "group"
+    ]
+  },
+  {
+    "id": "q119",
+    "shape": "multivalue",
+    "question": "Summarise customer demographics: total, house owners, and average income.",
+    "sql": "SELECT COUNT(*) AS Customers, SUM(CASE WHEN HouseOwnerFlag = '1' THEN 1 ELSE 0 END) AS HouseOwners, AVG(YearlyIncome) AS AvgIncome FROM dbo.DimCustomer",
+    "tags": [
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q120",
+    "shape": "multivalue",
+    "question": "What is the highest and lowest total on a single reseller sales order?",
+    "sql": "SELECT MAX(v.Total) AS MaxOrder, MIN(v.Total) AS MinOrder FROM (SELECT f.SalesOrderNumber, SUM(f.SalesAmount) AS Total FROM dbo.FactResellerSales f GROUP BY f.SalesOrderNumber) v",
+    "tags": [
+      "subquery"
+    ]
+  },
+  {
+    "id": "q121",
+    "shape": "multivalue",
+    "question": "Give the average order quantity, discount, and unit price discount percentage.",
+    "sql": "SELECT AVG(CAST(f.OrderQuantity AS float)) AS AvgQty, AVG(f.DiscountAmount) AS AvgDiscount, AVG(f.UnitPriceDiscountPct) AS AvgDiscountPct FROM dbo.FactResellerSales f",
+    "tags": [
+      "avg"
+    ]
+  },
+  {
+    "id": "q122",
+    "shape": "multivalue",
+    "question": "How many products are finished goods versus not?",
+    "sql": "SELECT SUM(CASE WHEN FinishedGoodsFlag = 1 THEN 1 ELSE 0 END) AS Finished, SUM(CASE WHEN FinishedGoodsFlag = 0 THEN 1 ELSE 0 END) AS NotFinished FROM dbo.DimProduct",
+    "tags": [
+      "pivot",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q123",
+    "shape": "multivalue",
+    "question": "What is the calendar year range and total days in the date dimension?",
+    "sql": "SELECT MIN(CalendarYear) AS FirstYear, MAX(CalendarYear) AS LastYear, COUNT(*) AS Days FROM dbo.DimDate",
+    "tags": [
+      "range",
+      "dimdate"
+    ]
+  },
+  {
+    "id": "q124",
+    "shape": "multivalue",
+    "question": "Summarise reseller annual sales and employee counts.",
+    "sql": "SELECT SUM(AnnualSales) AS TotalAnnualSales, AVG(CAST(NumberEmployees AS float)) AS AvgEmployees, MAX(NumberEmployees) AS MaxEmployees FROM dbo.DimReseller",
+    "tags": [
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q125",
+    "shape": "multivalue",
+    "question": "What proportion of reseller sales lines were discounted?",
+    "sql": "SELECT COUNT(*) AS TotalLines, SUM(CASE WHEN f.DiscountAmount > 0 THEN 1 ELSE 0 END) AS DiscountedLines, SUM(CASE WHEN f.DiscountAmount > 0 THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0) AS PctDiscounted FROM dbo.FactResellerSales f",
+    "tags": [
+      "ratio"
+    ]
+  },
+  {
+    "id": "q126",
+    "shape": "multivalue",
+    "question": "Give a one-line profitability summary for the United States.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.TotalProductCost) AS Cost, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United States'",
+    "tags": [
+      "profit",
+      "country"
+    ]
+  },
+  {
+    "id": "q127",
+    "shape": "dataset",
+    "question": "What are reseller sales by territory region?",
+    "sql": "SELECT t.SalesTerritoryRegion, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region"
+    ]
+  },
+  {
+    "id": "q128",
+    "shape": "dataset",
+    "question": "What are reseller sales by country?",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country"
+    ]
+  },
+  {
+    "id": "q129",
+    "shape": "dataset",
+    "question": "What are reseller sales by territory group?",
+    "sql": "SELECT t.SalesTerritoryGroup, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryGroup ORDER BY t.SalesTerritoryGroup",
+    "tags": [
+      "groupby",
+      "group"
+    ]
+  },
+  {
+    "id": "q130",
+    "shape": "dataset",
+    "question": "What are reseller sales by business type?",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype"
+    ]
+  },
+  {
+    "id": "q131",
+    "shape": "dataset",
+    "question": "What are reseller sales by calendar year?",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year"
+    ]
+  },
+  {
+    "id": "q132",
+    "shape": "dataset",
+    "question": "What are reseller sales by year and quarter?",
+    "sql": "SELECT d.CalendarYear, d.CalendarQuarter, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey GROUP BY d.CalendarYear, d.CalendarQuarter ORDER BY d.CalendarYear, d.CalendarQuarter",
+    "tags": [
+      "groupby",
+      "quarter"
+    ]
+  },
+  {
+    "id": "q133",
+    "shape": "dataset",
+    "question": "What are reseller sales by month across all years?",
+    "sql": "SELECT d.MonthNumberOfYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey GROUP BY d.MonthNumberOfYear ORDER BY d.MonthNumberOfYear",
+    "tags": [
+      "groupby",
+      "month"
+    ]
+  },
+  {
+    "id": "q134",
+    "shape": "dataset",
+    "question": "What are reseller sales by product color?",
+    "sql": "SELECT p.Color, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.Color ORDER BY p.Color",
+    "tags": [
+      "groupby",
+      "color"
+    ]
+  },
+  {
+    "id": "q135",
+    "shape": "dataset",
+    "question": "What are reseller sales by product line?",
+    "sql": "SELECT p.ProductLine, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.ProductLine ORDER BY p.ProductLine",
+    "tags": [
+      "groupby",
+      "prodline"
+    ]
+  },
+  {
+    "id": "q136",
+    "shape": "dataset",
+    "question": "What are reseller sales by product class?",
+    "sql": "SELECT p.Class, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.Class ORDER BY p.Class",
+    "tags": [
+      "groupby",
+      "class"
+    ]
+  },
+  {
+    "id": "q137",
+    "shape": "dataset",
+    "question": "How many products are there in each colour?",
+    "sql": "SELECT Color, COUNT(*) AS Products FROM dbo.DimProduct GROUP BY Color ORDER BY Color",
+    "tags": [
+      "groupby",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q138",
+    "shape": "dataset",
+    "question": "How many resellers are in each business type?",
+    "sql": "SELECT BusinessType, COUNT(*) AS Resellers FROM dbo.DimReseller GROUP BY BusinessType ORDER BY BusinessType",
+    "tags": [
+      "groupby",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q139",
+    "shape": "dataset",
+    "question": "How many territories are in each group?",
+    "sql": "SELECT SalesTerritoryGroup, COUNT(*) AS Territories FROM dbo.DimSalesTerritory GROUP BY SalesTerritoryGroup ORDER BY SalesTerritoryGroup",
+    "tags": [
+      "groupby",
+      "dimsalesterritory"
+    ]
+  },
+  {
+    "id": "q140",
+    "shape": "dataset",
+    "question": "List the sales territories with their country and group.",
+    "sql": "SELECT SalesTerritoryRegion, SalesTerritoryCountry, SalesTerritoryGroup FROM dbo.DimSalesTerritory ORDER BY SalesTerritoryKey",
+    "tags": [
+      "list",
+      "dimsalesterritory"
+    ]
+  },
+  {
+    "id": "q141",
+    "shape": "dataset",
+    "question": "What are the top 10 products by reseller sales?",
+    "sql": "SELECT TOP 10 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product"
+    ]
+  },
+  {
+    "id": "q142",
+    "shape": "dataset",
+    "question": "What are the top 10 resellers by sales?",
+    "sql": "SELECT TOP 10 r.ResellerName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey GROUP BY r.ResellerName ORDER BY SUM(f.SalesAmount) DESC, r.ResellerName",
+    "tags": [
+      "top",
+      "reseller"
+    ]
+  },
+  {
+    "id": "q143",
+    "shape": "dataset",
+    "question": "What are the top 10 product models by units sold?",
+    "sql": "SELECT TOP 10 p.ModelName, SUM(f.OrderQuantity) AS Units FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.ModelName IS NOT NULL GROUP BY p.ModelName ORDER BY SUM(f.OrderQuantity) DESC, p.ModelName",
+    "tags": [
+      "top",
+      "model"
+    ]
+  },
+  {
+    "id": "q144",
+    "shape": "dataset",
+    "question": "Which 10 products have the highest list price?",
+    "sql": "SELECT TOP 10 EnglishProductName, ListPrice FROM dbo.DimProduct WHERE ListPrice IS NOT NULL ORDER BY ListPrice DESC, EnglishProductName",
+    "tags": [
+      "top",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q145",
+    "shape": "dataset",
+    "question": "Show the five largest reseller sales orders by total amount.",
+    "sql": "SELECT TOP 5 f.SalesOrderNumber, SUM(f.SalesAmount) AS OrderTotal FROM dbo.FactResellerSales f GROUP BY f.SalesOrderNumber ORDER BY SUM(f.SalesAmount) DESC, f.SalesOrderNumber",
+    "tags": [
+      "top",
+      "order"
+    ]
+  },
+  {
+    "id": "q146",
+    "shape": "dataset",
+    "question": "Show sales by country and year.",
+    "sql": "SELECT t.SalesTerritoryCountry, YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry, YEAR(f.OrderDate) ORDER BY t.SalesTerritoryCountry, OrderYear",
+    "tags": [
+      "groupby",
+      "crosstab"
+    ]
+  },
+  {
+    "id": "q147",
+    "shape": "dataset",
+    "question": "Show sales by business type and year.",
+    "sql": "SELECT r.BusinessType, YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey GROUP BY r.BusinessType, YEAR(f.OrderDate) ORDER BY r.BusinessType, OrderYear",
+    "tags": [
+      "groupby",
+      "crosstab"
+    ]
+  },
+  {
+    "id": "q148",
+    "shape": "dataset",
+    "question": "Show units sold by reseller country.",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.OrderQuantity) AS Units FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "units"
+    ]
+  },
+  {
+    "id": "q149",
+    "shape": "dataset",
+    "question": "Show profit by territory group.",
+    "sql": "SELECT t.SalesTerritoryGroup, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryGroup ORDER BY t.SalesTerritoryGroup",
+    "tags": [
+      "groupby",
+      "profit"
+    ]
+  },
+  {
+    "id": "q150",
+    "shape": "dataset",
+    "question": "Show the number of orders per year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, COUNT(DISTINCT f.SalesOrderNumber) AS Orders FROM dbo.FactResellerSales f GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "orders"
+    ]
+  },
+  {
+    "id": "q151",
+    "shape": "dataset",
+    "question": "How many customers are in each occupation?",
+    "sql": "SELECT EnglishOccupation, COUNT(*) AS Customers FROM dbo.DimCustomer GROUP BY EnglishOccupation ORDER BY EnglishOccupation",
+    "tags": [
+      "groupby",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q152",
+    "shape": "dataset",
+    "question": "How many customers are in each education level?",
+    "sql": "SELECT EnglishEducation, COUNT(*) AS Customers FROM dbo.DimCustomer GROUP BY EnglishEducation ORDER BY EnglishEducation",
+    "tags": [
+      "groupby",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q153",
+    "shape": "dataset",
+    "question": "What is the gender split of customers?",
+    "sql": "SELECT Gender, COUNT(*) AS Customers FROM dbo.DimCustomer GROUP BY Gender ORDER BY Gender",
+    "tags": [
+      "groupby",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q154",
+    "shape": "dataset",
+    "question": "How many customers fall into each marital status?",
+    "sql": "SELECT MaritalStatus, COUNT(*) AS Customers FROM dbo.DimCustomer GROUP BY MaritalStatus ORDER BY MaritalStatus",
+    "tags": [
+      "groupby",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q155",
+    "shape": "dataset",
+    "question": "How many customers are in each commute distance band?",
+    "sql": "SELECT CommuteDistance, COUNT(*) AS Customers FROM dbo.DimCustomer GROUP BY CommuteDistance ORDER BY CommuteDistance",
+    "tags": [
+      "groupby",
+      "dimcustomer"
+    ]
+  },
+  {
+    "id": "q156",
+    "shape": "dataset",
+    "question": "Show average list price by product line.",
+    "sql": "SELECT ProductLine, AVG(ListPrice) AS AvgListPrice FROM dbo.DimProduct WHERE ListPrice IS NOT NULL GROUP BY ProductLine ORDER BY ProductLine",
+    "tags": [
+      "groupby",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q157",
+    "shape": "dataset",
+    "question": "Show the average unit price by product class.",
+    "sql": "SELECT p.Class, AVG(f.UnitPrice) AS AvgUnitPrice FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.Class ORDER BY p.Class",
+    "tags": [
+      "groupby",
+      "class"
+    ]
+  },
+  {
+    "id": "q158",
+    "shape": "dataset",
+    "question": "List resellers with more than 75 employees.",
+    "sql": "SELECT ResellerName, NumberEmployees FROM dbo.DimReseller WHERE NumberEmployees > 75 ORDER BY NumberEmployees DESC, ResellerName",
+    "tags": [
+      "filter",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q159",
+    "shape": "dataset",
+    "question": "Which product subcategories have the most products?",
+    "sql": "SELECT TOP 10 ProductSubcategoryKey, COUNT(*) AS Products FROM dbo.DimProduct WHERE ProductSubcategoryKey IS NOT NULL GROUP BY ProductSubcategoryKey ORDER BY COUNT(*) DESC, ProductSubcategoryKey",
+    "tags": [
+      "top",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q160",
+    "shape": "dataset",
+    "question": "Show reseller sales by day of week.",
+    "sql": "SELECT d.EnglishDayNameOfWeek, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey GROUP BY d.EnglishDayNameOfWeek ORDER BY d.EnglishDayNameOfWeek",
+    "tags": [
+      "groupby",
+      "dayofweek"
+    ]
+  },
+  {
+    "id": "q161",
+    "shape": "dataset",
+    "question": "Show reseller sales by English month name.",
+    "sql": "SELECT d.EnglishMonthName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey GROUP BY d.EnglishMonthName ORDER BY d.EnglishMonthName",
+    "tags": [
+      "groupby",
+      "month"
+    ]
+  },
+  {
+    "id": "q162",
+    "shape": "dataset",
+    "question": "Show the number of resellers by first order year.",
+    "sql": "SELECT FirstOrderYear, COUNT(*) AS Resellers FROM dbo.DimReseller WHERE FirstOrderYear IS NOT NULL GROUP BY FirstOrderYear ORDER BY FirstOrderYear",
+    "tags": [
+      "groupby",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q163",
+    "shape": "dataset",
+    "question": "Show total sales for each year and territory group.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, t.SalesTerritoryGroup, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY YEAR(f.OrderDate), t.SalesTerritoryGroup ORDER BY OrderYear, t.SalesTerritoryGroup",
+    "tags": [
+      "groupby",
+      "crosstab"
+    ]
+  },
+  {
+    "id": "q164",
+    "shape": "dataset",
+    "question": "Which products were never sold to a reseller?",
+    "sql": "SELECT TOP 20 p.EnglishProductName FROM dbo.DimProduct p WHERE NOT EXISTS (SELECT 1 FROM dbo.FactResellerSales f WHERE f.ProductKey = p.ProductKey) ORDER BY p.EnglishProductName",
+    "tags": [
+      "antijoin"
+    ]
+  },
+  {
+    "id": "q165",
+    "shape": "dataset",
+    "question": "Show the ten cheapest products that have a list price.",
+    "sql": "SELECT TOP 10 EnglishProductName, ListPrice FROM dbo.DimProduct WHERE ListPrice IS NOT NULL ORDER BY ListPrice ASC, EnglishProductName",
+    "tags": [
+      "top",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q166",
+    "shape": "dataset",
+    "question": "Show average order quantity by territory region.",
+    "sql": "SELECT t.SalesTerritoryRegion, AVG(CAST(f.OrderQuantity AS float)) AS AvgQty FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region"
+    ]
+  },
+  {
+    "id": "q167",
+    "shape": "dataset",
+    "question": "What were reseller sales by country in 2010?",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE YEAR(f.OrderDate) = 2010 GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country",
+      "2010"
+    ]
+  },
+  {
+    "id": "q168",
+    "shape": "dataset",
+    "question": "What were reseller sales by business type in 2010?",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE YEAR(f.OrderDate) = 2010 GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype",
+      "2010"
+    ]
+  },
+  {
+    "id": "q169",
+    "shape": "multivalue",
+    "question": "Show monthly reseller sales for 2010.",
+    "sql": "SELECT d.MonthNumberOfYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey WHERE d.CalendarYear = 2010 GROUP BY d.MonthNumberOfYear ORDER BY d.MonthNumberOfYear",
+    "tags": [
+      "groupby",
+      "month",
+      "2010"
+    ]
+  },
+  {
+    "id": "q170",
+    "shape": "dataset",
+    "question": "What were the top 5 products by sales in 2010?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2010 GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "2010"
+    ]
+  },
+  {
+    "id": "q171",
+    "shape": "dataset",
+    "question": "Show reseller sales by product colour in 2010.",
+    "sql": "SELECT p.Color, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2010 GROUP BY p.Color ORDER BY p.Color",
+    "tags": [
+      "groupby",
+      "color",
+      "2010"
+    ]
+  },
+  {
+    "id": "q172",
+    "shape": "multivalue",
+    "question": "Summarise 2010: orders, units, sales, and profit.",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Orders, SUM(f.OrderQuantity) AS Units, SUM(f.SalesAmount) AS Sales, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2010",
+    "tags": [
+      "summary",
+      "2010"
+    ]
+  },
+  {
+    "id": "q173",
+    "shape": "dataset",
+    "question": "What were reseller sales by country in 2011?",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE YEAR(f.OrderDate) = 2011 GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country",
+      "2011"
+    ]
+  },
+  {
+    "id": "q174",
+    "shape": "dataset",
+    "question": "What were reseller sales by business type in 2011?",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE YEAR(f.OrderDate) = 2011 GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype",
+      "2011"
+    ]
+  },
+  {
+    "id": "q175",
+    "shape": "dataset",
+    "question": "Show monthly reseller sales for 2011.",
+    "sql": "SELECT d.MonthNumberOfYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey WHERE d.CalendarYear = 2011 GROUP BY d.MonthNumberOfYear ORDER BY d.MonthNumberOfYear",
+    "tags": [
+      "groupby",
+      "month",
+      "2011"
+    ]
+  },
+  {
+    "id": "q176",
+    "shape": "dataset",
+    "question": "What were the top 5 products by sales in 2011?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2011 GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "2011"
+    ]
+  },
+  {
+    "id": "q177",
+    "shape": "dataset",
+    "question": "Show reseller sales by product colour in 2011.",
+    "sql": "SELECT p.Color, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2011 GROUP BY p.Color ORDER BY p.Color",
+    "tags": [
+      "groupby",
+      "color",
+      "2011"
+    ]
+  },
+  {
+    "id": "q178",
+    "shape": "multivalue",
+    "question": "Summarise 2011: orders, units, sales, and profit.",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Orders, SUM(f.OrderQuantity) AS Units, SUM(f.SalesAmount) AS Sales, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2011",
+    "tags": [
+      "summary",
+      "2011"
+    ]
+  },
+  {
+    "id": "q179",
+    "shape": "dataset",
+    "question": "What were reseller sales by country in 2012?",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE YEAR(f.OrderDate) = 2012 GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country",
+      "2012"
+    ]
+  },
+  {
+    "id": "q180",
+    "shape": "dataset",
+    "question": "What were reseller sales by business type in 2012?",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE YEAR(f.OrderDate) = 2012 GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype",
+      "2012"
+    ]
+  },
+  {
+    "id": "q181",
+    "shape": "dataset",
+    "question": "Show monthly reseller sales for 2012.",
+    "sql": "SELECT d.MonthNumberOfYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey WHERE d.CalendarYear = 2012 GROUP BY d.MonthNumberOfYear ORDER BY d.MonthNumberOfYear",
+    "tags": [
+      "groupby",
+      "month",
+      "2012"
+    ]
+  },
+  {
+    "id": "q182",
+    "shape": "dataset",
+    "question": "What were the top 5 products by sales in 2012?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2012 GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "2012"
+    ]
+  },
+  {
+    "id": "q183",
+    "shape": "dataset",
+    "question": "Show reseller sales by product colour in 2012.",
+    "sql": "SELECT p.Color, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2012 GROUP BY p.Color ORDER BY p.Color",
+    "tags": [
+      "groupby",
+      "color",
+      "2012"
+    ]
+  },
+  {
+    "id": "q184",
+    "shape": "multivalue",
+    "question": "Summarise 2012: orders, units, sales, and profit.",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Orders, SUM(f.OrderQuantity) AS Units, SUM(f.SalesAmount) AS Sales, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2012",
+    "tags": [
+      "summary",
+      "2012"
+    ]
+  },
+  {
+    "id": "q185",
+    "shape": "dataset",
+    "question": "What were reseller sales by country in 2013?",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE YEAR(f.OrderDate) = 2013 GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country",
+      "2013"
+    ]
+  },
+  {
+    "id": "q186",
+    "shape": "dataset",
+    "question": "What were reseller sales by business type in 2013?",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE YEAR(f.OrderDate) = 2013 GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype",
+      "2013"
+    ]
+  },
+  {
+    "id": "q187",
+    "shape": "dataset",
+    "question": "Show monthly reseller sales for 2013.",
+    "sql": "SELECT d.MonthNumberOfYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey WHERE d.CalendarYear = 2013 GROUP BY d.MonthNumberOfYear ORDER BY d.MonthNumberOfYear",
+    "tags": [
+      "groupby",
+      "month",
+      "2013"
+    ]
+  },
+  {
+    "id": "q188",
+    "shape": "dataset",
+    "question": "What were the top 5 products by sales in 2013?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2013 GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "2013"
+    ]
+  },
+  {
+    "id": "q189",
+    "shape": "dataset",
+    "question": "Show reseller sales by product colour in 2013.",
+    "sql": "SELECT p.Color, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE YEAR(f.OrderDate) = 2013 GROUP BY p.Color ORDER BY p.Color",
+    "tags": [
+      "groupby",
+      "color",
+      "2013"
+    ]
+  },
+  {
+    "id": "q190",
+    "shape": "multivalue",
+    "question": "Summarise 2013: orders, units, sales, and profit.",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Orders, SUM(f.OrderQuantity) AS Units, SUM(f.SalesAmount) AS Sales, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 2013",
+    "tags": [
+      "summary",
+      "2013"
+    ]
+  },
+  {
+    "id": "q191",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in United States.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United States' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "unitedstates"
+    ]
+  },
+  {
+    "id": "q192",
+    "shape": "dataset",
+    "question": "What are the top 5 products sold in United States?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United States' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "unitedstates"
+    ]
+  },
+  {
+    "id": "q193",
+    "shape": "dataset",
+    "question": "Show reseller sales by region within United States.",
+    "sql": "SELECT t.SalesTerritoryRegion, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United States' GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region",
+      "unitedstates"
+    ]
+  },
+  {
+    "id": "q194",
+    "shape": "multivalue",
+    "question": "Summarise sales, units, and orders for United States.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.OrderQuantity) AS Units, COUNT(DISTINCT f.SalesOrderNumber) AS Orders FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United States'",
+    "tags": [
+      "summary",
+      "unitedstates"
+    ]
+  },
+  {
+    "id": "q195",
+    "shape": "scalar",
+    "question": "How many reseller sales orders came from United States?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United States'",
+    "tags": [
+      "count",
+      "unitedstates"
+    ]
+  },
+  {
+    "id": "q196",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in Canada.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Canada' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "canada"
+    ]
+  },
+  {
+    "id": "q197",
+    "shape": "dataset",
+    "question": "What are the top 5 products sold in Canada?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Canada' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "canada"
+    ]
+  },
+  {
+    "id": "q198",
+    "shape": "multivalue",
+    "question": "Show reseller sales by region within Canada.",
+    "sql": "SELECT t.SalesTerritoryRegion, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Canada' GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region",
+      "canada"
+    ]
+  },
+  {
+    "id": "q199",
+    "shape": "multivalue",
+    "question": "Summarise sales, units, and orders for Canada.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.OrderQuantity) AS Units, COUNT(DISTINCT f.SalesOrderNumber) AS Orders FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Canada'",
+    "tags": [
+      "summary",
+      "canada"
+    ]
+  },
+  {
+    "id": "q200",
+    "shape": "scalar",
+    "question": "How many reseller sales orders came from Canada?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Canada'",
+    "tags": [
+      "count",
+      "canada"
+    ]
+  },
+  {
+    "id": "q201",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in France.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'France' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "france"
+    ]
+  },
+  {
+    "id": "q202",
+    "shape": "dataset",
+    "question": "What are the top 5 products sold in France?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'France' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "france"
+    ]
+  },
+  {
+    "id": "q203",
+    "shape": "multivalue",
+    "question": "Show reseller sales by region within France.",
+    "sql": "SELECT t.SalesTerritoryRegion, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'France' GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region",
+      "france"
+    ]
+  },
+  {
+    "id": "q204",
+    "shape": "multivalue",
+    "question": "Summarise sales, units, and orders for France.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.OrderQuantity) AS Units, COUNT(DISTINCT f.SalesOrderNumber) AS Orders FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'France'",
+    "tags": [
+      "summary",
+      "france"
+    ]
+  },
+  {
+    "id": "q205",
+    "shape": "scalar",
+    "question": "How many reseller sales orders came from France?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'France'",
+    "tags": [
+      "count",
+      "france"
+    ]
+  },
+  {
+    "id": "q206",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in Germany.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Germany' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "germany"
+    ]
+  },
+  {
+    "id": "q207",
+    "shape": "dataset",
+    "question": "What are the top 5 products sold in Germany?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Germany' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "germany"
+    ]
+  },
+  {
+    "id": "q208",
+    "shape": "multivalue",
+    "question": "Show reseller sales by region within Germany.",
+    "sql": "SELECT t.SalesTerritoryRegion, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Germany' GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region",
+      "germany"
+    ]
+  },
+  {
+    "id": "q209",
+    "shape": "multivalue",
+    "question": "Summarise sales, units, and orders for Germany.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.OrderQuantity) AS Units, COUNT(DISTINCT f.SalesOrderNumber) AS Orders FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Germany'",
+    "tags": [
+      "summary",
+      "germany"
+    ]
+  },
+  {
+    "id": "q210",
+    "shape": "scalar",
+    "question": "How many reseller sales orders came from Germany?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Germany'",
+    "tags": [
+      "count",
+      "germany"
+    ]
+  },
+  {
+    "id": "q211",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in United Kingdom.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United Kingdom' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "unitedkingdom"
+    ]
+  },
+  {
+    "id": "q212",
+    "shape": "dataset",
+    "question": "What are the top 5 products sold in United Kingdom?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United Kingdom' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "unitedkingdom"
+    ]
+  },
+  {
+    "id": "q213",
+    "shape": "multivalue",
+    "question": "Show reseller sales by region within United Kingdom.",
+    "sql": "SELECT t.SalesTerritoryRegion, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United Kingdom' GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region",
+      "unitedkingdom"
+    ]
+  },
+  {
+    "id": "q214",
+    "shape": "multivalue",
+    "question": "Summarise sales, units, and orders for United Kingdom.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.OrderQuantity) AS Units, COUNT(DISTINCT f.SalesOrderNumber) AS Orders FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United Kingdom'",
+    "tags": [
+      "summary",
+      "unitedkingdom"
+    ]
+  },
+  {
+    "id": "q215",
+    "shape": "scalar",
+    "question": "How many reseller sales orders came from United Kingdom?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'United Kingdom'",
+    "tags": [
+      "count",
+      "unitedkingdom"
+    ]
+  },
+  {
+    "id": "q216",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in Australia.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Australia' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "australia"
+    ]
+  },
+  {
+    "id": "q217",
+    "shape": "dataset",
+    "question": "What are the top 5 products sold in Australia?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Australia' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "australia"
+    ]
+  },
+  {
+    "id": "q218",
+    "shape": "multivalue",
+    "question": "Show reseller sales by region within Australia.",
+    "sql": "SELECT t.SalesTerritoryRegion, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Australia' GROUP BY t.SalesTerritoryRegion ORDER BY t.SalesTerritoryRegion",
+    "tags": [
+      "groupby",
+      "region",
+      "australia"
+    ]
+  },
+  {
+    "id": "q219",
+    "shape": "multivalue",
+    "question": "Summarise sales, units, and orders for Australia.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.OrderQuantity) AS Units, COUNT(DISTINCT f.SalesOrderNumber) AS Orders FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Australia'",
+    "tags": [
+      "summary",
+      "australia"
+    ]
+  },
+  {
+    "id": "q220",
+    "shape": "scalar",
+    "question": "How many reseller sales orders came from Australia?",
+    "sql": "SELECT COUNT(DISTINCT f.SalesOrderNumber) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Australia'",
+    "tags": [
+      "count",
+      "australia"
+    ]
+  },
+  {
+    "id": "q221",
+    "shape": "dataset",
+    "question": "Show sales by year for Specialty Bike Shop resellers.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Specialty Bike Shop' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "specialtybikeshop"
+    ]
+  },
+  {
+    "id": "q222",
+    "shape": "dataset",
+    "question": "Which 5 Specialty Bike Shop resellers sold the most?",
+    "sql": "SELECT TOP 5 r.ResellerName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Specialty Bike Shop' GROUP BY r.ResellerName ORDER BY SUM(f.SalesAmount) DESC, r.ResellerName",
+    "tags": [
+      "top",
+      "reseller",
+      "specialtybikeshop"
+    ]
+  },
+  {
+    "id": "q223",
+    "shape": "dataset",
+    "question": "Show sales by country for Specialty Bike Shop resellers.",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE r.BusinessType = 'Specialty Bike Shop' GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country",
+      "specialtybikeshop"
+    ]
+  },
+  {
+    "id": "q224",
+    "shape": "dataset",
+    "question": "Show sales by year for Value Added Reseller resellers.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Value Added Reseller' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "valueaddedreseller"
+    ]
+  },
+  {
+    "id": "q225",
+    "shape": "dataset",
+    "question": "Which 5 Value Added Reseller resellers sold the most?",
+    "sql": "SELECT TOP 5 r.ResellerName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Value Added Reseller' GROUP BY r.ResellerName ORDER BY SUM(f.SalesAmount) DESC, r.ResellerName",
+    "tags": [
+      "top",
+      "reseller",
+      "valueaddedreseller"
+    ]
+  },
+  {
+    "id": "q226",
+    "shape": "dataset",
+    "question": "Show sales by country for Value Added Reseller resellers.",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE r.BusinessType = 'Value Added Reseller' GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country",
+      "valueaddedreseller"
+    ]
+  },
+  {
+    "id": "q227",
+    "shape": "dataset",
+    "question": "Show sales by year for Warehouse resellers.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Warehouse' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "warehouse"
+    ]
+  },
+  {
+    "id": "q228",
+    "shape": "dataset",
+    "question": "Which 5 Warehouse resellers sold the most?",
+    "sql": "SELECT TOP 5 r.ResellerName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE r.BusinessType = 'Warehouse' GROUP BY r.ResellerName ORDER BY SUM(f.SalesAmount) DESC, r.ResellerName",
+    "tags": [
+      "top",
+      "reseller",
+      "warehouse"
+    ]
+  },
+  {
+    "id": "q229",
+    "shape": "dataset",
+    "question": "Show sales by country for Warehouse resellers.",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE r.BusinessType = 'Warehouse' GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "country",
+      "warehouse"
+    ]
+  },
+  {
+    "id": "q230",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in Europe.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Europe' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "europe"
+    ]
+  },
+  {
+    "id": "q231",
+    "shape": "dataset",
+    "question": "Show sales by business type in Europe.",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Europe' GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype",
+      "europe"
+    ]
+  },
+  {
+    "id": "q232",
+    "shape": "multivalue",
+    "question": "Summarise sales and profit for Europe.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.TotalProductCost) AS Cost, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Europe'",
+    "tags": [
+      "profit",
+      "europe"
+    ]
+  },
+  {
+    "id": "q233",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in North America.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'North America' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "northamerica"
+    ]
+  },
+  {
+    "id": "q234",
+    "shape": "dataset",
+    "question": "Show sales by business type in North America.",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'North America' GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype",
+      "northamerica"
+    ]
+  },
+  {
+    "id": "q235",
+    "shape": "multivalue",
+    "question": "Summarise sales and profit for North America.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.TotalProductCost) AS Cost, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'North America'",
+    "tags": [
+      "profit",
+      "northamerica"
+    ]
+  },
+  {
+    "id": "q236",
+    "shape": "dataset",
+    "question": "Show reseller sales by year in Pacific.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Pacific' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "pacific"
+    ]
+  },
+  {
+    "id": "q237",
+    "shape": "dataset",
+    "question": "Show sales by business type in Pacific.",
+    "sql": "SELECT r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Pacific' GROUP BY r.BusinessType ORDER BY r.BusinessType",
+    "tags": [
+      "groupby",
+      "biztype",
+      "pacific"
+    ]
+  },
+  {
+    "id": "q238",
+    "shape": "multivalue",
+    "question": "Summarise sales and profit for Pacific.",
+    "sql": "SELECT SUM(f.SalesAmount) AS Sales, SUM(f.TotalProductCost) AS Cost, SUM(f.SalesAmount) - SUM(f.TotalProductCost) AS Profit FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryGroup = 'Pacific'",
+    "tags": [
+      "profit",
+      "pacific"
+    ]
+  },
+  {
+    "id": "q239",
+    "shape": "dataset",
+    "question": "Show sales of Black products by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Black' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "black"
+    ]
+  },
+  {
+    "id": "q240",
+    "shape": "dataset",
+    "question": "What are the top 5 Black products by sales?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Black' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "black"
+    ]
+  },
+  {
+    "id": "q241",
+    "shape": "scalar",
+    "question": "How many units of Black products were sold?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Black'",
+    "tags": [
+      "sum",
+      "black"
+    ]
+  },
+  {
+    "id": "q242",
+    "shape": "dataset",
+    "question": "Show sales of Red products by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Red' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "red"
+    ]
+  },
+  {
+    "id": "q243",
+    "shape": "dataset",
+    "question": "What are the top 5 Red products by sales?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Red' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "red"
+    ]
+  },
+  {
+    "id": "q244",
+    "shape": "scalar",
+    "question": "How many units of Red products were sold?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Red'",
+    "tags": [
+      "sum",
+      "red"
+    ]
+  },
+  {
+    "id": "q245",
+    "shape": "dataset",
+    "question": "Show sales of Silver products by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Silver' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "silver"
+    ]
+  },
+  {
+    "id": "q246",
+    "shape": "dataset",
+    "question": "What are the top 5 Silver products by sales?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Silver' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "silver"
+    ]
+  },
+  {
+    "id": "q247",
+    "shape": "scalar",
+    "question": "How many units of Silver products were sold?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Silver'",
+    "tags": [
+      "sum",
+      "silver"
+    ]
+  },
+  {
+    "id": "q248",
+    "shape": "dataset",
+    "question": "Show sales of Blue products by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Blue' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "blue"
+    ]
+  },
+  {
+    "id": "q249",
+    "shape": "dataset",
+    "question": "What are the top 5 Blue products by sales?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Blue' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "blue"
+    ]
+  },
+  {
+    "id": "q250",
+    "shape": "scalar",
+    "question": "How many units of Blue products were sold?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Blue'",
+    "tags": [
+      "sum",
+      "blue"
+    ]
+  },
+  {
+    "id": "q251",
+    "shape": "dataset",
+    "question": "Show sales of Yellow products by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Yellow' GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "year",
+      "yellow"
+    ]
+  },
+  {
+    "id": "q252",
+    "shape": "dataset",
+    "question": "What are the top 5 Yellow products by sales?",
+    "sql": "SELECT TOP 5 p.EnglishProductName, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Yellow' GROUP BY p.EnglishProductName ORDER BY SUM(f.SalesAmount) DESC, p.EnglishProductName",
+    "tags": [
+      "top",
+      "product",
+      "yellow"
+    ]
+  },
+  {
+    "id": "q253",
+    "shape": "scalar",
+    "question": "How many units of Yellow products were sold?",
+    "sql": "SELECT SUM(f.OrderQuantity) AS Value FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.Color = 'Yellow'",
+    "tags": [
+      "sum",
+      "yellow"
+    ]
+  },
+  {
+    "id": "q254",
+    "shape": "dataset",
+    "question": "What is sales amount by category and reseller business type?",
+    "sql": "SELECT p.ProductLine, r.BusinessType, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey GROUP BY p.ProductLine, r.BusinessType ORDER BY p.ProductLine, r.BusinessType",
+    "tags": [
+      "report",
+      "crosstab"
+    ]
+  },
+  {
+    "id": "q255",
+    "shape": "dataset",
+    "question": "What is order quantity by reseller country?",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.OrderQuantity) AS OrderQuantity FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "report",
+      "units"
+    ]
+  },
+  {
+    "id": "q256",
+    "shape": "dataset",
+    "question": "What is sales amount by order date year?",
+    "sql": "SELECT d.CalendarYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.OrderDateKey GROUP BY d.CalendarYear ORDER BY d.CalendarYear",
+    "tags": [
+      "report",
+      "year"
+    ]
+  },
+  {
+    "id": "q257",
+    "shape": "dataset",
+    "question": "What is sales amount by due date year?",
+    "sql": "SELECT d.CalendarYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.DueDateKey GROUP BY d.CalendarYear ORDER BY d.CalendarYear",
+    "tags": [
+      "report",
+      "duedate"
+    ]
+  },
+  {
+    "id": "q258",
+    "shape": "dataset",
+    "question": "What is sales amount by ship date year?",
+    "sql": "SELECT d.CalendarYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimDate d ON d.DateKey = f.ShipDateKey GROUP BY d.CalendarYear ORDER BY d.CalendarYear",
+    "tags": [
+      "report",
+      "shipdate"
+    ]
+  },
+  {
+    "id": "q259",
+    "shape": "dataset",
+    "question": "Show reseller sales for a country that does not exist.",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey WHERE t.SalesTerritoryCountry = 'Atlantis' GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "empty",
+      "edge"
+    ]
+  },
+  {
+    "id": "q260",
+    "shape": "scalar",
+    "question": "What were reseller sales in 1999?",
+    "sql": "SELECT SUM(f.SalesAmount) AS Value FROM dbo.FactResellerSales f WHERE YEAR(f.OrderDate) = 1999",
+    "tags": [
+      "null",
+      "edge"
+    ]
+  },
+  {
+    "id": "q261",
+    "shape": "scalar",
+    "question": "How many products have the colour 'NA' recorded?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE Color = 'NA'",
+    "tags": [
+      "edge",
+      "placeholder"
+    ]
+  },
+  {
+    "id": "q262",
+    "shape": "scalar",
+    "question": "How many sales territories are the 'NA' placeholder?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimSalesTerritory WHERE SalesTerritoryCountry = 'NA'",
+    "tags": [
+      "edge",
+      "placeholder"
+    ]
+  },
+  {
+    "id": "q263",
+    "shape": "scalar",
+    "question": "How many products have no product line assigned?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE ProductLine IS NULL",
+    "tags": [
+      "null",
+      "edge"
+    ]
+  },
+  {
+    "id": "q264",
+    "shape": "scalar",
+    "question": "How many products have no subcategory?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE ProductSubcategoryKey IS NULL",
+    "tags": [
+      "null",
+      "edge"
+    ]
+  },
+  {
+    "id": "q265",
+    "shape": "scalar",
+    "question": "How many resellers have no recorded bank?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimReseller WHERE BankName IS NULL",
+    "tags": [
+      "null",
+      "edge"
+    ]
+  },
+  {
+    "id": "q266",
+    "shape": "scalar",
+    "question": "How many reseller sales lines have no carrier tracking number?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.FactResellerSales f WHERE f.CarrierTrackingNumber IS NULL",
+    "tags": [
+      "null",
+      "edge"
+    ]
+  },
+  {
+    "id": "q267",
+    "shape": "dataset",
+    "question": "List products whose name contains 'Mountain'.",
+    "sql": "SELECT TOP 20 EnglishProductName, ListPrice FROM dbo.DimProduct WHERE EnglishProductName LIKE '%Mountain%' ORDER BY EnglishProductName",
+    "tags": [
+      "like",
+      "edge"
+    ]
+  },
+  {
+    "id": "q268",
+    "shape": "dataset",
+    "question": "List products whose name contains 'Road'.",
+    "sql": "SELECT TOP 20 EnglishProductName, ListPrice FROM dbo.DimProduct WHERE EnglishProductName LIKE '%Road%' ORDER BY EnglishProductName",
+    "tags": [
+      "like",
+      "edge"
+    ]
+  },
+  {
+    "id": "q269",
+    "shape": "dataset",
+    "question": "List resellers whose name starts with 'A'.",
+    "sql": "SELECT TOP 20 ResellerName, BusinessType FROM dbo.DimReseller WHERE ResellerName LIKE 'A%' ORDER BY ResellerName",
+    "tags": [
+      "like",
+      "edge"
+    ]
+  },
+  {
+    "id": "q270",
+    "shape": "scalar",
+    "question": "How many product names contain the word 'Bike'?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.DimProduct WHERE EnglishProductName LIKE '%Bike%'",
+    "tags": [
+      "like",
+      "edge"
+    ]
+  },
+  {
+    "id": "q271",
+    "shape": "dataset",
+    "question": "Show each territory group's share of total reseller sales.",
+    "sql": "SELECT t.SalesTerritoryGroup, SUM(f.SalesAmount) * 100.0 / NULLIF((SELECT SUM(SalesAmount) FROM dbo.FactResellerSales), 0) AS PctOfTotal FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryGroup ORDER BY t.SalesTerritoryGroup",
+    "tags": [
+      "share",
+      "window"
+    ]
+  },
+  {
+    "id": "q272",
+    "shape": "dataset",
+    "question": "Rank countries by reseller sales.",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.SalesAmount) AS SalesAmount, RANK() OVER (ORDER BY SUM(f.SalesAmount) DESC) AS SalesRank FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry ORDER BY SalesRank, t.SalesTerritoryCountry",
+    "tags": [
+      "rank",
+      "window"
+    ]
+  },
+  {
+    "id": "q273",
+    "shape": "dataset",
+    "question": "Show year over year reseller sales with the previous year alongside.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount, LAG(SUM(f.SalesAmount)) OVER (ORDER BY YEAR(f.OrderDate)) AS PriorYear FROM dbo.FactResellerSales f GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "lag",
+      "window"
+    ]
+  },
+  {
+    "id": "q274",
+    "shape": "dataset",
+    "question": "Show a running total of reseller sales by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount, SUM(SUM(f.SalesAmount)) OVER (ORDER BY YEAR(f.OrderDate) ROWS UNBOUNDED PRECEDING) AS RunningTotal FROM dbo.FactResellerSales f GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "running",
+      "window"
+    ]
+  },
+  {
+    "id": "q275",
+    "shape": "dataset",
+    "question": "Show the average sale amount per order by year.",
+    "sql": "SELECT v.OrderYear, AVG(v.OrderTotal) AS AvgOrderValue FROM (SELECT YEAR(f.OrderDate) AS OrderYear, f.SalesOrderNumber, SUM(f.SalesAmount) AS OrderTotal FROM dbo.FactResellerSales f GROUP BY YEAR(f.OrderDate), f.SalesOrderNumber) v GROUP BY v.OrderYear ORDER BY v.OrderYear",
+    "tags": [
+      "subquery",
+      "avg"
+    ]
+  },
+  {
+    "id": "q276",
+    "shape": "dataset",
+    "question": "Which resellers ordered in every year from 2011 to 2013?",
+    "sql": "SELECT TOP 20 r.ResellerName FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey WHERE YEAR(f.OrderDate) BETWEEN 2011 AND 2013 GROUP BY r.ResellerName HAVING COUNT(DISTINCT YEAR(f.OrderDate)) = 3 ORDER BY r.ResellerName",
+    "tags": [
+      "having",
+      "edge"
+    ]
+  },
+  {
+    "id": "q277",
+    "shape": "dataset",
+    "question": "Which product lines sold more than one million in total?",
+    "sql": "SELECT p.ProductLine, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.ProductLine HAVING SUM(f.SalesAmount) > 1000000 ORDER BY p.ProductLine",
+    "tags": [
+      "having"
+    ]
+  },
+  {
+    "id": "q278",
+    "shape": "dataset",
+    "question": "Which countries sold more than 5000 units?",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.OrderQuantity) AS Units FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry HAVING SUM(f.OrderQuantity) > 5000 ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "having"
+    ]
+  },
+  {
+    "id": "q279",
+    "shape": "dataset",
+    "question": "Show margin percentage by product line.",
+    "sql": "SELECT p.ProductLine, (SUM(f.SalesAmount) - SUM(f.TotalProductCost)) * 100.0 / NULLIF(SUM(f.SalesAmount), 0) AS MarginPct FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.ProductLine ORDER BY p.ProductLine",
+    "tags": [
+      "margin"
+    ]
+  },
+  {
+    "id": "q280",
+    "shape": "dataset",
+    "question": "Show margin percentage by country.",
+    "sql": "SELECT t.SalesTerritoryCountry, (SUM(f.SalesAmount) - SUM(f.TotalProductCost)) * 100.0 / NULLIF(SUM(f.SalesAmount), 0) AS MarginPct FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "margin"
+    ]
+  },
+  {
+    "id": "q281",
+    "shape": "dataset",
+    "question": "Show the ten product models with the highest average unit price.",
+    "sql": "SELECT TOP 10 p.ModelName, AVG(f.UnitPrice) AS AvgUnitPrice FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey WHERE p.ModelName IS NOT NULL GROUP BY p.ModelName ORDER BY AVG(f.UnitPrice) DESC, p.ModelName",
+    "tags": [
+      "top",
+      "model"
+    ]
+  },
+  {
+    "id": "q282",
+    "shape": "dataset",
+    "question": "Show total discount given by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, SUM(f.DiscountAmount) AS Discount FROM dbo.FactResellerSales f GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "groupby",
+      "discount"
+    ]
+  },
+  {
+    "id": "q283",
+    "shape": "dataset",
+    "question": "Show freight cost by territory group.",
+    "sql": "SELECT t.SalesTerritoryGroup, SUM(f.Freight) AS Freight FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryGroup ORDER BY t.SalesTerritoryGroup",
+    "tags": [
+      "groupby",
+      "freight"
+    ]
+  },
+  {
+    "id": "q284",
+    "shape": "dataset",
+    "question": "Show tax collected by country.",
+    "sql": "SELECT t.SalesTerritoryCountry, SUM(f.TaxAmt) AS Tax FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryCountry ORDER BY t.SalesTerritoryCountry",
+    "tags": [
+      "groupby",
+      "tax"
+    ]
+  },
+  {
+    "id": "q285",
+    "shape": "dataset",
+    "question": "How many distinct products did each territory group sell?",
+    "sql": "SELECT t.SalesTerritoryGroup, COUNT(DISTINCT f.ProductKey) AS Products FROM dbo.FactResellerSales f JOIN dbo.DimSalesTerritory t ON t.SalesTerritoryKey = f.SalesTerritoryKey GROUP BY t.SalesTerritoryGroup ORDER BY t.SalesTerritoryGroup",
+    "tags": [
+      "distinct",
+      "groupby"
+    ]
+  },
+  {
+    "id": "q286",
+    "shape": "dataset",
+    "question": "How many resellers ordered in each year?",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, COUNT(DISTINCT f.ResellerKey) AS Resellers FROM dbo.FactResellerSales f GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "distinct",
+      "groupby"
+    ]
+  },
+  {
+    "id": "q287",
+    "shape": "dataset",
+    "question": "Show the number of products by class and style.",
+    "sql": "SELECT Class, Style, COUNT(*) AS Products FROM dbo.DimProduct GROUP BY Class, Style ORDER BY Class, Style",
+    "tags": [
+      "groupby",
+      "crosstab"
+    ]
+  },
+  {
+    "id": "q288",
+    "shape": "dataset",
+    "question": "Show average days between order and ship date by year.",
+    "sql": "SELECT YEAR(f.OrderDate) AS OrderYear, AVG(CAST(DATEDIFF(day, f.OrderDate, f.ShipDate) AS float)) AS AvgShipDays FROM dbo.FactResellerSales f WHERE f.ShipDate IS NOT NULL GROUP BY YEAR(f.OrderDate) ORDER BY OrderYear",
+    "tags": [
+      "datediff"
+    ]
+  },
+  {
+    "id": "q289",
+    "shape": "scalar",
+    "question": "What is the average number of days between order and shipment?",
+    "sql": "SELECT AVG(CAST(DATEDIFF(day, f.OrderDate, f.ShipDate) AS float)) AS Value FROM dbo.FactResellerSales f WHERE f.ShipDate IS NOT NULL",
+    "tags": [
+      "datediff"
+    ]
+  },
+  {
+    "id": "q290",
+    "shape": "scalar",
+    "question": "How many reseller sales lines shipped after their due date?",
+    "sql": "SELECT COUNT(*) AS Value FROM dbo.FactResellerSales f WHERE f.ShipDate > f.DueDate",
+    "tags": [
+      "late",
+      "edge"
+    ]
+  },
+  {
+    "id": "q291",
+    "shape": "multivalue",
+    "question": "Summarise shipping performance: total lines, late lines, and late percentage.",
+    "sql": "SELECT COUNT(*) AS Lines, SUM(CASE WHEN f.ShipDate > f.DueDate THEN 1 ELSE 0 END) AS LateLines, SUM(CASE WHEN f.ShipDate > f.DueDate THEN 1 ELSE 0 END) * 100.0 / NULLIF(COUNT(*), 0) AS LatePct FROM dbo.FactResellerSales f",
+    "tags": [
+      "late",
+      "ratio"
+    ]
+  },
+  {
+    "id": "q292",
+    "shape": "multivalue",
+    "question": "What is the overall discount picture: total discount, discounted lines, and average discount?",
+    "sql": "SELECT SUM(f.DiscountAmount) AS TotalDiscount, SUM(CASE WHEN f.DiscountAmount > 0 THEN 1 ELSE 0 END) AS DiscountedLines, AVG(f.DiscountAmount) AS AvgDiscount FROM dbo.FactResellerSales f",
+    "tags": [
+      "discount"
+    ]
+  },
+  {
+    "id": "q293",
+    "shape": "multivalue",
+    "question": "Give the product catalogue summary: total, finished goods, and with a list price.",
+    "sql": "SELECT COUNT(*) AS Products, SUM(CASE WHEN FinishedGoodsFlag = 1 THEN 1 ELSE 0 END) AS FinishedGoods, SUM(CASE WHEN ListPrice IS NOT NULL THEN 1 ELSE 0 END) AS WithListPrice FROM dbo.DimProduct",
+    "tags": [
+      "summary",
+      "dimproduct"
+    ]
+  },
+  {
+    "id": "q294",
+    "shape": "multivalue",
+    "question": "Summarise the reseller base: total, with sales, and without.",
+    "sql": "SELECT COUNT(*) AS Resellers, SUM(v.HasSales) AS WithSales, SUM(1 - v.HasSales) AS WithoutSales FROM (SELECT CASE WHEN EXISTS (SELECT 1 FROM dbo.FactResellerSales f WHERE f.ResellerKey = r.ResellerKey) THEN 1 ELSE 0 END AS HasSales FROM dbo.DimReseller r) v",
+    "tags": [
+      "summary",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q295",
+    "shape": "dataset",
+    "question": "Show the first and last order year for the ten busiest resellers.",
+    "sql": "SELECT TOP 10 r.ResellerName, MIN(f.OrderDate) AS FirstOrder, MAX(f.OrderDate) AS LastOrder, COUNT(*) AS Lines FROM dbo.FactResellerSales f JOIN dbo.DimReseller r ON r.ResellerKey = f.ResellerKey GROUP BY r.ResellerName ORDER BY COUNT(*) DESC, r.ResellerName",
+    "tags": [
+      "top",
+      "range"
+    ]
+  },
+  {
+    "id": "q296",
+    "shape": "dataset",
+    "question": "Show sales by product line and year.",
+    "sql": "SELECT p.ProductLine, YEAR(f.OrderDate) AS OrderYear, SUM(f.SalesAmount) AS SalesAmount FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.ProductLine, YEAR(f.OrderDate) ORDER BY p.ProductLine, OrderYear",
+    "tags": [
+      "groupby",
+      "crosstab"
+    ]
+  },
+  {
+    "id": "q297",
+    "shape": "dataset",
+    "question": "Show units sold by product colour and year.",
+    "sql": "SELECT p.Color, YEAR(f.OrderDate) AS OrderYear, SUM(f.OrderQuantity) AS Units FROM dbo.FactResellerSales f JOIN dbo.DimProduct p ON p.ProductKey = f.ProductKey GROUP BY p.Color, YEAR(f.OrderDate) ORDER BY p.Color, OrderYear",
+    "tags": [
+      "groupby",
+      "crosstab"
+    ]
+  },
+  {
+    "id": "q298",
+    "shape": "dataset",
+    "question": "Which ten products had the widest gap between list price and standard cost?",
+    "sql": "SELECT TOP 10 EnglishProductName, ListPrice, StandardCost, ListPrice - StandardCost AS Markup FROM dbo.DimProduct WHERE ListPrice IS NOT NULL AND StandardCost IS NOT NULL ORDER BY ListPrice - StandardCost DESC, EnglishProductName",
+    "tags": [
+      "top",
+      "markup"
+    ]
+  },
+  {
+    "id": "q299",
+    "shape": "dataset",
+    "question": "Show reseller counts by product line they carry.",
+    "sql": "SELECT ProductLine, COUNT(*) AS Resellers FROM dbo.DimReseller GROUP BY ProductLine ORDER BY ProductLine",
+    "tags": [
+      "groupby",
+      "dimreseller"
+    ]
+  },
+  {
+    "id": "q300",
+    "shape": "dataset",
+    "question": "Show the number of customers by number of cars owned.",
+    "sql": "SELECT NumberCarsOwned, COUNT(*) AS Customers FROM dbo.DimCustomer GROUP BY NumberCarsOwned ORDER BY NumberCarsOwned",
+    "tags": [
+      "groupby",
+      "dimcustomer"
+    ]
+  }
+]

@@ -243,6 +243,64 @@ internal static class YamlDocumentParts
 
     public static string? NullIfBlank(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
+    /// <summary>Normalizes a schema-name list (the schema filters of an scm or sch flow): blanks dropped, each name
+    /// trimmed and unbracketed, and duplicates removed case-insensitively, since both consumers compare schema names
+    /// case-insensitively.</summary>
+    public static IReadOnlyList<string> NormalizeSchemas(List<string> items)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var result = new List<string>(items.Count);
+        foreach (var raw in items)
+        {
+            var value = NullIfBlank(raw);
+            if (value is null)
+            {
+                continue;
+            }
+
+            // A bracketed [raw] is the same schema as raw; strip a single surrounding pair, as data tables do.
+            var name = SplitQualifiedName(value)[^1];
+            if (name.Length > 0 && seen.Add(name))
+            {
+                result.Add(name);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>Splits a (possibly bracketed) qualified name on dots that sit outside <c>[...]</c>, stripping a
+    /// single surrounding bracket pair from each part. Tolerant of the simple <c>schema.table</c> and bracketed
+    /// <c>[schema].[table]</c> forms a data-table entry takes.</summary>
+    public static List<string> SplitQualifiedName(string value)
+    {
+        var parts = new List<string>();
+        var token = new System.Text.StringBuilder();
+        var inBracket = false;
+        foreach (var c in value)
+        {
+            switch (c)
+            {
+                case '[' when !inBracket:
+                    inBracket = true;
+                    break;
+                case ']' when inBracket:
+                    inBracket = false;
+                    break;
+                case '.' when !inBracket:
+                    parts.Add(token.ToString().Trim());
+                    token.Clear();
+                    break;
+                default:
+                    token.Append(c);
+                    break;
+            }
+        }
+
+        parts.Add(token.ToString().Trim());
+        return parts;
+    }
+
     private static bool IsValidConnectionName(string name)
         => name.Length > 0 && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '_' or '.' or '-');
 }

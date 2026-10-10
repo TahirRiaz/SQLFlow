@@ -1,0 +1,203 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "sch",
+  "generatedFrom": "source code: src/SqlFlow.Yaml, src/SqlFlow.Core, and the matching runner project",
+  "naming": "Every loader builds its YamlDotNet IDeserializer with new DeserializerBuilder().WithNamingConvention(CamelCaseNamingConvention.Instance).IgnoreUnmatchedProperties().Build(). A C# PascalCase property binds to the camelCase YAML key. Dictionary keys are never renamed by the convention. Enum-like string values are parsed case-insensitively; some (like load.mode) additionally strip - and _ before matching, confirmed per-case in the file-flow census (docs/reference/flow/keys.json), not assumed for these new document kinds.",
+  "keyCount": 20,
+  "keys": [
+    {
+      "path": "batch",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Optional grouping label carried onto SchemaRegistrationFlow.Batch and projected to the catalog pipeline row. By convention a registration flow uses batch: sch. A label only: it has no effect on scheduling.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs"
+    },
+    {
+      "path": "connections",
+      "type": "map<string,object>",
+      "required": false,
+      "default": "{} (no document-local connections declared; a bare source.connection can still synthesize one named \"source\")",
+      "description": "The document's named connection registry, identical vocabulary to every other non-file flow kind: mapped by YamlDocumentParts.MapConnections (src/SqlFlow.Yaml/YamlDocumentParts.cs:20-45) into a case-insensitive Dictionary<string, DataSource>, invoked from YamlSchemaRegistrationFlowLoader.Map (src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:74). Each declared connection is later addressed by name from source.server; the resolved set becomes SourceControlDocument.Connections (src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:21), an in-memory data-source store so the database resolves through the same secretless connection-resolution pipeline as every other flow, with no control database anywhere (type doc comment, YamlSchemaRegistrationFlowLoader.cs:11-14). DocumentLoader also scans every resolved reference for an embedded credential and emits a non-fatal 'WARN' line naming the canonical alternative when one looks like a literal secret (SecretHygiene.LooksLikeEmbeddedSecret, src/SqlFlow.Core/Secrets/SecretHygiene.cs:21-35; wired at src/SqlFlow.Execution/DocumentLoader.cs:43-60, the scm case at line 49).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:287 (Dictionary<string,object>? Connections)"
+    },
+    {
+      "path": "connections.<name>",
+      "type": "string|object",
+      "required": false,
+      "default": "when null or blank: resolves ${env:SQLFLOW_CONN_<NAME>} (name uppercased, non-alphanumeric folded to '_') with kind mssql",
+      "description": "One declared connection, keyed by its alias; the dictionary key is never renamed by the camelCase convention and its casing is preserved verbatim in error text. ParseConnectionNode (src/SqlFlow.Yaml/YamlDocumentParts.cs:47-90) accepts three node shapes: (1) null or a blank/whitespace string - resolves the conventional reference ${env:SQLFLOW_CONN_<NAME>} (ConnectionConvention.Reference, src/SqlFlow.Core/Connections/ConnectionConvention.cs:13-23) so a versioned document can declare which connections it needs without carrying any reference at all; (2) a non-blank plain string - used verbatim (trimmed) as the connection reference, e.g. a ${env:...}/${keyvault:...} token or a raw ADO.NET connection string; (3) a mapping with optional 'provider' and 'connection' keys (see the two child entries), matched on the raw key trimmed and lowercased, independent of the document's camelCase convention. Every other node shape (a list, a number, a bare boolean) is rejected. The connection name itself must be a valid identifier (ASCII letters/digits, '_', '.', or '-' only, length > 0 - non-ASCII letters are rejected) and, once trimmed, unique case-insensitively across the block; both checks run in MapConnections before the node is parsed (src/SqlFlow.Yaml/YamlDocumentParts.cs:28-42).",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:47-90 (ParseConnectionNode)",
+      "validation": "Invalid name: IsValidConnectionName is checked against the TRIMMED key (connectionName = rawName?.Trim(), src/SqlFlow.Yaml/YamlDocumentParts.cs:30), not the untrimmed key; only the thrown message quotes the untrimmed '<rawName>' as authored, so a name that would be invalid solely because of surrounding whitespace actually PASSES (whitespace is stripped before the check runs): FlowValidationException \"{source}: connection name '<rawName>' is invalid. Use letters, digits, '_', '.', or '-'.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:31-35, IsValidConnectionName at 217-218). A trimmed name colliding case-insensitively with another entry in the same block (e.g. 'DW:' and 'dw:'): \"{source}: connection '<name>' is declared more than once.\" (YamlDocumentParts.cs:38-41). A node that is neither null, a string, nor a mapping: \"{source}: connection '<name>' must be a connection string, a ${...} reference, a map with 'provider' and 'connection', or bare (which resolves '<conventional reference>' by convention).\" (YamlDocumentParts.cs:84-89)."
+    },
+    {
+      "path": "connections.<name>.connection",
+      "type": "string",
+      "required": false,
+      "default": "${env:SQLFLOW_CONN_<NAME>} (the conventional reference) when absent or blank, even if 'provider' is set alongside it",
+      "appliesWhen": "connections.<name> is authored as a mapping (not left bare and not a plain string)",
+      "description": "The map form's explicit connection reference or literal connection string, read alongside an optional 'provider' (src/SqlFlow.Yaml/YamlDocumentParts.cs:60-80). A blank or absent value under the map form still falls back to the conventional ${env:SQLFLOW_CONN_<NAME>} reference exactly like a fully bare entry - a document can declare just 'provider: azdb' with no 'connection:' at all and still get the conventional reference, now tagged with that provider's kind. A non-blank value is trimmed and used verbatim.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:71-80"
+    },
+    {
+      "path": "connections.<name>.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "connections.<name> is authored as a mapping (not left bare and not a plain string)",
+      "description": "The declared connection's provider kind, resolved by ParseProvider (src/SqlFlow.Yaml/YamlDocumentParts.cs:97-107) into a SqlFlow.Core.Connections.DataSourceKind. Matched by trimming and lower-casing only, with NO '-'/'_' stripping (unlike the file flow's load.mode/transform.onConvertError, whose NormalizeToken helper is private to YamlFlowLoader.cs and not reused here): 'sqlserver' is accepted as an un-advertised synonym of 'mssql', and 'postgresql' of 'postgres'. Null/blank also resolves to mssql. This value only governs what the connection IS; whether it is ACCEPTABLE for this document is enforced separately and only for the connection actually resolved as source's endpoint - see source.server's RequireSqlServerConnection validation. A connections.<name> entry never referenced by source is left completely unchecked past this parse, since nothing else in an scm document consumes it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentParts.cs:97-107 (ParseProvider), invoked at YamlDocumentParts.cs:81",
+      "validation": "Unrecognized token: FlowValidationException \"{source}: 'connections.<name>.provider' has unknown provider '<value>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:105-106, field built as $\"connections.{connectionName}.provider\" at YamlDocumentParts.cs:81)."
+    },
+    {
+      "path": "description",
+      "type": "string",
+      "required": false,
+      "default": "null",
+      "description": "Free-text description of the registration; blank/whitespace-only values normalize to null and the value is otherwise carried verbatim onto SchemaRegistrationFlow.Description and the catalog pipeline row.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs"
+    },
+    {
+      "path": "lifecycle",
+      "type": "string",
+      "required": false,
+      "default": "production",
+      "enumValues": [
+        "production",
+        "development"
+      ],
+      "description": "Deployment lifecycle of the flow: 'production' (the default when absent) or 'development'. A development flow runs exactly like a production one but never generates notification events.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs",
+      "validation": "Parsed by YamlDocumentParts.ParseLifecycle; any other value throws FlowValidationException."
+    },
+    {
+      "path": "mode",
+      "type": "enum(auto|manual|disabled)",
+      "required": false,
+      "default": "auto",
+      "enumValues": [
+        "auto",
+        "manual",
+        "disabled"
+      ],
+      "description": "The flow's execution mode, read at the document envelope (YamlDocumentLoader's probe, FlowDocument.Mode) and projected to the catalog pipeline row. 'auto' (the default) runs on schedule fires and in batch/node group runs; 'manual' reserves a working flow for direct triggers; 'disabled' deactivates a retired one (a retired source, a run-once replay) with the same exclusions and a visible 'disabled' badge. A node-scoped run can opt into includeAll ('find all') to replay non-auto descendants deliberately, and naming a flow directly always runs it.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs (FlowDocument.Mode, parsed by YamlDocumentParts.ParseExecutionMode)",
+      "validation": "Unknown value fails to load: \"<source>: 'mode' has unknown value '<value>'. Allowed: auto, manual, disabled.\""
+    },
+    {
+      "path": "name",
+      "type": "string",
+      "required": true,
+      "description": "The flow's unique identifier: its catalog pipeline name, its run-history folder, and the flow every Registers lineage edge it produces is attributed to. By convention <source>_00_sch.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs",
+      "validation": "Required; a missing or blank value throws FlowValidationException \"'name' is required for a schema registration flow (flowType: sch).\""
+    },
+    {
+      "path": "objects",
+      "type": "object",
+      "required": false,
+      "default": "absent (every table and view in every schema of the database is registered)",
+      "description": "Optional filter narrowing which tables and views are registered, by schema. Only tables (sys.objects type U) and views (type V) are ever registered; procedures, functions, triggers, synonyms, and foreign keys are never read.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs"
+    },
+    {
+      "path": "objects.excludeSchemas",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (nothing excluded)",
+      "description": "Schemas whose tables and views are never registered, applied after objects.includeSchemas. Names are trimmed, unbracketed, de-duplicated, and compared case-insensitively (in the SQL too, so a case-sensitive database collation does not change the result).",
+      "definedIn": "src/SqlFlow.Core/SchemaRegistration/SchemaRegistrationFlow.cs",
+      "validation": "A schema named in both objects.includeSchemas and objects.excludeSchemas throws FlowValidationException."
+    },
+    {
+      "path": "objects.excludeSchemas[]",
+      "type": "string",
+      "required": false,
+      "description": "One schema name to skip; a bracketed [name] is the same schema as name.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs"
+    },
+    {
+      "path": "objects.includeSchemas",
+      "type": "list<string>",
+      "required": false,
+      "default": "[] (every schema)",
+      "description": "When non-empty, only tables and views in these schemas are registered. Names are normalized and compared exactly as objects.excludeSchemas.",
+      "definedIn": "src/SqlFlow.Core/SchemaRegistration/SchemaRegistrationFlow.cs",
+      "validation": "A schema named in both objects.includeSchemas and objects.excludeSchemas throws FlowValidationException."
+    },
+    {
+      "path": "objects.includeSchemas[]",
+      "type": "string",
+      "required": false,
+      "description": "One schema name to register; a bracketed [name] is the same schema as name.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs"
+    },
+    {
+      "path": "schedule",
+      "type": "object|string|array",
+      "required": false,
+      "default": "none",
+      "description": "The document-envelope schedule, identical to every other flow kind: parsed by YamlDocumentLoader before the flowType dispatch (src/SqlFlow.Yaml/YamlDocumentLoader.cs), carried on the projected pipeline header, mirrored into the catalog by the estate sync, and fired by the control plane's SchedulerService onto the normal run queue. This is how a snapshot runs unattended: a nightly cron on the flow, or a reference joining a named schedule. A schema registration flow is deliberately excluded from the lineage graph, so it never joins a wave; a schedule that names it fires it directly.",
+      "definedIn": "src/SqlFlow.Core/ScheduleSpec.cs"
+    },
+    {
+      "path": "source",
+      "type": "object",
+      "required": true,
+      "description": "Required descriptor of the SQL Server database whose tables and views are registered: exactly one of source.server (a name declared under connections:) or source.connection (an inline reference, which synthesizes a connection named 'source'), plus an optional source.database. The resolved connection reference becomes the pipeline's source server, which is what makes it a datasource PowerAI queries run against.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs",
+      "validation": "Missing throws FlowValidationException \"'source' is required\"; a non-SQL Server provider throws through YamlDocumentParts.RequireSqlServerConnection."
+    },
+    {
+      "path": "source.connection",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.server is not set (exactly one of source.server or source.connection is required)",
+      "description": "An inline connection string or a ${env:...}/${keyvault:...} reference for the database to register, used when the connection is not already declared under connections:. ResolveEndpointConnection (src/SqlFlow.Yaml/YamlDocumentParts.cs:112-154) registers it as a new connection under the fixed synthetic name 'source' (YamlSchemaRegistrationFlowLoader.SourceConnectionName, src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:32, used at line 78), so the flow addresses it as '@source' (SchemaRegistrationFlow.ConnectionReference, src/SqlFlow.Core/SourceControl/SchemaRegistrationFlow.cs:24-26) exactly as if it had been declared 'connections: { source: <value> }'. The trimmed value is resolved at run time by SourceControlService through the same ISecretResolver every connection reference goes through (src/SqlFlow.SourceControl/SourceControlService.cs:49-51); a literal that looks like it embeds a credential (password=, pwd=, secret=, etc.) only produces a non-fatal validate/run warning (SecretHygiene), unlike repository.username/repository.secret it is never rejected at parse time for being a literal.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:296 (resolved at lines 77-78 via YamlDocumentParts.ResolveEndpointConnection)",
+      "validation": "Both source.server and source.connection set: FlowValidationException \"{source}: 'source' sets both 'server' and 'connection'; use exactly one.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:121-122). Neither set: \"{source}: 'source' needs a connection. Set 'source.connection' to a connection string or a ${...} reference, or 'source.server' to a name declared under 'connections:'.\" (YamlDocumentParts.cs:139-141). If connections: already declares an entry named 'source': \"{source}: 'source.connection' is set, but 'connections:' already declares 'source'. Either rename that connection or use 'source.server: source'.\" (YamlDocumentParts.cs:146-148). The resulting synthesized connection is still subject to RequireSqlServerConnection (see source.server)."
+    },
+    {
+      "path": "source.database",
+      "type": "string",
+      "required": false,
+      "default": "null (the connection's own database)",
+      "description": "The database to register, maps to SchemaRegistrationScope.Database. When set, the run switches the connection to it and verifies DB_NAME() before reading; when absent, the connection's default catalog is registered.",
+      "definedIn": "src/SqlFlow.Core/SchemaRegistration/SchemaRegistrationFlow.cs"
+    },
+    {
+      "path": "source.provider",
+      "type": "enum(mssql|azdb|mysql|postgres|oracle)",
+      "required": false,
+      "default": "mssql",
+      "enumValues": [
+        "mssql",
+        "azdb",
+        "mysql",
+        "postgres",
+        "oracle"
+      ],
+      "appliesWhen": "source.connection is set (ignored entirely when source.server is used instead - this key is then simply never read)",
+      "description": "The provider of an inline source.connection, parsed by the same ParseProvider used for connections.<name>.provider (see that entry for the exact matching rules and accepted synonyms, e.g. 'sqlserver' for 'mssql'). In practice this must resolve to mssql or azdb: whatever it produces, the connection ends up subject to the same RequireSqlServerConnection guard as source.server, so authoring 'mysql'/'postgres'/'oracle' here parses fine but the flow still fails immediately afterward for not being SQL Server.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:297 (passed to YamlDocumentParts.ResolveEndpointConnection at line 78; consumed only at YamlDocumentParts.cs:151)",
+      "validation": "Unrecognized token: FlowValidationException \"{source}: 'source.provider' has unknown provider '<value>'. Allowed: mssql, azdb, mysql, postgres, oracle.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:105-106, field built as $\"{section}.provider\" with section=\"source\" at YamlDocumentParts.cs:151). See source.server's validation for the SQL-Server-only requirement enforced on the resulting connection afterward."
+    },
+    {
+      "path": "source.server",
+      "type": "string",
+      "required": false,
+      "appliesWhen": "source.connection is not set (exactly one of source.server or source.connection is required)",
+      "description": "The name of a connection declared under connections: to use as the database to register; resolved by ResolveEndpointConnection (src/SqlFlow.Yaml/YamlDocumentParts.cs:112-154) into SchemaRegistrationFlow.Server (src/SqlFlow.Core/SourceControl/SchemaRegistrationFlow.cs:21-22), which the flow then addresses as '@<server>' via the computed ConnectionReference property (SchemaRegistrationFlow.cs:24-26) when SourceControlService resolves it with ConnectionRole.Source (src/SqlFlow.SourceControl/SourceControlService.cs:49-51). SMO scripts SQL Server only, so whichever connection this (or a synthesized source.connection) resolves to must come back MSSQL or AZDB; a foreign provider (mysql/postgres/oracle) is rejected at parse time via RequireSqlServerConnection rather than failing deep inside a run (src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:81).",
+      "definedIn": "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs:295 (resolved at lines 77-78)",
+      "validation": "Both source.server and source.connection set, or neither set: see source.connection's validation for the exact messages. A name not declared under connections:: FlowValidationException \"{source}: 'source.server' references '<name>', which is not declared under 'connections:'.\" (src/SqlFlow.Yaml/YamlDocumentParts.cs:130-131). Once resolved (via either source.server or source.connection), a non-SQL-Server connection: FlowValidationException \"{source}: the source connection '<name>' is '<kind>'; a schema registration flow's source must be SQL Server (mssql or azdb).\" where <kind> is one of MSSQL, AZDB, MySQL, PostgreSQL, Oracle (RequireSqlServerConnection, src/SqlFlow.Yaml/YamlDocumentParts.cs:168-177, called at YamlSchemaRegistrationFlowLoader.cs:81)."
+    }
+  ]
+}

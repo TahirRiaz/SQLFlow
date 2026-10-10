@@ -76,6 +76,7 @@ Everything is deterministic by construction: objects, edges, warnings, and waves
 | `Creates` | 2 | Brings the object into existence; an `ALTER` with no accompanying create, drop, write, or truncate on the same object is bucketed here too (the object's structural source). |
 | `Requires` | 3 | Needs the object to exist: a static EXEC of a procedure (naming it directly, not through a variable or dynamic SQL), or a write/`TRUNCATE` against an object the same script did not create. |
 | `Destroys` | 4 | Removes the object. |
+| `Registers` | 5 | A [schema registration flow](../flow/sch.md) (`flowType: sch`) recorded the object's metadata in the catalog. Metadata only: it implies no dependency and is ignored by run order, traversal, and object levels. |
 
 A `LineageEdge` carries `Flow` (null for a plain module-derived fact), `ViaModule` (the module key whose definition produced the fact; null for a plain flow-level fact), `Relation`, `ObjectKey`, `Tier`, and observed-tier provenance (`ObservedRunId`, `ObservedAtUtc`, `Step`). Edge identity is the tuple `(Flow, ViaModule, Relation, ObjectKey, Tier)`; duplicate facts dedupe with the latest `ObservedAtUtc` winning (src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs). A flow whose own facts `Require` a module (an sp flow executing its procedure) also gets flow-attributed derived edges for what that procedure, and anything it in turn reads or requires, does: these carry both `Flow` and `ViaModule` together (the module is the specific step in the chain), so a table a stored-procedure flow builds traces back to the flow itself, not only to the procedure's module.
 
@@ -159,6 +160,7 @@ Dependencies per relation:
 | `Requires` an object | The object's creators. |
 | `Destroys` an object | The object's creators, writers, AND readers: destruction goes last. |
 | `Creates` or `Writes` an object | Nothing; these imply no dependency. |
+| `Registers` an object | Nothing; a registration is out of the wave plan entirely. |
 
 ### Kahn waves
 

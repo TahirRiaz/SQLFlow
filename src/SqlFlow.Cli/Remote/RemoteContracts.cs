@@ -315,3 +315,28 @@ internal sealed record AllSearchDto(
     SearchCategoryDto<FlowHitDto> Flows,
     SearchCategoryDto<FlowColumnHitDto> FlowColumns,
     SearchCategoryDto<StatementHitDto> Statements);
+
+/// <summary>A report specification the semantic layer holds, without its text
+/// (<c>GET /api/v1/powerai/semantic-layer/reports</c>).</summary>
+internal sealed record SemanticReportSpecDto(
+    long Id, Guid RepoId, string RepoName, string SubscriberKey, string SubscriberName, bool SubscriberDeclared,
+    string ReportFile, string Origin, int Pages, int Visuals, int Tables, int Measures, string? UpdatedBy,
+    DateTime UpdatedUtc);
+
+/// <summary>A stored report specification with its text and what reading it found.</summary>
+internal sealed record SemanticReportSpecDetailDto(
+    SemanticReportSpecDto Report, string Spec, SqlFlow.Lineage.Collection.ReportSpecSummary Summary);
+
+/// <summary>Stores a report specification for a subscriber (<c>POST /api/v1/powerai/semantic-layer/reports</c>).</summary>
+internal sealed record StoreSemanticReportSpecRequest(Guid RepoId, string Subscriber, string ReportFile, string Spec);
+
+/// <summary>The outcome of storing a specification.</summary>
+internal sealed record StoreSemanticReportSpecResult(SemanticReportSpecDetailDto Report, bool Replaced, bool SyncQueued);
+
+/// <summary>A report the control plane's isolated extractor read, not yet stored
+/// (<c>POST /api/v1/powerai/semantic-layer/reports/extract</c>).</summary>
+internal sealed record ExtractedSemanticReportDto(
+    string ReportFile, string Spec, SqlFlow.Lineage.Collection.ReportSpecSummary Summary);
+
+/// <summary>The outcome of deleting a stored specification.</summary>
+internal sealed record DeleteSemanticReportSpecResult(bool SyncQueued);

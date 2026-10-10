@@ -110,6 +110,7 @@ public static class SqlFlowEngineServices
         services.AddSingleton<YamlSftpFlowLoader>();
         services.AddSingleton<YamlCalendarFlowLoader>();
         services.AddSingleton<YamlTranslateFlowLoader>();
+        services.AddSingleton<YamlSchemaRegistrationFlowLoader>();
         services.AddSingleton<YamlDocumentLoader>();
         services.AddSingleton<InferSpecLoader>();
         services.AddSingleton<FlowRunner>();

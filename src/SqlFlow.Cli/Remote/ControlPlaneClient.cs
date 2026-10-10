@@ -51,6 +51,10 @@ internal sealed class ControlPlaneClient : IDisposable
     /// infinite timeout so a live stream can run for as long as the run does.</summary>
     private static readonly TimeSpan RequestTimeout = TimeSpan.FromSeconds(100);
 
+    /// <summary>The budget for one remote report extraction: the upload, a wait for a free extractor slot, and the
+    /// tool's own five-minute run.</summary>
+    private static readonly TimeSpan ExtractionTimeout = TimeSpan.FromMinutes(10);
+
     private readonly HttpClient _http;
     private readonly bool _ownsClient;
 
@@ -538,6 +542,62 @@ internal sealed class ControlPlaneClient : IDisposable
     /// <summary>The code behind any lineage node (an object key, or a pipeline name/id); null when unknown.</summary>
     public Task<NodeScriptDto?> GetNodeScriptAsync(string key, CancellationToken ct)
         => GetOrNullAsync<NodeScriptDto>($"/api/v1/lineage/script{new QueryBuilder().Add("key", key)}", ct);
+
+    // ---- semantic layer: Power BI reports -----------------------------------------------------------------
+
+    /// <summary>The report specifications the semantic layer holds, optionally for one repo or subscriber.</summary>
+    public Task<IReadOnlyList<SemanticReportSpecDto>> ListSemanticReportsAsync(
+        Guid? repoId, string? subscriber, CancellationToken ct)
+        => GetAsync<IReadOnlyList<SemanticReportSpecDto>>(
+            $"/api/v1/powerai/semantic-layer/reports{new QueryBuilder().Add("repoId", repoId?.ToString()).Add("subscriber", subscriber)}",
+            ct);
+
+    /// <summary>Stores a specification for a subscriber, replacing an earlier upload of the same report.</summary>
+    public Task<StoreSemanticReportSpecResult> StoreSemanticReportAsync(
+        StoreSemanticReportSpecRequest request, CancellationToken ct)
+        => PostAsync<StoreSemanticReportSpecResult>("/api/v1/powerai/semantic-layer/reports", request, ct);
+
+    /// <summary>Deletes a stored specification; null when the server does not know the id.</summary>
+    public async Task<DeleteSemanticReportSpecResult?> DeleteSemanticReportAsync(long id, CancellationToken ct)
+    {
+        var path = $"/api/v1/powerai/semantic-layer/reports/{id.ToString(CultureInfo.InvariantCulture)}";
+        using var request = NewRequest(HttpMethod.Delete, path);
+        using var timeout = Budget(ct);
+        using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, timeout.Token).ConfigureAwait(false);
+        var text = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+        return Deserialize<DeleteSemanticReportSpecResult>(text, path);
+    }
+
+    /// <summary>
+    /// Has the control plane's isolated extractor read a local <c>.pbix</c>, returning the specification without
+    /// storing it. The file is streamed; extraction of a large model can take minutes, so this call has its own,
+    /// longer budget than the other requests.
+    /// </summary>
+    public async Task<ExtractedSemanticReportDto> ExtractSemanticReportAsync(
+        string pbixPath, string reportFile, CancellationToken ct)
+    {
+        var path = $"/api/v1/powerai/semantic-layer/reports/extract{new QueryBuilder().Add("reportFile", reportFile)}";
+        var file = new FileStream(pbixPath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.Asynchronous);
+        await using (file.ConfigureAwait(false))
+        {
+            using var request = NewRequest(HttpMethod.Post, path);
+            request.Content = new StreamContent(file);
+            request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            request.Content.Headers.ContentLength = file.Length;
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(ExtractionTimeout);
+            using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
+            await EnsureSuccessAsync(response, timeout.Token).ConfigureAwait(false);
+            var text = await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+            return Deserialize<ExtractedSemanticReportDto>(text, path);
+        }
+    }
 
     // ---- plumbing -----------------------------------------------------------------------------------------
 

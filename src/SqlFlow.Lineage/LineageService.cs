@@ -108,6 +108,15 @@ public static class LineageService
             }
 
             collected.Merge(await new CatalogCollector(resolver, progress).CollectAsync(collected.Servers, ct).ConfigureAwait(false));
+
+            // Schema registration flows read their own databases' tables and views, separately from the derived
+            // inventory above, since a registration takes no part in module parsing or join inference.
+            if (collected.SchemaRegistrations.Count > 0)
+            {
+                collected.Merge(await new SchemaRegistrationCollector(resolver, progress)
+                    .CollectAsync(collected.SchemaRegistrations.ToList(), ct).ConfigureAwait(false));
+            }
+
             tiers.Add(LineageTier.Derived);
         }
 

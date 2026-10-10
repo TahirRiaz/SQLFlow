@@ -69,6 +69,13 @@ public sealed record SourceControlFlowDocument : FlowDocument
     public required SourceControlDocument Document { get; init; }
 }
 
+/// <summary>A schema registration flow document (<c>flowType: sch</c>): register an external database's tables and
+/// views in the catalog, with no data movement.</summary>
+public sealed record SchemaRegistrationFlowDocument : FlowDocument
+{
+    public required SchemaRegistrationDocument Document { get; init; }
+}
+
 /// <summary>A batch flow document (<c>flowType: batch</c>).</summary>
 public sealed record BatchFlowDocument : FlowDocument
 {
@@ -243,6 +250,7 @@ public sealed class YamlDocumentLoader
     private readonly YamlSftpFlowLoader _sftpFlows;
     private readonly YamlCalendarFlowLoader _calendarFlows;
     private readonly YamlTranslateFlowLoader _translateFlows;
+    private readonly YamlSchemaRegistrationFlowLoader _schemaRegistrationFlows;
 
     public YamlDocumentLoader(
         YamlFlowLoader fileFlows,
@@ -257,7 +265,8 @@ public sealed class YamlDocumentLoader
         YamlCopyFlowLoader copyFlows,
         YamlSftpFlowLoader sftpFlows,
         YamlCalendarFlowLoader calendarFlows,
-        YamlTranslateFlowLoader translateFlows)
+        YamlTranslateFlowLoader translateFlows,
+        YamlSchemaRegistrationFlowLoader schemaRegistrationFlows)
     {
         ArgumentNullException.ThrowIfNull(fileFlows);
         ArgumentNullException.ThrowIfNull(ingestionFlows);
@@ -272,6 +281,7 @@ public sealed class YamlDocumentLoader
         ArgumentNullException.ThrowIfNull(sftpFlows);
         ArgumentNullException.ThrowIfNull(calendarFlows);
         ArgumentNullException.ThrowIfNull(translateFlows);
+        ArgumentNullException.ThrowIfNull(schemaRegistrationFlows);
         _fileFlows = fileFlows;
         _ingestionFlows = ingestionFlows;
         _exportFlows = exportFlows;
@@ -285,6 +295,7 @@ public sealed class YamlDocumentLoader
         _sftpFlows = sftpFlows;
         _calendarFlows = calendarFlows;
         _translateFlows = translateFlows;
+        _schemaRegistrationFlows = schemaRegistrationFlows;
     }
 
     public FlowDocument LoadFile(string path)
@@ -349,6 +360,11 @@ public sealed class YamlDocumentLoader
             return new SourceControlFlowDocument { Document = _sourceControlFlows.Parse(yaml, source), Schedule = schedule, Mode = mode };
         }
 
+        if (string.Equals(flowType, "sch", StringComparison.OrdinalIgnoreCase))
+        {
+            return new SchemaRegistrationFlowDocument { Document = _schemaRegistrationFlows.Parse(yaml, source), Schedule = schedule, Mode = mode };
+        }
+
         if (string.Equals(flowType, "batch", StringComparison.OrdinalIgnoreCase))
         {
             return new BatchFlowDocument { Document = _batchFlows.Parse(yaml, source), Schedule = schedule, Mode = mode };
@@ -382,7 +398,8 @@ public sealed class YamlDocumentLoader
         throw new FlowValidationException(
             $"{source}: unknown flowType '{flowType}'. Use 'ing' for a table-to-table ingestion flow, 'exp' for a " +
             "file export, 'sp' for a stored-procedure flow, 'inv' for an ADF/Automation trigger, 'hc' for an ML " +
-            "health check, 'scm' for a database source-control snapshot, 'batch' for an ordered multi-flow batch, " +
+            "health check, 'scm' for a database source-control snapshot, 'sch' to register an external database's " +
+            "tables and views in the catalog, 'batch' for an ordered multi-flow batch, " +
             "'api' for a generic acquisition flow (HTTP / SFTP / Azure Table), 'cpy' for a file-copy flow "
             + "(local / Azure storage / S3, with optional zip/unzip), 'cal' for a generated calendar dimension, "
             + "'trl' for a JSON translation flow (query result to shaped documents, optionally delivered to an API), "

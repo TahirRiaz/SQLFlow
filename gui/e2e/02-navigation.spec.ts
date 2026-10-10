@@ -15,8 +15,7 @@ const navTargets: Array<{ nav: string; page: string }> = [
   { nav: "nav-key-detection", page: "page-key-detection" },
   { nav: "nav-lineage", page: "page-lineage-graph" },
   { nav: "nav-search", page: "page-search" },
-  { nav: "nav-users", page: "page-users" },
-];
+  { nav: "nav-users", page: "page-users" },];
 
 test.describe("navigation", () => {
   test("every sidebar item opens its page", async ({ adminPage }) => {

@@ -241,6 +241,7 @@ impl Census {
             Some("inv") => INV,
             Some("hc") => HC,
             Some("scm") => SCM,
+            Some("sch") => SCH,
             Some("batch") => BATCH,
             Some("api") => API,
             Some("cpy") => CPY,
@@ -257,14 +258,21 @@ impl Census {
         // file-flow census and intentionally not repeated in the per-kind
         // files. Ensure it is always present so it is never mis-flagged as an
         // unknown key on a typed document.
-        if ft.is_some() && !entries.iter().any(|e| e.path == "flowType") {
-            if let Some(flow_type_entry) = Census::parse(FILE_FLOW)
+        if ft.is_some() {
+            // The `flowType` discriminator and the `schedule:` block are document-envelope keys: the loader parses
+            // both before it dispatches on the kind, so they mean the same thing in every kind and are documented
+            // once, in the file-flow census. A typed census gets every envelope entry it does not define itself,
+            // so a schedule's `cron`, `timezone`, and the rest are never flagged as unknown on a typed document.
+            let have: std::collections::HashSet<String> = entries.iter().map(|e| e.path.clone()).collect();
+            let envelope: Vec<KeyEntry> = Census::parse(FILE_FLOW)
                 .unwrap_or_default()
                 .into_iter()
-                .find(|e| e.path == "flowType")
-            {
-                entries.push(flow_type_entry);
-            }
+                .filter(|e| {
+                    (e.path == "flowType" || e.path == "schedule" || e.path.starts_with("schedule."))
+                        && !have.contains(&e.path)
+                })
+                .collect();
+            entries.extend(envelope);
         }
         // Merge shared blocks that the primary file does not already define.
         let shared = Census::parse(SHARED).unwrap_or_default();
@@ -383,6 +391,7 @@ const SP: &str = include_str!("../../../docs/reference/flow/keys.sp.json");
 const INV: &str = include_str!("../../../docs/reference/flow/keys.inv.json");
 const HC: &str = include_str!("../../../docs/reference/flow/keys.hc.json");
 const SCM: &str = include_str!("../../../docs/reference/flow/keys.scm.json");
+const SCH: &str = include_str!("../../../docs/reference/flow/keys.sch.json");
 const BATCH: &str = include_str!("../../../docs/reference/flow/keys.batch.json");
 const API: &str = include_str!("../../../docs/reference/flow/keys.api.json");
 const CPY: &str = include_str!("../../../docs/reference/flow/keys.cpy.json");
@@ -490,13 +499,42 @@ mod tests {
     #[test]
     fn flow_type_key_is_known_in_every_census() {
         // The discriminator lives only in keys.json but must resolve for all kinds.
-        for ft in [Some("ing"), Some("exp"), Some("batch"), Some("hc"), Some("api"), None] {
+        for ft in [Some("ing"), Some("exp"), Some("batch"), Some("hc"), Some("api"), Some("sch"), None] {
             let c = Census::for_flow_type(ft);
             assert!(
                 matches!(c.resolve(&ak(&["flowType"])), Resolution::Exact(_)),
                 "flowType should be known for flowType={ft:?}"
             );
         }
+    }
+
+    #[test]
+    fn schedule_children_are_known_in_every_typed_census() {
+        // The schedule block is envelope-level, documented once in keys.json, and valid on every kind.
+        for ft in [Some("ing"), Some("scm"), Some("sch"), Some("cal"), Some("api")] {
+            let c = Census::for_flow_type(ft);
+            for leaf in ["name", "cron", "timezone"] {
+                assert!(
+                    matches!(c.resolve(&ak(&["schedule", leaf])), Resolution::Exact(_)),
+                    "schedule.{leaf} should be known for flowType={ft:?}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn schema_registration_census_resolves_its_attributes() {
+        let c = Census::for_flow_type(Some("sch"));
+        assert!(matches!(c.resolve(&ak(&["source", "database"])), Resolution::Exact(_)));
+        assert!(matches!(
+            c.resolve(&[
+                AuthoredSeg::Key("objects".into()),
+                AuthoredSeg::Key("includeSchemas".into()),
+                AuthoredSeg::List,
+            ]),
+            Resolution::Exact(_)
+        ));
+        assert!(matches!(c.resolve(&ak(&["repository"])), Resolution::Unknown));
     }
 
     #[test]

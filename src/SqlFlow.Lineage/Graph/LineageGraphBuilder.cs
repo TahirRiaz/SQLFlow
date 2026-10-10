@@ -41,10 +41,130 @@ public static class LineageGraphBuilder
         }
 
         // ---- Synonym resolution: every fact lands on the base object. -------------------------------
-        var synonymTargets = collected.Synonyms.ToDictionary(
-            s => NodeKey.For(s.ServerRef, s.Database, s.Schema, s.Name),
-            s => (s.ServerRef, Database: s.TargetDatabase, Schema: s.TargetSchema, Name: s.TargetName),
+        // The same synonym can be declared more than once: two reports under one subscriber built on the same model
+        // each resolve its `Customer` table. Repeats pointing at the same object are one fact. Repeats that disagree
+        // are two reports on one connection calling different tables by the same model name, which lineage cannot
+        // tell apart by name alone, so the first declaration is kept and the conflict is reported.
+        var synonymTargets = new Dictionary<string, (string ServerRef, string? Database, string? Schema, string Name)>(
             StringComparer.Ordinal);
+        foreach (var synonym in collected.Synonyms)
+        {
+            var key = NodeKey.For(synonym.ServerRef, synonym.Database, synonym.Schema, synonym.Name);
+            var target = (synonym.ServerRef, Database: synonym.TargetDatabase, Schema: synonym.TargetSchema, Name: synonym.TargetName);
+            if (synonymTargets.TryGetValue(key, out var existing))
+            {
+                var kept = NodeKey.For(existing.ServerRef, existing.Database, existing.Schema, existing.Name);
+                var other = NodeKey.For(target.ServerRef, target.Database, target.Schema, target.Name);
+                if (!string.Equals(kept, other, StringComparison.Ordinal))
+                {
+                    warnings.Add(
+                        $"'{synonym.Name}' is declared as a synonym of two different objects on {synonym.ServerRef} "
+                        + $"({kept} and {other}); the first is used. Two reports reading through one connection give "
+                        + "the same model table name to different warehouse tables.");
+                }
+
+                continue;
+            }
+
+            synonymTargets.Add(key, target);
+        }
+
+        // A synonym registered with NO database is a one-part name: a PowerBI model entity, which is what a
+        // visual's synthesized `FROM [Sales]` lands on. The default-database pass below fills a database into
+        // exactly those facts before resolution runs, so the identity that reaches ResolveSynonyms is
+        // `server|thatdatabase||Sales` and never matches the `server|||Sales` the collector registered. Key
+        // such a synonym under the server's default database as well, so it matches either way.
+        //
+        // Filling the database is right for an ordinary two-part reference and wrong for a model entity
+        // (`Sales` is a name in the model, not an object in the connection's catalog), so this cannot be fixed
+        // by reordering the two passes without breaking the reference case the ordering exists for.
+        foreach (var synonym in collected.Synonyms)
+        {
+            if (!string.IsNullOrEmpty(synonym.Database)
+                || !collected.ServerDefaultDatabases.TryGetValue(synonym.ServerRef, out var defaultDatabase))
+            {
+                continue;
+            }
+
+            synonymTargets.TryAdd(
+                NodeKey.For(synonym.ServerRef, defaultDatabase, synonym.Schema, synonym.Name),
+                (synonym.ServerRef, synonym.TargetDatabase, synonym.TargetSchema, synonym.TargetName));
+        }
+
+        // ---- Registered objects: what the schema registration flows registered, this build's harvest plus the
+        // registrations the catalog remembers. A remembered entry of this repository is superseded by this build's own
+        // harvest of the same flow, and dropped once the repository no longer declares the flow.
+        var harvestedFlows = collected.RegisteredObjects
+            .Select(o => o.Flow)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var declaredRegistrations = collected.SchemaRegistrations
+            .Select(r => r.Flow)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var registeredIndex = new Dictionary<string, List<CollectedRegisteredObject>>(StringComparer.Ordinal);
+        foreach (var registered in collected.RegisteredObjects.Concat(collected.PriorRegistrations
+                     .Where(o => !o.FromCurrentRepo
+                         || (declaredRegistrations.Contains(o.Flow) && !harvestedFlows.Contains(o.Flow)))))
+        {
+            foreach (var lookup in new[]
+                     {
+                         RegisteredLookup(registered.Database, registered.Schema, registered.Name),
+                         RegisteredLookup(null, registered.Schema, registered.Name),
+                     })
+            {
+                if (!registeredIndex.TryGetValue(lookup, out var candidates))
+                {
+                    registeredIndex[lookup] = candidates = [];
+                }
+
+                candidates.Add(registered);
+            }
+        }
+
+        // A registered-source subscriber names objects by database, schema, and name only. Such an identity is matched
+        // to the one registered object carrying the same parts (schema and name when the reference names no database)
+        // and re-keyed under the registering flow's connection. No match, or several objects on different databases,
+        // leaves it unresolved with a warning naming why; nothing is guessed. A one-part name is a report's model
+        // entity, which the collector already resolves through a synonym or reports.
+        (string ServerRef, string? Database, string? Schema, string Name) ResolveRegistered(
+            (string ServerRef, string? Database, string? Schema, string Name) identity)
+        {
+            if (!string.Equals(identity.ServerRef, ServerIdentity.Registered, StringComparison.OrdinalIgnoreCase)
+                || string.IsNullOrEmpty(identity.Schema))
+            {
+                return identity;
+            }
+
+            var database = string.IsNullOrEmpty(identity.Database) ? null : identity.Database;
+            var label = database is null
+                ? $"{identity.Schema}.{identity.Name}"
+                : $"{database}.{identity.Schema}.{identity.Name}";
+            if (!registeredIndex.TryGetValue(RegisteredLookup(database, identity.Schema, identity.Name), out var candidates))
+            {
+                warnings.Add(
+                    $"no registered database (flowType: sch) has '{label}'; a subscriber reading it stays unlinked to "
+                    + "a source table until a schema registration flow registers that database.");
+                return identity;
+            }
+
+            var distinct = candidates
+                .GroupBy(c => NodeKey.For(c.ServerRef, c.Database, c.Schema, c.Name), StringComparer.Ordinal)
+                .Select(g => g.First())
+                .ToList();
+            if (distinct.Count > 1)
+            {
+                warnings.Add(
+                    $"'{label}' is registered by more than one schema registration flow or database ("
+                    + string.Join(", ", distinct
+                        .Select(c => $"{c.Flow}: {c.Database}.{c.Schema}.{c.Name}")
+                        .Order(StringComparer.Ordinal))
+                    + "); a subscriber reading it is left unlinked. Qualify the reference with its database, or "
+                    + "register the database once.");
+                return identity;
+            }
+
+            var match = distinct[0];
+            return (match.ServerRef, match.Database, match.Schema, match.Name);
+        }
 
         (string ServerRef, string? Database, string? Schema, string Name) ResolveSynonyms(
             string serverRef, string? database, string? schema, string name)
@@ -54,7 +174,7 @@ public static class LineageGraphBuilder
             {
                 if (!synonymTargets.TryGetValue(NodeKey.For(current.ServerRef, current.Database, current.Schema, current.Name), out var next))
                 {
-                    return current;
+                    return ResolveRegistered(current);
                 }
 
                 current = next;
@@ -236,6 +356,22 @@ public static class LineageGraphBuilder
                     Step = fact.Step,
                 };
             }
+        }
+
+        // ---- Registration edges: a schema registration flow Registers every object it read. They are metadata,
+        // never a data dependency, so they take no part in run order (ComputeRunOrder ignores the relation, and the
+        // registering flow is out of the wave plan anyway).
+        foreach (var registered in collected.RegisteredObjects)
+        {
+            var key = NodeKey.For(registered.ServerRef, registered.Database, registered.Schema, registered.Name);
+            var identity = ((string?)registered.Flow, (string?)null, LineageRelation.Registers, key, LineageTier.Derived);
+            edges.TryAdd(identity, new LineageEdge
+            {
+                Flow = registered.Flow,
+                Relation = LineageRelation.Registers,
+                ObjectKey = key,
+                Tier = LineageTier.Derived,
+            });
         }
 
         // The identity resolution the object-artifact fold uses to map an artifact onto its node key: the same
@@ -421,6 +557,19 @@ public static class LineageGraphBuilder
             return NodeKey.For(resolved.ServerRef, resolved.Database, resolved.Schema, resolved.Name);
         }
 
+        // A report's model table resolved to the warehouse object its Power Query source loads, through the same identity
+        // resolution every edge takes, so the key matches the catalog object the semantic layer serves it on.
+        string? SourceObjectKey(LineageSubscriberModelTable table)
+        {
+            if (table.ServerRef is null || string.IsNullOrWhiteSpace(table.SourceName))
+            {
+                return null;
+            }
+
+            var resolved = ResolveIdentity(table.ServerRef, table.SourceDatabase, table.SourceSchema, table.SourceName);
+            return NodeKey.For(resolved.ServerRef, resolved.Database, resolved.Schema, resolved.Name);
+        }
+
         // One key per object: the best hint wins, ranked by how explicit the interpretation is (a PRIMARY KEY
         // clause beats the YAML declaration beats a MERGE match key), then by tier for a stable pick.
         var keyByObject = new Dictionary<string, CollectedKeyHint>(StringComparer.Ordinal);
@@ -569,32 +718,107 @@ public static class LineageGraphBuilder
         // ---- The consumption side, projected for the report. Each query's objects go through the same identity
         // resolution its facts did, so the per-query evidence names the SAME nodes the edges point at. -------
         var subscriberNodes = collected.Subscribers
-            .Select(s => new LineageSubscriberNode
+            .Select(s =>
             {
-                Name = s.Subscriber.Name,
-                Type = s.Subscriber.Type,
-                ObjectKey = s.NodeKey,
-                File = s.File,
-                Owner = s.Subscriber.Owner,
-                Description = s.Subscriber.Description,
-                Notes = s.Subscriber.Notes,
-                Url = s.Subscriber.Url,
-                Queries = s.Queries
-                    .Select(q => new LineageSubscriberQuery
+                var models = s.Models
+                    .Select(m => m with
                     {
-                        Name = q.Name,
-                        ServerRef = q.ServerRef,
-                        Sql = q.Sql,
-                        ObjectKeys = q.Objects
-                            .Select(ModelKeyOf)
-                            .Distinct(StringComparer.Ordinal)
-                            .OrderBy(k => k, StringComparer.Ordinal)
-                            .ToList(),
+                        Tables = m.Tables.Select(t => t with { ObjectKey = SourceObjectKey(t) }).ToList(),
                     })
-                    .ToList(),
+                    .ToList();
+                var translators = new Dictionary<string, PowerBi.VisualSqlTranslator>(StringComparer.Ordinal);
+
+                return new LineageSubscriberNode
+                {
+                    Name = s.Subscriber.Name,
+                    Type = s.Subscriber.Type,
+                    ObjectKey = s.NodeKey,
+                    File = s.File,
+                    Owner = s.Subscriber.Owner,
+                    Description = s.Subscriber.Description,
+                    Notes = s.Subscriber.Notes,
+                    Url = s.Subscriber.Url,
+                    Queries = s.Queries
+                        .Select(q =>
+                        {
+                            var resolved = q.Objects
+                                .Select(o => ResolveIdentity(o.ServerRef, o.Database, o.Schema, o.Name))
+                                .ToList();
+                            var translation = q.ReportFile is null
+                                ? null
+                                : TranslateVisual(q.ReportFile, q.Sql, models, translators);
+                            return new LineageSubscriberQuery
+                            {
+                                Name = q.Name,
+                                ServerRef = RegisteredQueryServer(q.ServerRef, resolved),
+                                Sql = q.Sql,
+                                ObjectKeys = resolved
+                                    .Select(r => NodeKey.For(r.ServerRef, r.Database, r.Schema, r.Name))
+                                    .Distinct(StringComparer.Ordinal)
+                                    .OrderBy(k => k, StringComparer.Ordinal)
+                                    .ToList(),
+                                SourceSql = translation?.Sql,
+                                TranslationProblem = translation?.Problem,
+                            };
+                        })
+                        .ToList(),
+                    Pages = s.Pages,
+                    Models = models,
+                };
             })
             .OrderBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
+
+        // A report visual's query, translated into T-SQL over the source tables its report's model loads from. The
+        // source columns are checked against what this build knows of each source table (its registration or its live
+        // inventory); a table whose columns are unknown here is taken as the model states it.
+        PowerBi.VisualTranslation TranslateVisual(
+            string reportFile, string sql, IReadOnlyList<LineageSubscriberModel> models,
+            Dictionary<string, PowerBi.VisualSqlTranslator> translators)
+        {
+            var model = models.FirstOrDefault(m => string.Equals(m.ReportFile, reportFile, StringComparison.Ordinal));
+            if (model is null || model.Tables.Count == 0)
+            {
+                return PowerBi.VisualTranslation.Failed(
+                    "the report carries no semantic model (it is connected live to a published dataset)");
+            }
+
+            if (!translators.TryGetValue(reportFile, out var translator))
+            {
+                var server = model.Tables
+                    .Select(t => t.ObjectKey)
+                    .FirstOrDefault(k => k is not null)?
+                    .Split('|')[0];
+                translator = new PowerBi.VisualSqlTranslator(model, table =>
+                {
+                    if (server is null
+                        || !nodes.TryGetValue(NodeKey.For(server, table.Database, table.Schema, table.Name), out var node)
+                        || node.Columns.Count == 0)
+                    {
+                        return null;
+                    }
+
+                    return node.Columns.Select(c => c.Name).ToList();
+                });
+                translators[reportFile] = translator;
+            }
+
+            return translator.Translate(sql);
+        }
+
+        // A registered-source query runs where its objects were registered: the one connection they all resolved
+        // to. Until then (nothing resolved, or its objects span connections) it keeps the synthetic identity.
+        static string RegisteredQueryServer(
+            string serverRef, IReadOnlyList<(string ServerRef, string? Database, string? Schema, string Name)> objects)
+        {
+            if (!string.Equals(serverRef, ServerIdentity.Registered, StringComparison.OrdinalIgnoreCase))
+            {
+                return serverRef;
+            }
+
+            var servers = objects.Select(o => o.ServerRef).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            return servers.Count == 1 ? servers[0] : serverRef;
+        }
 
         return new LineageReport
         {
@@ -986,6 +1210,11 @@ public static class LineageGraphBuilder
 
     /// <summary>Rewrites every collected element onto the canonical server identities proven at connect
     /// time, so one physical server referenced under several spellings is one graph node space.</summary>
+    /// <summary>The registered-object index key: database (empty for the schema-and-name lookup), schema, and name,
+    /// case-folded like a node key.</summary>
+    private static string RegisteredLookup(string? database, string schema, string name)
+        => NodeKey.For(ServerIdentity.Registered, database, schema, name);
+
     private static CollectionResult ApplyServerAliases(CollectionResult collected, Func<string, string> server)
     {
         var remapped = new CollectionResult();
@@ -1004,6 +1233,28 @@ public static class LineageGraphBuilder
         remapped.ModelConstraints.AddRange(collected.ModelConstraints.Select(c => c with { From = Remap(c.From), To = Remap(c.To) }));
 
         remapped.Synonyms.AddRange(collected.Synonyms.Select(s => s with { ServerRef = server(s.ServerRef) }));
+
+        // The consumption side and the registrations carry server identities too, and the builder reads both
+        // after this remap, so they are carried across rather than lost whenever two references alias.
+        remapped.Subscribers.AddRange(collected.Subscribers.Select(s => s with
+        {
+            Queries = s.Queries
+                .Select(q => q with { ServerRef = server(q.ServerRef), Objects = q.Objects.Select(Remap).ToList() })
+                .ToList(),
+            Models = s.Models
+                .Select(m => m with
+                {
+                    Tables = m.Tables
+                        .Select(t => t.ServerRef is { } tableServer ? t with { ServerRef = server(tableServer) } : t)
+                        .ToList(),
+                })
+                .ToList(),
+        }));
+        remapped.SubscriberInputHash = collected.SubscriberInputHash;
+        remapped.SchemaRegistrations.AddRange(collected.SchemaRegistrations.Select(r => r with { ServerRef = server(r.ServerRef) }));
+        remapped.RegisteredObjects.AddRange(collected.RegisteredObjects.Select(o => o with { ServerRef = server(o.ServerRef) }));
+        remapped.PriorRegistrations.AddRange(collected.PriorRegistrations);
+        remapped.DegradedServers.UnionWith(collected.DegradedServers.Select(server));
         remapped.Warnings.AddRange(collected.Warnings);
         foreach (var (key, value) in collected.Servers)
         {

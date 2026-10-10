@@ -438,7 +438,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
         {
             ["type"] = "mcp",
             ["server_label"] = _settings.Mcp.ServerLabel,
-            ["server_url"] = _settings.Mcp.ServerUrl,
+            ["server_url"] = _settings.Mcp.AssistantServerUri.AbsoluteUri,
             // Approval is off because there is no human in the loop to approve a tool call mid-run;
             // authority is bounded by what the bearer may reach and the tool allowlist instead.
             ["require_approval"] = "never",
@@ -449,15 +449,13 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
                 ["Authorization"] = "Bearer " + mcpBearer,
             },
         };
-        if (_settings.Mcp.AllowedTools.Count > 0)
+        // Always sent: the surface's list is never empty, so the model never sees every tool the MCP server ships.
+        var allowed = new JsonArray();
+        foreach (var tool in _settings.AllowedTools)
         {
-            var allowed = new JsonArray();
-            foreach (var tool in _settings.Mcp.AllowedTools)
-            {
-                allowed.Add(tool);
-            }
-            mcpTool["allowed_tools"] = allowed;
+            allowed.Add(tool);
         }
+        mcpTool["allowed_tools"] = allowed;
 
         var body = new JsonObject
         {

@@ -181,19 +181,17 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
 
     private MessageCreateParams BuildParams(List<BetaMessageParam> messages, string mcpBearer)
     {
-        // Allowlist mode when tools are configured: everything off by default, each permitted tool
-        // enabled explicitly, mirroring the surface the other providers get via allowed_tools.
-        var mcpToolset = _settings.Mcp.AllowedTools.Count > 0
-            ? new BetaMcpToolset
-            {
-                McpServerName = _settings.Mcp.ServerLabel,
-                DefaultConfig = new BetaMcpToolDefaultConfig { Enabled = false },
-                Configs = _settings.Mcp.AllowedTools.ToDictionary(
-                    tool => tool,
-                    _ => new BetaMcpToolConfig { Enabled = true },
-                    StringComparer.Ordinal),
-            }
-            : new BetaMcpToolset { McpServerName = _settings.Mcp.ServerLabel };
+        // Allowlist mode, always: everything off by default, each permitted tool enabled explicitly, mirroring the
+        // surface the other providers get via allowed_tools. The surface's list is never empty.
+        var mcpToolset = new BetaMcpToolset
+        {
+            McpServerName = _settings.Mcp.ServerLabel,
+            DefaultConfig = new BetaMcpToolDefaultConfig { Enabled = false },
+            Configs = _settings.AllowedTools.Distinct(StringComparer.Ordinal).ToDictionary(
+                tool => tool,
+                _ => new BetaMcpToolConfig { Enabled = true },
+                StringComparer.Ordinal),
+        };
 
         return new MessageCreateParams
         {
@@ -207,7 +205,7 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
                 new BetaRequestMcpServerUrlDefinition
                 {
                     Name = _settings.Mcp.ServerLabel,
-                    Url = _settings.Mcp.ServerUrl,
+                    Url = _settings.Mcp.AssistantServerUri.AbsoluteUri,
                     // Sent by the connector as "Authorization: Bearer <token>"; the MCP server
                     // forwards it verbatim to the control plane, which enforces the token's scopes.
                     AuthorizationToken = mcpBearer,

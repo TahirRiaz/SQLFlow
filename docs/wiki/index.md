@@ -45,7 +45,8 @@ to narrow a search to one kind of page.
 - [Census drift map](maps/census-drift.md) - nine key paths the engine accepts that
   `keys.api.json` does not declare, and the enum value it documents one version behind.
 - [Design document drift map](maps/design-doc-drift.md) - which documents under `docs/` describe
-  shipped behavior, which are historical design intent, and where the unbannered gaps are.
+  shipped behavior, which are historical design intent, and where the unbannered gaps are, including
+  the PowerAI retrieval design's stale "still to build" claims.
 
 ### Patterns: acquisition
 
@@ -80,6 +81,21 @@ to narrow a search to one kind of page.
 
 - [Landing is string-first](decisions/string-first-landing.md) - why every non-Parquet source lands
   as strings and typing is deferred, and what the alternative would have cost.
+- [A report's model entity becomes a warehouse object](decisions/powerbi-model-entity-resolution.md) -
+  pattern-matching Power Query instead of parsing it, reusing the synonym pass instead of adding a
+  mechanism, and why an unresolvable source is reported rather than guessed.
+- [The semantic layer is the column allow-list](decisions/semantic-layer-is-the-allow-list.md) - one
+  estate-wide layer instead of named contexts, removing raw schema tools from the chat instead of filtering the
+  shared endpoints, and the no-tracking update bug building it exposed.
+- [A Power BI report travels as its specification](decisions/powerbi-report-specifications.md) - why the
+  extractor stayed put while its output moved into committed files and the semantic layer, why uploads are read by
+  an isolated service, and the silent model loss on control plane syncs that forced it.
+- [An external database is registered by a flow, and the dashboard supplies the model](decisions/schema-registration-flows.md) -
+  why `flowType: sch` exists instead of reusing scm, why it reads only tables and views and leaves joins and
+  measures to the dashboard, and why subscribers link to it by name.
+- [A report visual's query is translated into T-SQL at sync, or refused with a reason](decisions/visual-sql-translation.md) -
+  why the output is T-SQL only, why a stated Power Query and DAX subset refuses rather than approximates, why it
+  runs in the graph builder, and why the translation is served as a dashboard match's SQL.
 - [The run queue lives in the control plane](decisions/dispatch-in-control-plane.md) - why the
   queue left SQL Server for an in-memory dispatcher journaled to the catalog, why a node speaks only
   to the control plane, what was rejected, and the decisions that changed while it shipped.
@@ -88,6 +104,9 @@ to narrow a search to one kind of page.
 
 - [A misspelled or misplaced YAML key does nothing](incidents/ignored-yaml-keys.md) - unmatched
   properties are silently dropped; a live production flow configures a retry knob that is not real.
+- [A report saved by a current PowerBI Desktop extracted with no visuals](incidents/pbix-split-report-format.md) -
+  the vendor replaced one report part with a tree of per-visual documents, the loss showed up as a
+  smaller number rather than an error, and a shared error message named the wrong cause.
 
 ### Narratives: recipes
 

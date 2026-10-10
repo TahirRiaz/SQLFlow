@@ -181,6 +181,23 @@ public static class FlowDocumentHeaders
                 ];
             }
 
+            case SchemaRegistrationFlowDocument doc:
+            {
+                // A schema registration reads one SQL Server database's table and view metadata into the catalog. Its
+                // source is that server, so the connection is a declared datasource a question can run against, and
+                // its target is the file system like any metadata-only flow. It moves no data, so it takes no part in
+                // waves; its Registers edges are emitted by the graph builder from the registration itself.
+                var flow = doc.Document.Flow;
+                var refs = ConnectionRefs(doc.Document.Connections);
+                return
+                [
+                    new DocumentFlowHeader(
+                        flow.SysAlias, "sch", flow.Batch, ServerIdentity.From(refs[flow.Server]),
+                        ServerIdentity.FileSystem, document.Schedule,
+                        document.Mode, flow.Lifecycle, ParticipatesInLineage: false),
+                ];
+            }
+
             case BatchFlowDocument:
                 // An orchestration document: a batch declares no flow of its own; its ordering is computed FROM
                 // lineage, so it never becomes a pipeline row.

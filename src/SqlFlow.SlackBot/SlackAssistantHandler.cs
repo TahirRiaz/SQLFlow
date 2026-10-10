@@ -156,7 +156,7 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
                 Question = question,
                 ImageDataUris = images,
                 // The MCP server forwards this verbatim to the control plane, which enforces the
-                // token's scopes; the read-scoped bot token is the whole authority of every run.
+                // token's scopes; the one bot token is the whole identity of every run, bounded by the tool allowlist.
                 McpBearer = _options.SqlFlow.AccessToken,
             }, timeout.Token).ConfigureAwait(false);
 

@@ -23,6 +23,7 @@ import {
   Server,
   Settings,
   ShieldCheck,
+  Sparkles,
   Users,
   Workflow,
   Wrench,
@@ -104,7 +105,7 @@ export const navGroups: NavGroup[] = [
     requiresScope: "admin",
     items: [
       { label: "Users", to: "/users", icon: Users, testId: "nav-users" },
-    ],
+      { label: "AI knowledge", to: "/semantic-layer", icon: Sparkles, testId: "nav-semantic-layer" },    ],
   },
   {
     id: "settings",

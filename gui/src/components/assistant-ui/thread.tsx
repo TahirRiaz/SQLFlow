@@ -71,6 +71,20 @@ export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
 export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
   Welcome?: ComponentType | undefined;
+  /**
+   * Rendered under every assistant answer, between the answer body and the action bar. This is
+   * where a host hangs an affordance that acts ON the finished answer (SQLFlow puts the PowerAI
+   * accept/correct/reject confirmation here), so it does not have to replace `AssistantMessage`
+   * wholesale just to add a row beneath it.
+   */
+  AnswerFooter?: ComponentType | undefined;
+  /**
+   * Whether a SQL block the assistant hands back can be run from the thread itself (the chat
+   * capability of the same name). Read by the SQL code-block renderer, which lives in the shared
+   * markdown component rather than here, so it is carried on this same host-supplied context
+   * instead of a second provider.
+   */
+  dataOpsRunQuery?: boolean;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?:
     | ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>>
@@ -86,7 +100,7 @@ export type ThreadProps = {
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
 
-const ThreadComponentsContext =
+export const ThreadComponentsContext =
   createContext<ThreadComponents>(EMPTY_COMPONENTS);
 
 // Startup exposes a loading placeholder thread; treat it as a new chat so
@@ -337,6 +351,7 @@ const AssistantMessage: FC = () => {
     ToolFallback: ToolFallbackComponent = ToolFallback,
     ToolGroup,
     ReasoningGroup,
+    AnswerFooter,
   } = useContext(ThreadComponentsContext);
 
   const ACTION_BAR_PT = "pt-1.5";
@@ -429,6 +444,7 @@ const AssistantMessage: FC = () => {
           }}
         </MessagePrimitive.GroupedParts>
         <MessageError />
+        {AnswerFooter && <AnswerFooter />}
       </div>
 
       <div

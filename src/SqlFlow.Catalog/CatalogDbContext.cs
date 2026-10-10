@@ -36,6 +36,28 @@ public sealed class CatalogDbContext : DbContext
 
     public DbSet<CatalogSubscriberQuery> SubscriberQueries => Set<CatalogSubscriberQuery>();
 
+    public DbSet<CatalogSubscriberReportPage> SubscriberReportPages => Set<CatalogSubscriberReportPage>();
+
+    public DbSet<CatalogSubscriberReportVisual> SubscriberReportVisuals => Set<CatalogSubscriberReportVisual>();
+
+    public DbSet<CatalogSubscriberReportField> SubscriberReportFields => Set<CatalogSubscriberReportField>();
+
+    public DbSet<CatalogSubscriberReportVisualQuestion> SubscriberReportVisualQuestions
+        => Set<CatalogSubscriberReportVisualQuestion>();
+
+    public DbSet<CatalogSubscriberModelTable> SubscriberModelTables => Set<CatalogSubscriberModelTable>();
+
+    public DbSet<CatalogSubscriberModelField> SubscriberModelFields => Set<CatalogSubscriberModelField>();
+
+    public DbSet<CatalogSubscriberModelRelationship> SubscriberModelRelationships
+        => Set<CatalogSubscriberModelRelationship>();
+
+    /// <summary>The semantic layer's example queries: every question/query pair a person confirmed (the saved answers).</summary>
+    public DbSet<CatalogSemanticExample> SemanticExamples => Set<CatalogSemanticExample>();
+
+    /// <summary>The Power BI report specifications the semantic layer holds: uploaded ones, and the extractions a sync kept.</summary>
+    public DbSet<CatalogSemanticReportSpec> SemanticReportSpecs => Set<CatalogSemanticReportSpec>();
+
     public DbSet<CatalogFlowDependency> FlowDependencies => Set<CatalogFlowDependency>();
 
     public DbSet<CatalogRunFile> RunFiles => Set<CatalogRunFile>();
@@ -55,6 +77,16 @@ public sealed class CatalogDbContext : DbContext
     public DbSet<CatalogSchemaChange> SchemaChanges => Set<CatalogSchemaChange>();
 
     public DbSet<CatalogObjectColumn> ObjectColumns => Set<CatalogObjectColumn>();
+
+    public DbSet<CatalogColumnPolicy> ColumnPolicies => Set<CatalogColumnPolicy>();
+
+    public DbSet<CatalogSemanticObject> SemanticObjects => Set<CatalogSemanticObject>();
+
+    public DbSet<CatalogSemanticRelationship> SemanticRelationships => Set<CatalogSemanticRelationship>();
+
+    public DbSet<CatalogSemanticMeasure> SemanticMeasures => Set<CatalogSemanticMeasure>();
+
+    public DbSet<CatalogSemanticLayerSettings> SemanticLayerSettings => Set<CatalogSemanticLayerSettings>();
 
     public DbSet<CatalogPipelineColumn> PipelineColumns => Set<CatalogPipelineColumn>();
 
@@ -113,6 +145,7 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(r => r.Name).HasMaxLength(256).IsRequired();
             entity.Property(r => r.RemoteUrl).HasMaxLength(1024);
             entity.Property(r => r.RootPath).HasMaxLength(1024);
+            entity.Property(r => r.SubscriberInputHash).HasMaxLength(64);
             entity.HasIndex(r => r.Name).IsUnique();
         });
 
@@ -306,8 +339,149 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(q => q.Name).HasMaxLength(250).IsRequired();
             entity.Property(q => q.ServerRef).HasMaxLength(400).IsRequired();
             entity.Property(q => q.Sql).IsRequired();
+            entity.Property(q => q.TranslationProblem).HasMaxLength(CatalogSync.TranslationProblemMaxLength);
             entity.HasIndex(q => q.SubscriberKey);
             entity.HasIndex(q => q.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSubscriberReportPage>(entity =>
+        {
+            entity.ToTable("SubscriberReportPage");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.SubscriberKey).HasMaxLength(900).IsRequired();
+            // Room for the subscriber key plus the report file name and an ordinal suffix, so a page key is
+            // never truncated into a collision with a sibling page's, including a sibling from another file
+            // in the same directory.
+            entity.Property(p => p.PageKey).HasMaxLength(1180).IsRequired();
+            entity.Property(p => p.ReportFile).HasMaxLength(260).IsRequired();
+            entity.Property(p => p.Name).HasMaxLength(250).IsRequired();
+            entity.Property(p => p.DisplayName).HasMaxLength(250).IsRequired();
+            entity.HasIndex(p => p.SubscriberKey);
+            entity.HasIndex(p => p.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSubscriberReportVisual>(entity =>
+        {
+            entity.ToTable("SubscriberReportVisual");
+            entity.HasKey(v => v.Id);
+            entity.Property(v => v.PageKey).HasMaxLength(1180).IsRequired();
+            entity.Property(v => v.VisualKey).HasMaxLength(1192).IsRequired();
+            entity.Property(v => v.VisualType).HasMaxLength(100).IsRequired();
+            entity.Property(v => v.Title).HasMaxLength(400);
+            entity.Property(v => v.ContentHash).HasMaxLength(64).IsRequired();
+            entity.HasIndex(v => v.PageKey);
+            entity.HasIndex(v => v.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSubscriberReportField>(entity =>
+        {
+            entity.ToTable("SubscriberReportField");
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.VisualKey).HasMaxLength(1192).IsRequired();
+            entity.Property(f => f.Role).HasMaxLength(100).IsRequired();
+            entity.Property(f => f.TableName).HasMaxLength(250).IsRequired();
+            entity.Property(f => f.ColumnOrMeasure).HasMaxLength(250).IsRequired();
+            entity.HasIndex(f => f.VisualKey);
+            entity.HasIndex(f => f.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSubscriberReportVisualQuestion>(entity =>
+        {
+            entity.ToTable("SubscriberReportVisualQuestion");
+            entity.HasKey(q => q.Id);
+            entity.Property(q => q.VisualKey).HasMaxLength(1192).IsRequired();
+            entity.Property(q => q.Question).HasMaxLength(400).IsRequired();
+            // Every question that predates the column was generated, so that is the default existing rows take.
+            entity.Property(q => q.Origin).HasMaxLength(16).IsRequired()
+                .HasDefaultValue(SubscriberQuestionOrigin.Generated);
+            entity.Property(q => q.UpdatedBy).HasMaxLength(256);
+            entity.HasIndex(q => q.VisualKey);
+            entity.HasIndex(q => q.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSubscriberModelTable>(entity =>
+        {
+            entity.ToTable("SubscriberModelTable");
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.SubscriberKey).HasMaxLength(900).IsRequired();
+            entity.Property(t => t.ReportFile).HasMaxLength(260).IsRequired();
+            entity.Property(t => t.Name).HasMaxLength(250).IsRequired();
+            entity.Property(t => t.SourceDatabase).HasMaxLength(128);
+            entity.Property(t => t.SourceSchema).HasMaxLength(128);
+            entity.Property(t => t.SourceName).HasMaxLength(128);
+            entity.Property(t => t.ObjectKey).HasMaxLength(900);
+            entity.HasIndex(t => t.ObjectKey);
+            entity.HasIndex(t => t.SubscriberKey);
+            entity.HasIndex(t => t.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSubscriberModelField>(entity =>
+        {
+            entity.ToTable("SubscriberModelField");
+            entity.HasKey(f => f.Id);
+            entity.Property(f => f.SubscriberKey).HasMaxLength(900).IsRequired();
+            entity.Property(f => f.ReportFile).HasMaxLength(260).IsRequired();
+            entity.Property(f => f.TableName).HasMaxLength(250).IsRequired();
+            entity.Property(f => f.Name).HasMaxLength(250).IsRequired();
+            entity.Property(f => f.Kind).HasMaxLength(40).IsRequired();
+            entity.Property(f => f.DataType).HasMaxLength(100);
+            entity.HasIndex(f => f.SubscriberKey);
+            entity.HasIndex(f => f.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSubscriberModelRelationship>(entity =>
+        {
+            entity.ToTable("SubscriberModelRelationship");
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.SubscriberKey).HasMaxLength(900).IsRequired();
+            entity.Property(r => r.ReportFile).HasMaxLength(260).IsRequired();
+            entity.Property(r => r.FromTable).HasMaxLength(250).IsRequired();
+            entity.Property(r => r.FromColumn).HasMaxLength(250);
+            entity.Property(r => r.ToTable).HasMaxLength(250).IsRequired();
+            entity.Property(r => r.ToColumn).HasMaxLength(250);
+            entity.Property(r => r.Cardinality).HasMaxLength(10);
+            entity.HasIndex(r => r.SubscriberKey);
+            entity.HasIndex(r => r.RepoId);
+        });
+
+        modelBuilder.Entity<CatalogSemanticExample>(entity =>
+        {
+            // Owned by the semantic layer: the saved answers are the layer's example queries. Renamed from
+            // QuestionExample by MoveQuestionExamplesIntoSemanticLayer, which keeps the rows and the full-text index.
+            entity.ToTable("SemanticExample");
+            entity.HasKey(e => e.Id);
+            // Room for a question a person actually types, which can be a good deal longer than the terse
+            // one a visual's title generates. The SQL is unbounded for the same reason SubscriberQuery.Sql is.
+            entity.Property(e => e.Question).HasMaxLength(1000).IsRequired();
+            entity.Property(e => e.Sql).IsRequired();
+            entity.Property(e => e.Provenance).HasMaxLength(40).IsRequired();
+            entity.Property(e => e.ConfirmedBy).HasMaxLength(200);
+            entity.Property(e => e.ContentHash).HasMaxLength(64).IsRequired();
+            // Unique, so confirming the same question/query pair again refreshes the one row rather than
+            // adding a duplicate that would score identically to its twin in every later search.
+            entity.HasIndex(e => e.ContentHash).IsUnique();
+            entity.HasIndex(e => e.RepoId);
+            entity.HasIndex(e => e.Provenance);
+            entity.Property(e => e.SourceRef).HasMaxLength(512);
+        });
+
+        modelBuilder.Entity<CatalogSemanticReportSpec>(entity =>
+        {
+            // Owned by the semantic layer and never part of the repo-scoped rows a sync deletes and rebuilds.
+            entity.ToTable("SemanticReportSpec");
+            entity.HasKey(s => s.Id);
+            entity.Property(s => s.SubscriberKey).HasMaxLength(900).IsRequired();
+            entity.Property(s => s.ReportFile).HasMaxLength(260).IsRequired();
+            entity.Property(s => s.Origin).HasMaxLength(16).IsRequired();
+            // A specification has no useful length bound below the reader's own cap, like SubscriberQuery.Sql.
+            entity.Property(s => s.Spec).IsRequired();
+            entity.Property(s => s.ContentHash).HasMaxLength(64).IsRequired();
+            entity.Property(s => s.IdentityHash).HasMaxLength(64).IsRequired();
+            entity.Property(s => s.UpdatedBy).HasMaxLength(256);
+            entity.HasIndex(s => s.IdentityHash).IsUnique();
+            // A sync reads its repo's specifications; the editor lists one subscriber's.
+            entity.HasIndex(s => s.RepoId);
+            entity.HasIndex(s => s.SubscriberKey);
         });
 
         modelBuilder.Entity<CatalogFlowDependency>(entity =>
@@ -427,6 +601,76 @@ public sealed class CatalogDbContext : DbContext
             // object) and the idempotency backstop for the sync's delete-by-key + re-insert. The composite also
             // serves the "an object's columns, in order" drill-down (ObjectKey is the leftmost prefix).
             entity.HasIndex(c => new { c.ObjectKey, c.Ordinal }).IsUnique();
+        });
+
+        modelBuilder.Entity<CatalogColumnPolicy>(entity =>
+        {
+            entity.ToTable("ColumnPolicy");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.ObjectKey).HasMaxLength(900).IsRequired();
+            entity.Property(c => c.ColumnName).HasMaxLength(512).IsRequired();
+            entity.Property(c => c.Reason).HasMaxLength(512);
+            entity.Property(c => c.Description).HasMaxLength(2000);
+            entity.Property(c => c.Synonyms).HasMaxLength(1000);
+            entity.Property(c => c.UpdatedBy).HasMaxLength(256);
+            // One policy row per (object, column); the enforcement lookups filter by ObjectKey, so it is the
+            // leftmost prefix.
+            entity.HasIndex(c => new { c.ObjectKey, c.ColumnName }).IsUnique();
+        });
+
+        modelBuilder.Entity<CatalogSemanticObject>(entity =>
+        {
+            entity.ToTable("SemanticObject");
+            entity.HasKey(o => o.Id);
+            entity.Property(o => o.ObjectKey).HasMaxLength(900).IsRequired();
+            entity.Property(o => o.BusinessName).HasMaxLength(200);
+            entity.Property(o => o.Description).HasMaxLength(4000);
+            entity.Property(o => o.Synonyms).HasMaxLength(1000);
+            entity.Property(o => o.KeyColumns).HasMaxLength(1024);
+            entity.Property(o => o.UpdatedBy).HasMaxLength(256);
+            // At most one annotation per object.
+            entity.HasIndex(o => o.ObjectKey).IsUnique();
+        });
+
+        modelBuilder.Entity<CatalogSemanticRelationship>(entity =>
+        {
+            entity.ToTable("SemanticRelationship");
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.FromObjectKey).HasMaxLength(900).IsRequired();
+            entity.Property(r => r.FromColumns).HasMaxLength(1024).IsRequired();
+            entity.Property(r => r.ToObjectKey).HasMaxLength(900).IsRequired();
+            entity.Property(r => r.ToColumns).HasMaxLength(1024).IsRequired();
+            entity.Property(r => r.JoinType).HasMaxLength(16).IsRequired();
+            entity.Property(r => r.Description).HasMaxLength(1000);
+            entity.Property(r => r.IdentityHash).HasMaxLength(64).IsRequired();
+            entity.Property(r => r.UpdatedBy).HasMaxLength(256);
+            entity.HasIndex(r => r.IdentityHash).IsUnique();
+            // An object's declared joins are read in either direction.
+            entity.HasIndex(r => r.FromObjectKey);
+            entity.HasIndex(r => r.ToObjectKey);
+        });
+
+        modelBuilder.Entity<CatalogSemanticMeasure>(entity =>
+        {
+            entity.ToTable("SemanticMeasure");
+            entity.HasKey(m => m.Id);
+            entity.Property(m => m.Name).HasMaxLength(128).IsRequired();
+            entity.Property(m => m.ObjectKey).HasMaxLength(900).IsRequired();
+            entity.Property(m => m.Expression).HasMaxLength(4000).IsRequired();
+            entity.Property(m => m.Description).HasMaxLength(1000);
+            entity.Property(m => m.UpdatedBy).HasMaxLength(256);
+            entity.HasIndex(m => m.Name).IsUnique();
+            entity.HasIndex(m => m.ObjectKey);
+        });
+
+        modelBuilder.Entity<CatalogSemanticLayerSettings>(entity =>
+        {
+            entity.ToTable("SemanticLayerSettings");
+            entity.HasKey(s => s.Id);
+            // The singleton's id is fixed by the application, never generated.
+            entity.Property(s => s.Id).ValueGeneratedNever();
+            entity.Property(s => s.UpdatedBy).HasMaxLength(256);
+            entity.Property(s => s.QuestionGenerationUpdatedBy).HasMaxLength(256);
         });
 
         modelBuilder.Entity<CatalogPipelineColumn>(entity =>

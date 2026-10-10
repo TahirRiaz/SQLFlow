@@ -105,14 +105,14 @@ pub struct SemanticToken {
 }
 
 const KNOWN_FLOW_TYPES: &[&str] =
-    &["ing", "exp", "sp", "inv", "hc", "scm", "batch", "api", "cpy", "sftp", "cal", "trl"];
+    &["ing", "exp", "sp", "inv", "hc", "scm", "sch", "batch", "api", "cpy", "sftp", "cal", "trl"];
 
 // --- Rendering -------------------------------------------------------------
 
 /// Render a census entry as hover/completion markdown.
 fn render_entry(entry: &KeyEntry) -> String {
     let mut md = String::new();
-    md.push_str(&format!("**`{}`** — `{}`\n\n", entry.path, entry.ty));
+    md.push_str(&format!("**`{}`**: `{}`\n\n", entry.path, entry.ty));
     let mut facts = Vec::new();
     if entry.required {
         facts.push("required".to_string());
@@ -367,7 +367,7 @@ pub fn diagnostics(doc: &FlowDocument) -> Vec<Diagnostic> {
                     range: loc.value_range,
                     severity: Severity::Error,
                     message: format!(
-                        "unknown flowType '{ft}'. Use one of: ing, exp, sp, inv, hc, scm, batch, api, cpy, sftp, cal, trl, or omit flowType for a file flow."
+                        "unknown flowType '{ft}'. Use one of: ing, exp, sp, inv, hc, scm, sch, batch, api, cpy, sftp, cal, trl, or omit flowType for a file flow."
                     ),
                     code: Some("flow-unknown-flowtype".to_string()),
                 });

@@ -190,6 +190,17 @@ public sealed partial class RepoSyncService : BackgroundService
                 }
             }
 
+            // The pre-sync snapshot of this repo's report visuals' content hashes, taken before SyncAsync deletes and
+            // reinserts every subscriber report row: it is how the post-sync question step below tells an unchanged
+            // visual from a new, changed, or moved one, since the sync itself preserves no row identity across passes.
+            var repoId = SqlFlow.Core.Identity.FlowIdentity.FromName(source.Name);
+            var questionSnapshot = await SubscriberQuestionEnrichment.SnapshotAsync(catalog, repoId, ct).ConfigureAwait(false);
+            // Decided once per sync (an admin may flip the switch meanwhile; the next sync follows it).
+            var generator = await scope.ServiceProvider.GetRequiredService<QuestionGenerationSwitch>()
+                .IsEnabledAsync(catalog, ct).ConfigureAwait(false)
+                ? scope.ServiceProvider.GetRequiredService<SqlFlow.Assistant.QuestionGenerator>()
+                : null;
+
             var result = await new CatalogSync()
                 .SyncAsync(catalog, workingDir, source.Name, source.RemoteUrl, _clock.GetUtcNow().UtcDateTime,
                     includeDerived: _connectLineage, secrets: resolver,
@@ -198,6 +209,16 @@ public sealed partial class RepoSyncService : BackgroundService
                 .ConfigureAwait(false);
 
             await EmitResultAsync(trace, result, ct).ConfigureAwait(false);
+
+            // PowerAI report questions: control-plane-only, runs after the sync's own transaction has committed, so a
+            // flaky LLM call never blocks or rolls back the structural sync above.
+            var questionWarnings = await SubscriberQuestionEnrichment
+                .ApplyAfterSyncAsync(catalog, repoId, questionSnapshot, generator, ct)
+                .ConfigureAwait(false);
+            foreach (var warning in questionWarnings)
+            {
+                await trace.InfoAsync("questions", warning, ct).ConfigureAwait(false);
+            }
             await RepoSourceStore.RecordSuccessAsync(catalog, source.Id, sha, _clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
             await trace.CompleteAsync(ActivityStatuses.Succeeded, $"Sync complete at {sha}.", ct).ConfigureAwait(false);
             LogSynced(source.Name, sha);

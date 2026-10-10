@@ -40,7 +40,7 @@ public static class FlowProposalPreflight
         new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
         new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
         new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader());
+        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
 
     private static readonly YamlScheduleLibraryLoader ScheduleLibraries = new();
 
@@ -84,7 +84,10 @@ public static class FlowProposalPreflight
 
             if (FlowSetCollector.IsSubscriberLibraryFile(file.Path))
             {
-                foreach (var warning in SubscriberLibraries.Parse(file.Content, file.Path).Warnings)
+                // The unlinked-subscriber notes are included: a proposal cannot see reports uploaded to the
+                // semantic layer, so it reports what the file alone declares.
+                var library = SubscriberLibraries.Parse(file.Content, file.Path);
+                foreach (var warning in library.Warnings.Concat(library.UnlinkedWarnings.Values))
                 {
                     warnings.Add(new ProposalFinding(file.Path, warning));
                 }

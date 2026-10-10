@@ -14,6 +14,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The Power BI extractor is a standalone C binary built outside SqlFlow.sln, so nothing in the
+  # .NET build would catch it breaking. It is built and tested here, including under the
+  # sanitizers, because it parses untrusted report files: a leak or an out-of-bounds read must
+  # fail the build rather than reach a developer's machine.
+  pbix-extract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libzip-dev libexpat1-dev libsqlite3-dev libjansson-dev
+
+      - name: Build
+        run: make -C tools/pbix-extract
+
+      - name: Test
+        run: make -C tools/pbix-extract test
+
+      - name: Test under AddressSanitizer and UndefinedBehaviorSanitizer
+        run: make -C tools/pbix-extract test-asan
+
   build-test:
     runs-on: ubuntu-latest
     steps:
@@ -24,6 +48,17 @@ jobs:
         with:
           dotnet-version: '9.0.x'
 
+      # The Power BI collector tests shell out to this binary and skip without it, so it is built
+      # here too: skipping would quietly drop that coverage rather than failing.
+      - name: Install pbix-extract build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential libzip-dev libexpat1-dev libsqlite3-dev libjansson-dev
+
+      - name: Build pbix-extract
+        run: make -C tools/pbix-extract
+
       - name: Restore
         run: dotnet restore
 
@@ -31,4 +66,6 @@ jobs:
         run: dotnet build --no-restore -c Release
 
       - name: Test
+        env:
+          SQLFLOW_PBIX_EXTRACT: ${{ github.workspace }}/tools/pbix-extract/build/pbix-extract
         run: dotnet test --no-build -c Release --verbosity normal

@@ -1,4 +1,4 @@
-# Landing flow: customers.csv -> raw string pre table + typed transformation view (demo.vCustomers_Pre).
+# Landing flow: customers.csv -> raw string pre table + typed transformation view (demo.v_Customers_Pre).
 name: demo-land-customers
 source:
   type: csv

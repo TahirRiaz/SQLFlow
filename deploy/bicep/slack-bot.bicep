@@ -11,7 +11,7 @@
 //   Anthropic     the Anthropic Claude API (MCP connector), authenticated with an Anthropic API key
 //                 from Key Vault. No Azure AI dependency.
 //
-// Secrets (the two Slack tokens, the read-scoped SQLFlow access token, and for the OpenAI/Anthropic
+// Secrets (the two Slack tokens, the bot's SQLFlow access token, and for the OpenAI/Anthropic
 // modes the provider API key) come from an existing Key Vault, read by the app's user-assigned
 // managed identity.
 //
@@ -44,7 +44,7 @@ param slackAppTokenSecretName string = 'sqlflow-slack-app-token'
 @description('Key Vault secret name for the Slack bot user OAuth token (xoxb-...).')
 param slackBotTokenSecretName string = 'sqlflow-slack-bot-token'
 
-@description('Key Vault secret name for the read-scoped SQLFlow personal access token the assistant presents to the MCP server.')
+@description('Key Vault secret name for the SQLFlow personal access token the assistant presents to the MCP server.')
 param sqlflowAccessTokenSecretName string = 'sqlflow-slack-bot-access-token'
 
 @description('Key Vault secret name for the provider API key. Read only when assistantProvider is OpenAI or Anthropic.')

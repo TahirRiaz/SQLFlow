@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "925202848424852857"
+      "templateHash": "3956614099840849187"
     }
   },
   "parameters": {
@@ -188,6 +188,20 @@
         "description": "The deployed SQLFlow MCP server endpoint (https://<mcp host>/mcp), the assistant's tool source. Required when assistantEnabled."
       }
     },
+    "reportExtractionEndpoint": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Base address of the isolated Power BI extractor (the endpoint output of pbix-extractor.bicep). Empty leaves .pbix uploads off; specification uploads work either way."
+      }
+    },
+    "reportExtractionKeySecretName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Name of the vault secret holding the key shared with the extractor. Required with reportExtractionEndpoint."
+      }
+    },
     "minReplicas": {
       "type": "int",
       "defaultValue": 1,
@@ -249,6 +263,9 @@
     ],
     "bootstrapSecrets": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'bootstrap-admin-password', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('bootstrapAdminPasswordSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
     "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+    "reportExtractionEnabled": "[and(not(empty(parameters('reportExtractionEndpoint'))), not(empty(parameters('reportExtractionKeySecretName'))))]",
+    "reportExtractionSecrets": "[if(not(variables('reportExtractionEnabled')), createArray(), createArray(createObject('name', 'pbix-extractor-key', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('reportExtractionKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+    "reportExtractionEnv": "[if(not(variables('reportExtractionEnabled')), createArray(), createArray(createObject('name', 'ControlPlane__PowerAI__ReportExtraction__Enabled', 'value', 'true'), createObject('name', 'ControlPlane__PowerAI__ReportExtraction__Endpoint', 'value', parameters('reportExtractionEndpoint')), createObject('name', 'ControlPlane__PowerAI__ReportExtraction__ApiKey', 'secretRef', 'pbix-extractor-key'), createObject('name', 'ControlPlane__PowerAI__ReportExtraction__TimeoutSeconds', 'value', '230')))]",
     "bootstrapEnv": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'ControlPlane__Bootstrap__AdminUsername', 'value', parameters('bootstrapAdminUsername')), createObject('name', 'ControlPlane__Bootstrap__AdminPasswordReference', 'secretRef', 'bootstrap-admin-password')))]",
     "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
     "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
@@ -313,7 +330,7 @@
             "transport": "auto"
           },
           "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
-          "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'))]"
+          "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'), variables('reportExtractionSecrets'))]"
         },
         "template": {
           "containers": [
@@ -324,7 +341,7 @@
                 "cpu": "[json('0.5')]",
                 "memory": "1.0Gi"
               },
-              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'))]",
+              "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'), variables('reportExtractionEnv'))]",
               "probes": [
                 {
                   "type": "Liveness",

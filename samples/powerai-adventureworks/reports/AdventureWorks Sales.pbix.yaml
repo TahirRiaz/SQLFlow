@@ -1,0 +1,680 @@
+# A Power BI report specification in the canonical form SQLFlow stores. Generated from the output of
+# tools/pbix-extract; regenerate it rather than editing it by hand.
+subscribers:
+  AdventureWorks_Sales:
+    type: PowerBI
+    nodes:
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      kind: table
+      sourceServer: <redacted>
+      sourceDatabase: AdventureWorks
+      sourceSchema: dbo
+      sourceName: DimCustomer
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimCustomer = Source{[Schema="dbo",Item="DimCustomer"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_DimCustomer,{"CustomerKey", "GeographyKey", "CustomerAlternateKey", "FirstName", "LastName", "FactInternetSales", "FactSurveyResponse"}),
+            #"Renamed Columns" = Table.RenameColumns(#"Removed Other Columns",{{"CustomerAlternateKey", "Customer ID"}}),
+            #"Added Custom" = Table.AddColumn(#"Renamed Columns", "Customer", each [FirstName] & " " & [LastName]),
+            #"Removed Columns" = Table.RemoveColumns(#"Added Custom",{"FirstName", "LastName"}),
+            #"Merged Queries" = Table.NestedJoin(#"Removed Columns", {"GeographyKey"}, DimGeography, {"GeographyKey"}, "DimGeography", JoinKind.LeftOuter),
+            #"Expanded DimGeography" = Table.ExpandTableColumn(#"Merged Queries", "DimGeography", {"City", "State-Province", "Country-Region", "Postal Code"}, {"City", "State-Province", "Country-Region", "Postal Code"}),
+            #"Removed Columns1" = Table.RemoveColumns(#"Expanded DimGeography",{"GeographyKey"})
+        in
+            #"Removed Columns1"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.City
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Country-Region
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Customer
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Customer ID
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.CustomerKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Postal Code
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.State-Province
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      kind: table
+      sourceServer: <redacted>
+      sourceDatabase: AdventureWorks
+      sourceSchema: dbo
+      sourceName: DimDate
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimDate = Source{[Schema="dbo",Item="DimDate"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_DimDate,{"DateKey", "FullDateAlternateKey", "EnglishMonthName", "MonthNumberOfYear", "CalendarYear", "FiscalQuarter", "FiscalYear", "FactCallCenter", "FactCurrencyRate", "FactFinance", "FactInternetSales(DateKey)", "FactInternetSales(DateKey) 2", "FactInternetSales(DateKey) 3", "FactProductInventory", "FactResellerSales(DateKey)", "FactResellerSales(DateKey) 2", "FactResellerSales(DateKey) 3", "FactSalesQuota", "FactSurveyResponse"}),
+            #"Duplicated Column" = Table.DuplicateColumn(#"Removed Other Columns", "FullDateAlternateKey", "FullDateAlternateKey - Copy"),
+            #"Renamed Columns" = Table.RenameColumns(#"Duplicated Column",{{"FullDateAlternateKey - Copy", "Full Date"}, {"FullDateAlternateKey", "Date"}, {"EnglishMonthName", "Month"}, {"FiscalQuarter", "Fiscal Quarter"}, {"FiscalYear", "Fiscal Year"}}),
+            #"Added Custom" = Table.AddColumn(#"Renamed Columns", "MonthKey", each [CalendarYear] * 100 + [MonthNumberOfYear]),
+            #"Removed Columns" = Table.RemoveColumns(#"Added Custom",{"CalendarYear", "MonthNumberOfYear"})
+        in
+            #"Removed Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Date
+      kind: column
+      dataType: dateTime
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.DateKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Fiscal Quarter
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Fiscal Year
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Full Date
+      kind: column
+      dataType: dateTime
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Month
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.MonthKey
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      kind: table
+      sourceServer: <redacted>
+      sourceDatabase: AdventureWorks
+      sourceSchema: dbo
+      sourceName: DimProduct
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimProduct = Source{[Schema="dbo",Item="DimProduct"]}[Data],
+            #"Renamed Columns" = Table.RenameColumns(dbo_DimProduct,{{"ProductAlternateKey", "SKU"}, {"EnglishProductName", "Product"}}),
+            #"Removed Other Columns" = Table.SelectColumns(#"Renamed Columns",{"ProductKey", "SKU", "ProductSubcategoryKey", "Product", "StandardCost", "Color", "ListPrice", "ModelName", "FactInternetSales", "FactProductInventory", "FactResellerSales"}),
+            #"Renamed Columns1" = Table.RenameColumns(#"Removed Other Columns",{{"StandardCost", "Standard Cost"}, {"ListPrice", "List Price"}, {"ModelName", "Model"}}),
+            #"Merged Queries" = Table.NestedJoin(#"Renamed Columns1", {"ProductSubcategoryKey"}, DimProductSubcategory, {"ProductSubcategoryKey"}, "DimProductSubcategory", JoinKind.LeftOuter),
+            #"Expanded DimProductSubcategory" = Table.ExpandTableColumn(#"Merged Queries", "DimProductSubcategory", {"Subcategory", "Category"}, {"DimProductSubcategory.Subcategory", "DimProductSubcategory.Category"}),
+            #"Removed Columns" = Table.RemoveColumns(#"Expanded DimProductSubcategory",{"ProductSubcategoryKey"}),
+            #"Renamed Columns2" = Table.RenameColumns(#"Removed Columns",{{"DimProductSubcategory.Subcategory", "Subcategory"}, {"DimProductSubcategory.Category", "Category"}})
+        in
+            #"Renamed Columns2"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Category
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Color
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.List Price
+      kind: column
+      dataType: decimal
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Model
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Product
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.ProductKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.SKU
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Standard Cost
+      kind: column
+      dataType: decimal
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Subcategory
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      kind: table
+      sourceServer: <redacted>
+      sourceDatabase: AdventureWorks
+      sourceSchema: dbo
+      sourceName: DimReseller
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimReseller = Source{[Schema="dbo",Item="DimReseller"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_DimReseller,{"ResellerKey", "GeographyKey", "ResellerAlternateKey", "BusinessType", "ResellerName", "FactResellerSales"}),
+            #"Renamed Columns" = Table.RenameColumns(#"Removed Other Columns",{{"ResellerAlternateKey", "Reseller ID"}, {"BusinessType", "Business Type"}, {"ResellerName", "Reseller Name"}}),
+            #"Merged Queries" = Table.NestedJoin(#"Renamed Columns", {"GeographyKey"}, DimGeography, {"GeographyKey"}, "DimGeography", JoinKind.LeftOuter),
+            #"Expanded DimGeography" = Table.ExpandTableColumn(#"Merged Queries", "DimGeography", {"City", "State-Province", "Country-Region", "Postal Code"}, {"City", "State-Province", "Country-Region", "Postal Code"}),
+            #"Removed Columns" = Table.RemoveColumns(#"Expanded DimGeography",{"GeographyKey"})
+        in
+            #"Removed Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Business Type
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.City
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Country-Region
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Postal Code
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Reseller ID
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Reseller Name
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.ResellerKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.State-Province
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      kind: table
+      sourceServer: <redacted>
+      sourceDatabase: AdventureWorks
+      sourceSchema: dbo
+      sourceName: FactResellerSales
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_FactResellerSales = Source{[Schema="dbo",Item="FactResellerSales"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_FactResellerSales,{"ProductKey", "OrderDateKey", "DueDateKey", "ShipDateKey", "ResellerKey", "SalesTerritoryKey", "SalesOrderNumber", "SalesOrderLineNumber", "OrderQuantity", "UnitPrice", "ExtendedAmount", "UnitPriceDiscountPct", "ProductStandardCost", "TotalProductCost", "SalesAmount"}),
+            #"Added Custom" = Table.AddColumn(#"Removed Other Columns", "SalesOrderLineKey", each [SalesOrderNumber] & "-" & Text.From([SalesOrderLineNumber])),
+            #"Renamed Columns" = Table.RenameColumns(#"Added Custom",{{"OrderQuantity", "Order Quantity"}, {"UnitPrice", "Unit Price"}, {"ExtendedAmount", "Extended Amount"}, {"UnitPriceDiscountPct", "Unit Price Discount Pct"}, {"ProductStandardCost", "Product Standard Cost"}, {"TotalProductCost", "Total Product Cost"}, {"SalesAmount", "Sales Amount"}}),
+            #"Removed Columns" = Table.RemoveColumns(#"Renamed Columns",{"SalesOrderNumber", "SalesOrderLineNumber"})
+        in
+            #"Removed Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.DueDateKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Extended Amount
+      kind: column
+      dataType: decimal
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Order Quantity
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.OrderDateKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Product Standard Cost
+      kind: column
+      dataType: decimal
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.ProductKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.ResellerKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Sales Amount
+      kind: column
+      dataType: decimal
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.SalesOrderLineKey
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.SalesTerritoryKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.ShipDateKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Total Product Cost
+      kind: column
+      dataType: decimal
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Unit Price
+      kind: column
+      dataType: decimal
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Unit Price Discount Pct
+      kind: column
+      dataType: double
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Order
+      kind: table
+      sourceServer: <redacted>
+      sourceDatabase: AdventureWorks
+      sourceSchema: dbo
+      sourceName: FactResellerSales
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_FactResellerSales = Source{[Schema="dbo",Item="FactResellerSales"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_FactResellerSales,{"SalesOrderNumber", "SalesOrderLineNumber"}),
+            #"Added Custom" = Table.AddColumn(#"Removed Other Columns", "SalesOrderLineKe", each [SalesOrderNumber] & "-" & Text.From([SalesOrderLineNumber])),
+            #"Added Custom1" = Table.AddColumn(#"Added Custom", "Channel", each "Reseller"),
+            #"Renamed Columns" = Table.RenameColumns(#"Added Custom1",{{"SalesOrderNumber", "Sales Order"}, {"SalesOrderLineNumber", "Sales Order Line"}, {"SalesOrderLineKe", "SalesOrderLineKey"}})
+        in
+            #"Renamed Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.Channel
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.Sales Order
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.Sales Order Line
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.SalesOrderLineKey
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Territory
+      kind: table
+      sourceServer: <redacted>
+      sourceDatabase: AdventureWorks
+      sourceSchema: dbo
+      sourceName: DimSalesTerritory
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimSalesTerritory = Source{[Schema="dbo",Item="DimSalesTerritory"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_DimSalesTerritory,{"SalesTerritoryKey", "SalesTerritoryRegion", "SalesTerritoryCountry", "SalesTerritoryGroup", "DimEmployee", "DimGeography", "FactInternetSales", "FactResellerSales"}),
+            #"Renamed Columns" = Table.RenameColumns(#"Removed Other Columns",{{"SalesTerritoryRegion", "Region"}, {"SalesTerritoryCountry", "Country"}, {"SalesTerritoryGroup", "Group"}})
+        in
+            #"Renamed Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.Country
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.Group
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.Region
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.SalesTerritoryKey
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Table
+      kind: table
+      powerQuery: >-
+        let
+            Source = Table.FromRows(Json.Document(Binary.Decompress(Binary.FromText("i45WckxOTi0uzi/KTC1W0lEyUYrViVZyyswG8wzBPOec/JKMzLx0oIAxRCA/tyA/LzWvBKTGSCk2FgA=", BinaryEncoding.Base64), Compression.Deflate)), let _t = ((type nullable text) meta [Serialized.Text = true]) in type table [Category = _t, Sorting = _t]),
+            #"Changed Type" = Table.TransformColumnTypes(Source,{{"Category", type text}, {"Sorting", Int64.Type}})
+        in
+            #"Changed Type"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Table.Category
+      kind: column
+      dataType: string
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Table.Sorting
+      kind: column
+      dataType: int64
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#expr:DimGeography
+      kind: expression
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimGeography = Source{[Schema="dbo",Item="DimGeography"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_DimGeography,{"GeographyKey", "City", "StateProvinceName", "EnglishCountryRegionName", "PostalCode"}),
+            #"Renamed Columns" = Table.RenameColumns(#"Removed Other Columns",{{"StateProvinceName", "State-Province"}, {"EnglishCountryRegionName", "Country-Region"}, {"PostalCode", "Postal Code"}})
+        in
+            #"Renamed Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#expr:DimProductCategory
+      kind: expression
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimProductCategory = Source{[Schema="dbo",Item="DimProductCategory"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_DimProductCategory,{"ProductCategoryKey", "EnglishProductCategoryName"})
+        in
+            #"Removed Other Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#expr:DimProductSubcategory
+      kind: expression
+      powerQuery: >-
+        let
+            Source = Sql.Database("<redacted>", "AdventureWorks"),
+            dbo_DimProductSubcategory = Source{[Schema="dbo",Item="DimProductSubcategory"]}[Data],
+            #"Removed Other Columns" = Table.SelectColumns(dbo_DimProductSubcategory,{"ProductSubcategoryKey", "EnglishProductSubcategoryName", "ProductCategoryKey"}),
+            #"Merged Queries" = Table.NestedJoin(#"Removed Other Columns", {"ProductSubcategoryKey"}, DimProductCategory, {"ProductCategoryKey"}, "DimProductCategory", JoinKind.LeftOuter),
+            #"Expanded DimProductCategory" = Table.ExpandTableColumn(#"Merged Queries", "DimProductCategory", {"ProductCategoryKey", "EnglishProductCategoryName"}, {"ProductCategoryKey.1", "EnglishProductCategoryName"}),
+            #"Renamed Columns" = Table.RenameColumns(#"Expanded DimProductCategory",{{"EnglishProductCategoryName", "Category"}, {"EnglishProductSubcategoryName", "Subcategory"}}),
+            #"Removed Columns" = Table.RemoveColumns(#"Renamed Columns",{"ProductCategoryKey", "ProductCategoryKey.1"})
+        in
+            #"Removed Columns"
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#measure:Sales.Sales Amount by Due Date
+      kind: measure
+      dax: CALCULATE(SUM(Sales[Sales Amount]), USERELATIONSHIP(Sales[DueDateKey],'Date'[DateKey]))
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#report
+      kind: report
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1
+      kind: page
+      displayName: Page 1
+      name: ReportSection
+      reportFile: AdventureWorks Sales.pbix
+      ordinal: 1
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:1
+      kind: visual
+      ordinal: 1
+      visualType: pivotTable
+      title: Sales Amount by Category and Reseller Business Type
+      sql: SELECT [Product].[Category] AS [Product.Category], [Reseller].[Business Type] AS [Reseller.Business Type], SUM([Sales].[Sales Amount]) AS [Sum(Sales.Sales Amount)] FROM [Product] AS [Product], [Reseller] AS [Reseller], [Sales] AS [Sales];
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:2
+      kind: visual
+      ordinal: 2
+      visualType: map
+      title: Order Quantity by Reseller Country
+      sql: SELECT [Reseller].[Country-Region] AS [Reseller.Country-Region], SUM([Sales].[Order Quantity]) AS [Sum(Sales.Order Quantity)] FROM [Reseller] AS [Reseller], [Sales] AS [Sales];
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:3
+      kind: visual
+      ordinal: 3
+      visualType: areaChart
+      title: Sales Amount by Order Date / Due Date
+      sql: SELECT SUM([Sales].[Sales Amount]) AS [Sum(Sales.Sales Amount)] FROM [Sales] AS [Sales] ORDER BY SUM([Sales].[Sales Amount]) DESC;
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2
+      kind: page
+      displayName: Page 2
+      name: ReportSection350b6b55132e00f8ba89
+      reportFile: AdventureWorks Sales.pbix
+      ordinal: 2
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2#visual:1
+      kind: visual
+      ordinal: 1
+      visualType: pivotTable
+      title: Sales Amount by Category and Reseller Business Type
+      sql: SELECT [Product].[Category] AS [Product.Category], [Reseller].[Business Type] AS [Reseller.Business Type], SUM([Sales].[Sales Amount]) AS [Sum(Sales.Sales Amount)] FROM [Product] AS [Product], [Reseller] AS [Reseller], [Sales] AS [Sales] ORDER BY SUM([Sales].[Sales Amount]) DESC;
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3
+      kind: page
+      displayName: Page 3
+      name: ReportSectiona113e22f3ad54b8397d8
+      reportFile: AdventureWorks Sales.pbix
+      ordinal: 3
+    - id: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3#visual:1
+      kind: visual
+      ordinal: 1
+      visualType: areaChart
+      sql: SELECT [Date].[Month] AS [Date.Fiscal.Month], SUM([Sales].[Sales Amount]) AS [Sum(Sales.Sales Amount)], [Sales].[Sales Amount by Due Date] AS [Sales.Sales Amount by Due Date] FROM [Date] AS [Date], [Sales] AS [Sales] ORDER BY [Date].[Month] ASC;
+    edges:
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.City
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Country-Region
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Customer
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Customer ID
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.CustomerKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.Postal Code
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Customer
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Customer.State-Province
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Date
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.DateKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Fiscal Quarter
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Fiscal Year
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Full Date
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Month
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.MonthKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Category
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Color
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.List Price
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Model
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Product
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.ProductKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.SKU
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Standard Cost
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Subcategory
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Business Type
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.City
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Country-Region
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Postal Code
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Reseller ID
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Reseller Name
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.ResellerKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.State-Province
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.DueDateKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Extended Amount
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Order Quantity
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.OrderDateKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Product Standard Cost
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.ProductKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.ResellerKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Sales Amount
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.SalesOrderLineKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.SalesTerritoryKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.ShipDateKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Total Product Cost
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Unit Price
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Unit Price Discount Pct
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Order
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.Channel
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Order
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.Sales Order
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Order
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.Sales Order Line
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Order
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Order.SalesOrderLineKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Territory
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.Country
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Territory
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.Group
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Territory
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.Region
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Territory
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales Territory.SalesTerritoryKey
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Table
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Table.Category
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Table
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Table.Sorting
+      kind: hasColumn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#measure:Sales.Sales Amount by Due Date
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      kind: definedOn
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Table
+      kind: relationship
+      fromColumn: Category
+      toColumn: Category
+      cardinality: M:1
+      active: true
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      kind: relationship
+      fromColumn: DueDateKey
+      toColumn: DateKey
+      cardinality: M:1
+      active: false
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      kind: relationship
+      fromColumn: OrderDateKey
+      toColumn: DateKey
+      cardinality: M:1
+      active: true
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Product
+      kind: relationship
+      fromColumn: ProductKey
+      toColumn: ProductKey
+      cardinality: M:1
+      active: true
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Reseller
+      kind: relationship
+      fromColumn: ResellerKey
+      toColumn: ResellerKey
+      cardinality: M:1
+      active: true
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Territory
+      kind: relationship
+      fromColumn: SalesTerritoryKey
+      toColumn: SalesTerritoryKey
+      cardinality: M:1
+      active: true
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Date
+      kind: relationship
+      fromColumn: ShipDateKey
+      toColumn: DateKey
+      cardinality: M:1
+      active: false
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales Order
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#table:Sales
+      kind: relationship
+      fromColumn: SalesOrderLineKey
+      toColumn: SalesOrderLineKey
+      cardinality: "1:1"
+      active: true
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#report
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1
+      kind: hasPage
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:1
+      kind: hasVisual
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Category
+      kind: projects
+      role: Rows
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Business Type
+      kind: projects
+      role: Rows
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Sales Amount
+      kind: projects
+      role: Values
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:2
+      kind: hasVisual
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:2
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Country-Region
+      kind: projects
+      role: Category
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:2
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Order Quantity
+      kind: projects
+      role: Size
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:3
+      kind: hasVisual
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:1#visual:3
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Sales Amount
+      kind: projects
+      role: "Y"
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#report
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2
+      kind: hasPage
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2#visual:1
+      kind: hasVisual
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Product.Category
+      kind: projects
+      role: Rows
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Reseller.Business Type
+      kind: projects
+      role: Rows
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:2#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Sales Amount
+      kind: projects
+      role: Values
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#report
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3
+      kind: hasPage
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3#visual:1
+      kind: hasVisual
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Date.Month
+      kind: projects
+      role: Category
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#col:Sales.Sales Amount
+      kind: projects
+      role: "Y"
+    - from: AdventureWorks_Sales#AdventureWorks Sales.pbix#page:3#visual:1
+      to: AdventureWorks_Sales#AdventureWorks Sales.pbix#measure:Sales.Sales Amount by Due Date
+      kind: projects
+      role: "Y"
+    reportWarnings:
+    - model table 'Table' is sourced via Json.Document, which names no warehouse object; its lineage stays on the model entity name.

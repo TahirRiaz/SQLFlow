@@ -17,6 +17,8 @@ import { CheckIcon, CopyIcon } from "lucide-react";
 import { TooltipIconButton } from "@/components/assistant-ui/tooltip-icon-button";
 import { CodeView } from "@/components/CodeView";
 import { cn } from "@/lib/utils";
+import { useSqlRun } from "../../features/chat/SqlRunPanel";
+import { QueryResultEmbed } from "../../features/chat/QueryResultEmbed";
 
 const MarkdownTextImpl = () => {
   return (
@@ -50,24 +52,81 @@ function makeCodeViewHighlighter(language: "sql" | "yaml" | "json"): FC<SyntaxHi
     }
     const trimmed = code.replace(/\n$/, "");
     const height = Math.min(400, Math.max(60, trimmed.split("\n").length * 18 + 26));
+    // CodeView draws its own full toolbar (language label plus its copy/format buttons in one
+    // row), so nothing more is needed here; CodeHeader below skips drawing a second one on top of
+    // it for exactly this case.
     return (
-      <div className="aui-md-codeview border-border/50 mb-3 overflow-hidden rounded-b-md border border-t-0">
+      <div className="aui-md-codeview mb-3">
         {/* Chat YAML is illustrative, not necessarily a flow document; the flow LSP stays off. */}
-        <CodeView value={trimmed} language={language} height={height} lsp={false} />
+        <CodeView value={trimmed} language={language} height={height} lsp={false} label={language} />
       </div>
     );
   };
 }
 
+/**
+ * A finished SQL block additionally carries a Run affordance in the same toolbar row as its
+ * format/copy buttons (CodeView's `extraActions` slot), and the result it opens renders as a
+ * sibling below CodeView. `useSqlRun` owns that button/panel pair as one piece of state (the panel
+ * needs to know what the button did), which is why this is its own component rather than reusing
+ * `makeCodeViewHighlighter("sql")`.
+ */
+const SqlCodeViewHighlighter: FC<SyntaxHighlighterProps> = ({ components, code }) => {
+  const isStreaming = useAuiState((s) => s.message.status?.type === "running");
+  const trimmed = code.replace(/\n$/, "");
+  // The hook is called unconditionally (rules of hooks): it reads whether Run is enabled itself and
+  // hands back null pieces when it is not, same as while still streaming.
+  const { button, panel } = useSqlRun(trimmed);
+  if (isStreaming) {
+    const { Pre, Code } = components;
+    return (
+      <Pre>
+        <Code>{code}</Code>
+      </Pre>
+    );
+  }
+  const height = Math.min(400, Math.max(60, trimmed.split("\n").length * 18 + 26));
+  return (
+    <div className="aui-md-codeview mb-3 flex flex-col gap-2">
+      <CodeView value={trimmed} language="sql" height={height} lsp={false} label="sql" extraActions={button} />
+      {panel}
+    </div>
+  );
+};
+
+/**
+ * A `query-result` block carries only the compute task id of a query that already ran; once the answer has
+ * finished streaming it renders that task's stored rows as a chart or table (QueryResultEmbed). While
+ * streaming, nothing is drawn, since a half-written id is not an id.
+ */
+const QueryResultHighlighter: FC<SyntaxHighlighterProps> = ({ code }) => {
+  const isStreaming = useAuiState((s) => s.message.status?.type === "running");
+  return isStreaming ? null : <QueryResultEmbed code={code} />;
+};
+
 const componentsByLanguage = {
-  sql: { SyntaxHighlighter: makeCodeViewHighlighter("sql") },
+  sql: { SyntaxHighlighter: SqlCodeViewHighlighter },
+  "query-result": { SyntaxHighlighter: QueryResultHighlighter },
   yaml: { SyntaxHighlighter: makeCodeViewHighlighter("yaml") },
   yml: { SyntaxHighlighter: makeCodeViewHighlighter("yaml") },
   json: { SyntaxHighlighter: makeCodeViewHighlighter("json") },
 };
 
+/** Languages whose finished block graduates into {@link CodeView}, which draws its own toolbar
+ * (language label plus copy/format buttons in one row). This header must render nothing at all
+ * for those once finished, or the block would carry two header rows with two copy buttons. */
+const CODE_VIEW_LANGUAGES = new Set(Object.keys(componentsByLanguage));
+
 const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   const { isCopied, copyToClipboard } = useCopyToClipboard();
+  const isStreaming = useAuiState((s) => s.message.status?.type === "running");
+  // While still streaming, a graduating language renders as the plain <pre>/<code> block below
+  // (see makeCodeViewHighlighter), which has no toolbar of its own, so this header is the only
+  // label/copy affordance and must stay; once finished, CodeView's own toolbar takes over.
+  // A query-result block is a chart, never code: it has no header to label or copy, streaming or not.
+  if (language === "query-result" || (language !== undefined && CODE_VIEW_LANGUAGES.has(language) && !isStreaming)) {
+    return null;
+  }
   const onCopy = () => {
     if (!code || isCopied) return;
     copyToClipboard(code);

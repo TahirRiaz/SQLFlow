@@ -11,6 +11,9 @@ TestResults/
 **/.sqlflow/
 # The Rust workspace's build output (gigabytes once built locally); images rebuild from source.
 tools/target/
+# The Power BI extractor's local build trees: built for the host, and rebuilt from source in its own image.
+tools/pbix-extract/build/
+tools/pbix-extract/build-asan/
 **/node_modules/
 docs/
 # The MCP image embeds the indexed corpora (manifest, reference pages, key census, and the internals

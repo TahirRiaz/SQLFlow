@@ -61,11 +61,11 @@
 
 .EXAMPLE
     .\deploy-prod.ps1 all
-    Same change detection, but across every app: control-plane, worker, gui, mcp, slack-bot.
+    Same change detection, but across every app: control-plane, worker, gui, mcp, slack-bot, pbix-extractor.
 
 .EXAMPLE
     .\deploy-prod.ps1 control-plane worker
-    Force exactly those apps, changed or not. Known: control-plane worker gui mcp slack-bot
+    Force exactly those apps, changed or not. Known: control-plane worker gui mcp slack-bot pbix-extractor
 
 .EXAMPLE
     .\deploy-prod.ps1 -WhatIf
@@ -127,13 +127,17 @@ $Config = [ordered]@{
     'gui'           = @{ Dockerfile = 'Dockerfile';          Sub = 'gui';  Paths = @('gui') }
     'mcp'           = @{ Dockerfile = 'Dockerfile.mcp';      Sub = 'repo'; Paths = @('Dockerfile.mcp', 'tools', 'docs/reference') }
     'slack-bot'     = @{ Dockerfile = 'Dockerfile.slackbot'; Sub = 'repo'; Paths = @('Dockerfile.slackbot') + $DotnetBuildInputs }
+    # The isolated Power BI extractor: the .NET service plus the C tool it runs, both built inside its image.
+    # Optional: an estate that has not created its container app (deploy/bicep/pbix-extractor.bicep) skips it under
+    # 'all' instead of failing; naming it explicitly still requires the app to exist.
+    'pbix-extractor' = @{ Dockerfile = 'Dockerfile.pbix-extractor'; Sub = 'repo'; Paths = @('Dockerfile.pbix-extractor', 'tools/pbix-extract') + $DotnetBuildInputs; Optional = $true }
 }
 
 # Explicitly named apps deploy unconditionally; the bare default and 'all' are candidate sets
 # that change detection narrows to what is actually required.
 $ExplicitSelection = $true
 if (-not $Apps -or $Apps.Count -eq 0) {
-    # mcp and slack-bot are not in the bare default because most deploys are backend/GUI
+    # mcp, slack-bot and pbix-extractor are not in the bare default because most deploys are backend/GUI
     # iterations that do not touch them; 'all' or naming them opts them in.
     $Apps = @('control-plane', 'worker', 'gui')
     $ExplicitSelection = $false
@@ -304,11 +308,21 @@ Write-Host ''
 
 Write-Host '=== Resolved targets ===' -ForegroundColor Cyan
 $targets = [ordered]@{}
+$provisioned = @()
 foreach ($a in $Apps) {
+    if (-not $ExplicitSelection -and $Config[$a].Contains('Optional')) {
+        $exists = @($NamePrefix.Keys | Where-Object { ($Target -eq 'auto' -or $_ -eq $Target) -and (Get-AppRecord -ResourceName "$($NamePrefix[$_])$a") })
+        if ($exists.Count -eq 0) {
+            Write-Host ("   {0,-14} -> not provisioned in $Rg, skipped" -f $a) -ForegroundColor DarkGray
+            continue
+        }
+    }
+    $provisioned += $a
     $rec = Resolve-Target -App $a
     $targets[$a] = $rec
     Write-Host ("   {0,-14} -> {1,-28} env {2,-22} now: {3}" -f $a, $rec.Name, $rec.Environment, $rec.Image)
 }
+$Apps = $provisioned
 
 # Explicit names are an order; candidate sets (bare default, 'all') get narrowed to the
 # apps whose build inputs actually changed since the tag each one is serving.

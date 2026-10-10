@@ -84,7 +84,8 @@ public static class CatalogEndpoints
     /// root path the control-plane host cannot see (a local-path sync only works where the flows live on disk).
     /// </summary>
     private static async Task<Results<Ok<RepoSyncResultDto>, ProblemHttpResult>> SyncRepoAsync(
-        Guid id, CatalogDbContext db, ISecretResolver secrets, TimeProvider clock, CancellationToken ct)
+        Guid id, CatalogDbContext db, ISecretResolver secrets, TimeProvider clock,
+        Background.QuestionGenerationSwitch questionGeneration, IServiceProvider services, CancellationToken ct)
     {
         var repo = await db.Repos.AsNoTracking().Where(r => r.Id == id)
             .Select(r => new { r.Name, r.RemoteUrl, r.RootPath })
@@ -124,9 +125,21 @@ public static class CatalogEndpoints
             // catalog + sys.sql_modules reads) enabled so the object-level lineage populates. A derived-tier failure
             // (an unreachable database, a timeout) is downgraded to a warning inside SyncAsync and never faults the
             // request; the flow registry and flow-level lineage still land.
+            var repoId = SqlFlow.Core.Identity.FlowIdentity.FromName(repo.Name);
+            var questionSnapshot = await Background.SubscriberQuestionEnrichment.SnapshotAsync(db, repoId, ct).ConfigureAwait(false);
+            var generator = await questionGeneration.IsEnabledAsync(db, ct).ConfigureAwait(false)
+                ? services.GetRequiredService<SqlFlow.Assistant.QuestionGenerator>()
+                : null;
+
             var result = await new CatalogSync().SyncAsync(
                 db, repo.RootPath, repo.Name, repo.RemoteUrl, clock.GetUtcNow().UtcDateTime,
                 includeDerived: true, secrets: secrets, ct: ct).ConfigureAwait(false);
+
+            // PowerAI report questions: control-plane-only, runs after the sync's own transaction has committed, so a
+            // flaky LLM call never blocks or rolls back the structural sync above.
+            await Background.SubscriberQuestionEnrichment
+                .ApplyAfterSyncAsync(db, repoId, questionSnapshot, generator, ct)
+                .ConfigureAwait(false);
 
             return TypedResults.Ok(new RepoSyncResultDto(
                 result.PipelinesAdded, result.PipelinesUpdated, result.PipelinesUnchanged, result.PipelinesDeactivated, result.PipelinesDeleted,

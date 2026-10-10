@@ -25,6 +25,7 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
 import { parseUtc } from "../../lib/time";
+import { AnswerConfirmation } from "./AnswerConfirmation";
 import {
   canRecordAudio,
   createChatModelAdapter,
@@ -200,9 +201,16 @@ function ChatThread({
 
   const runtime = useLocalRuntime(adapter, { initialMessages, adapters });
 
+  // The learning loop's confirmation moment hangs under every answer. It is a stable identity per
+  // capability flag, so the thread is not handed a new component type on each render.
+  const components = useMemo(() => ({
+    AnswerFooter: () => <AnswerConfirmation enabled={capabilities.questionConfirmation} />,
+    dataOpsRunQuery: capabilities.dataOpsRunQuery,
+  }), [capabilities.questionConfirmation, capabilities.dataOpsRunQuery]);
+
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      <Thread />
+      <Thread components={components} />
     </AssistantRuntimeProvider>
   );
 }

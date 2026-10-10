@@ -1,0 +1,19 @@
+# Registers the AdventureWorks database's tables and views in the SQLFlow catalog: columns, primary keys, and
+# scripts, the same record a managed object gets. Nothing is loaded from it, and the flow joins no execution wave.
+# Its connection is the datasource PowerAI runs AdventureWorks questions against, and the AdventureWorks_Sales
+# report (subscribers/) links onto the tables it registers by database, schema, and name.
+flowType: sch
+name: adventureworks_00_sch
+batch: sch
+description: AdventureWorksDW2022 tables and views, registered for the AdventureWorks Sales report and PowerAI
+connections:
+  aw: ${env:SQLFLOW_ADVENTUREWORKS_DB}
+source:
+  server: aw
+  database: AdventureWorks
+objects:
+  includeSchemas: [dbo]
+schedule:
+  name: adventureworks_daily
+  cron: "0 4 * * *"
+  timezone: Europe/Oslo

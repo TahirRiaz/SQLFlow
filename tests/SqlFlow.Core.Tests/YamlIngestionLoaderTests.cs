@@ -13,7 +13,7 @@ public sealed class YamlIngestionLoaderTests
     private static readonly YamlIngestionFlowLoader Loader = new();
 
     private static YamlDocumentLoader Documents()
-        => new(new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(), new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(), new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(), new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(), new YamlTranslateFlowLoader());
+        => new(new YamlFlowLoader(), new YamlIngestionFlowLoader(), new YamlExportFlowLoader(), new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(), new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(), new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(), new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
 
     private const string Minimal = """
         flowType: ing

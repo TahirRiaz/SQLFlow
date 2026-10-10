@@ -1,4 +1,4 @@
-# Typed hop: demo.vCustomers_Pre -> demo.Customers (keyed upsert on customer_id).
+# Typed hop: demo.v_Customers_Pre -> demo.Customers (keyed upsert on customer_id).
 flowType: ing
 name: demo-ing-customers
 connections:
@@ -8,7 +8,7 @@ connections:
 # so SQL Server objects must carry the database explicitly.
 source:
   server: src
-  object: SqlFlowCatalogTests.demo.vCustomers_Pre
+  object: SqlFlowCatalogTests.demo.v_Customers_Pre
 target:
   server: dwh
   object: SqlFlowCatalogTests.demo.Customers

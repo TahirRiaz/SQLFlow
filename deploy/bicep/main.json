@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "16924123486202582130"
+      "templateHash": "10053599190670631458"
     }
   },
   "parameters": {
@@ -261,7 +261,7 @@
       "type": "securestring",
       "defaultValue": "",
       "metadata": {
-        "description": "A READ-scoped SQLFlow personal access token (sqlf_...) the assistant presents to the MCP server. Mint it in the GUI or CLI after the estate is up, then redeploy with this set; empty skips the Slack assistant."
+        "description": "A SQLFlow personal access token (sqlf_...) the assistant presents to the MCP server, minted for a dedicated account: every query the bot runs and every answer it saves is attributed to that account. Mint it in the GUI or CLI after the estate is up, then redeploy with this set; empty skips the Slack assistant."
       }
     },
     "slackBotProvider": {
@@ -295,6 +295,27 @@
       "defaultValue": "claude-opus-4-8",
       "metadata": {
         "description": "The Claude model id. Used when slackBotProvider is Anthropic."
+      }
+    },
+    "pbixExtractorImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Container image for the isolated Power BI extractor, e.g. <registry>/sqlflow-pbix-extractor:latest (built from Dockerfile.pbix-extractor). Empty skips it, and .pbix uploads stay off (specification uploads still work)."
+      }
+    },
+    "pbixExtractorKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The key the control plane and the extractor share, at least 32 bytes (e.g. openssl rand -hex 32). Required with pbixExtractorImage."
+      }
+    },
+    "pbixExtractorName": {
+      "type": "string",
+      "defaultValue": "sqlflow-pbix-extractor",
+      "metadata": {
+        "description": "Name of the Container App running the Power BI extractor."
       }
     },
     "mcpName": {
@@ -448,6 +469,8 @@
     "slackBotSqlflowTokenSecretName": "sqlflow-slack-bot-access-token",
     "slackBotModelApiKeySecretName": "sqlflow-slack-bot-model-api-key",
     "mcpEnabled": "[not(empty(parameters('mcpImage')))]",
+    "pbixExtractorEnabled": "[and(not(empty(parameters('pbixExtractorImage'))), not(empty(parameters('pbixExtractorKey'))))]",
+    "pbixExtractorKeySecretName": "sqlflow-pbix-extractor-key",
     "chatAssistantEnabled": "[and(and(variables('mcpEnabled'), not(empty(parameters('aiFoundryName')))), not(empty(parameters('aiFoundryModelName'))))]",
     "slackBotUsesApiKey": "[not(equals(parameters('slackBotProvider'), 'AzureFoundry'))]",
     "slackBotProviderReady": "[if(variables('slackBotUsesApiKey'), not(empty(parameters('slackBotModelApiKey'))), and(not(empty(parameters('aiFoundryName'))), not(empty(parameters('aiFoundryModelName')))))]",
@@ -647,6 +670,18 @@
       "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('gitTokenSecretName'))]",
       "properties": {
         "value": "[parameters('gitToken')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[variables('pbixExtractorEnabled')]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('pbixExtractorKeySecretName'))]",
+      "properties": {
+        "value": "[parameters('pbixExtractorKey')]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
@@ -962,6 +997,8 @@
           "assistantFoundryModelDeploymentName": "[if(variables('chatAssistantEnabled'), createObject('value', parameters('aiFoundryModelName')), createObject('value', ''))]",
           "assistantFoundryTranscriptionDeploymentName": "[if(variables('chatAssistantEnabled'), createObject('value', parameters('aiFoundryTranscriptionModelName')), createObject('value', ''))]",
           "assistantMcpServerUrl": "[if(variables('chatAssistantEnabled'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-mcp-app'), '2025-04-01').outputs.mcpUrl.value), createObject('value', ''))]",
+          "reportExtractionEndpoint": "[if(variables('pbixExtractorEnabled'), createObject('value', reference(resourceId('Microsoft.Resources/deployments', 'sqlflow-pbix-extractor-app'), '2025-04-01').outputs.endpoint.value), createObject('value', ''))]",
+          "reportExtractionKeySecretName": "[if(variables('pbixExtractorEnabled'), createObject('value', variables('pbixExtractorKeySecretName')), createObject('value', ''))]",
           "minReplicas": {
             "value": "[parameters('controlPlaneMinReplicas')]"
           },
@@ -976,7 +1013,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "925202848424852857"
+              "templateHash": "3956614099840849187"
             }
           },
           "parameters": {
@@ -1159,6 +1196,20 @@
                 "description": "The deployed SQLFlow MCP server endpoint (https://<mcp host>/mcp), the assistant's tool source. Required when assistantEnabled."
               }
             },
+            "reportExtractionEndpoint": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Base address of the isolated Power BI extractor (the endpoint output of pbix-extractor.bicep). Empty leaves .pbix uploads off; specification uploads work either way."
+              }
+            },
+            "reportExtractionKeySecretName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of the vault secret holding the key shared with the extractor. Required with reportExtractionEndpoint."
+              }
+            },
             "minReplicas": {
               "type": "int",
               "defaultValue": 1,
@@ -1220,6 +1271,9 @@
             ],
             "bootstrapSecrets": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'bootstrap-admin-password', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('bootstrapAdminPasswordSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
             "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "reportExtractionEnabled": "[and(not(empty(parameters('reportExtractionEndpoint'))), not(empty(parameters('reportExtractionKeySecretName'))))]",
+            "reportExtractionSecrets": "[if(not(variables('reportExtractionEnabled')), createArray(), createArray(createObject('name', 'pbix-extractor-key', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('reportExtractionKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "reportExtractionEnv": "[if(not(variables('reportExtractionEnabled')), createArray(), createArray(createObject('name', 'ControlPlane__PowerAI__ReportExtraction__Enabled', 'value', 'true'), createObject('name', 'ControlPlane__PowerAI__ReportExtraction__Endpoint', 'value', parameters('reportExtractionEndpoint')), createObject('name', 'ControlPlane__PowerAI__ReportExtraction__ApiKey', 'secretRef', 'pbix-extractor-key'), createObject('name', 'ControlPlane__PowerAI__ReportExtraction__TimeoutSeconds', 'value', '230')))]",
             "bootstrapEnv": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'ControlPlane__Bootstrap__AdminUsername', 'value', parameters('bootstrapAdminUsername')), createObject('name', 'ControlPlane__Bootstrap__AdminPasswordReference', 'secretRef', 'bootstrap-admin-password')))]",
             "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
             "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
@@ -1284,7 +1338,7 @@
                     "transport": "auto"
                   },
                   "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
-                  "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'))]"
+                  "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'), variables('reportExtractionSecrets'))]"
                 },
                 "template": {
                   "containers": [
@@ -1295,7 +1349,7 @@
                         "cpu": "[json('0.5')]",
                         "memory": "1.0Gi"
                       },
-                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'))]",
+                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'), variables('reportExtractionEnv'))]",
                       "probes": [
                         {
                           "type": "Liveness",
@@ -1364,6 +1418,7 @@
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
         "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]",
         "[resourceId('Microsoft.Resources/deployments', 'sqlflow-mcp-app')]",
+        "[resourceId('Microsoft.Resources/deployments', 'sqlflow-pbix-extractor-app')]",
         "[resourceId('Microsoft.Sql/servers/firewallRules', parameters('sqlServerName'), 'AllowAllWindowsAzureIps')]"
       ]
     },
@@ -2239,6 +2294,297 @@
       ]
     },
     {
+      "condition": "[variables('pbixExtractorEnabled')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "sqlflow-pbix-extractor-app",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "name": {
+            "value": "[parameters('pbixExtractorName')]"
+          },
+          "managedEnvironmentId": {
+            "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]"
+          },
+          "image": {
+            "value": "[parameters('pbixExtractorImage')]"
+          },
+          "keyVaultName": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "apiKeySecretName": {
+            "value": "[variables('pbixExtractorKeySecretName')]"
+          },
+          "acrName": {
+            "value": "[parameters('acrName')]"
+          },
+          "acrLoginServer": {
+            "value": "[parameters('acrLoginServer')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.44.1.10279",
+              "templateHash": "18130260471843531184"
+            }
+          },
+          "parameters": {
+            "location": {
+              "type": "string",
+              "defaultValue": "[resourceGroup().location]",
+              "metadata": {
+                "description": "Azure region. Defaults to the resource group location."
+              }
+            },
+            "name": {
+              "type": "string",
+              "defaultValue": "sqlflow-pbix-extractor",
+              "metadata": {
+                "description": "Name of the Container App."
+              }
+            },
+            "managedEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Resource id of an existing Container Apps managed environment to host the app (the control plane's)."
+              }
+            },
+            "image": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image reference, e.g. myregistry.azurecr.io/sqlflow-pbix-extractor:latest"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Key Vault holding the shared key."
+              }
+            },
+            "apiKeySecretName": {
+              "type": "string",
+              "defaultValue": "sqlflow-pbix-extractor-key",
+              "metadata": {
+                "description": "Name of the vault secret holding the shared key (at least 32 bytes); the control plane reads the same secret."
+              }
+            },
+            "acrName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of a container registry in THIS resource group: the template grants the app identity AcrPull on it. Leave empty for a public registry, or one you authorize yourself via acrLoginServer."
+              }
+            },
+            "acrLoginServer": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Login server of a registry outside this resource group (grant AcrPull to the app identity yourself). Ignored when acrName is set."
+              }
+            },
+            "maxUploadMegabytes": {
+              "type": "int",
+              "defaultValue": 256,
+              "minValue": 1,
+              "maxValue": 1024,
+              "metadata": {
+                "description": "Largest report accepted, in megabytes. Keep it equal to the control plane's ReportExtraction:MaxUploadMegabytes."
+              }
+            },
+            "maxConcurrent": {
+              "type": "int",
+              "defaultValue": 2,
+              "minValue": 1,
+              "maxValue": 16,
+              "metadata": {
+                "description": "Reports extracted at once per replica. Decompressing a model is memory-hungry; size memory to this."
+              }
+            },
+            "cpu": {
+              "type": "string",
+              "defaultValue": "1.0",
+              "metadata": {
+                "description": "vCPU per replica."
+              }
+            },
+            "memory": {
+              "type": "string",
+              "defaultValue": "2Gi",
+              "metadata": {
+                "description": "Memory per replica, paired with cpu. A large model decompresses to several times its file size."
+              }
+            },
+            "maxReplicas": {
+              "type": "int",
+              "defaultValue": 2,
+              "minValue": 1,
+              "metadata": {
+                "description": "Maximum replicas; each serves maxConcurrent extractions."
+              }
+            }
+          },
+          "variables": {
+            "keyVaultSecretsUserRoleId": "4633458b-17de-408a-b874-0445c86b69e6",
+            "acrPullRoleId": "7f951dda-4ed3-4680-a7ca-43fe172d538d"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ManagedIdentity/userAssignedIdentities",
+              "apiVersion": "2023-01-31",
+              "name": "[format('{0}-id', parameters('name'))]",
+              "location": "[parameters('location')]"
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), parameters('apiKeySecretName'))]",
+              "name": "[guid(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), parameters('apiKeySecretName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultSecretsUserRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('acrName')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName')))]",
+              "name": "[guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('acrPullRoleId'))]",
+                "principalId": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+              ]
+            },
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "UserAssigned",
+                "userAssignedIdentities": {
+                  "[format('{0}', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))]": {}
+                }
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('managedEnvironmentId')]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": false,
+                    "targetPort": 8080,
+                    "transport": "http",
+                    "allowInsecure": false
+                  },
+                  "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+                  "secrets": [
+                    {
+                      "name": "extractor-key",
+                      "keyVaultUrl": "[reference(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), parameters('apiKeySecretName')), '2023-07-01').secretUri]",
+                      "identity": "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "pbix-extractor",
+                      "image": "[parameters('image')]",
+                      "resources": {
+                        "cpu": "[json(parameters('cpu'))]",
+                        "memory": "[parameters('memory')]"
+                      },
+                      "env": [
+                        {
+                          "name": "PbixExtractor__ApiKey",
+                          "secretRef": "extractor-key"
+                        },
+                        {
+                          "name": "PbixExtractor__MaxUploadMegabytes",
+                          "value": "[string(parameters('maxUploadMegabytes'))]"
+                        },
+                        {
+                          "name": "PbixExtractor__MaxConcurrent",
+                          "value": "[string(parameters('maxConcurrent'))]"
+                        }
+                      ],
+                      "probes": [
+                        {
+                          "type": "Liveness",
+                          "httpGet": {
+                            "path": "/health/live",
+                            "port": 8080
+                          },
+                          "periodSeconds": 30
+                        },
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/health/ready",
+                            "port": 8080
+                          },
+                          "periodSeconds": 30
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": "[parameters('maxReplicas')]"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[extensionResourceId(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), 'Microsoft.Authorization/roleAssignments', guid(resourceGroup().id, parameters('acrName'), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('acrPullRoleId')))]",
+                "[resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name')))]",
+                "[extensionResourceId(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), parameters('apiKeySecretName')), 'Microsoft.Authorization/roleAssignments', guid(resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), parameters('apiKeySecretName')), resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), variables('keyVaultSecretsUserRoleId')))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "endpoint": {
+              "type": "string",
+              "metadata": {
+                "description": "The address the control plane reaches the extractor at (ControlPlane:PowerAI:ReportExtraction:Endpoint): the environment-internal FQDN."
+              },
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
+            },
+            "identityPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal (object) id of the app identity."
+              },
+              "value": "[reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('pbixExtractorKeySecretName'))]"
+      ]
+    },
+    {
       "condition": "[variables('mcpEnabled')]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -2563,7 +2909,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "10273724677933771996"
+              "templateHash": "51288977925729848"
             }
           },
           "parameters": {
@@ -2629,7 +2975,7 @@
               "type": "string",
               "defaultValue": "sqlflow-slack-bot-access-token",
               "metadata": {
-                "description": "Key Vault secret name for the read-scoped SQLFlow personal access token the assistant presents to the MCP server."
+                "description": "Key Vault secret name for the SQLFlow personal access token the assistant presents to the MCP server."
               }
             },
             "modelApiKeySecretName": {

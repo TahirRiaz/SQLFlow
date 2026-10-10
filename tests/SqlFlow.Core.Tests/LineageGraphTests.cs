@@ -427,6 +427,41 @@ public sealed class LineageGraphTests
         Assert.Equal([["loader"], ["reader"]], Waves(report));
     }
 
+    /// <summary>
+    /// A PowerBI model entity is a ONE-PART name: the collector registers its synonym with no database,
+    /// because a visual's synthesized `FROM [Sales]` lands on the subscriber's server with nothing else.
+    /// The default-database pass fills a database into exactly those facts before synonym resolution runs,
+    /// so without keying the synonym under that database too, a model entity never resolves and the report's
+    /// read edge stays on a name-only node that nothing else points at. Any real connection string names a
+    /// database, so this is the normal case rather than an edge one.
+    /// </summary>
+    [Fact]
+    public void OnePartSynonym_ResolvesEvenWhenTheServerHasADefaultDatabase()
+    {
+        var collected = Estate(("loader", LineageRelation.Writes, "FactResellerSales"));
+        collected.ServerDefaultDatabases.Add("@dwh", "DW");
+        // The report reads the MODEL entity: one part, no database and no schema, exactly as the subscriber
+        // collector extracts a visual's query. Added directly rather than through Estate, which would give it
+        // the usual fully-qualified identity and so not exercise this at all.
+        collected.Flows.Add(Flow("reader"));
+        collected.Facts.Add(Fact("reader", LineageRelation.Reads, "Sales", db: null, schema: null));
+        collected.Synonyms.Add(new SynonymLink
+        {
+            ServerRef = "@dwh",
+            Database = string.Empty,
+            Schema = string.Empty,
+            Name = "Sales",
+            TargetDatabase = "DW",
+            TargetSchema = "dbo",
+            TargetName = "FactResellerSales",
+        });
+
+        var report = Build(collected);
+
+        // Resolved onto the same node the loader writes, so the two ends meet: the reader must order after it.
+        Assert.Equal([["loader"], ["reader"]], Waves(report));
+    }
+
     [Fact]
     public void SynonymCycle_WarnsAndStops()
     {

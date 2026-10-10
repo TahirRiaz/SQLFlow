@@ -1,0 +1,19 @@
+# The AdventureWorks Sales Power BI report, declared through its committed specification.
+#
+# The report's model reads the AdventureWorksDW2022 database that deploy/compose's adventureworks-init service
+# restores as `AdventureWorks`. This library declares no connection: that database is registered by
+# adventureworks_00_sch, and the report's model tables are linked onto the registered tables by database, schema,
+# and name (dbo.DimCustomer, dbo.FactResellerSales, ...). The eighth model table, `Table`, is a report-local sort
+# helper sourced via Json.Document and is reported unresolved by design.
+#
+# Regenerate the specification after changing the .pbix (git-ignored under samples/powerbi):
+#
+#   sqlflow powerbi extract "samples/powerbi/AdventureWorks Sales.pbix" \
+#     --out "samples/powerai-adventureworks/reports/AdventureWorks Sales.pbix.yaml"
+
+subscribers:
+  AdventureWorks_Sales:
+    type: PowerBI
+    owner: analytics@example.com
+    description: Reseller sales by product, region and date, from the AdventureWorks Sales sample report
+    pbix: reports/AdventureWorks Sales.pbix.yaml

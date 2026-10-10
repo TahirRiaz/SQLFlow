@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { Copy, WandSparkles } from "lucide-react";
@@ -28,6 +28,16 @@ interface CodeViewProps {
    */
   readOnly?: boolean;
   onChange?: (value: string) => void;
+  /**
+   * An optional label on the left of the toolbar, alongside the format/copy buttons on the right.
+   * Every catalog/run viewer omits it (the surrounding page already says what the code is); the
+   * chat transcript passes the fenced block's language, so the language name and its buttons sit
+   * in the one row a finished block gets, rather than a second header bar drawn above this one.
+   */
+  label?: string;
+  /** Extra buttons in the same toolbar row as the label, to the left of the built-in format/copy
+   * buttons (a chat "Run" affordance is the first caller). Every other CodeView surface omits it. */
+  extraActions?: ReactNode;
   "data-testid"?: string;
 }
 
@@ -40,7 +50,7 @@ interface CodeViewProps {
  * unformatted single-line blobs) and copy-to-clipboard of whatever is currently shown.
  */
 export function CodeView({
-  value, language, height = 480, lsp = true, readOnly = true, onChange, "data-testid": testId,
+  value, language, height = 480, lsp = true, readOnly = true, onChange, label, extraActions, "data-testid": testId,
 }: CodeViewProps) {
   const { mode } = useThemeMode();
   const monacoRef = useRef<Monaco | null>(null);
@@ -110,39 +120,50 @@ export function CodeView({
       data-testid={testId ?? "code-view"}
       className="overflow-hidden rounded-lg border border-border"
     >
-      <div className="flex items-center justify-end gap-0.5 border-b border-border bg-muted/50 px-1 py-0.5">
-        {isSql && (
+      <div
+        className={cn(
+          "flex items-center border-b border-border bg-muted/50 px-1 py-0.5",
+          label ? "justify-between" : "justify-end gap-0.5",
+        )}
+      >
+        {label && (
+          <span className="px-2 text-xs font-medium text-muted-foreground lowercase">{label}</span>
+        )}
+        <div className="flex items-center gap-0.5">
+          {extraActions}
+          {isSql && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={formatSqlOn ? "Show original SQL" : "Format SQL"}
+                  aria-pressed={formatSqlOn}
+                  onClick={() => setFormatSqlOn((on) => !on)}
+                  data-testid="code-view-format"
+                  className={cn(formatSqlOn && "text-primary hover:text-primary")}
+                >
+                  <WandSparkles />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{formatSqlOn ? "Show original SQL" : "Format SQL"}</TooltipContent>
+            </Tooltip>
+          )}
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon-xs"
-                aria-label={formatSqlOn ? "Show original SQL" : "Format SQL"}
-                aria-pressed={formatSqlOn}
-                onClick={() => setFormatSqlOn((on) => !on)}
-                data-testid="code-view-format"
-                className={cn(formatSqlOn && "text-primary hover:text-primary")}
+                aria-label="Copy to clipboard"
+                onClick={handleCopy}
+                data-testid="code-view-copy"
               >
-                <WandSparkles />
+                <Copy />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>{formatSqlOn ? "Show original SQL" : "Format SQL"}</TooltipContent>
+            <TooltipContent>Copy</TooltipContent>
           </Tooltip>
-        )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-xs"
-              aria-label="Copy to clipboard"
-              onClick={handleCopy}
-              data-testid="code-view-copy"
-            >
-              <Copy />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Copy</TooltipContent>
-        </Tooltip>
+        </div>
       </div>
       <Editor
         value={displayValue}

@@ -1,5 +1,5 @@
 # Landing flow: orders.csv -> raw string pre table + typed transformation view.
-# The transform post-process refreshes demo.vOrders_Pre; the downstream ingestion flow
+# The transform post-process refreshes demo.v_Orders_Pre; the downstream ingestion flow
 # (20-ing-orders) reads THE VIEW, which is what connects the two flows in lineage.
 name: demo-land-orders
 source:

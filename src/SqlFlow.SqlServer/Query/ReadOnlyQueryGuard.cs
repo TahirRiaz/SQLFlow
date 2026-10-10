@@ -164,6 +164,30 @@ public static class ReadOnlyQueryGuard
         public override void Visit(AdHocTableReference node)
             => Refuse("An ad-hoc remote table reference reaches outside this connection and is refused.");
 
+        // The column policy guard (SqlFlow.ControlPlane.Api.ColumnPolicyGuard) recognizes a restricted column
+        // only by the estate's OWN catalog objects: it has no notion that sys.columns/sys.tables/
+        // INFORMATION_SCHEMA.* expose the very same schema metadata by a different name. Without this refusal,
+        // a query naming one of these directly (`SELECT name FROM sys.columns WHERE object_id =
+        // OBJECT_ID('dbo.Employee')`) would sail through both guards and hand back exactly the column names
+        // search_columns/describe_object were built to hide, even though it could not read the RESTRICTED
+        // column's own VALUES this way (that still requires naming the real table, which the column guard
+        // does catch). Refused here, at the shape check, rather than taught to the column guard, since this is
+        // a "may not look at the server's own catalog at all" rule, not a per-column one.
+        public override void Visit(NamedTableReference node)
+        {
+            var schema = node?.SchemaObject?.SchemaIdentifier?.Value;
+            if (schema is not null && IsSystemCatalogSchema(schema))
+            {
+                Refuse(
+                    $"'{schema}' is a system catalog schema. A query here may read the estate's own data, not " +
+                    "the server's schema metadata; use describe_object/search_columns for that instead.");
+            }
+        }
+
+        private static bool IsSystemCatalogSchema(string schema)
+            => string.Equals(schema, "sys", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(schema, "information_schema", StringComparison.OrdinalIgnoreCase);
+
         // A function call cannot be traced to its body from here, and a table-valued function can be
         // side-effecting. Only the extended-procedure-style names that are unambiguously dangerous are
         // refused, because refusing every function would make the surface useless.

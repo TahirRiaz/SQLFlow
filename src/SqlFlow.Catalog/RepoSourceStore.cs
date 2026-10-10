@@ -213,6 +213,24 @@ public static class RepoSourceStore
                 .SetProperty(x => x.UpdatedUtc, nowUtc), ct);
     }
 
+    /// <summary>Queues the managed sync of the enabled source that produces the repo named
+    /// <paramref name="repoName"/>, returning its id; null when the repo is not synced from an enabled source (a
+    /// local-path repo applies a change on its next <c>sqlflow db sync</c> instead).</summary>
+    public static async Task<Guid?> TriggerForRepoAsync(
+        CatalogDbContext catalog, string repoName, DateTime nowUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(repoName);
+        var sourceId = await catalog.RepoSources.AsNoTracking()
+            .Where(s => s.Name == repoName && s.Enabled)
+            .Select(s => (Guid?)s.Id)
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        return sourceId is { } id
+            && await TriggerNowAsync(catalog, id, nowUtc, ct).ConfigureAwait(false) == RepoSourceMutation.Applied
+            ? id
+            : null;
+    }
+
     /// <summary>Makes a source due immediately (the sync-now action), so the next tick pulls it, and requests a
     /// full lineage recompute on that sync: a manual trigger is a deliberate "refresh everything", so it bypasses
     /// the unchanged-estate shortcut that a periodic sync relies on (which is what recomputes waves and populates

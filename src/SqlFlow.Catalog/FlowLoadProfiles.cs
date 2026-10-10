@@ -79,7 +79,7 @@ public static class FlowLoadProfiles
         new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
         new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
         new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader());
+        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
 
     /// <summary>Profiles a flow from its stored (secret-redacted) YAML, the same text the catalog sync parsed. A
     /// document that no longer parses yields an <see cref="FlowReadModes.Unknown"/> profile naming the parse error,
@@ -144,6 +144,11 @@ public static class FlowLoadProfiles
                 FlowReadModes.NotApplicable,
                 $"computes {d.Document.Flow.Metrics.Count} metric(s) per {d.Document.Flow.DateColumn} over {d.Document.Flow.Target.QualifiedName}",
                 "writes a health-check score artifact for the run; it loads no table",
+                target: null),
+            SchemaRegistrationFlowDocument d => Profile(
+                FlowReadModes.NotApplicable,
+                $"reads the table and view metadata of {(d.Document.Flow.Scope.Database is { } database ? $"database '{database}'" : "the default database")} behind connection '{d.Document.Flow.Server}'",
+                "registers those objects in the catalog; it loads no table",
                 target: null),
             _ => Unknown($"no load profile is defined for the flow document type {document.GetType().Name}"),
         };

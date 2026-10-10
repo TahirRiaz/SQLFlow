@@ -37,9 +37,9 @@ sourceRefs:
 ## Topology
 
 ```text
-orders.csv    -> demo.Orders_Pre    -> demo.vOrders_Pre    -> demo.Orders    \
+orders.csv    -> demo.Orders_Pre    -> demo.v_Orders_Pre    -> demo.Orders    \
                                                                               -> demo.Fact_OrderSummary
-customers.csv -> demo.Customers_Pre -> demo.vCustomers_Pre -> demo.Customers /       |
+customers.csv -> demo.Customers_Pre -> demo.v_Customers_Pre -> demo.Customers /       |
                                                                                      v
                        demo.Fact_OrderSummary -> demo.Fact_CountryRollup -> demo.Kpi_Executive
                                      (usp_BuildCountryRollup)      (usp_BuildExecKpi)
@@ -47,10 +47,10 @@ customers.csv -> demo.Customers_Pre -> demo.vCustomers_Pre -> demo.Customers /  
 
 | Flow | Kind | Wave | What it does |
 | --- | --- | --- | --- |
-| `demo-land-orders` | file | 1 | CSV into a raw pre table; refreshes the typed view `demo.vOrders_Pre` (inference plus a declared `vehicle_type_clean` transform) |
-| `demo-land-customers` | file | 1 | CSV into a raw pre table; refreshes `demo.vCustomers_Pre` (inference only) |
-| `demo-ing-orders` | ing | 2 | Reads the view `demo.vOrders_Pre` into `demo.Orders` via keyed upsert on `order_id` |
-| `demo-ing-customers` | ing | 2 | Reads the view `demo.vCustomers_Pre` into `demo.Customers` via keyed upsert on `customer_id` |
+| `demo-land-orders` | file | 1 | CSV into a raw pre table; refreshes the typed view `demo.v_Orders_Pre` (inference plus a declared `vehicle_type_clean` transform) |
+| `demo-land-customers` | file | 1 | CSV into a raw pre table; refreshes `demo.v_Customers_Pre` (inference only) |
+| `demo-ing-orders` | ing | 2 | Reads the view `demo.v_Orders_Pre` into `demo.Orders` via keyed upsert on `order_id` |
+| `demo-ing-customers` | ing | 2 | Reads the view `demo.v_Customers_Pre` into `demo.Customers` via keyed upsert on `customer_id` |
 | `demo-build-order-fact` | sp | 3 | `demo.usp_BuildOrderFact` joins both targets into `demo.Fact_OrderSummary` |
 | `demo-build-country-rollup` | sp | 4 | `demo.usp_BuildCountryRollup` reads `demo.Fact_OrderSummary` and writes `demo.Fact_CountryRollup` |
 | `demo-build-exec-kpi` | sp | 5 | `demo.usp_BuildExecKpi` reads `demo.Fact_CountryRollup` and writes `demo.Kpi_Executive` |
@@ -61,7 +61,7 @@ The two rollup procedures make the chain three procedures deep: `demo.Fact_Order
 
 The waves come from two different lineage tiers:
 
-- **land to ing (declared tier).** The landing flows declare the views they write (the `transform` section produces `demo.vOrders_Pre` and `demo.vCustomers_Pre`), and the ingestion flows name those views as their source objects. These edges resolve offline from the YAML alone.
+- **land to ing (declared tier).** The landing flows declare the views they write (the `transform` section produces `demo.v_Orders_Pre` and `demo.v_Customers_Pre`), and the ingestion flows name those views as their source objects. These edges resolve offline from the YAML alone.
 - **ing to sp and sp to sp (derived tier).** The `sp` documents only declare which procedure they execute. The reads and writes inside each procedure body (`demo.usp_BuildOrderFact` reads `demo.Orders` and `demo.Customers`; `demo.usp_BuildCountryRollup` reads `demo.Fact_OrderSummary`; `demo.usp_BuildExecKpi` reads `demo.Fact_CountryRollup`) are derived by fetching the module text from the live database's `sys.sql_modules` and parsing it. That is why the catalog sync below passes `--connect`: without it these edges, and therefore waves 3 through 5, are not computed.
 
 ## Prerequisites
@@ -123,7 +123,7 @@ transform:
       type: varchar(50)
 ```
 
-`11-land-customers.flow.yaml` is the inference-only variant: the same shape with `transform.inferTypes: true` and no `columns` list. Each landing flow loads the CSV into a raw pre table (`demo.Orders_Pre`, `demo.Customers_Pre`) and refreshes a typed transformation view over it (`demo.vOrders_Pre`, `demo.vCustomers_Pre`).
+`11-land-customers.flow.yaml` is the inference-only variant: the same shape with `transform.inferTypes: true` and no `columns` list. Each landing flow loads the CSV into a raw pre table (`demo.Orders_Pre`, `demo.Customers_Pre`) and refreshes a typed transformation view over it (`demo.v_Orders_Pre`, `demo.v_Customers_Pre`).
 
 ### The ingestion flows
 
@@ -137,7 +137,7 @@ connections:
   dwh: ${env:SQLFLOW_DEMO_DB}
 source:
   server: src
-  object: SqlFlowCatalogTests.demo.vOrders_Pre
+  object: SqlFlowCatalogTests.demo.v_Orders_Pre
 target:
   server: dwh
   object: SqlFlowCatalogTests.demo.Orders
@@ -187,7 +187,7 @@ sqlflow lineage . --connect
 
 ## Gotchas
 
-- **Ingestion object names must be three-part on SQL Server.** A two-part name is read as `database.table` (the MySQL convention), so SQL Server objects must carry the database explicitly: `SqlFlowCatalogTests.demo.vOrders_Pre`, not `demo.vOrders_Pre`.
+- **Ingestion object names must be three-part on SQL Server.** A two-part name is read as `database.table` (the MySQL convention), so SQL Server objects must carry the database explicitly: `SqlFlowCatalogTests.demo.v_Orders_Pre`, not `demo.v_Orders_Pre`.
 - **The `sp` document also requires a three-part procedure name**, and its database segment must match the connection's Initial Catalog (`SqlFlowCatalogTests` for the local demo).
 - **The editor may flag the `ing` and `sp` documents** against the file-flow JSON schema; the CLI loaders accept them (the schema does not yet describe the non-file flow kinds).
 - **`--db` values should stay references.** The CLI warns when `--db` embeds a credential on the command line (it lands in shell history); prefer `${env:SQLFLOW_CATALOG_DB}` or another `${env:NAME}` / `${keyvault:vault/secret}` reference, with local values in the git-ignored `.sqlflow/env` file.

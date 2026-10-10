@@ -48,6 +48,10 @@ public enum LineageRelation
     Requires = 3,
 
     Destroys = 4,
+
+    /// <summary>A schema registration flow (flowType: sch) recorded the object's metadata in the catalog. Metadata
+    /// only: it implies no dependency, orders nothing, and moves no data.</summary>
+    Registers = 5,
 }
 
 /// <summary>One pipeline (flow document) participating in the graph.</summary>
@@ -108,6 +112,181 @@ public sealed record LineageSubscriberNode
 
     /// <summary>The queries it runs, in declaration order: the evidence behind its read edges.</summary>
     public required IReadOnlyList<LineageSubscriberQuery> Queries { get; init; }
+
+    /// <summary>
+    /// The report's own internal structure, when the subscriber is backed by a report file the collector could
+    /// read: the pages a person flips through and the visuals on each. Empty for a hand-authored subscriber and
+    /// for any consumer whose file is not a readable report.
+    /// </summary>
+    public IReadOnlyList<LineageSubscriberPage> Pages { get; init; } = [];
+
+    /// <summary>
+    /// The semantic model behind each report file the collector read: its tables with the Power Query that loads
+    /// them, the columns, calculated columns, and measures defined on each, and the relationships between tables.
+    /// This is how a report computes its numbers, which its pages and visuals alone do not say. Empty for a
+    /// hand-authored subscriber and for a report connected live to a published dataset.
+    /// </summary>
+    public IReadOnlyList<LineageSubscriberModel> Models { get; init; } = [];
+}
+
+/// <summary>The semantic model of one report file.</summary>
+public sealed record LineageSubscriberModel
+{
+    /// <summary>The report file the model came from, the same value its pages carry.</summary>
+    public required string ReportFile { get; init; }
+
+    public required IReadOnlyList<LineageSubscriberModelTable> Tables { get; init; }
+
+    public required IReadOnlyList<LineageSubscriberModelRelationship> Relationships { get; init; }
+
+    /// <summary>The model's shared Power Query expressions: queries it keeps without loading them as tables, which a
+    /// table's own query can merge in by name.</summary>
+    public IReadOnlyList<LineageSubscriberExpression> Expressions { get; init; } = [];
+}
+
+/// <summary>One shared Power Query expression of a report's semantic model.</summary>
+public sealed record LineageSubscriberExpression
+{
+    /// <summary>The query's name, as another query refers to it.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>Its Power Query (M) text.</summary>
+    public required string PowerQuery { get; init; }
+}
+
+/// <summary>One table of a report's semantic model.</summary>
+public sealed record LineageSubscriberModelTable
+{
+    /// <summary>The model entity name, as visuals and DAX refer to it (empty for fields the model declared without a
+    /// home table).</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The Power Query (M) expression that loads the table, when the model declares one.</summary>
+    public string? PowerQuery { get; init; }
+
+    /// <summary>The warehouse database the expression resolved to, when it resolved.</summary>
+    public string? SourceDatabase { get; init; }
+
+    /// <summary>The warehouse schema the expression resolved to, when it resolved.</summary>
+    public string? SourceSchema { get; init; }
+
+    /// <summary>The warehouse table the expression resolved to, when it resolved.</summary>
+    public string? SourceName { get; init; }
+
+    /// <summary>The connection identity the report reads through (the server segment of a node key), set by the
+    /// collector when the table's source resolved.</summary>
+    public string? ServerRef { get; init; }
+
+    /// <summary>The node key of the warehouse object the table loads from, resolved by the graph builder through the
+    /// same identity resolution every lineage edge takes, so it is the key the catalog and the semantic layer use for
+    /// that object. Null when the source did not resolve.</summary>
+    public string? ObjectKey { get; init; }
+
+    /// <summary>Its columns, calculated columns, and measures, in that order.</summary>
+    public required IReadOnlyList<LineageSubscriberModelField> Fields { get; init; }
+}
+
+/// <summary>One column, calculated column, or measure defined on a model table.</summary>
+public sealed record LineageSubscriberModelField
+{
+    public required string Name { get; init; }
+
+    /// <summary><c>column</c>, <c>calculatedColumn</c>, or <c>measure</c>.</summary>
+    public required string Kind { get; init; }
+
+    /// <summary>A column's data type.</summary>
+    public string? DataType { get; init; }
+
+    /// <summary>A calculated column's or measure's DAX expression.</summary>
+    public string? Expression { get; init; }
+
+    /// <summary>A measure's author-written description.</summary>
+    public string? Description { get; init; }
+}
+
+/// <summary>One relationship between two tables of a report's semantic model.</summary>
+public sealed record LineageSubscriberModelRelationship
+{
+    public required string FromTable { get; init; }
+
+    public string? FromColumn { get; init; }
+
+    public required string ToTable { get; init; }
+
+    public string? ToColumn { get; init; }
+
+    /// <summary><c>1:1</c>, <c>M:1</c>, <c>1:M</c>, or <c>M:M</c>.</summary>
+    public string? Cardinality { get; init; }
+
+    /// <summary>False when the relationship applies only where a measure invokes it with USERELATIONSHIP.</summary>
+    public required bool IsActive { get; init; }
+}
+
+/// <summary>
+/// One page of a subscriber's report. A page groups the questions asked together, which is itself a fact worth
+/// keeping: visuals on one page are usually facets of a single business question rather than unrelated ones.
+/// </summary>
+public sealed record LineageSubscriberPage
+{
+    /// <summary>The report file this page came from, relative to the subscriber's declared <c>pbix:</c> path.
+    /// A subscriber backed by one file has every page carry that file's own name; a subscriber backed by a
+    /// DIRECTORY of reports has each page carry which of the directory's files it belongs to, since two
+    /// different reports routinely both have a "Page 1" and the pages must not be confused in the catalog.</summary>
+    public required string ReportFile { get; init; }
+
+    /// <summary>The page's internal identifier, as the report file spells it.</summary>
+    public required string Name { get; init; }
+
+    /// <summary>The page's title as a person sees it on the tab.</summary>
+    public required string DisplayName { get; init; }
+
+    /// <summary>The page's position within the report, 1-based.</summary>
+    public required int Ordinal { get; init; }
+
+    public required IReadOnlyList<LineageSubscriberVisual> Visuals { get; init; }
+}
+
+/// <summary>
+/// One visual on a page: a business question with its shape already decided. Only visuals that project at
+/// least one field appear here, since a shape or a textbox asks nothing.
+/// </summary>
+public sealed record LineageSubscriberVisual
+{
+    /// <summary>The visual's position within its page, 1-based.</summary>
+    public required int Ordinal { get; init; }
+
+    /// <summary>The chart type: <c>areaChart</c>, <c>pivotTable</c>, <c>slicer</c>, and so on.</summary>
+    public required string VisualType { get; init; }
+
+    /// <summary>The visual's authored title, when it has one. Often the question in the author's own words.</summary>
+    public string? Title { get; init; }
+
+    /// <summary>The name of the subscriber query synthesized from this visual, linking the structure to the SQL
+    /// that carries its lineage. Matches a <see cref="LineageSubscriberQuery.Name"/> on the same subscriber.</summary>
+    public required string QueryName { get; init; }
+
+    public required IReadOnlyList<LineageSubscriberField> Fields { get; init; }
+}
+
+/// <summary>
+/// One field or measure a visual projects, and the ROLE it plays in the question: the difference between "sales
+/// by month" and "months by sales". The role is the report author's own statement of the question's shape, and
+/// is the one fact parsed SQL cannot recover, since a query's column list has no notion of axis versus value.
+/// </summary>
+public sealed record LineageSubscriberField
+{
+    /// <summary>The projection bucket the field sits in: <c>Category</c>, <c>Y</c>, <c>Rows</c>, <c>Values</c>,
+    /// <c>Size</c>, and so on, exactly as the report file labels it.</summary>
+    public required string Role { get; init; }
+
+    /// <summary>The table or entity the field belongs to, as the report's model names it.</summary>
+    public required string TableName { get; init; }
+
+    /// <summary>The column or measure name within <see cref="TableName"/>.</summary>
+    public required string ColumnOrMeasure { get; init; }
+
+    /// <summary>True when this is a measure (model-computed business logic) rather than a plain column.</summary>
+    public required bool IsMeasure { get; init; }
 }
 
 /// <summary>One query a subscriber runs, and the objects parsing it proved that query reads.</summary>
@@ -123,6 +302,14 @@ public sealed record LineageSubscriberQuery
 
     /// <summary>The node keys this query reads, ordinal-sorted and deduplicated.</summary>
     public required IReadOnlyList<string> ObjectKeys { get; init; }
+
+    /// <summary>For a query a report visual asks: the same question as T-SQL over the source tables the report's
+    /// model loads from, runnable on the connection those tables were resolved to. Null when the query is not a
+    /// visual's, or when it could not be translated (see <see cref="TranslationProblem"/>).</summary>
+    public string? SourceSql { get; init; }
+
+    /// <summary>Why a visual's query has no <see cref="SourceSql"/>; null otherwise.</summary>
+    public string? TranslationProblem { get; init; }
 }
 
 /// <summary>One catalog or file object participating in the graph. The key is the canonical node identity:

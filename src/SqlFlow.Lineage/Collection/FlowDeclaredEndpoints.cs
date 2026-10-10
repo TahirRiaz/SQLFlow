@@ -164,9 +164,10 @@ public static class FlowDeclaredEndpoints
                 break;
             }
 
-            // A source-control snapshot reads definitions, not data, and a batch document declares no flow of
-            // its own: neither has a data endpoint whose change the preflight should police.
+            // A source-control snapshot and a schema registration read definitions, not data, and a batch document
+            // declares no flow of its own: none has a data endpoint whose change the preflight should police.
             case SourceControlFlowDocument:
+            case SchemaRegistrationFlowDocument:
             case BatchFlowDocument:
                 break;
 

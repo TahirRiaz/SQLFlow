@@ -35,10 +35,10 @@ display_information:
     failed, slowed down, or quietly stopped delivering.
 
     The assistant knows how the data platform is organised: what data exists, where it
-    comes from, when it last updated, and how everything connects. It cannot see the
-    data itself. No passenger records, no payments, no personal details ever pass
-    through it. When you need the actual numbers, it writes the query for you and hands
-    it over for someone to run.
+    comes from, when it last updated, and how everything connects. Ask a business
+    question and it writes the query, shows it to you, and runs it once you say so. It
+    only reads the tables and columns an admin has approved, and it never changes
+    anything. Tell it an answer is right and it remembers it for next time.
   background_color: "#1a4d7c"
 
 features:

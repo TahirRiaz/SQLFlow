@@ -24,6 +24,9 @@ sourceRefs:
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - src/SqlFlow.Catalog/CatalogDbContext.cs
   - src/SqlFlow.Catalog/Migrations/20260617165538_ObjectFullTextSearch.cs
+  - src/SqlFlow.Catalog/Migrations/20260915071502_AddColumnPolicy.cs
+  - src/SqlFlow.Catalog/Migrations/20260915090833_RenameColumnPolicyToAllowList.cs
+  - src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs
   - src/SqlFlow.Catalog/RunQueueStore.cs
   - src/SqlFlow.Lineage/Collection/FlowSetCollector.cs
   - src/SqlFlow.Cli/Program.cs
@@ -33,7 +36,7 @@ sourceRefs:
 
 The shadow catalog is a SQL Server read-model of the SQLFlow estate. Git/YAML flow documents plus the on-disk `run.json` history are the source of truth; the catalog database mirrors them in ONE direction (files to database, never back), so it can always be rebuilt from scratch by re-syncing. Several git repos sync into a single catalog for cross-repo queries; every pipeline and run row is attributed to its repo. The whole schema lives under the `catalog` schema and is owned by EF Core migrations (`CatalogDbContext`, `src/SqlFlow.Catalog/CatalogDbContext.cs`); it is the only place in the product that uses Entity Framework.
 
-Tables in the `catalog` schema: `Repo`, `Pipeline`, `Run`, `Object`, `LineageEdge`, `FlowDependency`, `RunFile`, `RunAssertion`, `RunStatement`, `RunEvent`, `RunSurrogateKey`, `RunHealthCheckMetric`, `ObjectColumn`, `PipelineColumn`, `Schedule`, `Node`, `RepoSource`, `User`, `Role`.
+Tables in the `catalog` schema: `Repo`, `Pipeline`, `Run`, `Object`, `LineageEdge`, `FlowDependency`, `RunFile`, `RunAssertion`, `RunStatement`, `RunEvent`, `RunSurrogateKey`, `RunHealthCheckMetric`, `ObjectColumn`, `ColumnPolicy`, `PipelineColumn`, `Schedule`, `Node`, `RepoSource`, `User`, `Role`.
 
 A full sync pass (`CatalogSync.SyncAsync`, `src/SqlFlow.Catalog/CatalogSync.cs`) runs in one serializable transaction wrapped in the context's execution strategy, so two concurrent syncs of the same repo serialize instead of racing, and a connection-resiliency retry re-collects the estate from disk safely.
 
@@ -57,6 +60,36 @@ it identically. Non-scm runs project no rows, and a dry run is deliberately skip
 
 The rows are keyed by their own `RepoId` and outlive nothing else: they are not pruned with run history, because
 a change feed that forgets is not a history. They are removed only when their repo is deleted.
+
+## Column access policy
+
+`ColumnPolicy` (`CatalogColumnPolicy`) is a default-deny allow-list over individual columns: only a column with
+an `IsAllowed` row is visible on any AI-facing surface (schema search, the object column list, the object
+dossier) or readable through the ad-hoc query guard - a column with no row at all is exactly as blocked as one
+explicitly denied. The same default-deny rule reaches one level up, to the table: a query naming an object the
+catalog has no `Object` record for at all (a synonym, or anything else the harvester does not track) has no
+allow-list to check, so it is refused outright rather than passed through unchecked. It is deliberately its own
+table, not a flag on `ObjectColumn`: a `--connect` sync deletes and re-inserts an object's entire `ObjectColumn`
+set on every pass (`CatalogSync`, delete-by-`ObjectKey` then re-insert), so a flag stored there would be
+silently lost the next time the object's columns were re-read from the live database. `ColumnPolicy` is keyed by
+`(ObjectKey, ColumnName)`, the same soft-link shape as the rest of the catalog, so it survives resyncs and even
+outlives a column the sync has not (yet) reported - which also means a column a future sync discovers for the
+first time starts out with no row, and so starts out denied until an admin reviews it. It is written only
+through the admin-scope `/api/v1/powerai/column-policies` endpoints, never by a sync pass. See
+[Data operations](data-operations.md#column-policy-what-the-assistant-may-read-at-all) for how it is enforced.
+A policy row also carries the column's semantic annotations (`Description`, `Synonyms`), since the allow-list is
+the semantic layer's membership.
+
+## Semantic layer tables
+
+The [semantic layer](semantic-layer.md)'s business context lives in four admin-authored tables, all keyed by soft
+link like `ColumnPolicy` and all written only through the admin-scope `/api/v1/powerai/semantic-layer` endpoints:
+`SemanticObject` (`CatalogSemanticObject`: one row per annotated object, unique on `ObjectKey`, holding its business
+name, description, synonyms, and curated key), `SemanticRelationship` (`CatalogSemanticRelationship`: a declared
+join, unique on `IdentityHash`, the SHA-256 of both endpoints and their column lists), `SemanticMeasure`
+(`CatalogSemanticMeasure`: a named expression anchored to one object, unique on `Name`), and
+`SemanticLayerSettings` (`CatalogSemanticLayerSettings`: a single row, `Id` 1, holding the layer-wide instructions).
+None of them records whether an object is in the layer: that is decided by `ColumnPolicy` alone.
 
 ## Pipeline sync: hashing, redaction, soft deactivation
 

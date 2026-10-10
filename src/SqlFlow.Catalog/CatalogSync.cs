@@ -103,6 +103,9 @@ public sealed class CatalogSync
     private const long MaxYamlBytes = 16L * 1024 * 1024;
     internal const long MaxRunJsonBytes = RunQueueStore.MaxArtifactBytes;
 
+    /// <summary>The stored length of a subscriber query's translation problem (its column's length).</summary>
+    internal const int TranslationProblemMaxLength = 1000;
+
     // SQL Server allows roughly 2100 parameters per command, and a keys.Contains(...) predicate can translate
     // to one parameter per key, so membership queries and deletes over report-sized key sets run in bounded
     // chunks whose results/effects are combined. 500 keys per round trip stays far under the limit.
@@ -122,7 +125,7 @@ public sealed class CatalogSync
         new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
         new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
         new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader());
+        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
 
     /// <summary>One estate flow prepared for the reconciliation transaction: its redacted text, content hash,
     /// serialized definition, and the parsed document (null when it failed to parse after the scan) that the
@@ -171,8 +174,14 @@ public sealed class CatalogSync
 
         // ---- Phase one: pure computation and reads, before any transaction. The estate is collected once and
         // each present document read and parsed once; the parsed artifacts (the collected flow set, the loaded
-        // documents, the redacted text) flow into every consumer below, including the lineage computation.
-        var collected = _estate.Collect(root);
+        // documents, the redacted text) flow into every consumer below, including the lineage computation. The
+        // report specifications the semantic layer holds for this repo go in with it, so a report this machine
+        // cannot extract (or that was uploaded rather than committed) is read like any other.
+        var storedSpecs = await context.SemanticReportSpecs.AsNoTracking()
+            .Where(s => s.RepoId == repoId)
+            .Select(s => new StoredReportSpec(s.SubscriberKey, s.ReportFile, s.Origin, s.Spec))
+            .ToListAsync(ct).ConfigureAwait(false);
+        var collected = _estate.Collect(root, storedSpecs);
         warnings.AddRange(collected.Warnings);
 
         // Preview-first selection: flows the source deliberately excludes are not projected as pipelines (and, being
@@ -193,6 +202,10 @@ public sealed class CatalogSync
             .Where(p => p.RepoId == repoId && p.Active)
             .Select(p => new { p.Id, p.ContentHash })
             .ToDictionaryAsync(p => p.Id, p => p.ContentHash, ct).ConfigureAwait(false);
+        var storedSubscriberHash = await context.Repos.AsNoTracking()
+            .Where(r => r.Id == repoId)
+            .Select(r => r.SubscriberInputHash)
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
 
         var (runs, runsSkipped, runsFailed) = await PrepareRunsAsync(root, repoId, knownRunIds, warnings, ct).ConfigureAwait(false);
         try
@@ -204,9 +217,12 @@ public sealed class CatalogSync
             // still contributes lineage (the graph spans the whole estate) but has no stored hash to compare,
             // so a selection-scoped sync recomputes too. When nothing changed, the stored lineage IS current.
             // A manual "sync now" forces a full recompute (the operator asked for a fresh result, including the
-            // offline object-body/column enrichment), so the unchanged-estate shortcut is bypassed.
+            // offline object-body/column enrichment), so the unchanged-estate shortcut is bypassed. The consumption
+            // side is an input too: an edited subscribers.yaml, a committed report specification, or a report
+            // uploaded to the semantic layer changes the fingerprint without touching any flow.
             var anyExcluded = collected.Flows.Count != flows.Count;
             var lineageNeeded = forceLineage || includeDerived || anyExcluded || runs.Count > 0
+                || !string.Equals(storedSubscriberHash, collected.SubscriberInputHash, StringComparison.Ordinal)
                 || LineageInputsChanged(pipelines, anyUnreadable, storedActiveHashes);
 
             LineageReport? report = null;
@@ -216,6 +232,8 @@ public sealed class CatalogSync
                 try
                 {
                     // Reuses the flow set collected above, so the estate is never scanned or parsed a second time.
+                    collected.PriorRegistrations.AddRange(
+                        await LoadPriorRegistrationsAsync(context, repoId, ct).ConfigureAwait(false));
                     report = await LineageService.ComputeAsync(
                         new LineageOptions
                         {
@@ -250,12 +268,17 @@ public sealed class CatalogSync
             {
                 await UpsertRepoAsync(context, repoId, repoName, repoRemoteUrl, root, nowUtc, ct).ConfigureAwait(false);
                 var pipelineTally = await ApplyPipelinesAsync(context, repoId, nowUtc, pipelines, presentIds, schedules, excludedFlowPaths, ct).ConfigureAwait(false);
-                var runTally = await ApplyRunsAsync(context, repoId, runs, runsSkipped, runsFailed, ct).ConfigureAwait(false);
+                var runTally = await ApplyRunsAsync(context, repoId, runs, runsSkipped, runsFailed, nowUtc, ct).ConfigureAwait(false);
 
                 (int Objects, int Superseded, int Columns, int Edges, int FlowDeps, int Waves, bool Connected, int PreservedDerived) lineage;
                 if (report is not null)
                 {
-                    lineage = await ApplyLineageAsync(context, repoId, report, includeDerived, nowUtc, ct).ConfigureAwait(false);
+                    lineage = await ApplyLineageAsync(
+                        context, repoId, report, includeDerived,
+                        collected.SchemaRegistrations.Select(r => r.Flow).ToHashSet(StringComparer.OrdinalIgnoreCase),
+                        nowUtc, ct).ConfigureAwait(false);
+                    await ApplyExtractedReportSpecsAsync(context, repoId, collected, nowUtc, ct).ConfigureAwait(false);
+                    RecordSubscriberInputs(context, repoId, collected.SubscriberInputHash);
                 }
                 else
                 {
@@ -322,10 +345,85 @@ public sealed class CatalogSync
     // The retriable serializable-transaction wrapper lives in CatalogTransaction so the run-queue lifecycle shares
     // the exact same execution-strategy + change-tracker-reset semantics as the sync/write-back.
 
+    /// <summary>
+    /// Keeps this pass's own extractions in the semantic layer (<see cref="ReportSpecOrigin.Extracted"/>), so a later
+    /// pass that cannot run the extractor, or cannot see the <c>.pbix</c>, serves the same reports instead of dropping
+    /// them. A kept extraction is removed once its subscriber is no longer declared, or once a pass that could tell
+    /// finds the repository no longer declares that report. Uploaded specifications are a person's and are never
+    /// touched here. Runs inside the sync's transaction, reading the rows it changes there.
+    /// </summary>
+    private static async Task ApplyExtractedReportSpecsAsync(
+        CatalogDbContext context, Guid repoId, CollectionResult collected, DateTime nowUtc, CancellationToken ct)
+    {
+        var existing = await context.SemanticReportSpecs.AsTracking()
+            .Where(s => s.RepoId == repoId && s.Origin == ReportSpecOrigin.Extracted)
+            .ToListAsync(ct).ConfigureAwait(false);
+        var subscribers = collected.Subscribers.ToDictionary(s => s.NodeKey, StringComparer.Ordinal);
+
+        var live = new Dictionary<(string Subscriber, string Report), CatalogSemanticReportSpec>();
+        foreach (var row in existing)
+        {
+            var stale = !subscribers.TryGetValue(row.SubscriberKey, out var subscriber)
+                || (subscriber.RetainedExtractedReports is { } retained && !retained.Contains(row.ReportFile));
+            if (stale || !live.TryAdd((row.SubscriberKey, row.ReportFile), row))
+            {
+                context.SemanticReportSpecs.Remove(row);
+            }
+        }
+
+        foreach (var subscriber in collected.Subscribers)
+        {
+            foreach (var spec in subscriber.ExtractedSpecs)
+            {
+                var hash = ReportSpecs.Hash(spec.Yaml);
+                if (live.TryGetValue((subscriber.NodeKey, spec.ReportFile), out var row)
+                    && string.Equals(row.ContentHash, hash, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                // The specification was produced and validated by this pass, so reading it again cannot fail.
+                var summary = ReportSpecs.Inspect(spec.Yaml, $"report '{spec.ReportFile}'");
+                if (row is null)
+                {
+                    row = new CatalogSemanticReportSpec
+                    {
+                        RepoId = repoId,
+                        SubscriberKey = subscriber.NodeKey,
+                        ReportFile = spec.ReportFile,
+                        Origin = ReportSpecOrigin.Extracted,
+                        IdentityHash = SemanticReportSpecIdentity.Compute(
+                            repoId, subscriber.NodeKey, ReportSpecOrigin.Extracted, spec.ReportFile),
+                    };
+                    context.SemanticReportSpecs.Add(row);
+                }
+
+                row.Spec = spec.Yaml;
+                row.ContentHash = hash;
+                row.Pages = summary.Pages;
+                row.Visuals = summary.Visuals;
+                row.Tables = summary.Tables;
+                row.Measures = summary.Measures;
+                row.UpdatedBy = null;
+                row.UpdatedUtc = nowUtc;
+            }
+        }
+    }
+
+    /// <summary>Records the consumption-side fingerprint the stored lineage now reflects, on the repo row
+    /// <see cref="UpsertRepoAsync"/> already staged in this transaction.</summary>
+    private static void RecordSubscriberInputs(CatalogDbContext context, Guid repoId, string fingerprint)
+    {
+        var repo = context.Repos.Local.First(r => r.Id == repoId);
+        repo.SubscriberInputHash = fingerprint;
+    }
+
     private static async Task UpsertRepoAsync(
         CatalogDbContext context, Guid repoId, string repoName, string? remoteUrl, string root, DateTime nowUtc, CancellationToken ct)
     {
-        var repo = await context.Repos.FindAsync([repoId], ct).ConfigureAwait(false);
+        // Tracked explicitly: the control plane's context defaults to no-tracking, and the updates below (and the
+        // subscriber fingerprint recorded later in the same transaction) must persist.
+        var repo = await context.Repos.AsTracking().FirstOrDefaultAsync(r => r.Id == repoId, ct).ConfigureAwait(false);
         if (repo is null)
         {
             context.Repos.Add(new CatalogRepo
@@ -686,7 +784,7 @@ public sealed class CatalogSync
     /// <summary>Inserts the phase-one runs and their drill-down detail, and applies the newest detected
     /// transform-view projection per pipeline. Runs inside the sync's transaction.</summary>
     private static async Task<RunSyncTally> ApplyRunsAsync(
-        CatalogDbContext context, Guid repoId, IReadOnlyList<PreparedRun> runs, int skippedInScan, int failedInScan, CancellationToken ct)
+        CatalogDbContext context, Guid repoId, IReadOnlyList<PreparedRun> runs, int skippedInScan, int failedInScan, DateTime nowUtc, CancellationToken ct)
     {
         var skipped = skippedInScan;
         var added = 0;
@@ -724,6 +822,13 @@ public sealed class CatalogSync
             added++;
             var detail = AddRunDetail(
                 context, prepared.Document.RootElement, prepared.Run.RunId, repoId, pipelineId: prepared.Run.PipelineId);
+
+            // A registration run's objects: this sync's own lineage pass owns the repo's edges, so only the objects
+            // and their dictionary are recorded here.
+            await ApplySchemaRegistrationAsync(
+                    context, prepared.Document.RootElement, repoId, prepared.Run.PipelineId, replaceEdges: false,
+                    nowUtc, ct)
+                .ConfigureAwait(false);
             files += detail.Files;
             assertions += detail.Assertions;
             statements += detail.Statements;
@@ -850,6 +955,130 @@ public sealed class CatalogSync
         return (files, assertions, statements, events, surrogateKeys, metrics, schemaChanges);
     }
 
+    /// <summary>The serializer shape of a schema registration run's <c>result</c> (camelCase, enums as names).</summary>
+    private static readonly JsonSerializerOptions RegistrationJson = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        Converters = { new JsonStringEnumConverter() },
+    };
+
+    /// <summary>
+    /// Records what a successful schema registration run (flowType: sch) read: its tables and views go into the
+    /// global object registry and data dictionary through the same write a lineage sync uses, and, when
+    /// <paramref name="replaceEdges"/>, the run's pipeline's <c>Registers</c> edges are replaced by the objects it
+    /// registered now. The full sync passes false because its own lineage pass owns the repo's edges. Returns whether
+    /// the registered set changed, which is what makes subscriber links worth recomputing. Any other run, a failed
+    /// registration, or a dry run records nothing.
+    /// </summary>
+    internal static async Task<bool> ApplySchemaRegistrationAsync(
+        CatalogDbContext context, JsonElement root, Guid repoId, Guid? pipelineId, bool replaceEdges,
+        DateTime nowUtc, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(context);
+        if (!root.TryGetProperty("flowKind", out var kind) || kind.ValueKind != JsonValueKind.String
+            || !string.Equals(kind.GetString(), "sch", StringComparison.Ordinal)
+            || !root.TryGetProperty("result", out var resultElement) || resultElement.ValueKind != JsonValueKind.Object)
+        {
+            return false;
+        }
+
+        var result = resultElement.Deserialize<Core.SchemaRegistration.SchemaRegistrationResult>(RegistrationJson);
+        if (result is not { Success: true, Database: { } database } || pipelineId is not { } pipeline)
+        {
+            return false;
+        }
+
+        // The objects are keyed under the registering pipeline's source server: the identity the flow header
+        // projected from its connection, which is also what a lineage sync keys the same registration under.
+        var serverRef = (await context.Pipelines.FindAsync([pipeline], ct).ConfigureAwait(false))?.SourceServer;
+        if (string.IsNullOrWhiteSpace(serverRef))
+        {
+            return false;
+        }
+
+        var nodes = result.Objects
+            .Select(o => new LineageObjectNode
+            {
+                Key = NodeKey.For(serverRef, database, o.Schema, o.Name),
+                ServerRef = serverRef,
+                Database = database,
+                Schema = o.Schema,
+                Name = o.Name,
+                Kind = o.Kind,
+                Definition = o.Kind == LineageNodeKind.View ? o.Script : null,
+                Script = o.Kind == LineageNodeKind.Table ? o.Script : null,
+                ScriptTier = o.Kind == LineageNodeKind.Table && o.Script is not null ? LineageTier.Derived : null,
+                Columns = o.Columns,
+                ColumnsTier = o.Columns.Count > 0 ? LineageTier.Derived : null,
+                KeyColumns = o.KeyColumns,
+                KeyOrigin = o.KeyColumns.Count > 0 ? LineageModelOrigin.Constraint : null,
+            })
+            .ToList();
+        await UpsertObjectsAsync(context, nodes, nowUtc, ct).ConfigureAwait(false);
+
+        if (!replaceEdges)
+        {
+            return false;
+        }
+
+        var registersRelation = nameof(LineageRelation.Registers);
+        var previous = (await context.LineageEdges.AsNoTracking()
+                .Where(e => e.RepoId == repoId && e.PipelineId == pipeline && e.Relation == registersRelation)
+                .Select(e => e.ObjectKey)
+                .ToListAsync(ct).ConfigureAwait(false))
+            .ToHashSet(StringComparer.Ordinal);
+        var current = nodes.Select(n => n.Key).ToHashSet(StringComparer.Ordinal);
+
+        await context.LineageEdges
+            .Where(e => e.RepoId == repoId && e.PipelineId == pipeline && e.Relation == registersRelation)
+            .ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        foreach (var node in nodes)
+        {
+            context.LineageEdges.Add(CatalogProjection.Edge(
+                new LineageEdge
+                {
+                    Flow = result.FlowName,
+                    Relation = LineageRelation.Registers,
+                    ObjectKey = node.Key,
+                    Tier = LineageTier.Derived,
+                },
+                repoId,
+                node.Name));
+        }
+
+        return !previous.SetEquals(current);
+    }
+
+    /// <summary>
+    /// The registrations the catalog already holds, from every repository: each <c>Registers</c> edge joined to its
+    /// object. A lineage build resolves registered-source subscribers against these when it cannot (or need not)
+    /// read the registered databases itself.
+    /// </summary>
+    private static async Task<List<CollectedRegisteredObject>> LoadPriorRegistrationsAsync(
+        CatalogDbContext context, Guid repoId, CancellationToken ct)
+    {
+        var registersRelation = nameof(LineageRelation.Registers);
+        var rows = await (
+                from edge in context.LineageEdges.AsNoTracking()
+                where edge.Relation == registersRelation && edge.Flow != null
+                join item in context.Objects.AsNoTracking() on edge.ObjectKey equals item.Key
+                where item.Database != null && item.Schema != null
+                select new { edge.RepoId, edge.Flow, item.ServerRef, item.Database, item.Schema, item.Name })
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        return rows
+            .Select(r => new CollectedRegisteredObject
+            {
+                Flow = r.Flow!,
+                ServerRef = r.ServerRef,
+                Database = r.Database!,
+                Schema = r.Schema!,
+                Name = r.Name,
+                FromCurrentRepo = r.RepoId == repoId,
+            })
+            .ToList();
+    }
+
     /// <summary>
     /// The self-maintaining write-back: records ONE just-completed run (and ensures its pipeline row) into the
     /// catalog, so a configured database stays current without a manual full <see cref="SyncAsync"/>. It upserts
@@ -910,6 +1139,9 @@ public sealed class CatalogSync
                         runRecorded = true;
                         detail = AddRunDetail(
                             context, document.RootElement, run.RunId, repoId, pipelineId: run.PipelineId);
+                        await ApplySchemaRegistrationAsync(
+                                context, document.RootElement, repoId, run.PipelineId, replaceEdges: true, nowUtc, ct)
+                            .ConfigureAwait(false);
 
                         // Refresh the pipeline's detected view projection from this run ("latest run wins"),
                         // unless the catalog already knows a newer run for the pipeline (a stale artifact
@@ -1162,24 +1394,17 @@ public sealed class CatalogSync
         };
     }
 
-    /// <summary>Writes a precomputed lineage report into the catalog: the global object registry, the data
-    /// dictionary, this repo's edges and flow dependencies, the execution waves, and the identity healing. Runs
-    /// inside the sync's transaction and performs only database work; the report itself was computed before the
-    /// transaction opened.</summary>
-    private static async Task<(int Objects, int Superseded, int Columns, int Edges, int FlowDeps, int Waves, bool Connected, int PreservedDerived)> ApplyLineageAsync(
-        CatalogDbContext context, Guid repoId, LineageReport report, bool includeDerived, DateTime nowUtc, CancellationToken ct)
+    /// <summary>
+    /// Upserts <paramref name="nodes"/> into the global object registry and refreshes their data dictionary: the one
+    /// object write shared by a lineage sync and a schema registration run. Returns every row touched (updated or
+    /// inserted) and how many column rows were staged.
+    /// </summary>
+    private static async Task<(Dictionary<string, CatalogObject> Touched, int Columns)> UpsertObjectsAsync(
+        CatalogDbContext context, IReadOnlyList<Core.Lineage.LineageObjectNode> nodes, DateTime nowUtc, CancellationToken ct)
     {
-        // Identity adoption, the offline half of identity healing: a database-less identity in this report
-        // adopts the registry's database-qualified row when exactly one exists for the same server reference
-        // and schema/name. A connected sync taught the catalog the object's default database; an offline
-        // re-sync (or one whose derived tier degraded to a warning) must not split the object back into a
-        // weak twin row with its edges pointing at the weak key. Ambiguity (the same schema.name under two
-        // databases of one server) keeps the weak identity, mirroring the builder's unification rule.
-        report = await AdoptResolvedIdentitiesAsync(context, report, ct).ConfigureAwait(false);
-
         // Objects are GLOBAL (shared across repos by their canonical key) - upsert, never delete. Load only the
         // keys this report mentions, so the working set scales with the report, not the whole catalog.
-        var keys = report.Objects.Select(o => o.Key).Distinct().ToList();
+        var keys = nodes.Select(o => o.Key).Distinct().ToList();
         // AsTracking so the object-metadata updates below persist under a NoTracking host context (see the pipeline
         // query in ApplyPipelinesAsync); harmless on a tracking context.
         var existingObjects = (await SelectByKeysAsync(
@@ -1187,7 +1412,7 @@ public sealed class CatalogSync
             .ConfigureAwait(false)).ToDictionary(o => o.Key);
         // Every row this report touches (updated or inserted), so the level stamping below reaches both.
         var touchedObjects = new Dictionary<string, CatalogObject>(StringComparer.Ordinal);
-        foreach (var node in report.Objects)
+        foreach (var node in nodes)
         {
             if (existingObjects.TryGetValue(node.Key, out var row))
             {
@@ -1195,7 +1420,12 @@ public sealed class CatalogSync
                 row.Database = NullIfBlank(node.Database);
                 row.Schema = NullIfBlank(node.Schema);
                 row.Name = node.Name;
-                row.Kind = node.Kind.ToString();
+                // A node whose kind this pass could not tell (a read no inventory matched) never downgrades the kind
+                // a connected pass or a schema registration recorded.
+                if (node.Kind != Core.Lineage.LineageNodeKind.Unknown || string.IsNullOrEmpty(row.Kind))
+                {
+                    row.Kind = node.Kind.ToString();
+                }
                 // Only the derived tier reads a module body; an offline sync must not null a stored definition.
                 // When present it is redacted (a body can embed a literal credential) and normalized the same way
                 // as a freshly-inserted object (blank -> null).
@@ -1240,7 +1470,7 @@ public sealed class CatalogSync
         // Like the global Object/Definition (upsert-only, never deleted for cross-repo identity), a dropped
         // object's columns are NOT cleaned up here; the dictionary is additive and tolerates that staleness.
         var columns = 0;
-        var withColumns = report.Objects.Where(o => o.Columns.Count > 0).ToList();
+        var withColumns = nodes.Where(o => o.Columns.Count > 0).ToList();
         if (withColumns.Count > 0)
         {
             var candidateKeys = withColumns.Select(o => o.Key).Distinct().ToList();
@@ -1262,7 +1492,7 @@ public sealed class CatalogSync
                             >= (existingRankByKey.TryGetValue(o.Key, out var rank) ? rank : -1))
                 // One object can be surfaced by more than one flow in a single report: a generated view is
                 // DECLARED by its pre flow (transform.generateView) and READ as the source of its ods flow, so
-                // report.Objects holds two nodes with the same key, each numbering columns from ordinal 1.
+                // the node list holds two nodes with the same key, each numbering columns from ordinal 1.
                 // Staging both would violate the (ObjectKey, Ordinal) unique index and abort the ENTIRE repo
                 // sync over one object. Keep a single column set per key: the most authoritative tier, then the
                 // richest declaration.
@@ -1297,6 +1527,27 @@ public sealed class CatalogSync
                 }
             }
         }
+
+        return (touchedObjects, columns);
+    }
+
+    /// <summary>Writes a precomputed lineage report into the catalog: the global object registry, the data
+    /// dictionary, this repo's edges and flow dependencies, the execution waves, and the identity healing. Runs
+    /// inside the sync's transaction and performs only database work; the report itself was computed before the
+    /// transaction opened.</summary>
+    private static async Task<(int Objects, int Superseded, int Columns, int Edges, int FlowDeps, int Waves, bool Connected, int PreservedDerived)> ApplyLineageAsync(
+        CatalogDbContext context, Guid repoId, LineageReport report, bool includeDerived,
+        IReadOnlySet<string> registrationFlows, DateTime nowUtc, CancellationToken ct)
+    {
+        // Identity adoption, the offline half of identity healing: a database-less identity in this report
+        // adopts the registry's database-qualified row when exactly one exists for the same server reference
+        // and schema/name. A connected sync taught the catalog the object's default database; an offline
+        // re-sync (or one whose derived tier degraded to a warning) must not split the object back into a
+        // weak twin row with its edges pointing at the weak key. Ambiguity (the same schema.name under two
+        // databases of one server) keeps the weak identity, mirroring the builder's unification rule.
+        report = await AdoptResolvedIdentitiesAsync(context, report, ct).ConfigureAwait(false);
+
+        var (touchedObjects, columns) = await UpsertObjectsAsync(context, report.Objects, nowUtc, ct).ConfigureAwait(false);
 
         // Offline object-body enrichment: fill each resolved object's generating script and interpreted column
         // dictionary from the run-statement trace already persisted in the catalog, so an offline sync (no live
@@ -1359,6 +1610,12 @@ public sealed class CatalogSync
                 .ToList();
         }
 
+        // A registration the repository no longer declares registers nothing, even when this pass could not read.
+        var registersRelation = nameof(LineageRelation.Registers);
+        preserve = preserve
+            .Where(e => e.Relation != registersRelation || (e.Flow is not null && registrationFlows.Contains(e.Flow)))
+            .ToList();
+
         await context.LineageEdges.Where(e => e.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         var objectNames = report.Objects.ToDictionary(o => o.Key, o => o.Name, StringComparer.Ordinal);
         var edges = 0;
@@ -1412,6 +1669,16 @@ public sealed class CatalogSync
         var firstSeenByKey = subscriberFirstSeen.ToDictionary(s => s.ObjectKey, s => s.FirstSeenUtc, StringComparer.Ordinal);
 
         await context.SubscriberQueries.Where(q => q.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        // The report structure goes with the subscriber for the same reason its queries do: a page or visual
+        // deleted from the report must stop being listed. Deleted deepest-first so no row outlives its parent.
+        await context.SubscriberReportFields.Where(f => f.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await context.SubscriberReportVisuals.Where(v => v.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await context.SubscriberReportPages.Where(p => p.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        // The semantic model behind each report goes the same way: a measure or relationship removed from the report
+        // must stop being served.
+        await context.SubscriberModelFields.Where(f => f.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await context.SubscriberModelRelationships.Where(r => r.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        await context.SubscriberModelTables.Where(t => t.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         await context.Subscribers.Where(s => s.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
         foreach (var subscriber in report.Subscribers)
         {
@@ -1445,7 +1712,123 @@ public sealed class CatalogSync
                     // body can, so it is redacted on the same path the object definitions take.
                     Sql = SecretHygiene.RedactedMessage(query.Sql),
                     ObjectKeys = string.Join('\n', query.ObjectKeys),
+                    SourceSql = query.SourceSql is null ? null : SecretHygiene.RedactedMessage(query.SourceSql),
+                    TranslationProblem = query.TranslationProblem is { Length: > TranslationProblemMaxLength } problem
+                        ? problem[..(TranslationProblemMaxLength - 3)] + "..."
+                        : query.TranslationProblem,
                 });
+            }
+
+            // The report's own structure, for a subscriber whose file the collector could read. Children are
+            // keyed by a value derived from their position (subscriber key, page ordinal, visual ordinal), not
+            // by a database identity: the whole sync commits in ONE SaveChanges, so no identity value exists
+            // while these rows are staged, and a derived key needs no round-trip to link them.
+            foreach (var page in subscriber.Pages)
+            {
+                // The report file is part of the key, not just a stored column: a subscriber backed by a
+                // directory of reports commonly has two files that each declare a "Page 1", and without the
+                // file in the key those two pages would collide onto the same row.
+                var pageKey = $"{subscriber.ObjectKey}#{page.ReportFile}#{page.Ordinal}";
+                context.SubscriberReportPages.Add(new CatalogSubscriberReportPage
+                {
+                    RepoId = repoId,
+                    SubscriberKey = subscriber.ObjectKey,
+                    PageKey = pageKey,
+                    ReportFile = page.ReportFile,
+                    Ordinal = page.Ordinal,
+                    Name = page.Name,
+                    DisplayName = page.DisplayName,
+                });
+
+                foreach (var visual in page.Visuals)
+                {
+                    var visualKey = $"{pageKey}#{visual.Ordinal}";
+                    var contentHash = SubscriberReportVisualHash.Compute(
+                        visual.Title,
+                        visual.VisualType,
+                        visual.Fields.Select(f => new SubscriberReportVisualHash.FieldContent(
+                            f.Role, f.TableName, f.ColumnOrMeasure, f.IsMeasure)));
+                    context.SubscriberReportVisuals.Add(new CatalogSubscriberReportVisual
+                    {
+                        RepoId = repoId,
+                        PageKey = pageKey,
+                        VisualKey = visualKey,
+                        Ordinal = visual.Ordinal,
+                        VisualType = visual.VisualType,
+                        Title = visual.Title,
+                        QueryName = visual.QueryName,
+                        ContentHash = contentHash,
+                    });
+
+                    foreach (var field in visual.Fields)
+                    {
+                        context.SubscriberReportFields.Add(new CatalogSubscriberReportField
+                        {
+                            RepoId = repoId,
+                            VisualKey = visualKey,
+                            Role = field.Role,
+                            TableName = field.TableName,
+                            ColumnOrMeasure = field.ColumnOrMeasure,
+                            IsMeasure = field.IsMeasure,
+                        });
+                    }
+                }
+            }
+
+            // The semantic model behind each report file: how the report computes its numbers, which its visuals only
+            // name. Flat rows keyed by (subscriber key, report file, table name), for the same one-SaveChanges reason
+            // as the pages above.
+            foreach (var model in subscriber.Models)
+            {
+                foreach (var table in model.Tables)
+                {
+                    context.SubscriberModelTables.Add(new CatalogSubscriberModelTable
+                    {
+                        RepoId = repoId,
+                        SubscriberKey = subscriber.ObjectKey,
+                        ReportFile = model.ReportFile,
+                        Name = table.Name,
+                        // An M source can embed a literal connection string exactly as authored SQL can, so it is
+                        // redacted on the same path subscriber queries take.
+                        PowerQuery = table.PowerQuery is null ? null : SecretHygiene.RedactedMessage(table.PowerQuery),
+                        SourceDatabase = table.SourceDatabase,
+                        SourceSchema = table.SourceSchema,
+                        SourceName = table.SourceName,
+                        ObjectKey = table.ObjectKey,
+                    });
+
+                    foreach (var field in table.Fields)
+                    {
+                        context.SubscriberModelFields.Add(new CatalogSubscriberModelField
+                        {
+                            RepoId = repoId,
+                            SubscriberKey = subscriber.ObjectKey,
+                            ReportFile = model.ReportFile,
+                            TableName = table.Name,
+                            Name = field.Name,
+                            Kind = field.Kind,
+                            DataType = field.DataType,
+                            Expression = field.Expression is null ? null : SecretHygiene.RedactedMessage(field.Expression),
+                            Description = field.Description,
+                        });
+                    }
+                }
+
+                foreach (var relationship in model.Relationships)
+                {
+                    context.SubscriberModelRelationships.Add(new CatalogSubscriberModelRelationship
+                    {
+                        RepoId = repoId,
+                        SubscriberKey = subscriber.ObjectKey,
+                        ReportFile = model.ReportFile,
+                        FromTable = relationship.FromTable,
+                        FromColumn = relationship.FromColumn,
+                        ToTable = relationship.ToTable,
+                        ToColumn = relationship.ToColumn,
+                        Cardinality = relationship.Cardinality,
+                        IsActive = relationship.IsActive,
+                    });
+                }
             }
         }
 

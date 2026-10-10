@@ -26,11 +26,19 @@ public class SlackMrkdwnTests
     }
 
     [Fact]
-    public void LeavesFencedCodeBlocksUntouched()
+    public void LeavesFencedCodeUntouched_ButDropsTheLanguageTag()
     {
+        // Slack does not highlight code, so ```sql would render "sql" as the block's first line.
         var input = "Before **bold**\n```sql\nSELECT ** FROM [t](x)\n## not a heading\n```\nAfter **bold**";
-        var expected = "Before *bold*\n```sql\nSELECT ** FROM [t](x)\n## not a heading\n```\nAfter *bold*";
+        var expected = "Before *bold*\n```\nSELECT ** FROM [t](x)\n## not a heading\n```\nAfter *bold*";
         Assert.Equal(expected, SlackMrkdwn.FromMarkdown(input));
+    }
+
+    [Fact]
+    public void KeepsContentThatSharesTheOpeningFenceLine()
+    {
+        var input = "```SELECT 1 AS One\n```";
+        Assert.Equal(input, SlackMrkdwn.FromMarkdown(input));
     }
 
     [Fact]

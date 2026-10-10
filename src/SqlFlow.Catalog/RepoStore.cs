@@ -62,6 +62,14 @@ public static class RepoStore
             var lineageEdges = await catalog.LineageEdges.Where(e => e.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.ObjectRelationships.Where(r => r.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.SubscriberQueries.Where(q => q.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SubscriberReportVisualQuestions.Where(q => q.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SubscriberReportFields.Where(f => f.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SubscriberReportVisuals.Where(v => v.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SubscriberReportPages.Where(p => p.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SubscriberModelFields.Where(f => f.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SubscriberModelRelationships.Where(r => r.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SubscriberModelTables.Where(t => t.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+            await catalog.SemanticReportSpecs.Where(s => s.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.Subscribers.Where(s => s.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.FlowDependencies.Where(d => d.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.ScheduleMembers.Where(m => m.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);

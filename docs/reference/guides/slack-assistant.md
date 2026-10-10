@@ -1,8 +1,8 @@
 ---
 id: guide-slack-assistant
-title: "The Slack assistant: a read-only SQLFlow agent over Foundry's Responses API and the MCP server"
+title: "The Slack assistant: a SQLFlow agent over Foundry's Responses API and the MCP server"
 type: guide
-summary: How the SQLFlow Slack bot answers questions - a Socket Mode relay to an Azure AI Foundry Responses API call whose MCP tool is the SQLFlow MCP server, read-only by construction, with its architecture, model requirement, and deployment.
+summary: The SQLFlow Slack bot, a Socket Mode relay to a model with the SQLFlow MCP server, answering from the catalog and running business queries a thread approves.
 keywords:
   - slack
   - assistant
@@ -13,7 +13,9 @@ keywords:
   - agent
   - socket mode
   - gpt-5.1
-  - read-only
+  - business questions
+  - run query
+  - saved answers
   - vision
   - image
   - screenshot
@@ -28,6 +30,9 @@ sourceRefs:
   - src/SqlFlow.Assistant/ResponsesApiGateway.cs
   - src/SqlFlow.SlackBot/SlackAssistantHandler.cs
   - src/SqlFlow.SlackBot/SlackBotOptions.cs
+  - src/SqlFlow.SlackBot/SlackMrkdwn.cs
+  - src/SqlFlow.Assistant/AssistantSettings.cs
+  - src/SqlFlow.Assistant/AssistantInstructions.cs
   - tools/sqlflow-mcp/src/http_server.rs
   - deploy/bicep/slack-bot.bicep
   - deploy/bicep/mcp.bicep
@@ -37,16 +42,28 @@ sourceRefs:
 
 # The Slack assistant
 
-Ask SQLFlow questions from Slack ("what failed last night?", "what feeds `dbo.Orders`?", "what does the incremental section do in a flow?") and get answers grounded in the live catalog and the reference docs. The assistant is read-only: it explains, diagnoses, and browses, but never triggers, cancels, or changes anything.
+Ask SQLFlow questions from Slack ("what failed last night?", "what feeds `dbo.Orders`?", "what does the incremental section do in a flow?") and get answers grounded in the live catalog and the reference docs. It explains, diagnoses, and browses, answers business questions by running read-only queries a thread approves, and saves an answer when someone says it is right. It never triggers, cancels, or changes flows, runs, or schedules.
 
 ## What it can and cannot do
 
-It reads **metadata**: the catalog, lineage, runs, file receipts, object definitions, and the reference docs. It **cannot run SQL against the data** (no query tool, by design), so it never counts or reads actual rows itself.
+For everything except a business question it reads **metadata**: the catalog, lineage, runs, file receipts, object definitions, and the reference docs. It reasons from those rather than counting rows.
 
 - **Diagnosing missing or late data.** For "why is `dbo.X` empty / short?", it does not guess: it locates the table, walks lineage upstream to the feeding source, then reads that source's recent runs and `run_files` to see whether it delivered, comparing the latest run's **file size and row count** against prior runs (a succeeded run can still under-deliver). It concludes with the specific cause and the numbers: the source run failed, ran with zero files, has not run since the data was due, or delivered well below its norm.
-- **Concrete queries to go further.** Because it cannot query the data itself, once it has identified the real objects it hands you ready-to-run T-SQL against them, fully qualified and using the real columns from the catalog's object definition, so you can inspect the data directly.
+- **Concrete queries to go further.** Once a diagnosis has identified the real objects, it hands you ready-to-run T-SQL against them, fully qualified and using only the allowed columns the semantic layer lists, so you can inspect the data directly.
 - **Reading images.** Paste a screenshot (an error dialog, a run's log, a flow YAML) and ask about it; the vision-capable model reads the image, then answers using the tools (looking up the named run or table rather than trusting the picture alone). This needs the `files:read` scope on the Slack app.
 - **Thread context, only when invoked in a thread.** A mention inside a thread uses that thread's replies as context. A top-level mention is answered on its own; the bot never reads the broader channel history, so it only ever sees what a conversation it was invoked in contains.
+
+## Business questions (`!cwd`)
+
+A `!cwd` question is answered the same way as in the [GUI chat](chat-assistant.md), laid out for Slack. The instructions for this surface are the Slack branch of `AssistantInstructions`:
+
+1. **A trusted saved answer runs straight away** with `auto_run_trusted_match`, no approval asked.
+2. **Anything else is offered first.** The bot says it has no saved answer yet (or that a report already answers the question), says what the query will show, gives the SQL, and asks for a reply in the thread to run it. In a channel that reply must mention the bot, because the bot only receives @-mentions there; in a DM a plain reply works. Anyone in the thread can approve, since the thread shares the bot's one identity.
+3. **On approval it runs the plan** with `run_query`. A prepared plan is single-use and expires, and the Anthropic gateway does not carry earlier tool results between turns, so when the plan is gone the bot prepares exactly the approved SQL again and runs it in the same turn.
+4. **The result** follows the `answerFormat` layout the tool returns: the finding, "Here's the query I ran:", the SQL, and a "View this as a chart" link to the GUI's `/query-results/<taskId>` page when the MCP server has `SQLFLOW_GUI_URL`. `SlackMrkdwn` drops a fence's language tag (```` ```sql ````), because Slack does not highlight code and would show the tag as the first line.
+5. **Saving is a separate reply.** After a result that did not come from a saved answer, the bot ends with the `saveOffer` line `run_query` returns: "If this is right, reply *save* and I'll remember it for next time." It calls `confirm_question` only when someone then says the answer is right or asks it to save (outcome `corrected`, with the corrected SQL, when they fixed it). Approving a run is never a request to save, and a "that's wrong" saves nothing.
+
+Running needs `ControlPlane:DataOps:Enabled`, saving needs `ControlPlane:PowerAI:Retrieval:Enabled`, and the trusted run also needs `ControlPlane:PowerAI:Retrieval:AutoRun:Enabled`; with a switch off the tool answers 403 or 501 and the bot falls back to giving the SQL. Every query is refused unless it is a single read-only SELECT over allow-listed columns (`ReadOnlyQueryGuard`, `ColumnPolicyGuard`), on prepare, run, confirm, and auto-run alike.
 
 ## The chain
 
@@ -65,12 +82,12 @@ The bot drives Foundry through the **OpenAI Responses API**, not the older persi
 
 The gateway (`ResponsesApiGateway`, shared with the GUI chat assistant via the `SqlFlow.Assistant` library) builds each request as: the model deployment name, the instructions (the assistant persona and tool guidance, the single source of truth for behavior), an `input` (the new turn, or the replayed Slack transcript on a cold thread), and one `mcp` tool object carrying the MCP server URL, `require_approval: never`, the `Authorization` header, and the tool allowlist. There is no hosted agent object to create or converge; the definition lives entirely in the request.
 
-## Read-only by construction (two independent guarantees)
+## What it is allowed to do (the tool allowlist and the one bot identity)
 
-1. **The tool allowlist.** The MCP tool is sent with `allowed_tools` set to the read-only surface (`SlackBot:Mcp:AllowedTools`): the docs tools, the catalog readers (`list_pipelines`, `list_runs`, `get_run`, `lineage_*`, `describe_object`, the `search_*` tools including `search_all` and the flow-side surfaces `search_flows`/`search_flow_columns`/`search_statements`, `summary`), and nothing that writes. `trigger_run`, `cancel_run`, and `propose_pipelines` are deliberately excluded.
-2. **The token scope.** The bot's whole SQLFlow authority is one **read-scoped** personal access token, sent to the MCP server as the MCP tool's `Authorization` header and forwarded to the control plane per call. Even if a write tool were reachable, the control plane rejects it: a read token calling `cancel_run` returns `403 insufficient scope`.
+1. **The tool allowlist is the boundary.** The MCP tool is sent with `allowed_tools` set to `McpOptions.SlackDefaultTools` (override with `SlackBot:Mcp:AllowedTools`): the docs tools, the catalog readers (`list_pipelines`, `list_runs`, `get_run`, `lineage_edges`/`lineage_waves`/`lineage_dependencies`, `object_lineage`, `describe_object_refresh`, the flow-side searches (`search`, over the `flows`/`files`/`statements` surfaces), `summary`), the semantic layer tools (`get_semantic_layer`, `search_semantic_layer`, `list_semantic_tables`, `describe_semantic_table`) as the only schema readers, and the business-question tools `find_similar_questions`, `prepare_query`, `run_query`, `auto_run_trusted_match`, and `confirm_question`. `trigger_run`, `cancel_run`, and `propose_pipelines` are deliberately excluded, and so are the raw schema readers (`describe_object`, `search_all`, `search_schema`, `get_table_joins`, and the rest listed in `McpOptions.ExcludedTools`), which see columns outside the column allow-list. The engineer's data-operations checks (`check_duplicate_keys`, `compare_baseline`) stay GUI-only. See [Semantic layer](../concepts/semantic-layer.md).
+2. **The token is an identity, not a narrower scope.** The bot's whole SQLFlow authority is one personal access token, sent to the MCP server as the MCP tool's `Authorization` header and forwarded to the control plane per call. The control plane's `read`, `operate`, and `author` policies only require a signed-in principal (only `admin` checks a scope), so the token's scopes do not stop a tool the allowlist lets through: the allowlist does.
 
-Everyone in a workspace shares this one bot identity, which is why the allowlist stays read-only: widening it (for example adding `trigger_run`) would let anyone in any channel the bot is in fire it. Do not widen it here; the surface with a per-user identity is the [GUI chat assistant](chat-assistant.md), where every agent run carries a short-lived token delegated from the signed-in user.
+Everyone in a workspace shares this one bot identity, which is why the allowlist stays read-only. Anyone in a thread can approve a query, every query runs as the token's owner, and every answer the bot saves records that owner as `ConfirmedBy`. That is acceptable for the business-question tools because what they can do does not depend on who approves: a query is only ever a single read-only SELECT over allow-listed columns, a plan is single-use, and admins review and delete saved answers on the AI knowledge page's Saved answers tab. It is not acceptable for a tool that starts work, so widening the allowlist (for example adding `trigger_run`) would let anyone in any channel the bot is in fire it. Do not widen it here; the surface with a per-user identity is the [GUI chat assistant](chat-assistant.md), where every agent run carries a short-lived token delegated from the signed-in user.
 
 ## Conversation state
 
@@ -92,7 +109,7 @@ Setup, in order:
 
 1. **Deploy the estate** (see [Deploying](deployment.md)), if it is not already up.
 2. **Create the Slack app**: at https://api.slack.com/apps choose "From an app manifest" and paste `deploy/slack/manifest.yaml`. Install it to the workspace, then collect the app-level token (`xapp-...`, Basic Information, App-Level Tokens, `connections:write`) and the bot token (`xoxb-...`, OAuth & Permissions, after Install to Workspace).
-3. **Mint the bot's SQLFlow token**: create a personal access token with the `read` scope only. This is the credential forwarded to the MCP server on every call.
+3. **Mint the bot's SQLFlow token**: create a personal access token for a dedicated SQLFlow account (for example `slack-bot`) rather than a person's own. This is the credential forwarded to the MCP server on every call, and every query the bot runs and every answer it saves is attributed to that account.
 4. **Build and push the two images** (`Dockerfile.mcp` and `Dockerfile.slackbot`).
 5. **Redeploy `main.bicep`** with `aiFoundryName`, `aiFoundryModelName=gpt-5.1` (or another Responses-API + MCP-capable deployment), `mcpImage`, `slackBotImage`, and `slackAppToken`/`slackBotToken`/`slackBotSqlflowToken`. This writes the three tokens into Key Vault and grants the bot the Cognitive Services OpenAI User role. Then `/invite` the bot to a channel (or DM it) and ask.
 

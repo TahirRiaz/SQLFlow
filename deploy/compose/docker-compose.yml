@@ -1,5 +1,6 @@
-# The full SQLFlow stack for local/parity deployments: SQL Server (catalog + demo sink), the control plane, one
-# scalable worker, and the GUI. Copy .env.example to .env and set the secrets first.
+# The full SQLFlow stack for local/parity deployments: SQL Server (catalog + demo sink + the AdventureWorks
+# sample, restored once by adventureworks-init), the control plane, the isolated Power BI extractor, one scalable
+# worker, and the GUI. Copy .env.example to .env and set the secrets first.
 #
 #   docker compose up -d --build
 #   docker compose up -d --scale worker=3        # more compute, no other change
@@ -31,6 +32,26 @@ services:
     ports:
       - "14333:1433"
 
+  # One-shot: downloads Microsoft's official AdventureWorksDW2022 sample (the dimensional edition, matching
+  # the shape of samples/powerbi/AdventureWorks Sales.pbix's model) and restores it into `mssql` as database
+  # `AdventureWorks`, then exits. Idempotent (deploy/docker/adventureworks-restore.sh skips the
+  # download/restore once the database already exists), so repeated `docker compose up` is a no-op here.
+  # This is a real Sql.Database-backed sample for PowerAI/lineage work; the sample .pbix's own model tables
+  # are Excel-sourced today and so never resolve to a warehouse object.
+  adventureworks-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    depends_on:
+      mssql:
+        condition: service_healthy
+    volumes:
+      - mssql-data:/var/opt/mssql
+      - ../docker/adventureworks-restore.sh:/adventureworks-restore.sh:ro
+    environment:
+      MSSQL_HOST: mssql
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?set MSSQL_SA_PASSWORD in .env}
+    entrypoint: ["/bin/bash", "/adventureworks-restore.sh"]
+    restart: "no"
+
   controlplane:
     build:
       context: ../..
@@ -48,16 +69,53 @@ services:
       ControlPlane__Cors__AllowedOrigins__0: http://localhost:8081
       # Compute belongs to the worker service; this replica is API + scheduler + sync only.
       ControlPlane__Worker__Enabled: "false"
+      # PowerAI auto-run testing: DataOps (ad-hoc queries), question retrieval, and its auto-run step.
+      # ExpandSynonyms is off because this stack has no Anthropic key configured; retrieval still runs on the
+      # typed words and their inflections without it.
+      ControlPlane__DataOps__Enabled: "true"
+      ControlPlane__PowerAI__Retrieval__Enabled: "true"
+      ControlPlane__PowerAI__Retrieval__ExpandSynonyms: "false"
+      ControlPlane__PowerAI__Retrieval__AutoRun__Enabled: "true"
+      # Power BI uploads from the Semantic layer page are extracted by the isolated pbix-extractor service below,
+      # never inside this process.
+      ControlPlane__PowerAI__ReportExtraction__Enabled: "true"
+      ControlPlane__PowerAI__ReportExtraction__Endpoint: http://pbix-extractor:8080
+      ControlPlane__PowerAI__ReportExtraction__ApiKey: ${SQLFLOW_EXTRACTOR_KEY:?set SQLFLOW_EXTRACTOR_KEY in .env}
       # Flows in the demo estate reference this sink.
       SQLFlowSinkConStr: "Server=mssql;Database=SqlFlowDemo;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
     ports:
       - "5000:8080"
+    networks:
+      - default
+      - extraction
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/health/live || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5
       start_period: 15s
+    restart: unless-stopped
+
+  # The isolated Power BI extractor: the only place an uploaded .pbix is parsed. It sits alone with the control
+  # plane on an internal network (no route out, nothing published), holds no credentials beyond the shared key,
+  # and runs read-only with every capability dropped, so a hostile report can at worst crash this container.
+  pbix-extractor:
+    build:
+      context: ../..
+      dockerfile: Dockerfile.pbix-extractor
+    environment:
+      PbixExtractor__ApiKey: ${SQLFLOW_EXTRACTOR_KEY:?set SQLFLOW_EXTRACTOR_KEY in .env}
+    networks:
+      - extraction
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    pids_limit: 128
     restart: unless-stopped
 
   worker:
@@ -77,6 +135,12 @@ services:
       # No catalog connection: the run's definition, its YAML, its lineage context and its trace all travel over
       # the node protocol. The node reaches only the control plane and the data its flows touch.
       SQLFlowSinkConStr: "Server=mssql;Database=SqlFlowDemo;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      # Resolves ${env:SQLFLOW_DEMO_DB}, the reference samples/lineage-demo's flows declare, so a compute
+      # task (prepare_query/run_query, PowerAI auto-run) can actually reach the estate synced from it.
+      SQLFLOW_DEMO_DB: "Server=mssql;Database=SqlFlowCatalogTests;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
+      # Resolves ${env:SQLFLOW_ADVENTUREWORKS_DB}, the connection samples/powerai-adventureworks declares, so the
+      # AdventureWorks Sales report's questions can be run against the database adventureworks-init restores.
+      SQLFLOW_ADVENTUREWORKS_DB: "Server=mssql;Database=AdventureWorks;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       # Serve a pool by listing it here; empty drains untargeted runs only.
       SQLFLOW_WORKER_POOL: ${SQLFLOW_WORKER_POOL:-}
       SQLFLOW_GIT_TOKEN: ${SQLFLOW_GIT_TOKEN:-}
@@ -90,6 +154,12 @@ services:
     ports:
       - "8081:8080"
     restart: unless-stopped
+
+networks:
+  default:
+  # No external route: only the control plane and the extractor are attached.
+  extraction:
+    internal: true
 
 volumes:
   mssql-data:

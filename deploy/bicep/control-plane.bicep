@@ -89,6 +89,12 @@ param assistantFoundryTranscriptionDeploymentName string = ''
 @description('The deployed SQLFlow MCP server endpoint (https://<mcp host>/mcp), the assistant\'s tool source. Required when assistantEnabled.')
 param assistantMcpServerUrl string = ''
 
+@description('Base address of the isolated Power BI extractor (the endpoint output of pbix-extractor.bicep). Empty leaves .pbix uploads off; specification uploads work either way.')
+param reportExtractionEndpoint string = ''
+
+@description('Name of the vault secret holding the key shared with the extractor. Required with reportExtractionEndpoint.')
+param reportExtractionKeySecretName string = ''
+
 @description('Minimum replicas. Keep at 1 so the API is warm (a trigger never waits on a cold start).')
 @minValue(1)
 param minReplicas int = 1
@@ -166,6 +172,38 @@ var gitTokenSecrets = empty(gitTokenSecretName) ? [] : [
     name: 'git-token'
     keyVaultUrl: '${vaultUri}secrets/${gitTokenSecretName}'
     identity: identity.id
+  }
+]
+
+var reportExtractionEnabled = !empty(reportExtractionEndpoint) && !empty(reportExtractionKeySecretName)
+
+var reportExtractionSecrets = !reportExtractionEnabled ? [] : [
+  {
+    name: 'pbix-extractor-key'
+    keyVaultUrl: '${vaultUri}secrets/${reportExtractionKeySecretName}'
+    identity: identity.id
+  }
+]
+
+// Power BI uploads: the control plane forwards a .pbix to the isolated extractor and never parses it itself.
+var reportExtractionEnv = !reportExtractionEnabled ? [] : [
+  {
+    name: 'ControlPlane__PowerAI__ReportExtraction__Enabled'
+    value: 'true'
+  }
+  {
+    name: 'ControlPlane__PowerAI__ReportExtraction__Endpoint'
+    value: reportExtractionEndpoint
+  }
+  {
+    name: 'ControlPlane__PowerAI__ReportExtraction__ApiKey'
+    secretRef: 'pbix-extractor-key'
+  }
+  {
+    // Container Apps ingress ends a request after 240 seconds, so the control plane gives up just before it
+    // rather than waiting on an answer the platform will never deliver.
+    name: 'ControlPlane__PowerAI__ReportExtraction__TimeoutSeconds'
+    value: '230'
   }
 ]
 
@@ -318,7 +356,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           identity: identity.id
         }
       ]
-      secrets: concat(baseSecrets, bootstrapSecrets, gitTokenSecrets)
+      secrets: concat(baseSecrets, bootstrapSecrets, gitTokenSecrets, reportExtractionSecrets)
     }
     template: {
       containers: [
@@ -329,7 +367,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1.0Gi'
           }
-          env: concat(baseEnv, bootstrapEnv, gitTokenEnv, gitUsernameEnv, corsEnv, proxyEnv, entraEnv, assistantEnv)
+          env: concat(baseEnv, bootstrapEnv, gitTokenEnv, gitUsernameEnv, corsEnv, proxyEnv, entraEnv, assistantEnv, reportExtractionEnv)
           probes: [
             {
               type: 'Liveness'

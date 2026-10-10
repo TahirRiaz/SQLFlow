@@ -169,7 +169,7 @@ public sealed class YamlSourceControlFlowLoader
         // schema to be versioned after all.
         return y.ExcludeSchemas is null
             ? scripting
-            : scripting with { ExcludeSchemas = NormalizeSchemas(y.ExcludeSchemas) };
+            : scripting with { ExcludeSchemas = YamlDocumentParts.NormalizeSchemas(y.ExcludeSchemas) };
     }
 
     /// <summary>The lane count the scripter fans out over, defaulted when absent and bounded when authored: a
@@ -192,31 +192,6 @@ public sealed class YamlSourceControlFlowLoader
         return lanes;
     }
 
-    /// <summary>Normalizes the excluded-schema list: blanks dropped, each name trimmed and unbracketed, and
-    /// duplicates removed case-insensitively (the scripter compares schema names case-insensitively too).</summary>
-    private static IReadOnlyList<string> NormalizeSchemas(List<string> items)
-    {
-        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var result = new List<string>(items.Count);
-        foreach (var raw in items)
-        {
-            var value = YamlDocumentParts.NullIfBlank(raw);
-            if (value is null)
-            {
-                continue;
-            }
-
-            // A bracketed [raw] is the same schema as raw; strip a single surrounding pair, as data tables do.
-            var name = SplitQualifiedName(value)[^1];
-            if (name.Length > 0 && seen.Add(name))
-            {
-                result.Add(name);
-            }
-        }
-
-        return result;
-    }
-
     /// <summary>Normalizes each data-table entry to a canonical <c>schema.table</c> form (the rightmost two
     /// parts of a 1-to-3-part name), de-duplicated case-insensitively, matching how the scripter compares them.</summary>
     private static IReadOnlyList<string> NormalizeDataTables(List<string>? items, string source)
@@ -236,7 +211,7 @@ public sealed class YamlSourceControlFlowLoader
                 continue;
             }
 
-            var parts = SplitQualifiedName(value).Where(p => p.Length > 0).ToList();
+            var parts = YamlDocumentParts.SplitQualifiedName(value).Where(p => p.Length > 0).ToList();
             if (parts.Count == 0)
             {
                 throw new FlowValidationException($"{source}: 'scripting.data' has an empty table name.");
@@ -280,38 +255,6 @@ public sealed class YamlSourceControlFlowLoader
         }
 
         return result;
-    }
-
-    /// <summary>Splits a (possibly bracketed) qualified name on dots that sit outside <c>[...]</c>, stripping a
-    /// single surrounding bracket pair from each part. Tolerant of the simple <c>schema.table</c> and bracketed
-    /// <c>[schema].[table]</c> forms a data-table entry takes.</summary>
-    private static List<string> SplitQualifiedName(string value)
-    {
-        var parts = new List<string>();
-        var token = new System.Text.StringBuilder();
-        var inBracket = false;
-        foreach (var c in value)
-        {
-            switch (c)
-            {
-                case '[' when !inBracket:
-                    inBracket = true;
-                    break;
-                case ']' when inBracket:
-                    inBracket = false;
-                    break;
-                case '.' when !inBracket:
-                    parts.Add(token.ToString().Trim());
-                    token.Clear();
-                    break;
-                default:
-                    token.Append(c);
-                    break;
-            }
-        }
-
-        parts.Add(token.ToString().Trim());
-        return parts;
     }
 
     private static void RequireReferenceNotLiteral(string? value, string field, string source)

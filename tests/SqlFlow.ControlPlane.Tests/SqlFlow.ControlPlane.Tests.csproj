@@ -18,6 +18,14 @@
     <ProjectReference Include="..\..\src\SqlFlow.ControlPlane\SqlFlow.ControlPlane.csproj" />
     <ProjectReference Include="..\..\src\SqlFlow.Catalog\SqlFlow.Catalog.csproj" />
     <ProjectReference Include="..\..\src\SqlFlow.Cli\SqlFlow.Cli.csproj" />
+    <!-- The PowerAI proof-value suite runs its questions through the same query runner the node uses. -->
+    <ProjectReference Include="..\..\src\SqlFlow.SqlServer\SqlFlow.SqlServer.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The PowerAI proof values, read by PowerAiProofValueTests at run time. The Web SDK already includes
+         the file as Content, so this only sets how it is copied. -->
+    <Content Update="Fixtures\powerai-proof-values.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

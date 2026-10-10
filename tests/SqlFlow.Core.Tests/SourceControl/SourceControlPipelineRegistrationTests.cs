@@ -60,7 +60,7 @@ public sealed class SourceControlPipelineRegistrationTests : IDisposable
             new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
             new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
             new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-            new YamlTranslateFlowLoader()).Parse(SnapshotYaml);
+            new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader()).Parse(SnapshotYaml);
 
         var header = Assert.Single(FlowDocumentHeaders.Project(document));
 

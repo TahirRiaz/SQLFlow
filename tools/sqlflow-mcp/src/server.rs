@@ -1,9 +1,9 @@
 //! The SQLFlow MCP server: tool definitions and dispatch.
 //!
 //! Two capability tiers, mirroring DeltaForge's design:
-//!   * **Offline** — the embedded reference corpus (doc tools) and the
+//!   * **Offline**: the embedded reference corpus (doc tools) and the
 //!     `.flow.yaml` analysis engine (`validate_flow`, key lookup). No network.
-//!   * **Online** — a proxy over the control plane's `/api/v1` read surface
+//!   * **Online**: a proxy over the control plane's `/api/v1` read surface
 //!     (catalog, lineage, runs, schedules, search, summary) plus the operate
 //!     surface (trigger/cancel), gated by device-flow authentication.
 
@@ -74,6 +74,25 @@ impl SqlFlowMcp {
     }
 }
 
+// How a tool description uses CAPITALS, enforced by `capitals_are_rationed_to_routing_and_safety`.
+//
+// Capitals are a routing signal, and a signal only works while it is scarce. The descriptions had drifted
+// to 222 capitalised words across the surface, at which point START HERE appeared on two tools answering
+// different questions, USE THIS on three that overlap, and the emphasis had stopped carrying information:
+// a model reading everything shouted reads nothing as urgent.
+//
+// So capitals are rationed to two jobs:
+//
+// 1. Routing, in the opening words, naming the one question this tool is the right answer to when a
+//    neighbouring tool would otherwise be picked. `START HERE` marks the entry point of a family and
+//    belongs to exactly one tool (asserted).
+// 2. Safety, for a constraint whose breach causes real harm: an approval that must precede execution, a
+//    surface that bypasses the column allow-list, a call that must not be made on the model's own
+//    judgement.
+//
+// Everything else is lowercase prose. A contrast between two tools ("columns sees only synced objects,
+// flowColumns sees pipeline-only columns") is carried by the sentence, not by shouting one word of it.
+// Acronyms (SQL, YAML, DDL) are not emphasis and do not count against the budget.
 /// The rule appended to every tool description: the model may state only what the tool returned. A missing
 /// fact is reported as missing, never filled in from what a flow or a run of that kind usually looks like.
 const GROUNDING_RULE: &str = "Grounding: state only values this result contains. A null or an empty list is \
@@ -84,9 +103,24 @@ name the tool that holds it. Never invent rows, counts, SQL, or watermarks.";
 mod grounding_tests {
     use super::*;
 
+    /// Reads the router off a CONSTRUCTED server, not `grounded_router()` directly: `list_tools` serves
+    /// `self.tool_router`, and a `#[tool_handler]` left on its default would serve the generated router
+    /// instead, shipping ungrounded descriptions while a test calling `grounded_router()` still passed.
     #[test]
     fn every_tool_description_ends_with_the_grounding_rule() {
-        let tools = SqlFlowMcp::grounded_router().list_all();
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+
+        // Through ServerHandler::get_tool, which the #[tool_handler] macro generates from the SAME router
+        // expression as list_tools. Reading server.tool_router directly would pass even with the macro left on
+        // its default, which serves the ungrounded generated router: that is the bug this guards.
+        let served = ServerHandler::get_tool(&server, "find_similar_questions")
+            .expect("find_similar_questions is served");
+        assert!(
+            served.description.as_deref().unwrap_or("").ends_with(GROUNDING_RULE),
+            "the SERVED description lacks the grounding rule; is #[tool_handler] missing `router = self.tool_router`?"
+        );
+
+        let tools = server.tool_router.list_all();
         assert!(tools.len() > 50, "expected the full tool set, got {}", tools.len());
         for tool in tools {
             let description = tool.description.as_deref().unwrap_or("");
@@ -165,7 +199,7 @@ pub struct ValidateFlowInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct FlowTypeInput {
-    /// The flow kind: omit for the file flow, or one of ing, exp, sp, inv, hc, scm, batch, api, cpy, sftp, cal, trl.
+    /// The flow kind: omit for the file flow, or one of ing, exp, sp, inv, hc, scm, sch, batch, api, cpy, sftp, cal, trl.
     #[serde(rename = "flowType")]
     pub flow_type: Option<String>,
 }
@@ -334,6 +368,113 @@ pub struct KeyInput {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct SemanticSearchInput {
+    /// One or more words: a table or column name, or a business term (a synonym such as "turnover" finds
+    /// the column an admin tagged with it). Every word must match somewhere on the same table.
+    pub q: String,
+    pub page: Option<i64>,
+    #[serde(rename = "pageSize")]
+    pub page_size: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct SemanticTablesInput {
+    /// Database filter (exact), as get_semantic_layer lists it.
+    pub database: Option<String>,
+    /// Schema filter (exact, e.g. "dbo"), as get_semantic_layer lists it.
+    pub schema: Option<String>,
+    pub page: Option<i64>,
+    #[serde(rename = "pageSize")]
+    pub page_size: Option<i64>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct SimilarQuestionsInput {
+    /// The question to answer from warehouse data, in the user's own words, with the `!cwd` command prefix
+    /// stripped. It need not be about business: an operational or data-quality question asked with `!cwd`
+    /// belongs here too. Pass the
+    /// rest exactly as they typed it: the match is on meaning, so rewording it into schema terms first
+    /// throws away the signal this searches on.
+    pub question: String,
+    /// The business vocabulary to search for, expanded by YOU from the question: its own meaningful words
+    /// first, then the synonyms and closely related business terms a dashboard might have used for the
+    /// same thing, each also in its common grammatical forms (e.g. for "what drives our turnover":
+    /// turnover, revenue, sales, income, drive, drives, driver, drivers). Single words or short phrases,
+    /// lowercase, no stop words; at most 48 are used. Stored questions are ranked by how many of these they
+    /// contain, so a term that is only loosely related adds noise. Omit it and the server searches the
+    /// typed words alone (or expands them itself, where it is configured to).
+    pub expanded_terms: Option<Vec<String>>,
+    /// How many matches to return (default 3, max 20).
+    pub top_k: Option<u32>,
+    /// Restrict to one repo by id. Omit to search the whole estate, which is usually right: a question
+    /// about revenue is worth answering from whichever repo's report first asked it.
+    pub repo_id: Option<String>,
+}
+
+/// The query string for `GET /lineage/subscribers/similar-questions`: every expanded term travels as its own
+/// repeated `expandedTerms` key, which the control plane binds to its term list. Blank terms are dropped here
+/// so an empty list sends none and the server falls back to its own term source.
+fn similar_questions_query(input: SimilarQuestionsInput) -> Vec<(&'static str, String)> {
+    let mut query: Vec<(&'static str, String)> = vec![("question", input.question)];
+    for term in input.expanded_terms.unwrap_or_default() {
+        let term = term.trim();
+        if !term.is_empty() {
+            query.push(("expandedTerms", term.to_string()));
+        }
+    }
+    if let Some(top_k) = input.top_k {
+        query.push(("topK", top_k.to_string()));
+    }
+    if let Some(repo_id) = input.repo_id {
+        query.push(("repoId", repo_id));
+    }
+    query
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct ConfirmQuestionInput {
+    /// The question that was asked, in the user's own words, exactly as they typed it, or the wording they
+    /// gave you when you showed them what would be saved. This is the text later questions are matched
+    /// against, so rewriting it into schema terms would store something nobody will ever ask again. Do not
+    /// tidy it on your own judgement either, not even an obvious typo: show the person what you are about to
+    /// save and change it only if they ask, since the stored question is theirs, not yours.
+    pub question: String,
+    /// The query that answers it. On outcome="corrected" this is the CORRECTED SQL, not what was first
+    /// proposed: the store holds what worked, never what was fixed. Must be a single read-only SELECT; it is
+    /// parsed and refused otherwise.
+    pub sql: String,
+    /// What the person decided about the RESULT: "accepted" (they explicitly said the answer is right, or asked
+    /// to save it), "corrected" (it answered it after being edited), or "rejected" (it did not). Approving a
+    /// run is none of these. A rejection stores nothing and says so.
+    pub outcome: String,
+    /// The warehouse object keys the query reads, when you resolved them (from describe_object or the match
+    /// you adapted). Omit rather than guessing: an example is still worth keeping without them.
+    pub object_keys: Option<Vec<String>>,
+    /// The find_similar_questions `score` this answer was built from, when it was built from a match. Omit
+    /// when the query was composed from the schema instead. Never your own estimate of your correctness.
+    pub confidence: Option<i32>,
+    /// The repo to attribute the example to. Omit to keep it estate-wide, which is usually right.
+    pub repo_id: Option<String>,
+    /// The datasource this sql runs against: a whole ${env:...} / ${keyvault:...} reference or an @alias,
+    /// matching a datasource the catalog already declares (the same reference prepare_query takes). Pass it
+    /// when the person told you, or picked, which datasource this answer is for; omit it when none was
+    /// established. Without it a later trusted match to this example still stands as precedent but cannot be
+    /// auto-run, since nothing would tell prepare_query which connection to use. Ignored for outcome="rejected",
+    /// which is never stored at all.
+    #[serde(rename = "sourceRef")]
+    pub source_ref: Option<String>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct AutoRunQuestionInput {
+    /// The `exampleId` a TRUSTED find_similar_questions match carried. Only present on a user-confirmed match
+    /// that also carries a `sourceRef`; a match with no exampleId (a PowerBI-derived question) or no sourceRef
+    /// cannot be auto-run, and must go through prepare_query/run_query instead.
+    #[serde(rename = "exampleId")]
+    pub example_id: i64,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct ObjectLineageInput {
     /// The object key (from search_all, describe_object, or lineage_objects).
     pub key: String,
@@ -358,25 +499,55 @@ pub struct SubscribersInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SearchInput {
+    /// Which surface to page. `search`: flows, files, statements. `search_schema`: objects, columns,
+    /// definitions, flowColumns. Call search_all first when you do not yet know which one holds the term.
+    pub surface: String,
     /// The search term. Prefer ONE identifier token ("SourceRank", "FerryPassengers") over an English
     /// phrase: a multi-word query must match EVERY word (in any field of a row), so a stray word empties
     /// the result. Matching is case-insensitive substring, so a fragment works.
     pub query: String,
+    /// How many days back to search, for surface=statements only (default 90). Pass 0 for all retained
+    /// history: statements are pruned by the estate's trace retention, so "all history" still means "as far
+    /// back as retention kept". Ignored on every other surface.
+    pub days: Option<i64>,
     pub page: Option<i64>,
     #[serde(rename = "pageSize")]
     pub page_size: Option<i64>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
-pub struct SearchStatementsInput {
-    /// The search term, matched against the executed SQL text, the step name, and the flow name.
-    pub query: String,
-    /// How many days back to search (default 90). Pass 0 for all retained history: statements are pruned by the
-    /// estate's trace retention, so "all history" still means "as far back as retention kept".
-    pub days: Option<i64>,
-    pub page: Option<i64>,
-    #[serde(rename = "pageSize")]
-    pub page_size: Option<i64>,
+/// How one search surface reaches the control plane: its endpoint, the query-string key that carries the
+/// term (the search endpoints are split between `name` and `q`), and whether it honours `days`.
+struct SearchSurfaceSpec {
+    path: &'static str,
+    query_param: &'static str,
+    takes_days: bool,
+}
+
+/// Resolves a `search` surface: the ETL-side ones, which carry no warehouse schema. Kept separate from
+/// [`schema_surface_spec`] because the split is a privacy boundary, not a category. The chat surfaces are
+/// given these and denied those, and a name-level allowlist can only express that as two tools.
+fn search_surface_spec(surface: &str) -> Option<SearchSurfaceSpec> {
+    let (path, query_param, takes_days) = match surface {
+        "flows" => ("/api/v1/search/flows", "q", false),
+        "files" => ("/api/v1/search/files", "name", false),
+        "statements" => ("/api/v1/search/statements", "q", true),
+        _ => return None,
+    };
+    Some(SearchSurfaceSpec { path, query_param, takes_days })
+}
+
+/// Resolves a `search_schema` surface: the four that read the warehouse schema itself. These see every
+/// catalogued table and column regardless of the semantic layer's column allow-list, which is why they are
+/// a separate tool that the chat surfaces exclude.
+fn schema_surface_spec(surface: &str) -> Option<SearchSurfaceSpec> {
+    let (path, query_param) = match surface {
+        "objects" => ("/api/v1/search/objects", "name"),
+        "columns" => ("/api/v1/search/columns", "name"),
+        "definitions" => ("/api/v1/search/definitions", "q"),
+        "flowColumns" => ("/api/v1/search/flow-columns", "name"),
+        _ => return None,
+    };
+    Some(SearchSurfaceSpec { path, query_param, takes_days: false })
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -545,7 +716,9 @@ pub struct PrepareQueryInput {
     /// The single read-only SELECT to prepare. Compose it from real metadata (get_table_key,
     /// get_table_joins, describe_object), never from guessed column or join names.
     pub sql: String,
-    /// The datasource connection reference. Omit to use the estate's busiest target datasource (the warehouse).
+    /// The datasource connection reference. Omit it: the control plane works out the datasource from the tables
+    /// the query reads, and answers naming the candidates when it cannot tell. Pass one only then, or when the
+    /// person named it.
     pub reference: Option<String>,
     /// The database to run in; omit for the connection's default.
     pub database: Option<String>,
@@ -675,6 +848,191 @@ fn json_str(v: &Value) -> String {
     serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string())
 }
 
+/// How a query answer must be laid out. Carried IN the tool result rather than only in the server instructions,
+/// because a client may truncate those instructions long before the business-question section.
+const ANSWER_FORMAT: &str = "If your own instructions already define how to lay out a query answer (a chat \
+    that embeds the result, for example), follow those and ignore this field, `sqlIntro`, `sqlBlock`, \
+    `chartLink`, and `saveOffer`. Otherwise: reply with the finding in one or two plain sentences, then `sqlIntro` on its own \
+    line exactly as given, then `sqlBlock` copied exactly as given, as its own fenced code block on its own lines, \
+    then, only when `chartLink` is present, a line reading [View this as a chart](chartLink) with that URL, then, only when `saveOffer` is present, \
+    `saveOffer` on its own last line exactly as given; \
+    nothing else goes before, between, or after these parts. Never put the SQL inline in a sentence or in single backticks, never \
+    paraphrase it, and beyond `sqlIntro` do not describe how the answer was found (matches, confirmations, \
+    datasources, tool names) unless asked. Running this query is NOT confirmation of the answer: do not call \
+    confirm_question now, and only call it later if the person, after seeing this result, explicitly says it \
+    is correct, corrects it, or asks you to save it.";
+
+/// THE single source of truth for the silent-retrieval rule: on the business-question path the person hears the
+/// answer, never the machinery that found it. Every place that states the rule (the tool descriptions, the server
+/// instructions, and the `responseRule` carried in the result) composes this text rather than restating it, so the
+/// wording cannot drift between them.
+///
+/// It is stated in three places on purpose, because each covers a window the others cannot. A tool description is
+/// the only one guaranteed to be read BEFORE the first call, so it is the only thing covering the opening preamble;
+/// the server instructions can be truncated by a client long before the business-question section; and the
+/// `responseRule` in the payload always arrives, but only once a call has already been made. The rule therefore
+/// leads the `find_similar_questions` description, where it is read before the model composes anything at all.
+/// It is a macro rather than a `const` so the server instructions can splice it with `concat!`, which needs a
+/// literal. The one place that cannot use it is the `#[tool(description = ...)]` attribute on
+/// `find_similar_questions`: rmcp's macro rejects anything but a bare literal, so that description repeats the
+/// text and `tool_description_leads_with_the_silent_rule` fails the build if the two ever drift apart.
+macro_rules! silent_retrieval_rule {
+    () => {
+        "Say nothing to the person before or between the tool calls on this path: no preamble, no restating the \
+        question, no announcing what you are about to look up or that you are building a query, and no commentary \
+        on what came back (whether a match is trusted, its score, who confirmed it, saved answers, reports, or tool \
+        names). All of that is yours to act on, never to narrate: to a business reader it reads as the assistant \
+        explaining its own plumbing, and calling a match untrusted or low-scoring reads as the assistant being \
+        unreliable. Work silently until you have the answer or a query to offer, then reply once."
+    };
+}
+
+/// The rule as a value, for the tests that hold every carrier of it to the one wording.
+#[cfg(test)]
+const SILENT_RETRIEVAL_RULE: &str = silent_retrieval_rule!();
+
+/// How to behave between find_similar_questions and the answer, as carried in that tool's own result. The rule
+/// itself is [`SILENT_RETRIEVAL_RULE`]; this adds only where the finished reply's layout comes from.
+const RETRIEVAL_RULE: &str = concat!(
+    silent_retrieval_rule!(),
+    " Lay that one reply out as your instructions describe or, when you have them, as auto_run_trusted_match, \
+    run_query, or prepare_query hands back."
+);
+
+/// How to read a `describe_semantic_table` payload, carried on the response rather than in the tool
+/// description. A field's meaning is only needed once the payload is in hand, while a description is read on
+/// every turn by a model choosing between tools, so the explanation is paid where it is used.
+const SEMANTIC_TABLE_GUIDE: &str = "Reading this: `columns` are the ONLY columns a query may read (any other \
+is refused when the query runs, and SELECT * is refused on a table with columns outside the layer, so always \
+name them). `keyOrigin` Curated means an admin stated the key. On a join, `source` Curated = declared by an \
+admin, so prefer it; Discovered = inferred from the codebase's own joins, ranked by `occurrences`; \
+`isRangeJoin` marks an interval join that must never be treated as a key match. Reuse a measure's \
+`expression` verbatim, and mirror an example question's SQL shape for a similar question. `reportModels` \
+holds the Power BI models built on this table: their `measures` and `calculatedColumns` carry DAX \
+`expression`s, and DAX is not SQL, so mirror the logic rather than pasting it; a `relationships` entry with \
+`isActive` false applies only where a measure invokes USERELATIONSHIP. `consumers` answers who uses this \
+table.";
+
+/// How to read a `describe_subscriber_report` payload. Same reasoning as [`SEMANTIC_TABLE_GUIDE`]: this is
+/// field semantics for a payload in hand, not a signal for choosing the tool.
+const SUBSCRIBER_REPORT_GUIDE: &str = "Reading this: a field's `role` (Category/Y/Rows/Values/Size/...) says \
+whether it is the axis a chart is broken down by or the value it plots, which a flattened column list cannot \
+express. `tableName` on a field is the Power BI MODEL entity name (e.g. \"Sales\"), not resolved to a \
+physical warehouse object, so never treat it as a catalog key. Cross-reference a visual's `queryName` \
+against describe_subscriber's `queries` for the rendered SQL. An empty `pages` means the subscriber has no \
+extracted report (hand-authored, or not yet synced), not that one failed to load; an empty `questions` on a \
+visual means question generation is disabled or has not run for it, not that the visual answers nothing.";
+
+/// How to read a `detect_stream_anomalies` payload: the ensemble's verdict fields and the size floors behind
+/// them. The METHOD (how each detector works, how reprocessing is trimmed, how cadence is learned) is the
+/// concept page's job, which the tool description points at; repeating it inline taught a documented method
+/// to every model on every turn, whether or not it called this tool.
+const STREAM_ANOMALY_GUIDE: &str = "Reading this: trust a finding with `agreeingDetectors` >= 2. A lone \
+detector is a lead, and a lone VOLUME detector (rateChange / levelShift / volumeOutlier) on a stream that \
+still loads every day is nearly always noise, worth saying so about. The three primary detectors (silence, \
+nullDays, cadence) can raise a finding alone. Every detector, fired or quiet, carries a `detail` sentence \
+holding its evidence with the numbers in it. A stream's `stage` says whose problem a finding is: \
+'integration' fetches from the vendor, so nothing there usually means the vendor sent nothing; \
+'file-ingestion' and 'archive' mean the data arrived and we did not take it in; 'derived' is entirely our \
+own processing. `pattern.changeDriven` marks a stream whose empty days ARE its normal (a reference table \
+that changes twice a year), with `profile.deliveryShare` as the evidence: its silence is not an outage, and \
+it is category rarely-changes rather than stalled. Volume findings carry a size floor as well as a \
+significance test, because sigma is the stream's own noise: a very steady feed makes a hundred-row wobble \
+look like 4 sigma, and significance without size is not a fault.";
+
+/// Attaches a reading guide to a payload that came back whole, under `readingThis`, the key `search_all`
+/// already uses for the same purpose. An error payload is left alone: guidance on fields it does not have
+/// would be noise on top of a failure.
+fn attach_guide(value: &mut Value, guide: &'static str) {
+    if let Some(map) = value.as_object_mut() {
+        if map.contains_key("error") {
+            return;
+        }
+        map.insert("readingThis".into(), json!(guide));
+    }
+}
+
+/// Attaches the silent-retrieval rule to a find_similar_questions response; an error payload is left alone.
+fn attach_retrieval_rule(value: &mut Value) {
+    if value.get("matches").is_none() {
+        return;
+    }
+    if let Some(map) = value.as_object_mut() {
+        map.insert("responseRule".into(), json!(RETRIEVAL_RULE));
+    }
+}
+
+/// How to ask a person to approve a prepared query. A business reader cannot weigh retrieval internals, and
+/// hearing that an answer is "not trusted" reads as the assistant being unreliable, so the ask stays about what
+/// the query will show.
+const APPROVAL_FORMAT: &str = "If your own instructions already define how to offer a query (a chat with a Run \
+    button, for example), follow those and ignore this field. Otherwise: ask for approval in plain business \
+    language. Open with where the query comes \
+    from: when it is NOT a saved answer (you wrote it for this question, or adapted it from a similar one), say \
+    \"I don't have a saved answer for this question yet, so I've put together a query that should answer it.\"; \
+    when it reproduces a question one of the estate's reports already answers, say \"This question is already \
+    answered in one of our reports, so here's the query behind it.\" Then one sentence on what this query will \
+    show, then `sql` verbatim as its own ```sql fenced code block, then a short question such as \"Want me \
+    to run it?\". Never mention trust, trusted or untrusted, scores, thresholds, matches, confidence, or that \
+    an answer is unverified, and never ask the person to judge the data source, table, or datasource: they \
+    decide whether to run it, not how it was found.";
+
+/// Attaches the approval layout to a prepare_query response that minted a plan; an error payload is left alone.
+fn attach_approval_format(value: &mut Value) {
+    if value.get("planId").and_then(Value::as_str).is_none() {
+        return;
+    }
+    if let Some(map) = value.as_object_mut() {
+        map.insert("approvalFormat".into(), json!(APPROVAL_FORMAT));
+    }
+}
+
+/// The line that introduces the SQL block: a trusted auto-run replays a stored, person-confirmed query, while a
+/// run_query result ran a statement composed for this question.
+const SAVED_QUERY_INTRO: &str = "Here's the saved query I ran:";
+const QUERY_INTRO: &str = "Here's the query I ran:";
+
+/// The closing line inviting a person to save a fresh answer. Only a run_query result carries it: an auto-run
+/// replayed an answer someone already saved, so offering to save it again would ask for a decision already made.
+const SAVE_OFFER: &str = "If this is right, reply *save* and I'll remember it for next time.";
+
+/// Attaches the answer layout to a query result that actually produced rows: `sqlBlock` is the SQL that ran,
+/// already fenced, so the model copies a finished element instead of deciding how to render it. Both the
+/// auto-run response and a compute task carry the executed statement at `result.sql`; a result that did not
+/// run (or carries no SQL) is left untouched, so nothing suggests an answer exists.
+///
+/// `chartLink` opens the same result as a chart in the GUI, and is added only when links are absolute (a
+/// root-relative link is not clickable outside the GUI). This server cannot tell which client called it, since
+/// the GUI chat and Slack share one `surface=assistant` connection, so every layout field says it yields to the
+/// client's own instructions: the GUI chat, which draws the chart inline, is told to ignore them.
+fn attach_answer_format(value: &mut Value, links: &GuiLinks) {
+    let succeeded = value["ran"].as_bool() == Some(true) || value["status"].as_str() == Some("succeeded");
+    if !succeeded {
+        return;
+    }
+    let Some(sql) = value["result"]["sql"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
+        return;
+    };
+    let block = format!("```sql\n{sql}\n```");
+    // Only the auto-run response carries `ran`; a compute task from run_query never does.
+    let intro = if value.get("ran").is_some() { SAVED_QUERY_INTRO } else { QUERY_INTRO };
+    if let Some(map) = value.as_object_mut() {
+        map.insert("answerFormat".into(), json!(ANSWER_FORMAT));
+        map.insert("sqlIntro".into(), json!(intro));
+        map.insert("sqlBlock".into(), json!(block));
+        if intro == QUERY_INTRO {
+            map.insert("saveOffer".into(), json!(SAVE_OFFER));
+        }
+    }
+    let chart = value["taskId"]
+        .as_str()
+        .filter(|_| !links.base().is_empty())
+        .map(|task_id| links.query_result(task_id));
+    if let (Some(chart), Some(map)) = (chart, value.as_object_mut()) {
+        map.insert("chartLink".into(), json!(chart));
+    }
+}
+
 /// Caps every string in a JSON document to `max` characters (marking the cut), recursively. The warehouse
 /// probes carry statement bodies that can run to kilobytes each; the model reading the tool result needs the
 /// shape and the head of the text, and the untruncated document stays on the compute task for the GUI.
@@ -713,7 +1071,7 @@ fn truncate_long_strings(value: &mut Value, max: usize) {
 const SEARCH_SURFACES: [(&str, &str, &str); 8] = [
     (
         "objects",
-        "search_objects",
+        "search_schema(surface=\"objects\")",
         "A warehouse table/view/proc matched by NAME. Take a hit's `key` to describe_object(key) for its \
          columns, interpreted key, generating code, lineage edges, and join relationships; to \
          describe_object_refresh(key) for how it is populated and how often it updates; or to \
@@ -721,35 +1079,35 @@ const SEARCH_SURFACES: [(&str, &str, &str); 8] = [
     ),
     (
         "columns",
-        "search_columns",
+        "search_schema(surface=\"columns\")",
         "A column on a SYNCED warehouse object matched. Take `objectKey` to describe_object(key) to see the \
          column in context and which flows write it. Note the object must have been schema-synced to appear \
          here; a column that only exists inside a flow shows up under flowColumns instead.",
     ),
     (
         "definitions",
-        "search_definitions",
+        "search_schema(surface=\"definitions\")",
         "The term appears in an object's CODE (its module body or the DDL that created it). Take `key` to \
          describe_object(key) for the full body; `source` says whether the live module or the emitted script \
          carried the match.",
     ),
     (
         "files",
-        "search_files",
+        "search(surface=\"files\")",
         "A file some run processed matched by name or path. Take `runId` to get_run / run_files for that \
          delivery, `pipelineId` to get_pipeline for the flow that ingested it, or file_provenance for the \
          producer/consumer chain of the file endpoint itself.",
     ),
     (
         "flows",
-        "search_flows",
+        "search(surface=\"flows\")",
         "The term appears in a flow's YAML (its name, its repo path, or its BODY: a source query, a selectExp, \
          an embedded statement). `matchedIn` says which. Take `id` to pipeline_definition(id) for the \
          normalized flow, get_pipeline(id) for its identity, list_runs(pipelineId) for what it has done.",
     ),
     (
         "flowColumns",
-        "search_flow_columns",
+        "search_schema(surface=\"flowColumns\")",
         "The term is a COLUMN A FLOW PRODUCES. This is the surface that answers \"where is <column> computed\": \
          matchedIn=Expression means this flow COMPUTES the value, Column means it emits it under that name, \
          Source means it reads it from the raw data. Take `pipelineId` to pipeline_definition(pipelineId) for \
@@ -757,11 +1115,11 @@ const SEARCH_SURFACES: [(&str, &str, &str); 8] = [
     ),
     (
         "statements",
-        "search_statements",
+        "search(surface=\"statements\")",
         "The term is in SQL a run ACTUALLY EXECUTED, collapsed to one row per (flow, step) with an occurrence \
          count. This is ground truth that exists nowhere else: an expression the engine composes at run time is \
          in no YAML and in no stored module body. `statementWindowDays` says how far back this looked; \
-         search_statements(days=0) searches all retained history. Take `runId` to run_statements(runId) for the \
+         search(surface=\"statements\", days=0) searches all retained history. Take `runId` to run_statements(runId) for the \
          full trace of that run.",
     ),
     (
@@ -793,11 +1151,11 @@ fn no_match_guidance(query: &str) -> Vec<String> {
          catalog_tree / lineage_objects to browse the one it should be in. An uncovered schema explains a \
          miss without meaning the object does not exist."
             .to_string(),
-        "If it is a column produced inside a pipeline rather than a synced table, search_flow_columns is the \
-         surface for it; if it is a value computed in SQL text, search_flows (flow YAML), search_definitions \
-         (object code), and search_statements (the SQL runs actually executed) are the three places that text \
-         can live. Executed SQL is searched over a recent window by default, so retry search_statements with \
-         days=0 before ruling it out."
+        "If it is a column produced inside a pipeline rather than a synced table, search_schema(surface=\"flowColumns\") is the \
+         surface for it; if it is a value computed in SQL text, the flows (flow YAML), definitions \
+         (object code), and statements (the SQL runs actually executed) surfaces are the three places that text \
+         can live. Executed SQL is searched over a recent window by default, so retry \
+         search(surface=\"statements\") with days=0 before ruling it out."
             .to_string(),
         "If it names a report, workbook, or application rather than a warehouse object, it is on the \
          consumption side: list_subscribers(search=<term>), then describe_subscriber(key)."
@@ -1412,58 +1770,127 @@ and fix every finding first."
         self.get("/api/v1/lineage/objects/dossier", &[("key", i.key)]).await
     }
 
+    // ---- Semantic layer (the allow-listed schema) --------------------------
+
     #[tool(
-        description = "What identifies ONE row of a table: its interpreted primary/business key columns in key \
-            order, and where that interpretation came from (a declared constraint, a flow's merge key, or the \
-            codebase). Metadata only, so it is instant and reads no data. USE THIS when you need the grain of \
-            a table, a column to join or group on, or a key to deduplicate by. If it answers that no key is \
-            known, or you need to know what the DATA actually supports rather than what the codebase claims, \
-            follow up with detect_unique_key, which profiles the rows."
+        description = "START HERE to write SQL for someone, unless the person's message begins with the literal `!cwd` \
+            prefix, which activates find_similar_questions instead and is that tool's alone to answer: the governed \
+            schema a query may read. Answers which tables exist, what \
+            their columns mean, and what may be queried at all. The semantic layer is the governed schema: only the tables \
+            and columns an admin has allow-listed exist in it, each with its business description and synonyms. Returns the \
+            layer's general instructions (read and follow them whenever you write SQL), where its tables live \
+            (database/schema with table counts), and every measure: a named SQL expression anchored to one table, to reuse \
+            verbatim rather than re-derive. A table or column that is not in the layer is not available to query, however it \
+            is named: say so rather than guessing at it."
+    )]
+    async fn get_semantic_layer(&self, Parameters(_): Parameters<EmptyInput>) -> String {
+        self.get("/api/v1/semantic-layer", &[]).await
+    }
+
+    #[tool(
+        description = "Search the semantic layer (the allow-listed schema) for tables, columns, and measures by \
+            physical name OR business term. Every word must match somewhere on one table: its name, schema, \
+            business name, description, or synonyms, or one of its allowed columns' names, descriptions, or \
+            synonyms. So a business word like \"turnover\" finds the column an admin tagged with it even when \
+            the column is called NetRevenue. Each hit carries the table (with its `key`), `matchedColumns` \
+            (which allowed columns matched), and `matchedOn` (which fields carried the match); measures \
+            matching every word come back beside the tables. Search single words or short terms, not whole \
+            sentences, and try a synonym when a word finds nothing. Follow a hit with \
+            describe_semantic_table(key) before writing any SQL."
+    )]
+    async fn search_semantic_layer(&self, Parameters(i): Parameters<SemanticSearchInput>) -> String {
+        let q = vec![
+            ("q", i.q),
+            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
+            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
+        ];
+        self.get("/api/v1/semantic-layer/search", &q).await
+    }
+
+    #[tool(
+        description = "List the semantic layer's tables, optionally within one database and/or schema \
+            (get_semantic_layer names which exist), each with its business name, description, synonyms, and \
+            how many allowed columns it has. Use it to browse the layer when no name or business term is \
+            known; use search_semantic_layer when one is."
+    )]
+    async fn list_semantic_tables(&self, Parameters(i): Parameters<SemanticTablesInput>) -> String {
+        let q = vec![
+            ("database", i.database.unwrap_or_default()),
+            ("schema", i.schema.unwrap_or_default()),
+            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
+            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
+        ];
+        self.get("/api/v1/semantic-layer/tables", &q).await
+    }
+
+    #[tool(
+        description = "Everything needed to write SQL against ONE semantic layer table, in one call: its identity and business \
+            description, its allowed columns, the key identifying one row, its joins to other layer tables with a ready ON \
+            clause each, the measures anchored to it, example questions with the SQL that answers them, the Power BI models \
+            built on it, the reports that consume it, and the layer's general instructions. This is the last call before \
+            composing a query: search_semantic_layer or list_semantic_tables finds the table, this serves everything you \
+            write the SQL from. The response explains its own fields in `readingThis`. Takes the `key` from either. A 404 \
+            means the table is not in the semantic layer, so it cannot be queried: say so rather than composing SQL against \
+            it."
+    )]
+    async fn describe_semantic_table(&self, Parameters(i): Parameters<KeyInput>) -> String {
+        self.get_with_guide(
+            "/api/v1/semantic-layer/tables/describe",
+            &[("key", i.key)],
+            SEMANTIC_TABLE_GUIDE,
+        )
+        .await
+    }
+
+    #[tool(
+        description = "What identifies ONE row of a table: its interpreted primary/business key columns in key order, and where that \
+            interpretation came from (a declared constraint, a flow's merge key, or the codebase). Metadata only, so it is \
+            instant and reads no data. Use it for the grain of a table, a column to join or group on, or a key to \
+            deduplicate by. If it answers that no key is known, or you need to know what the DATA actually supports rather \
+            than what the codebase claims, follow up with detect_unique_key, which profiles the rows."
     )]
     async fn get_table_key(&self, Parameters(i): Parameters<TableKeyInput>) -> String {
         done(self.table_key(i).await)
     }
 
     #[tool(
-        description = "ALL the ways to join a table, and how. Returns every route the estate itself uses, each \
-            as an ordered chain of hops with a ready-to-paste ON clause per hop, ranked best first: fewest \
-            joins, then how well used the weakest link is, then a declared FOREIGN KEY over a predicate \
-            inferred from the code. Called with just `key` it answers \"what can I join this to\"; with \
-            `other` it answers \"how do I join A to B\", finding a route through a bridge table when the two \
-            are not related directly (raise `maxHops` if it finds nothing). SEVERAL routes to the same table \
-            are returned deliberately, not deduplicated: that means the codebase joins those tables on more \
-            than one column set, which is a choice to make rather than one to have made for you. USE THIS \
-            before writing any query spanning more than one table. A warehouse rarely declares foreign keys, \
-            so these observed predicates ARE the data model, and a join guessed from matching column names is \
-            not a substitute. If it reports no route, say so rather than inventing one."
+        description = "Every way to join a table, and how. Returns every route the estate itself uses, each as an ordered chain of hops \
+            with a ready-to-paste ON clause per hop, ranked best first: fewest joins, then how well used the weakest link \
+            is, then a declared foreign key over a predicate inferred from the code. Called with just `key` it answers \
+            \"what can I join this to\"; with `other` it answers \"how do I join A to B\", finding a route through a bridge \
+            table when the two are not related directly (raise `maxHops` if it finds nothing). several routes to the same \
+            table are returned deliberately, not deduplicated: that means the codebase joins those tables on more than one \
+            column set, which is a choice to make rather than one to have made for you. Use it before writing any query \
+            spanning more than one table. A warehouse rarely declares foreign keys, so these observed predicates ARE the \
+            data model, and a join guessed from matching column names is not a substitute. If it reports no route, say so \
+            rather than inventing one."
     )]
     async fn get_table_joins(&self, Parameters(i): Parameters<TableJoinsInput>) -> String {
         done(self.table_joins(i).await)
     }
 
     #[tool(
-        description = "PROFILE a table's rows to discover what actually identifies them uniquely: the minimal \
-            column combination(s) with no duplicates, reported with the duplicate counts that ruled the others \
-            out. This reads DATA on a worker node and can take a while on a large table, so prefer \
-            get_table_key first, which answers from metadata instantly. USE THIS when no key is declared, when \
-            you suspect the declared key is wrong, or when check_duplicate_keys came back asking which columns \
-            identify a row. By default it answers straight from an enforced unique index when one exists \
-            (trustDeclaredKeys) and verifies every sampled candidate against the whole table."
+        description = "PROFILE a table's rows to discover what actually identifies them uniquely: the minimal column combination(s) \
+            with no duplicates, reported with the duplicate counts that ruled the others out. This reads DATA on a worker \
+            node and can take a while on a large table, so prefer get_table_key first, which answers from metadata \
+            instantly. Use it when no key is declared, when you suspect the declared key is wrong, or when \
+            check_duplicate_keys came back asking which columns identify a row. By default it answers straight from an \
+            enforced unique index when one exists (trustDeclaredKeys) and verifies every sampled candidate against the whole \
+            table."
     )]
     async fn detect_unique_key(&self, Parameters(i): Parameters<DetectUniqueKeyInput>) -> String {
         done(self.run_detect_unique_key(i).await)
     }
 
     #[tool(
-        description = "Walk an object's lineage TRANSITIVELY: upstream is where its data comes FROM (each hop \
-            names the flow or module that writes the level below and the object it reads: a landing table's \
-            depth-1 upstream is the source system's own table or file it is loaded from), downstream is where \
-            the data GOES and what breaks if the object changes. Steps come back depth-annotated in BFS order, \
-            each object reported once at its shortest distance. THE tool for \"where does <table> get its data\", \
-            \"what feeds this\", \"what depends on this\", and impact analysis beyond one hop; describe_object's \
-            edges stop at the object itself, this crosses the flows. `truncated: true` means a cap cut the walk, \
-            so absence of a node is then not proof of absence; re-ask with a smaller depth or one direction. \
-            Takes the object `key` from search_all / describe_object / lineage_objects."
+        description = "Walk an object's lineage transitively: upstream is where its data comes from (each hop names the flow or module \
+            that writes the level below and the object it reads: a landing table's depth-1 upstream is the source system's \
+            own table or file it is loaded from), downstream is where the data goes and what breaks if the object changes. \
+            Steps come back depth-annotated in BFS order, each object reported once at its shortest distance. THE tool for \
+            \"where does <table> get its data\", \"what feeds this\", \"what depends on this\", and impact analysis beyond \
+            one hop; describe_object's edges stop at the object itself, this crosses the flows. `truncated: true` means a \
+            cap cut the walk, so absence of a node is then not proof of absence; re-ask with a smaller depth or one \
+            direction. Takes the object `key` from search_all / describe_object / lineage_objects."
     )]
     async fn object_lineage(&self, Parameters(i): Parameters<ObjectLineageInput>) -> String {
         let q = vec![
@@ -1475,22 +1902,20 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "How an object is populated and HOW OFTEN it updates, in one call: every flow that WRITES \
-            the table, each with its `loadProfile` (derived from the flow definition: `readMode` full / \
-            incremental / window / generated / external / notApplicable / unknown, a one-sentence `summary`, \
-            the `read` and `write` behavior, `keyColumns` the upsert matches on, `watermarkColumns` that \
-            bound an incremental read, and `replacesTargetEachRun`), its `lastRun` (newest of any status, with \
-            error, trigger source, and the `incrementalMode` / `incrementalFilter` the engine actually \
-            applied), its `lastSuccessfulRun` (the last time the table was actually loaded; null if never), \
-            `runsOnSchedule` (false means no schedule fire runs it: inactive, manual, or disabled), and the \
-            schedules that fire it (cron/interval, timezone, `fires` = enabled and not paused, next and last \
-            fire; a chained schedule carries `parentSchedules` with the parents' own clocks). The one-call \
-            answer to \"when does <table> update\", \"how is <table> loaded\", \"is it a full load or \
-            incremental\", and \"did its last load work\": read those fields, never infer the load mode \
-            from the YAML or from the key (an upsert key is not a watermark). A view with no writing flow \
-            reports viaModules instead: the derivation lives in that module's body (describe_object shows \
-            it). An object with neither producers nor modules is loaded outside SQLFlow, and that absence IS \
-            the answer. Takes the object `key` from search_all / describe_object / lineage_objects."
+        description = "How an object is populated and how often it updates, in one call: every flow that writes the table, each with \
+            its `loadProfile` (derived from the flow definition: `readMode` full / incremental / window / generated / \
+            external / notApplicable / unknown, a one-sentence `summary`, the `read` and `write` behavior, `keyColumns` the \
+            upsert matches on, `watermarkColumns` that bound an incremental read, and `replacesTargetEachRun`), its \
+            `lastRun` (newest of any status, with error, trigger source, and the `incrementalMode` / `incrementalFilter` the \
+            engine actually applied), its `lastSuccessfulRun` (the last time the table was actually loaded; null if never), \
+            `runsOnSchedule` (false means no schedule fire runs it: inactive, manual, or disabled), and the schedules that \
+            fire it (cron/interval, timezone, `fires` = enabled and not paused, next and last fire; a chained schedule \
+            carries `parentSchedules` with the parents' own clocks). The one-call answer to \"when does <table> update\", \
+            \"how is <table> loaded\", \"is it a full load or incremental\", and \"did its last load work\": read those \
+            fields, never infer the load mode from the YAML or from the key (an upsert key is not a watermark). A view with \
+            no writing flow reports viaModules instead: the derivation lives in that module's body (describe_object shows \
+            it). An object with neither producers nor modules is loaded outside SQLFlow, and that absence IS the answer. \
+            Takes the object `key` from search_all / describe_object / lineage_objects."
     )]
     async fn describe_object_refresh(&self, Parameters(i): Parameters<KeyInput>) -> String {
         self.get("/api/v1/lineage/objects/refresh", &[("key", i.key)]).await
@@ -1615,18 +2040,16 @@ and fix every finding first."
     // yields a confident answer to a question nobody asked.
 
     #[tool(
-        description = "SEARCH WHAT CHANGED IN A MANAGED DATABASE (tables, views, procedures, functions). Use \
-            this for questions about DATABASE OBJECTS: 'what changed in the warehouse last week', 'when did \
-            this column appear', 'was anything dropped from arc', 'has pre.v_Citybikes_Trips been edited'. \
-            Returns one row per object per change: database, category (Table/View/StoredProcedure/...), \
-            schema, name, changeType (Added|Changed|Deleted), the commit that holds the DDL diff, and \
-            occurredUtc. Filter with database, changeType, since (ISO instant), and search (matches the \
-            object name, its schema, or its category). The history is recorded by source-control (scm) flows \
-            that snapshot each managed database on a schedule, so a change is dated to the snapshot that \
-            first SAW it: on a daily cadence that is the day, not the minute, the DDL ran, and a database \
-            with no scm flow has no history at all. For the actual DDL text, follow up with \
-            database_object_compare (the net change over a window) or database_object_ddl (what one single \
-            snapshot did). Do NOT use this for pipeline/YAML edits: that is flow_definition_history."
+        description = "WHAT CHANGED IN A DATABASE: its tables, views, procedures, and functions. Use this for questions about database \
+            objects: 'what changed in the warehouse last week', 'when did this column appear', 'was anything dropped from \
+            arc', 'has pre.v_Citybikes_Trips been edited'. Returns one row per object per change: database, category \
+            (Table/View/StoredProcedure/...), schema, name, changeType (Added|Changed|Deleted), the commit that holds the \
+            DDL diff, and occurredUtc. Filter with database, changeType, since (ISO instant), and search (matches the object \
+            name, its schema, or its category). The history is recorded by source-control (scm) flows that snapshot each \
+            managed database on a schedule, so a change is dated to the snapshot that first saw it: on a daily cadence that \
+            is the day, not the minute, the DDL ran, and a database with no scm flow has no history at all. For the actual \
+            DDL text, follow up with database_object_compare (the net change over a window) or database_object_ddl (what one \
+            single snapshot did). Not for pipeline or YAML edits: that is flow_definition_history."
     )]
     async fn database_schema_changes(&self, Parameters(i): Parameters<SchemaChangesInput>) -> String {
         let q = vec![
@@ -1660,13 +2083,12 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Show the actual DDL that changed for ONE DATABASE OBJECT at one snapshot, as a unified \
-            diff (the CREATE TABLE / CREATE VIEW text before and after). Arguments come straight from a \
-            database_schema_changes row: pipelineId (its scm flow), sha (its commitSha), and path (the \
-            object's file, '<database>/<category>/<schema>.<name>.sql'). Use it to answer 'what exactly \
-            changed about this table', after database_schema_changes has told you THAT it changed. Reports \
-            truncated=true when the patch was clipped, so a large generated snapshot is never mistaken for a \
-            complete one."
+        description = "Show the actual DDL that changed for ONE database object at one snapshot, as a unified diff (the CREATE TABLE / \
+            CREATE VIEW text before and after). Arguments come straight from a database_schema_changes row: pipelineId (its \
+            scm flow), sha (its commitSha), and path (the object's file, '<database>/<category>/<schema>.<name>.sql'). Use \
+            it to answer 'what exactly changed about this table', after database_schema_changes has told you THAT it \
+            changed. Reports truncated=true when the patch was clipped, so a large generated snapshot is never mistaken for \
+            a complete one."
     )]
     async fn database_object_ddl(&self, Parameters(i): Parameters<ObjectDdlInput>) -> String {
         let pipeline_id = i.pipeline_id.clone();
@@ -1679,18 +2101,16 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Show ONE DATABASE OBJECT's whole DDL as it stood BEFORE a window against how it \
-            stands NOW: both scripts in full, the snapshot commits each side came from, and the line tally \
-            between them. Takes changeId (the id on a database_schema_changes row) and optional since (an \
-            ISO instant, the window start); omit since to compare against the start of the recorded \
-            history, which reads the whole script as added. Prefer this over database_object_ddl whenever \
-            the question is the NET change ('what is different about this table since last week'): several \
-            snapshots may have touched the object, and this stays one before and one after, where \
-            database_object_ddl answers only what ONE snapshot did. beforeText is null when the object did \
-            not exist at the window start (it was added inside the window) and afterText is null when it \
-            has since been dropped, in which case beforeText still carries its last known script so the \
-            drop stays reviewable. Reports truncated=true when a side was clipped, so a large generated \
-            script is never mistaken for a complete one."
+        description = "Show one database object's whole DDL as it stood BEFORE a window against how it stands NOW: both scripts in \
+            full, the snapshot commits each side came from, and the line tally between them. Takes changeId (the id on a \
+            database_schema_changes row) and optional since (an ISO instant, the window start); omit since to compare \
+            against the start of the recorded history, which reads the whole script as added. Prefer this over \
+            database_object_ddl whenever the question is the net change ('what is different about this table since last \
+            week'): several snapshots may have touched the object, and this stays one before and one after, where \
+            database_object_ddl answers only what one snapshot did. beforeText is null when the object did not exist at the \
+            window start (it was added inside the window) and afterText is null when it has since been dropped, in which \
+            case beforeText still carries its last known script so the drop stays reviewable. Reports truncated=true when a \
+            side was clipped, so a large generated script is never mistaken for a complete one."
     )]
     async fn database_object_compare(&self, Parameters(i): Parameters<ObjectCompareInput>) -> String {
         let q = vec![("since", i.since.unwrap_or_default())];
@@ -1705,14 +2125,12 @@ and fix every finding first."
     // ---- Change history: FLOW DEFINITIONS / YAML (read) ------------------
 
     #[tool(
-        description = "SEARCH WHAT CHANGED IN THE PIPELINE DEFINITIONS (the flow YAML in git). Use this for \
-            questions about ETL CODE: 'what pipelines changed this week', 'who edited the cyclehire flows', \
-            'which commits mention watermark', 'what changed under the apc folder'. Returns commits newest \
-            first: sha, shortSha, author name and email, committedUtc, the message, and the paths each \
-            commit touched. Filter with path (a repo-relative file or folder prefix), author, message \
-            (substring), since/until (ISO instants) and limit. Pass repoId when more than one repository is \
-            synced. Do NOT use this for database tables, views, or procedures: that is \
-            database_schema_changes."
+        description = "WHAT CHANGED IN A PIPELINE: the flow YAML in git. Use this for questions about ETL code: 'what pipelines changed \
+            this week', 'who edited the cyclehire flows', 'which commits mention watermark', 'what changed under the apc \
+            folder'. Returns commits newest first: sha, shortSha, author name and email, committedUtc, the message, and the \
+            paths each commit touched. Filter with path (a repo-relative file or folder prefix), author, message \
+            (substring), since/until (ISO instants) and limit. Pass repoId when more than one repository is synced. Not for \
+            database tables, views, or procedures: that is database_schema_changes."
     )]
     async fn flow_definition_history(&self, Parameters(i): Parameters<FlowHistoryInput>) -> String {
         let q = vec![
@@ -1760,16 +2178,19 @@ and fix every finding first."
     // ---- Search (read) ---------------------------------------------------
 
     #[tool(
-        description = "START HERE for any \"where does this name live / where is X computed / what is X\" \
-            question about the estate. One term fanned across every catalog surface at once - warehouse \
-            objects, their columns, their code, processed files, flow YAML, and the columns flows produce - \
-            returning each surface's FULL match count with a preview of its top hits, plus a nextSteps plan \
-            naming the tool that pages each surface and the tool that turns a hit into an answer. A term \
-            absent from the synced warehouse schema is routinely present in a flow's YAML or in a flow's \
-            computed columns, which is exactly what the single-surface search tools miss; this call checks \
-            all of them in one round trip. When nothing matches, the reply carries an ordered checklist for \
-            widening the search instead of a bare empty result: work it before answering that the name does \
-            not exist."
+        description = "Locate a named identifier anywhere in the estate - a table, column, flow, or file whose name (or a fragment of \
+            it) you already have, as in \"where does CustomerId live\" or \"where is Sales computed\". Not for a message \
+            given as the `!cwd <question>` command (e.g. \"!cwd what is our revenue by region\", \"!cwd how many rows \
+            landed last night\") - that exact prefix routes to find_similar_questions instead, called before this tool, \
+            since a question to be answered from warehouse data names no single identifier this can search for. A question phrased the same way but without \
+            the `!cwd` prefix still belongs here, not there. One term fanned across every catalog surface at once - \
+            warehouse objects, their columns, their code, processed files, flow YAML, and the columns flows produce - \
+            returning each surface's full match count with a preview of its top hits, plus a nextSteps plan naming the tool \
+            that pages each surface and the tool that turns a hit into an answer. A term absent from the synced warehouse \
+            schema is routinely present in a flow's YAML or in a flow's computed columns, which is exactly what the \
+            single-surface search tools miss; this call checks all of them in one round trip. When nothing matches, the \
+            reply carries an ordered checklist for widening the search instead of a bare empty result: work it before \
+            answering that the name does not exist."
     )]
     async fn search_all(&self, Parameters(i): Parameters<SearchAllInput>) -> String {
         done(
@@ -1785,139 +2206,65 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Full-text search catalog objects by name (tables, views, procedures, functions). \
-            Follow a hit with describe_object(key). Prefer search_all when you do not already know the term \
-            names a warehouse object."
+        description = "Page one ETL-side surface in full, once search_all has named which surface holds the \
+            term. `surface` picks it: flows (flow YAML: a flow's name, its repo path, or its body, so this is \
+            how you find which pipeline mentions a term), files (files runs have processed, by name or path), \
+            or statements (SQL runs actually executed, collapsed to one row per flow+step). Reach for \
+            search_all first unless you already know the surface: it fans one term across every surface at \
+            once and reports each one's full count, which is what tells you the surface to page here. \
+            statements is the only record of SQL the engine composes at run time (staging DDL, merge \
+            projections, generated casts, resolved watermarks), text that lives in no YAML and no stored \
+            module body; it searches the last 90 days, so pass days=0 for all retained history before \
+            concluding a term was never executed. `days` applies to statements alone. To search the warehouse \
+            schema instead (tables, their columns, or the code computing a value), use search_schema. Follow \
+            a hit by surface: flows to pipeline_definition(id), files to run_files(runId), statements to \
+            run_statements(runId)."
     )]
-    async fn search_objects(&self, Parameters(i): Parameters<SearchInput>) -> String {
-        let q = vec![
-            ("name", i.query),
-            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
-            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
-        ];
-        self.get("/api/v1/search/objects", &q).await
+    async fn search(&self, Parameters(i): Parameters<SearchInput>) -> String {
+        self.page_surface(i, search_surface_spec, &["flows", "files", "statements"]).await
     }
 
     #[tool(
-        description = "Full-text search the columns of SYNCED warehouse objects by name; a token may match \
-            either the column or the object carrying it, so \"ferrypassengers sourcerank\" finds the one \
-            column on the one table. Follow a hit with describe_object(objectKey). This surface only knows \
-            objects the schema sync has imported: for a column that exists inside a pipeline, use \
-            search_flow_columns."
+        description = "Page one warehouse-schema surface in full, once search_all has named which surface holds the term. `surface` \
+            picks it: objects (tables, views, procedures, functions by name), columns (columns of schema-synced objects), \
+            definitions (object code: the live module body and the generating DDL, which is where a value computed in a view \
+            or procedure is found), or flowColumns (the columns flows produce, by output name, by the raw source column \
+            behind them, or by the SQL expression that computes them). columns and flowColumns are the pair worth keeping \
+            straight: columns sees only what the schema sync has imported, while flowColumns needs no sync and so sees \
+            columns that exist only inside a pipeline, so a column missing from one is routinely present in the other. On a \
+            flowColumns hit, `matchedIn` says whether the flow computes the value (Expression), emits it under that name \
+            (Column), or reads it from the raw data (Source). How the allow-list applies here differs BY SURFACE: columns \
+            serves only columns an admin has allow-listed (a column with no policy row is as invisible as a denied one), \
+            while objects, definitions, and flowColumns are unfiltered, and definitions returns raw DDL and module bodies, \
+            which name every column a table has. So this tool is kept off the chat surfaces as a whole. To write SQL for \
+            someone, use search_semantic_layer and describe_semantic_table, which serve the governed schema with its \
+            business context. Follow a hit with describe_object(key), or a flowColumns hit with \
+            pipeline_definition(pipelineId)."
     )]
-    async fn search_columns(&self, Parameters(i): Parameters<SearchInput>) -> String {
-        let q = vec![
-            ("name", i.query),
-            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
-            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
-        ];
-        self.get("/api/v1/search/columns", &q).await
-    }
-
-    #[tool(
-        description = "Full-text search object CODE: the live module body and the generating DDL the engine \
-            emitted, with an excerpt per hit and a `source` saying which body matched. This finds a value \
-            computed in a view or procedure. Follow a hit with describe_object(key)."
-    )]
-    async fn search_definitions(&self, Parameters(i): Parameters<SearchInput>) -> String {
-        let q = vec![
-            ("q", i.query),
-            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
-            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
-        ];
-        self.get("/api/v1/search/definitions", &q).await
-    }
-
-    #[tool(
-        description = "Full-text search flow YAML: matches a flow's name, its repo-relative path, or any term \
-            in its BODY (a source query, a selectExp, an embedded statement, an option value), with `matchedIn` \
-            and an excerpt per hit. This is how you find WHICH PIPELINE mentions a term when the term is not a \
-            warehouse object name. Follow a hit with pipeline_definition(id) for the normalized flow, \
-            get_pipeline(id) for its identity, or list_runs(pipelineId) for its run history."
-    )]
-    async fn search_flows(&self, Parameters(i): Parameters<SearchInput>) -> String {
-        let q = vec![
-            ("q", i.query),
-            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
-            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
-        ];
-        self.get("/api/v1/search/flows", &q).await
-    }
-
-    #[tool(
-        description = "Full-text search the columns FLOWS PRODUCE by output name, by the raw source column \
-            behind them, or by the SQL expression that computes them. The surface for \"where is <column> \
-            computed / which pipeline produces <column>\": matchedIn=Expression means the flow COMPUTES the \
-            value, Column that it emits it under that name, Source that it reads it from the raw data; `kind` \
-            is declared (authored in the YAML) or detected (inferred by a run from the data). Follow a hit with \
-            pipeline_definition(pipelineId) for the transform and pipeline_columns(id) for the flow's whole \
-            column set. Unlike search_columns this needs no warehouse schema sync, so it sees columns that \
-            exist only inside a pipeline."
-    )]
-    async fn search_flow_columns(&self, Parameters(i): Parameters<SearchInput>) -> String {
-        let q = vec![
-            ("name", i.query),
-            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
-            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
-        ];
-        self.get("/api/v1/search/flow-columns", &q).await
-    }
-
-    #[tool(
-        description = "Full-text search the files runs have processed, by name or path. Answers \"which runs \
-            processed <file>\". Follow a hit with get_run(runId) / run_files(runId) for the delivery, or \
-            get_pipeline(pipelineId) for the flow that ingested it."
-    )]
-    async fn search_files(&self, Parameters(i): Parameters<SearchInput>) -> String {
-        let q = vec![
-            ("name", i.query),
-            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
-            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
-        ];
-        self.get("/api/v1/search/files", &q).await
-    }
-
-    #[tool(
-        description = "Full-text search the SQL runs ACTUALLY EXECUTED, collapsed to one row per (flow, step) \
-            with an occurrence count, the newest run that ran it, and an excerpt. Use it when a term is not in \
-            any flow YAML or stored module body but must exist somewhere: the engine composes statements at run \
-            time (staging DDL, merge projections, generated casts, resolved watermarks), and this is the only \
-            record of that text. Searches the last 90 days by default because statement rows are the catalog's \
-            heaviest table and are pruned by trace retention; pass days=0 for all retained history before \
-            concluding a term was never executed. Follow a hit with run_statements(runId) for that run's full \
-            trace, or insights_steps(pipelineId) for the step's timings."
-    )]
-    async fn search_statements(&self, Parameters(i): Parameters<SearchStatementsInput>) -> String {
-        let q = vec![
-            ("q", i.query),
-            ("days", i.days.map(|n| n.to_string()).unwrap_or_default()),
-            ("page", i.page.map(|n| n.to_string()).unwrap_or_default()),
-            ("pageSize", i.page_size.map(|n| n.to_string()).unwrap_or_default()),
-        ];
-        self.get("/api/v1/search/statements", &q).await
+    async fn search_schema(&self, Parameters(i): Parameters<SearchInput>) -> String {
+        self.page_surface(i, schema_surface_spec, &["objects", "columns", "definitions", "flowColumns"])
+            .await
     }
 
     // ---- Data subscribers: the consumption side (read) -------------------
 
     #[tool(
-        description = "List the DASHBOARDS, REPORTS, workbooks, notebooks, and applications declared as \
-            CONSUMING the warehouse, which is where lineage ends. These are what the catalog calls data \
-            subscribers, but almost nobody asks for them by that word: a question about \"the sales dashboard\", \
-            \"the Power BI report for X\", \"who looks at this data\", or \"what does <report name> use\" is a \
-            question about this tool. It is the CONSUMPTION layer and ranks BELOW the warehouse: a bare term is \
-            far more often a table, a column, or the code computing one, so try the warehouse surfaces first and \
-            come here when the question is explicitly about a thing a person VIEWS, or when those surfaces found \
-            nothing. Each entry has the subscriber's key (pass \
-            it to describe_subscriber), name, type (the consuming tool: PowerBI / Tableau / Excel / ...), owner \
-            (who to tell before a breaking change), the subscribers.yaml that declares it, how many queries it \
-            runs, and how many distinct objects those queries read, plus `notes`: remarks about the report's \
-            STATE rather than its purpose (not refreshed since a given month, apparently superseded, could not \
-            be opened, or an 'Incomplete dataset' naming objects it reads that the warehouse does not have). A \
-            subscriber carrying that last note registers PARTIAL lineage, so its object list is a floor rather \
-            than the whole truth. Filter by `type` for one tool, or `search` over name/owner/description/notes. \
-            Subscribers are NOT database objects and never appear in \
-            browse_catalog; this is their branch. For the reverse question, which subscribers consume a given \
-            table, use describe_object and read its `subscribers`."
+        description = "List the DASHBOARDS and REPORTS (plus workbooks, notebooks, and applications) declared as consuming the \
+            warehouse, which is where lineage ends. These are what the catalog calls data subscribers, but almost nobody \
+            asks for them by that word: a question about \"the sales dashboard\", \"the Power BI report for X\", \"who looks \
+            at this data\", or \"what does <report name> use\" is a question about this tool. It is the consumption layer \
+            and ranks below the warehouse: a bare term is far more often a table, a column, or the code computing one, so \
+            try the warehouse surfaces first and come here when the question is explicitly about a thing a person VIEWS, or \
+            when those surfaces found nothing. Each entry has the subscriber's key (pass it to describe_subscriber), name, \
+            type (the consuming tool: PowerBI / Tableau / Excel / ...), owner (who to tell before a breaking change), the \
+            subscribers.yaml that declares it, how many queries it runs, and how many distinct objects those queries read, \
+            plus `notes`: remarks about the report's state rather than its purpose (not refreshed since a given month, \
+            apparently superseded, could not be opened, or an 'Incomplete dataset' naming objects it reads that the \
+            warehouse does not have). A subscriber carrying that last note registers partial lineage, so its object list is \
+            a floor rather than the whole truth. Filter by `type` for one tool, or `search` over \
+            name/owner/description/notes. Subscribers are not database objects and never appear in browse_catalog; this is \
+            their branch. For the reverse question, which subscribers consume a given table, use describe_object and read \
+            its `subscribers`."
     )]
     async fn list_subscribers(&self, Parameters(i): Parameters<SubscribersInput>) -> String {
         let q = vec![
@@ -1928,17 +2275,195 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Describe one dashboard, report, or other data subscriber in a single payload: its \
-            identity and owner, its notes (what is stale, superseded, or incomplete about it), every \
-            warehouse object its queries read (named and located from the object registry, with the level and \
-            the specific queries that reference each), and the query texts themselves. This is how you answer \
-            \"what does this dashboard use\" or \"where does this report get its data\". The consumption-side \
-            twin of describe_object: that answers 'who consumes this table', this answers 'what does this \
-            report consume'. Use it for impact analysis before changing a table, and to see the SQL a report \
-            actually runs. Takes the `key` from list_subscribers."
+        description = "Describe one dashboard, report, or other data subscriber in a single payload: its identity and owner, its notes \
+            (what is stale, superseded, or incomplete about it), every warehouse object its queries read (named and located \
+            from the object registry, with the level and the specific queries that reference each), and the query texts \
+            themselves. This is how you answer \"what does this dashboard use\" or \"where does this report get its data\". \
+            The consumption-side twin of describe_object: that answers 'who consumes this table', this answers 'what does \
+            this report consume'. Use it for impact analysis before changing a table, and to see the SQL a report actually \
+            runs. A report visual's query carries two texts: `sql`, its query against the report's model, and `sourceSql`, \
+            the same question translated into T-SQL over the source tables (the one prepare_query can run), or a \
+            `translationProblem` saying why there is none. For the report's pages, visuals, and each field's role (the axis \
+            a chart is broken down by versus the value it plots, which this payload's query texts alone do not label), use \
+            describe_subscriber_report instead. Takes the `key` from list_subscribers."
     )]
     async fn describe_subscriber(&self, Parameters(i): Parameters<KeyInput>) -> String {
         self.get("/api/v1/lineage/subscribers/dossier", &[("key", i.key)]).await
+    }
+
+    #[tool(
+        description = "The PAGES, VISUALS, and FIELD ROLES of one Power BI report behind a data subscriber: every page, every visual on \
+            it (chart type, title, the query it was rendered as, and `questions`, 1-3 natural-language business questions \
+            the visual answers), and every field a visual projects with the role it plays. Use it for \"what questions does \
+            this dashboard already ask, and in what shape\", and match a user's typed question against `questions` before \
+            writing new SQL from scratch. For what the report READS rather than what it asks, use describe_subscriber; for \
+            how it COMPUTES its numbers (Power BI measures, calculated columns, relationships), describe_semantic_table \
+            serves that as `reportModels`. The response explains its own fields in `readingThis`. Takes the `key` from \
+            list_subscribers."
+    )]
+    async fn describe_subscriber_report(&self, Parameters(i): Parameters<KeyInput>) -> String {
+        self.get_with_guide(
+            "/api/v1/lineage/subscribers/report",
+            &[("key", i.key)],
+            SUBSCRIBER_REPORT_GUIDE,
+        )
+        .await
+    }
+
+    #[tool(
+        // The first sentence is SILENT_RETRIEVAL_RULE, kept verbatim in sync by the
+        // `tool_description_leads_with_the_silent_rule` test below: rmcp's #[tool] attribute takes only a
+        // literal, so this one site cannot compose the macro and is asserted instead.
+        description = "THE `!cwd` COMMAND ROUTES HERE. Call this, before any schema or semantic-layer lookup, whenever the \
+            user's message is the explicit command `!cwd <question>` - e.g. \"!cwd what is our revenue by region\", \
+            \"!cwd how many rows landed last night\". The `!cwd` prefix is what marks a message as a question to be \
+            answered from warehouse data, whatever it is about: a reported figure, an operational count, a data-quality \
+            check. Who is asking and whether the subject sounds commercial or technical make no difference; needing SQL \
+            over the warehouse to answer is the whole criterion. Strip the prefix and pass the remainder as `question`. \
+            Do not guess from phrasing alone that a message unprefixed by `!cwd` belongs here, even one that reads like \
+            \"what is our revenue by region\" or names things that sound like table or column names: without the `!cwd` \
+            prefix, route it through search_semantic_layer/describe_semantic_table like any other question instead. A \
+            full question is not an identifier to a schema search's index; it is what this tool matches, once `!cwd` has \
+            activated it. \
+            Say nothing to the person before or between the tool calls on this path: no preamble, no restating the question, \
+            no announcing what you are about to look up or that you are building a query, and no commentary on what came \
+            back (whether a match is trusted, its score, who confirmed it, saved answers, reports, or tool names). All of \
+            that is yours to act on, never to narrate: to a business reader it reads as the assistant explaining its own \
+            plumbing, and calling a match untrusted or low-scoring reads as the assistant being unreliable. Work silently \
+            until you have the answer or a query to offer, then reply once. \
+            Finds the questions this estate's dashboards or a person already answered that mean the same thing as the \
+            one just typed. Wording need not match, because you \
+            expand the question first: pass `expanded_terms` with the question's own meaningful words plus the business \
+            synonyms and related terms a dashboard could have used for the same thing, in their common grammatical forms \
+            (\"what drives our turnover\" -> turnover, revenue, sales, income, drive, driver, ...), so it can find \"revenue \
+            by product category\". Always pass them: without them the server searches the typed words alone unless its own \
+            expansion is configured. Each match carries the SQL that already answers it, the warehouse objects that SQL \
+            reads, and a `score`: a close match is a query a real report already runs in production, so adapting it beats \
+            composing one from the schema, and beats searching the schema for the words in the question. `score` (how many \
+            distinct searched words the question matched, several forms of one word counting once) is the ONLY trustworthy \
+            confidence signal here, and `trusted` reports whether it cleared this deployment's threshold or is the same \
+            question as the one typed (the same meaningful words). Do not substitute your own confidence for it: a query you \
+            wrote from a 1-term match can read exactly as convincingly as one from a 4-term match and still be wrong. \
+            `searchedTerms` shows what was actually looked for (the question expanded into business vocabulary) and \
+            `matchedTerms` which of those each hit, for your own judgement; do not recite them to the person, who wants the \
+            answer, not how it was found. A TRUSTED match needs no further checking against the schema: do not call \
+            describe_semantic_table, search_semantic_layer, or any other lookup to confirm the table it reads is real before \
+            offering it. That verification is what being trusted already means, and re-deriving it defeats the reason this \
+            store exists, which is to reuse a checked answer instead of re-checking one. Only an untrusted match (or none at \
+            all) is a lead rather than an answer; just ask whether to run the query. Only then fall back to \
+            search_semantic_layer/describe_semantic_table to compose or verify something yourself. A trusted confirmed match \
+            runs with auto_run_trusted_match; anything else goes through prepare_query/run_query. Each match also carries a \
+            `provenance`: \"powerbi\" means a dashboard asks this question, \"user-confirmed\" means a person accepted or \
+            corrected this exact answer before (and `confirmedBy` names them), which is the stronger precedent of the two at \
+            the same score. `sourceRef` names the datasource that match's sql runs against: the one it was confirmed with, \
+            or else the one worked out from the tables it reads. It is null only when those tables do not point at exactly \
+            one datasource; never ask the person which datasource to use while it is present. A match that is `trusted` and \
+            carries an `exampleId` should be run immediately with auto_run_trusted_match, without asking the person, \
+            skipping the prepare_query/run_query approval round trip entirely, because this exact SQL was already confirmed \
+            by a person when it was stored; a trusted match without an `exampleId` (a dashboard question) still needs \
+            prepare_query/run_query. A dashboard match's `sql` is the report visual translated into T-SQL over the source \
+            tables, so it runs as it is; `reportSql` is the visual's own query against the report's model and never runs. A \
+            dashboard match that carries a `translationProblem` (and an empty `sql`) could not be translated: treat it as a \
+            lead only, telling you which question a report answers and which fields it uses, and compose the query yourself \
+            from the semantic layer. When a person, after seeing the result, explicitly tells you your answer was right, or \
+            tells you how to fix it, record that with confirm_question so the next similar question finds it; agreeing to \
+            run a query is not that. An empty `matches` means nothing stored matched those terms (or no questions are stored \
+            yet), not that the question is unanswerable: fall back to search_semantic_layer/describe_semantic_table without \
+            announcing it. When a person tells you an answer was wrong, nothing is saved, so do not call confirm_question \
+            for it: offer to fix the query instead. Only correct, verified answers become precedent here."
+    )]
+    async fn find_similar_questions(&self, Parameters(i): Parameters<SimilarQuestionsInput>) -> String {
+        let q = similar_questions_query(i);
+        done(
+            self.cp
+                .get("/api/v1/lineage/subscribers/similar-questions", &q)
+                .await
+                .map(|mut v| {
+                    self.links.decorate(&mut v);
+                    attach_retrieval_rule(&mut v);
+                    json_str(&v)
+                }),
+        )
+    }
+
+    #[tool(
+        description = "Record what a person decided about an answer you gave, so the estate learns from it: the question, the SQL, and \
+            whether they accepted it, corrected it, or rejected it. APPROVING A RUN IS NEVER CONFIRMATION: \"yes\", \"go \
+            ahead\", \"run it\" in reply to a prepared query only lets it run, and says nothing about whether the result is \
+            right. Storing an example is a separate decision with lasting effect (every later similar question reuses it, \
+            and a trusted one auto-runs with no approval), so call this ONLY when the person, after seeing the result, \
+            explicitly says the answer is correct, tells you how to fix it, or asks you to save it. Never call it in the \
+            same turn you present a result, and never on a run approval alone. Tell them in one line what you will save \
+            as the question, quoting it, and let them amend the wording before you call this: the question is stored as \
+            typed and is what every later question is matched against, so fixing a typo or an offhand phrasing is the \
+            person's call, never a tidy-up you make silently. An amended question never changes the query: pass the sql \
+            they judged, unchanged, with whatever wording they settled on. This is the other half of \
+            find_similar_questions, and it is what makes retrieval improve with use rather than staying frozen at whatever \
+            the dashboards happened to ask. Call it after a person has actually told you the answer was right (or told you \
+            what to fix), never on your own judgement that a query looks correct: the whole value of the store is that a \
+            human checked every row in it, and one self-confirmed guess in there becomes precedent that grounds later \
+            answers. On outcome=\"corrected\" pass the corrected sql, not what you first proposed. On outcome=\"rejected\" \
+            nothing is stored: a refuted query is not knowledge, so it never becomes an example a later answer is adapted \
+            from. Pass `confidence` as the `score` of the find_similar_questions match you built on, when you built on one; \
+            omit it when you composed the query from the schema. The sql must be a single read-only SELECT and is parsed and \
+            refused otherwise, and confirming the same question and query twice refreshes the one example rather than \
+            storing a duplicate. Storing an example does not run anything: execution still goes through \
+            prepare_query/run_query and their human gate, unchanged."
+    )]
+    async fn confirm_question(&self, Parameters(i): Parameters<ConfirmQuestionInput>) -> String {
+        let mut body = json!({ "question": i.question, "sql": i.sql, "outcome": i.outcome });
+        if let Some(keys) = i.object_keys {
+            body["objectKeys"] = json!(keys);
+        }
+        if let Some(confidence) = i.confidence {
+            body["confidence"] = json!(confidence);
+        }
+        if let Some(repo_id) = i.repo_id {
+            body["repoId"] = json!(repo_id);
+        }
+        if let Some(source_ref) = i.source_ref {
+            body["sourceRef"] = json!(source_ref);
+        }
+        done(
+            self.cp
+                .post("/api/v1/powerai/questions/confirm", body)
+                .await
+                .map(|v| json_str(&v)),
+        )
+    }
+
+    #[tool(
+        description = "Run a TRUSTED find_similar_questions match's SQL immediately, capped small, with no separate approval step - the \
+            whole point being that this exact SQL was already shown to and confirmed by a person when it was stored, so \
+            re-asking for the same confirmation on every later match adds friction without adding safety. Use it ONLY on a \
+            match whose `trusted` is true and that carries an `exampleId` (a match without one came from a dashboard, not a \
+            confirmed example, and goes through prepare_query/run_query instead). Do not ask the person for a datasource: \
+            the one stored with the example is used, or else the one worked out from the tables its SQL reads, and a 409 \
+            means neither exists. The response carries a `taskId` identifying the stored result. The row cap and timeout are \
+            fixed by the deployment, not by you: read `maxRows`/`timeoutSeconds` back from the response rather than assuming \
+            defaults. Read `ran` first: true means `result` holds the answer and you can present it: state the answer once, \
+            in plain language, without preamble about the match, then always show the SQL: the response's `sqlIntro` line, \
+            then its `sqlBlock` copied exactly as its own fenced code block, following `answerFormat`; never inline it in a \
+            sentence and never leave it out, even for a one-line count. False means the query did not finish inside the \
+            budget (or failed against the live source): do not retry auto-run for the same example, and do not tell the user \
+            it ran - instead call prepare_query with the `sql` and `sourceRef` this response still carries, so a person \
+            approves it the normal way. This surface needs the same 'operate' scope and ControlPlane:DataOps:Enabled switch \
+            prepare_query does, plus its own ControlPlane:PowerAI:Retrieval:AutoRun:Enabled switch, off by default; a 501 \
+            here means it is not turned on in this deployment."
+    )]
+    async fn auto_run_trusted_match(&self, Parameters(i): Parameters<AutoRunQuestionInput>) -> String {
+        done(
+            self.cp
+                .post(
+                    &format!("/api/v1/powerai/questions/{}/auto-run", i.example_id),
+                    json!({}),
+                )
+                .await
+                .map(|mut v| {
+                    attach_answer_format(&mut v, &self.links);
+                    json_str(&v)
+                }),
+        )
     }
 
     // ---- Schedules, nodes, sources, summary (read) -----------------------
@@ -2024,14 +2549,13 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "The one-call optimization briefing: run-history advisories merged with the newest \
-            warehouse DMV probe results (missing indexes, stale statistics, unused indexes, expensive queries) \
-            into a single ranked list, deduplicated and capped at limit (default 20; totalItems and the \
-            severity counts cover everything found). Compact by default: items report hasSuggestedSql; pass \
-            includeSql=true to carry the ready-to-review statements (CREATE INDEX, UPDATE STATISTICS, DROP \
-            INDEX) - present them for human review, never execute them unreviewed. The warehouseProbes field \
-            reports how fresh each DMV dimension is; when it is empty or stale, run analyze_warehouse_health \
-            first and re-read. The best first call for 'what should we optimize'."
+        description = "The one-call optimization briefing: run-history advisories merged with the newest warehouse DMV probe results \
+            (missing indexes, stale statistics, unused indexes, expensive queries) into a single ranked list, deduplicated \
+            and capped at limit (default 20; totalItems and the severity counts cover everything found). Compact by default: \
+            items report hasSuggestedSql; pass includeSql=true to carry the ready-to-review statements (create-index, \
+            update-statistics, DROP INDEX) - present them for human review, never execute them unreviewed. The \
+            warehouseProbes field reports how fresh each DMV dimension is; when it is empty or stale, run \
+            analyze_warehouse_health first and re-read. The best first call for 'what should we optimize'."
     )]
     async fn insights_recommendations(&self, Parameters(i): Parameters<InsightsWindowInput>) -> String {
         let q = vec![
@@ -2060,68 +2584,19 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "DataStream anomaly detection: which TABLES have stopped receiving data. Answers \
-            'is anything broken that nobody noticed' from the run history's own insert/update/delete \
-            statistics, with no per-table setup, so it covers every stream the platform writes rather than \
-            the few that have a health-check flow. \
-            \
-            It answers three questions per table, RANKED because they are not equally urgent: zero data (an \
-            outage, and the only category that can be critical), less data than normal (a degradation, \
-            capped at warning), and more data than normal (information). Categories: stalled, failing, \
-            gap-days, not-running, less-than-normal, more-than-normal, healthy, never-loaded, \
-            insufficient-history. \
-            \
-            Reprocessing is removed BEFORE anything is measured, in two passes: the runs the log flags as \
-            backfills are dropped, and the outsized days those flags missed are trimmed to a Tukey fence. \
-            Without that, one history replay redefines a stream's normal and every ordinary day after it \
-            reads as a collapse. \
-            \
-            A zero-row day is judged against what the table normally does on THAT KIND OF DAY: reliability \
-            is learned per weekday, and how often it delivers is the median week rather than the mean day, \
-            so a feed that never loads at weekends is not reported every Saturday and an outage cannot \
-            teach the detector that outages are normal. \
-            \
-            A cron says how often the platform ASKS the source, not how often the answer differs, and the \
-            two part company on reference and dimension tables: a twenty-five row account list read every \
-            morning that changes twice a year delivers on a few percent of its runs. A stream that delivers \
-            on under half the days its flow ran and succeeded is CHANGE-DRIVEN (pattern.changeDriven, and \
-            profile.deliveryShare is the evidence): its empty days are its normal, its silence is measured \
-            against its own changes or not at all, and a quiet one is category rarely-changes at OK rather \
-            than a stalled outage. Its flow is still held to the cron by the cadence detector, which is the \
-            failure that can actually befall such a table. Where a stream does deliver per fire, the cron \
-            remains the delivery cadence exactly as before. \
-            \
-            Only streams on an ENABLED schedule are analysed by default: a flow nothing schedules has no \
-            say in whether data is delivered. The answer reports how many were left out for that reason. \
-            \
-            Every stream carries a scope (source / internal) and a STAGE saying where in the pipeline it \
-            sits: 'integration' fetches from the vendor, so nothing there usually means the vendor sent \
-            nothing; 'file-ingestion' and 'archive' mean their data arrived and WE did not take it in; \
-            'derived' is entirely our own processing. Use the stage to say whose problem a finding is. \
-            \
-            Six detectors vote. Three are PRIMARY and can raise a finding alone: silence (no data now), \
-            nullDays (more empty days than the median week explains), cadence (the flow stopped running). \
-            Three measure volume and corroborate: rateChange (the last 7 days against the baseline rate, \
-            overdispersion-adjusted, and it must ALSO move 50% of expected volume), levelShift (PELT change \
-            point over the residuals: halved and STAYED halved, and it must ALSO move 10% of the stream\'s \
-            level), volumeOutlier (generalized ESD over the residuals, and a day must ALSO deviate 10%). \
-            Those size floors are deliberate: sigma is the stream\'s OWN noise, so a very steady feed makes a \
-            hundred-row wobble on a hundred thousand \"4 sigma\"; significance without size is not a fault. \
-            Trust a finding with agreeingDetectors >= 2; a lone detector is a lead, and a lone VOLUME \
-            detector on a stream that still loads every day is nearly always noise worth saying so about. \
-            \
-            Every detector, fired or quiet, returns a `detail` sentence carrying its evidence with the \
-            numbers in it (rows delivered against rows expected, sigma, the date a level moved, how many \
-            expected days went empty and whether the flow ran on them). Each stream also carries its \
-            learned PATTERN (shape, load weekdays, typical row band, reliability, any recurring delivery \
-            cycle) and a PROFILE (expected days, missed days split into ran-empty and no-run, predicted \
-            misses, trend, averages per run, days trimmed as reprocessing). \
-            \
-            Pass pipelineId, or flowName, to drill one stream down to its day-by-day series (rows written, \
-            expected, sigma severity, flagged and why) and every detector\'s reasoning: that is the answer to \
-            \"why is this table flagged\". The method is documented in the concept page \
-            data-stream-detection (search_docs). Use insights_attention for run FAILURES and durations; \
-            use this for whether the DATA is arriving."
+        description = "DataStream anomaly detection: which tables have stopped receiving data. Answers 'is anything broken that nobody \
+            noticed' from the run history's own insert/update/delete statistics, with no per-table setup, so it covers every \
+            stream the platform writes rather than the few with a health-check flow. Six detectors vote per table and the \
+            verdict is ranked by urgency: zero data (an outage, the only category that can be critical), less data than \
+            normal (a degradation, capped at warning), more data than normal (information). Categories: stalled, failing, \
+            gap-days, not-running, less-than-normal, more-than-normal, healthy, never-loaded, insufficient-history. \
+            Reprocessing is trimmed before anything is measured, and a zero-row day is judged against what that table \
+            normally does on that kind of day, so a feed that never loads at weekends is not reported every Saturday. Only \
+            streams on an enabled schedule are analysed by default; the answer reports how many were left out. Pass \
+            pipelineId or flowName to drill one stream down to its day-by-day series and every detector's reasoning: that is \
+            the answer to \"why is this table flagged\". The response explains its own verdict fields in `readingThis`, and \
+            the method behind them is the concept page data-stream-detection (search_docs). Use insights_attention for run \
+            failures and durations; use this for whether the DATA IS ARRIVING."
     )]
     async fn detect_stream_anomalies(&self, Parameters(i): Parameters<StreamAnomalyInput>) -> String {
         let pipeline_id = match self
@@ -2136,8 +2611,15 @@ and fix every finding first."
                 ("days", i.days.map(|n| n.to_string()).unwrap_or_default()),
                 ("includeBackfills", i.include_backfills.map(|b| b.to_string()).unwrap_or_default()),
             ];
-            return self.get_about(&format!("/api/v1/datastreams/{id}"), &q, ("board", "datastreams"),
-                json!({ "page": self.links.datastreams() })).await;
+            return self
+                .get_about_with_guide(
+                    &format!("/api/v1/datastreams/{id}"),
+                    &q,
+                    ("board", "datastreams"),
+                    json!({ "page": self.links.datastreams() }),
+                    STREAM_ANOMALY_GUIDE,
+                )
+                .await;
         }
 
         let q = vec![
@@ -2152,8 +2634,14 @@ and fix every finding first."
             // report the whole estate.
             ("limit", i.limit.unwrap_or(25).to_string()),
         ];
-        self.get_about("/api/v1/datastreams", &q, ("board", "datastreams"),
-            json!({ "page": self.links.datastreams() })).await
+        self.get_about_with_guide(
+            "/api/v1/datastreams",
+            &q,
+            ("board", "datastreams"),
+            json!({ "page": self.links.datastreams() }),
+            STREAM_ANOMALY_GUIDE,
+        )
+        .await
     }
 
     /// Which single stream a caller means, or none for the board: the pipeline id they gave, else the flow
@@ -2237,45 +2725,45 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "STEP 1 of running a business query: validate a SELECT and get back the exact statement \
-            plus a one-time token. NOTHING RUNS HERE and no data is touched. The statement is parsed and \
-            refused unless it is a single read-only SELECT, so anything that writes, calls a procedure, or \
-            reaches another server is rejected with the reason. \
-            \
-            After calling this you MUST show the returned `sql` to the user verbatim and get their agreement \
-            BEFORE calling run_query with the planId. Do not paraphrase it, do not summarise it, and do not \
-            redeem the token on your own initiative: preparing is not permission to run. \
-            \
-            Compose the SQL from real metadata first (get_table_key for the grain, get_table_joins for the ON \
-            clauses, describe_object for columns); never guess a join or a column name. This surface is behind \
-            a deployment switch, so check dataops_capabilities if it answers that it is not enabled."
+        description = "Step 1 of running a business query: validate a SELECT and get back the exact statement plus a one-time token. \
+            NOTHING RUNS HERE and no data is touched. The statement is parsed and refused unless it is a single read-only \
+            SELECT, so anything that writes, calls a procedure, or reaches another server is rejected with the reason. After \
+            calling this you MUST show the returned `sql` to the user verbatim and get their agreement BEFORE calling \
+            run_query with the planId. Do not paraphrase it, do not summarise it, and do not redeem the token on your own \
+            initiative: preparing is not permission to run. Phrase the ask as the response's `approvalFormat` says: a line \
+            saying there is no saved answer yet (or that a report already answers it), what the query will show, the SQL, \
+            and \"Want me to run it?\", never a word about trust, scores, or matches, and never a request to judge the data \
+            source. Compose the SQL from real metadata first (get_table_key for the grain, get_table_joins for the ON \
+            clauses, describe_object for columns); never guess a join or a column name. This surface is behind a deployment \
+            switch, so check dataops_capabilities if it answers that it is not enabled."
     )]
     async fn prepare_query(&self, Parameters(i): Parameters<PrepareQueryInput>) -> String {
         done(self.run_prepare_query(i).await)
     }
 
     #[tool(
-        description = "STEP 2 of running a business query: redeem an APPROVED plan token and return the rows. \
-            Call this ONLY after prepare_query returned a statement, you showed that statement to the user, \
-            and the user agreed to it. The token is single-use: redeeming it twice fails, and running the same \
-            query again means preparing it again so each execution is separately approved. \
-            \
-            Read `truncated` in the result before describing the answer. A truncated result is a PAGE, not the \
-            whole answer, and summing or counting one gives a confidently wrong total: say it was truncated, \
-            or re-prepare with a higher maxRows or an aggregate that answers the question directly."
+        description = "Step 2 of running a business query: redeem an approved plan token and return the rows. Call this ONLY after \
+            prepare_query returned a statement, you showed that statement to the user, and the user agreed to it. The token \
+            is single-use: redeeming it twice fails, and running the same query again means preparing it again so each \
+            execution is separately approved. Read `truncated` in the result before describing the answer. A truncated \
+            result is a PAGE, not the whole answer, and summing or counting one gives a confidently wrong total: say it was \
+            truncated, or re-prepare with a higher maxRows or an aggregate that answers the question directly. Whenever you \
+            present the rows, always include the SQL that ran: the result's `sqlIntro` line, then its `sqlBlock` copied \
+            exactly as its own fenced code block, following `answerFormat`, even though you already showed the statement \
+            before running it. The person's approval to run is approval to RUN, not a judgement that the answer is right: \
+            never call confirm_question because they agreed to run it."
     )]
     async fn run_query(&self, Parameters(i): Parameters<RunQueryInput>) -> String {
         done(self.run_prepared_query(i).await)
     }
 
     #[tool(
-        description = "Check one table for duplicate rows on its key, and wait for the answer. The key is the \
-            one the TABLE declares, in this order: SQLFlow's own NCI_KeyColumn business-key index (the key the \
-            load merges on), then a primary key that is not a bare identity, then any other unique index. A \
-            surrogate identity key is never used, because it is unique by construction and would report zero \
-            duplicates on every table. If the table declares no usable key the result comes back with a \
-            `question` and the candidate columns instead of a count: ASK THE USER which columns identify one \
-            row, then call again passing them as `columns`. Do not guess the key yourself."
+        description = "Check one table for duplicate rows on its key, and wait for the answer. The key is the one the table declares, \
+            in this order: SQLFlow's own NCI_KeyColumn business-key index (the key the load merges on), then a primary key \
+            that is not a bare identity, then any other unique index. A surrogate identity key is never used, because it is \
+            unique by construction and would report zero duplicates on every table. If the table declares no usable key the \
+            result comes back with a `question` and the candidate columns instead of a count: ASK THE USER which columns \
+            identify one row, then call again passing them as `columns`. Do not guess the key yourself."
     )]
     async fn check_duplicate_keys(&self, Parameters(i): Parameters<DuplicateKeysInput>) -> String {
         done(self.run_duplicate_keys(i).await)
@@ -2511,9 +2999,62 @@ fn with_subject(value: Value, subject: (&str, &str), links: Value) -> Value {
 impl SqlFlowMcp {
     /// Shared GET-and-render used by every read tool: the control plane's payload with a `links`
     /// object added to every row that names something the GUI can open.
+    /// Pages one search surface for [`Self::search`] and [`Self::search_schema`]. Both resolve a `surface`
+    /// argument the same way and differ only in which set they accept, so the paging lives here rather than
+    /// twice: an unknown surface names the ones this tool does serve, which lets a caller that guessed the
+    /// wrong tool recover in one step instead of retrying blind.
+    async fn page_surface(
+        &self,
+        input: SearchInput,
+        resolve: fn(&str) -> Option<SearchSurfaceSpec>,
+        valid: &[&str],
+    ) -> String {
+        let surface = input.surface.trim();
+        let Some(spec) = resolve(surface) else {
+            let served_elsewhere =
+                search_surface_spec(surface).is_some() || schema_surface_spec(surface).is_some();
+            return json_str(&json!({
+                "error": format!("This tool does not page the '{surface}' surface."),
+                "validSurfaces": valid,
+                "hint": if served_elsewhere {
+                    "That surface exists, but on the other search tool: `search` pages flows, files, and \
+                     statements; `search_schema` pages objects, columns, definitions, and flowColumns."
+                } else {
+                    "Call search_all to learn which surface holds the term, then page it with the tool that \
+                     serves that surface."
+                },
+            }));
+        };
+
+        let mut query = vec![
+            (spec.query_param, input.query),
+            ("page", input.page.map(|n| n.to_string()).unwrap_or_default()),
+            ("pageSize", input.page_size.map(|n| n.to_string()).unwrap_or_default()),
+        ];
+        if spec.takes_days {
+            query.push(("days", input.days.map(|n| n.to_string()).unwrap_or_default()));
+        }
+        self.get(spec.path, &query).await
+    }
+
     async fn get(&self, path: &str, query: &[(&str, String)]) -> String {
         done(self.cp.get(path, query).await.map(|mut v| {
             self.links.decorate(&mut v);
+            json_str(&v)
+        }))
+    }
+
+    /// [`Self::get`] plus a reading guide on the payload. Used by the tools whose descriptions used to carry
+    /// their own field semantics inline.
+    async fn get_with_guide(
+        &self,
+        path: &str,
+        query: &[(&str, String)],
+        guide: &'static str,
+    ) -> String {
+        done(self.cp.get(path, query).await.map(|mut v| {
+            self.links.decorate(&mut v);
+            attach_guide(&mut v, guide);
             json_str(&v)
         }))
     }
@@ -2534,6 +3075,23 @@ impl SqlFlowMcp {
         done(self.cp.get(path, query).await.map(|mut v| {
             self.links.decorate(&mut v);
             json_str(&with_subject(v, subject, links))
+        }))
+    }
+
+    /// [`Self::get_about`] plus a reading guide, for a subject payload whose fields need interpreting.
+    async fn get_about_with_guide(
+        &self,
+        path: &str,
+        query: &[(&str, String)],
+        subject: (&str, &str),
+        links: Value,
+        guide: &'static str,
+    ) -> String {
+        done(self.cp.get(path, query).await.map(|mut v| {
+            self.links.decorate(&mut v);
+            let mut v = with_subject(v, subject, links);
+            attach_guide(&mut v, guide);
+            json_str(&v)
         }))
     }
 
@@ -2716,8 +3274,12 @@ impl SqlFlowMcp {
     }
 
     async fn run_prepare_query(&self, input: PrepareQueryInput) -> anyhow::Result<String> {
-        let reference = self.resolve_reference(input.reference).await?;
-        let mut body = json!({ "sql": input.sql, "reference": reference });
+        // No local default: the control plane infers the datasource from the tables the query reads, which a
+        // "busiest datasource" guess here would silently override with a connection the query may not live on.
+        let mut body = json!({ "sql": input.sql });
+        if let Some(reference) = input.reference.filter(|r| !r.trim().is_empty()) {
+            body["reference"] = json!(reference.trim());
+        }
         if let Some(database) = input.database.filter(|d| !d.trim().is_empty()) {
             body["database"] = json!(database.trim());
         }
@@ -2731,7 +3293,8 @@ impl SqlFlowMcp {
             body["pool"] = json!(pool);
         }
 
-        let prepared = self.cp.post("/api/v1/dataops/queries/prepare", body).await?;
+        let mut prepared = self.cp.post("/api/v1/dataops/queries/prepare", body).await?;
+        attach_approval_format(&mut prepared);
         Ok(json_str(&prepared))
     }
 
@@ -2753,7 +3316,7 @@ impl SqlFlowMcp {
             .ok_or_else(|| anyhow::anyhow!("The control plane's accept response carried no taskId: {accepted}"))?;
 
         for _ in 0..12 {
-            let task = self
+            let mut task = self
                 .cp
                 .get(&format!("/api/v1/datasources/tasks/{task_id}"), &[("waitMs", "20000".to_string())])
                 .await?;
@@ -2762,6 +3325,7 @@ impl SqlFlowMcp {
                     // Deliberately NOT truncate_long_strings here: the caller asked for these values, and
                     // silently trimming a cell would report altered data as the answer. The runner already
                     // bounds rows and cell size at the source.
+                    attach_answer_format(&mut task, &self.links);
                     return Ok(json_str(&task));
                 }
                 _ => {}
@@ -3052,7 +3616,39 @@ pub(crate) fn bearer_token(headers: &http::HeaderMap) -> Option<String> {
     (!token.is_empty()).then(|| token.to_string())
 }
 
-#[tool_handler]
+/// The client surface an inbound HTTP request declares through the MCP URL's query, when it is the
+/// assistant (`surface=assistant`, `McpOptions.AssistantSurfaceQuery`). Any other value is ignored
+/// rather than forwarded, so only the one surface the control plane understands is ever sent.
+pub(crate) fn request_surface(query: Option<&str>) -> Option<String> {
+    query?.split('&').find_map(|pair| {
+        let (name, value) = pair.split_once('=')?;
+        (name == "surface" && value == crate::control_plane::ASSISTANT_SURFACE).then(|| value.to_string())
+    })
+}
+
+#[cfg(test)]
+mod surface_tests {
+    use super::request_surface;
+
+    #[test]
+    fn the_assistant_surface_is_read_from_the_query() {
+        assert_eq!(request_surface(Some("surface=assistant")).as_deref(), Some("assistant"));
+        assert_eq!(request_surface(Some("a=1&surface=assistant")).as_deref(), Some("assistant"));
+    }
+
+    #[test]
+    fn anything_else_declares_no_surface() {
+        assert_eq!(request_surface(None), None);
+        assert_eq!(request_surface(Some("")), None);
+        assert_eq!(request_surface(Some("surface=gui")), None);
+        assert_eq!(request_surface(Some("surfaces=assistant")), None);
+    }
+}
+
+// `router = self.tool_router` on purpose: the macro otherwise generates `list_tools`/`get_tool` against
+// `Self::tool_router()`, the freshly generated router, so the GROUNDING_RULE that `grounded_router` appends
+// would be applied to a router no client ever reads. The field is the grounded one built in `with_mode`.
+#[tool_handler(router = self.tool_router)]
 impl ServerHandler for SqlFlowMcp {
     /// Hand-written dispatch (the #[tool_handler] macro only generates `call_tool`
     /// when the impl lacks one): over HTTP, rmcp injects the request's
@@ -3064,18 +3660,19 @@ impl ServerHandler for SqlFlowMcp {
         request: rmcp::model::CallToolRequestParams,
         context: rmcp::service::RequestContext<rmcp::RoleServer>,
     ) -> Result<rmcp::model::CallToolResult, rmcp::ErrorData> {
-        let bearer = context
-            .extensions
-            .get::<http::request::Parts>()
-            .and_then(|parts| bearer_token(&parts.headers));
+        let parts = context.extensions.get::<http::request::Parts>();
+        let bearer = parts.and_then(|parts| bearer_token(&parts.headers));
+        let surface = parts.and_then(|parts| request_surface(parts.uri.query()));
         let tcc = rmcp::handler::server::tool::ToolCallContext::new(self, request, context);
-        match bearer {
-            Some(token) => {
+        let call = self.tool_router.call(tcc);
+        match (bearer, surface) {
+            (Some(token), Some(surface)) => {
                 crate::control_plane::HTTP_BEARER
-                    .scope(token, self.tool_router.call(tcc))
+                    .scope(token, crate::control_plane::HTTP_SURFACE.scope(surface, call))
                     .await
             }
-            None => self.tool_router.call(tcc).await,
+            (Some(token), None) => crate::control_plane::HTTP_BEARER.scope(token, call).await,
+            (None, _) => call.await,
         }
     }
 
@@ -3090,7 +3687,17 @@ impl ServerHandler for SqlFlowMcp {
 }
 
 const INSTRUCTIONS_OFFLINE: &str = "\
-SQLFlow MCP server. Two tiers of tools:
+SQLFlow MCP server.
+
+ROUTING, BEFORE ANYTHING ELSE: a message beginning with the literal `!cwd` is a question to be answered
+from warehouse data. Strip the prefix and call find_similar_questions FIRST, before any schema lookup,
+any semantic-layer search, and any word to the person. It returns SQL that already answers the question,
+confirmed by a human; a `trusted` match with an `exampleId` is then run with auto_run_trusted_match. Do
+not compose SQL by hand until that path has come up empty. A message WITHOUT the `!cwd` prefix never goes
+to find_similar_questions, however much it reads like a question the warehouse could answer. The fuller
+rule, including how to lay out the answer, is in the online section below.
+
+Two tiers of tools:
 
 OFFLINE (always available):
 - Docs: search_docs, get_doc, get_doc_by_yaml_path, get_doc_by_cli_command, related_docs, list_docs.
@@ -3122,7 +3729,8 @@ ONLINE (needs the control plane):
   authority enforced server-side. There is no login step; check_connectivity probes reachability.
 ";
 
-const INSTRUCTIONS_ONLINE_TAIL: &str = "\
+const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
+    "\
 - Read: list_repos, list_pipelines, get_pipeline, pipeline_definition, pipeline_columns,
   pipeline_file_stats, list_runs,
   get_run, run_statements/assertions/files/health_metrics, lineage_objects/_detail/_columns/_edges/
@@ -3140,6 +3748,54 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = "\
   row that came back without links. A result about something the CALL named rather than about its rows (a
   flow's columns, an object's columns, a repo's edges, one file's provenance, the insights boards, summary)
   carries the subject's links on the envelope beside `items`, so those answers have a destination too.
+- The command `!cwd <question>` (e.g. \"!cwd what is our revenue by region?\", \"!cwd how many rows landed
+  last night\"): this exact prefix, not phrasing, is what activates the path for a question answered from
+  warehouse data. It covers any such question, commercial or operational; needing SQL over the warehouse is
+  the criterion, not the subject.
+  Strip `!cwd` and call find_similar_questions FIRST, before any schema lookup, with the
+  remainder as the question. It matches the question against ones this estate's dashboards and confirmed
+  answers already answer, expanding the wording so a paraphrase still finds them, and returns the SQL
+  that already answers it plus a trustworthy score (`trusted`) rather than an LLM's own confidence.
+  Adapting a close match beats composing new SQL from scratch. A `trusted` match carrying an `exampleId`
+  MUST be run immediately with auto_run_trusted_match: never prepare_query/run_query for it, never ask the
+  person for permission, and never ask which datasource to use (it is worked out from the tables the SQL
+  reads). ",
+    silent_retrieval_rule!(),
+    " Answer ONCE for a business reader, opening with the
+  finding in a plain sentence (\"You have 4 customers.\"). ALWAYS close that answer with the SQL
+  that actually ran: the result's `sqlIntro` line (\"Here's the saved query I ran:\"), then its `sqlBlock`
+  copied exactly as its own fenced code block (the result's `answerFormat` spells this out), so the person can check it, rerun
+  it, or confirm it. Never put it inline in a sentence, paraphrase it, or omit it, however obvious the
+  query looks. The same goes for every answer backed by run_query.
+  Only fall through to search_semantic_layer/describe_semantic_table when nothing
+  matches, or every match is untrusted and you need to understand the schema to write a fresh query.
+  Never ask them to judge the data source. When a query needs their
+  approval, open with \"I don't have a saved answer for this question yet, so I've put together a query that
+  should answer it.\" (or, for a question a report already answers, that a report already answers it), say
+  what it will show, give the SQL, and ask \"Want me to run it?\" (prepare_query's
+  `approvalFormat` spells this out).
+  describe_subscriber_report then shows which report VISUAL a matched question came from, with the
+  field ROLE (axis vs. value) a flattened column list cannot express. Once a person has judged an answer
+  right or in need of a fix, call confirm_question so the next similar question finds it too; call
+  it only on an answer a human actually judged, never on your own sense that a query looks correct.
+  Approving a run (\"yes\", \"go ahead\", \"run it\") is NOT judging the answer: running and saving are
+  separate decisions, so never call confirm_question on a run approval or in the same turn you present a
+  result; wait for the person to say, after seeing it, that it is right, needs a fix, or should be
+  saved. When you do call it, first say in one line what you will save as the question, quoting it, so they
+  can amend the wording; the question is stored as typed and is what later questions match against, so a
+  typo is theirs to fix, not yours to correct silently, and amending it leaves the query untouched. A
+  message with NO `!cwd` prefix is never routed to find_similar_questions, no matter how much it reads
+  like a question the warehouse could answer: treat it as a normal schema/lookup question and work it
+  through the semantic layer and the rest of this list instead.
+- Writing SQL, or any question about which tables and columns exist and what they mean: use the SEMANTIC
+  LAYER, the governed schema holding only the tables and columns an admin has allow-listed, with their
+  business descriptions, synonyms, curated keys and joins, measures, and example queries. get_semantic_layer
+  first (its general instructions apply to every query you write), then search_semantic_layer with a name or
+  a business term, then describe_semantic_table(key) for the columns, key, joins, and measures of one table.
+  A query may read only the allowed columns describe_semantic_table lists: anything else is refused when it
+  runs. The raw catalog readers below (describe_object, search_objects/_columns/_definitions, get_table_key,
+  get_table_joins) see every catalogued column regardless of the allow-list; where a client exposes them,
+  use them for lineage and code questions, never to find columns to query.
 - \"Where does <name> live / where is <X> computed / what is <X>?\": call search_all FIRST. It fans one term
   across all seven surfaces at once and answers with each surface's full count plus a nextSteps plan naming
   the tool that pages it and the tool that turns a hit into an answer; work that plan rather than guessing a
@@ -3181,8 +3837,8 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = "\
   is more than one hop away; describe_object's edge list stops at the object itself.
 - \"Which tables does this dashboard/report use?\": subscribers are the consumption side. list_subscribers
   (filter by type or search by name/owner) finds the report; describe_subscriber(key) lists every object its
-  queries read and the SQL itself. The reverse (\"who consumes this table\") is in describe_object's
-  `subscribers`. Then answer \"and how are those tables populated\" per table with describe_object_refresh.
+  queries read and the SQL itself. The reverse (\"who consumes this table\") is in describe_semantic_table's
+  `consumers` (and describe_object's `subscribers` where a client exposes it). Then answer \"and how are those tables populated\" per table with describe_object_refresh.
 - \"What is the computation formula for <column>?\": three places compute values, check in this order:
   search_flow_columns (an expression in a flow's transform), the owning view/procedure body via
   describe_object or search_definitions, and search_statements (SQL the engine composed at run time).
@@ -3199,7 +3855,8 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = "\
 - Operate (privileged): trigger_run, cancel_run, analyze_warehouse_health.
 
 SQLFlow authors T-SQL against SQL Server and orchestrates it with `.flow.yaml` documents. It is a
-distinct product from DeltaForge; use these tools and the embedded corpus as the source of truth.";
+distinct product from DeltaForge; use these tools and the embedded corpus as the source of truth."
+);
 
 #[cfg(test)]
 mod tests {
@@ -3236,8 +3893,11 @@ mod tests {
         let surfaces: Vec<&str> = steps.iter().map(|s| s["surface"].as_str().unwrap()).collect();
         assert_eq!(surfaces, ["flows", "flowColumns"]);
         assert_eq!(steps[0]["total"], json!(2));
-        assert_eq!(steps[0]["pageEveryHitWith"], json!("search_flows"));
-        assert_eq!(steps[1]["pageEveryHitWith"], json!("search_flow_columns"));
+        assert_eq!(steps[0]["pageEveryHitWith"], json!("search(surface=\"flows\")"));
+        assert_eq!(
+            steps[1]["pageEveryHitWith"],
+            json!("search_schema(surface=\"flowColumns\")")
+        );
         assert!(value["nothingMatched"].is_null());
         assert!(value["readingThis"].is_string());
     }
@@ -3253,7 +3913,7 @@ mod tests {
         assert!(guidance.len() >= 5);
         let joined = guidance.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(" ");
         assert!(joined.contains("ferry passengers"), "the checklist echoes the query back");
-        for tool in ["list_schemas", "search_flow_columns", "list_subscribers", "search_docs"] {
+        for tool in ["list_schemas", "flowColumns", "list_subscribers", "search_docs"] {
             assert!(joined.contains(tool), "the checklist names {tool}");
         }
         assert!(value["nextSteps"].is_null());
@@ -3290,6 +3950,173 @@ mod tests {
     }
 
     #[test]
+    fn a_successful_auto_run_carries_the_sql_as_a_fenced_block() {
+        let mut value = json!({
+            "ran": true,
+            "status": "succeeded",
+            "sql": "SELECT COUNT(*) AS CustomerCount FROM demo.Customers",
+            "result": { "sql": "SELECT COUNT(*) AS CustomerCount FROM demo.Customers\n", "rows": [["4"]] }
+        });
+        attach_answer_format(&mut value, &GuiLinks::new(""));
+        assert_eq!(
+            value["sqlBlock"],
+            json!("```sql\nSELECT COUNT(*) AS CustomerCount FROM demo.Customers\n```")
+        );
+        assert_eq!(value["answerFormat"], json!(ANSWER_FORMAT));
+        assert_eq!(value["sqlIntro"], json!("Here's the saved query I ran:"));
+        assert!(value.get("saveOffer").is_none(), "a replayed saved answer must not offer to be saved again");
+    }
+
+    #[test]
+    fn a_succeeded_query_task_carries_the_sql_as_a_fenced_block() {
+        let mut value = json!({ "status": "succeeded", "result": { "sql": "SELECT 1 AS One" } });
+        attach_answer_format(&mut value, &GuiLinks::new(""));
+        assert_eq!(value["sqlBlock"], json!("```sql\nSELECT 1 AS One\n```"));
+        assert_eq!(value["sqlIntro"], json!("Here's the query I ran:"));
+        assert_eq!(value["saveOffer"], json!(SAVE_OFFER));
+    }
+
+    #[test]
+    fn a_succeeded_result_links_its_chart_only_when_links_are_absolute() {
+        let task = json!({
+            "status": "succeeded",
+            "taskId": "01a0a5e7-18fa-71c1-a2b3-842b8df8dfd2",
+            "result": { "sql": "SELECT 1 AS One" }
+        });
+
+        let mut absolute = task.clone();
+        attach_answer_format(&mut absolute, &GuiLinks::new("http://localhost:8081"));
+        assert_eq!(
+            absolute["chartLink"],
+            json!("http://localhost:8081/query-results/01a0a5e7-18fa-71c1-a2b3-842b8df8dfd2")
+        );
+
+        let mut relative = task;
+        attach_answer_format(&mut relative, &GuiLinks::new(""));
+        assert!(relative.get("chartLink").is_none());
+        assert!(relative.get("sqlBlock").is_some());
+    }
+
+    #[test]
+    fn expanded_terms_travel_as_repeated_keys_and_blanks_are_dropped() {
+        let query = similar_questions_query(SimilarQuestionsInput {
+            question: "what drives our turnover".into(),
+            expanded_terms: Some(vec![
+                "turnover".into(),
+                "  revenue ".into(),
+                "   ".into(),
+                "sales".into(),
+            ]),
+            top_k: Some(5),
+            repo_id: Some("r1".into()),
+        });
+
+        assert_eq!(
+            query,
+            vec![
+                ("question", "what drives our turnover".to_string()),
+                ("expandedTerms", "turnover".to_string()),
+                ("expandedTerms", "revenue".to_string()),
+                ("expandedTerms", "sales".to_string()),
+                ("topK", "5".to_string()),
+                ("repoId", "r1".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn without_expanded_terms_only_the_question_is_sent() {
+        let query = similar_questions_query(SimilarQuestionsInput {
+            question: "revenue by country".into(),
+            expanded_terms: None,
+            top_k: None,
+            repo_id: None,
+        });
+
+        assert_eq!(query, vec![("question", "revenue by country".to_string())]);
+    }
+
+    #[test]
+    fn a_similar_questions_response_carries_the_silent_retrieval_rule_and_an_error_does_not() {
+        let mut found = json!({ "matches": [], "question": "how much have customers spent?" });
+        attach_retrieval_rule(&mut found);
+        assert_eq!(found["responseRule"], json!(RETRIEVAL_RULE));
+
+        let mut error = json!("Error: the control plane is unreachable");
+        attach_retrieval_rule(&mut error);
+        assert_eq!(error, json!("Error: the control plane is unreachable"));
+    }
+
+    /// The silent rule has to reach the model BEFORE it writes its opening line, and a tool description is the
+    /// only carrier guaranteed to do that: the server instructions can be truncated by the client, and the
+    /// `responseRule` in the payload arrives only after a call has been made. So the rule leads the description
+    /// rather than sitting deep inside it, where a model composing a preamble has already passed it by.
+    #[test]
+    fn tool_description_leads_with_the_cwd_trigger_and_carries_the_silent_rule() {
+        let router = SqlFlowMcp::tool_router();
+        let tool = router
+            .list_all()
+            .into_iter()
+            .find(|t| t.name == "find_similar_questions")
+            .expect("find_similar_questions is a registered tool");
+        let description = tool.description.clone().unwrap_or_default();
+
+        // This tool is surfaced to some clients by NAME ALONE, deferred until a tool search loads its
+        // schema. The name says nothing about `!cwd`, so the trigger has to be the first thing in the
+        // description for the routing to be discoverable at all: an agent that has not yet read this
+        // text is exactly the one that needs to know the command routes here.
+        assert!(
+            description.starts_with("THE `!cwd` COMMAND ROUTES HERE."),
+            "find_similar_questions must lead with the `!cwd` trigger, but began:\n{}",
+            &description[..description.len().min(240)]
+        );
+
+        // rmcp's #[tool] attribute takes only a literal, so this description cannot compose
+        // silent_retrieval_rule!(). Asserting it appears verbatim keeps that one copy from drifting.
+        assert!(
+            description.contains(SILENT_RETRIEVAL_RULE),
+            "find_similar_questions must carry SILENT_RETRIEVAL_RULE verbatim"
+        );
+    }
+
+    /// Every carrier of the rule states the same thing, so a fix to one is a fix to all.
+    #[test]
+    fn the_response_rule_is_built_from_the_shared_silent_rule() {
+        assert!(RETRIEVAL_RULE.starts_with(SILENT_RETRIEVAL_RULE));
+        assert!(INSTRUCTIONS_ONLINE_TAIL.contains(SILENT_RETRIEVAL_RULE));
+    }
+
+    #[test]
+    fn a_prepared_plan_carries_the_approval_format_and_an_error_does_not() {
+        let mut prepared = json!({ "planId": "efcca224", "sql": "SELECT 1 AS One" });
+        attach_approval_format(&mut prepared);
+        assert_eq!(prepared["approvalFormat"], json!(APPROVAL_FORMAT));
+
+        let mut refused = json!({ "error": "Only a single read-only SELECT is allowed." });
+        attach_approval_format(&mut refused);
+        assert!(refused.get("approvalFormat").is_none());
+    }
+
+    #[test]
+    fn a_result_that_did_not_run_gets_no_answer_format() {
+        let mut not_ran = json!({ "ran": false, "status": "cancelled", "sql": "SELECT 1", "result": null });
+        attach_answer_format(&mut not_ran, &GuiLinks::new("http://localhost:8081"));
+        assert!(
+            not_ran.get("sqlBlock").is_none()
+                && not_ran.get("answerFormat").is_none()
+                && not_ran.get("sqlIntro").is_none()
+        );
+
+        let mut failed = json!({ "status": "failed", "result": { "sql": "SELECT 1" } });
+        attach_answer_format(&mut failed, &GuiLinks::new("http://localhost:8081"));
+        assert!(failed.get("sqlBlock").is_none());
+
+        let mut error = json!("Error: the control plane is unreachable");
+        attach_answer_format(&mut error, &GuiLinks::new("http://localhost:8081"));
+        assert_eq!(error, json!("Error: the control plane is unreachable"));
+    }
+
+    #[test]
     fn annotate_leaves_a_non_object_payload_alone() {
         let mut value = json!("Error: the control plane is unreachable");
         annotate_search_all(&mut value, "orders");
@@ -3315,24 +4142,117 @@ mod tests {
         );
     }
 
+    /// Acronyms and keywords that are simply spelled in capitals; not emphasis, so they never count
+    /// against a description's budget.
+    const NOT_EMPHASIS: [&str; 33] = [
+        "SQL", "YAML", "JSON", "NDJSON", "XML", "DDL", "DML", "CLI", "URL", "API", "HTTP", "MCP", "ID",
+        "UTC", "ISO", "GUI", "DMV", "PK", "FK", "DAX", "BI", "PBIX", "CSV", "SFTP", "UNC", "BFS", "PR",
+        "NULL", "SELECT", "CREATE", "TABLE", "VIEW", "T",
+    ];
+
+    /// Capitals are a routing signal, and a signal only works while it is scarce; see the convention
+    /// documented above `GROUNDING_RULE`. This caps the budget per description so the surface cannot drift back to
+    /// shouting, which is the state it was in when descriptions opened with START HERE or USE THIS so often
+    /// that none of them stood out.
+    #[test]
+    fn capitals_are_rationed_to_routing_and_safety() {
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+
+        let mut start_here = Vec::new();
+        for tool in server.tool_router.list_all() {
+            let description = tool.description.as_deref().unwrap_or("");
+            if description.contains("START HERE") {
+                start_here.push(tool.name.to_string());
+            }
+
+            let emphasised: Vec<&str> = description
+                .split(|c: char| !c.is_ascii_alphabetic())
+                .filter(|w| w.len() > 1 && w.chars().all(|c| c.is_ascii_uppercase()))
+                .filter(|w| !NOT_EMPHASIS.contains(w))
+                .collect();
+
+            assert!(
+                emphasised.len() <= 6,
+                "'{}' capitalises {} words ({}); the convention rations capitals to a routing lead and a \
+                 real safety constraint, and carries every other contrast in lowercase prose",
+                tool.name,
+                emphasised.len(),
+                emphasised.join(", "),
+            );
+        }
+
+        // START HERE marks the entry point of a family. Two tools claiming it is the ambiguity the
+        // convention exists to prevent: the model has no way to choose between them.
+        assert!(
+            start_here.len() <= 1,
+            "START HERE must mark at most one entry point, but {start_here:?} all claim it"
+        );
+    }
+
+    /// A reading guide belongs ON the payload, not in the description: the tools below moved their field
+    /// semantics there, and a description that still carried them would be paying for the move twice.
+    #[test]
+    fn a_reading_guide_lands_on_the_payload_and_not_on_an_error() {
+        let mut ok = json!({ "pages": [] });
+        attach_guide(&mut ok, SUBSCRIBER_REPORT_GUIDE);
+        assert_eq!(ok["readingThis"], json!(SUBSCRIBER_REPORT_GUIDE));
+
+        // An error payload keeps its own shape: guidance about fields it does not have is noise on a failure.
+        let mut failed = json!({ "error": "not found" });
+        attach_guide(&mut failed, SEMANTIC_TABLE_GUIDE);
+        assert!(failed["readingThis"].is_null());
+
+        // And the descriptions that moved their semantics out must not still carry them.
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+        for (tool, moved) in [
+            ("describe_semantic_table", "isRangeJoin"),
+            ("describe_subscriber_report", "tableName"),
+            ("detect_stream_anomalies", "agreeingDetectors"),
+        ] {
+            let served = ServerHandler::get_tool(&server, tool).expect("tool is served");
+            let description = served.description.as_deref().unwrap_or("");
+            assert!(
+                !description.contains(moved),
+                "'{tool}' still explains `{moved}` in its description; that moved to the response guide"
+            );
+            assert!(
+                description.contains("readingThis"),
+                "'{tool}' should point at the response's own `readingThis` guide"
+            );
+        }
+    }
+
     #[test]
     fn every_search_surface_names_a_real_paging_tool() {
-        // The plan is only useful if the tool names it hands back are callable; a renamed tool must be caught
-        // here rather than by a model trying to call a tool that does not exist.
-        // The subscribers surface is paged by list_subscribers rather than a search_* twin: that tool already
-        // filters by the same fields, so a second one would be a parallel path to the same rows.
-        const TOOLS: [&str; 8] = [
-            "search_objects",
-            "search_columns",
-            "search_definitions",
-            "search_files",
-            "search_flows",
-            "search_flow_columns",
-            "search_statements",
-            "list_subscribers",
-        ];
-        for (_, page_tool, follow_up) in SEARCH_SURFACES {
-            assert!(TOOLS.contains(&page_tool), "{page_tool} is not a tool on this server");
+        // The plan is only useful if the tool names it hands back are callable; a renamed tool must be
+        // caught here rather than by a model trying to call a tool that does not exist. Read off the
+        // CONSTRUCTED server rather than a hand-copied list, so this cannot go stale the way a duplicate
+        // roster does. The subscribers surface is paged by list_subscribers rather than by `search`: that
+        // tool already filters by the same fields, so a second path to the same rows would be a parallel one.
+        let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(true)));
+        let shipped: Vec<String> =
+            server.tool_router.list_all().into_iter().map(|t| t.name.to_string()).collect();
+
+        for (surface, page_tool, follow_up) in SEARCH_SURFACES {
+            // Either a bare tool name, or the `tool(surface="x")` form naming the surface it pages.
+            let (name, paged) = match page_tool.split_once("(surface=") {
+                Some((name, rest)) => (name, Some(rest.trim_end_matches(')').trim_matches('"'))),
+                None => (page_tool, None),
+            };
+            assert!(shipped.iter().any(|t| t == name), "{name} is not a tool on this server");
+
+            if let Some(paged) = paged {
+                assert_eq!(paged, surface, "the plan pages the wrong surface for {surface}");
+                // The split is a privacy boundary, not a category: the schema surfaces must be served by
+                // search_schema, which the chat surfaces exclude, and never leak onto the ETL-side `search`.
+                let expected =
+                    if schema_surface_spec(paged).is_some() { "search_schema" } else { "search" };
+                assert_eq!(name, expected, "{paged} is paged by the wrong tool");
+                assert!(
+                    search_surface_spec(paged).is_some() || schema_surface_spec(paged).is_some(),
+                    "{paged} is not a surface either search tool can page"
+                );
+            }
             assert!(!follow_up.is_empty());
         }
     }

@@ -18,6 +18,9 @@ keywords:
   - whoami
   - doctor
   - completions
+  - powerbi
+  - pbix
+  - report specification
 cliCommand: control-plane
 related:
   - cli-run
@@ -28,6 +31,8 @@ sourceRefs:
   - src/SqlFlow.Cli/Program.cs
   - src/SqlFlow.Cli/Remote/RemoteVerbs.cs
   - src/SqlFlow.Cli/Remote/RemoteVerbs.Estate.cs
+  - src/SqlFlow.Cli/Remote/RemoteVerbs.PowerBi.cs
+  - src/SqlFlow.Lineage/Collection/ReportSpecs.cs
   - src/SqlFlow.Cli/Remote/ControlPlaneClient.cs
 ---
 
@@ -109,6 +114,35 @@ sqlflow datasources introspect --ref '${env:SQLFLOW_CONN_DW}' --object dbo.Order
 sqlflow datasources detect-unique-key --ref '${env:SQLFLOW_CONN_DW}' --object dbo.Orders
 sqlflow datasources tasks | task <id> | cancel <id>
 ```
+
+## Power BI reports
+
+```
+sqlflow powerbi extract reports/Sales.pbix                 # writes reports/Sales.pbix.yaml
+sqlflow powerbi extract Sales.pbix --out - > spec.yaml     # to standard output
+sqlflow powerbi extract Sales.pbix --remote                # read by the control plane's isolated extractor
+sqlflow powerbi publish Sales.pbix --repo bb --subscriber Dashboard_Salg
+sqlflow powerbi publish reports/Sales.pbix.yaml --repo bb --subscriber Dashboard_Salg
+sqlflow powerbi list [--repo bb] [--subscriber Dashboard_Salg]
+sqlflow powerbi remove <id>
+```
+
+`extract` turns a `.pbix` into its report specification, the file a subscriber declares with
+`pbix: reports/Sales.pbix.yaml` (see [subscribers.yaml](../flow/subscribers.md)). The default output is the
+report's own path plus `.yaml`; `--out -` writes to standard output and moves the summary to stderr. The report is
+read by the local `pbix-extract` tool when one is found (`SQLFLOW_PBIX_EXTRACT`, then beside the CLI, then `PATH`),
+and otherwise by the control plane's isolated extractor, which needs `--url`/`SQLFLOW_URL`, a sign-in, and
+`ControlPlane:PowerAI:ReportExtraction` enabled on the server. `--remote` forces the control plane even when a
+local tool exists. With neither available the verb fails and says how to get one. `--report-file` sets the label
+the report's pages carry (default: the file name).
+
+`publish` stores a report in the semantic layer for a PowerBI subscriber the repo already declares, instead of
+committing its specification. A `.pbix` is extracted first (as for `extract`); a `.yaml` specification is checked
+locally, then sent. Publishing the same report name again replaces the earlier upload. For a repo synced from git
+the managed sync is queued to apply it; a repo synced from a local path applies it on its next `sqlflow db sync`.
+`list` shows every stored report, including the copies syncs kept of declared `.pbix` files, and marks one whose
+subscriber the repository no longer declares; `remove` deletes one by id. `publish`, `list`, and `remove` need the
+admin scope.
 
 ## Lineage as data
 

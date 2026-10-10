@@ -120,7 +120,10 @@
         "lineage",
         "whoami",
         "doctor",
-        "completions"
+        "completions",
+        "powerbi",
+        "pbix",
+        "report specification"
       ],
       "cliCommand": "control-plane",
       "related": [
@@ -133,6 +136,8 @@
         "src/SqlFlow.Cli/Program.cs",
         "src/SqlFlow.Cli/Remote/RemoteVerbs.cs",
         "src/SqlFlow.Cli/Remote/RemoteVerbs.Estate.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.PowerBi.cs",
+        "src/SqlFlow.Lineage/Collection/ReportSpecs.cs",
         "src/SqlFlow.Cli/Remote/ControlPlaneClient.cs"
       ]
     },
@@ -776,7 +781,11 @@
         "baseline comparison",
         "linked server",
         "migration reconciliation",
-        "compute task"
+        "compute task",
+        "column policy",
+        "sensitive column",
+        "pii",
+        "data access control"
       ],
       "related": [
         "concept-control-plane",
@@ -792,7 +801,14 @@
         "src/SqlFlow.SqlServer/Quality/SqlServerDuplicateKeyProbe.cs",
         "src/SqlFlow.SqlServer/Query/ReadOnlyQueryGuard.cs",
         "src/SqlFlow.SqlServer/Query/SqlServerQueryRunner.cs",
+        "src/SqlFlow.SqlServer/Query/SqlColumnAccessExtractor.cs",
         "src/SqlFlow.ControlPlane/Api/QueryEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/ColumnPolicyGuard.cs",
+        "src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
         "src/SqlFlow.SqlServer/Comparison/SqlServerBaselineComparer.cs",
         "src/SqlFlow.Execution/ComputeTaskExecutor.cs",
         "src/SqlFlow.ControlPlane/Api/DatasourceEndpoints.cs",
@@ -1377,6 +1393,62 @@
       ]
     },
     {
+      "id": "concept-semantic-layer",
+      "corpus": "reference",
+      "path": "concepts/semantic-layer.md",
+      "title": "Semantic layer: the allow-listed schema an assistant writes SQL against",
+      "type": "concept",
+      "summary": "The column allow-list as the AI assistant's only schema, with descriptions, synonyms, curated keys and joins, measures, examples, and instructions.",
+      "keywords": [
+        "semantic layer",
+        "semantic context",
+        "column policy",
+        "allow-list",
+        "whitelist",
+        "business glossary",
+        "synonyms",
+        "measures",
+        "curated relationships",
+        "text to sql",
+        "schema grounding",
+        "get_semantic_layer",
+        "search_semantic_layer",
+        "describe_semantic_table",
+        "power bi upload",
+        "report specification",
+        "pbix-extractor"
+      ],
+      "related": [
+        "concept-data-operations",
+        "concept-shadow-catalog"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Api/SemanticLayer.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticLayerEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticLayerAdminEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticExampleAdminEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticReportEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/ReportExtractionClient.cs",
+        "src/SqlFlow.PbixExtractor/ExtractionEndpoint.cs",
+        "src/SqlFlow.PbixExtractor/ExtractorOptions.cs",
+        "gui/src/features/semantic-layer/ReportsPanel.tsx",
+        "gui/src/features/semantic-layer/ReportUploadDialog.tsx",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "gui/src/features/semantic-layer/SavedAnswersPanel.tsx",
+        "src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/ColumnPolicyGuard.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.Assistant/AssistantSettings.cs",
+        "src/SqlFlow.Assistant/AssistantInstructions.cs",
+        "tools/sqlflow-mcp/src/server.rs",
+        "gui/src/features/semantic-layer/SemanticLayerPage.tsx",
+        "src/SqlFlow.ControlPlane/Api/AssistantScope.cs",
+        "src/SqlFlow.ControlPlane/Api/DatasourceEndpoints.cs",
+        "tools/sqlflow-mcp/src/control_plane.rs"
+      ]
+    },
+    {
       "id": "concept-shadow-catalog",
       "corpus": "reference",
       "path": "concepts/shadow-catalog.md",
@@ -1406,6 +1478,9 @@
         "src/SqlFlow.Catalog/CatalogEntities.cs",
         "src/SqlFlow.Catalog/CatalogDbContext.cs",
         "src/SqlFlow.Catalog/Migrations/20260617165538_ObjectFullTextSearch.cs",
+        "src/SqlFlow.Catalog/Migrations/20260915071502_AddColumnPolicy.cs",
+        "src/SqlFlow.Catalog/Migrations/20260915090833_RenameColumnPolicyToAllowList.cs",
+        "src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs",
         "src/SqlFlow.Catalog/RunQueueStore.cs",
         "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
         "src/SqlFlow.Cli/Program.cs"
@@ -2141,6 +2216,51 @@
       ]
     },
     {
+      "id": "flow-sch",
+      "corpus": "reference",
+      "path": "flow/sch.md",
+      "title": "Schema registration flow (flowType: sch)",
+      "type": "flow-reference",
+      "summary": "flowType: sch registers an external database's tables and views in the catalog so subscribers link to them and questions know where to run.",
+      "keywords": [
+        "schema registration",
+        "flowtype sch",
+        "external database",
+        "registered source",
+        "metadata only",
+        "registers relation",
+        "subscriber linking",
+        "datasource inference",
+        "powerai",
+        "chat with data"
+      ],
+      "yamlPath": "(root, flowType: sch)",
+      "related": [
+        "flow-overview",
+        "flow-schedule",
+        "flow-subscribers",
+        "concept-shadow-catalog",
+        "concept-lineage-graph-and-plan",
+        "concept-data-operations"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs",
+        "src/SqlFlow.Core/SchemaRegistration/SchemaRegistrationFlow.cs",
+        "src/SqlFlow.Core/SchemaRegistration/SchemaRegistrationResult.cs",
+        "src/SqlFlow.SqlServer/Catalog/SqlServerObjectHarvester.cs",
+        "src/SqlFlow.SqlServer/Catalog/SchemaRegistrationReader.cs",
+        "src/SqlFlow.SqlServer/SchemaRegistration/SchemaRegistrationRunner.cs",
+        "src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/Collection/SchemaRegistrationCollector.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.Catalog/RunQueueStore.cs",
+        "src/SqlFlow.ControlPlane/Api/DatasourceInference.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs"
+      ]
+    },
+    {
       "id": "flow-schedule",
       "corpus": "reference",
       "path": "flow/schedule.md",
@@ -2412,10 +2532,27 @@
         "DataSubscriberQuery",
         "subscriber notes",
         "incomplete dataset",
-        "stale report"
+        "stale report",
+        "pbix",
+        "pbix-extract",
+        "nodes and edges",
+        "node graph",
+        "measures",
+        "relationships",
+        "visual fields",
+        "business question",
+        "question generation",
+        "text-to-query",
+        "pbix.yaml",
+        "report specification",
+        "sqlflow powerbi extract",
+        "uploaded report",
+        "registered source",
+        "schema registration"
       ],
       "yamlPath": "subscribers",
       "related": [
+        "flow-sch",
         "concept-lineage-graph-and-plan",
         "concept-lineage-tiers",
         "flow-schedule",
@@ -2423,15 +2560,22 @@
       ],
       "sourceRefs": [
         "src/SqlFlow.Core/Subscribers/DataSubscriber.cs",
+        "src/SqlFlow.Lineage/Collection/SchemaRegistrationCollector.cs",
         "docs/reference/flow/keys.subscribers.json",
         "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs",
         "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
         "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
+        "src/SqlFlow.Lineage/Collection/PbixExtractTool.cs",
+        "src/SqlFlow.Lineage/Collection/ReportSpecs.cs",
         "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
         "src/SqlFlow.Core/Lineage/LineageReport.cs",
         "src/SqlFlow.Catalog/CatalogEntities.cs",
         "src/SqlFlow.Catalog/CatalogSync.cs",
-        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs"
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Background/SubscriberQuestionEnrichment.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.Assistant/QuestionGenerator.cs",
+        "tools/pbix-extract/src/main.c"
       ]
     },
     {
@@ -2606,7 +2750,14 @@
         "dictation",
         "transcription",
         "image",
-        "screenshot"
+        "screenshot",
+        "confirmation",
+        "learning loop",
+        "powerai",
+        "run query",
+        "dataops",
+        "chart",
+        "saved answers"
       ],
       "related": [
         "guide-slack-assistant",
@@ -2625,6 +2776,20 @@
         "src/SqlFlow.Catalog/CatalogEntities.cs",
         "gui/src/features/chat/ChatPage.tsx",
         "gui/src/features/chat/chatAdapters.ts",
+        "gui/src/features/chat/AnswerConfirmation.tsx",
+        "src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticExampleAdminEndpoints.cs",
+        "gui/src/features/semantic-layer/SavedAnswersPanel.tsx",
+        "gui/src/features/semantic-layer/ExampleDialog.tsx",
+        "gui/src/features/chat/QueryResultPage.tsx",
+        "tools/sqlflow-mcp/src/server.rs",
+        "gui/src/features/chat/SqlRunPanel.tsx",
+        "gui/src/features/chat/QueryResultView.tsx",
+        "gui/src/features/chat/QueryResultEmbed.tsx",
+        "src/SqlFlow.ControlPlane/Api/DatasourceInference.cs",
+        "src/SqlFlow.Assistant/AssistantInstructions.cs",
+        "src/SqlFlow.Assistant/AssistantSettings.cs",
+        "src/SqlFlow.ControlPlane/Api/QueryEndpoints.cs",
         "deploy/bicep/control-plane.bicep",
         "deploy/bicep/ai-foundry.bicep"
       ]
@@ -2900,9 +3065,9 @@
       "id": "guide-slack-assistant",
       "corpus": "reference",
       "path": "guides/slack-assistant.md",
-      "title": "The Slack assistant: a read-only SQLFlow agent over Foundry's Responses API and the MCP server",
+      "title": "The Slack assistant: a SQLFlow agent over Foundry's Responses API and the MCP server",
       "type": "guide",
-      "summary": "How the SQLFlow Slack bot answers questions - a Socket Mode relay to an Azure AI Foundry Responses API call whose MCP tool is the SQLFlow MCP server, read-on...",
+      "summary": "The SQLFlow Slack bot, a Socket Mode relay to a model with the SQLFlow MCP server, answering from the catalog and running business queries a thread approves.",
       "keywords": [
         "slack",
         "assistant",
@@ -2913,7 +3078,9 @@
         "agent",
         "socket mode",
         "gpt-5.1",
-        "read-only",
+        "business questions",
+        "run query",
+        "saved answers",
         "vision",
         "image",
         "screenshot",
@@ -2930,6 +3097,9 @@
         "src/SqlFlow.Assistant/ResponsesApiGateway.cs",
         "src/SqlFlow.SlackBot/SlackAssistantHandler.cs",
         "src/SqlFlow.SlackBot/SlackBotOptions.cs",
+        "src/SqlFlow.SlackBot/SlackMrkdwn.cs",
+        "src/SqlFlow.Assistant/AssistantSettings.cs",
+        "src/SqlFlow.Assistant/AssistantInstructions.cs",
         "tools/sqlflow-mcp/src/http_server.rs",
         "deploy/bicep/slack-bot.bicep",
         "deploy/bicep/mcp.bicep",
@@ -3453,9 +3623,15 @@
       "related": [
         "wiki-string-first-landing",
         "wiki-census-drift",
+        "wiki-semantic-layer-is-the-allow-list",
         "wiki-dispatch-in-control-plane"
       ],
-      "sourceRefs": []
+      "sourceRefs": [
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticExampleAdminEndpoints.cs",
+        "gui/src/features/chat/AnswerConfirmation.tsx"
+      ]
     },
     {
       "id": "wiki-dispatch-in-control-plane",
@@ -3630,6 +3806,105 @@
       "sourceRefs": []
     },
     {
+      "id": "wiki-pbix-split-report-format",
+      "corpus": "wiki",
+      "path": "incidents/pbix-split-report-format.md",
+      "title": "A report saved by a current PowerBI Desktop extracted with no visuals at all",
+      "type": "incident",
+      "summary": "Power BI Desktop replaced Report/Layout with a tree of per-visual documents, so every question a report stated vanished from extraction, with no error.",
+      "keywords": [
+        "pbix",
+        "Report/Layout",
+        "Report/definition",
+        "PBIR",
+        "visual layer",
+        "report format",
+        "silent",
+        "vendor format change"
+      ],
+      "related": [
+        "wiki-powerbi-model-entity-resolution"
+      ],
+      "sourceRefs": [
+        "tools/pbix-extract/src/reportlayout.c",
+        "tools/pbix-extract/src/reportlayout.h",
+        "tools/pbix-extract/src/datamodel.c",
+        "tools/pbix-extract/src/datamodel.h",
+        "tools/pbix-extract/tests/test_reportlayout.c"
+      ]
+    },
+    {
+      "id": "wiki-powerbi-model-entity-resolution",
+      "corpus": "wiki",
+      "path": "decisions/powerbi-model-entity-resolution.md",
+      "title": "A report's model entity becomes a warehouse object through the synonym pass",
+      "type": "decision",
+      "summary": "Why a PowerBI table's Power Query source is pattern-matched not parsed, emitted as an ordinary synonym, and refused rather than guessed when unrecognized.",
+      "keywords": [
+        "powerbi",
+        "pbix",
+        "model entity",
+        "power query",
+        "m expression",
+        "synonym",
+        "consumption lineage",
+        "node identity",
+        "Sql.Database"
+      ],
+      "related": [
+        "wiki-pbix-split-report-format",
+        "wiki-powerbi-report-specifications",
+        "wiki-schema-registration-flows"
+      ],
+      "sourceRefs": [
+        "tools/pbix-extract/src/msource.c",
+        "tools/pbix-extract/src/msource.h",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/Collection/PbixExtractTool.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Lineage/Collection/LineageFacts.cs",
+        "samples/powerbi/AdventureWorks_Sales.spec.yaml"
+      ]
+    },
+    {
+      "id": "wiki-powerbi-report-specifications",
+      "corpus": "wiki",
+      "path": "decisions/powerbi-report-specifications.md",
+      "title": "A Power BI report travels as its specification, and the semantic layer keeps the ones git does not",
+      "type": "decision",
+      "summary": "Why pbix-extract stayed put while its output moved into committed specs and the semantic layer, with uploads read by an isolated service.",
+      "keywords": [
+        "powerbi",
+        "pbix",
+        "pbix.yaml",
+        "report specification",
+        "semantic layer",
+        "upload",
+        "kept extraction",
+        "pbix-extractor",
+        "sandbox",
+        "managed sync",
+        "data loss"
+      ],
+      "related": [
+        "wiki-powerbi-model-entity-resolution",
+        "wiki-semantic-layer-is-the-allow-list"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Lineage/Collection/ReportSpecs.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/Collection/PbixExtractTool.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.Catalog/CatalogEntities.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticReportEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/ReportExtractionClient.cs",
+        "src/SqlFlow.PbixExtractor/ExtractionEndpoint.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.PowerBi.cs",
+        "Dockerfile.pbix-extractor",
+        "deploy/compose/docker-compose.yml"
+      ]
+    },
+    {
       "id": "wiki-recipe-api-source",
       "corpus": "wiki",
       "path": "narratives/recipe-api-source.md",
@@ -3801,6 +4076,7 @@
         "adf"
       ],
       "related": [
+        "wiki-powerbi-model-entity-resolution",
         "wiki-recipe-database-source",
         "wiki-orchestration-and-scheduling",
         "wiki-recipe-quality-and-monitoring",
@@ -4013,6 +4289,80 @@
       "sourceRefs": []
     },
     {
+      "id": "wiki-schema-registration-flows",
+      "corpus": "wiki",
+      "path": "decisions/schema-registration-flows.md",
+      "title": "An external database is registered by a flow, and the dashboard supplies the model",
+      "type": "decision",
+      "summary": "Why flowType sch registers only an external database's tables and views, links dashboards to them by name, and leaves joins and measures to the dashboard.",
+      "keywords": [
+        "schema registration",
+        "flowType sch",
+        "registered source",
+        "registers relation",
+        "datasource gate",
+        "external database",
+        "chat with data",
+        "subscriber is the key"
+      ],
+      "related": [
+        "wiki-powerbi-model-entity-resolution",
+        "wiki-semantic-layer-is-the-allow-list",
+        "wiki-powerbi-report-specifications",
+        "wiki-visual-sql-translation"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlSchemaRegistrationFlowLoader.cs",
+        "src/SqlFlow.Core/SchemaRegistration/SchemaRegistrationFlow.cs",
+        "src/SqlFlow.SqlServer/Catalog/SqlServerObjectHarvester.cs",
+        "src/SqlFlow.SqlServer/Catalog/SchemaRegistrationReader.cs",
+        "src/SqlFlow.Lineage/Collection/SchemaRegistrationCollector.cs",
+        "src/SqlFlow.Lineage/Collection/CatalogCollector.cs",
+        "src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.ControlPlane/Api/DatasourceInference.cs",
+        "samples/powerai-adventureworks/TESTING.md"
+      ]
+    },
+    {
+      "id": "wiki-semantic-layer-is-the-allow-list",
+      "corpus": "wiki",
+      "path": "decisions/semantic-layer-is-the-allow-list.md",
+      "title": "The semantic layer is the column allow-list",
+      "type": "decision",
+      "summary": "Why the assistant's schema is one layer defined by the column allow-list, and why chat lost the raw schema tools instead of shared endpoints being filtered.",
+      "keywords": [
+        "semantic layer",
+        "column policy",
+        "allow-list",
+        "whitelist",
+        "schema grounding",
+        "named contexts",
+        "chat tool allowlist",
+        "no-tracking"
+      ],
+      "related": [
+        "wiki-design-doc-drift",
+        "wiki-powerbi-model-entity-resolution"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Api/SemanticLayer.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticLayerEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticLayerAdminEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Program.cs",
+        "src/SqlFlow.Assistant/AssistantSettings.cs",
+        "tests/SqlFlow.ControlPlane.Tests/SemanticLayerApiTests.cs",
+        "src/SqlFlow.ControlPlane/Api/AssistantScope.cs",
+        "tools/sqlflow-mcp/src/control_plane.rs",
+        "src/SqlFlow.ControlPlane/Api/SemanticExampleAdminEndpoints.cs",
+        "src/SqlFlow.Catalog/Migrations/20260915192213_MoveQuestionExamplesIntoSemanticLayer.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs"
+      ]
+    },
+    {
       "id": "wiki-string-first-landing",
       "corpus": "wiki",
       "path": "decisions/string-first-landing.md",
@@ -4062,6 +4412,42 @@
         "wiki-pattern-catalog"
       ],
       "sourceRefs": []
+    },
+    {
+      "id": "wiki-visual-sql-translation",
+      "corpus": "wiki",
+      "path": "decisions/visual-sql-translation.md",
+      "title": "A report visual's query is translated into T-SQL at sync, or refused with a reason",
+      "type": "decision",
+      "summary": "Why each Power BI visual query is stored as T-SQL over its source tables, why only a stated M and DAX subset translates, and why matches serve it.",
+      "keywords": [
+        "visual sql translation",
+        "source sql",
+        "translation problem",
+        "dax to t-sql",
+        "power query lineage",
+        "dashboard match",
+        "userelationship",
+        "shared expressions"
+      ],
+      "related": [
+        "wiki-schema-registration-flows",
+        "wiki-powerbi-report-specifications",
+        "wiki-powerbi-model-entity-resolution"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Lineage/PowerBi/VisualSqlTranslator.cs",
+        "src/SqlFlow.Lineage/PowerBi/DaxTranslator.cs",
+        "src/SqlFlow.Lineage/PowerBi/Relational.cs",
+        "src/SqlFlow.Lineage/PowerQuery/MSyntax.cs",
+        "src/SqlFlow.Lineage/PowerQuery/PowerQueryLineage.cs",
+        "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
+        "src/SqlFlow.Catalog/CatalogSync.cs",
+        "src/SqlFlow.ControlPlane/Background/QuestionSearch.cs",
+        "tools/pbix-extract/src/metadata.c",
+        "tools/pbix-extract/src/sqlrender.c",
+        "tests/SqlFlow.Core.Tests/PowerBi/VisualSqlTranslatorTests.cs"
+      ]
     }
   ]
 }

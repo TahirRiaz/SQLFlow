@@ -136,13 +136,14 @@ export function ComboBoxField<T>(props: ComboBoxFieldProps<T>) {
           <div ref={anchorRef} className="relative">
             <Input
               id={inputId}
-              className="h-8 w-full pr-8"
+              className="h-8 w-full truncate pr-8"
               role="combobox"
               aria-expanded={open}
               aria-label={label === undefined ? ariaLabel : undefined}
               autoComplete="off"
               placeholder={placeholder}
               value={text}
+              title={text.length > 0 ? text : undefined}
               disabled={disabled}
               data-testid={testId}
               onClick={() => setOpen(true)}

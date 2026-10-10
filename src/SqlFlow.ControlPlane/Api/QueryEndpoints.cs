@@ -17,7 +17,9 @@ using SqlFlow.SqlServer.Query;
 namespace SqlFlow.ControlPlane.Api;
 
 /// <summary>The statement to prepare, and where it would run. No token exists yet; this is the ask that mints
-/// one.</summary>
+/// one. <c>Reference</c> is optional: omitted, it is worked out from the tables the statement reads
+/// (<see cref="DatasourceInference"/>), and the prepare answers 422 naming the candidates when that is not
+/// unambiguous.</summary>
 public sealed record PrepareQueryRequest(
     string? Sql, string? Reference, string? Kind = null, string? Database = null, string? Pool = null,
     int? MaxRows = null, int? TimeoutSeconds = null);
@@ -105,27 +107,12 @@ public static class QueryEndpoints
         }
 
         var reference = request.Reference?.Trim() ?? string.Empty;
-        if (!ComputeTaskPayload.IsWholeReference(reference))
+        if (reference.Length > 0 && !ComputeTaskPayload.IsWholeReference(reference))
         {
             return Problem(
                 "The datasource must be a whole ${env:...} / ${keyvault:...} reference or an @alias. Inline " +
                 "connection strings are not accepted here.",
                 StatusCodes.Status400BadRequest, "Invalid request");
-        }
-
-        // The same reference gate the compute path uses: a query may only reach a datasource the reviewed git
-        // estate already declares, so this surface can never be pointed at a novel connection.
-        if (!reference.StartsWith('@'))
-        {
-            var known = await db.Pipelines.AsNoTracking()
-                .AnyAsync(p => p.SourceServer == reference || p.TargetServer == reference, ct)
-                .ConfigureAwait(false);
-            if (!known)
-            {
-                return Problem(
-                    $"No pipeline in the catalog declares the datasource reference '{reference}'.",
-                    StatusCodes.Status404NotFound, "Not found");
-            }
         }
 
         string sql;
@@ -141,10 +128,51 @@ public static class QueryEndpoints
                 MaxRows = request.MaxRows ?? QueryRunRequest.DefaultMaxRows,
                 TimeoutSeconds = request.TimeoutSeconds ?? QueryRunRequest.DefaultTimeoutSeconds,
             }.Validate();
+
+            // A second, narrower check: read-only is not the same as unrestricted. Refuses any column an admin
+            // has marked sensitive, whether or not it is named directly (a SELECT * against a table that has one
+            // is refused too).
+            await ColumnPolicyGuard.EnsureAllowedAsync(db, sql, ct).ConfigureAwait(false);
         }
         catch (SqlFlowException ex)
         {
             return Problem(ex.Message, StatusCodes.Status400BadRequest, "Query refused");
+        }
+
+        // No datasource named: the tables the statement reads decide it, so a person is asked to pick only when
+        // the catalog genuinely cannot tell (none of them is known, or they live on several datasources).
+        if (reference.Length == 0)
+        {
+            var inferred = await DatasourceInference.InferAsync(db, sql, null, ct).ConfigureAwait(false);
+            if (inferred.Reference is null)
+            {
+                return Problem(
+                    inferred.Candidates.Count == 0
+                        ? "No datasource was named, and none could be worked out from the query: none of the " +
+                          "tables it reads is on a datasource the estate declares. Name the datasource to run against."
+                        : "No datasource was named, and the tables this query reads exist on several datasources (" +
+                          string.Join(", ", inferred.Candidates) + "). Name the one to run against.",
+                    StatusCodes.Status422UnprocessableEntity, "Datasource needed");
+            }
+
+            reference = inferred.Reference;
+
+            // A registered database the connection does not open on by default is named explicitly, so the query
+            // runs where its objects were registered.
+            if (bounds.Database is null && inferred.Database is not null)
+            {
+                bounds = bounds with { Database = inferred.Database };
+            }
+        }
+
+        // The same reference gate the compute path uses: a query may only reach a datasource the reviewed git
+        // estate already declares, so this surface can never be pointed at a novel connection.
+        if (!reference.StartsWith('@')
+            && !await DatasourceInference.IsDeclaredAsync(db, reference, ct).ConfigureAwait(false))
+        {
+            return Problem(
+                $"No active pipeline in the catalog declares the datasource reference '{reference}'.",
+                StatusCodes.Status404NotFound, "Not found");
         }
 
         var now = clock.GetUtcNow().UtcDateTime;
@@ -224,13 +252,29 @@ public static class QueryEndpoints
         var plan = await db.QueryPlans.AsNoTracking()
             .FirstAsync(p => p.PlanId == planId, ct).ConfigureAwait(false);
 
+        string sql;
+        try
+        {
+            // Re-checked here, not trusted from the plan row, for the same reason auto_run_trusted_match
+            // re-checks a confirmed example: a column can be marked sensitive at ANY time after prepare wrote
+            // this plan, and this redemption, not the earlier prepare, is the moment that decides whether the
+            // query actually reaches a worker. Prepare alone is not enough: a plan can sit unredeemed for up
+            // to its full lifetime (PlanLifetime), and the column policy is free to change underneath it.
+            sql = ReadOnlyQueryGuard.Validate(plan.Sql);
+            await ColumnPolicyGuard.EnsureAllowedAsync(db, sql, ct).ConfigureAwait(false);
+        }
+        catch (SqlFlowException ex)
+        {
+            return Problem(ex.Message, StatusCodes.Status400BadRequest, "Query refused");
+        }
+
         var payload = new ComputeTaskPayload
         {
             Operation = ComputeOperations.RunQuery,
             SourceRef = plan.SourceRef,
             ProviderKind = plan.ProviderKind is null ? null : Enum.Parse<DataSourceKind>(plan.ProviderKind),
             Database = plan.Database,
-            Sql = plan.Sql,
+            Sql = sql,
             MaxRows = plan.MaxRows,
             TimeoutSeconds = plan.TimeoutSeconds,
         };

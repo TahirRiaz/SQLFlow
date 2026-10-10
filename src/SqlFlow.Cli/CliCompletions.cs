@@ -29,6 +29,7 @@ internal static class CliCompletions
         ("pipelines", ["list", "show", "columns", "files"]),
         ("datasources", ["list", "test", "databases", "schemas", "objects", "search", "introspect", "detect-unique-key", "tasks", "task", "cancel"]),
         ("search", []),
+        ("powerbi", ["extract", "publish", "list", "remove"]),
         ("completions", ["bash", "zsh", "powershell"]),
     ];
 

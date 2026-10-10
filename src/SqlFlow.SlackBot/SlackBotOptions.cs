@@ -82,7 +82,7 @@ public sealed class SlackBotOptions
 
         Require(Slack.AppToken, "SlackBot:Slack:AppToken (xapp-..., Socket Mode app-level token)");
         Require(Slack.BotToken, "SlackBot:Slack:BotToken (xoxb-..., bot user OAuth token)");
-        Require(SqlFlow.AccessToken, "SlackBot:SqlFlow:AccessToken (sqlf_..., a read-scoped personal access token)");
+        Require(SqlFlow.AccessToken, "SlackBot:SqlFlow:AccessToken (sqlf_..., a personal access token for the bot's own account)");
 
         ToAssistantSettings().CollectMissing("SlackBot", missing);
 
@@ -107,11 +107,8 @@ public sealed class SlackBotOptions
     /// </summary>
     private void NormalizeLegacyMcpSettings()
     {
-        // Slack is a shared channel, not a signed-in per-user session, so it gets a narrower tool set than the
-        // GUI: the read surface plus the join lookup, and nothing that reaches a datasource. Applied before
-        // the legacy promotion below, so an explicitly configured list still wins.
-        Mcp.ApplySurfaceDefault(McpOptions.SlackDefaultTools);
-
+        // Slack's narrower tool set (McpOptions.SlackDefaultTools) needs no step here: an unconfigured list resolves to
+        // the surface's default wherever it is read (AssistantSettings.AllowedTools, with Surface = Slack).
         if (!string.IsNullOrWhiteSpace(Mcp.ServerUrl))
         {
             return;
@@ -145,7 +142,9 @@ public sealed class SqlFlowOptions
 {
     /// <summary>
     /// The SQLFlow personal access token forwarded to the MCP server as the Authorization header
-    /// on every agent run. Mint it read-scoped: this is the bot's whole authority.
+    /// on every agent run. Mint it for a dedicated account rather than a person's own: it is the bot's whole
+    /// identity, so every query the bot runs and every answer it saves is attributed to that account, and the
+    /// tool allowlist (not the token's scopes) is what bounds what the bot can do.
     /// </summary>
     public string AccessToken { get; set; } = "";
 

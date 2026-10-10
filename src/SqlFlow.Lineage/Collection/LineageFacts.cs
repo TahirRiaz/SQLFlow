@@ -116,6 +116,27 @@ public sealed record CollectedSubscriber
     public required string File { get; init; }
 
     public required IReadOnlyList<CollectedSubscriberQuery> Queries { get; init; }
+
+    /// <summary>The report's internal structure, when the subscriber declared a report file the collector could
+    /// read. Empty for a hand-authored subscriber.</summary>
+    public IReadOnlyList<Core.Lineage.LineageSubscriberPage> Pages { get; init; } = [];
+
+    /// <summary>The semantic model behind each report file the collector read. Empty for a hand-authored subscriber
+    /// and for a report connected live to a published dataset.</summary>
+    public IReadOnlyList<Core.Lineage.LineageSubscriberModel> Models { get; init; } = [];
+
+    /// <summary>The specifications this pass produced by running the extractor over a declared <c>.pbix</c>, which a
+    /// catalog sync keeps (<see cref="ReportSpecOrigin.Extracted"/>) so a later pass that cannot extract still has
+    /// them.</summary>
+    public IReadOnlyList<ExtractedReportSpec> ExtractedSpecs { get; init; } = [];
+
+    /// <summary>
+    /// The report labels whose kept extraction is still wanted, when this pass could tell: the declared <c>.pbix</c>
+    /// files it found (extracted now, or kept because this one failed to extract). A kept extraction for any other
+    /// label belongs to a report the repository no longer declares. Null when the pass could not tell (the extractor
+    /// or the declared path is missing here), in which case every kept extraction stays as it is.
+    /// </summary>
+    public IReadOnlySet<string>? RetainedExtractedReports { get; init; }
 }
 
 /// <summary>One subscriber query as collected: its text and the raw identities parsing it proved it reads.</summary>
@@ -126,6 +147,9 @@ public sealed record CollectedSubscriberQuery
     public required string ServerRef { get; init; }
 
     public required string Sql { get; init; }
+
+    /// <summary>The report file whose visual the query is; null for a declared query.</summary>
+    public string? ReportFile { get; init; }
 
     /// <summary>The identities the query reads, as the SQL spelled them; the builder resolves each with the
     /// same completion and synonym follow every other identity gets.</summary>
@@ -268,6 +292,46 @@ public sealed record SynonymLink
     public required string TargetName { get; init; }
 }
 
+/// <summary>A schema registration flow (flowType: sch) as the collector saw it: which database it registers and
+/// through which connection. The connected pass harvests it; the builder attributes the harvest to the flow.</summary>
+public sealed record CollectedSchemaRegistration
+{
+    public required string Flow { get; init; }
+
+    /// <summary>The server identity the registered objects are keyed under.</summary>
+    public required string ServerRef { get; init; }
+
+    /// <summary>The connection reference as written, which the connected pass resolves.</summary>
+    public required string RawReference { get; init; }
+
+    public required Core.Connections.DataSourceKind Kind { get; init; }
+
+    public required Core.SchemaRegistration.SchemaRegistrationScope Scope { get; init; }
+}
+
+/// <summary>
+/// One object a schema registration flow registered: read live by this build's connected pass, or remembered from
+/// the catalog (a registration any repo made earlier). A registered-source subscriber's reads resolve onto these.
+/// </summary>
+public sealed record CollectedRegisteredObject
+{
+    /// <summary>The schema registration flow that registered the object.</summary>
+    public required string Flow { get; init; }
+
+    public required string ServerRef { get; init; }
+
+    public required string Database { get; init; }
+
+    public required string Schema { get; init; }
+
+    public required string Name { get; init; }
+
+    /// <summary>True for a remembered registration made by the repository this build is for. Such an entry is
+    /// superseded by this build's own harvest of the same flow, and dropped when the repository no longer
+    /// declares the flow.</summary>
+    public bool FromCurrentRepo { get; init; }
+}
+
 /// <summary>What one collector hands the builder.</summary>
 public sealed class CollectionResult
 {
@@ -303,6 +367,17 @@ public sealed class CollectionResult
 
     public List<SynonymLink> Synonyms { get; } = [];
 
+    /// <summary>Every schema registration flow the estate declares.</summary>
+    public List<CollectedSchemaRegistration> SchemaRegistrations { get; } = [];
+
+    /// <summary>The objects this build's connected pass registered, per schema registration flow.</summary>
+    public List<CollectedRegisteredObject> RegisteredObjects { get; } = [];
+
+    /// <summary>The registrations the catalog already holds (from any repository), supplied by the caller before the
+    /// build so a registered-source subscriber resolves even when this build is offline or the registering flow lives
+    /// in another repository.</summary>
+    public List<CollectedRegisteredObject> PriorRegistrations { get; } = [];
+
     /// <summary>Server identities proven equal at connect time (two references resolving to the same
     /// canonical connection string): alias identity to canonical identity. Offline, distinct references
     /// stay distinct servers by construction; connected, the proof merges them.</summary>
@@ -316,6 +391,14 @@ public sealed class CollectionResult
     public Dictionary<string, string> ServerDefaultDatabases { get; } = new(StringComparer.Ordinal);
 
     public List<string> Warnings { get; } = [];
+
+    /// <summary>
+    /// A fingerprint of everything the consumption side was built from: every subscriber library's text and every
+    /// report specification read (from a committed file, the extractor, or the semantic layer). Equal fingerprints
+    /// mean the subscribers, their queries, and their reports are unchanged, which is how a catalog sync knows a new
+    /// upload or an edited <c>subscribers.yaml</c> needs the graph recomputed even when no flow changed.
+    /// </summary>
+    public string SubscriberInputHash { get; set; } = string.Empty;
 
     /// <summary>Server identities whose DERIVED collection was requested but failed (unreachable, unresolvable
     /// secret): the connected pass produced no module facts for them, so a consumer persisting this result must
@@ -336,8 +419,15 @@ public sealed class CollectionResult
         KeyHints.AddRange(other.KeyHints);
         ModelConstraints.AddRange(other.ModelConstraints);
         Synonyms.AddRange(other.Synonyms);
+        SchemaRegistrations.AddRange(other.SchemaRegistrations);
+        RegisteredObjects.AddRange(other.RegisteredObjects);
+        PriorRegistrations.AddRange(other.PriorRegistrations);
         Warnings.AddRange(other.Warnings);
         DegradedServers.UnionWith(other.DegradedServers);
+        if (SubscriberInputHash.Length == 0)
+        {
+            SubscriberInputHash = other.SubscriberInputHash;
+        }
         foreach (var (key, value) in other.Servers)
         {
             Servers.TryAdd(key, value);
@@ -383,6 +473,12 @@ public static class ServerIdentity
     /// segment can never collide with a real reference, which is always a <c>${...}</c>, an <c>@alias</c>, or
     /// an <c>inline:</c> hash.</summary>
     public const string Subscriber = "subscriber";
+
+    /// <summary>The identity a registered-source subscriber's reads start on: the subscriber declares no connection,
+    /// so its objects are named only by database, schema, and name until the graph builder matches them to an object
+    /// a schema registration flow registered and re-keys them under that flow's connection. Like
+    /// <see cref="Subscriber"/>, it can never collide with a real reference.</summary>
+    public const string Registered = "registered";
 
     public static string From(string connectionReference)
     {

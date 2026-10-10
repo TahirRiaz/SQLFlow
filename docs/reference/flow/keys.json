@@ -45,7 +45,7 @@
     },
     {
       "path": "flowType",
-      "type": "enum(ing|exp|sp|inv|hc|scm|batch)",
+      "type": "enum(ing|exp|sp|inv|hc|scm|sch|batch|api|cpy|sftp|cal|trl)",
       "required": false,
       "enumValues": [
         "ing",
@@ -54,11 +54,17 @@
         "inv",
         "hc",
         "scm",
-        "batch"
+        "sch",
+        "batch",
+        "api",
+        "cpy",
+        "sftp",
+        "cal",
+        "trl"
       ],
-      "description": "Document-kind discriminator read by YamlDocumentLoader.Parse in a cheap probe deserialization pass before the full document is re-parsed by the selected loader. Dispatch after Trim(): absent/empty selects the file flow (FlowDefinition root via YamlFlowLoader, wrapped as FileFlowDocument); 'ing' selects YamlIngestionFlowLoader (IngestionFlowDocument), 'exp' YamlExportFlowLoader (ExportFlowDocument), 'sp' YamlStoredProcedureFlowLoader (StoredProcedureFlowDocument), 'inv' YamlInvokeFlowLoader (InvokeFlowDocument), 'hc' YamlHealthCheckFlowLoader (HealthCheckFlowDocument), 'scm' YamlSourceControlFlowLoader (SourceControlFlowDocument), 'batch' YamlBatchFlowLoader (BatchFlowDocument).",
-      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs:79",
-      "validation": "Value is trimmed, then matched with string.Equals(..., StringComparison.OrdinalIgnoreCase) against exactly ing, exp, sp, inv, hc, scm, batch (case-insensitive, but NO dash/underscore stripping: NormalizeToken is not applied here). Null, empty, or whitespace-only values select the file flow instead of erroring. Any other value throws FlowValidationException: \"<source>: unknown flowType '<flowType>'. Use 'ing' for a table-to-table ingestion flow, 'exp' for a file export, 'sp' for a stored-procedure flow, 'inv' for an ADF/Automation trigger, 'hc' for an ML health check, 'scm' for a database source-control snapshot, 'batch' for an ordered multi-flow batch, or omit flowType for a file flow.\" (src/SqlFlow.Yaml/YamlDocumentLoader.cs:162, 165-209)"
+      "description": "Document-kind discriminator read by YamlDocumentLoader.Parse in a cheap probe deserialization pass before the full document is re-parsed by the selected loader. Dispatch after Trim(): absent/empty selects the file flow (FlowDefinition root via YamlFlowLoader, wrapped as FileFlowDocument); 'ing' an ingestion, 'exp' a file export, 'sp' a stored procedure, 'inv' an ADF/Automation trigger, 'hc' an ML health check, 'scm' a database source-control snapshot, 'sch' a schema registration (an external database's tables and views registered in the catalog), 'batch' an ordered multi-flow batch, 'api' a generic acquisition, 'cpy' a file copy, 'sftp' an SFTP transfer, 'cal' a generated calendar dimension, 'trl' a JSON translation.",
+      "definedIn": "src/SqlFlow.Yaml/YamlDocumentLoader.cs",
+      "validation": "Value is trimmed, then matched case-insensitively against exactly ing, exp, sp, inv, hc, scm, sch, batch, api, cpy, sftp, cal, trl. Null, empty, or whitespace-only values select the file flow instead of erroring. Any other value throws FlowValidationException \"<source>: unknown flowType '<flowType>'. ...\" naming every accepted kind."
     },
     {
       "path": "incremental",

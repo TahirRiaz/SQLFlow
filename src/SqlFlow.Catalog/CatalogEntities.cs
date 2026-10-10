@@ -54,6 +54,12 @@ public class CatalogRepo
     public DateTime FirstSeenUtc { get; set; }
 
     public DateTime LastSyncUtc { get; set; }
+
+    /// <summary>The fingerprint of the subscriber libraries and report specifications the stored lineage was last
+    /// computed from, or null before any sync recorded one. A sync whose fingerprint differs recomputes the graph even
+    /// when no flow changed, which is what applies an edited <c>subscribers.yaml</c>, a newly committed report
+    /// specification, or a report uploaded to the semantic layer.</summary>
+    public string? SubscriberInputHash { get; set; }
 }
 
 /// <summary>
@@ -670,6 +676,520 @@ public class CatalogSubscriberQuery
     /// <summary>The object keys this one query reads, newline-joined. Empty when the query named nothing
     /// lineage could resolve.</summary>
     public string ObjectKeys { get; set; } = string.Empty;
+
+    /// <summary>For a report visual's query: the same question as T-SQL over the source tables the report's model
+    /// loads from, runnable on <see cref="ServerRef"/>. Null for a declared query, and for a visual whose query could
+    /// not be translated (see <see cref="TranslationProblem"/>).</summary>
+    public string? SourceSql { get; set; }
+
+    /// <summary>Why a visual's query has no <see cref="SourceSql"/>; null otherwise.</summary>
+    public string? TranslationProblem { get; set; }
+}
+
+/// <summary>
+/// One page of a PowerBI subscriber's report, nested one level under its <see cref="CatalogSubscriber"/>.
+/// Repo-scoped and replaced wholesale alongside its owning subscriber on each sync.
+/// <para>
+/// Children are linked by STRING KEY, never by a surrogate id, for the same reason
+/// <see cref="CatalogSubscriberQuery"/> keys off <see cref="CatalogSubscriber.ObjectKey"/>: a sync stages every
+/// row of the pass and commits them in ONE <c>SaveChanges</c>, so an identity value does not exist while the
+/// children are being staged. A key computed from what the row already is (its subscriber and its ordinal)
+/// needs no identity round-trip, and a repo's pages, visuals, and fields can be written in a single pass.
+/// </para>
+/// </summary>
+public class CatalogSubscriberReportPage
+{
+    public long Id { get; set; }
+
+    public Guid RepoId { get; set; }
+
+    /// <summary>The owning subscriber's <see cref="CatalogSubscriber.ObjectKey"/>.</summary>
+    public string SubscriberKey { get; set; } = string.Empty;
+
+    /// <summary>This page's key within the estate: the subscriber's key, its report file, and this page's
+    /// ordinal, joined with '#'. The value a visual carries as its
+    /// <see cref="CatalogSubscriberReportVisual.PageKey"/>. The report file is part of the key, not just a
+    /// display column, because a subscriber backed by a directory of reports commonly has two files that each
+    /// declare a "Page 1"; without the file in the key those two pages would collide onto the same row.</summary>
+    public string PageKey { get; set; } = string.Empty;
+
+    /// <summary>The report file this page came from: the <c>.pbix</c> file name when the subscriber's
+    /// <c>pbix:</c> names one file directly, or that file's name relative to the declared directory when it
+    /// names a folder of reports.</summary>
+    public string ReportFile { get; set; } = string.Empty;
+
+    /// <summary>The page's position within its report, 1-based: the order PowerBI lists it in.</summary>
+    public int Ordinal { get; set; }
+
+    /// <summary>The page's internal name (PowerBI's <c>section.name</c>, a generated identifier).</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The page's title as a person sees it in the report (PowerBI's <c>section.displayName</c>).</summary>
+    public string DisplayName { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// One visual on a PowerBI report page: a chart, table, or slicer, and the KIND of business question it answers
+/// (its chart type). This is the row the extractor keeps only for visuals that project at least one field: a
+/// shape or textbox with no <see cref="CatalogSubscriberReportField"/> children is decoration, not a question,
+/// and is never stored. A visual's own filters and any page-level filters that apply to it are not stored here;
+/// they are folded into the WHERE clause of the <see cref="CatalogSubscriberQuery"/> this visual produces, so a
+/// filtered question is captured as one real, parseable query rather than a filter condition nothing can act on.
+/// </summary>
+public class CatalogSubscriberReportVisual
+{
+    public long Id { get; set; }
+
+    public Guid RepoId { get; set; }
+
+    /// <summary>The owning page's <see cref="CatalogSubscriberReportPage.PageKey"/>.</summary>
+    public string PageKey { get; set; } = string.Empty;
+
+    /// <summary>This visual's key within the estate: its page's key and this visual's ordinal, joined with '#'.
+    /// The value a field carries as its <see cref="CatalogSubscriberReportField.VisualKey"/>.</summary>
+    public string VisualKey { get; set; } = string.Empty;
+
+    /// <summary>The visual's position within its page, 1-based: the order PowerBI lists it in.</summary>
+    public int Ordinal { get; set; }
+
+    /// <summary>PowerBI's visual type (<c>areaChart</c>, <c>pivotTable</c>, <c>slicer</c>, and so on), taken
+    /// verbatim from the layout JSON's <c>singleVisual.visualType</c>.</summary>
+    public string VisualType { get; set; } = string.Empty;
+
+    /// <summary>The visual's title as authored, when it has one. Many visuals (a slicer, a KPI tile) carry no
+    /// title and are still worth keeping for their field projections.</summary>
+    public string? Title { get; set; }
+
+    /// <summary>The name of the <see cref="CatalogSubscriberQuery"/> this visual was synthesized as, so a
+    /// caller can go from a field's role straight to the rendered SQL that answers it without matching text.
+    /// Matches <c>Core.Lineage.LineageSubscriberVisual.QueryName</c>, the in-memory value this is persisted
+    /// from.</summary>
+    public string QueryName { get; set; } = string.Empty;
+
+    /// <summary>The lowercase-hex SHA-256 (<see cref="CatalogProjection.Hash"/>) of this visual's
+    /// question-relevant content: its title, visual type, and each field's role/table/column-or-measure/
+    /// isMeasure. Compared across syncs to decide whether its <see cref="CatalogSubscriberReportVisualQuestion"/>
+    /// rows can be carried forward unchanged or need regenerating, exactly as <c>Pipeline.ContentHash</c>
+    /// decides whether a flow document changed.</summary>
+    public string ContentHash { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// One field or measure a <see cref="CatalogSubscriberReportVisual"/> projects: the fact that makes a visual a
+/// business question rather than an empty chart. The <see cref="Role"/> is what a flattened column list from
+/// SQL-derived lineage cannot express: that a field is the axis a chart is broken down BY versus the measure
+/// being plotted (PowerBI's own projection buckets, e.g. <c>Category</c>/<c>Y</c> for a chart or
+/// <c>Rows</c>/<c>Values</c> for a pivot table). This is the one new fact this extraction phase exists to
+/// capture; the object/column identities it names are also what the visual's synthesized query reads.
+/// </summary>
+public class CatalogSubscriberReportField
+{
+    public long Id { get; set; }
+
+    public Guid RepoId { get; set; }
+
+    /// <summary>The owning visual's <see cref="CatalogSubscriberReportVisual.VisualKey"/>.</summary>
+    public string VisualKey { get; set; } = string.Empty;
+
+    /// <summary>The projection bucket PowerBI placed this field in (<c>Category</c>, <c>Y</c>, <c>Values</c>,
+    /// <c>Rows</c>, <c>Size</c>, and so on), taken verbatim from the layout JSON's <c>projections</c> keys.</summary>
+    public string Role { get; set; } = string.Empty;
+
+    /// <summary>The table or entity the field/measure belongs to, as the <c>prototypeQuery</c> named it (may be
+    /// an old-production compatibility name; resolved the same way other lineage identities are).</summary>
+    public string TableName { get; set; } = string.Empty;
+
+    /// <summary>The column or measure name within <see cref="TableName"/>.</summary>
+    public string ColumnOrMeasure { get; set; } = string.Empty;
+
+    /// <summary>True when the <c>prototypeQuery</c> node was a <c>Measure</c> (DAX-backed business logic) rather
+    /// than a <c>Column</c>/<c>HierarchyLevel</c> (a plain warehouse field).</summary>
+    public bool IsMeasure { get; set; }
+}
+
+/// <summary>
+/// One table of the semantic model behind a PowerBI subscriber's report file: the entity its visuals and DAX name,
+/// the Power Query (M) expression that loads it, and the warehouse object that expression resolved to. Repo-scoped
+/// and replaced wholesale alongside its owning subscriber on each sync, keyed by string (subscriber key, report file,
+/// table name) for the same one-SaveChanges reason as <see cref="CatalogSubscriberReportPage"/>.
+/// </summary>
+public class CatalogSubscriberModelTable
+{
+    public long Id { get; set; }
+
+    public Guid RepoId { get; set; }
+
+    /// <summary>The owning subscriber's <see cref="CatalogSubscriber.ObjectKey"/>.</summary>
+    public string SubscriberKey { get; set; } = string.Empty;
+
+    /// <summary>The report file the model came from, the same value its pages carry.</summary>
+    public string ReportFile { get; set; } = string.Empty;
+
+    /// <summary>The model entity name (empty for fields the model declared without a home table).</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The Power Query (M) expression that loads the table, redacted on the same path subscriber SQL takes
+    /// since an M source can embed a literal connection string. Null when the model declares none.</summary>
+    public string? PowerQuery { get; set; }
+
+    /// <summary>The warehouse database the expression resolved to, when it resolved.</summary>
+    public string? SourceDatabase { get; set; }
+
+    /// <summary>The warehouse schema the expression resolved to, when it resolved.</summary>
+    public string? SourceSchema { get; set; }
+
+    /// <summary>The warehouse table the expression resolved to, when it resolved.</summary>
+    public string? SourceName { get; set; }
+
+    /// <summary>The node key of the warehouse object the table loads from (a <see cref="CatalogObject.Key"/>), resolved
+    /// at sync through lineage's identity resolution. This is what the semantic layer serves the model on: the table's
+    /// measures, calculated columns, and relationships appear in that object's bundle. Null when the source did not
+    /// resolve.</summary>
+    public string? ObjectKey { get; set; }
+}
+
+/// <summary>
+/// One column, calculated column, or measure defined on a <see cref="CatalogSubscriberModelTable"/>: how a report
+/// computes its numbers (a measure's DAX), which its visuals only name. Keyed to its table by (subscriber key, report
+/// file, table name).
+/// </summary>
+public class CatalogSubscriberModelField
+{
+    public long Id { get; set; }
+
+    public Guid RepoId { get; set; }
+
+    /// <summary>The owning subscriber's <see cref="CatalogSubscriber.ObjectKey"/>.</summary>
+    public string SubscriberKey { get; set; } = string.Empty;
+
+    /// <summary>The report file the model came from.</summary>
+    public string ReportFile { get; set; } = string.Empty;
+
+    /// <summary>The owning table's <see cref="CatalogSubscriberModelTable.Name"/>.</summary>
+    public string TableName { get; set; } = string.Empty;
+
+    /// <summary>The field's name within its table.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary><c>column</c>, <c>calculatedColumn</c>, or <c>measure</c>.</summary>
+    public string Kind { get; set; } = string.Empty;
+
+    /// <summary>A column's data type as the model declares it (<c>string</c>, <c>int64</c>, and so on).</summary>
+    public string? DataType { get; set; }
+
+    /// <summary>A calculated column's or measure's DAX expression, redacted on the same path subscriber SQL takes.
+    /// Stored verbatim otherwise: nothing evaluates or type-checks it.</summary>
+    public string? Expression { get; set; }
+
+    /// <summary>A measure's author-written description.</summary>
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// One relationship between two tables of a report's semantic model, with its cardinality and whether it is active.
+/// Kept apart from <see cref="CatalogObjectRelationship"/>, which records joins the warehouse's own code exhibits:
+/// these join MODEL entities, and an inactive one applies only where a measure invokes it.
+/// </summary>
+public class CatalogSubscriberModelRelationship
+{
+    public long Id { get; set; }
+
+    public Guid RepoId { get; set; }
+
+    /// <summary>The owning subscriber's <see cref="CatalogSubscriber.ObjectKey"/>.</summary>
+    public string SubscriberKey { get; set; } = string.Empty;
+
+    /// <summary>The report file the model came from.</summary>
+    public string ReportFile { get; set; } = string.Empty;
+
+    /// <summary>The table on the many (or first) side.</summary>
+    public string FromTable { get; set; } = string.Empty;
+
+    /// <summary>Its joining column.</summary>
+    public string? FromColumn { get; set; }
+
+    /// <summary>The other table.</summary>
+    public string ToTable { get; set; } = string.Empty;
+
+    /// <summary>Its joining column.</summary>
+    public string? ToColumn { get; set; }
+
+    /// <summary><c>1:1</c>, <c>M:1</c>, <c>1:M</c>, or <c>M:M</c>.</summary>
+    public string? Cardinality { get; set; }
+
+    /// <summary>False when the relationship applies only where a measure invokes it with USERELATIONSHIP.</summary>
+    public bool IsActive { get; set; }
+}
+
+/// <summary>
+/// Computes <see cref="CatalogSubscriberReportVisual.ContentHash"/> from a visual's question-relevant content, so
+/// both the writer (<c>CatalogSync</c>, hashing from the freshly extracted <c>LineageSubscriberVisual</c>/
+/// <c>LineageSubscriberField</c>) and the control-plane question-generation enrichment step (hashing from the
+/// <see cref="CatalogSubscriberReportVisual"/>/<see cref="CatalogSubscriberReportField"/> rows a prior sync wrote)
+/// compute the identical value from the identical shape, so a sync that reproduces the same content is
+/// detected as unchanged regardless of which side computes the hash.
+/// </summary>
+public static class SubscriberReportVisualHash
+{
+    /// <summary>One field's contribution to the hash input, in extraction order: role, table, column/measure,
+    /// and whether it is a measure.</summary>
+    public readonly record struct FieldContent(string Role, string TableName, string ColumnOrMeasure, bool IsMeasure);
+
+    /// <summary>The lowercase-hex SHA-256 of the visual's title, visual type, and its fields (in the order
+    /// given), each on its own line so no field's content can be mistaken for a concatenation of two others.
+    /// </summary>
+    public static string Compute(string? title, string visualType, IEnumerable<FieldContent> fields)
+    {
+        var builder = new System.Text.StringBuilder();
+        builder.Append(title ?? string.Empty).Append('\n');
+        builder.Append(visualType).Append('\n');
+        foreach (var field in fields)
+        {
+            builder.Append(field.Role).Append('|')
+                .Append(field.TableName).Append('|')
+                .Append(field.ColumnOrMeasure).Append('|')
+                .Append(field.IsMeasure).Append('\n');
+        }
+        return CatalogProjection.Hash(builder.ToString());
+    }
+}
+
+/// <summary>
+/// One natural-language business question a <see cref="CatalogSubscriberReportVisual"/> answers, generated from
+/// its title, chart type, and projected fields. A visual carries 1-3 of these: a figure can be broad enough, or
+/// specific enough, to read as more than one question a person would actually type, which is why this is not a
+/// single column on the visual row. Generated and stored by a control-plane-only enrichment step that runs after
+/// a sync, never by <c>tools/pbix-extract</c> or <see cref="CatalogSync"/> itself; regenerated only when the
+/// owning visual's <see cref="CatalogSubscriberReportVisual.ContentHash"/> changes, so an unchanged visual keeps
+/// its previously generated questions across syncs instead of calling the LLM again. A person can also add, edit, and
+/// delete questions from the semantic layer page (<see cref="SubscriberQuestionOrigin.Manual"/>); generation never
+/// replaces those.
+/// </summary>
+public class CatalogSubscriberReportVisualQuestion
+{
+    public long Id { get; set; }
+
+    public Guid RepoId { get; set; }
+
+    /// <summary>The owning visual's <see cref="CatalogSubscriberReportVisual.VisualKey"/>.</summary>
+    public string VisualKey { get; set; } = string.Empty;
+
+    /// <summary>This question's position among its visual's 1-3 questions, 1-based.</summary>
+    public int Ordinal { get; set; }
+
+    /// <summary>The question text, as a person would actually type it.</summary>
+    public string Question { get; set; } = string.Empty;
+
+    /// <summary><see cref="SubscriberQuestionOrigin.Generated"/> (a sync wrote it) or
+    /// <see cref="SubscriberQuestionOrigin.Manual"/> (a person added or edited it).</summary>
+    public string Origin { get; set; } = SubscriberQuestionOrigin.Generated;
+
+    /// <summary>Who last added or edited it; null for a generated question.</summary>
+    public string? UpdatedBy { get; set; }
+
+    /// <summary>When it was last added or edited by a person; null for a generated question.</summary>
+    public DateTime? UpdatedUtc { get; set; }
+}
+
+/// <summary>Where a <see cref="CatalogSubscriberReportVisualQuestion"/> came from, named once so the generator, the
+/// editor, and the API cannot drift into spelling the same value differently.</summary>
+public static class SubscriberQuestionOrigin
+{
+    /// <summary>Written by sync-time generation, and replaced by it when the visual changes.</summary>
+    public const string Generated = "generated";
+
+    /// <summary>Added or edited by a person. Generation never replaces it; it goes only with its visual.</summary>
+    public const string Manual = "manual";
+}
+
+/// <summary>
+/// One question/query pair the estate is willing to stand behind: the confirmed-example store POWERAI.md
+/// Sections 6 and 8 specify. A row records that a question was answered by a particular query and that the
+/// answer was CONFIRMED, either by having been derived from a report a team already runs in production
+/// (<see cref="SemanticExampleProvenance.PowerBi"/>) or by a person accepting or correcting a generated answer
+/// (<see cref="SemanticExampleProvenance.UserConfirmed"/>). It is what makes retrieval self-improving under
+/// real usage: an answer confirmed today is an example the next similar question is matched against.
+/// <para>
+/// Unlike <see cref="CatalogSubscriberReportVisualQuestion"/>, which is repo-scoped and deleted and reinserted
+/// wholesale on every sync, this table is APPEND-ONLY across syncs and never replaced by one. A human
+/// confirmation is not a fact about the current contents of a repository, so a sync that no longer finds the
+/// report a question came from must not erase the knowledge that the question was answered correctly. That is
+/// also why <see cref="RepoId"/> is nullable: an example is attributed to a repo when one is known, and stays
+/// estate-wide when it is not.
+/// </para>
+/// <para>
+/// A rejection is NOT stored: POWERAI.md Section 6 is explicit that only correct, verified answers become
+/// precedent. A query a person told us was wrong is not knowledge the estate should keep, and storing it would
+/// risk a mistake resurfacing as if it were checked.
+/// </para>
+/// </summary>
+public class CatalogSemanticExample
+{
+    public long Id { get; set; }
+
+    /// <summary>The repo this example is attributed to, or null when it belongs to no single repo. Nullable
+    /// because a confirmation is a fact about the estate rather than about one repository's contents, and
+    /// because the question a person confirms may have been answered from objects several repos populate.</summary>
+    public Guid? RepoId { get; set; }
+
+    /// <summary>The question as a person would type it.</summary>
+    public string Question { get; set; } = string.Empty;
+
+    /// <summary>The query that answers it. Stored verbatim: this is the text a later answer is adapted from,
+    /// so normalizing or reformatting it would change what a caller is shown as precedent.</summary>
+    public string Sql { get; set; } = string.Empty;
+
+    /// <summary>The warehouse objects <see cref="Sql"/> reads, newline-joined in the order they were resolved,
+    /// exactly as <see cref="CatalogSubscriberQuery.ObjectKeys"/> stores them. Empty when the caller named
+    /// none.</summary>
+    public string ObjectKeys { get; set; } = string.Empty;
+
+    /// <summary>Where the example came from: <see cref="SemanticExampleProvenance.PowerBi"/> or
+    /// <see cref="SemanticExampleProvenance.UserConfirmed"/>. Kept as a value rather than inferred from which
+    /// table a row came from, so a caller weighing two matches can tell "a dashboard asks this" from "a person
+    /// checked this" without knowing how the store is laid out.</summary>
+    public string Provenance { get; set; } = string.Empty;
+
+    /// <summary>The retrieval score the confirmed answer was built from, or null when it was composed without
+    /// a prior match. This is the similarity that was actually observed, never a model's self-rating: POWERAI.md
+    /// Section 6 rests on the difference, because a wrong query can sound exactly as confident as a right one.</summary>
+    public int? Confidence { get; set; }
+
+    /// <summary>When the example was confirmed.</summary>
+    public DateTime ConfirmedUtc { get; set; }
+
+    /// <summary>Who confirmed it (the subject claim, falling back to the principal's name), or null for an
+    /// example that no interactive user stands behind.</summary>
+    public string? ConfirmedBy { get; set; }
+
+    /// <summary>The lowercase-hex SHA-256 of the normalized question and SQL, carrying a UNIQUE index. Confirming
+    /// the same pair twice is a person reaffirming an answer, not a second piece of knowledge, so the existing
+    /// row is refreshed instead of the store filling with duplicates that would each score identically and crowd
+    /// out every other match.</summary>
+    public string ContentHash { get; set; } = string.Empty;
+
+    /// <summary>The datasource this example's <see cref="Sql"/> runs against, in the same whole-reference shape
+    /// the DataOps query surface requires (a <c>${env:...}</c>/<c>${keyvault:...}</c> token or an <c>@alias</c>,
+    /// never an inline connection string): see <c>ComputeTaskPayload.IsWholeReference</c> and
+    /// <c>PrepareQueryRequest.Reference</c>. Null for an example confirmed before a datasource was chosen for it
+    /// (including every row extracted from a PowerBI visual, which names a model entity rather than a live
+    /// connection). Auto-running a trusted match needs this: it is what tells the DataOps prepare step which
+    /// connection to run <see cref="Sql"/> against, the same way a person picks a datasource from the GUI before
+    /// asking a question.</summary>
+    public string? SourceRef { get; set; }
+}
+
+/// <summary>
+/// One Power BI report specification held by the semantic layer for a subscriber: the canonical YAML
+/// <c>tools/pbix-extract</c> writes, which a sync reads exactly as it reads a specification committed to the
+/// repository. This is what lets a report's pages, visuals and semantic model reach the catalog on a machine that
+/// cannot extract the report itself, above all the control plane, which by design carries no extractor and syncs
+/// clones whose <c>.pbix</c> files are usually git-ignored.
+/// <para>
+/// Two origins share the row shape (<see cref="SqlFlow.Lineage.Collection.ReportSpecOrigin"/>). An <c>upload</c> is
+/// a person's: it was extracted in the isolated extractor or published from the CLI, and it stays until someone
+/// deletes it. An <c>extracted</c> row is a sync's own copy of a <c>.pbix</c> the repository declares, refreshed
+/// whenever a sync can extract that report and dropped once the repository stops declaring it. Neither is part of
+/// the repo-scoped subscriber rows a sync deletes and rebuilds, which is the point: the rows derived from these
+/// are rebuilt from them on every pass instead of vanishing when a pass cannot extract.
+/// </para>
+/// </summary>
+public class CatalogSemanticReportSpec
+{
+    public long Id { get; set; }
+
+    /// <summary>The repo whose subscriber the report belongs to.</summary>
+    public Guid RepoId { get; set; }
+
+    /// <summary>The subscriber's <see cref="CatalogSubscriber.ObjectKey"/>. A soft link: an upload for a subscriber
+    /// the repository no longer declares is kept (and listed as such) rather than silently deleted.</summary>
+    public string SubscriberKey { get; set; } = string.Empty;
+
+    /// <summary>The report label its pages carry (<c>Sales.pbix</c>, or a path under a directory of reports).</summary>
+    public string ReportFile { get; set; } = string.Empty;
+
+    /// <summary><c>upload</c> or <c>extracted</c>.</summary>
+    public string Origin { get; set; } = string.Empty;
+
+    /// <summary>The canonical, credential-redacted specification.</summary>
+    public string Spec { get; set; } = string.Empty;
+
+    /// <summary>The lowercase-hex SHA-256 of <see cref="Spec"/>, so a sync can tell an unchanged copy from a new one
+    /// without comparing the text.</summary>
+    public string ContentHash { get; set; } = string.Empty;
+
+    /// <summary>The lowercase-hex SHA-256 of the row's identity (repo, subscriber, origin, report), carrying a UNIQUE
+    /// index: the identity columns together are wider than an index key may be.</summary>
+    public string IdentityHash { get; set; } = string.Empty;
+
+    /// <summary>How many pages the report has, counted when the row was written.</summary>
+    public int Pages { get; set; }
+
+    /// <summary>How many question-asking visuals the report has.</summary>
+    public int Visuals { get; set; }
+
+    /// <summary>How many tables its semantic model has.</summary>
+    public int Tables { get; set; }
+
+    /// <summary>How many measures its semantic model defines.</summary>
+    public int Measures { get; set; }
+
+    /// <summary>Who wrote the row: the uploading user, or null for a sync's own copy.</summary>
+    public string? UpdatedBy { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+}
+
+/// <summary>Computes <see cref="CatalogSemanticReportSpec.IdentityHash"/>, so every writer derives the same identity.</summary>
+public static class SemanticReportSpecIdentity
+{
+    /// <summary>The identity of one stored specification. Each part is on its own line so no part can run into the
+    /// next and hash alike.</summary>
+    public static string Compute(Guid repoId, string subscriberKey, string origin, string reportFile)
+    {
+        ArgumentNullException.ThrowIfNull(subscriberKey);
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(reportFile);
+        return CatalogProjection.Hash(
+            string.Join('\n', repoId.ToString("D"), subscriberKey, origin, reportFile));
+    }
+}
+
+/// <summary>The provenances a <see cref="CatalogSemanticExample"/> can carry, named once so the writer, the
+/// search, and the API surface cannot drift into spelling the same value differently.</summary>
+public static class SemanticExampleProvenance
+{
+    /// <summary>Derived from an extracted PowerBI report visual: a question a dashboard already asks in
+    /// production.</summary>
+    public const string PowerBi = "powerbi";
+
+    /// <summary>Accepted or corrected by a person: a question this estate has answered and checked.</summary>
+    public const string UserConfirmed = "user-confirmed";
+
+    /// <summary>Whether <paramref name="value"/> is one of the provenances above.</summary>
+    public static bool IsKnown(string? value)
+        => string.Equals(value, PowerBi, StringComparison.Ordinal)
+            || string.Equals(value, UserConfirmed, StringComparison.Ordinal);
+}
+
+/// <summary>
+/// Computes <see cref="CatalogSemanticExample.ContentHash"/> from a question and its query, so the writer and
+/// any later reader agree on when two confirmations are the same fact. Whitespace and case are normalized away
+/// because "What is our revenue?" retyped with a different capital letter or a stray double space is the same
+/// question a person confirmed before, and storing it twice would double its weight in every future search.
+/// </summary>
+public static class SemanticExampleHash
+{
+    /// <summary>The lowercase-hex SHA-256 of the whitespace-collapsed, lowercased question and SQL, separated
+    /// by a newline so no question's text can run into a query's and hash alike.</summary>
+    public static string Compute(string question, string sql)
+        => CatalogProjection.Hash($"{Collapse(question)}\n{Collapse(sql)}");
+
+    /// <summary>Collapses every run of whitespace to one space, trims, and lowercases.</summary>
+    private static string Collapse(string value)
+        => string.Join(' ', value.Split(
+            (char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .ToLowerInvariant();
 }
 
 /// <summary>
@@ -988,6 +1508,201 @@ public class CatalogObjectColumn
     /// <c>Observed</c> (parsed from the CREATE TABLE the run executed), or <c>Declared</c>. The sync keeps a
     /// live (derived) dictionary from being overwritten by an offline (observed) one.</summary>
     public string Tier { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// An allow-list entry for one column of a catalog object: an admin-authored policy that decides whether the
+/// column may appear on every AI-facing surface (schema search, object describe/dossier, and the ad-hoc query
+/// guard) regardless of what the warehouse itself reports. The model is default-deny: a column with no row here
+/// at all, or a row with <see cref="IsAllowed"/> false, cannot be read; only a row with <see cref="IsAllowed"/>
+/// true opens it up. This closes the gap a blacklist cannot: an object the catalog has no record of (a synonym,
+/// or anything else not harvested into the catalog) has no allow-list entry either, so it is refused by the same
+/// rule rather than passing unchecked.
+///
+/// Deliberately its own table, not a flag on <see cref="CatalogObjectColumn"/>, because that table is fully
+/// replaced (delete-by-key + re-insert) on every connected sync; a flag living there would be silently lost the
+/// next time the object's columns are re-read from the live database. Keyed to the column by
+/// <see cref="ObjectKey"/> + <see cref="ColumnName"/> (a soft link, no FK, matching the rest of the catalog), so
+/// the policy survives a sync even for a column the sync has not (yet) seen - and a column a future sync
+/// discovers for the first time starts out with no row, so it starts out denied until an admin reviews it.
+/// </summary>
+public class CatalogColumnPolicy
+{
+    public long Id { get; set; }
+
+    /// <summary>The owning object's global key (server reference + database + schema + name).</summary>
+    public string ObjectKey { get; set; } = string.Empty;
+
+    public string ColumnName { get; set; } = string.Empty;
+
+    /// <summary>True to let AI-facing search/describe results and ad-hoc queries read the column. Stored
+    /// (rather than the row's mere presence meaning "allowed") so a column can be explicitly denied again
+    /// without deleting the row's audit trail. Absent entirely, the column defaults to denied.</summary>
+    public bool IsAllowed { get; set; }
+
+    /// <summary>Why the column is restricted, shown alongside the flag in the management UI (for example
+    /// "PII" or "compensation data"). Optional context, not enforced.</summary>
+    public string? Reason { get; set; }
+
+    /// <summary>The column's business meaning as the semantic layer states it (for example "Net amount in NOK,
+    /// excluding VAT"). Lives on the policy row because this row already IS the semantic layer's per-column
+    /// record: the allow-list decides whether the column is in the layer at all, and this says what it means
+    /// once it is. Only served to an assistant while <see cref="IsAllowed"/> is true.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>Other words a person uses for this column (for example "turnover" for <c>NetRevenue</c>),
+    /// newline-joined, matched by the semantic layer search so a business term finds the physical column.</summary>
+    public string? Synonyms { get; set; }
+
+    /// <summary>The identity (subject claim) that last changed this row, for an audit trail on a restriction
+    /// that gates what an AI assistant may read.</summary>
+    public string? UpdatedBy { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+}
+
+/// <summary>
+/// The semantic layer's table-level business context for one catalog object: what the table means, what people
+/// call it, and which columns identify one of its rows. Whether the object is IN the layer is not stored here: an
+/// object is in the layer exactly when at least one of its columns is allow-listed (<see cref="CatalogColumnPolicy"/>),
+/// so the allow-list stays the single decision about what an assistant may see, and this row only annotates it.
+/// Its own table, keyed by <see cref="ObjectKey"/> (a soft link, no FK), for the same reason the column policy is:
+/// <see cref="CatalogObject"/> rows are upserted by every sync and must not carry admin-authored state.
+/// </summary>
+public class CatalogSemanticObject
+{
+    public long Id { get; set; }
+
+    /// <summary>The annotated object's global key (server reference + database + schema + name).</summary>
+    public string ObjectKey { get; set; } = string.Empty;
+
+    /// <summary>The name a business reader knows the table by (for example "Bike trips"), or null.</summary>
+    public string? BusinessName { get; set; }
+
+    /// <summary>What one row of the table represents and anything a query author must know about it.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>Other words a person uses for the table, newline-joined, matched by the semantic layer search.</summary>
+    public string? Synonyms { get; set; }
+
+    /// <summary>The curated key: the columns identifying one row, comma-joined in key order. Outranks the key the
+    /// lineage sync interprets from the codebase (<see cref="CatalogObject.KeyColumns"/>) because a person stated
+    /// it. Every column must be allow-listed when it is saved, and it is only served while all of them still are.</summary>
+    public string? KeyColumns { get; set; }
+
+    public string? UpdatedBy { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+}
+
+/// <summary>
+/// An admin-declared join between two semantic layer tables: the relationship a person vouches for, served to an
+/// assistant beside the ones the lineage sync infers from the codebase (<see cref="CatalogObjectRelationship"/>).
+/// Declared because a warehouse often has joins nothing in its code exhibits yet, or several inferred joins of
+/// which only one is correct. Column lists are comma-joined and positionally paired. Every column must be
+/// allow-listed when the row is saved, and the row is only served while all of them still are.
+/// </summary>
+public class CatalogSemanticRelationship
+{
+    public long Id { get; set; }
+
+    /// <summary>The referencing (typically fact) side's global object key.</summary>
+    public string FromObjectKey { get; set; } = string.Empty;
+
+    public string FromColumns { get; set; } = string.Empty;
+
+    /// <summary>The referenced (typically dimension) side's global object key.</summary>
+    public string ToObjectKey { get; set; } = string.Empty;
+
+    public string ToColumns { get; set; } = string.Empty;
+
+    /// <summary>The join a query should use: <see cref="SemanticJoinType.Inner"/> or <see cref="SemanticJoinType.Left"/>.</summary>
+    public string JoinType { get; set; } = SemanticJoinType.Inner;
+
+    /// <summary>When to use this join, or what it means, in a sentence.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>The lowercase-hex SHA-256 of the normalized endpoints, carrying a UNIQUE index: the four identity
+    /// columns together are far wider than an index key may be, and declaring the same join twice is one fact.</summary>
+    public string IdentityHash { get; set; } = string.Empty;
+
+    public string? UpdatedBy { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+}
+
+/// <summary>The join types a <see cref="CatalogSemanticRelationship"/> may declare, named once so the writer, the
+/// validation, and the served payload cannot drift into spelling them differently.</summary>
+public static class SemanticJoinType
+{
+    public const string Inner = "Inner";
+
+    public const string Left = "Left";
+
+    /// <summary>The canonical spelling of <paramref name="value"/> when it names a known join type, else null.</summary>
+    public static string? Normalize(string? value)
+        => string.Equals(value?.Trim(), Inner, StringComparison.OrdinalIgnoreCase) ? Inner
+            : string.Equals(value?.Trim(), Left, StringComparison.OrdinalIgnoreCase) ? Left
+            : null;
+}
+
+/// <summary>
+/// A named, reusable SQL expression of the semantic layer (a measure such as <c>net_revenue</c> =
+/// <c>SUM(Amount) - SUM(RefundAmount)</c>), anchored to the one table whose columns it reads, so an assistant reuses
+/// the estate's own definition verbatim instead of re-deriving it. Anchoring is what makes it checkable: the
+/// expression is validated as <c>SELECT expression FROM anchor</c> through the same read-only and column allow-list
+/// guards an ad-hoc query passes, when saved and again before it is served.
+/// </summary>
+public class CatalogSemanticMeasure
+{
+    public long Id { get; set; }
+
+    /// <summary>The measure's identifier, unique across the layer (for example <c>net_revenue</c>).</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The object whose columns <see cref="Expression"/> reads.</summary>
+    public string ObjectKey { get; set; } = string.Empty;
+
+    /// <summary>The SQL expression, stored verbatim as the admin wrote it.</summary>
+    public string Expression { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+
+    public string? UpdatedBy { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
+}
+
+/// <summary>
+/// The semantic layer's layer-wide settings: a single row (<see cref="SingletonId"/>) holding the general
+/// instructions an assistant reads before writing SQL against the layer (conventions, fiscal calendar, which
+/// status values count as active, and the like).
+/// </summary>
+public class CatalogSemanticLayerSettings
+{
+    /// <summary>The one row's id; the table never holds another.</summary>
+    public const int SingletonId = 1;
+
+    public int Id { get; set; }
+
+    /// <summary>Markdown instructions for an assistant, or null when none are written yet.</summary>
+    public string? Instructions { get; set; }
+
+    /// <summary>An admin's choice of whether a sync generates business questions for Power BI report visuals, or null
+    /// to follow the deployment's <c>ControlPlane:PowerAI:QuestionGeneration:Enabled</c>. Only takes effect where the
+    /// deployment has an Anthropic key to generate with.</summary>
+    public bool? QuestionGeneration { get; set; }
+
+    /// <summary>Who last set <see cref="QuestionGeneration"/>, kept apart from <see cref="UpdatedBy"/> so an
+    /// instructions edit does not claim the switch.</summary>
+    public string? QuestionGenerationUpdatedBy { get; set; }
+
+    /// <summary>When <see cref="QuestionGeneration"/> was last set.</summary>
+    public DateTime? QuestionGenerationUpdatedUtc { get; set; }
+
+    public string? UpdatedBy { get; set; }
+
+    public DateTime UpdatedUtc { get; set; }
 }
 
 /// <summary>

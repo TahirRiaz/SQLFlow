@@ -129,6 +129,108 @@ public sealed class QueryApprovalApiTests
         }
     }
 
+    /// <summary>
+    /// A prepare that names no datasource takes the one the query's tables live on, so a person is not asked for
+    /// a connection the catalog already knows; and it asks (422, naming the candidates) exactly when the catalog
+    /// cannot tell, rather than guessing. <c>COUNT(*)</c> is used on purpose: it references no column, which is
+    /// the shape that proves the tables are read from the FROM clause and not only from column references.
+    /// </summary>
+    [SkippableFact]
+    public async Task Prepare_WithNoDatasource_UsesTheOneItsTablesLiveOn_AndAsksOnlyWhenItCannotTell()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var refA = "${env:SQLFLOW_INFER_A_" + suffix + "}";
+        var refB = "${env:SQLFLOW_INFER_B_" + suffix + "}";
+        var onlyOnA = "OnlyA_" + suffix;
+        var onBoth = "Shared_" + suffix;
+        var repoId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        string KeyOf(string reference, string name)
+            => $"{reference}|dw|edw|{name}".ToLowerInvariant();
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
+            .WithSetting("ControlPlane:DataOps:Enabled", "true");
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Repos.Add(new CatalogRepo { Id = repoId, Name = "infer_" + suffix, FirstSeenUtc = now, LastSyncUtc = now });
+                foreach (var reference in new[] { refA, refB })
+                {
+                    db.Pipelines.Add(new CatalogPipeline
+                    {
+                        Id = Guid.NewGuid(), RepoId = repoId, Name = "infer_flow_" + Guid.NewGuid().ToString("N")[..8],
+                        Kind = "ing", RelativePath = "infer/flow.yaml", Active = true, SourceServer = reference,
+                        TargetServer = reference, DefinitionJson = "{}", FirstSeenUtc = now, LastSeenUtc = now,
+                    });
+                }
+
+                foreach (var (reference, name) in new[] { (refA, onlyOnA), (refA, onBoth), (refB, onBoth) })
+                {
+                    db.Objects.Add(new CatalogObject
+                    {
+                        Key = KeyOf(reference, name), ServerRef = reference, Database = "dw", Schema = "edw",
+                        Name = name, Kind = "Table", FirstSeenUtc = now, LastSeenUtc = now,
+                    });
+                }
+
+                await db.SaveChangesAsync();
+            }
+
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client);
+
+            // 1. The table lives on one declared datasource: that one is used, and the prepare says which.
+            using (var inferred = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest($"SELECT COUNT(*) AS N FROM edw.{onlyOnA}", null)))
+            {
+                inferred.EnsureSuccessStatusCode();
+                var prepared = await inferred.Content.ReadFromJsonAsync<PreparedQueryDto>();
+                Assert.NotNull(prepared);
+                Assert.Equal(refA, prepared.Reference);
+            }
+
+            // 2. The table exists on two datasources: no guess, and both are named so a person can pick.
+            using (var ambiguous = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest($"SELECT COUNT(*) AS N FROM edw.{onBoth}", null)))
+            {
+                Assert.Equal(HttpStatusCode.UnprocessableEntity, ambiguous.StatusCode);
+                var body = await ambiguous.Content.ReadAsStringAsync();
+                Assert.Contains(refA, body, StringComparison.Ordinal);
+                Assert.Contains(refB, body, StringComparison.Ordinal);
+            }
+
+            // 3. The table is unknown to the catalog: nothing to infer from, so it asks.
+            using (var unknown = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest($"SELECT COUNT(*) AS N FROM edw.Nowhere_{suffix}", null)))
+            {
+                Assert.Equal(HttpStatusCode.UnprocessableEntity, unknown.StatusCode);
+            }
+
+            // 4. A named datasource still wins over inference, exactly as before.
+            using (var named = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest($"SELECT COUNT(*) AS N FROM edw.{onBoth}", refB)))
+            {
+                named.EnsureSuccessStatusCode();
+                var prepared = await named.Content.ReadFromJsonAsync<PreparedQueryDto>();
+                Assert.NotNull(prepared);
+                Assert.Equal(refB, prepared.Reference);
+            }
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.QueryPlans.Where(p => p.SourceRef == refA || p.SourceRef == refB).ExecuteDeleteAsync();
+            var keys = new[] { KeyOf(refA, onlyOnA), KeyOf(refA, onBoth), KeyOf(refB, onBoth) };
+            await db.Objects.Where(o => keys.Contains(o.Key)).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
+        }
+    }
+
     [SkippableFact]
     public async Task WithTheSwitchOff_TheWholeQuerySurfaceIsRefused()
     {

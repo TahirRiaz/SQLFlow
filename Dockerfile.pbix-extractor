@@ -1,0 +1,44 @@
+# The isolated Power BI extractor as a container: tools/pbix-extract plus the small HTTP service that runs it
+# (src/SqlFlow.PbixExtractor). A .pbix is untrusted input for a memory-unsafe decoder, so this image is the ONLY
+# place a report is parsed on the server side. Run it with:
+#   - no catalog, warehouse, or git credentials (it needs none; its only secret is PbixExtractor__ApiKey),
+#   - ingress reachable only from the control plane, and no egress,
+#   - a read-only root filesystem with a small writable /tmp (uploads are written there and removed per request).
+#
+# Build from the repository root:
+#   docker build -f Dockerfile.pbix-extractor -t sqlflow-pbix-extractor:latest .
+
+# The native tool is built on the same Debian release the ASP.NET runtime image uses, so the shared libraries it
+# links against are the ones installed below. Its test suite runs here too: an image whose extractor fails its own
+# checks is not built.
+FROM debian:bookworm-slim AS native
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        build-essential pkg-config libzip-dev libexpat1-dev libsqlite3-dev libjansson-dev \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /src/pbix-extract
+COPY tools/pbix-extract/Makefile ./
+COPY tools/pbix-extract/src ./src
+COPY tools/pbix-extract/vendor ./vendor
+COPY tools/pbix-extract/tests ./tests
+RUN make && make test
+
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+COPY . .
+RUN dotnet publish src/SqlFlow.PbixExtractor/SqlFlow.PbixExtractor.csproj \
+    -c Release -o /app /p:UseAppHost=false
+
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libzip4 libexpat1 libsqlite3-0 libjansson4 \
+    && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY --from=build /app .
+COPY --from=native /src/pbix-extract/build/pbix-extract /app/pbix-extract
+ENV ASPNETCORE_URLS=http://+:8080 \
+    DOTNET_RUNNING_IN_CONTAINER=true \
+    SQLFLOW_PBIX_EXTRACT=/app/pbix-extract
+EXPOSE 8080
+USER $APP_UID
+ENTRYPOINT ["dotnet", "SqlFlow.PbixExtractor.dll"]

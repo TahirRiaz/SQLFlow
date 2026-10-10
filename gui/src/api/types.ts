@@ -1200,6 +1200,11 @@ export interface SubscriberQuery {
   name: string;
   serverRef: string;
   sql: string;
+  /** A report visual's query translated into T-SQL over the source tables; null for a declared query and for a
+   * visual that could not be translated. */
+  sourceSql: string | null;
+  /** Why a report visual's query has no source SQL; null otherwise. */
+  translationProblem: string | null;
   objectKeys: string[];
 }
 
@@ -1488,6 +1493,436 @@ export interface CreateUserRequest {
   role: string;
   email?: string | null;
   displayName?: string | null;
+}
+
+// ---- PowerAI column policies ----------------------------------------------------------------------------------------
+// Admin-scope governance over which columns the AI assistant (and the ad-hoc query surface generally) may
+// read at all, as a default-deny allow-list: SearchEndpoints/LineageEndpoints show only a column an admin has
+// explicitly allowed, and ColumnPolicyGuard refuses any ad-hoc query that touches one that is not. The allow-list
+// IS the semantic layer's membership; a column's description and synonyms are its semantic annotations.
+
+/** One column of an object with its current allow state and annotations; used to render the per-table column
+ * editor. A column with no policy row yet defaults to not allowed. */
+export interface ColumnPolicyState {
+  objectKey: string;
+  columnName: string;
+  ordinal: number;
+  dataType: string | null;
+  nullable: boolean;
+  isAllowed: boolean;
+  reason: string | null;
+  updatedBy: string | null;
+  updatedUtc: string | null;
+  description: string | null;
+  synonyms: string[];
+}
+
+/** One column currently NOT allowed - explicitly denied, or never reviewed at all - with enough of its owning
+ * object to render the flat "everything currently blocked" overview without a second lookup per row.
+ * `updatedUtc` is null for a column that has never been reviewed. */
+export interface RestrictedColumn {
+  objectKey: string;
+  objectName: string;
+  database: string | null;
+  schema: string | null;
+  columnName: string;
+  reason: string | null;
+  updatedBy: string | null;
+  updatedUtc: string | null;
+}
+
+/** Sets one column's allow flag and annotations; a full upsert of the row, safe to call repeatedly. */
+export interface SetColumnPolicyRequest {
+  objectKey: string;
+  columnName: string;
+  isAllowed: boolean;
+  reason: string | null;
+  description: string | null;
+  synonyms: string[];
+}
+
+/** Allows or denies every catalogued column of one object at once. */
+export interface SetObjectColumnPoliciesRequest {
+  objectKey: string;
+  isAllowed: boolean;
+}
+
+// ---- Semantic layer ---------------------------------------------------------------------------------------------
+// The allow-listed schema with its business context: what the AI assistant's schema tools serve. The admin editor
+// reads coverage and per-object state; the read side (overview) is what an assistant sees.
+
+/** One (database, schema) of objects with catalogued columns, and how many are in the layer. */
+export interface SemanticSchemaCoverage {
+  database: string | null;
+  schema: string | null;
+  objectCount: number;
+  layerObjectCount: number;
+}
+
+/** One object with catalogued columns and how much of it is in the layer. */
+export interface SemanticObjectCoverage {
+  key: string;
+  name: string;
+  kind: string;
+  serverRef: string;
+  database: string | null;
+  schema: string | null;
+  businessName: string | null;
+  allowedColumns: number;
+  totalColumns: number;
+}
+
+/** An object's table-level business context as stored. */
+export interface SemanticAnnotation {
+  businessName: string | null;
+  description: string | null;
+  synonyms: string[];
+  keyColumns: string[];
+  updatedBy: string | null;
+  updatedUtc: string | null;
+}
+
+/** One way to join a layer table to another, read from the table's side. `source` is Curated or Discovered. */
+export interface SemanticJoin {
+  source: string;
+  otherObjectKey: string;
+  otherDatabase: string | null;
+  otherSchema: string | null;
+  otherName: string;
+  ownColumns: string[];
+  otherColumns: string[];
+  on: string;
+  joinTypes: string[];
+  isRangeJoin: boolean;
+  occurrences: number | null;
+  description: string | null;
+}
+
+/** An admin-declared join, in its declared direction; `problem` says why it is withheld, null when served. */
+export interface SemanticCuratedJoin {
+  id: number;
+  fromObjectKey: string;
+  fromObjectName: string;
+  fromColumns: string[];
+  toObjectKey: string;
+  toObjectName: string;
+  toColumns: string[];
+  joinType: string;
+  description: string | null;
+  problem: string | null;
+  updatedBy: string | null;
+  updatedUtc: string;
+}
+
+/** A join discovered from the codebase; `problem` says why it is withheld, null when served. */
+export interface SemanticDiscoveredJoin {
+  join: SemanticJoin;
+  problem: string | null;
+}
+
+/** A measure as an assistant is served it. */
+export interface SemanticMeasure {
+  id: number;
+  name: string;
+  objectKey: string;
+  objectName: string;
+  expression: string;
+  description: string | null;
+}
+
+/** A measure as the editor shows it; `problem` says why it is withheld, null when served. */
+export interface SemanticMeasureAdmin extends SemanticMeasure {
+  problem: string | null;
+  updatedBy: string | null;
+  updatedUtc: string;
+}
+
+/** A saved answer (one of the layer's example queries); `problem` says why it is withheld, null when served.
+ * `confirmedBy` is whoever last stood behind it: the person who confirmed it, or the admin who last edited it. */
+export interface SemanticExampleAdmin {
+  id: number;
+  question: string;
+  sql: string;
+  sourceRef: string | null;
+  objectKeys: string[];
+  provenance: string;
+  confidence: number | null;
+  repoId: string | null;
+  confirmedBy: string | null;
+  confirmedUtc: string;
+  problem: string | null;
+}
+
+/** An edit to a saved answer. The SQL is validated exactly as a confirmation is; a null `sourceRef` is worked out
+ * from the tables the query reads. */
+export interface UpdateSemanticExampleRequest {
+  question: string;
+  sql: string;
+  sourceRef: string | null;
+}
+
+/** Everything the semantic layer editor shows for one object. */
+export interface SemanticObjectAdmin {
+  key: string;
+  serverRef: string;
+  database: string | null;
+  schema: string | null;
+  name: string;
+  kind: string;
+  interpretedKeyColumns: string | null;
+  interpretedKeyOrigin: string | null;
+  annotation: SemanticAnnotation;
+  columns: ColumnPolicyState[];
+  curatedJoins: SemanticCuratedJoin[];
+  discoveredJoins: SemanticDiscoveredJoin[];
+  measures: SemanticMeasureAdmin[];
+  examples: SemanticExampleAdmin[];
+  reportModels: SemanticReportModelAdmin[];
+}
+
+/** A Power BI measure or calculated column built on the object; `problem` says why it is withheld, null when served. */
+export interface SemanticReportFieldAdmin {
+  name: string;
+  kind: string;
+  expression: string;
+  description: string | null;
+  problem: string | null;
+}
+
+/** A Power BI model relationship from the object's model table, with the warehouse columns it maps to when they do. */
+export interface SemanticReportRelationshipAdmin {
+  modelTable: string;
+  ownColumn: string | null;
+  otherModelTable: string;
+  otherColumn: string | null;
+  otherObjectKey: string | null;
+  cardinality: string | null;
+  isActive: boolean;
+  problem: string | null;
+}
+
+/** One report's model table that loads from the object: what the report defines on it, read-only. */
+/** What a report specification holds, counted. `warnings` are what the extractor declined to extract, and why. */
+export interface ReportSpecSummary {
+  pages: number;
+  visuals: number;
+  tables: number;
+  measures: number;
+  relationships: number;
+  resolvedTables: number;
+  warnings: string[];
+}
+
+/** A Power BI subscriber a report can be attached to. */
+export interface SemanticReportSubscriber {
+  repoId: string;
+  repoName: string;
+  subscriberKey: string;
+  name: string;
+  type: string;
+  owner: string | null;
+}
+
+/** A Power BI report the semantic layer holds. `origin` is "upload" (a person's) or "extracted" (the copy a sync
+ * kept of a report the repository declares). `subscriberDeclared` is false once the repository stops declaring the
+ * subscriber, and the report is then not served. */
+export interface SemanticReportSpec {
+  id: number;
+  repoId: string;
+  repoName: string;
+  subscriberKey: string;
+  subscriberName: string;
+  subscriberDeclared: boolean;
+  reportFile: string;
+  origin: "upload" | "extracted";
+  pages: number;
+  visuals: number;
+  tables: number;
+  measures: number;
+  updatedBy: string | null;
+  updatedUtc: string;
+}
+
+/** Where a report question came from: a sync generated it (and may replace it when the visual changes), or a person
+ * added or edited it (and generation leaves it alone). */
+export type ReportQuestionOrigin = "generated" | "manual";
+
+/** One business question on a report visual. */
+export interface SemanticReportQuestion {
+  id: number;
+  question: string;
+  origin: ReportQuestionOrigin;
+  updatedBy: string | null;
+  updatedUtc: string | null;
+}
+
+/** One visual the last sync served for a report: the fields it shows and its business questions. `questions` is the
+ * plain text of `questionEntries`. */
+export interface SemanticReportVisual {
+  ordinal: number;
+  visualType: string;
+  title: string | null;
+  queryName: string;
+  fields: { role: string; tableName: string; columnOrMeasure: string; isMeasure: boolean }[];
+  questions: string[];
+  visualKey: string;
+  questionEntries: SemanticReportQuestion[];
+}
+
+/** Adds a person's question to a report visual. */
+export interface AddReportQuestionRequest {
+  repoId: string;
+  visualKey: string;
+  question: string;
+}
+
+/** One page of a served report, with its visuals in order. */
+export interface SemanticReportPage {
+  reportFile: string;
+  ordinal: number;
+  displayName: string;
+  visuals: SemanticReportVisual[];
+}
+
+/** `pages` is what the last sync served under the report's label; empty until a sync has read it. */
+export interface SemanticReportSpecDetail {
+  report: SemanticReportSpec;
+  spec: string;
+  summary: ReportSpecSummary;
+  pages: SemanticReportPage[];
+}
+
+/** Stores a specification for a Power BI subscriber, replacing an earlier upload of the same report. */
+export interface StoreSemanticReportSpecRequest {
+  repoId: string;
+  subscriber: string;
+  reportFile: string;
+  spec: string;
+}
+
+/** `syncQueued` is false for a repo synced from a local path, which applies the report on its next `sqlflow db sync`. */
+export interface StoreSemanticReportSpecResult {
+  report: SemanticReportSpecDetail;
+  replaced: boolean;
+  syncQueued: boolean;
+}
+
+/** A report the isolated extractor read, not yet stored. */
+export interface ExtractedSemanticReport {
+  reportFile: string;
+  spec: string;
+  summary: ReportSpecSummary;
+}
+
+export interface DeleteSemanticReportSpecResult {
+  syncQueued: boolean;
+}
+
+/** Whether a raw .pbix can be uploaded here, and the size limits. */
+export interface SemanticReportCapabilities {
+  extractionEnabled: boolean;
+  maxReportBytes: number;
+  maxSpecBytes: number;
+  /** Whether a sync generates business questions for report visuals (a deployment setting). */
+  questionGenerationEnabled: boolean;
+}
+
+/** Whether a sync generates business questions for report visuals. `override` is an admin's choice (null follows
+ * `deploymentDefault`); nothing can turn generation on while `available` is false (no Anthropic key). */
+export interface QuestionGeneration {
+  available: boolean;
+  deploymentDefault: boolean;
+  override: boolean | null;
+  enabled: boolean;
+  updatedBy: string | null;
+  updatedUtc: string | null;
+  /** On a change that turned generation on, how many repos had a sync queued to generate the missing questions. */
+  syncsQueued: number;
+}
+
+export interface SemanticReportModelAdmin {
+  subscriberKey: string;
+  subscriberName: string;
+  reportFile: string;
+  modelTable: string;
+  fields: SemanticReportFieldAdmin[];
+  relationships: SemanticReportRelationshipAdmin[];
+}
+
+export interface SetSemanticAnnotationRequest {
+  objectKey: string;
+  businessName: string | null;
+  description: string | null;
+  synonyms: string[];
+  keyColumns: string[];
+}
+
+export interface SemanticInstructions {
+  instructions: string | null;
+  updatedBy: string | null;
+  updatedUtc: string | null;
+}
+
+export interface UpsertSemanticMeasureRequest {
+  name: string;
+  objectKey: string;
+  expression: string;
+  description: string | null;
+}
+
+export interface UpsertSemanticJoinRequest {
+  fromObjectKey: string;
+  fromColumns: string[];
+  toObjectKey: string;
+  toColumns: string[];
+  joinType: string;
+  description: string | null;
+}
+
+/** A (database, schema) holding layer tables. */
+export interface SemanticSchema {
+  database: string | null;
+  schema: string | null;
+  tableCount: number;
+}
+
+/** The layer at a glance, exactly as an assistant's get_semantic_layer call reads it. */
+export interface SemanticOverview {
+  instructions: string | null;
+  tableCount: number;
+  schemas: SemanticSchema[];
+  measures: SemanticMeasure[];
+}
+
+// ---- PowerAI confirmed examples ---------------------------------------------------------------------------------
+// The write half of question retrieval: what a person decided about an answer the assistant handed back.
+// An accepted or corrected answer becomes precedent the next similar question is matched against; a rejection
+// is recorded as having happened and stores nothing, since only verified answers become precedent.
+
+/** What a person decided about a proposed answer. */
+export type QuestionConfirmationOutcome = "accepted" | "corrected" | "rejected";
+
+/** One confirmation of a question/query pair. On "corrected", `sql` is the CORRECTED query, never the original
+ * proposal: the store holds what worked. `sourceRef` is optional, and only a whole ${env:...}/${keyvault:...}
+ * reference or an @alias is accepted; without one the example is still kept, but it cannot be auto-run. */
+export interface ConfirmQuestionRequest {
+  question: string;
+  sql: string;
+  outcome: QuestionConfirmationOutcome;
+  objectKeys?: string[];
+  confidence?: number | null;
+  repoId?: string | null;
+  sourceRef?: string | null;
+}
+
+/** What the confirmation did. `stored` is the fact that matters: a rejection answers 200 and stores nothing,
+ * so it must be read rather than inferred from the status. `message` is written to be shown verbatim. */
+export interface ConfirmedQuestion {
+  stored: boolean;
+  exampleId: number | null;
+  outcome: string;
+  provenance: string | null;
+  message: string;
 }
 
 // ---- Personal access tokens -------------------------------------------------------------------------------------
@@ -2362,6 +2797,52 @@ export interface TopQueriesResult {
   queries: ExpensiveQuery[];
 }
 
+// ---- DataOps ad-hoc queries (/api/v1/dataops/queries) ---------------------------------------------------------------
+// The human-in-the-loop, two-step path for running a SELECT: prepare validates it and mints a short-lived,
+// single-use token WITHOUT running anything; run redeems that token and enqueues the same compute task
+// prepare_query/run_query use over MCP. There is no one-step "just run this" endpoint by design.
+
+export interface PrepareQueryRequest {
+  sql: string;
+  /** A whole ${env:...}/${keyvault:...} reference or an @alias; inline connection strings are refused. Omit it to
+   * let the control plane work the datasource out from the tables the query reads; it answers 422 naming the
+   * candidates when it cannot tell. */
+  reference?: string;
+  maxRows?: number;
+  timeoutSeconds?: number;
+}
+
+/** A prepared query awaiting redemption: the exact statement that would run (always show this, not the
+ * request's own copy, before redeeming planId) and when the token lapses. */
+export interface PreparedQuery {
+  planId: string;
+  sql: string;
+  reference: string;
+  database: string | null;
+  maxRows: number;
+  timeoutSeconds: number;
+  expiresUtc: string;
+  instruction: string;
+}
+
+/** One column of a query result: its name and the provider's own type name for it. */
+export interface QueryResultColumn {
+  name: string;
+  dataType: string;
+}
+
+/** The rows a runQuery compute task returned, rendered as text so one shape carries every provider type
+ * (ComputeTask.result for operation "runQuery"). `truncated` must be read before describing the answer: a
+ * truncated result is a page, and summing a truncated page gives a confidently wrong total. */
+export interface RunQueryResult {
+  columns: QueryResultColumn[];
+  rows: (string | null)[][];
+  rowCount: number;
+  truncated: boolean;
+  database: string | null;
+  sql: string;
+}
+
 // ---- Chat assistant (/api/v1/chat) ---------------------------------------------------------------------------------
 
 /** What the chat feature can do under the current deployment, so the GUI shows only affordances that work. */
@@ -2372,6 +2853,12 @@ export interface ChatCapabilities {
   transcription: boolean;
   maxImages: number;
   maxImageBytes: number;
+  /** Whether an answer can be confirmed into the PowerAI example store; false hides the
+   * accept/correct/reject affordance, since retrieval is off and there is no store to confirm into. */
+  questionConfirmation: boolean;
+  /** Whether a SQL block the assistant hands back can be run from the thread itself; false hides
+   * the Run affordance, since the data-operations surface is off. */
+  dataOpsRunQuery: boolean;
 }
 
 export interface ChatConversation {

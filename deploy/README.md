@@ -1,6 +1,6 @@
 # Deploying SQLFlow
 
-Three core images, plus two optional ones for the Slack assistant:
+Three core images, plus optional ones for the Slack assistant and for Power BI uploads:
 
 | Image | Built from | Scales on | Behind the ingress? |
 |---|---|---|---|
@@ -9,6 +9,7 @@ Three core images, plus two optional ones for the Slack assistant:
 | `sqlflow-worker` | `Dockerfile.worker` | the control plane's replica target (KEDA) | never (pull model: it polls the control plane for work, no inbound surface) |
 | `sqlflow-mcp` (optional) | `Dockerfile.mcp` | pinned to 1 (in-memory MCP sessions) | own ingress, bearer-gated `/mcp` |
 | `sqlflow-slack-bot` (optional) | `Dockerfile.slackbot` | pinned to 1 (Socket Mode dials out) | never |
+| `sqlflow-pbix-extractor` (optional) | `Dockerfile.pbix-extractor` | upload volume (slot-limited per replica) | never; internal only, called by the control plane |
 
 ```bash
 docker build -t sqlflow-control-plane:latest .
@@ -16,6 +17,7 @@ docker build -f Dockerfile.worker -t sqlflow-worker:latest .
 docker build -t sqlflow-gui:latest gui/
 docker build -f Dockerfile.mcp -t sqlflow-mcp:latest .
 docker build -f Dockerfile.slackbot -t sqlflow-slack-bot:latest .
+docker build -f Dockerfile.pbix-extractor -t sqlflow-pbix-extractor:latest .
 ```
 
 ## Local / single host: docker compose
@@ -39,6 +41,11 @@ docker compose up -d mssql controlplane gui
 docker compose up -d worker
 ```
 
+The stack includes the isolated Power BI extractor (`pbix-extractor`), which reads `.pbix` files uploaded on the
+Semantic layer page. It is attached only to an `internal` network it shares with the control plane, publishes no
+port, runs read-only with every capability dropped, and holds nothing but `SQLFLOW_EXTRACTOR_KEY`, the key the two
+share (set it in `.env`).
+
 GUI at http://localhost:8081, API at http://localhost:5000. Bootstrap provisioning creates the catalog database,
 applies migrations, seeds roles, and creates the admin from `.env` on first start.
 
@@ -54,6 +61,7 @@ The same three-tier layout on managed infrastructure, one template per tier plus
 | `gui.bicep` | The SPA behind its own ingress. |
 | `ai-foundry.bicep` | Optional: an Azure AI Foundry account + project beside the estate (`aiFoundryName` on `main.bicep`), the app identities granted keyless caller access, plus an optional pinned model deployment (`aiFoundryModelName`) and Responses API access (Cognitive Services OpenAI User) for the Slack bot identity. |
 | `mcp.bicep` | Optional: the SQLFlow MCP server in HTTP mode (`mcpImage` on `main.bicep`), the tool source for the Foundry agent and any remote MCP client. Holds no credentials; every `/mcp` request must present a SQLFlow bearer token, which it forwards to the control plane. |
+| `pbix-extractor.bicep` | Optional: the isolated Power BI extractor (`pbixExtractorImage` and `pbixExtractorKey` on `main.bicep`) on internal ingress. Its identity can read only the shared-key secret; `main.bicep` then turns `.pbix` uploads on in the control plane. Container Apps cannot block this app's egress by itself; route the environment subnet through a firewall for that. |
 | `slack-bot.bicep` | Optional: the Slack assistant (`slackBotImage` on `main.bicep`), a Socket Mode relay to a Foundry agent whose tools are the MCP server. No ingress; secrets from Key Vault via managed identity. |
 
 ```bash
@@ -125,8 +133,10 @@ follow-ups chain server-side via `previous_response_id`, and the model must be R
 (for example `gpt-5-mini`). In the `Anthropic` mode the Claude MCP connector calls the same MCP server
 server-side; Claude keeps no server-side conversation state, so the bot replays the Slack thread transcript
 each turn (the Slack thread is the durable record either way). The bot's whole SQLFlow authority is one
-read-scoped personal access token, sent to the MCP server as the `Authorization` header;
-`trigger_run`/`cancel_run` are excluded from the tool allowlist. See the reference guide for the full contract.
+personal access token for a dedicated account, sent to the MCP server as the `Authorization` header; the
+tool allowlist is what bounds it: business questions (running a query the thread approves, saving an answer
+someone confirms) are allowed, and `trigger_run`/`cancel_run` are excluded. See the reference guide for the
+full contract.
 IDE assistants (Copilot, Claude, Cursor) keep using `sqlflow-mcp` locally over stdio; this deploys the same
 binary in `http` mode as a shared, remote tool source.
 

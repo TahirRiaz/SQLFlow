@@ -18,6 +18,15 @@ import type {
   GenerateNotificationDigestRequest, NotificationDelivery, NotificationDigest, NotificationDigestSummary,
   NotificationQueuedDelivery, NotificationSubscription, SendNotificationDigestRequest,
   ObjectHit, ObjectRepo, PagedResult,
+  ColumnPolicyState, RestrictedColumn, SetColumnPolicyRequest, SetObjectColumnPoliciesRequest,
+  SemanticAnnotation, SemanticCuratedJoin, SemanticInstructions, SemanticMeasureAdmin, SemanticObjectAdmin,
+  SemanticObjectCoverage, SemanticOverview, SemanticSchemaCoverage, SetSemanticAnnotationRequest,
+  UpsertSemanticJoinRequest, UpsertSemanticMeasureRequest,
+  ConfirmQuestionRequest, ConfirmedQuestion, SemanticExampleAdmin, UpdateSemanticExampleRequest,
+  AddReportQuestionRequest, DeleteSemanticReportSpecResult, ExtractedSemanticReport, QuestionGeneration,
+  SemanticReportQuestion, SemanticReportCapabilities, SemanticReportSpec,
+  SemanticReportSpecDetail, SemanticReportSubscriber, StoreSemanticReportSpecRequest, StoreSemanticReportSpecResult,
+  PrepareQueryRequest, PreparedQuery,
   FlowParameters,
   PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
   RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry, RunTraceStorage, RunTraceRetention, RunTraceRetentionUpdate, RunStatementPurgeResult, RunEventPurgeResult,
@@ -404,6 +413,44 @@ export async function executeComputeTask(request: ComputeTaskRequest, signal?: A
   }
 }
 
+// ---- DataOps ad-hoc queries ---------------------------------------------------------------------------------------
+
+export const dataOpsApi = {
+  /** Validates a SELECT and mints a short-lived, single-use token; runs nothing. */
+  prepare: (request: PrepareQueryRequest) => post<PreparedQuery>("/api/v1/dataops/queries/prepare", request),
+  /** Redeems a plan token, queuing the compute task the prepared SQL runs as. */
+  run: (planId: string) => post<ComputeTaskAccepted>(`/api/v1/dataops/queries/${planId}/run`),
+};
+
+/**
+ * Runs one ad-hoc SELECT end to end: prepare (mints the token), run (redeems it and enqueues the compute
+ * task), then long-poll until the task reaches a terminal state: the same three-call sequence
+ * prepare_query/run_query/task-polling perform over MCP, so a GUI "Run" click is exactly that sequence, not a
+ * second execution path. There is no one-step variant: a plan is redeemed as-is, so the caller always shows the
+ * prepared SQL (identical to what it sent, since the control plane echoes back what it parsed) before redeeming.
+ * PrepareQueryRequest.reference may be omitted, in which case the control plane infers the datasource from the
+ * tables the query reads and rejects the prepare with a 422 when it cannot tell; the resolved datasource comes
+ * back on the task's sourceRef.
+ */
+export async function executeQueryRun(request: PrepareQueryRequest, signal?: AbortSignal): Promise<ComputeTask> {
+  const prepared = await dataOpsApi.prepare(request);
+  const accepted = await dataOpsApi.run(prepared.planId);
+  try {
+    for (;;) {
+      const task = await datasourceApi.task(accepted.taskId, 10_000, signal);
+      if (task.status === "succeeded" || task.status === "failed" || task.status === "cancelled" || task.status === "skipped") {
+        return task;
+      }
+    }
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      datasourceApi.cancelTask(accepted.taskId).catch(() => undefined);
+    }
+
+    throw error;
+  }
+}
+
 // ---- Repo sources -------------------------------------------------------------------------------------------------------------
 
 export const repoSourceApi = {
@@ -542,6 +589,114 @@ export const userApi = {
   deactivate: (id: string) => post<User>(`/api/v1/users/${id}/deactivate`),
   setPassword: (id: string, password: string) => post<User>(`/api/v1/users/${id}/password`, { password }),
   roles: () => get<Role[]>("/api/v1/roles"),
+};
+
+// ---- PowerAI column policies (admin-scope: which columns are in the semantic layer at all) ------------------------
+
+export const columnPolicyApi = {
+  /** Every column currently NOT allowed (explicitly denied, or never reviewed), across the whole catalog, for
+   * the blocked-columns audit. */
+  list: (query: PageQuery = {}) =>
+    get<PagedResult<RestrictedColumn>>("/api/v1/powerai/column-policies", query as QueryParams),
+  /** Every column of one object with its current policy state and annotations. */
+  forObject: (objectKey: string) =>
+    get<ColumnPolicyState[]>(`/api/v1/powerai/column-policies/objects/${encodeURIComponent(objectKey)}`),
+  /** A full upsert of one column's allow flag, reason, description, and synonyms. */
+  set: (request: SetColumnPolicyRequest) => put<ColumnPolicyState>("/api/v1/powerai/column-policies", request),
+  /** Allows or denies every column of one object at once. */
+  setObject: (request: SetObjectColumnPoliciesRequest) =>
+    put<ColumnPolicyState[]>("/api/v1/powerai/column-policies/objects", request),
+};
+
+// ---- Semantic layer (the allow-listed schema and its business context) ---------------------------------------------
+
+export interface SemanticObjectQuery extends PageQuery {
+  database?: string;
+  schema?: string;
+  name?: string;
+  inLayer?: boolean;
+}
+
+export interface SemanticExampleQuery extends PageQuery {
+  search?: string;
+}
+
+export const semanticLayerApi = {
+  /** The saved answers (the layer's example queries), newest first, narrowed to those whose question or query
+   * contains every search word. */
+  examples: (query: SemanticExampleQuery = {}) =>
+    get<PagedResult<SemanticExampleAdmin>>("/api/v1/powerai/semantic-layer/examples", query as QueryParams),
+  /** Corrects a saved answer, validated exactly as a confirmation is; 409 when it would duplicate another. */
+  updateExample: (id: number, request: UpdateSemanticExampleRequest) =>
+    put<SemanticExampleAdmin>(`/api/v1/powerai/semantic-layer/examples/${id}`, request),
+  /** Deletes a saved answer: later questions stop finding it and it can no longer be auto-run. */
+  deleteExample: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/examples/${id}`),
+  /** The layer as an assistant reads it (read scope): instructions, where its tables live, servable measures. */
+  overview: () => get<SemanticOverview>("/api/v1/semantic-layer"),
+  /** Coverage per (database, schema), for the editor's tree skeleton. */
+  schemas: () => get<SemanticSchemaCoverage[]>("/api/v1/powerai/semantic-layer/schemas"),
+  /** Objects with catalogued columns and their coverage, filterable, paged. */
+  objects: ({ inLayer, ...query }: SemanticObjectQuery = {}) =>
+    get<PagedResult<SemanticObjectCoverage>>("/api/v1/powerai/semantic-layer/objects", {
+      ...query,
+      inLayer: inLayer === true ? "true" : undefined,
+    } as QueryParams),
+  /** Everything the editor shows for one object. */
+  object: (key: string) => get<SemanticObjectAdmin>("/api/v1/powerai/semantic-layer/objects/detail", { key }),
+  setAnnotation: (request: SetSemanticAnnotationRequest) =>
+    put<SemanticAnnotation>("/api/v1/powerai/semantic-layer/objects/annotation", request),
+  instructions: () => get<SemanticInstructions>("/api/v1/powerai/semantic-layer/instructions"),
+  setInstructions: (instructions: string | null) =>
+    put<SemanticInstructions>("/api/v1/powerai/semantic-layer/instructions", { instructions }),
+  measures: () => get<SemanticMeasureAdmin[]>("/api/v1/powerai/semantic-layer/measures"),
+  createMeasure: (request: UpsertSemanticMeasureRequest) =>
+    post<SemanticMeasureAdmin>("/api/v1/powerai/semantic-layer/measures", request),
+  updateMeasure: (id: number, request: UpsertSemanticMeasureRequest) =>
+    put<SemanticMeasureAdmin>(`/api/v1/powerai/semantic-layer/measures/${id}`, request),
+  deleteMeasure: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/measures/${id}`),
+  createRelationship: (request: UpsertSemanticJoinRequest) =>
+    post<SemanticCuratedJoin>("/api/v1/powerai/semantic-layer/relationships", request),
+  updateRelationship: (id: number, request: UpsertSemanticJoinRequest) =>
+    put<SemanticCuratedJoin>(`/api/v1/powerai/semantic-layer/relationships/${id}`, request),
+  deleteRelationship: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/relationships/${id}`),
+  /** Whether a raw .pbix can be uploaded (the isolated extractor is configured), and the size limits. */
+  reportCapabilities: () => get<SemanticReportCapabilities>("/api/v1/powerai/semantic-layer/reports/capabilities"),
+  /** Adds a person's question to a report visual; generation never replaces it. */
+  addReportQuestion: (request: AddReportQuestionRequest) =>
+    post<SemanticReportQuestion>("/api/v1/powerai/semantic-layer/reports/questions", request),
+  /** Rewrites a report question; a generated one becomes the person's. */
+  updateReportQuestion: (id: number, question: string) =>
+    put<SemanticReportQuestion>(`/api/v1/powerai/semantic-layer/reports/questions/${id}`, { question }),
+  deleteReportQuestion: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/reports/questions/${id}`),
+  /** Whether a sync generates business questions for report visuals. */
+  questionGeneration: () => get<QuestionGeneration>("/api/v1/powerai/semantic-layer/reports/question-generation"),
+  /** Turns question generation on or off (`enabled: null` follows the deployment default). */
+  setQuestionGeneration: (enabled: boolean | null) =>
+    put<QuestionGeneration>("/api/v1/powerai/semantic-layer/reports/question-generation", { enabled }),
+  /** The Power BI subscribers the repositories declare: what a report can be attached to. */
+  reportSubscribers: () => get<SemanticReportSubscriber[]>("/api/v1/powerai/semantic-layer/reports/subscribers"),
+  /** The Power BI reports the layer holds, uploads first. */
+  reports: () => get<SemanticReportSpec[]>("/api/v1/powerai/semantic-layer/reports"),
+  report: (id: number) => get<SemanticReportSpecDetail>(`/api/v1/powerai/semantic-layer/reports/${id}`),
+  /** Has the isolated extractor read a .pbix; nothing is stored until storeReport is called with the answer. */
+  extractReport: (file: Blob, reportFile: string, signal?: AbortSignal) =>
+    postBinary<ExtractedSemanticReport>(
+      "/api/v1/powerai/semantic-layer/reports/extract", file, "application/octet-stream", { reportFile }, signal),
+  /** Stores a specification for a subscriber; the repo's managed sync is then asked to apply it. */
+  storeReport: (request: StoreSemanticReportSpecRequest) =>
+    post<StoreSemanticReportSpecResult>("/api/v1/powerai/semantic-layer/reports", request),
+  deleteReport: (id: number) =>
+    del<DeleteSemanticReportSpecResult>(`/api/v1/powerai/semantic-layer/reports/${id}`),
+};
+
+// ---- PowerAI confirmed examples (the learning loop's write half) ---------------------------------------------------
+
+export const questionExampleApi = {
+  /** Records what a person decided about an answer, storing the question/query pair as a confirmed example on
+   * "accepted" and "corrected". Answers 501 when retrieval is not enabled on the deployment, which is the
+   * signal to hide the affordance rather than an error worth toasting. */
+  confirm: (request: ConfirmQuestionRequest) =>
+    post<ConfirmedQuestion>("/api/v1/powerai/questions/confirm", request),
 };
 
 // ---- Personal access tokens (self-service: the caller's own tokens) ----------------------------------------------

@@ -24,6 +24,7 @@ referenceRefs:
   - flow-inv
   - flow-service-principals
 related:
+  - wiki-powerbi-model-entity-resolution
   - wiki-recipe-database-source
   - wiki-orchestration-and-scheduling
   - wiki-recipe-quality-and-monitoring
@@ -195,3 +196,10 @@ sqlflow lineage flows/ --of edw.Fact_Order --down
 
 This changes no behaviour. It exists so the answer lives in the repository rather than in someone's
 memory, which is the difference between a safe schema change and a hopeful one.
+
+The queries above are hand-written, so they already name warehouse objects and resolve like any other
+SQL. A subscriber that declares `pbix:` instead is a different case: an extracted visual names the
+report's own model entity rather than the table behind it, and whether that resolves to a warehouse
+object depends on the shape of the model's Power Query source. See
+[a report's model entity becomes a warehouse object](../decisions/powerbi-model-entity-resolution.md)
+for what resolves, what is refused, and why a refusal is preferable to a guess.

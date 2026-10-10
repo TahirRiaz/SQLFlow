@@ -1,4 +1,4 @@
-# Typed hop: the transformation view demo.vOrders_Pre -> demo.Orders through the standard
+# Typed hop: the transformation view demo.v_Orders_Pre -> demo.Orders through the standard
 # staging + keyed upsert. Reading the VIEW (not the pre table) is what carries the inferred /
 # declared types into the target and what lineage orders this flow after the landing flow.
 flowType: ing
@@ -10,7 +10,7 @@ connections:
 # so SQL Server objects must carry the database explicitly.
 source:
   server: src
-  object: SqlFlowCatalogTests.demo.vOrders_Pre
+  object: SqlFlowCatalogTests.demo.v_Orders_Pre
 target:
   server: dwh
   object: SqlFlowCatalogTests.demo.Orders

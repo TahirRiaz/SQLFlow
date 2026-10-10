@@ -148,7 +148,7 @@ mod tests {
 
     #[test]
     fn utf16_columns_account_for_astral_chars() {
-        // "a😀b" — the emoji is 2 UTF-16 code units but 1 char.
+        // "a😀b": the emoji is 2 UTF-16 code units but 1 char.
         let src = "k: a😀b\n";
         let idx = LineIndex::new(src);
         // The 'b' is char offset 5 (k,:,space,a,😀,b -> indices 0..5 => b at 5).

@@ -137,7 +137,21 @@ export function SubscriberDetails({ subscriberKey }: { subscriberKey: string }) 
                   {`${query.objectKeys.length} object${query.objectKeys.length === 1 ? "" : "s"}`}
                 </Badge>
               </div>
+              {query.sourceSql !== null || query.translationProblem !== null ? (
+                <p className="mb-1 text-[12px] text-muted-foreground">Report query (against the report's model)</p>
+              ) : null}
               <CodeView value={query.sql} language="sql" height={200} />
+              {query.sourceSql !== null ? (
+                <>
+                  <p className="mt-2 mb-1 text-[12px] text-muted-foreground">Source SQL (runs on the source tables)</p>
+                  <CodeView value={query.sourceSql} language="sql" height={200} />
+                </>
+              ) : null}
+              {query.translationProblem !== null ? (
+                <p className="mt-2 text-[12px] text-muted-foreground">
+                  {`No source SQL: ${query.translationProblem}.`}
+                </p>
+              ) : null}
             </section>
           ))}
         </div>

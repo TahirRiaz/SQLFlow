@@ -178,6 +178,7 @@ public sealed class DocumentExecutor : IDocumentRunner
             CopyFlowDocument doc => await ExecuteCopyAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             SftpFlowDocument doc => await ExecuteSftpAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             SourceControlFlowDocument doc => await ExecuteSourceControlAsync(doc, flowFile, options, ct).ConfigureAwait(false),
+            SchemaRegistrationFlowDocument doc => await ExecuteSchemaRegistrationAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             CalendarFlowDocument doc => await ExecuteCalendarAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             TranslateFlowDocument doc => await ExecuteTranslateAsync(doc, flowFile, options, ct).ConfigureAwait(false),
             _ => throw new SqlFlowException($"Cannot run document kind '{document.GetType().Name}'."),
@@ -702,6 +703,57 @@ public sealed class DocumentExecutor : IDocumentRunner
         {
             FlowName = flowName,
             FlowKind = "scm",
+            Success = result.Success,
+            Error = result.Error,
+            RunId = result.RunId,
+            RunDirectory = runDirectory,
+            DurationSeconds = result.DurationSeconds,
+            Result = result,
+        };
+    }
+
+    private async Task<DocumentExecutionResult> ExecuteSchemaRegistrationAsync(SchemaRegistrationFlowDocument doc, string flowFile, DocumentExecutionOptions options, CancellationToken ct)
+    {
+        var (runLogger, events, eventSink) = BuildEventPlumbing(options, doc.Document.Flow.SysAlias);
+        NoteInapplicableParameters(eventSink, options.Parameters, "sch");
+        var runner = SqlFlow.SqlServer.SchemaRegistration.WithoutDatabaseSchemaRegistration.BuildRunner(
+            doc.Document.Connections, _provider.GetRequiredService<ISecretResolver>());
+        var result = await runner.RunAsync(
+            doc.Document.Flow,
+            new IngestionRunOptions { ExecMode = "cli", Events = eventSink, RunId = options.RunId, StatementSink = options.StatementSink },
+            ct).ConfigureAwait(false);
+
+        // The registered objects travel in run.json, which is what every write-back path records into the catalog.
+        // A result too large for that artifact would be silently unrecordable, so the run fails and says how to
+        // narrow it instead.
+        var flowName = doc.Document.Flow.SysAlias;
+        var runJson = JsonSerializer.Serialize(
+            Artifact("sch", flowName, result.RunId, result.Success, result.Error, result, events.Records), ExecutionJson.Options);
+        if (System.Text.Encoding.UTF8.GetByteCount(runJson) > RunArtifactLimits.MaxRunJsonBytes)
+        {
+            result = result with
+            {
+                Success = false,
+                Objects = [],
+                Error = $"the registration of {result.Tables} table(s) and {result.Views} view(s) in '{result.Database}' "
+                    + $"exceeds the {RunArtifactLimits.MaxRunJsonBytes}-byte run artifact limit; narrow it with "
+                    + "objects.includeSchemas or objects.excludeSchemas.",
+            };
+            runJson = JsonSerializer.Serialize(
+                Artifact("sch", flowName, result.RunId, result.Success, result.Error, result, events.Records), ExecutionJson.Options);
+        }
+
+        var runDirectory = RunHistory.Write(flowFile, flowName, result.RunId, new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["run.json"] = runJson,
+            ["run.log"] = runLogger.Render(),
+            ["trace.sql"] = string.Empty,
+        }, _warningSink);
+
+        return new DocumentExecutionResult
+        {
+            FlowName = flowName,
+            FlowKind = "sch",
             Success = result.Success,
             Error = result.Error,
             RunId = result.RunId,

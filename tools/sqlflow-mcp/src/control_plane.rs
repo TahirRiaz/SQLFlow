@@ -20,6 +20,27 @@ tokio::task_local! {
     /// connecting caller. It is never set over stdio, and over HTTP it is the only credential there is: the server
     /// loads no token of its own, so a call without it fails rather than falling back to one.
     pub static HTTP_BEARER: String;
+
+    /// The client surface the inbound HTTP request declared through the MCP URL's query
+    /// (`?surface=assistant`), scoped by the HTTP dispatch beside `HTTP_BEARER`. While present it is
+    /// sent to the control plane as `SURFACE_HEADER`, which then serves only the semantic layer. It
+    /// narrows what is shown and never widens it, so honouring the query is safe without authentication.
+    pub static HTTP_SURFACE: String;
+}
+
+/// The control-plane request header carrying the client surface (`AssistantScope.HeaderName`).
+pub const SURFACE_HEADER: &str = "X-SqlFlow-Surface";
+
+/// The assistant surface's value, in both the MCP URL query and `SURFACE_HEADER`
+/// (`AssistantScope.AssistantValue`, `McpOptions.AssistantSurfaceQuery`).
+pub const ASSISTANT_SURFACE: &str = "assistant";
+
+/// Adds the surface header to a control-plane request when the current tool call has one.
+fn with_surface(req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    match HTTP_SURFACE.try_with(|surface| surface.clone()) {
+        Ok(surface) => req.header(SURFACE_HEADER, surface),
+        Err(_) => req,
+    }
 }
 
 /// The device-authorization response returned by `POST /api/v1/auth/device`.
@@ -502,7 +523,7 @@ impl ControlPlane {
     /// Authenticated `GET` returning parsed JSON.
     pub async fn get(&self, path: &str, query: &[(&str, String)]) -> Result<Value> {
         let bearer = self.acquire_bearer().await?;
-        let mut req = self.http.get(self.url(path)).bearer_auth(bearer);
+        let mut req = with_surface(self.http.get(self.url(path)).bearer_auth(bearer));
         let filtered: Vec<&(&str, String)> = query.iter().filter(|(_, v)| !v.is_empty()).collect();
         if !filtered.is_empty() {
             req = req.query(&filtered);
@@ -514,10 +535,7 @@ impl ControlPlane {
     /// Authenticated `POST` returning parsed JSON (empty body → JSON null).
     pub async fn post(&self, path: &str, body: Value) -> Result<Value> {
         let bearer = self.acquire_bearer().await?;
-        let resp = self
-            .http
-            .post(self.url(path))
-            .bearer_auth(bearer)
+        let resp = with_surface(self.http.post(self.url(path)).bearer_auth(bearer))
             .json(&body)
             .send()
             .await

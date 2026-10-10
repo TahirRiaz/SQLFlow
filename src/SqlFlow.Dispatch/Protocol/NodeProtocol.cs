@@ -23,7 +23,7 @@ public static class NodeProtocol
 
     /// <summary>The largest run artifact (run.json) a node may report; larger ones are recorded as unreadable so a
     /// runaway trace can never stall the control plane. The same bound the artifact sync applies.</summary>
-    public const long MaxArtifactBytes = 64L * 1024 * 1024;
+    public const long MaxArtifactBytes = Core.Runs.RunArtifactLimits.MaxRunJsonBytes;
 
     /// <summary>The largest trace batch a node may post. The node's feed flushes well below it (see
     /// <see cref="MaxTraceBatchItems"/> and <see cref="MaxTraceBatchChars"/>), so only a single pathological

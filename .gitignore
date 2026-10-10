@@ -19,6 +19,10 @@ gui/test-results/
 gui/e2e/.fixtures/
 gui/.tsbuild/
 
+## tools/pbix-extract (standalone C tool, built out of tree)
+tools/pbix-extract/build/
+tools/pbix-extract/build-asan/
+
 ## Rider / VS Code
 .idea/
 .vscode/
@@ -42,6 +46,10 @@ Thumbs.db
 ## Local secrets / env (never commit)
 *.env
 .env
+# A dated or suffixed copy of an env file carries the same secrets as the original, and the
+# patterns above match neither (".env.bak.20260918" ends in a date, not in ".env").
+.env.*
+*.env.*
 appsettings.*.local.json
 secrets.json
 
@@ -75,3 +83,13 @@ gui/tsconfig.tsbuildinfo
 AGENTS.md
 .cursor/
 .aider*
+
+## Power BI sample reports: the binary .pbix files are large and are not the product.
+## The extracted *.spec.yaml specifications ARE tracked, since they are reviewable text.
+samples/powerbi/*.pbix
+
+## Manual PowerAI test estate (throwaway, not part of the product)
+.powerai-manual-test/
+
+## Local MCP client registration: points at a developer's own control plane and can carry a live bearer token
+.mcp.json

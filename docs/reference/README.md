@@ -17,7 +17,7 @@ docs/reference/
   flow/keys.json                 per-attribute census of the file-flow YAML model (LSP surface)
   cli/<command>.md               one page per top-level CLI command (16 pages)
   flow/<section>.md              one page per top-level section of the file-flow YAML (plus overview)
-  flow/<flowtype>.md             one page per non-file flow kind: ing, exp, sp, inv, hc, scm, batch
+  flow/<flowtype>.md             one page per non-file flow kind: ing, exp, sp, inv, hc, scm, sch, batch
   flow/source-types/<type>.md    one page per source format: csv, json, xml, parquet, xls, duckdb
   concepts/<slug>.md             cross-cutting concepts (24 pages)
   guides/<slug>.md                task-oriented walkthroughs (12 pages)
@@ -71,6 +71,7 @@ Nine census files, 421 attributes total, one per document kind plus one shared f
 | `keys.inv.json` | `inv` | 12 | ADF/Automation invoke: the `invokes` block. |
 | `keys.hc.json` | `hc` | 27 | Health-check: target endpoint, metrics, the `ml` block. |
 | `keys.scm.json` | `scm` | 28 | Source-control snapshot: source endpoint, repository, object filters. |
+| `keys.sch.json` | `sch` | 20 | Schema registration: source endpoint and the schema filters of the tables and views registered. |
 | `keys.batch.json` | `batch` | 15 | Ordered multi-flow batch: member selection, wave and error policy. |
 | `keys.shared.json` | (cross-cutting) | 25 | Blocks reused by several kinds: `connections`, `servicePrincipals`, the `preInvoke`/`postInvoke` hook shape. |
 

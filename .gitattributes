@@ -1,0 +1,10 @@
+# Scripts that run inside Linux containers or a POSIX shell must keep LF line endings on every
+# checkout. Without this, Windows clones with core.autocrlf=true silently convert them to CRLF,
+# which breaks the shebang/`set` parsing the moment the file is bind-mounted into a container
+# (bash reports "invalid option name" for an option like "pipefail\r").
+*.sh text eol=lf
+
+# C# sources for the same reason, with a sharper failure mode: several tests embed YAML in a raw
+# string literal and compare it against "\n"-delimited text. Checked out as CRLF, those literals
+# carry "\r\n", the comparison silently stops matching, and the test fails on Windows only.
+*.cs text eol=lf

@@ -160,6 +160,11 @@ impl GuiLinks {
         self.at(&format!("/runs/{}", encode(id)))
     }
 
+    /// A finished query's result drawn as the chat's fitting chart (or table), read from its stored compute task.
+    pub fn query_result(&self, task_id: &str) -> String {
+        self.at(&format!("/query-results/{}", encode(task_id)))
+    }
+
     pub fn run_group(&self, id: &str) -> String {
         self.at(&format!("/runs/groups/{}", encode(id)))
     }
@@ -463,6 +468,14 @@ fn text<'a>(map: &'a Map<String, Value>, key: &str) -> Option<&'a str> {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn a_query_result_link_opens_the_chart_page() {
+        assert_eq!(
+            GuiLinks::new("http://localhost:8081/").query_result("01a0a5e7-18fa-71c1-a2b3-842b8df8dfd2"),
+            "http://localhost:8081/query-results/01a0a5e7-18fa-71c1-a2b3-842b8df8dfd2"
+        );
+    }
 
     fn links_of(value: &Value, pointer: &str) -> Value {
         value.pointer(pointer).cloned().unwrap_or(Value::Null)

@@ -10,6 +10,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The pbix-extract output parser is internal (a detail of the collector), but its contract with the C tool is
+         tested directly against the checked-in sample specification, which needs no extractor binary. -->
+    <InternalsVisibleTo Include="SqlFlow.Core.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\SqlFlow.Core\SqlFlow.Core.csproj" />
     <ProjectReference Include="..\SqlFlow.SqlServer\SqlFlow.SqlServer.csproj" />
     <ProjectReference Include="..\SqlFlow.Yaml\SqlFlow.Yaml.csproj" />

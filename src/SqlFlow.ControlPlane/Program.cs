@@ -220,6 +220,48 @@ if (options.Assistant.Enabled)
     builder.Services.AddSingleton<SqlFlow.Assistant.TranscriptionGateway>();
 }
 
+// ---- PowerAI: question generation and retrieval, each independent of the interactive chat assistant above and
+// of each other (a deployment may run any one without the others). Both reuse the same Anthropic account/model
+// rather than declaring their own, since both draw on the same subscription, so the resolved options are
+// registered once when EITHER needs them. Question generation is switched at runtime (an admin can turn it on or
+// off from the semantic layer page, over the configured default), so its generator is registered wherever there is
+// a key to generate with and QuestionGenerationSwitch decides, per sync, whether it is called. Synonym expansion is
+// registered only when its own switch is on. A deployment without a key never attempts an Anthropic call.
+builder.Services.AddSingleton<QuestionGenerationSwitch>();
+var generationAvailable = !string.IsNullOrWhiteSpace(options.Assistant.Anthropic.ApiKey);
+var expandsSynonyms = options.PowerAI.Retrieval.Enabled && options.PowerAI.Retrieval.ExpandSynonyms;
+if (generationAvailable || expandsSynonyms)
+{
+    builder.Services.AddSingleton(sp =>
+    {
+        var resolver = sp.GetRequiredService<SqlFlow.Core.Secrets.ISecretResolver>();
+        var anthropic = sp.GetRequiredService<IOptions<ControlPlaneOptions>>().Value.Assistant.Anthropic;
+        return new SqlFlow.Assistant.AnthropicOptions
+        {
+            ApiKey = resolver.Resolve(anthropic.ApiKey),
+            Model = anthropic.Model,
+            MaxTokens = anthropic.MaxTokens,
+        };
+    });
+}
+
+if (generationAvailable)
+{
+    builder.Services.AddSingleton<SqlFlow.Assistant.QuestionGenerator>();
+}
+
+if (expandsSynonyms)
+{
+    builder.Services.AddSingleton<SqlFlow.Assistant.QuestionExpander>();
+}
+
+// PowerAI report uploads: a .pbix is forwarded to the isolated extractor service and never parsed in this process.
+// Registered unconditionally so the report endpoints can explain a disabled switch instead of failing to bind; the
+// client itself refuses to call out while ControlPlane:PowerAI:ReportExtraction is off. The client applies its own
+// per-extraction budget, so the transport timeout is left unbounded.
+builder.Services.AddHttpClient(ReportExtractionClient.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan);
+builder.Services.AddSingleton<ReportExtractionClient>();
+
 // ---- Catalog read model: pooled, read-only, transient-retry --------------------------------------------------
 // The provider setup (migrations history table, transient-error resiliency) comes from CatalogDatabase.Configure,
 // the single definition shared with the CLI, the worker and bootstrap, so no host runs with weaker resiliency than
@@ -405,6 +447,8 @@ v1.MapAuthEndpoints(options);
 // The authenticated read surface: repos/pipelines, runs, lineage, cross-repo search, and schedules. Its safe methods
 // are open to an assistant run's delegated token (the MCP tools read from here); its few writes are not.
 v1.MapGroup(string.Empty).RequireAuthorization("read").AllowAssistantRead()
+    // On the assistant surface, withhold any text naming a column outside the semantic layer (AssistantScope).
+    .AddEndpointFilter<RouteGroupBuilder, AssistantRedactionFilter>()
     .MapCatalogEndpoints()
     .MapRepoTreeEndpoints()
     .MapGitHistoryEndpoints()
@@ -412,6 +456,8 @@ v1.MapGroup(string.Empty).RequireAuthorization("read").AllowAssistantRead()
     .MapActivityEndpoints()
     .MapLineageEndpoints()
     .MapSearchEndpoints()
+    // The semantic layer: the allow-listed schema, with its business context, as an assistant reads it.
+    .MapSemanticLayerEndpoints()
     .MapScheduleReadEndpoints()
     .MapNodeEndpoints()
     .MapDatasourceReadEndpoints()
@@ -436,10 +482,12 @@ v1.MapGroup(string.Empty).RequireAuthorization("read")
 // The operate surface: triggering/cancelling a run and managing schedules are privileged operations, so they live
 // under the "operate" scope rather than the read group.
 v1.MapGroup(string.Empty).RequireAuthorization("operate")
+    .AddEndpointFilter<RouteGroupBuilder, AssistantRedactionFilter>()
     .MapCatalogWriteEndpoints()
     .MapRunTriggerEndpoints()
     .MapDatasourceComputeEndpoints()
     .MapQueryEndpoints()
+    .MapQuestionExampleEndpoints()
     .MapScheduleWriteEndpoints()
     .MapRepoSourceWriteEndpoints()
     .MapSourceDiscoverEndpoints()
@@ -454,7 +502,13 @@ v1.MapGroup(string.Empty).RequireAuthorization("author")
 // The admin surface: user and role administration requires the "admin" scope (the admin role, or a bootstrap
 // token that requested it).
 v1.MapGroup(string.Empty).RequireAuthorization("admin")
-    .MapUserEndpoints();
+    .MapUserEndpoints()
+    .MapColumnPolicyEndpoints()
+    .MapSemanticLayerAdminEndpoints()
+    // Curating the semantic layer's example queries (the saved answers): list, correct, and delete what confirming stored.
+    .MapSemanticExampleAdminEndpoints()
+    // The Power BI reports the layer holds: upload (extracted in the isolated extractor), list, and remove.
+    .MapSemanticReportEndpoints();
 
 // The node protocol: compute nodes poll for work and report outcomes here, under the "node" scope. This is the
 // only way work leaves the control plane; a node needs no catalog access to take or finish a run.

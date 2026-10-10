@@ -1,0 +1,9 @@
+# Local-machine-only override, not committed to the shared compose file: port 14333 on this host is already
+# held by an unrelated pre-existing "sqlflow-dev-mssql" container, so this stack's mssql publishes on 14433
+# instead. The stack itself talks to `mssql` over the compose network regardless of this mapping. `!override`
+# replaces the base file's ports list instead of merging into it (Compose otherwise merges ports lists
+# additively rather than replacing them).
+services:
+  mssql:
+    ports: !override
+      - "14433:1433"

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <RootNamespace>SqlFlow.PbixExtractor</RootNamespace>
+    <Description>The isolated Power BI report extractor: a small HTTP service that runs tools/pbix-extract over an uploaded .pbix and answers with the report specification. It holds no catalog or warehouse credentials, so a hostile report can at worst crash this process, never reach the control plane that calls it.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The one place a report specification is produced and made canonical (ReportSpecs), shared with the
+         collector and the control plane so all three agree on what a specification is. -->
+    <ProjectReference Include="..\SqlFlow.Lineage\SqlFlow.Lineage.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SqlFlow.PbixExtractor.Tests" />
+  </ItemGroup>
+
+</Project>

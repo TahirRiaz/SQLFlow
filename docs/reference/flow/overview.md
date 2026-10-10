@@ -49,6 +49,7 @@ Every SQLFlow pipeline is a single YAML document. There is no control database a
 | `inv` | invoke | `YamlInvokeFlowLoader` | Triggers an Azure Data Factory pipeline or Automation runbook and waits for it to finish |
 | `hc` | health check | `YamlHealthCheckFlowLoader` | ML health check: learns per-date metric behavior and reports anomalies, level shifts, and missing data |
 | `scm` | source control | `YamlSourceControlFlowLoader` | Scripts a SQL Server database's objects with SMO into a git working tree, commits, and pushes over HTTPS |
+| `sch` | schema registration | `YamlSchemaRegistrationFlowLoader` | Registers an external SQL Server database's tables and views (columns, primary keys, scripts) in the catalog, with no data movement, so subscribers resolve onto them and questions know where to run |
 | `batch` | batch | `YamlBatchFlowLoader` | Ordered multi-flow run: lineage computes concurrency waves over member flows and runs them wave by wave |
 | `api` | acquisition | `YamlAcquireFlowLoader` | Fetches from a third-party system over any transport (HTTP, SFTP, S3, Azure Table) and lands the raw payloads in the lake |
 | `cpy` | copy | `YamlCopyFlowLoader` | Copies files byte-for-byte between storage endpoints (local disk, Azure Blob/ADLS, S3), with optional zip/unzip |
@@ -59,7 +60,7 @@ Every SQLFlow pipeline is a single YAML document. There is no control database a
 Any other value fails fast at parse time with a `FlowValidationException` carrying the full menu, instead of a confusing downstream validation failure:
 
 ```text
-<file>: unknown flowType '<x>'. Use 'ing' for a table-to-table ingestion flow, 'exp' for a file export, 'sp' for a stored-procedure flow, 'inv' for an ADF/Automation trigger, 'hc' for an ML health check, 'scm' for a database source-control snapshot, 'batch' for an ordered multi-flow batch, 'api' for a generic acquisition flow (HTTP / SFTP / Azure Table), 'cpy' for a file-copy flow (local / Azure storage / S3, with optional zip/unzip), 'cal' for a generated calendar dimension, 'trl' for a JSON translation flow (query result to shaped documents, optionally delivered to an API), or omit flowType for a file flow.
+<file>: unknown flowType '<x>'. Use 'ing' for a table-to-table ingestion flow, 'exp' for a file export, 'sp' for a stored-procedure flow, 'inv' for an ADF/Automation trigger, 'hc' for an ML health check, 'scm' for a database source-control snapshot, 'sch' to register an external database's tables and views in the catalog, 'batch' for an ordered multi-flow batch, 'api' for a generic acquisition flow (HTTP / SFTP / Azure Table), 'cpy' for a file-copy flow (local / Azure storage / S3, with optional zip/unzip), 'cal' for a generated calendar dimension, 'trl' for a JSON translation flow (query result to shaped documents, optionally delivered to an API), or omit flowType for a file flow.
 ```
 
 ## What every document kind shares
@@ -134,6 +135,7 @@ Every run writes its artifacts to a timestamped run folder under `.sqlflow/runs/
 | `flowType: hc` | `hc` |
 | `flowType: inv` | `inv` |
 | `flowType: scm` | `scm` |
+| `flowType: sch` | `sch` |
 | `flowType: batch` | `batch` |
 | `flowType: api` | `api` |
 | `flowType: cpy` | `cpy` |
@@ -311,6 +313,25 @@ schedule:
 ```
 
 Scripts the database's objects with SMO into the git working tree at `repository.path` (one folder per object type, the legacy layout), commits, and pushes over HTTPS. A snapshot is a maintenance flow: it is a full catalog pipeline (it schedules on the existing scheduler and keeps run history like any other flow) but it is excluded from the lineage graph, because it moves no data between catalog objects. `repository.secret` and `repository.username` must be whole `${env:...}` or `${keyvault:...}` references; a literal fails validation with `'<field>' must be a ${env:NAME} or ${keyvault:vault/secret} reference, never a literal.` Setting `repository.remote` without `repository.secret` also fails at parse time (pushing needs a credential: a BitBucket app password or a GitHub token). On `run`, `--dry-run` scripts and writes the tree without committing; `--no-push` commits locally only. The document's `name` is required; a missing one fails with `'name' is required for a source-control flow (flowType: scm).`
+
+### flowType: sch
+
+```yaml
+flowType: sch
+name: adventureworks_00_sch
+batch: sch
+connections:
+  aw: ${env:SQLFLOW_ADVENTUREWORKS_DB}
+source:
+  server: aw
+objects:
+  includeSchemas: [dbo]
+schedule:
+  cron: "0 4 * * *"
+  timezone: Europe/Oslo
+```
+
+Registers the tables and views of the source database in the catalog (columns, primary keys, the reconstructed `CREATE TABLE` or the view's definition) and links each one to the flow with a `Registers` edge. Nothing is loaded and the flow is out of every wave; its connection becomes a declared datasource, and a subscriber library with no `connections:` resolves its reads onto the registered objects. See [Schema registration flow](sch.md).
 
 ### flowType: batch
 

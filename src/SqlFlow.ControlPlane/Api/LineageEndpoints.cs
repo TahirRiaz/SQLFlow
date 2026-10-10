@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
+using SqlFlow.ControlPlane.Configuration;
 using SqlFlow.Core;
 using SqlFlow.Core.Files;
 
@@ -213,15 +215,110 @@ public sealed record SubscriberDossierDto(
     IReadOnlyList<SubscriberQueryDto> Queries,
     IReadOnlyList<SubscriberObjectDto> Objects);
 
-/// <summary>One query a subscriber runs, and the objects parsing it proved it reads.</summary>
+/// <summary>One query a subscriber runs, and the objects parsing it proved it reads. For a report visual's query,
+/// <c>SourceSql</c> is the same question as T-SQL over the source tables (null with <c>TranslationProblem</c> saying
+/// why when it could not be translated); for a declared query both are null, since its SQL already names the source
+/// tables.</summary>
 public sealed record SubscriberQueryDto(
-    int Ordinal, string Name, string ServerRef, string Sql, IReadOnlyList<string> ObjectKeys);
+    int Ordinal, string Name, string ServerRef, string Sql, IReadOnlyList<string> ObjectKeys,
+    string? SourceSql = null, string? TranslationProblem = null);
 
 /// <summary>One warehouse object a subscriber reads, located and named from the global object registry, with
 /// the subscriber's own queries that reference it.</summary>
 public sealed record SubscriberObjectDto(
     string Key, string? Database, string? Schema, string Name, string Kind, int? Level,
     IReadOnlyList<string> Queries);
+
+/// <summary>One field or measure a report visual projects, and the ROLE it plays in the question: whether it
+/// is the axis a chart is broken down BY (<c>Category</c>/<c>Rows</c>) or the value it plots
+/// (<c>Y</c>/<c>Values</c>), the one fact a flattened column list from SQL-derived lineage cannot express.
+/// <c>TableName</c> is the Power BI MODEL entity the field belongs to (e.g. <c>Sales</c>), not yet resolved to
+/// a physical warehouse object.</summary>
+public sealed record SubscriberReportFieldDto(
+    string Role, string TableName, string ColumnOrMeasure, bool IsMeasure);
+
+/// <summary>One visual on a report page: its chart type, its authored title (when it has one), the fields it
+/// projects with their roles, and the name of the <see cref="SubscriberQueryDto"/> it was rendered as, so a
+/// caller can go from "this visual plots Sales Amount as Y" to the actual SQL without matching text.
+/// <c>Questions</c> is 1-3 natural-language business questions this visual answers, generated from its title,
+/// chart type, and fields (POWERAI.md's "business-question field"), or written by a person; empty when neither has
+/// happened for this visual. <c>QuestionEntries</c> carries the same questions with what an editor needs (each one's
+/// id and origin), and <c>VisualKey</c> is the visual's catalog key, which a question is added under.</summary>
+public sealed record SubscriberReportVisualDto(
+    int Ordinal, string VisualType, string? Title, string QueryName,
+    IReadOnlyList<SubscriberReportFieldDto> Fields, IReadOnlyList<string> Questions,
+    string VisualKey, IReadOnlyList<SubscriberReportQuestionDto> QuestionEntries);
+
+/// <summary>One business question on a report visual.</summary>
+/// <param name="Id">The question's id, which edits and deletes address.</param>
+/// <param name="Question">The question text.</param>
+/// <param name="Origin"><c>generated</c> (a sync wrote it, and may replace it when the visual changes) or
+/// <c>manual</c> (a person added or edited it, and generation leaves it alone).</param>
+/// <param name="UpdatedBy">Who last added or edited it; null for a generated question.</param>
+/// <param name="UpdatedUtc">When a person last added or edited it.</param>
+public sealed record SubscriberReportQuestionDto(
+    long Id, string Question, string Origin, string? UpdatedBy, DateTime? UpdatedUtc);
+
+/// <summary>One page of a report, with the visuals on it. <c>ReportFile</c> names which <c>.pbix</c> the page
+/// came from, which only distinguishes pages when a subscriber's <c>pbix:</c> names a directory of several
+/// reports that can each independently have a "Page 1".</summary>
+public sealed record SubscriberReportPageDto(
+    string ReportFile, int Ordinal, string DisplayName, IReadOnlyList<SubscriberReportVisualDto> Visuals);
+
+/// <summary>One stored question matched against a typed one, with what already answers it. <c>Score</c> is how
+/// many searched terms it matched (unbounded, relative to the other matches in the same search) and is the
+/// trustworthy confidence signal; <c>Trusted</c> reports whether it cleared the deployment's configured
+/// threshold OR is the same question as the one typed (the same meaningful words), so a caller does not have to
+/// know what that threshold is to act on it, and a short question's verbatim twin is not refused for having too
+/// few words to count. <c>MatchedTerms</c> says
+/// WHICH terms hit, so an answer can explain why this question was considered relevant.
+/// <para>
+/// <c>Provenance</c> says which half of the store it came from: <c>powerbi</c> for a question derived from a
+/// report a team runs, <c>user-confirmed</c> for one a person accepted or corrected, in which case
+/// <c>ConfirmedBy</c> names who. A confirmed match is the stronger precedent at the same score, and
+/// <c>SubscriberKey</c>/<c>VisualTitle</c> are empty/null for one, since no report stands behind it.
+/// </para>
+/// <para>
+/// <c>SourceRef</c> is the datasource <c>Sql</c> runs against, in the same reference shape
+/// <c>prepare_query</c> takes: a whole <c>${env:...}</c>/<c>${keyvault:...}</c> token or an <c>@alias</c>.
+/// When the match was stored without one (every PowerBI-derived question, and any example confirmed before a
+/// datasource was chosen) it is worked out from the objects the SQL reads (<see cref="DatasourceInference"/>),
+/// and is null only when those objects do not point at exactly one declared datasource. A caller reads this to
+/// know which connection the query runs against instead of asking a person.
+/// </para>
+/// <para>
+/// <c>ExampleId</c> is the <c>CatalogSemanticExample.Id</c> behind this match, present only for a
+/// user-confirmed one: pass it to <c>POST /api/v1/powerai/questions/{id}/auto-run</c> (the
+/// <c>auto_run_trusted_match</c> MCP tool) to run a TRUSTED match's SQL immediately, capped small, without a
+/// person confirming it again. Null for a PowerBI-derived question, which has no such row.
+/// </para>
+/// <para>
+/// For a PowerBI-derived question, <c>Sql</c> is the visual's query translated into T-SQL over the source tables the
+/// report's model loads from, runnable through <c>prepare_query</c>; <c>ReportSql</c> is the visual's own query
+/// (model names, no joins), kept as evidence and never run. When the visual's query could not be translated,
+/// <c>Sql</c> is empty and <c>TranslationProblem</c> says why, so the match is a lead rather than an answer.
+/// </para></summary>
+public sealed record SimilarQuestionDto(
+    string Question, int Score, bool Trusted, IReadOnlyList<string> MatchedTerms, string Provenance,
+    string Sql, IReadOnlyList<string> ObjectKeys, string SubscriberKey, string? VisualTitle,
+    string? ConfirmedBy, string? SourceRef = null, long? ExampleId = null,
+    string? ReportSql = null, string? TranslationProblem = null);
+
+/// <summary>The matches for a question, with the terms actually searched for (the LLM's expansion of the typed
+/// question, or its own words when expansion is off or unavailable) and the score threshold they were judged
+/// against, so a caller explains its own confidence rather than inventing one.</summary>
+public sealed record SimilarQuestionsDto(
+    string Question, IReadOnlyList<string> SearchedTerms, int ScoreThreshold,
+    IReadOnlyList<SimilarQuestionDto> Matches);
+
+/// <summary>The Power BI report structure behind one subscriber: every page, the visuals on it, and each
+/// field's role. This is the consumption-side answer to "what questions does this dashboard already ask, and in
+/// what shape", distinct from <see cref="SubscriberDossierDto"/>'s queries/objects (which answer "what tables
+/// does it read"). Empty <c>Pages</c> means the subscriber has no extracted report, not that one failed to load.
+/// The report's semantic model (measures, calculated columns, relationships) is served by the semantic layer on the
+/// warehouse table each model table loads from, where it is checked against the column allow-list.</summary>
+public sealed record SubscriberReportDto(
+    string SubscriberKey, string SubscriberName, IReadOnlyList<SubscriberReportPageDto> Pages);
 
 /// <summary>One repo whose lineage references an object: how many edges in that repo touch it, and whether any of
 /// them writes/creates it (the repo where a flow populates it). The list is ranked so the writing repo comes
@@ -357,6 +454,8 @@ public static class LineageEndpoints
         lineage.MapGet("/script", GetNodeScriptAsync).WithName("GetLineageNodeScript");
         lineage.MapGet("/subscribers", ListSubscribersAsync).WithName("ListLineageSubscribers");
         lineage.MapGet("/subscribers/dossier", GetSubscriberDossierAsync).WithName("GetLineageSubscriberDossier");
+        lineage.MapGet("/subscribers/report", GetSubscriberReportAsync).WithName("GetLineageSubscriberReport");
+        lineage.MapGet("/subscribers/similar-questions", FindSimilarQuestionsAsync).WithName("FindSimilarQuestions");
         lineage.MapGet("/projects", ListProjectsAsync).WithName("ListLineageProjects");
         lineage.MapGet("/project-graph", GetProjectGraphAsync).WithName("GetLineageProjectGraph");
 
@@ -608,7 +707,70 @@ public static class LineageEndpoints
                 o.Key, o.ServerRef, o.Database, o.Schema, o.Name, o.Kind, o.Level, o.Definition, o.Script,
                 o.ScriptTier, o.ScriptUpdatedUtc, o.KeyColumns, o.KeyOrigin, o.FirstSeenUtc, o.LastSeenUtc))
             .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-        return dto is null ? NotFound("object", key) : TypedResults.Ok(dto);
+        if (dto is null)
+        {
+            return NotFound("object", key);
+        }
+
+        return TypedResults.Ok(await RedactScriptIfIncompleteAsync(db, dto, ct).ConfigureAwait(false));
+    }
+
+    /// <summary>Whether every column the catalog knows for <paramref name="objectKey"/> is on the column
+    /// allow-list - the same completeness bar <c>ColumnPolicyGuard</c> holds a <c>SELECT *</c> to. An object
+    /// with no catalogued columns at all (most procedures) is vacuously fully allowed: there is nothing for
+    /// this rule to withhold.</summary>
+    private static async Task<bool> IsFullyAllowedAsync(CatalogDbContext db, string objectKey, CancellationToken ct)
+    {
+        var columnNames = await db.ObjectColumns.AsNoTracking()
+            .Where(c => c.ObjectKey == objectKey)
+            .Select(c => c.Name)
+            .ToListAsync(ct).ConfigureAwait(false);
+        if (columnNames.Count == 0)
+        {
+            return true;
+        }
+
+        var allowedCount = await db.ColumnPolicies.AsNoTracking()
+            .CountAsync(p => p.ObjectKey == objectKey && p.IsAllowed && columnNames.Contains(p.ColumnName), ct)
+            .ConfigureAwait(false);
+        return allowedCount == columnNames.Count;
+    }
+
+    /// <summary>What a redacted <c>Definition</c>/<c>Script</c> reads as, so a caller sees WHY the code is
+    /// missing rather than an unexplained null.</summary>
+    private const string ScriptHiddenNote =
+        "Hidden: not every column of this object is on the PowerAI column allow-list, and the object's own " +
+        "code can name a restricted column anywhere in its text, not only in a structured column list.";
+
+    /// <summary>
+    /// Closes the gap the column allow-list otherwise leaves open: <see cref="ColumnPolicyGuard"/> and the
+    /// paged column list both hide a denied column's NAME from an AI assistant, but the object's raw
+    /// <c>Definition</c>/<c>Script</c> (a view/procedure body, or a table's generated CREATE TABLE) names
+    /// every column verbatim regardless of policy, so a denied column's name (and type) was reachable through
+    /// this field even though the structured column list correctly hid it. Since a definition's body can
+    /// reference a restricted column anywhere - a WHERE clause, a join, a computed expression - redacting just
+    /// the offending identifier out of otherwise-arbitrary SQL text is not safe to do automatically, so this
+    /// withholds the whole script rather than partially editing it, exactly like <c>ColumnPolicyGuard</c>
+    /// refuses a whole <c>SELECT *</c> rather than guessing which columns the caller meant.
+    /// </summary>
+    private static async Task<ObjectDetailDto> RedactScriptIfIncompleteAsync(
+        CatalogDbContext db, ObjectDetailDto detail, CancellationToken ct)
+    {
+        if (detail.Definition is null && detail.Script is null)
+        {
+            return detail;
+        }
+
+        if (await IsFullyAllowedAsync(db, detail.Key, ct).ConfigureAwait(false))
+        {
+            return detail;
+        }
+
+        return detail with
+        {
+            Definition = detail.Definition is null ? null : ScriptHiddenNote,
+            Script = detail.Script is null ? null : ScriptHiddenNote,
+        };
     }
 
     /// <summary>
@@ -640,11 +802,19 @@ public static class LineageEndpoints
             var obj = await db.Objects.AsNoTracking().Where(o => o.Key == objectKey)
                 .Select(o => new { o.Key, o.Kind, o.Name, o.Definition, o.Script, o.ScriptTier })
                 .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-            return obj is null
-                ? null
-                : new NodeScriptDto(
-                    obj.Key, obj.Kind, "sql", obj.Definition ?? obj.Script,
-                    obj.Definition is not null ? "Module" : obj.ScriptTier, obj.Name);
+            if (obj is null)
+            {
+                return null;
+            }
+
+            var body = obj.Definition ?? obj.Script;
+            if (body is not null && !await IsFullyAllowedAsync(db, obj.Key, ct).ConfigureAwait(false))
+            {
+                body = ScriptHiddenNote;
+            }
+
+            return new NodeScriptDto(
+                obj.Key, obj.Kind, "sql", body, obj.Definition is not null ? "Module" : obj.ScriptTier, obj.Name);
         }
 
         var direct = await ObjectScriptAsync(key).ConfigureAwait(false);
@@ -699,9 +869,14 @@ public static class LineageEndpoints
 
         var (p, size) = PageRequest.Normalize(page, pageSize);
         // A wide table's column list can be large, so it is paged; ordered by the captured ordinal, then name as a
-        // stable secondary key so a page boundary is deterministic.
+        // stable secondary key so a page boundary is deterministic. Only a column an admin has explicitly
+        // allow-listed (CatalogColumnPolicy) appears here: this same list is what the MCP server hands an AI
+        // assistant to reason about the table, so a column with no policy row - never reviewed - is just as
+        // hidden from search/describe as one explicitly denied, keeping the assistant from ever learning the
+        // column exists, not merely from reading it.
         var ordered = db.ObjectColumns.AsNoTracking()
-            .Where(c => c.ObjectKey == key)
+            .Where(c => c.ObjectKey == key
+                && db.ColumnPolicies.Any(pol => pol.IsAllowed && pol.ObjectKey == c.ObjectKey && pol.ColumnName == c.Name))
             .OrderBy(c => c.Ordinal).ThenBy(c => c.Name);
         var total = await ordered.LongCountAsync(ct).ConfigureAwait(false);
         var columns = await ordered
@@ -943,8 +1118,14 @@ public static class LineageEndpoints
             return NotFound("object", key);
         }
 
+        detail = await RedactScriptIfIncompleteAsync(db, detail, ct).ConfigureAwait(false);
+
+        // A column with no allow-list entry (CatalogColumnPolicy) is left out of the dossier for the same reason
+        // it is left out of the paged column list: this payload is what an AI assistant reasons about the
+        // object from.
         var columns = await db.ObjectColumns.AsNoTracking()
-            .Where(c => c.ObjectKey == key)
+            .Where(c => c.ObjectKey == key
+                && db.ColumnPolicies.Any(pol => pol.IsAllowed && pol.ObjectKey == c.ObjectKey && pol.ColumnName == c.Name))
             .OrderBy(c => c.Ordinal).ThenBy(c => c.Name)
             .Take(MaxDossierRows)
             .Select(c => new ObjectColumnDto(c.Ordinal, c.Name, c.DataType, c.Nullable, c.Tier))
@@ -962,9 +1143,25 @@ public static class LineageEndpoints
                 detail.Database, detail.Schema, e.Tier, detail.Kind))
             .ToListAsync(ct).ConfigureAwait(false);
 
-        // The interpreted data model, both directions. Rows are repo-scoped (each repo's code exhibits its own
-        // observations), so the same relationship is deduplicated here by its identity, keeping the strongest
-        // interpretation (constraint over join), the highest occurrence count, and the first constraint name.
+        var (references, referencedBy) = await LoadRelationshipsAsync(db, key, ct).ConfigureAwait(false);
+
+        // Who consumes this object. The read edges already carry it, but a raw subscriber node key tells a person
+        // nothing; this resolves them to the reports and their owners, which is the whole point of the model.
+        var subscribers = await LoadObjectSubscribersAsync(db, key, ct).ConfigureAwait(false);
+
+        return TypedResults.Ok(new ObjectDossierDto(detail, columns, edges, references, referencedBy, subscribers));
+    }
+
+    /// <summary>
+    /// The interpreted data model of one object, both directions: what it references and what references it. Rows
+    /// are repo-scoped (each repo's code exhibits its own observations), so the same relationship is deduplicated
+    /// here by its identity, keeping the strongest interpretation (constraint over join), the highest occurrence
+    /// count, and the first constraint name. Shared by the object dossier and the semantic layer's table bundle,
+    /// so both read the one folding of the relationship rows.
+    /// </summary>
+    internal static async Task<(IReadOnlyList<ObjectRelationshipDto> References, IReadOnlyList<ObjectRelationshipDto> ReferencedBy)>
+        LoadRelationshipsAsync(CatalogDbContext db, string key, CancellationToken ct)
+    {
         var rawRelationships = await db.ObjectRelationships.AsNoTracking()
             .Where(r => r.FromObjectKey == key || r.ToObjectKey == key)
             .OrderBy(r => r.Id)
@@ -1018,11 +1215,7 @@ public static class LineageEndpoints
             .OrderByDescending(r => r.Occurrences).ThenBy(r => r.OtherName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        // Who consumes this object. The read edges already carry it, but a raw subscriber node key tells a person
-        // nothing; this resolves them to the reports and their owners, which is the whole point of the model.
-        var subscribers = await LoadObjectSubscribersAsync(db, key, ct).ConfigureAwait(false);
-
-        return TypedResults.Ok(new ObjectDossierDto(detail, columns, edges, references, referencedBy, subscribers));
+        return (references, referencedBy);
     }
 
     /// <summary>The lineage relations that mean a flow POPULATES the object (as opposed to reading or merely
@@ -1498,7 +1691,8 @@ public static class LineageEndpoints
             .ToListAsync(ct).ConfigureAwait(false);
 
         var queries = queryRows
-            .Select(q => new SubscriberQueryDto(q.Ordinal, q.Name, q.ServerRef, q.Sql, SplitKeys(q.ObjectKeys)))
+            .Select(q => new SubscriberQueryDto(
+                q.Ordinal, q.Name, q.ServerRef, q.Sql, SplitKeys(q.ObjectKeys), q.SourceSql, q.TranslationProblem))
             .ToList();
 
         // The object side: every key any of the queries read, with the queries that read it. Built from the
@@ -1556,9 +1750,168 @@ public static class LineageEndpoints
             ? []
             : joined.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
+    /// <summary>
+    /// Matches stored business questions against a typed one, returning each with the SQL that already answers
+    /// it (POWERAI.md Section 6). The stored questions are ranked by how many expanded business-vocabulary terms
+    /// they match. A caller that is itself an LLM (the MCP tool's usual caller) should expand the question into
+    /// that vocabulary itself and pass the result as <paramref name="expandedTerms"/>, which skips the
+    /// server-side expansion call entirely; when <paramref name="expandedTerms"/> is omitted or empty, an LLM
+    /// here expands the question instead (when <c>ExpandSynonyms</c> is on), so a non-LLM caller (a script, a
+    /// future GUI search box) still gets expansion without having to reimplement it. Reports 501 when retrieval
+    /// is not configured, rather than silently answering with a weaker mechanism: a caller must be able to tell
+    /// "nothing matched this question" from "this deployment cannot answer that kind of question at all".
+    /// <para>
+    /// Searches the whole estate by default, since a question about revenue is worth answering from whichever
+    /// repo's report first asked it; <paramref name="repoId"/> narrows it to one repo when a caller wants that.
+    /// </para>
+    /// </summary>
+    private static async Task<Results<Ok<SimilarQuestionsDto>, ProblemHttpResult>> FindSimilarQuestionsAsync(
+        string question, HttpContext http, CatalogDbContext db, int? topK, Guid? repoId,
+        string[]? expandedTerms, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(question))
+        {
+            return TypedResults.Problem(
+                detail: "The 'question' query parameter must carry the question to search for.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Empty question");
+        }
+
+        var retrieval = http.RequestServices
+            .GetRequiredService<IOptions<ControlPlaneOptions>>().Value.PowerAI.Retrieval;
+        if (!retrieval.Enabled)
+        {
+            return TypedResults.Problem(
+                detail: "Question retrieval is not enabled on this deployment "
+                    + "(ControlPlane:PowerAI:Retrieval:Enabled).",
+                statusCode: StatusCodes.Status501NotImplemented, title: "Retrieval not configured");
+        }
+
+        var requested = Math.Clamp(topK ?? retrieval.DefaultTopK, 1, MaxSimilarQuestions);
+        var callerTerms = expandedTerms?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? [];
+
+        var result = callerTerms.Count > 0
+            ? await Background.QuestionSearch
+                .FindSimilarAsync(db, question.Trim(), requested, callerTerms, repoId, ct)
+                .ConfigureAwait(false)
+            : await Background.QuestionSearch
+                .FindSimilarAsync(
+                    db, question.Trim(), requested,
+                    // Absent when expansion is switched off, in which case the search runs on the typed
+                    // words alone.
+                    http.RequestServices.GetService<SqlFlow.Assistant.QuestionExpander>(),
+                    repoId, ct)
+                .ConfigureAwait(false);
+
+        var matches = new List<SimilarQuestionDto>(result.Matches.Count);
+        foreach (var m in result.Matches)
+        {
+            // A match stored without a datasource (every PowerBI-derived question, and any example confirmed
+            // before one was chosen) still says where it runs through the objects it reads, so a caller is not
+            // left to ask a person for a connection the catalog already knows.
+            var sourceRef = m.SourceRef;
+            if (string.IsNullOrWhiteSpace(sourceRef) && m.Sql.Length > 0)
+            {
+                sourceRef = (await DatasourceInference.InferAsync(db, m.Sql, m.ObjectKeys, ct).ConfigureAwait(false))
+                    .Reference;
+            }
+
+            matches.Add(new SimilarQuestionDto(
+                m.Question, m.Score, m.Score >= retrieval.RankThreshold || m.SameQuestion, m.MatchedTerms,
+                m.Provenance, m.Sql, m.ObjectKeys, m.SubscriberKey, m.VisualTitle, m.ConfirmedBy, sourceRef,
+                m.ExampleId, m.ReportSql, m.TranslationProblem));
+        }
+
+        return TypedResults.Ok(new SimilarQuestionsDto(
+            question.Trim(), result.SearchedTerms, retrieval.RankThreshold, matches));
+    }
+
+    /// <summary>The most matches one search will return however many a caller asks for. Past a handful, extra
+    /// examples stop grounding an answer and start crowding out the close ones.</summary>
+    private const int MaxSimilarQuestions = 20;
+
+    /// <summary>The report structure behind one subscriber: every page, the visuals on it, and each field's role.</summary>
+    private static async Task<Results<Ok<SubscriberReportDto>, ProblemHttpResult>> GetSubscriberReportAsync(
+        string key, CatalogDbContext db, CancellationToken ct)
+    {
+        var subscriber = await db.Subscribers.AsNoTracking()
+            .FirstOrDefaultAsync(s => s.ObjectKey == key, ct).ConfigureAwait(false);
+        if (subscriber is null)
+        {
+            return NotFound("subscriber", key);
+        }
+
+        var pages = await LoadSubscriberReportPagesAsync(db, repoId: null, key, reportFile: null, ct).ConfigureAwait(false);
+        return TypedResults.Ok(new SubscriberReportDto(subscriber.ObjectKey, subscriber.Name, pages));
+    }
+
+    /// <summary>
+    /// The pages, visuals, fields and business questions the last sync wrote for a subscriber, optionally narrowed to
+    /// one repo and to one report label. Built from the tables a sync writes keyed by derived string
+    /// (<c>PageKey</c>/<c>VisualKey</c>), loaded parent-to-child and grouped in memory rather than joined in SQL, since
+    /// a report's total row count is small enough per subscriber that the extra round trips cost nothing and the code
+    /// stays as readable as <see cref="GetSubscriberDossierAsync"/>'s own grouping.
+    /// </summary>
+    internal static async Task<IReadOnlyList<SubscriberReportPageDto>> LoadSubscriberReportPagesAsync(
+        CatalogDbContext db, Guid? repoId, string subscriberKey, string? reportFile, CancellationToken ct)
+    {
+        var pageQuery = db.SubscriberReportPages.AsNoTracking().Where(p => p.SubscriberKey == subscriberKey);
+        if (repoId is { } repo)
+        {
+            pageQuery = pageQuery.Where(p => p.RepoId == repo);
+        }
+
+        if (reportFile is not null)
+        {
+            pageQuery = pageQuery.Where(p => p.ReportFile == reportFile);
+        }
+
+        var pageRows = await pageQuery
+            .OrderBy(p => p.ReportFile).ThenBy(p => p.Ordinal)
+            .Take(MaxDossierRows)
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        var pageKeys = pageRows.Select(p => p.PageKey).ToList();
+        var visualRows = await db.SubscriberReportVisuals.AsNoTracking()
+            .Where(v => pageKeys.Contains(v.PageKey))
+            .OrderBy(v => v.Ordinal)
+            .Take(MaxDossierRows)
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        var visualKeys = visualRows.Select(v => v.VisualKey).ToList();
+        var fieldRows = await db.SubscriberReportFields.AsNoTracking()
+            .Where(f => visualKeys.Contains(f.VisualKey))
+            .Take(MaxDossierRows)
+            .ToListAsync(ct).ConfigureAwait(false);
+        var questionRows = await db.SubscriberReportVisualQuestions.AsNoTracking()
+            .Where(q => visualKeys.Contains(q.VisualKey) && (repoId == null || q.RepoId == repoId))
+            .OrderBy(q => q.Ordinal).ThenBy(q => q.Id)
+            .Take(MaxDossierRows)
+            .ToListAsync(ct).ConfigureAwait(false);
+
+        var fieldsByVisual = fieldRows.ToLookup(f => f.VisualKey);
+        var questionsByVisual = questionRows.ToLookup(q => q.VisualKey);
+        var visualsByPage = visualRows
+            .Select(v => (v.PageKey, Dto: new SubscriberReportVisualDto(
+                v.Ordinal, v.VisualType, v.Title, v.QueryName,
+                fieldsByVisual[v.VisualKey]
+                    .Select(f => new SubscriberReportFieldDto(f.Role, f.TableName, f.ColumnOrMeasure, f.IsMeasure))
+                    .ToList(),
+                questionsByVisual[v.VisualKey].Select(q => q.Question).ToList(),
+                v.VisualKey,
+                questionsByVisual[v.VisualKey]
+                    .Select(q => new SubscriberReportQuestionDto(q.Id, q.Question, q.Origin, q.UpdatedBy, q.UpdatedUtc))
+                    .ToList())))
+            .ToLookup(x => x.PageKey, x => x.Dto);
+
+        return pageRows
+            .Select(p => new SubscriberReportPageDto(
+                p.ReportFile, p.Ordinal, p.DisplayName, visualsByPage[p.PageKey].ToList()))
+            .ToList();
+    }
+
     /// <summary>The subscribers consuming one object, for its dossier: the read edges attributed to a subscriber
     /// node, joined to the consumer rows and to the individual queries that name the object.</summary>
-    private static async Task<IReadOnlyList<ObjectSubscriberDto>> LoadObjectSubscribersAsync(
+    internal static async Task<IReadOnlyList<ObjectSubscriberDto>> LoadObjectSubscribersAsync(
         CatalogDbContext db, string objectKey, CancellationToken ct)
     {
         // A subscriber's facts are module-attributed (no flow), so its edges are exactly the flowless ones whose
@@ -2607,7 +2960,7 @@ public static class LineageEndpoints
         _ => comparison,
     };
 
-    private static IReadOnlyList<string> SplitColumns(string columns)
+    internal static IReadOnlyList<string> SplitColumns(string columns)
         => columns.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     /// <summary>
@@ -2617,7 +2970,7 @@ public static class LineageEndpoints
     /// legitimately differ if a relationship was recorded oddly, so the pairing stops at the shorter side
     /// rather than throwing.
     /// </summary>
-    private static string RenderOn(
+    internal static string RenderOn(
         string leftName, IReadOnlyList<string> leftColumns, string rightName, IReadOnlyList<string> rightColumns,
         IReadOnlyList<string> operators)
         => string.Join(" AND ", leftColumns

@@ -1,4 +1,5 @@
-﻿using SqlFlow.Core;
+﻿using System.Text;
+using SqlFlow.Core;
 using SqlFlow.Core.Files;
 using SqlFlow.Core.Invoke;
 using SqlFlow.Core.Lineage;
@@ -21,15 +22,24 @@ public sealed class FlowSetCollector
         new YamlStoredProcedureFlowLoader(), new YamlInvokeFlowLoader(), new YamlHealthCheckFlowLoader(),
         new YamlSourceControlFlowLoader(), new YamlBatchFlowLoader(), new YamlAcquireFlowLoader(),
         new YamlCopyFlowLoader(), new YamlSftpFlowLoader(), new YamlCalendarFlowLoader(),
-        new YamlTranslateFlowLoader());
+        new YamlTranslateFlowLoader(), new YamlSchemaRegistrationFlowLoader());
 
     private readonly YamlScheduleLibraryLoader _scheduleLibraries = new();
 
     private readonly YamlSubscriberLibraryLoader _subscriberLibraries = new();
 
-    public CollectionResult Collect(string flowDirectory)
+    public CollectionResult Collect(string flowDirectory) => Collect(flowDirectory, []);
+
+    /// <summary>
+    /// Scans <paramref name="flowDirectory"/>. <paramref name="storedSpecs"/> are the report specifications the
+    /// semantic layer holds for this estate (uploaded ones, and the extractions an earlier sync kept); a subscriber
+    /// reads its uploaded reports from them, and falls back to its kept extractions wherever this machine cannot
+    /// extract a report the repository declares. The offline CLI passes none.
+    /// </summary>
+    public CollectionResult Collect(string flowDirectory, IReadOnlyList<StoredReportSpec> storedSpecs)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(flowDirectory);
+        ArgumentNullException.ThrowIfNull(storedSpecs);
         var root = Path.GetFullPath(flowDirectory);
         if (!Directory.Exists(root))
         {
@@ -40,10 +50,10 @@ public sealed class FlowSetCollector
         // A flow document is any *.yaml under the estate; the historical .flow.yaml suffix is no longer required (it
         // still matches, so existing repos keep working). A .yaml that does not parse as a flow is a library, config,
         // or unrelated file and is silently ignored, not reported as broken. Shared-schedule libraries are handled by
-        // ResolveSchedules and subscriber libraries by CollectSubscribers, so both are excluded from the flow parse
-        // here.
+        // ResolveSchedules, subscriber libraries by CollectSubscribers, and report specifications by the subscriber
+        // that declares them, so all three are excluded from the flow parse here.
         var files = Directory.EnumerateFiles(root, "*.yaml", SearchOption.AllDirectories)
-            .Where(f => !IsScheduleLibraryFile(f) && !IsSubscriberLibraryFile(f))
+            .Where(f => !IsScheduleLibraryFile(f) && !IsSubscriberLibraryFile(f) && !ReportSpecs.IsSpecFile(f))
             .OrderBy(f => f, StringComparer.Ordinal);
 
         // File producers (invokes that land files) and consumers (file ingestions) are gathered across the whole
@@ -85,7 +95,7 @@ public sealed class FlowSetCollector
 
         // The consumption side: who reads the warehouse the flows above just built. Collected after the flows so a
         // subscriber's read facts join a graph whose producing side is already fully known.
-        CollectSubscribers(result, root);
+        CollectSubscribers(result, root, storedSpecs);
 
         var duplicates = result.Flows
             .GroupBy(f => f.Node.Name, StringComparer.OrdinalIgnoreCase)
@@ -136,11 +146,27 @@ public sealed class FlowSetCollector
     /// Nothing in the edge model, the execution plan, or the wave computation needed changing to hold them.
     /// </para>
     /// </summary>
-    private void CollectSubscribers(CollectionResult result, string root)
+    private void CollectSubscribers(CollectionResult result, string root, IReadOnlyList<StoredReportSpec> storedSpecs)
     {
         var files = Directory.EnumerateFiles(root, "*.yaml", SearchOption.AllDirectories)
             .Where(IsSubscriberLibraryFile)
             .OrderBy(f => f, StringComparer.Ordinal);
+
+        var storedBySubscriber = new Dictionary<string, List<StoredReportSpec>>(StringComparer.Ordinal);
+        foreach (var spec in storedSpecs)
+        {
+            if (!storedBySubscriber.TryGetValue(spec.SubscriberKey, out var list))
+            {
+                list = [];
+                storedBySubscriber[spec.SubscriberKey] = list;
+            }
+
+            list.Add(spec);
+        }
+
+        // Everything the consumption side is built from, in a stable order, so an unchanged estate fingerprints the
+        // same on every machine and every pass.
+        var fingerprint = new StringBuilder();
 
         // Subscriber names are the estate's identity for a consumer, so a name declared twice (across files, or in
         // one file) would merge two different reports into one node. The first wins and the collision is reported.
@@ -160,6 +186,8 @@ public sealed class FlowSetCollector
                 continue;
             }
 
+            fingerprint.Append("library\n").Append(relative).Append('\n').Append(ReportSpecs.Hash(yaml)).Append('\n');
+
             var library = _subscriberLibraries.Parse(yaml, relative);
             result.Warnings.AddRange(library.Warnings);
             RegisterServers(result, library.Connections.Values);
@@ -174,28 +202,49 @@ public sealed class FlowSetCollector
                 }
 
                 declared.Add(subscriber.Name, relative);
-                result.Subscribers.Add(CollectSubscriber(result, subscriber, library.Connections, relative));
+                var key = NodeKey.For(ServerIdentity.Subscriber, database: null, schema: null, subscriber.Name);
+                var collected = CollectSubscriber(
+                    result, subscriber, key, library.Connections, relative, root,
+                    storedBySubscriber.TryGetValue(key, out var stored) ? stored : [], fingerprint);
+                result.Subscribers.Add(collected);
+
+                // Only now is it known whether anything links the subscriber: a report uploaded to the semantic layer
+                // links one its library file leaves bare.
+                if (collected.Queries.Count == 0
+                    && library.UnlinkedWarnings.TryGetValue(subscriber.Name, out var unlinked))
+                {
+                    result.Warnings.Add(unlinked);
+                }
             }
         }
 
         result.Subscribers.Sort((a, b) =>
             string.Compare(a.Subscriber.Name, b.Subscriber.Name, StringComparison.OrdinalIgnoreCase));
+        result.SubscriberInputHash = ReportSpecs.Hash(fingerprint.ToString());
     }
 
     /// <summary>Parses one subscriber's queries into read facts plus the per-query evidence the catalog shows.</summary>
     private static CollectedSubscriber CollectSubscriber(
         CollectionResult result,
         Core.Subscribers.DataSubscriber subscriber,
+        string subscriberKey,
         IReadOnlyDictionary<string, Core.Connections.DataSource> connections,
-        string file)
+        string file,
+        string root,
+        IReadOnlyList<StoredReportSpec> stored,
+        StringBuilder fingerprint)
     {
-        var subscriberKey = NodeKey.For(ServerIdentity.Subscriber, database: null, schema: null, subscriber.Name);
         var queries = new List<CollectedSubscriberQuery>(subscriber.Queries.Count);
 
-        foreach (var query in subscriber.Queries)
+        // A subscriber backed by a report contributes the queries its VISUALS ask, on top of any the document
+        // declares by hand. Both kinds go through the identical parse below, so a visual's question becomes
+        // lineage exactly as a transcribed query does and there is no second consumption path.
+        var extracted = ReadReports(result, subscriber, subscriberKey, connections, file, root, stored, fingerprint);
+
+        foreach (var query in subscriber.Queries.Concat(extracted.Queries))
         {
             // The loader already rejected a query whose server is not declared, so the lookup cannot miss.
-            var serverRef = ServerIdentity.From(connections[query.Server].ConnectionRef);
+            var serverRef = SubscriberServerRef(query.Server, connections);
             var label = $"subscriber '{subscriber.Name}' query '{query.Name}'";
 
             var deps = TSqlLineageExtractor.Extract(query.Sql, label, defaultDatabase: null);
@@ -236,6 +285,7 @@ public sealed class FlowSetCollector
                 Name = query.Name,
                 ServerRef = serverRef,
                 Sql = query.Sql,
+                ReportFile = query.ReportFile,
                 Objects = objects,
             });
         }
@@ -246,8 +296,524 @@ public sealed class FlowSetCollector
             NodeKey = subscriberKey,
             File = file,
             Queries = queries,
+            Pages = extracted.Pages,
+            Models = extracted.Models,
+            ExtractedSpecs = extracted.ExtractedSpecs,
+            RetainedExtractedReports = extracted.RetainedExtractedReports,
         };
     }
+
+    /// <summary>
+    /// Reads every report behind a subscriber, returning the questions their visuals ask as queries plus each
+    /// report's page/visual/field structure and semantic model. A report records which questions were already worth
+    /// asking and how they were answered, so reading it beats asking a person to transcribe every visual; the
+    /// structure additionally keeps each field's ROLE, which the SQL alone cannot express.
+    /// <para>
+    /// A report reaches a subscriber from one of three places, all read as the same specification:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>What <c>pbix:</c> declares (<see cref="DeclaredReports"/>): a <c>.pbix</c> the extractor reads, a
+    /// committed specification, or a directory of either.</item>
+    /// <item>A specification uploaded to the semantic layer for this subscriber. A label the repository already
+    /// supplies wins over an upload of the same name, so the repository stays the authority on what it declares.</item>
+    /// <item>The copy an earlier sync kept of a declared <c>.pbix</c>, used only where this machine cannot extract it
+    /// (no extractor, or the file is not here, as in a control plane syncing a clone whose reports are
+    /// git-ignored).</item>
+    /// </list>
+    /// <para>
+    /// Every failure is a warning, never a throw: an unreadable or absent report must leave the rest of the estate's
+    /// lineage intact, exactly as an unparseable flow document does.
+    /// </para>
+    /// </summary>
+    private static ExtractedReport ReadReports(
+        CollectionResult result,
+        Core.Subscribers.DataSubscriber subscriber,
+        string subscriberKey,
+        IReadOnlyDictionary<string, Core.Connections.DataSource> connections,
+        string file,
+        string root,
+        IReadOnlyList<StoredReportSpec> stored,
+        StringBuilder fingerprint)
+    {
+        var declaresReport = !string.IsNullOrWhiteSpace(subscriber.Pbix);
+        var uploads = stored
+            .Where(s => string.Equals(s.Origin, ReportSpecOrigin.Upload, StringComparison.Ordinal))
+            .OrderBy(s => s.ReportFile, StringComparer.Ordinal)
+            .ToList();
+        var kept = new SortedDictionary<string, string>(StringComparer.Ordinal);
+        foreach (var spec in stored.Where(s => string.Equals(s.Origin, ReportSpecOrigin.Extracted, StringComparison.Ordinal)))
+        {
+            kept.TryAdd(spec.ReportFile, spec.Yaml);
+        }
+
+        // A subscriber that no longer declares a report has no use for an extraction kept for it.
+        IReadOnlySet<string>? noneRetained = new HashSet<string>(StringComparer.Ordinal);
+
+        if (!declaresReport && uploads.Count == 0)
+        {
+            return new ExtractedReport([], [], [], [], noneRetained);
+        }
+
+        // The report's queries run against the subscriber's own connection, since a visual names model entities
+        // rather than a server; a registered-source subscriber's report resolves against the registered databases.
+        // Without either there is nothing to resolve them against.
+        var server = subscriber.IsRegisteredSource
+            ? Core.Subscribers.DataSubscriber.RegisteredSource
+            : subscriber.Server
+                ?? (subscriber.Queries.Count > 0 ? subscriber.Queries[0].Server : null)
+                ?? (connections.Count == 1 ? connections.Keys.First() : null);
+        if (server is null
+            || (!subscriber.IsRegisteredSource && !connections.ContainsKey(server)))
+        {
+            var what = declaresReport ? $"declares 'pbix: {subscriber.Pbix}'" : "has an uploaded report";
+            result.Warnings.Add(
+                $"{file}: subscriber '{subscriber.Name}' {what} but no usable 'server' to resolve its visuals' tables "
+                + "against; the report was not extracted. Declare the connection alias the report reads through.");
+            return new ExtractedReport([], [], [], [], declaresReport ? null : noneRetained);
+        }
+
+        var inputs = new SortedDictionary<string, ReportInput>(StringComparer.Ordinal);
+        var fresh = new List<ExtractedReportSpec>();
+        var retained = declaresReport
+            ? DeclaredReports(result, subscriber, file, root, kept, inputs, fresh)
+            : noneRetained;
+
+        foreach (var upload in uploads)
+        {
+            if (inputs.ContainsKey(upload.ReportFile))
+            {
+                result.Warnings.Add(
+                    $"{file}: subscriber '{subscriber.Name}' has an uploaded report '{upload.ReportFile}', but the "
+                    + "repository declares a report with the same name, which is used instead. Delete the upload or "
+                    + "rename the report.");
+                continue;
+            }
+
+            inputs[upload.ReportFile] = new ReportInput(
+                upload.ReportFile, upload.Yaml, $"uploaded report '{upload.ReportFile}'");
+        }
+
+        var queries = new List<Core.Subscribers.SubscriberQuery>();
+        var pages = new List<Core.Lineage.LineageSubscriberPage>();
+        var models = new List<Core.Lineage.LineageSubscriberModel>();
+
+        // More than one report can legitimately share a page's display name and a visual's title (two files in the
+        // same directory both starting from the same report template, say), so a query name that would be
+        // unambiguous for a single report is folded together with its report file once there is more than one.
+        var qualifyWithReportFile = inputs.Count > 1;
+
+        foreach (var input in inputs.Values)
+        {
+            fingerprint.Append("report\n").Append(subscriberKey).Append('\n').Append(input.ReportFile).Append('\n')
+                .Append(ReportSpecs.Hash(input.Yaml)).Append('\n');
+            ReadOneReport(result, subscriber, file, server, connections, input, qualifyWithReportFile, queries, pages, models);
+        }
+
+        return new ExtractedReport(queries, pages, models, fresh, retained);
+    }
+
+    /// <summary>
+    /// Resolves what a subscriber's <c>pbix:</c> declares into <paramref name="inputs"/>: every committed
+    /// specification read as it is, and every <c>.pbix</c> without one extracted now (collected into
+    /// <paramref name="fresh"/>) or, where this machine cannot extract it, served from the copy an earlier sync kept.
+    /// A committed specification wins over a <c>.pbix</c> of the same report so every machine reads the same thing,
+    /// whether or not it has the extractor.
+    /// </summary>
+    /// <returns>The report labels whose kept extraction is still wanted, or null when this pass cannot tell.</returns>
+    private static IReadOnlySet<string>? DeclaredReports(
+        CollectionResult result,
+        Core.Subscribers.DataSubscriber subscriber,
+        string file,
+        string root,
+        IReadOnlyDictionary<string, string> kept,
+        SortedDictionary<string, ReportInput> inputs,
+        List<ExtractedReportSpec> fresh)
+    {
+        var declaration = $"{file}: subscriber '{subscriber.Name}' declares 'pbix: {subscriber.Pbix}'";
+        var declaredPath = Path.GetFullPath(Path.Combine(root, subscriber.Pbix!));
+        List<(string Label, string Path)> reports;
+        List<(string Label, string Path)> specs;
+
+        if (Directory.Exists(declaredPath))
+        {
+            reports = Directory.EnumerateFiles(declaredPath, "*.pbix", SearchOption.AllDirectories)
+                .Select(p => (Label: Path.GetRelativePath(declaredPath, p).Replace('\\', '/'), Path: p))
+                .ToList();
+            specs = Directory.EnumerateFiles(declaredPath, "*.yaml", SearchOption.AllDirectories)
+                .Where(ReportSpecs.IsSpecFile)
+                .Select(p => (Label: ReportSpecs.LabelOf(Path.GetRelativePath(declaredPath, p).Replace('\\', '/')), Path: p))
+                .ToList();
+
+            if (reports.Count == 0 && specs.Count == 0)
+            {
+                // A folder whose reports are git-ignored still exists in a clone when anything else in it is tracked,
+                // so an empty one is not proof the reports are gone: keep serving what was last extracted from it.
+                if (kept.Count == 0)
+                {
+                    result.Warnings.Add(
+                        $"{declaration}, a directory containing no .pbix files or {ReportSpecs.FileSuffix} "
+                        + "specifications; no report was extracted.");
+                    return null;
+                }
+
+                result.Warnings.Add(
+                    $"{declaration}, a directory containing no .pbix files or {ReportSpecs.FileSuffix} specifications "
+                    + $"here; serving the {kept.Count} report(s) last extracted from it.");
+                UseKept(kept, kept.Keys, inputs);
+                return null;
+            }
+        }
+        else if (File.Exists(declaredPath))
+        {
+            var name = Path.GetFileName(declaredPath);
+            var isSpec = name.EndsWith(".yaml", StringComparison.OrdinalIgnoreCase)
+                || name.EndsWith(".yml", StringComparison.OrdinalIgnoreCase);
+            reports = isSpec ? [] : [(name, declaredPath)];
+            specs = isSpec ? [(ReportSpecs.LabelOf(name), declaredPath)] : [];
+        }
+        else
+        {
+            if (kept.Count == 0)
+            {
+                result.Warnings.Add(
+                    $"{declaration}, which does not exist as either a file or a directory; the report was not extracted.");
+                return null;
+            }
+
+            result.Warnings.Add(
+                $"{declaration}, which does not exist here as either a file or a directory; serving the {kept.Count} "
+                + "report(s) last extracted from it.");
+            UseKept(kept, kept.Keys, inputs);
+            return null;
+        }
+
+        foreach (var (label, path) in specs.OrderBy(s => s.Label, StringComparer.Ordinal))
+        {
+            var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
+            try
+            {
+                if (new FileInfo(path).Length > ReportSpecs.MaxBytes)
+                {
+                    result.Warnings.Add(
+                        $"{declaration}: specification '{relative}' is larger than "
+                        + $"{ReportSpecs.MaxBytes / (1024 * 1024)} MB; it was not read.");
+                    continue;
+                }
+
+                if (!inputs.TryAdd(label, new ReportInput(label, File.ReadAllText(path), $"specification '{relative}'")))
+                {
+                    result.Warnings.Add($"{declaration}: more than one specification is named '{label}'; the first is used.");
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                result.Warnings.Add($"{declaration}: specification '{relative}' could not be read ({ex.Message}).");
+            }
+        }
+
+        var pending = new List<(string Label, string Path)>();
+        foreach (var report in reports.OrderBy(r => r.Label, StringComparer.Ordinal))
+        {
+            if (inputs.ContainsKey(report.Label))
+            {
+                result.Warnings.Add(
+                    $"{declaration}: report '{report.Label}' has both a .pbix and a committed specification; the "
+                    + "specification is used. Regenerate it with 'sqlflow powerbi extract' when the report changes.");
+                continue;
+            }
+
+            pending.Add(report);
+        }
+
+        var retained = new HashSet<string>(pending.Select(p => p.Label), StringComparer.Ordinal);
+        if (pending.Count == 0)
+        {
+            return retained;
+        }
+
+        // Extraction runs in a separate binary, which the machine running the sync may not have: it is built where
+        // the .pbix files live rather than shipped inside the control plane, deliberately, so that a hostile report
+        // never reaches the process holding catalog credentials. Its absence is a warning and not a failure, and a
+        // report an earlier sync extracted keeps being served from the copy it kept.
+        var executable = PbixExtractTool.Locate();
+        if (executable is null)
+        {
+            var unserved = pending.Where(p => !kept.ContainsKey(p.Label)).Select(p => p.Label).ToList();
+            if (unserved.Count > 0)
+            {
+                result.Warnings.Add(
+                    $"{declaration} but the 'pbix-extract' tool was not found, so {Describe(unserved)} could not be "
+                    + "extracted. Build it (make -C tools/pbix-extract) and put it on PATH, set "
+                    + $"{PbixExtractTool.PathVariable} to its location, or commit a specification made with "
+                    + "'sqlflow powerbi extract'.");
+            }
+
+            UseKept(kept, pending.Select(p => p.Label), inputs);
+            return null;
+        }
+
+        foreach (var (label, path) in pending)
+        {
+            try
+            {
+                var yaml = ReportSpecs.Extract(executable, path, label);
+                fresh.Add(new ExtractedReportSpec(label, yaml));
+                inputs[label] = new ReportInput(label, yaml, $"report '{label}'");
+            }
+            catch (PbixExtractException ex)
+            {
+                var fallback = kept.ContainsKey(label)
+                    ? "; serving the copy last extracted from it"
+                    : "; the report was not extracted";
+                result.Warnings.Add(
+                    $"{file}: subscriber '{subscriber.Name}' report '{label}' could not be read ({ex.Message}){fallback}.");
+                UseKept(kept, [label], inputs);
+            }
+        }
+
+        return retained;
+    }
+
+    /// <summary>Adds the kept extraction of each of <paramref name="labels"/> that has one.</summary>
+    private static void UseKept(
+        IReadOnlyDictionary<string, string> kept, IEnumerable<string> labels, SortedDictionary<string, ReportInput> inputs)
+    {
+        foreach (var label in labels)
+        {
+            if (kept.TryGetValue(label, out var yaml))
+            {
+                inputs.TryAdd(label, new ReportInput(label, yaml, $"the kept extraction of report '{label}'"));
+            }
+        }
+    }
+
+    private static string Describe(IReadOnlyList<string> labels)
+        => labels.Count == 1 ? $"report '{labels[0]}'" : $"{labels.Count} reports ({string.Join(", ", labels)})";
+
+    /// <summary>
+    /// Turns each model table the tool resolved to a physical warehouse object into one
+    /// <see cref="SynonymLink"/>, which is what makes a report's consumption edge land on the same node an
+    /// ingestion flow writes rather than on a name-only one.
+    /// <para>
+    /// A visual's synthesized SQL names the MODEL entity (<c>FROM [Sales]</c>), which the extractor resolves
+    /// as a bare one-part name under the subscriber's own server. The synonym pass in
+    /// <c>LineageGraphBuilder</c> then rewrites exactly that identity onto the physical object. Reusing the
+    /// synonym mechanism rather than adding one is the point: a PowerBI-derived synonym and one read from
+    /// <c>sys.synonyms</c> are indistinguishable to the resolution pass, so the graph builder needed no
+    /// change at all.
+    /// </para>
+    /// <para>
+    /// The server the M expression named is deliberately NOT used as the synonym's target server. A
+    /// connection string in a report is not the same identity as the estate's declared connection reference,
+    /// and treating them as equal would split one physical server into two nodes. The target keeps the
+    /// subscriber's own server (which is what its queries already resolve against) and only the
+    /// database/schema/name are taken from the model source, since those are what the bare model name lacks.
+    /// </para>
+    /// </summary>
+    private static void EmitModelSourceSynonyms(
+        CollectionResult result,
+        string server,
+        IReadOnlyDictionary<string, Core.Connections.DataSource> connections,
+        PbixExtractResult extracted)
+    {
+        if (extracted.ModelSources.Count == 0
+            || (server != Core.Subscribers.DataSubscriber.RegisteredSource && !connections.ContainsKey(server)))
+        {
+            return;
+        }
+
+        var serverRef = SubscriberServerRef(server, connections);
+
+        foreach (var source in extracted.ModelSources)
+        {
+            // The "from" side is the identity a visual's bare model-entity reference actually lands on:
+            // the subscriber's server with no database or schema (FlowSetCollector extracts subscriber
+            // queries with defaultDatabase: null and minimumParts: 1). Empty strings key the same way a
+            // null does through NodeKey.For, which is what lets this match.
+            result.Synonyms.Add(new SynonymLink
+            {
+                ServerRef = serverRef,
+                Database = string.Empty,
+                Schema = string.Empty,
+                Name = source.ModelTable,
+                TargetDatabase = source.Database,
+                TargetSchema = source.Schema,
+                TargetName = source.Name,
+            });
+        }
+    }
+
+    /// <summary>Reads one report's specification into <paramref name="pages"/>, its visuals' synthesized queries
+    /// into <paramref name="queries"/>, and its semantic model into <paramref name="models"/>, all accumulated across
+    /// every report the subscriber has. See <see cref="ReadReports"/>.</summary>
+    private static void ReadOneReport(
+        CollectionResult result,
+        Core.Subscribers.DataSubscriber subscriber,
+        string file,
+        string server,
+        IReadOnlyDictionary<string, Core.Connections.DataSource> connections,
+        ReportInput input,
+        bool qualifyWithReportFile,
+        List<Core.Subscribers.SubscriberQuery> queries,
+        List<Core.Lineage.LineageSubscriberPage> pages,
+        List<Core.Lineage.LineageSubscriberModel> models)
+    {
+        var reportFile = input.ReportFile;
+        PbixExtractResult extracted;
+        try
+        {
+            extracted = PbixExtractTool.Parse(input.Yaml, input.Source);
+        }
+        catch (PbixExtractException ex)
+        {
+            result.Warnings.Add(
+                $"{file}: subscriber '{subscriber.Name}' report '{reportFile}' could not be read "
+                + $"({ex.Message}); the report was not extracted.");
+            return;
+        }
+
+        // What the tool declined to extract, and why: a visual whose filter it could not represent, a
+        // projection the query does not select. These are re-emitted verbatim so a dropped question is visible
+        // in the estate's own warnings rather than only in the tool's output.
+        foreach (var warning in extracted.Warnings)
+        {
+            result.Warnings.Add($"{file}: subscriber '{subscriber.Name}' report '{reportFile}': {warning}");
+        }
+
+        EmitModelSourceSynonyms(result, server, connections, extracted);
+
+        foreach (var page in extracted.Pages)
+        {
+            var visualList = page.Visuals ?? [];
+            var visuals = new List<Core.Lineage.LineageSubscriberVisual>(visualList.Count);
+            foreach (var visual in visualList)
+            {
+                if (visual.Sql is not { Length: > 0 } sql)
+                {
+                    // The tool does not emit a visual it could not render, and says why under its own
+                    // warnings, so one arriving without SQL means the two have drifted out of step.
+                    result.Warnings.Add(
+                        $"{file}: subscriber '{subscriber.Name}' report '{reportFile}' page "
+                        + $"'{page.Page}' visual #{visual.Ordinal} arrived with no query; it was skipped.");
+                    continue;
+                }
+
+                // The query's name identifies the visual it came from, so the catalog can say WHICH chart links
+                // a report to a table, and so the structure below can point back at its own SQL. Once more than
+                // one report is in play the report file itself joins the name, so two reports' identically
+                // titled visuals do not collide into one synthesized query.
+                var visualLabel = visual.Title is { Length: > 0 } title
+                    ? title
+                    : $"{visual.VisualType} #{visual.Ordinal}";
+                var queryName = qualifyWithReportFile
+                    ? $"{reportFile} / {page.Page} / {visualLabel}"
+                    : $"{page.Page} / {visualLabel}";
+
+                queries.Add(new Core.Subscribers.SubscriberQuery
+                {
+                    Name = queryName,
+                    Server = server,
+                    Sql = sql,
+                    ReportFile = reportFile,
+                });
+
+                visuals.Add(new Core.Lineage.LineageSubscriberVisual
+                {
+                    Ordinal = visual.Ordinal,
+                    VisualType = visual.VisualType,
+                    Title = visual.Title,
+                    QueryName = queryName,
+                    Fields = (visual.Fields ?? [])
+                        .Select(f => new Core.Lineage.LineageSubscriberField
+                        {
+                            Role = f.Role,
+                            TableName = f.Table,
+                            ColumnOrMeasure = f.Field,
+                            IsMeasure = f.IsMeasure,
+                        })
+                        .ToList(),
+                });
+            }
+
+            // The page carries the label this subscriber knows the report by, not whatever label the specification
+            // was written with: a specification made on another machine, or uploaded under a new name, must key its
+            // pages the same way its model is keyed below.
+            pages.Add(new Core.Lineage.LineageSubscriberPage
+            {
+                ReportFile = reportFile,
+                Name = page.Name ?? page.Page,
+                DisplayName = page.Page,
+                Ordinal = page.Ordinal,
+                Visuals = visuals,
+            });
+        }
+
+        // The semantic model behind this report file: how it computes its numbers, which its visuals only name. A
+        // report connected live to a published dataset carries none, and then contributes nothing here.
+        var model = extracted.Model;
+
+        // The connection identity the report reads through: the server segment a resolved source's node key carries,
+        // the same one its model-source synonyms are declared under.
+        var serverRef = server == Core.Subscribers.DataSubscriber.RegisteredSource || connections.ContainsKey(server)
+            ? SubscriberServerRef(server, connections)
+            : null;
+        if (model.Tables.Count > 0 || model.Relationships.Count > 0)
+        {
+            models.Add(new Core.Lineage.LineageSubscriberModel
+            {
+                ReportFile = reportFile,
+                Tables = model.Tables
+                    .Select(t => new Core.Lineage.LineageSubscriberModelTable
+                    {
+                        Name = t.Name,
+                        PowerQuery = t.PowerQuery,
+                        SourceDatabase = t.SourceDatabase,
+                        SourceSchema = t.SourceSchema,
+                        SourceName = t.SourceName,
+                        ServerRef = t.SourceName is null ? null : serverRef,
+                        Fields = t.Fields
+                            .Select(f => new Core.Lineage.LineageSubscriberModelField
+                            {
+                                Name = f.Name,
+                                Kind = f.Kind,
+                                DataType = f.DataType,
+                                Expression = f.Expression,
+                                Description = f.Description,
+                            })
+                            .ToList(),
+                    })
+                    .ToList(),
+                Relationships = model.Relationships
+                    .Select(r => new Core.Lineage.LineageSubscriberModelRelationship
+                    {
+                        FromTable = r.FromTable,
+                        FromColumn = r.FromColumn,
+                        ToTable = r.ToTable,
+                        ToColumn = r.ToColumn,
+                        Cardinality = r.Cardinality,
+                        IsActive = r.IsActive,
+                    })
+                    .ToList(),
+                Expressions = model.Expressions
+                    .Select(e => new Core.Lineage.LineageSubscriberExpression { Name = e.Name, PowerQuery = e.PowerQuery })
+                    .ToList(),
+            });
+        }
+    }
+
+    /// <summary>One report about to be read: the label the subscriber knows it by, its specification, and where the
+    /// specification came from (named in any warning).</summary>
+    private sealed record ReportInput(string ReportFile, string Yaml, string Source);
+
+    /// <summary>What reading a subscriber's reports produced: its visuals as queries, their structure, the semantic
+    /// model behind each report, the specifications extracted this pass, and which kept extractions are still
+    /// wanted.</summary>
+    private sealed record ExtractedReport(
+        IReadOnlyList<Core.Subscribers.SubscriberQuery> Queries,
+        IReadOnlyList<Core.Lineage.LineageSubscriberPage> Pages,
+        IReadOnlyList<Core.Lineage.LineageSubscriberModel> Models,
+        IReadOnlyList<ExtractedReportSpec> ExtractedSpecs,
+        IReadOnlySet<string>? RetainedExtractedReports);
 
     /// <summary>
     /// Builds the repo's named schedules and their MEMBER SETS. A schedule is defined once (a <c>schedules.yaml</c>
@@ -397,6 +963,14 @@ public sealed class FlowSetCollector
             }
         }
     }
+
+    /// <summary>The server identity a subscriber alias stands for: the declared connection's reference, or
+    /// <see cref="ServerIdentity.Registered"/> for a registered-source subscriber.</summary>
+    private static string SubscriberServerRef(
+        string alias, IReadOnlyDictionary<string, Core.Connections.DataSource> connections)
+        => alias == Core.Subscribers.DataSubscriber.RegisteredSource
+            ? ServerIdentity.Registered
+            : ServerIdentity.From(connections[alias].ConnectionRef);
 
     /// <summary>Registers a document's connections in the server inventory the derived tier connects to.</summary>
     private static void RegisterServers(CollectionResult result, IEnumerable<Core.Connections.DataSource> connections)
@@ -735,6 +1309,25 @@ public sealed class FlowSetCollector
                     }
                 }
 
+                break;
+            }
+
+            case SchemaRegistrationFlowDocument doc:
+            {
+                // A schema registration contributes no facts and no server to the derived tier (whose module
+                // parsing and join inference a registration deliberately does without): it is recorded so the
+                // connected pass harvests exactly its database's tables and views, attributed to the flow.
+                var flow = doc.Document.Flow;
+                var connection = doc.Document.Connections.First(c =>
+                    string.Equals(c.Alias, flow.Server, StringComparison.OrdinalIgnoreCase));
+                result.SchemaRegistrations.Add(new CollectedSchemaRegistration
+                {
+                    Flow = headers[0].Name,
+                    ServerRef = ServerIdentity.From(connection.ConnectionRef),
+                    RawReference = connection.ConnectionRef,
+                    Kind = connection.Kind,
+                    Scope = flow.Scope,
+                });
                 break;
             }
 

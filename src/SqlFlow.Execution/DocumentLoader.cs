@@ -48,6 +48,7 @@ public static class DocumentLoader
             StoredProcedureFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
             HealthCheckFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
             SourceControlFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
+            SchemaRegistrationFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
             CalendarFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
             TranslateFlowDocument doc => doc.Document.Connections.Select(c => (c.Alias, c.ConnectionRef)),
             FileFlowDocument doc => [("target", doc.Flow.Target.Connection)],

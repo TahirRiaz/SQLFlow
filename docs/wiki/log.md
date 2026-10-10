@@ -165,3 +165,174 @@ rebuilt the manifest. So the next one fails before a deploy rather than in a con
 builder now refuses to write an entry carrying a non-string value, `lint_wiki.py` reports non-string
 frontmatter scalars and list entries, and `tools/sqlflow-mcp/build.rs` validates every entry's
 field types so a bad manifest fails `cargo build` and therefore the image build.
+
+## [2026-09-13] ingest | PowerBI model-entity resolution
+
+Ingested the model-entity resolution work landed in `tools/pbix-extract` and `SqlFlow.Lineage`,
+alongside its design document (`docs/powerai-model-entity-resolution-design.md`) and the roadmap in
+`POWERAI.md`.
+
+One new decision page: why the Power Query expression is pattern-matched in the C tool rather than
+parsed, why the resulting mapping is emitted as an ordinary `SynonymLink` instead of a new graph
+mechanism, and why the M-literal server is reported but never used as an estate identity.
+
+The page records two departures from its own design document, since both are the kind of thing that
+looks like an oversight later: the proposed `modelSourceServer` subscriber key was not built (the
+implementation removed the need for it by never comparing the two server identities), and native
+`[Query="..."]` sources are refused rather than re-parsed, because resolving them would mean a second
+T-SQL parser inside the C tool.
+
+Also recorded, because it is the honest state rather than the intended one: only the refusal path has
+run end to end. Every table in the one sample report is Excel- or JSON-backed, and the C# test fixture
+cannot synthesize a model source, so the resolved path is proven by the tool's own unit checks and by
+the existing synonym mechanism, not by a test spanning the seam between them.
+
+`docs/reference/flow/subscribers.md` gained the table node's new `source*` properties and a section on
+what resolves and what does not; that is reference material (what the surface does), so it lives there
+rather than here.
+
+## [2026-09-13] ingest | Proving model-entity resolution, and the report format that changed underneath it
+
+Source: a working session repointing `samples/powerbi/AdventureWorks Sales.pbix` from its original
+Excel workbook onto the restored AdventureWorksDW2022 database, plus the `tools/pbix-extract` change
+that came out of it.
+
+The decision page on model-entity resolution had a "What is still unproven" section saying only the
+refusal path had ever run against a real file. That is now half closed and the page says so precisely:
+all seven SQL-backed tables resolve to real `dbo.*` warehouse objects, the `Json.Document` helper table
+is still correctly refused in the same report, and the remaining gap is the control-plane half
+(`FlowSetCollector` to `SynonymLink` to `LineageGraphBuilder`), against which no `db sync` has run.
+Narrowing the claim rather than deleting it matters here, because the chain stops halfway and the
+rendered SQL still being in model terms is easy to misread as a failure when it is correct at that
+layer.
+
+The page also now records two things about the repointing that a later reader would otherwise take for
+mistakes: the `Customer`-to-`Sales` relationship was dropped because `FactResellerSales` genuinely has
+no `CustomerKey`, and rebuilding tables under new queries cost the model a calculated column and two
+visuals' field bindings.
+
+One new incident page: extracting the re-saved report returned zero pages and zero visuals, because
+Power BI Desktop now writes the visual layer as `Report/definition/...`, one document per page and per
+visual, instead of a single `Report/Layout`. What generalizes is the shape of the failure rather than
+the format detail. The loss arrived as a smaller number instead of an error, below the layer where the
+tool's refusal discipline operates; the shared "member not found" message explained it as a missing
+model, a cause that fit only the caller it was written for; and the expression vocabulary turned out to
+be unchanged, so the fix was a translation of structure rather than a second implementation.
+
+Both report shapes must stay supported, and the sample having been re-saved means the real file now
+exercises the new reader while synthetic fixtures hold the old one, exactly reversing which path had
+real coverage the day before.
+
+## [2026-09-13] ingest | Two bugs found by running model-entity resolution end to end
+
+Source: a `db sync --connect` against the repointed sample report, and the two fixes it forced.
+
+The decision page's "What is still unproven" section had just been narrowed to "only the extractor
+half". Running the other half showed the claim was too generous in the other direction: the chain had
+never worked at all, and the extractor half only looked proven because the check that seemed to prove
+it (grepping the emitted YAML for `sourceName`) cannot see the defect.
+
+Two bugs, one on each side of the seam. The C tool wrote every table's `source*` properties onto the
+last column node instead of its own table node, because the YAML is a stream and the sources were
+written in a later pass. The graph builder registered a model entity's synonym as a one-part name with
+no database, while the default-database pass filled the connection's catalog into exactly those facts
+first, so the two identities never met for any connection string that names a database.
+
+The page now records both, and what generalizes from them: each half was individually tested and
+individually correct-looking, the defect lived in the agreement between them, and a seam between two
+languages is where no unit test reaches. "The values are right" turned out to be a different claim
+from "the consumer can read them".
+
+Both POWERAI.md Section 10 and this page previously said the extractor half was proven; both are
+corrected rather than quietly amended, since the earlier claim is exactly the kind a later reader
+would otherwise rely on.
+
+## [2026-09-15] ingest | The semantic layer is the column allow-list
+
+Wrote [The semantic layer is the column allow-list](decisions/semantic-layer-is-the-allow-list.md) from the
+semantic layer implementation (`SemanticLayer.cs`, its read and admin endpoint files, the chat tool allowlist in
+`AssistantSettings.cs`) and the two design decisions the human made while it was built: the allow-list as the
+layer's only membership, and the chat assistants losing the raw schema tools rather than the shared endpoints
+being filtered. It also records the no-tracking update bug the new integration tests exposed in the column policy
+upsert. The surface itself is documented in the reference page `concept-semantic-layer`.
+
+## [2026-09-15] ingest | The assistant surface closes the text leaks
+
+Extended [The semantic layer is the column allow-list](decisions/semantic-layer-is-the-allow-list.md) with why the
+chat's operational tools and its two data-operations tasks are narrowed by an advisory `surface=assistant` marker
+(`AssistantScope.cs`, `control_plane.rs`) rather than removed, given a separate token, or redacted for everyone.
+The mechanism is documented in the reference page `concept-semantic-layer`.
+
+## [2026-09-15] ingest | PowerAI retrieval design drift
+
+Mapped [docs/powerai-question-retrieval-design.md](../powerai-question-retrieval-design.md) into the
+[design document drift map](maps/design-doc-drift.md). Its status line, Section 7, and Section 8 step 6
+still describe the confirmed-example table and the GUI confirmation row as unbuilt; the code shows both
+(`CatalogQuestionExample`, `AnswerConfirmation.tsx`), plus the admin Saved answers page added the same
+day. The raw document is left as written. The map now links the semantic layer decision page, which had
+no inbound `related` link.
+
+## [2026-09-15] ingest | Saved answers and Power BI models join the semantic layer
+
+Extended [The semantic layer is the column allow-list](decisions/semantic-layer-is-the-allow-list.md) with two
+decisions the human made: the saved answers are stored in the semantic layer (`QuestionExample` renamed to
+`SemanticExample` by a hand-written rename migration, curation moved to the Semantic layer page, the confirm and
+auto-run routes kept), and a Power BI report's model is served on the warehouse table each model table loads from
+(`describe_semantic_table`'s `reportModels`), graded against the column allow-list, rather than imported as curated
+annotations or served ungraded. The surfaces are documented in `concept-semantic-layer` and `flow-subscribers`.
+
+## [2026-09-16] ingest | Power BI report specifications move into the semantic layer
+
+Wrote [A Power BI report travels as its specification](decisions/powerbi-report-specifications.md) from the
+human's question of whether `pbix-extract` should move into the semantic layer, and the design settled with them:
+the tool stays, its specification becomes the stored and shipped unit (`ReportSpecs.cs`, `CatalogSemanticReportSpec`,
+the `AddSemanticReportSpecs` migration), GUI uploads are read by the isolated `SqlFlow.PbixExtractor` service, and
+`sqlflow powerbi extract|publish` serves report owners without a C toolchain. It records the defect that forced the
+change (the managed sync erasing a model a developer sync had written) and the subscriber-library fingerprint that
+closed a second gap found on the way. The surfaces are documented in `flow-subscribers`, `concept-semantic-layer`,
+and `cli-control-plane`.
+
+## [2026-09-16] ingest | Schema registration flows (flowType: sch)
+
+Wrote [An external database is registered by a flow, and the dashboard supplies the model](decisions/schema-registration-flows.md)
+from the design settled with the human while closing PowerAI's gap on databases no flow loads: a new `sch` flow
+kind instead of scm or inv, the catalog rather than the semantic layer, only tables and views because the
+dashboard supplies joins and computed values, and linking registered-source subscribers by database metadata. It
+also records the harvester and object-write extractions and the alias remap that had been dropping subscribers.
+The surfaces are documented in `flow-sch`, `flow-subscribers`, `concept-data-operations`, and
+`concept-lineage-graph-and-plan`.
+
+## [2026-09-16] ingest | Visual SQL translation
+
+Wrote [A report visual's query is translated into T-SQL at sync, or refused with a reason](decisions/visual-sql-translation.md)
+from the choices the human made while closing the gap schema registration left open: T-SQL as the only output, a
+common DAX subset, and the translation served as a dashboard match's runnable SQL. It records the refusal rules for
+Power Query and DAX, the shared expressions and literal rendering added to `pbix-extract`, and the per-subscriber
+query lookup fixed on the way. The surfaces are documented in `flow-subscribers` and `guide-chat-assistant`.
+
+## [2026-09-16] lint | PowerAI design-doc status refresh
+
+At the human's request, refreshed the status notes of the three PowerAI design documents under `docs/` that
+still described landed work as open: the retrieval design (the GUI confirmation row exists, and the example
+table now lives in the semantic layer as `CatalogSemanticExample`), the SQL-resolution handoff (the end-to-end
+`db sync` was run on 2026-09-13 and found the two seam bugs), and the model-entity resolution design (step 5,
+the SQL-backed sample report, is done). Only status lines and step markers changed; the design text stays as
+the record. Updated [the design document drift map](maps/design-doc-drift.md) to say the retrieval document's
+three stale claims are now corrected in place.
+
+## [2026-09-17] ingest | MCP tool consolidation and the capitals convention
+
+Merged the seven single-surface search tools into two that take a `surface` argument, splitting them along the
+privacy boundary the assistant allowlist already drew rather than into one tool: `search` pages the ETL-side
+surfaces (flows, files, statements) that the chat surfaces are given, and `search_schema` pages the warehouse
+schema surfaces (objects, columns, definitions, flowColumns) that they are denied, because those see every
+column regardless of the semantic layer's allow-list. A single merged tool could not express that split, since
+`McpOptions` gates by tool name and not by argument. 93 tools became 88.
+
+Also rationed capitals across every description, from 222 emphasized words to 100. They had stopped carrying
+information: `START HERE` sat on two tools that answer different questions (`get_semantic_layer`, which now
+keeps it, and `search_all`, which lost it), and `USE THIS` on three that overlap. The convention (capitals for
+a routing lead and a real safety constraint, every other contrast in lowercase prose) is documented above
+`GROUNDING_RULE` in `server.rs` and enforced by `capitals_are_rationed_to_routing_and_safety`, which caps the
+per-description budget and asserts at most one tool claims `START HERE`. Updated
+[the semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md) for the renamed tools.

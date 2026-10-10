@@ -53,7 +53,15 @@ Then, from the assistant, run the `login` tool (device flow) or
 `set_access_token`. The device flow is served by the control plane at
 `POST /api/v1/auth/device` and approved in a browser at `/device`.
 
-To answer schema questions, browse with `list_schemas` (every server/database/
+To write SQL, start from the semantic layer: `get_semantic_layer` (the layer's
+instructions, where its tables live, and its measures), `search_semantic_layer`
+(tables, columns, and measures by name or business synonym), and
+`describe_semantic_table` (one table's allowed columns, key, joins, measures,
+example queries, and consumers). They serve only the tables and columns on the
+column allow-list, and they are the only schema tools the GUI and Slack
+assistants are given.
+
+For lineage and code questions, browse with `list_schemas` (every server/database/
 schema and its object count) and `lineage_objects` (filter by database, schema,
 kind, or name). Then, for a specific object, `describe_object` returns its
 identity, columns, generating script, module body, and lineage edges in one

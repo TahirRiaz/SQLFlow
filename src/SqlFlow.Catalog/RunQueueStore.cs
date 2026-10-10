@@ -685,6 +685,22 @@ public static class RunQueueStore
                         CatalogSync.AddRunDetail(
                             catalog, document.RootElement, runId, repoId, maxEventOrdinal, maxStatementOrdinal,
                             existing.PipelineId);
+
+                        // A registration run refreshes its objects and Registers edges now. When the registered set
+                        // changed, the repo's managed sync is queued so subscribers re-link to the new objects.
+                        if (await CatalogSync.ApplySchemaRegistrationAsync(
+                                catalog, document.RootElement, repoId, existing.PipelineId, replaceEdges: true, nowUtc, ct)
+                            .ConfigureAwait(false))
+                        {
+                            var repoName = await catalog.Repos.AsNoTracking()
+                                .Where(r => r.Id == repoId)
+                                .Select(r => r.Name)
+                                .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+                            if (repoName is not null)
+                            {
+                                await RepoSourceStore.TriggerForRepoAsync(catalog, repoName, nowUtc, ct).ConfigureAwait(false);
+                            }
+                        }
                         // A failed group member strands its dependents: skip them in the same transaction so the
                         // completion and its consequences commit together (a no-op for a standalone or succeeded run).
                         var skipped = projected.Success
