@@ -145,6 +145,11 @@ public static class FlowLoadProfiles
                 $"computes {d.Document.Flow.Metrics.Count} metric(s) per {d.Document.Flow.DateColumn} over {d.Document.Flow.Target.QualifiedName}",
                 "writes a health-check score artifact for the run; it loads no table",
                 target: null),
+            SchemaRegistrationFlowDocument d => Profile(
+                FlowReadModes.NotApplicable,
+                $"reads the table and view metadata of {(d.Document.Flow.Scope.Database is { } database ? $"database '{database}'" : "the default database")} behind connection '{d.Document.Flow.Server}'",
+                "registers those objects in the catalog; it loads no table",
+                target: null),
             _ => Unknown($"no load profile is defined for the flow document type {document.GetType().Name}"),
         };
     }

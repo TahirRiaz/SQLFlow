@@ -114,6 +114,7 @@ throughout, so the table above remains the translation. For what the learning lo
 confidence is retrieval similarity rather than a model's self-rating, and what dropping embeddings
 traded away) is still the right place to learn why it is shaped this way. How the saved answers relate
 to the column allow-list is in [the semantic layer decision](../decisions/semantic-layer-is-the-allow-list.md).
+
 ## A phased design, tracked by its own status line
 
 [dispatch-design.md](../../dispatch-design.md) is the design for moving the run queue out of SQL

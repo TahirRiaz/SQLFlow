@@ -75,8 +75,6 @@ public sealed class SchemaRegistrationCatalogTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
         var (repoId, flowName, serverRef, pipelineId) = Seed();
-        var dir = Path.Combine(Path.GetTempPath(), "sqlflow_sch_" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(dir);
 
         try
         {
@@ -92,11 +90,10 @@ public sealed class SchemaRegistrationCatalogTests
             await using (var db = CatalogDatabase.Create(cs))
             {
                 // The first run registers a table and a view.
-                var runJson = Path.Combine(dir, "first.json");
-                await File.WriteAllTextAsync(runJson, Artifact(Guid.NewGuid(), flowName, ("Orders", "Table"), ("OrderLines", "View")));
+                var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "sch"), DateTime.UtcNow)).RunId;
                 Assert.Equal(
                     RunOutcomeStatus.Recorded,
-                    (await RunQueueStore.CompleteFromArtifactAsync(db, RunIdOf(runJson), runJson, DateTime.UtcNow)).Status);
+                    (await RunQueueStore.CompleteFromArtifactAsync(db, runId, Artifact(runId, flowName, ("Orders", "Table"), ("OrderLines", "View")), DateTime.UtcNow)).Status);
             }
 
             await using (var db = CatalogDatabase.Create(cs))
@@ -122,11 +119,10 @@ public sealed class SchemaRegistrationCatalogTests
 
             await using (var db = CatalogDatabase.Create(cs))
             {
-                var runJson = Path.Combine(dir, "second.json");
-                await File.WriteAllTextAsync(runJson, Artifact(Guid.NewGuid(), flowName, ("Customers", "Table")));
+                var runId = (await RunQueueStore.EnqueueAsync(db, new RunEnqueueRequest(repoId, flowName, "sch"), DateTime.UtcNow)).RunId;
                 Assert.Equal(
                     RunOutcomeStatus.Recorded,
-                    (await RunQueueStore.CompleteFromArtifactAsync(db, RunIdOf(runJson), runJson, DateTime.UtcNow)).Status);
+                    (await RunQueueStore.CompleteFromArtifactAsync(db, runId, Artifact(runId, flowName, ("Customers", "Table")), DateTime.UtcNow)).Status);
             }
 
             await using (var db = CatalogDatabase.Create(cs))
@@ -144,7 +140,6 @@ public sealed class SchemaRegistrationCatalogTests
         finally
         {
             await CleanupAsync(cs, repoId, serverRef);
-            Directory.Delete(dir, recursive: true);
         }
     }
 
@@ -218,12 +213,6 @@ public sealed class SchemaRegistrationCatalogTests
             Active = true, SourceServer = serverRef, TargetServer = ServerIdentity.FileSystem,
             DefinitionJson = "{}", FirstSeenUtc = now, LastSeenUtc = now, Yaml = "flowType: sch\n",
         });
-    }
-
-    private static Guid RunIdOf(string runJsonPath)
-    {
-        using var document = System.Text.Json.JsonDocument.Parse(File.ReadAllText(runJsonPath));
-        return document.RootElement.GetProperty("runId").GetGuid();
     }
 
     private static string Artifact(Guid runId, string flowName, params (string Name, string Kind)[] objects)

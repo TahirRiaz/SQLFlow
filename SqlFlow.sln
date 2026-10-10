@@ -68,6 +68,7 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlFlow.PbixExtractor", "src\SqlFlow.PbixExtractor\SqlFlow.PbixExtractor.csproj", "{5A345028-7911-4E80-8D73-ADB748AD0DDB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlFlow.PbixExtractor.Tests", "tests\SqlFlow.PbixExtractor.Tests\SqlFlow.PbixExtractor.Tests.csproj", "{363EF373-2A6B-4F11-BC29-2C2B36140EF5}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlFlow.Dispatch", "src\SqlFlow.Dispatch\SqlFlow.Dispatch.csproj", "{CCECD687-1A3C-462B-A46A-2E98379E5502}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SqlFlow.Dispatch.Tests", "tests\SqlFlow.Dispatch.Tests\SqlFlow.Dispatch.Tests.csproj", "{8A6FC869-6467-4A84-BF4A-B51B2B8EC31B}"
