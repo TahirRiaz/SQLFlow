@@ -341,6 +341,100 @@ public sealed class LineageProjectGraphApiTests
         }
     }
 
+    /// <summary>
+    /// A view sits between the tables its body reads and the flow reading it. The sync stores the view's own reads with
+    /// no pipeline (the view as their module), the flow's read of the view, and the base tables the flow inherits
+    /// through it; the graph draws each base table into the view and the view into the flow, and never a second, direct
+    /// edge from a base table to the flow. A read the flow makes of a base table in its own right still draws.
+    /// </summary>
+    [SkippableFact]
+    public async Task ProjectGraph_DrawsAViewBetweenItsBaseTablesAndTheFlowReadingIt()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var serverRef = "${env:SQLFLOW_PG_VIEW_" + suffix + "}";
+        var repo = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var writer = Guid.NewGuid();
+        var reader = Guid.NewGuid();
+        var inherited = $"{serverRef}|dw|dim|well";
+        var alsoDirect = $"{serverRef}|dw|dim|wellbore";
+        var view = $"{serverRef}|dw|dim|well_wellbore";
+        var target = $"{serverRef}|dw|mart|wells_out";
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Repos.Add(new CatalogRepo { Id = repo, Name = "view_" + suffix, FirstSeenUtc = now, LastSyncUtc = now });
+                db.Objects.Add(SeedTable(inherited, serverRef, "DW", "dim", "Well", now));
+                db.Objects.Add(SeedTable(alsoDirect, serverRef, "DW", "dim", "Wellbore", now));
+                db.Objects.Add(SeedTable(view, serverRef, "DW", "dim", "Well_wellbore", now, kind: "View"));
+                db.Objects.Add(SeedTable(target, serverRef, "DW", "mart", "Wells_out", now));
+
+                db.Pipelines.Add(SeedPipeline(writer, repo, "Dims_build", "ing", "Dims/build.yaml", 1, now));
+                db.Pipelines.Add(SeedPipeline(reader, repo, "Wells_render", "ing", "Wells/render.yaml", 2, now));
+
+                // One flow writes both tables and the view over them.
+                db.LineageEdges.Add(Edge(repo, writer, "Dims_build", "Writes", inherited, "Well"));
+                db.LineageEdges.Add(Edge(repo, writer, "Dims_build", "Writes", alsoDirect, "Wellbore"));
+                db.LineageEdges.Add(Edge(repo, writer, "Dims_build", "Writes", view, "Well_wellbore"));
+
+                // The view's own reads: no pipeline, the view as the module.
+                db.LineageEdges.Add(ModuleEdge(repo, view, inherited, "Well"));
+                db.LineageEdges.Add(ModuleEdge(repo, view, alsoDirect, "Wellbore"));
+
+                // The flow reads the view and one of its tables in its own right, inherits both tables through the
+                // view, and writes a table.
+                db.LineageEdges.Add(Edge(repo, reader, "Wells_render", "Reads", view, "Well_wellbore"));
+                db.LineageEdges.Add(Edge(repo, reader, "Wells_render", "Reads", alsoDirect, "Wellbore"));
+                db.LineageEdges.Add(Inherited(repo, reader, "Wells_render", view, inherited, "Well"));
+                db.LineageEdges.Add(Inherited(repo, reader, "Wells_render", view, alsoDirect, "Wellbore"));
+                db.LineageEdges.Add(Edge(repo, reader, "Wells_render", "Writes", target, "Wells_out"));
+                await db.SaveChangesAsync();
+            }
+
+            using var client = factory.CreateClient();
+            var token = await IssueReadTokenAsync(client);
+
+            var graph = await GetJsonAsync<ProjectGraphDto>(
+                client, token, $"/api/v1/lineage/project-graph?repoId={repo}&project=Dims");
+            Assert.Equal([writer, reader], graph.Pipelines.OrderBy(p => p.Depth).Select(p => p.Id).ToList());
+            Assert.Equal("view", Assert.Single(graph.Objects, o => o.Key == view).Kind);
+
+            var flows = graph.FlowGraph.Select(e => (e.Source, e.Target, e.Label, e.PipelineId)).ToHashSet();
+            Assert.Contains((writer.ToString(), inherited, "writes", (Guid?)writer), flows);
+            Assert.Contains((writer.ToString(), alsoDirect, "writes", (Guid?)writer), flows);
+            Assert.Contains((inherited, view, "view", (Guid?)writer), flows);
+            Assert.Contains((alsoDirect, view, "view", (Guid?)writer), flows);
+            Assert.Contains((view, reader.ToString(), "reads", (Guid?)reader), flows);
+            Assert.Contains((alsoDirect, reader.ToString(), "reads", (Guid?)reader), flows);
+            Assert.Contains((reader.ToString(), target, "writes", (Guid?)reader), flows);
+            Assert.DoesNotContain(graph.FlowGraph, e => e.Source == inherited && e.Target == reader.ToString());
+            Assert.Equal(7, flows.Count);
+
+            var objects = graph.ObjectGraph.Select(e => (e.Source, e.Target, e.Label, e.PipelineId)).ToHashSet();
+            Assert.Contains((inherited, view, "Dims_build", (Guid?)writer), objects);
+            Assert.Contains((alsoDirect, view, "Dims_build", (Guid?)writer), objects);
+            Assert.Contains((view, target, "Wells_render", (Guid?)reader), objects);
+            Assert.Contains((alsoDirect, target, "Wells_render", (Guid?)reader), objects);
+            Assert.DoesNotContain(graph.ObjectGraph, e => e.Source == inherited && e.Target == target);
+            Assert.Equal(4, objects.Count);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.LineageEdges.Where(e => e.RepoId == repo).ExecuteDeleteAsync();
+            await db.Pipelines.Where(p => p.RepoId == repo).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.ServerRef == serverRef).ExecuteDeleteAsync();
+            await db.Repos.Where(r => r.Id == repo).ExecuteDeleteAsync();
+        }
+    }
+
     private static CatalogObject SeedDataset(
         string key, string serverRef, string ns, string group, string name, DateTime now)
         => new()
@@ -355,7 +449,7 @@ public sealed class LineageProjectGraphApiTests
             LastSeenUtc = now,
         };
 
-    /// <summary>A read a derived dataset makes of one of its sources: no pipeline, the dataset's node as the module.</summary>
+    /// <summary>A read a module (a view, or a derived dataset) makes of one of its sources: no pipeline, the module's node as the module.</summary>
     private static CatalogLineageEdge ModuleEdge(Guid repoId, string moduleKey, string objectKey, string objectName)
         => new()
         {
@@ -385,7 +479,7 @@ public sealed class LineageProjectGraphApiTests
         };
 
     private static CatalogObject SeedTable(
-        string key, string serverRef, string database, string schema, string name, DateTime now)
+        string key, string serverRef, string database, string schema, string name, DateTime now, string kind = "Table")
         => new()
         {
             Key = key,
@@ -393,7 +487,7 @@ public sealed class LineageProjectGraphApiTests
             Database = database,
             Schema = schema,
             Name = name,
-            Kind = "Table",
+            Kind = kind,
             FirstSeenUtc = now,
             LastSeenUtc = now,
         };

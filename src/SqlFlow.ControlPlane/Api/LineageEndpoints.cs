@@ -2532,7 +2532,8 @@ public static class LineageEndpoints
     /// <c>Writes</c>/<c>Creates</c> draw flow-to-object, its <c>Reads</c> object-to-flow; a module whose body
     /// reads base objects is a VIEW when a flow maintains it (the generated transform view) or the registry
     /// knows it as one (a DB-managed fact/dim or compatibility view), and its data path draws base-to-view, so
-    /// a view is never wired to the file its maintaining flow read; a <c>Requires</c> (an executed procedure)
+    /// a view is never wired to the file its maintaining flow read, and a base table a flow reads only through a view
+    /// on the canvas draws into the view, never a second, direct edge into the flow; a <c>Requires</c> (an executed procedure)
     /// is a code dependency, not data movement, and draws nothing. The objects view composes the same facts as
     /// object-to-object movement per flow. A data subscriber is a module whose body reads but which no flow
     /// maintains, so it draws base-to-subscriber and terminates the chain: the graph ends where the data is
@@ -2706,9 +2707,11 @@ public static class LineageEndpoints
 
             foreach (var read in group.Reads)
             {
-                // A read inherited through a derived dataset on the canvas is drawn through it (source to dataset
-                // below, dataset to flow by the flow's own read of it), so it adds no direct edge of its own.
-                if (read.ViaModule is { } through && derivedKeys.Contains(through) && includedSet.Contains(through))
+                // A read inherited through a view or a derived dataset on the canvas is drawn through it (base to
+                // view or source to dataset below, then into the flow by the flow's own read of it), so it adds no
+                // direct edge of its own.
+                if (read.ViaModule is { } through && (viewKeys.Contains(through) || derivedKeys.Contains(through))
+                    && includedSet.Contains(through))
                 {
                     continue;
                 }
