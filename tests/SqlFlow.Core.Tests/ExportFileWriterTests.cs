@@ -187,15 +187,17 @@ public sealed class ExportFileWriterTests
         Assert.Equal(3, rows);
 
         stream.Position = 0;
-        using var parquet = await ParquetReader.CreateAsync(stream);
+        await using var parquet = await ParquetReader.CreateAsync(stream);
         Assert.Equal(3, parquet.Schema.DataFields.Length);
         Assert.Equal(["Id", "Name", "Amount"], parquet.Schema.DataFields.Select(f => f.Name).ToArray());
 
         using var rowGroup = parquet.OpenRowGroupReader(0);
-        var idColumn = await rowGroup.ReadColumnAsync(parquet.Schema.DataFields[0]);
-        Assert.Equal(new int?[] { 1, 2, 3 }, idColumn.Data.Cast<int?>().ToArray());
+        var ids = new int?[rowGroup.RowCount];
+        await rowGroup.ReadAsync(parquet.Schema.DataFields[0], ids.AsMemory());
+        Assert.Equal(new int?[] { 1, 2, 3 }, ids);
 
-        var nameColumn = await rowGroup.ReadColumnAsync(parquet.Schema.DataFields[1]);
-        Assert.Equal(new[] { "Ann", "B;ig\"quote", null }, nameColumn.Data.Cast<string?>().ToArray());
+        var names = new string?[rowGroup.RowCount];
+        await rowGroup.ReadAsync(parquet.Schema.DataFields[1], names.AsMemory()!);
+        Assert.Equal(new[] { "Ann", "B;ig\"quote", null }, names);
     }
 }

@@ -1,6 +1,5 @@
 using DuckDB.NET.Data;
 using Parquet;
-using Parquet.Data;
 using Parquet.Schema;
 using SqlFlow.Core.Model;
 using Xunit;
@@ -45,11 +44,11 @@ public sealed class RowWatermarkIntegrationTests : IDisposable
         var schema = new ParquetSchema(field);
 
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         foreach (var group in rowGroups)
         {
             using var rg = writer.CreateRowGroup();
-            await rg.WriteColumnAsync(new DataColumn(field, group));
+            await rg.WriteColumnAsync(field, group);
         }
 
         return path;
@@ -64,10 +63,10 @@ public sealed class RowWatermarkIntegrationTests : IDisposable
         var schema = new ParquetSchema(idField, timeField);
 
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         using var rg = writer.CreateRowGroup();
-        await rg.WriteColumnAsync(new DataColumn(idField, rows.Select(r => r.Id).ToArray()));
-        await rg.WriteColumnAsync(new DataColumn(timeField, rows.Select(r => r.EventTime).ToArray()));
+        await rg.WriteColumnAsync(idField, rows.Select(r => r.Id).ToArray());
+        await rg.WriteColumnAsync(timeField, rows.Select(r => r.EventTime).ToArray());
         return path;
     }
 

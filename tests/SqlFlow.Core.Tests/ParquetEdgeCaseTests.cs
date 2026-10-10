@@ -1,6 +1,5 @@
 using System.Globalization;
 using Parquet;
-using Parquet.Data;
 using Parquet.Schema;
 using SqlFlow.Core.Model;
 using SqlFlow.Sources;
@@ -12,8 +11,8 @@ namespace SqlFlow.Tests;
 /// Additional, non-overlapping edge-case coverage for <see cref="ParquetSourceReader"/> over real temp
 /// .parquet files (no database). These cases harden boundaries the primary reader tests do not exercise:
 /// the full integer/float/decimal/Guid/binary type-mapping table and the unsigned-widening of cell values,
-/// logical types that Parquet.Net 5.6.1 surfaces as a different CLR type than they were written as (a date
-/// reads back as DateTime, a time-of-day as TimeSpan), int96/Impala timestamps, decimal precision/scale
+/// logical types the reader yields as a different CLR type than they were written as (a date reads back
+/// as DateTime, a time-of-day as TimeSpan), int96/Impala timestamps, decimal precision/scale
 /// boundaries (a 38,0 value at full precision and a precision clamped from 50 to 38), an all-null column,
 /// an empty file, a single row, projecting a column subset through OpenAsync, provenance
 /// toggles and path-qualified file names, deterministic file-size/file-date provenance values, exact JSON
@@ -34,16 +33,16 @@ public sealed class ParquetEdgeCaseTests : IDisposable
     private static SourceSpec EdgeSource(string locationFileOrDir, Dictionary<string, string?>? options = null)
         => new() { Type = "parquet", Location = locationFileOrDir, Options = options ?? new Dictionary<string, string?>() };
 
-    /// <summary>Writes one row group, one DataColumn per leaf, exactly as the primary tests do.</summary>
+    /// <summary>Writes one row group, one column per leaf, exactly as the primary tests do.</summary>
     private static async Task WriteOneGroupAsync(string path, ParquetSchema schema, params Array[] columns)
     {
         var leaves = schema.GetDataFields();
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         using var rg = writer.CreateRowGroup();
         for (var i = 0; i < leaves.Length; i++)
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[i], columns[i]));
+            await rg.WriteColumnAsync(leaves[i], columns[i]);
         }
     }
 
@@ -52,11 +51,11 @@ public sealed class ParquetEdgeCaseTests : IDisposable
     {
         var leaves = schema.GetDataFields();
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         using var rg = writer.CreateRowGroup();
         for (var i = 0; i < leaves.Length; i++)
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[i], columns[i].Data, columns[i].Rep));
+            await rg.WriteColumnAsync(leaves[i], columns[i].Data, columns[i].Rep);
         }
     }
 
@@ -205,12 +204,12 @@ public sealed class ParquetEdgeCaseTests : IDisposable
         Assert.Null(CellOf(cols, rows[3], "v"));   // -Infinity -> NULL
     }
 
-    // ---- Logical types whose write CLR type differs from the read CLR type in Parquet.Net 5.6.1 ------------
+    // ---- Logical types whose write CLR type differs from the read CLR type in Parquet.Net ------------------
 
     [Fact]
     public async Task DateLogicalType_ReadsBackAsDateTime_AndMapsToDatetime2()
     {
-        // A Parquet 'date' (written from DateOnly) is surfaced by Parquet.Net 5.6.1 as a midnight DateTime, so
+        // A Parquet 'date' (written from DateOnly) is surfaced by Parquet.Net as a midnight DateTime, so
         // the reader maps it to datetime2 and yields a DateTime, not a DateOnly/'date'.
         var d = new DataField<DateOnly>("d");
         var path = PathFor("datelogical.parquet");
@@ -226,16 +225,33 @@ public sealed class ParquetEdgeCaseTests : IDisposable
     [Fact]
     public async Task TimeOfDayLogicalType_ReadsBackAsTimeSpan_AndMapsToNvarcharMax()
     {
-        // A Parquet time-of-day (written from TimeOnly) is surfaced as a TimeSpan by Parquet.Net 5.6.1, so the
-        // reader takes the TimeSpan fallback: nvarchar(max), the duration rendered with the "c" format.
-        var t = new DataField<TimeOnly>("t");
+        // A Parquet TIME (time-of-day) column is surfaced by the reader as a TimeSpan, so it takes the TimeSpan
+        // fallback: nvarchar(max), the value rendered with the "c" format. TIME is stored as an integer count of
+        // its unit since midnight (here microseconds).
+        var t = new TimeDataField("t", TimeUnitPrecision.Micros);
         var path = PathFor("timelogical.parquet");
-        await WriteOneGroupAsync(path, new ParquetSchema(t), new[] { new TimeOnly(13, 45, 30) });
+        await WriteOneGroupAsync(path, new ParquetSchema(t), new long?[] { new TimeOnly(13, 45, 30).Ticks / TimeSpan.TicksPerMicrosecond });
 
         Assert.Equal("nvarchar(max)", await SqlTypeOfAsync(EdgeSource(path), "t"));
 
         var (cols, rows) = await ReadAllRowsAsync(EdgeSource(path));
         Assert.Equal("13:45:30", CellOf(cols, Assert.Single(rows), "t"));
+    }
+
+    [Fact]
+    public async Task TimeNanosLogicalType_ReadsBackAsTimeSpan_LikeTheOtherTimeUnits()
+    {
+        // TIME(NANOS) is a time of day exactly like TIME_MILLIS/MICROS and surfaces the same way (nvarchar(max),
+        // the "c" format), truncated to the 100 ns tick. Parquet.Net 5 misread it as a timestamp.
+        var t = new TimeDataField("t", TimeUnitPrecision.Nanos);
+        var path = PathFor("timenanos.parquet");
+        var nanos = (new TimeSpan(1, 2, 3).Ticks * TimeSpan.NanosecondsPerTick) + 4_050;
+        await WriteOneGroupAsync(path, new ParquetSchema(t), new long?[] { nanos });
+
+        Assert.Equal("nvarchar(max)", await SqlTypeOfAsync(EdgeSource(path), "t"));
+
+        var (cols, rows) = await ReadAllRowsAsync(EdgeSource(path));
+        Assert.Equal("01:02:03.0000040", CellOf(cols, Assert.Single(rows), "t"));
     }
 
     [Fact]
@@ -660,18 +676,18 @@ public sealed class ParquetEdgeCaseTests : IDisposable
         var path = PathFor("listgroups.parquet");
         var leaves = schema.GetDataFields();
         await using (var stream = File.Create(path))
-        using (var writer = await ParquetWriter.CreateAsync(schema, stream))
+        await using (var writer = await ParquetWriter.CreateAsync(schema, stream))
         {
             using (var rg = writer.CreateRowGroup())
             {
-                await rg.WriteColumnAsync(new DataColumn(leaves[0], new int[] { 1, 2 }));
-                await rg.WriteColumnAsync(new DataColumn(leaves[1], new int[] { 10, 20, 30 }, repetitionLevels: new[] { 0, 1, 0 }));
+                await rg.WriteColumnAsync(leaves[0], new int[] { 1, 2 });
+                await rg.WriteColumnAsync(leaves[1], new int[] { 10, 20, 30 }, repetitionLevels: new[] { 0, 1, 0 });
             }
 
             using (var rg = writer.CreateRowGroup())
             {
-                await rg.WriteColumnAsync(new DataColumn(leaves[0], new int[] { 3 }));
-                await rg.WriteColumnAsync(new DataColumn(leaves[1], new int[] { 40 }, repetitionLevels: new[] { 0 }));
+                await rg.WriteColumnAsync(leaves[0], new int[] { 3 });
+                await rg.WriteColumnAsync(leaves[1], new int[] { 40 }, repetitionLevels: new[] { 0 });
             }
         }
 

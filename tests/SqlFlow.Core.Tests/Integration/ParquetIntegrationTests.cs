@@ -1,5 +1,4 @@
 using Parquet;
-using Parquet.Data;
 using Parquet.Schema;
 using SqlFlow.Core.Model;
 using Xunit;
@@ -24,11 +23,11 @@ public sealed class ParquetIntegrationTests : IDisposable
         var path = Path.Combine(_dir, fileName);
         var leaves = schema.GetDataFields();
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         using var rg = writer.CreateRowGroup();
         for (var i = 0; i < leaves.Length; i++)
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[i], columns[i]));
+            await rg.WriteColumnAsync(leaves[i], columns[i]);
         }
 
         return path;
@@ -96,11 +95,11 @@ public sealed class ParquetIntegrationTests : IDisposable
         var path = Path.Combine(_dir, "nested.parquet");
         var leaves = schema.GetDataFields();
         await using (var stream = File.Create(path))
-        using (var writer = await ParquetWriter.CreateAsync(schema, stream))
+        await using (var writer = await ParquetWriter.CreateAsync(schema, stream))
         using (var rg = writer.CreateRowGroup())
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[0], new int[] { 1 }));
-            await rg.WriteColumnAsync(new DataColumn(leaves[1], new int[] { 7, 8, 9 }, repetitionLevels: new[] { 0, 1, 1 }));
+            await rg.WriteColumnAsync(leaves[0], new int[] { 1 });
+            await rg.WriteColumnAsync(leaves[1], new int[] { 7, 8, 9 }, repetitionLevels: new[] { 0, 1, 1 });
         }
 
         try

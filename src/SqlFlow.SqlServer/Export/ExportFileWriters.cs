@@ -255,8 +255,8 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
             fields[i] = columns[i].Field;
         }
 
-        using var writer = await ParquetWriter.CreateAsync(new ParquetSchema(fields), destination, cancellationToken: ct).ConfigureAwait(false);
-        writer.CompressionMethod = _compression;
+        await using var writer = await ParquetWriter.CreateAsync(
+            new ParquetSchema(fields), destination, new ParquetOptions { CompressionMethod = _compression }, cancellationToken: ct).ConfigureAwait(false);
 
         long total = 0;
         var buffered = 0;
@@ -298,7 +298,7 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
         using var rowGroup = writer.CreateRowGroup();
         foreach (var column in columns)
         {
-            await rowGroup.WriteColumnAsync(new DataColumn(column.Field, column.Drain()), ct).ConfigureAwait(false);
+            await column.DrainToAsync(rowGroup, ct).ConfigureAwait(false);
         }
     }
 
@@ -320,7 +320,14 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
 
         if (clr == typeof(DateTime)) return Value<DateTime>(name, capacity, static (r, i) => r.GetDateTime(i));
         if (clr == typeof(DateTimeOffset)) return Value<DateTimeOffset>(name, capacity, static (r, i) => r.GetFieldValue<DateTimeOffset>(i));
-        if (clr == typeof(TimeSpan)) return Value<TimeSpan>(name, capacity, static (r, i) => r.GetFieldValue<TimeSpan>(i));
+        if (clr == typeof(TimeSpan))
+        {
+            // A SQL time is written as Parquet TIME_MILLIS (INT32 milliseconds since midnight, sub-millisecond
+            // ticks truncated), the shape every earlier export produced.
+            return new ValueColumnBuffer<int>(
+                new TimeDataField(name, TimeUnitPrecision.Millis, isNullable: true),
+                capacity, static (r, i) => checked((int)(r.GetFieldValue<TimeSpan>(i).Ticks / TimeSpan.TicksPerMillisecond)));
+        }
         if (clr == typeof(Guid)) return Value<Guid>(name, capacity, static (r, i) => r.GetGuid(i));
         if (clr == typeof(byte[])) return new BinaryColumnBuffer(name, capacity);
         return new StringColumnBuffer(name, capacity);
@@ -330,7 +337,7 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
         => new ValueColumnBuffer<T>(new DataField<T?>(name), capacity, read);
 
     /// <summary>A per-column row-group buffer: each value appends once as the row streams by (no row array,
-    /// no boxing for value types) and drains into the exact array shape Parquet.Net expects.</summary>
+    /// no boxing for value types) and drains into the row group through the typed Parquet.Net column write.</summary>
     private abstract class ColumnBuffer
     {
         protected ColumnBuffer(DataField field) => Field = field;
@@ -341,7 +348,8 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
 
         public abstract void AppendNull();
 
-        public abstract Array Drain();
+        /// <summary>Writes the buffered values as this column of the row group and empties the buffer.</summary>
+        public abstract Task DrainToAsync(ParquetRowGroupWriter rowGroup, CancellationToken ct);
     }
 
     private sealed class ValueColumnBuffer<T> : ColumnBuffer where T : struct
@@ -360,11 +368,11 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
 
         public override void AppendNull() => _values.Add(null);
 
-        public override Array Drain()
+        public override async Task DrainToAsync(ParquetRowGroupWriter rowGroup, CancellationToken ct)
         {
             var drained = _values.ToArray();
             _values.Clear();
-            return drained;
+            await rowGroup.WriteAsync(Field, new ReadOnlyMemory<T?>(drained), cancellationToken: ct).ConfigureAwait(false);
         }
     }
 
@@ -386,11 +394,13 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
 
         public override void AppendNull() => _values.Add(null);
 
-        public override Array Drain()
+        // The text column write has no cancellable overload; cancellation is observed between columns and rows.
+        public override async Task DrainToAsync(ParquetRowGroupWriter rowGroup, CancellationToken ct)
         {
+            ct.ThrowIfCancellationRequested();
             var drained = _values.ToArray();
             _values.Clear();
-            return drained;
+            await rowGroup.WriteAsync(Field, drained).ConfigureAwait(false);
         }
     }
 
@@ -407,11 +417,13 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
         // NULL binaries stay empty arrays, matching the previous writer's output.
         public override void AppendNull() => _values.Add([]);
 
-        public override Array Drain()
+        // The binary column write has no cancellable overload; cancellation is observed between columns and rows.
+        public override async Task DrainToAsync(ParquetRowGroupWriter rowGroup, CancellationToken ct)
         {
+            ct.ThrowIfCancellationRequested();
             var drained = _values.ToArray();
             _values.Clear();
-            return drained;
+            await rowGroup.WriteAsync(Field, drained).ConfigureAwait(false);
         }
     }
 

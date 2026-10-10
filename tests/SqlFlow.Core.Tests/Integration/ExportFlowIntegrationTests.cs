@@ -187,7 +187,7 @@ public sealed class ExportFlowIntegrationTests
             Assert.True(File.Exists(file));
 
             await using var stream = File.OpenRead(file);
-            using var parquet = await ParquetReader.CreateAsync(stream);
+            await using var parquet = await ParquetReader.CreateAsync(stream);
             Assert.Equal(["Id", "Name", "Amount"], parquet.Schema.DataFields.Select(f => f.Name).ToArray());
             using var rowGroup = parquet.OpenRowGroupReader(0);
             Assert.Equal(2, rowGroup.RowCount);

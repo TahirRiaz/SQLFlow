@@ -1,5 +1,4 @@
 using Parquet;
-using Parquet.Data;
 using Parquet.Schema;
 using SqlFlow.Core.Engine;
 using SqlFlow.Core.Model;
@@ -30,11 +29,11 @@ public sealed class ParquetWatermarkPruningTests : IDisposable
         var schema = new ParquetSchema(field);
 
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         foreach (var group in new[] { new[] { 1, 2, 3 }, new[] { 4, 5, 6 }, new[] { 7, 8, 9 } })
         {
             using var rg = writer.CreateRowGroup();
-            await rg.WriteColumnAsync(new DataColumn(field, group));
+            await rg.WriteColumnAsync(field, group);
         }
 
         return path;

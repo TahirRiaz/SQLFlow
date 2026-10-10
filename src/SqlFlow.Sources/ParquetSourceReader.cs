@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Parquet;
@@ -78,7 +80,7 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
     {
         var meta = PreIngestionParquet.FromSource(source);
         await using var stream = await OpenSeekableAsync(store, file, ct).ConfigureAwait(false);
-        using var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true, cancellationToken: ct).ConfigureAwait(false);
+        await using var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true, cancellationToken: ct).ConfigureAwait(false);
 
         var plan = BuildPlan(reader, file, meta);
 
@@ -99,7 +101,7 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
     {
         var meta = PreIngestionParquet.FromSource(source);
         await using var stream = await OpenSeekableAsync(store, file, ct).ConfigureAwait(false);
-        using var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true, cancellationToken: ct).ConfigureAwait(false);
+        await using var reader = await ParquetReader.CreateAsync(stream, leaveStreamOpen: true, cancellationToken: ct).ConfigureAwait(false);
 
         var plan = BuildPlan(reader, file, meta);
 
@@ -149,33 +151,61 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
 
     private static async Task<object?[]> MaterializeColumnAsync(ColumnPlan column, ParquetRowGroupReader rowGroup, long rowCount, FileRef file, CancellationToken ct)
     {
-        var result = new object?[rowCount];
         if (column.Kind == ColumnKind.Scalar)
         {
-            var data = (await ReadColumnAsync(rowGroup, column.Leaves[0], file, ct).ConfigureAwait(false)).Data;
-            for (long r = 0; r < rowCount; r++)
+            // A flat leaf has one level slot per row: a defined slot takes the next dense value, any other slot is
+            // NULL (a null value, or a null ancestor struct). A required leaf has no definition levels at all.
+            var leaf = await ReadLeafAsync(rowGroup, column.Leaves[0], file, ct).ConfigureAwait(false);
+            var rows = checked((int)rowCount);
+            if (leaf.Definitions.Length != 0 ? leaf.Definitions.Length != rows : leaf.Values.Length != rows)
             {
-                result[r] = ConvertValue(data.GetValue(r));
+                throw new SqlFlowException(
+                    $"Parquet file '{file.Name}' column '{leaf.Field.Path}' holds a different number of values than its row group's {rows} row(s).");
+            }
+
+            var result = new object?[rows];
+            var cursor = 0;
+            for (var r = 0; r < rows; r++)
+            {
+                var defined = leaf.Definitions.Length == 0 || leaf.Definitions[r] == leaf.Field.MaxDefinitionLevel;
+                result[r] = defined ? ConvertValue(leaf.Values[cursor++]) : null;
             }
 
             return result;
         }
 
         // A nested collection: read each leaf, then reassemble one JSON document per record.
-        var leaves = new DataColumn[column.Leaves.Count];
+        var leaves = new LeafData[column.Leaves.Count];
         for (var i = 0; i < column.Leaves.Count; i++)
         {
-            leaves[i] = await ReadColumnAsync(rowGroup, column.Leaves[i], file, ct).ConfigureAwait(false);
+            leaves[i] = await ReadLeafAsync(rowGroup, column.Leaves[i], file, ct).ConfigureAwait(false);
+        }
+
+        // Sibling leaves of one collection share its level structure; reassembly walks them in lockstep.
+        var slots = leaves[0].Repetitions.Length;
+        if (leaves.Any(l => l.Repetitions.Length != slots || (l.Definitions.Length != 0 && l.Definitions.Length != slots)))
+        {
+            throw new SqlFlowException(
+                $"Parquet file '{file.Name}' column '{column.Name}' has nested leaves with mismatched level counts and cannot be reassembled.");
         }
 
         return ReconstructJson(column, leaves, rowCount);
     }
 
-    private static async Task<DataColumn> ReadColumnAsync(ParquetRowGroupReader rowGroup, DataField field, FileRef file, CancellationToken ct)
+    /// <summary>
+    /// One leaf column of a row group: its DENSE values (one per slot whose definition level reaches the leaf's
+    /// maximum, i.e. one per actual value, already in the reader's value shape), plus the per-slot definition and
+    /// repetition levels (empty when the schema gives the leaf none: a required leaf has no definition levels, a
+    /// non-repeated one no repetition levels).
+    /// </summary>
+    private sealed record LeafData(DataField Field, object?[] Values, int[] Definitions, int[] Repetitions);
+
+    private static async Task<LeafData> ReadLeafAsync(ParquetRowGroupReader rowGroup, DataField field, FileRef file, CancellationToken ct)
     {
+        RawColumnData raw;
         try
         {
-            return await rowGroup.ReadColumnAsync(field, ct).ConfigureAwait(false);
+            raw = await rowGroup.ReadRawColumnDataBaseAsync(field, ct).ConfigureAwait(false);
         }
         catch (OverflowException ex)
         {
@@ -184,6 +214,140 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
             throw new SqlFlowException(
                 $"Parquet file '{file.Name}' column '{field.Path}' has a numeric value outside the range of a "
                 + ".NET/SQL Server decimal and cannot be ingested.", ex);
+        }
+
+        // The raw buffers are pooled and only valid until disposal, so levels and values are copied out first.
+        using (raw)
+        {
+            var definitions = field.MaxDefinitionLevel > 0 ? raw.DefinitionLevels.ToArray() : [];
+            var repetitions = field.MaxRepetitionLevel > 0 ? raw.RepetitionLevels.ToArray() : [];
+            var count = definitions.Length == 0 ? -1 : definitions.Count(d => d == field.MaxDefinitionLevel);
+            var values = DenseValues(raw, count, field, file);
+            for (var i = 0; i < values.Length; i++)
+            {
+                values[i] = NormalizeLeafValue(field, values[i], file);
+            }
+
+            return new LeafData(field, values, definitions, repetitions);
+        }
+    }
+
+    private static readonly ConcurrentDictionary<Type, Func<RawColumnData, int, DataField, FileRef, object?[]>> DenseReaders = new();
+
+    /// <summary>
+    /// Copies the first <paramref name="count"/> raw values out as objects (all of them when count is -1, a leaf
+    /// with no definition levels). Text and binary values arrive as views over pooled buffers and are materialized
+    /// as string / byte[] here; every other Parquet value type is boxed through one generic copier per type.
+    /// </summary>
+    private static object?[] DenseValues(RawColumnData raw, int count, DataField field, FileRef file)
+    {
+        switch (raw)
+        {
+            case RawColumnData<ReadOnlyMemory<char>> text:
+            {
+                var span = text.Values;
+                var result = new object?[CheckedCount(count, span.Length, field, file)];
+                for (var i = 0; i < result.Length; i++)
+                {
+                    result[i] = span[i].ToString();
+                }
+
+                return result;
+            }
+
+            case RawColumnData<ReadOnlyMemory<byte>> binary:
+            {
+                var span = binary.Values;
+                var result = new object?[CheckedCount(count, span.Length, field, file)];
+                for (var i = 0; i < result.Length; i++)
+                {
+                    result[i] = span[i].ToArray();
+                }
+
+                return result;
+            }
+        }
+
+        var rawType = raw.GetType();
+        while (rawType is not null && !(rawType.IsGenericType && rawType.GetGenericTypeDefinition() == typeof(RawColumnData<>)))
+        {
+            rawType = rawType.BaseType;
+        }
+
+        if (rawType is null)
+        {
+            throw new SqlFlowException(
+                $"Parquet file '{file.Name}' column '{field.Path}' returned column data of an unsupported shape ({raw.GetType().Name}).");
+        }
+
+        var copier = DenseReaders.GetOrAdd(rawType.GetGenericArguments()[0], static valueType =>
+            typeof(ParquetSourceReader).GetMethod(nameof(BoxDense), BindingFlags.NonPublic | BindingFlags.Static)!
+                .MakeGenericMethod(valueType)
+                .CreateDelegate<Func<RawColumnData, int, DataField, FileRef, object?[]>>());
+        return copier(raw, count, field, file);
+    }
+
+    private static object?[] BoxDense<T>(RawColumnData raw, int count, DataField field, FileRef file)
+        where T : struct
+    {
+        var span = ((RawColumnData<T>)raw).Values;
+        var result = new object?[CheckedCount(count, span.Length, field, file)];
+        for (var i = 0; i < result.Length; i++)
+        {
+            result[i] = span[i];
+        }
+
+        return result;
+    }
+
+    private static int CheckedCount(int count, int available, DataField field, FileRef file)
+    {
+        if (count > available)
+        {
+            throw new SqlFlowException(
+                $"Parquet file '{file.Name}' column '{field.Path}' declares {count} value(s) but its data holds {available}.");
+        }
+
+        return count < 0 ? available : count;
+    }
+
+    /// <summary>
+    /// Restores the value shapes this reader has always produced, which Parquet.Net 6 changed: a TIME leaf comes
+    /// back as its raw integer (milli/micro/nanoseconds since midnight) and becomes a <see cref="TimeSpan"/> again
+    /// (landed as its "c" string, see <see cref="MapClrType"/>); an INT96 (Impala) timestamp comes back with an
+    /// unspecified kind and is marked UTC again, as INT96 instants are.
+    /// </summary>
+    private static object? NormalizeLeafValue(DataField field, object? value, FileRef file)
+    {
+        switch (field)
+        {
+            case TimeDataField time when value is int or long:
+            {
+                var raw = Convert.ToInt64(value, CultureInfo.InvariantCulture);
+                try
+                {
+                    return TimeSpan.FromTicks(time.Precision switch
+                    {
+                        TimeUnitPrecision.Millis => checked(raw * TimeSpan.TicksPerMillisecond),
+                        TimeUnitPrecision.Micros => checked(raw * TimeSpan.TicksPerMicrosecond),
+                        TimeUnitPrecision.Nanos => raw / TimeSpan.NanosecondsPerTick,
+                        _ => throw new SqlFlowException(
+                            $"Parquet file '{file.Name}' column '{field.Path}' declares an unknown TIME unit '{time.Precision}'."),
+                    });
+                }
+                catch (OverflowException ex)
+                {
+                    throw new SqlFlowException(
+                        $"Parquet file '{file.Name}' column '{field.Path}' has a TIME value ({raw.ToString(CultureInfo.InvariantCulture)} "
+                        + $"{time.Precision}) too large to represent.", ex);
+                }
+            }
+
+            case DateTimeDataField { DateTimeFormat: DateTimeFormat.Impala } when value is DateTime instant:
+                return DateTime.SpecifyKind(instant, DateTimeKind.Utc);
+
+            default:
+                return value;
         }
     }
 
@@ -417,20 +581,18 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
 
     /// <summary>
     /// Reassembles a nested column's leaves into one JSON string per record. Records are delimited by repetition
-    /// level 0; within a record each leaf value is present (consumed from its dense Data array) when its
+    /// level 0; within a record each leaf value is present (consumed from its dense value array) when its
     /// definition level reaches the leaf max, otherwise it is null. An empty list yields [], a null list yields
     /// JSON null. Cross-leaf alignment is by definition level, so values never shift.
     /// </summary>
-    private static object?[] ReconstructJson(ColumnPlan column, DataColumn[] leaves, long rowCount)
+    private static object?[] ReconstructJson(ColumnPlan column, LeafData[] leaves, long rowCount)
     {
         // Repetition levels (shared across sibling leaves) segment records (level 0 = new record); per-leaf
-        // definition levels say whether an element exists at a slot. Parquet.Net 5.6.1 aligns each leaf's Data
-        // array by NULLABILITY: a non-nullable leaf gets a DENSE array (one entry per existing element, indexed by
-        // a cursor), while a nullable leaf gets a SLOT-ALIGNED array (one entry per repetition slot with null
-        // placeholders at empty-list, null-list, and null-element slots, indexed by the slot index). Mixing the two
-        // (e.g. reading a nullable leaf with a dense cursor) shifts every value after the first empty/null list.
-        var slots = leaves[0].RepetitionLevels ?? [];
-        var defs = leaves.Select(l => l.DefinitionLevels ?? []).ToArray();
+        // definition levels say whether an element exists at a slot. Every leaf's values are DENSE (one per slot
+        // whose definition level reaches the leaf max), so each leaf is consumed through its own cursor: a slot
+        // below the max (an empty list, a null list, or a null element) consumes nothing, and values never shift.
+        var slots = leaves[0].Repetitions;
+        var defs = leaves.Select(l => l.Definitions).ToArray();
         var maxDef = leaves.Select(l => l.Field.MaxDefinitionLevel).ToArray();
         var cursor = new int[leaves.Length];
 
@@ -463,8 +625,7 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
 
             // An element exists at this slot unless its definition level is below the level at which the repeated
             // element is defined (maxDef for a required leaf, maxDef-1 for a nullable one). A lower level marks an
-            // empty list (no element) or, at level 0, a null list. The value (already null for a null element) is
-            // read slot-aligned, so cross-leaf values never shift.
+            // empty list (no element) or, at level 0, a null list.
             var hasElement = false;
             var elementValues = new object?[leaves.Length];
             for (var j = 0; j < leaves.Length; j++)
@@ -473,12 +634,10 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
                 var def = i < defs[j].Length ? defs[j][i] : maxDef[j];
                 if (def >= threshold)
                 {
-                    // The element exists. A nullable leaf's Data is slot-aligned (read at the slot index i, which
-                    // is null for a null element); a non-nullable leaf's Data is dense (read at a cursor advanced
-                    // once per existing element).
+                    // The element exists; it carries a value only at the leaf max (one level lower is a null
+                    // element), and only then is the leaf's dense cursor advanced.
                     hasElement = true;
-                    var index = leaves[j].Field.IsNullable ? i : cursor[j]++;
-                    elementValues[j] = ConvertValue(leaves[j].Data.GetValue(index));
+                    elementValues[j] = def == maxDef[j] ? ConvertValue(leaves[j].Values[cursor[j]++]) : null;
                 }
                 else if (def == 0)
                 {
@@ -597,9 +756,29 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
             return new SourceColumn { Name = name, Type = typeof(decimal), SqlType = $"decimal({precision},{scale})", Precision = precision, Scale = scale, IsNullable = true };
         }
 
-        var clr = Nullable.GetUnderlyingType(field.ClrType) ?? field.ClrType;
-        var (type, sqlType) = MapClrType(clr);
+        var (type, sqlType) = MapClrType(LeafValueType(field));
         return new SourceColumn { Name = name, Type = type, SqlType = sqlType, IsNullable = true };
+    }
+
+    /// <summary>
+    /// The CLR type of the values <see cref="ReadLeafAsync"/> produces for a leaf. Parquet.Net 6 declares text and
+    /// binary leaves as <see cref="ReadOnlyMemory{T}"/> and a TIME leaf as its raw integer; the reader materializes
+    /// those as string, byte[] and <see cref="TimeSpan"/> (see <see cref="NormalizeLeafValue"/>).
+    /// </summary>
+    private static Type LeafValueType(DataField field)
+    {
+        if (field is TimeDataField)
+        {
+            return typeof(TimeSpan);
+        }
+
+        var clr = Nullable.GetUnderlyingType(field.ClrType) ?? field.ClrType;
+        if (clr == typeof(ReadOnlyMemory<char>))
+        {
+            return typeof(string);
+        }
+
+        return clr == typeof(ReadOnlyMemory<byte>) ? typeof(byte[]) : clr;
     }
 
     private static (Type Type, string SqlType) MapClrType(Type clr)

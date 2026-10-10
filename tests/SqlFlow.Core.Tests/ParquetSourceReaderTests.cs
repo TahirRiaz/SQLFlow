@@ -1,6 +1,5 @@
 using System.Globalization;
 using Parquet;
-using Parquet.Data;
 using Parquet.Schema;
 using SqlFlow.Core.Model;
 using SqlFlow.Sources;
@@ -31,13 +30,13 @@ public sealed class ParquetSourceReaderTests : IDisposable
     {
         var leaves = schema.GetDataFields();
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         foreach (var rowGroupColumns in rowGroups)
         {
             using var rg = writer.CreateRowGroup();
             for (var i = 0; i < leaves.Length; i++)
             {
-                await rg.WriteColumnAsync(new DataColumn(leaves[i], rowGroupColumns[i]));
+                await rg.WriteColumnAsync(leaves[i], rowGroupColumns[i]);
             }
         }
     }
@@ -316,10 +315,13 @@ public sealed class ParquetSourceReaderTests : IDisposable
     [Fact]
     public async Task TimeSpanColumn_MapsToStringAndHoldsDurationsBeyond24h()
     {
-        var dur = new DataField<TimeSpan>("dur");
+        // A TIME_MILLIS column carrying values beyond one day (and a negative one): duration-like data some writers
+        // store as TIME. The reader surfaces each value as a TimeSpan.
+        var dur = new TimeDataField("dur", TimeUnitPrecision.Millis);
         var path = Path_("dur.parquet");
-        await WriteAsync(path, new ParquetSchema(dur),
-            [new[] { new TimeSpan(13, 45, 30), TimeSpan.FromHours(25), new TimeSpan(-1, -2, 0, 0) }]);
+        var millis = new[] { new TimeSpan(13, 45, 30), TimeSpan.FromHours(25), new TimeSpan(-1, -2, 0, 0) }
+            .Select(d => (int?)checked((int)(d.Ticks / TimeSpan.TicksPerMillisecond))).ToArray();
+        await WriteAsync(path, new ParquetSchema(dur), [millis]);
 
         // TimeSpan is NOT mapped to SQL 'time' (which only holds 0..24h) - a duration would overflow the load.
         var columns = await _reader.GetColumnsAsync(Source(path));
@@ -349,11 +351,11 @@ public sealed class ParquetSourceReaderTests : IDisposable
     {
         var leaves = schema.GetDataFields();
         await using var stream = File.Create(path);
-        using var writer = await ParquetWriter.CreateAsync(schema, stream);
+        await using var writer = await ParquetWriter.CreateAsync(schema, stream);
         using var rg = writer.CreateRowGroup();
         for (var i = 0; i < leaves.Length; i++)
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[i], columns[i].Data, columns[i].Rep));
+            await rg.WriteColumnAsync(leaves[i], columns[i].Data, columns[i].Rep);
         }
     }
 
@@ -378,18 +380,19 @@ public sealed class ParquetSourceReaderTests : IDisposable
     [Fact]
     public async Task NullableList_MixingEmptyNullAndElements_DoesNotShiftValues()
     {
-        // Regression (critical): a NULLABLE element leaf is read slot-aligned. row0=[10,20], row1=[], row2=null,
-        // row3=[null,30], row4=[40]. A dense cursor would lose 30 and 40 (read the empty/null placeholders).
+        // Regression (critical): empty lists, null lists and null elements consume no value. row0=[10,20], row1=[],
+        // row2=null, row3=[null,30], row4=[40]. Reading values by slot index instead of a per-leaf cursor over the
+        // dense values would lose 30 and 40.
         var schema = new ParquetSchema(new DataField<int>("id"), new ListField("vals", new DataField<int?>("element")));
         var path = Path_("nullablelists.parquet");
         var leaves = schema.GetDataFields();
         await using (var stream = File.Create(path))
-        using (var writer = await ParquetWriter.CreateAsync(schema, stream))
+        await using (var writer = await ParquetWriter.CreateAsync(schema, stream))
         using (var rg = writer.CreateRowGroup())
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[0], new int[] { 1, 2, 3, 4, 5 }));
-            await rg.WriteColumnAsync(new DataColumn(leaves[1], new int[] { 10, 20, 30, 40 },
-                repetitionLevels: new[] { 0, 1, 0, 0, 0, 1, 0 }, definitionLevels: new[] { 3, 3, 1, 0, 2, 3, 3 }));
+            await rg.WriteColumnAsync(leaves[0], new int[] { 1, 2, 3, 4, 5 });
+            await rg.WriteColumnAsync(leaves[1], new int[] { 10, 20, 30, 40 },
+                repetitionLevels: new[] { 0, 1, 0, 0, 0, 1, 0 }, definitionLevels: new[] { 3, 3, 1, 0, 2, 3, 3 });
         }
 
         var (cols, rows) = await ReadAllAsync(Source(path));
@@ -410,12 +413,12 @@ public sealed class ParquetSourceReaderTests : IDisposable
         var path = Path_("emptylist.parquet");
         var leaves = schema.GetDataFields();
         await using (var stream = File.Create(path))
-        using (var writer = await ParquetWriter.CreateAsync(schema, stream))
+        await using (var writer = await ParquetWriter.CreateAsync(schema, stream))
         using (var rg = writer.CreateRowGroup())
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[0], new int[] { 10, 20 }));
-            await rg.WriteColumnAsync(new DataColumn(leaves[1], new int[] { 5, 6 },
-                repetitionLevels: new[] { 0, 0, 1 }, definitionLevels: new[] { 1, 2, 2 }));
+            await rg.WriteColumnAsync(leaves[0], new int[] { 10, 20 });
+            await rg.WriteColumnAsync(leaves[1], new int[] { 5, 6 },
+                repetitionLevels: new[] { 0, 0, 1 }, definitionLevels: new[] { 1, 2, 2 });
         }
 
         var (cols, rows) = await ReadAllAsync(Source(path));
@@ -492,13 +495,13 @@ public sealed class ParquetSourceReaderTests : IDisposable
         var path = Path_("mapstruct.parquet");
         var leaves = schema.GetDataFields();
         await using (var stream = File.Create(path))
-        using (var writer = await ParquetWriter.CreateAsync(schema, stream))
+        await using (var writer = await ParquetWriter.CreateAsync(schema, stream))
         using (var rg = writer.CreateRowGroup())
         {
-            await rg.WriteColumnAsync(new DataColumn(leaves[0], new int[] { 1 }));
-            await rg.WriteColumnAsync(new DataColumn(leaves[1], new int[] { 7 }, repetitionLevels: new[] { 0 }));
-            await rg.WriteColumnAsync(new DataColumn(leaves[2], new int[] { 1 }, repetitionLevels: new[] { 0 }));
-            await rg.WriteColumnAsync(new DataColumn(leaves[3], new int[] { 2 }, repetitionLevels: new[] { 0 }));
+            await rg.WriteColumnAsync(leaves[0], new int[] { 1 });
+            await rg.WriteColumnAsync(leaves[1], new int[] { 7 }, repetitionLevels: new[] { 0 });
+            await rg.WriteColumnAsync(leaves[2], new int[] { 1 }, repetitionLevels: new[] { 0 });
+            await rg.WriteColumnAsync(leaves[3], new int[] { 2 }, repetitionLevels: new[] { 0 });
         }
 
         var ex = await Assert.ThrowsAsync<SqlFlow.Core.SqlFlowException>(() => _reader.GetColumnsAsync(Source(path)));
