@@ -6,7 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="6.1.3" />
+    <PackageVersion Include="Microsoft.Data.SqlClient" Version="7.1.1" />
+    <!-- SqlClient 7 moved Entra ID authentication out of the driver: without Extensions.Azure deployed next to it,
+         every passwordless "Authentication=Active Directory *" connection fails at open (never at build). Each
+         project that references the driver references this too; SqlEntraAuthenticationProviderTests pins it. -->
+    <PackageVersion Include="Microsoft.Data.SqlClient.Extensions.Azure" Version="7.1.1" />
     <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.117.0" />
     <PackageVersion Include="GenericParsing.Standard" Version="1.4.1" />
     <PackageVersion Include="ExcelDataReader" Version="3.9.0" />

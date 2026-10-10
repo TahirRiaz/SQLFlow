@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.Data.SqlClient.Extensions.Azure" />
     <!-- PasswordHasher (PBKDF2) for local SQLFlow users: the one hashing implementation shared by the control
          plane (via DI) and the CLI's offline 'user' command, so a CLI-set hash verifies at login unchanged. -->
     <PackageReference Include="Microsoft.Extensions.Identity.Core" />
