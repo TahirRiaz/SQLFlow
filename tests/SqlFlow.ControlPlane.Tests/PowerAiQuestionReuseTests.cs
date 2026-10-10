@@ -3,8 +3,10 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.SqlServer.TransactSql.ScriptDom;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Api;
+using SqlFlow.SqlServer.Query;
 using Xunit;
 
 namespace SqlFlow.ControlPlane.Tests;
@@ -60,7 +62,7 @@ public sealed class PowerAiQuestionReuseTests
         // it is known to produce rather than merely against itself.
         var proof = ProofValues.ById("q127");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
 
         // Stored and asked with DIFFERENT wording. They share the words a search can match on
         // ("reseller", "sales", "region"), which is what makes this a retrieval test rather than a lookup.
@@ -116,7 +118,10 @@ public sealed class PowerAiQuestionReuseTests
     /// but both are bugs, and a one-sided test catches neither reliably.
     ///
     /// The threshold counts distinct word STEMS matched, so the two cases differ by how many meaningful words
-    /// the asked question shares with the stored one, not by anything the test sets directly.
+    /// the asked question shares with the stored one, not by anything the test sets directly. Every question here
+    /// also carries the run's suffix, which isolates this run's stored question in a shared catalog and is itself
+    /// a shared word, so the threshold is pinned one above the shipped two: two meaningful words plus the suffix
+    /// clear it, one meaningful word plus the suffix does not.
     /// </summary>
     [SkippableFact]
     public async Task AMatchIsTrustedOnlyWhenItClearsTheThreshold_AndAWeakOneIsNot()
@@ -126,15 +131,15 @@ public sealed class PowerAiQuestionReuseTests
 
         var proof = ProofValues.ById("q141");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
         var storedQuestion = $"Which products sold the most to resellers in {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
             .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
             .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false")
             // Stated rather than assumed: these assertions are about the threshold, so the test pins it instead
-            // of inheriting whatever the shipped default happens to be.
-            .WithSetting("ControlPlane:PowerAI:Retrieval:RankThreshold", "2");
+            // of inheriting whatever the shipped default happens to be (one higher than it, for the suffix).
+            .WithSetting("ControlPlane:PowerAI:Retrieval:RankThreshold", "3");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -142,26 +147,26 @@ public sealed class PowerAiQuestionReuseTests
         try
         {
             await ConfirmAsync(client, token, storedQuestion, proof.Sql);
-            // Two meaningful words in common ("products", "resellers"), which is what the threshold asks for.
+            // Two meaningful words in common ("products", "resellers") besides the suffix: what the threshold asks for.
             var strong = await FindWhenIndexedAsync(
                 client, token, $"which products do resellers buy in {suffix}",
                 m => string.Equals(m.Question, storedQuestion, StringComparison.Ordinal));
             Assert.NotNull(strong);
             Assert.True(
-                strong.Score >= 2,
+                strong.Score >= 3,
                 $"Expected the strong match to score at least the threshold, scored {strong.Score} on "
                 + $"[{string.Join(", ", strong.MatchedTerms)}].");
             Assert.True(strong.Trusted, "A match at or above the threshold must be reported as trusted.");
 
-            // One meaningful word in common. A single shared word is routinely coincidence, which is the whole
-            // reason the threshold is two, so this must NOT come back trusted even though it is a real match.
+            // One meaningful word in common besides the suffix. A single shared word is routinely coincidence, which
+            // is the whole reason for the threshold, so this must NOT come back trusted even though it is a real match.
             var weak = await FindAsync(client, token, $"how many products are there in {suffix}");
             var weakMatch = weak.Matches.FirstOrDefault(
                 m => string.Equals(m.Question, storedQuestion, StringComparison.Ordinal));
             if (weakMatch is not null)
             {
                 Assert.True(
-                    weakMatch.Score < 2,
+                    weakMatch.Score < 3,
                     $"Expected a single shared word to score below the threshold, scored {weakMatch.Score} on "
                     + $"[{string.Join(", ", weakMatch.MatchedTerms)}].");
                 Assert.False(
@@ -195,7 +200,7 @@ public sealed class PowerAiQuestionReuseTests
 
         var proof = ProofValues.ById("q006");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
 
         // One meaningful word besides the suffix, so it cannot reach a threshold of two on score.
         var storedQuestion = $"How many customers{suffix}?";
@@ -252,7 +257,7 @@ public sealed class PowerAiQuestionReuseTests
 
         var proof = ProofValues.ById("q127");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
@@ -315,7 +320,7 @@ public sealed class PowerAiQuestionReuseTests
 
         var proof = ProofValues.ById("q127");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
         // Retrieval on, auto-run off: the shipped default, and the case a deployment lands in by doing nothing.
@@ -368,7 +373,7 @@ public sealed class PowerAiQuestionReuseTests
 
         var proof = ProofValues.ById("q127");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
@@ -414,7 +419,7 @@ public sealed class PowerAiQuestionReuseTests
 
         var proof = ProofValues.ById("q127");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
@@ -427,8 +432,9 @@ public sealed class PowerAiQuestionReuseTests
         try
         {
             await ConfirmAsync(client, token, storedQuestion, proof.Sql);
-            // Shares no meaningful word with anything stored here.
-            var result = await FindAsync(client, token, $"what is the warehouse humidity {suffix}");
+            // Shares no meaningful word with anything stored here. The run suffix is left off on purpose: it is a
+            // word of the stored question, and this assertion needs no help ranking the stored question.
+            var result = await FindAsync(client, token, "what is the warehouse humidity");
 
             Assert.DoesNotContain(
                 result.Matches,
@@ -458,8 +464,32 @@ public sealed class PowerAiQuestionReuseTests
 
         var proof = ProofValues.ById("q128");
         var suffix = Guid.NewGuid().ToString("N")[..8];
-        await SeedCatalogObjectsAsync(cs, suffix);
+        await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
         var storedQuestion = $"What are reseller sales by country {suffix}?";
+
+        // The confirmation names its datasource, and a named datasource is accepted only when an active pipeline in
+        // the reviewed estate declares it (the known-reference gate), so one is registered for this run.
+        var repoId = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+        await using (var seed = CatalogDatabase.Create(cs))
+        {
+            seed.Repos.Add(new CatalogRepo { Id = repoId, Name = "powerai_reuse_" + suffix, FirstSeenUtc = now, LastSyncUtc = now });
+            seed.Pipelines.Add(new CatalogPipeline
+            {
+                Id = Guid.NewGuid(),
+                RepoId = repoId,
+                Name = "powerai_reuse_" + suffix,
+                Kind = "ing",
+                RelativePath = "powerai/reuse.yaml",
+                Active = true,
+                SourceServer = AdventureWorksRef,
+                TargetServer = AdventureWorksRef,
+                DefinitionJson = "{}",
+                FirstSeenUtc = now,
+                LastSeenUtc = now,
+            });
+            await seed.SaveChangesAsync();
+        }
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
             .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
@@ -494,6 +524,8 @@ public sealed class PowerAiQuestionReuseTests
             await using (var db = CatalogDatabase.Create(cs))
             {
                 await db.SemanticExamples.Where(e => e.ContentHash == hash).ExecuteDeleteAsync();
+                await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
+                await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
             }
 
             await RemoveCatalogObjectsAsync(cs, suffix);
@@ -510,15 +542,19 @@ public sealed class PowerAiQuestionReuseTests
     ];
 
     /// <summary>
-    /// Registers the sample's tables in the catalog, as a schema sync would.
+    /// Registers the sample's tables in the catalog, as a schema sync would, and allow-lists the columns the
+    /// stored SQL reads, as an admin would before PowerAI may touch them.
     ///
-    /// The column-policy guard refuses any query naming a table the catalog has no record of, so without this
-    /// every confirmation here is refused before retrieval is ever reached. Seeding it is not a workaround: an
-    /// example may only be stored for objects the estate actually knows, and these tests assert reuse on top of
-    /// that rule rather than around it. Rows are keyed per test run so concurrent runs cannot collide, and are
-    /// removed in the same finally as the example they support.
+    /// The column-policy guard is default-deny at two levels: it refuses a table the catalog has no record of, and
+    /// for a known table it refuses every column without an explicit allow row. Without both, every confirmation
+    /// here is refused before retrieval is ever reached. Seeding them is not a workaround: an example may only be
+    /// stored for objects the estate knows and columns an admin allowed, and these tests assert reuse on top of
+    /// those rules rather than around them. The allowed columns are derived from the SQL with the guard's own
+    /// extractor (an unqualified column counts against every table the statement reads, as the guard counts it),
+    /// so the policy is exactly what the query needs. Rows are keyed per test run so concurrent runs cannot
+    /// collide, and are removed in the same finally as the example they support.
     /// </summary>
-    private static async Task SeedCatalogObjectsAsync(string catalogConnection, string runKey)
+    private static async Task SeedCatalogObjectsAsync(string catalogConnection, string runKey, string allowedSql)
     {
         var now = DateTime.UtcNow;
         await using var db = CatalogDatabase.Create(catalogConnection);
@@ -537,6 +573,20 @@ public sealed class PowerAiQuestionReuseTests
             });
         }
 
+        var parsed = new TSql160Parser(initialQuotedIdentifiers: true).Parse(new StringReader(allowedSql), out var errors);
+        Assert.Empty(errors);
+        var select = Assert.IsType<SelectStatement>(Assert.Single(Assert.Single(((TSqlScript)parsed).Batches).Statements));
+        var allowed = SqlColumnAccessExtractor.Extract(select)
+            .Where(a => a.Column is not null)
+            .SelectMany(a => SampleTables
+                .Where(t => a.Table.Matches("dbo", t))
+                .Select(t => (Key: ObjectKeyFor(t, runKey), Column: a.Column!)))
+            .Distinct();
+        foreach (var (key, column) in allowed)
+        {
+            db.ColumnPolicies.Add(new CatalogColumnPolicy { ObjectKey = key, ColumnName = column, IsAllowed = true, UpdatedUtc = now });
+        }
+
         await db.SaveChangesAsync(CancellationToken.None);
     }
 
@@ -548,6 +598,7 @@ public sealed class PowerAiQuestionReuseTests
     private static async Task RemoveCatalogObjectsAsync(string catalogConnection, string runKey)
     {
         await using var db = CatalogDatabase.Create(catalogConnection);
+        await db.ColumnPolicies.Where(p => p.ObjectKey.EndsWith("|" + runKey)).ExecuteDeleteAsync();
         await db.Objects.Where(o => o.Key.EndsWith("|" + runKey)).ExecuteDeleteAsync();
     }
 

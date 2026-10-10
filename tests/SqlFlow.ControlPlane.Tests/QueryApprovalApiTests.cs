@@ -50,6 +50,21 @@ public sealed class QueryApprovalApiTests
                     FirstSeenUtc = now,
                     LastSeenUtc = now,
                 });
+
+                // The column-policy guard refuses a table the catalog has no record of, so the table the query
+                // reads is registered as a schema sync would. It has no column rows, so its star select exposes
+                // no column that is not allow-listed.
+                db.Objects.Add(new CatalogObject
+                {
+                    Key = $"{serverRef}|dw|edw|f",
+                    ServerRef = serverRef,
+                    Database = "dw",
+                    Schema = "edw",
+                    Name = "F",
+                    Kind = "Table",
+                    FirstSeenUtc = now,
+                    LastSeenUtc = now,
+                });
                 await db.SaveChangesAsync();
             }
 
@@ -126,6 +141,7 @@ public sealed class QueryApprovalApiTests
             await db.ComputeTasks.Where(t => t.SourceRef == serverRef).ExecuteDeleteAsync();
             await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
             await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.ServerRef == serverRef).ExecuteDeleteAsync();
         }
     }
 
