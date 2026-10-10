@@ -18,7 +18,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/SemanticLayerAdminEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs
-  - src/SqlFlow.ControlPlane/Program.cs
+  - src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs
   - src/SqlFlow.Assistant/AssistantSettings.cs
   - tests/SqlFlow.ControlPlane.Tests/SemanticLayerApiTests.cs
   - src/SqlFlow.ControlPlane/Api/AssistantScope.cs
@@ -35,7 +35,7 @@ referenceRefs:
 related:
   - wiki-design-doc-drift
   - wiki-powerbi-model-entity-resolution
-updated: 2026-09-17
+updated: 2026-10-10
 ---
 
 # The semantic layer is the column allow-list
@@ -165,7 +165,7 @@ own approach and are checked as the SELECT they would read.
 
 ## What building it exposed: updates to column policy were silently dropped
 
-The control plane registers the catalog context with `QueryTrackingBehavior.NoTracking` (`Program.cs`). The
+The control plane registers the catalog context with `QueryTrackingBehavior.NoTracking` (`ControlPlaneHost`). The
 original single-column policy upsert loaded an existing row without `AsTracking()`, so its change was never
 written:
 

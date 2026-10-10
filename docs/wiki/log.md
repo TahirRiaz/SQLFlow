@@ -336,3 +336,11 @@ a routing lead and a real safety constraint, every other contrast in lowercase p
 `GROUNDING_RULE` in `server.rs` and enforced by `capitals_are_rationed_to_routing_and_safety`, which caps the
 per-description budget and asserts at most one tool claims `START HERE`. Updated
 [the semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md) for the renamed tools.
+
+## [2026-10-10] lint | Control plane composition moved into ControlPlaneHost
+
+Carrying the delivery project's SQLFlow changes in moved the control plane's composition (services, middleware,
+endpoint groups) out of `src/SqlFlow.ControlPlane/Program.cs`, which now only calls `ControlPlaneHost.RunAsync`, into
+`src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs`, so a host can compose the control plane with modules of its
+own. [The semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md) cited `Program.cs` for
+the catalog context's no-tracking registration; it now cites `ControlPlaneHost`, where that registration lives.

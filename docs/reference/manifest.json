@@ -4372,7 +4372,7 @@
         "src/SqlFlow.ControlPlane/Api/SemanticLayerAdminEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
-        "src/SqlFlow.ControlPlane/Program.cs",
+        "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
         "src/SqlFlow.Assistant/AssistantSettings.cs",
         "tests/SqlFlow.ControlPlane.Tests/SemanticLayerApiTests.cs",
         "src/SqlFlow.ControlPlane/Api/AssistantScope.cs",
