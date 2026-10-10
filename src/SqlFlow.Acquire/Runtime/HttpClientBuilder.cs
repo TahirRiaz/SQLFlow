@@ -69,41 +69,160 @@ public static class HttpClientBuilder
     /// cannot be reused on Linux, so the fallback to the next address threw "Sockets on this platform are invalid for
     /// use after a failed connection attempt" and masked the real error. Windows hides the bug because ConnectEx
     /// permits the retry. One socket per address is correct on both, and it means the caller sees the actual connect
-    /// failure (refused, unreachable, timed out) from the last candidate rather than a socket-lifecycle artifact.
+    /// failures (refused, unreachable, timed out) rather than a socket-lifecycle artifact.
+    ///
+    /// The addresses are raced the Happy Eyeballs way (RFC 8305): families interleaved, each attempt given
+    /// <see cref="ConnectionAttemptDelay"/> alone before the next starts beside it, so an address family the network
+    /// silently drops (IPv6 assigned but not routed) cannot spend the whole connect timeout before the one that works is
+    /// tried.
     /// </summary>
     private static async ValueTask<Stream> KeepAliveConnectAsync(SocketsHttpConnectionContext context, CancellationToken ct)
     {
         var endPoint = context.DnsEndPoint;
-        var addresses = IPAddress.TryParse(endPoint.Host, out var literal)
+        var resolved = IPAddress.TryParse(endPoint.Host, out var literal)
             ? [literal]
             : await Dns.GetHostAddressesAsync(endPoint.Host, ct).ConfigureAwait(false);
 
-        for (var i = 0; i < addresses.Length; i++)
-        {
-            ct.ThrowIfCancellationRequested();
+        var socket = await RaceAsync(
+            endPoint.Host, Interleave(resolved), (address, token) => ConnectAsync(address, endPoint.Port, token),
+            ConnectionAttemptDelay, ct).ConfigureAwait(false);
+        return new NetworkStream(socket, ownsSocket: true);
+    }
 
-            var socket = CreateKeepAliveSocket(addresses[i].AddressFamily);
-            try
+    /// <summary>How long a connection attempt runs alone before the next address is tried beside it (RFC 8305, section 5).</summary>
+    internal static readonly TimeSpan ConnectionAttemptDelay = TimeSpan.FromMilliseconds(250);
+
+    /// <summary>
+    /// Orders <paramref name="addresses"/> alternating between the family of the first one and the other (RFC 8305,
+    /// section 4), keeping the resolver's order within each family.
+    /// </summary>
+    internal static IPAddress[] Interleave(IReadOnlyList<IPAddress> addresses)
+    {
+        ArgumentNullException.ThrowIfNull(addresses);
+        if (addresses.Count < 2)
+        {
+            return [.. addresses];
+        }
+
+        var family = addresses[0].AddressFamily;
+        var preferred = new Queue<IPAddress>(addresses.Where(a => a.AddressFamily == family));
+        var other = new Queue<IPAddress>(addresses.Where(a => a.AddressFamily != family));
+        var ordered = new IPAddress[addresses.Count];
+        for (var i = 0; i < ordered.Length; i++)
+        {
+            ordered[i] = (i % 2 == 0 && preferred.Count > 0) || other.Count == 0 ? preferred.Dequeue() : other.Dequeue();
+        }
+
+        return ordered;
+    }
+
+    /// <summary>
+    /// Starts an attempt on the first address, and one on the next each time <paramref name="attemptDelay"/> passes or an
+    /// attempt fails, until one connects; the others are cancelled and anything they still open is disposed. Every
+    /// address failing is a <see cref="SocketException"/> naming each one and why; <paramref name="ct"/> (the handler's
+    /// connect timeout) cancels the whole race.
+    /// </summary>
+    internal static async Task<T> RaceAsync<T>(
+        string host, IReadOnlyList<IPAddress> addresses, Func<IPAddress, CancellationToken, Task<T>> attempt, TimeSpan attemptDelay,
+        CancellationToken ct)
+        where T : class, IDisposable
+    {
+        ArgumentNullException.ThrowIfNull(addresses);
+        ArgumentNullException.ThrowIfNull(attempt);
+        if (addresses.Count == 0)
+        {
+            throw new SocketException((int)SocketError.HostNotFound, $"'{host}' resolves to no address.");
+        }
+
+        using var race = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var running = new Dictionary<Task<T>, IPAddress>();
+        var failures = new List<string>(addresses.Count);
+        var lastError = SocketError.HostUnreachable;
+        var next = 0;
+        try
+        {
+            while (true)
             {
-                await socket.ConnectAsync(new IPEndPoint(addresses[i], endPoint.Port), ct).ConfigureAwait(false);
-                return new NetworkStream(socket, ownsSocket: true);
+                ct.ThrowIfCancellationRequested();
+                if (next < addresses.Count)
+                {
+                    var address = addresses[next++];
+                    running.Add(attempt(address, race.Token), address);
+                }
+
+                if (running.Count == 0)
+                {
+                    break;
+                }
+
+                var waitingOn = running.Keys.Cast<Task>();
+                if (next < addresses.Count)
+                {
+                    waitingOn = waitingOn.Append(Task.Delay(attemptDelay, race.Token));
+                }
+
+                if (await Task.WhenAny(waitingOn).ConfigureAwait(false) is not Task<T> finished || !running.Remove(finished, out var tried))
+                {
+                    continue;
+                }
+
+                if (finished.Status == TaskStatus.RanToCompletion)
+                {
+                    return finished.Result;
+                }
+
+                ct.ThrowIfCancellationRequested();
+                var error = finished.Exception?.GetBaseException();
+                if (error is SocketException socketError)
+                {
+                    lastError = socketError.SocketErrorCode;
+                }
+
+                failures.Add($"{tried} ({error?.Message ?? "cancelled"})");
             }
-            catch (SocketException) when (i < addresses.Length - 1)
+        }
+        finally
+        {
+            await race.CancelAsync().ConfigureAwait(false);
+            foreach (var loser in running.Keys)
             {
-                // A further candidate remains, so this address's failure is not terminal: drop the (now unusable)
-                // socket and let the next iteration start a clean one. The final candidate's exception is allowed
-                // to propagate instead, carrying the genuine reason the endpoint could not be reached.
-                socket.Dispose();
-            }
-            catch
-            {
-                socket.Dispose();
-                throw;
+                // A losing attempt can still connect after the winner did; its connection is closed rather than leaked.
+                _ = loser.ContinueWith(
+                    static t =>
+                    {
+                        if (t.Status == TaskStatus.RanToCompletion)
+                        {
+                            t.Result.Dispose();
+                        }
+                        else
+                        {
+                            _ = t.Exception;
+                        }
+                    },
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
             }
         }
 
-        // Resolution returned nothing at all, so there was never an address to try.
-        throw new SocketException((int)SocketError.HostNotFound);
+        throw new SocketException((int)lastError, $"No address of '{host}' accepted a connection: {string.Join("; ", failures)}.");
+    }
+
+    /// <summary>One attempt: a keepalive socket of <paramref name="address"/>'s family connected to it, or disposed when
+    /// the connect fails.</summary>
+    private static async Task<Socket> ConnectAsync(IPAddress address, int port, CancellationToken ct)
+    {
+        var socket = CreateKeepAliveSocket(address.AddressFamily);
+        try
+        {
+            await socket.ConnectAsync(new IPEndPoint(address, port), ct).ConfigureAwait(false);
+            return socket;
+        }
+        catch
+        {
+            socket.Dispose();
+            throw;
+        }
     }
 
     /// <summary>Creates a TCP socket for <paramref name="family"/> with the keepalive probe policy described on
