@@ -1,7 +1,10 @@
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Globalization;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
 using Parquet;
 using Parquet.Data;
@@ -9,6 +12,11 @@ using Parquet.Schema;
 using SqlFlow.Core;
 using SqlFlow.Core.Abstractions;
 using SqlFlow.Core.Model;
+
+// The footer metadata types are taken by alias: importing Parquet.Meta whole shadows System.Type.
+using ConvertedType = Parquet.Meta.ConvertedType;
+using LogicalType = Parquet.Meta.LogicalType;
+using PhysicalType = Parquet.Meta.Type;
 
 namespace SqlFlow.Sources;
 
@@ -110,7 +118,7 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
         // so a large Parquet file is not fully scanned. The engine's row-level filter still runs on the groups we
         // do read, dropping any straggler rows inside a kept group, so correctness never depends on the statistics
         // being present: a file without stats simply reads every group and is filtered row by row.
-        var prune = ResolveWatermarkPrune(source, plan);
+        var prune = ResolveWatermarkPrune(source, plan, reader.Metadata?.CreatedBy);
         long dataRow = 0;
 
         for (var group = 0; group < reader.RowGroupCount; group++)
@@ -353,8 +361,14 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
 
     // ---- Row-level incremental pushdown -------------------------------------------------------------------
 
-    /// <summary>The resolved watermark for row-group pruning: the scalar leaf to read statistics from, plus the bound.</summary>
-    private sealed record WatermarkPrune(DataField Leaf, string CanonicalValue, WatermarkKind Kind);
+    /// <summary>
+    /// The resolved watermark for row-group pruning: the scalar leaf to read statistics from, the bound, and whether
+    /// the file's micro/nanosecond TIMESTAMP statistics can be trusted. Parquet.Net (6.1.0 and, conservatively, every
+    /// version) writes TIMESTAMP statistics in milliseconds whatever the column's declared unit, so in its files a
+    /// microsecond or nanosecond maximum understates the real one by a factor of 1000 or more and would skip groups
+    /// holding new rows.
+    /// </summary>
+    private sealed record WatermarkPrune(DataField Leaf, string CanonicalValue, WatermarkKind Kind, bool TrustsSubMillisecondTimestamps);
 
     /// <summary>
     /// Resolves the engine-injected watermark to a prunable scalar leaf, or null when there is no watermark, the
@@ -362,7 +376,7 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
     /// filter still applies). The column is matched against the cleaned plan names, exactly the names the engine's
     /// filter addresses, so the pushdown and the filter always target the same column.
     /// </summary>
-    private static WatermarkPrune? ResolveWatermarkPrune(SourceSpec source, List<ColumnPlan> plan)
+    private static WatermarkPrune? ResolveWatermarkPrune(SourceSpec source, List<ColumnPlan> plan, string? createdBy)
     {
         if (!source.Options.TryGetValue(WatermarkPredicate.ColumnOption, out var column) || string.IsNullOrWhiteSpace(column))
         {
@@ -378,7 +392,8 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
         {
             if (string.Equals(cleaned[i], column, StringComparison.OrdinalIgnoreCase) && plan[i].Kind == ColumnKind.Scalar)
             {
-                return new WatermarkPrune(plan[i].Leaves[0], value, kind);
+                var parquetNetWriter = createdBy?.StartsWith("Parquet.Net", StringComparison.OrdinalIgnoreCase) == true;
+                return new WatermarkPrune(plan[i].Leaves[0], value, kind, TrustsSubMillisecondTimestamps: !parquetNetWriter);
             }
         }
 
@@ -388,22 +403,195 @@ public sealed class ParquetSourceReader : FileSourceReaderBase
     /// <summary>
     /// True when a whole row group can be skipped: its recorded MAX for the watermark column exists and is not
     /// strictly past the bound (so every row in the group is at or below it). Pruning is best-effort and only an
-    /// optimization: a missing statistic, or a max that cannot be read, returns false so the group is read and
-    /// the engine's row-level filter drops the old rows. Correctness never depends on the statistics existing.
+    /// optimization: a missing statistic, or a max that cannot be decoded or compared as the watermark's kind,
+    /// returns false so the group is read and the engine's row-level filter decides (and reports any error) row by
+    /// row. Correctness never depends on the statistics existing.
     /// </summary>
     private static bool RowGroupIsAtOrBelowBound(ParquetRowGroupReader rowGroup, WatermarkPrune prune)
     {
-        object? max;
-        try
-        {
-            max = rowGroup.GetStatistics(prune.Leaf)?.MaxValue;
-        }
-        catch (Exception)
+        var max = MaxStatistic(rowGroup, prune.Leaf, prune.TrustsSubMillisecondTimestamps);
+        if (max is null)
         {
             return false;
         }
 
-        return max is not null && !WatermarkPredicate.IsAfter(ConvertValue(max), prune.CanonicalValue, prune.Kind);
+        try
+        {
+            return !WatermarkPredicate.IsAfter(max, prune.CanonicalValue, prune.Kind);
+        }
+        catch (Exception ex) when (ex is FormatException or InvalidCastException or OverflowException)
+        {
+            // The maximum cannot be compared as this watermark kind (a DateTime bound over an integer column, say).
+            // Skipping the group on a guess could lose rows; reading it hands the decision to the row-level filter.
+            return false;
+        }
+    }
+
+    private static readonly UTF8Encoding StrictUtf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+
+    /// <summary>
+    /// The row group's recorded maximum for a scalar leaf, decoded into exactly the value this reader yields for
+    /// the column's cells, or null when there is no maximum that is certain to order like those cells (the group is
+    /// then read). Only the spec's max_value is used: older writers filled the deprecated max field with
+    /// inconsistent (signed byte) ordering. Never pruned: unsigned integers (their statistics are stored as signed
+    /// physical values), TIME (its cells are duration text, not ordered like the stored integer), INT96, binary,
+    /// UUID and other fixed-length values, and a text maximum holding supplementary characters (Parquet orders
+    /// text by code point, the watermark compares UTF-16 code units, and the two disagree only there).
+    /// </summary>
+    private static object? MaxStatistic(ParquetRowGroupReader rowGroup, DataField field, bool trustsSubMillisecondTimestamps)
+    {
+        var max = rowGroup.GetMetadata(field)?.MetaData?.Statistics?.MaxValue;
+        if (max is null || field.SchemaElement is not { Type: { } physical } element || field is TimeDataField)
+        {
+            return null;
+        }
+
+        var logical = element.LogicalType;
+        var converted = element.ConvertedType;
+        if (logical?.TIME is not null || converted is ConvertedType.TIME_MILLIS or ConvertedType.TIME_MICROS)
+        {
+            return null;
+        }
+
+        if (field is DecimalDataField || logical?.DECIMAL is not null || converted == ConvertedType.DECIMAL)
+        {
+            return DecodeDecimalStatistic(physical, max, element.Scale ?? logical?.DECIMAL?.Scale ?? 0);
+        }
+
+        return physical switch
+        {
+            PhysicalType.INT32 when max.Length == 4 => DecodeInt32Statistic(BinaryPrimitives.ReadInt32LittleEndian(max), logical, converted),
+            PhysicalType.INT64 when max.Length == 8 => DecodeInt64Statistic(
+                BinaryPrimitives.ReadInt64LittleEndian(max), logical, converted, trustsSubMillisecondTimestamps),
+            PhysicalType.FLOAT when max.Length == 4 => BinaryPrimitives.ReadSingleLittleEndian(max) is var f && float.IsFinite(f) ? (object?)f : null,
+            PhysicalType.DOUBLE when max.Length == 8 => BinaryPrimitives.ReadDoubleLittleEndian(max) is var d && double.IsFinite(d) ? (object?)d : null,
+            PhysicalType.BYTE_ARRAY when LeafValueType(field) == typeof(string) => DecodeTextStatistic(max),
+            _ => null,
+        };
+    }
+
+    private static object? DecodeInt32Statistic(int value, LogicalType? logical, ConvertedType? converted)
+    {
+        if (logical?.INTEGER is { IsSigned: false } || converted is ConvertedType.UINT_8 or ConvertedType.UINT_16 or ConvertedType.UINT_32)
+        {
+            return null;
+        }
+
+        if (logical?.DATE is not null || converted == ConvertedType.DATE)
+        {
+            // Days since the Unix epoch; the reader yields a DATE as a UTC-kind midnight DateTime.
+            const int MinDay = -719_162;   // 0001-01-01
+            const int MaxDay = 2_932_896;  // 9999-12-31
+            return value is >= MinDay and <= MaxDay ? DateTime.UnixEpoch.AddDays(value) : null;
+        }
+
+        return value;
+    }
+
+    private static object? DecodeInt64Statistic(long value, LogicalType? logical, ConvertedType? converted, bool trustsSubMillisecondTimestamps)
+    {
+        if (logical?.INTEGER is { IsSigned: false } || converted == ConvertedType.UINT_64)
+        {
+            return null;
+        }
+
+        var timestamp = logical?.TIMESTAMP;
+        if (timestamp is null && converted is not (ConvertedType.TIMESTAMP_MILLIS or ConvertedType.TIMESTAMP_MICROS))
+        {
+            return value;
+        }
+
+        var subMillisecond = timestamp?.Unit?.MICROS is not null || timestamp?.Unit?.NANOS is not null
+            || converted == ConvertedType.TIMESTAMP_MICROS;
+        if (subMillisecond && !trustsSubMillisecondTimestamps)
+        {
+            return null;
+        }
+
+        long ticks;
+        try
+        {
+            if (timestamp?.Unit?.NANOS is not null)
+            {
+                // Round up to the 100 ns tick: a maximum may overstate (a group is read), never understate.
+                ticks = value / TimeSpan.NanosecondsPerTick + (value % TimeSpan.NanosecondsPerTick > 0 ? 1 : 0);
+            }
+            else if (timestamp?.Unit?.MICROS is not null || converted == ConvertedType.TIMESTAMP_MICROS)
+            {
+                ticks = checked(value * TimeSpan.TicksPerMicrosecond);
+            }
+            else
+            {
+                ticks = checked(value * TimeSpan.TicksPerMillisecond);
+            }
+
+            ticks = checked(DateTime.UnixEpoch.Ticks + ticks);
+        }
+        catch (OverflowException)
+        {
+            return null;
+        }
+
+        if (ticks < DateTime.MinValue.Ticks || ticks > DateTime.MaxValue.Ticks)
+        {
+            return null;
+        }
+
+        // The reader yields a UTC-adjusted timestamp as a UTC DateTime and a local (wall-clock) one as Local, both
+        // with the same ticks; the watermark comparison is by ticks.
+        return new DateTime(ticks, timestamp is null || timestamp.IsAdjustedToUTC ? DateTimeKind.Utc : DateTimeKind.Local);
+    }
+
+    private static object? DecodeDecimalStatistic(PhysicalType physical, byte[] max, int scale)
+    {
+        BigInteger unscaled;
+        switch (physical)
+        {
+            case PhysicalType.INT32 when max.Length == 4:
+                unscaled = BinaryPrimitives.ReadInt32LittleEndian(max);
+                break;
+            case PhysicalType.INT64 when max.Length == 8:
+                unscaled = BinaryPrimitives.ReadInt64LittleEndian(max);
+                break;
+            case PhysicalType.BYTE_ARRAY or PhysicalType.FIXED_LEN_BYTE_ARRAY when max.Length > 0:
+                unscaled = new BigInteger(max, isUnsigned: false, isBigEndian: true);
+                break;
+            default:
+                return null;
+        }
+
+        // System.Decimal holds a 96-bit magnitude at scale 0..28; anything wider is not prunable.
+        var magnitude = BigInteger.Abs(unscaled);
+        if (scale is < 0 or > 28 || magnitude >= BigInteger.One << 96)
+        {
+            return null;
+        }
+
+        Span<byte> bits = stackalloc byte[12];
+        bits.Clear();
+        magnitude.TryWriteBytes(bits, out _, isUnsigned: true, isBigEndian: false);
+        return new decimal(
+            BinaryPrimitives.ReadInt32LittleEndian(bits),
+            BinaryPrimitives.ReadInt32LittleEndian(bits[4..]),
+            BinaryPrimitives.ReadInt32LittleEndian(bits[8..]),
+            unscaled.Sign < 0,
+            (byte)scale);
+    }
+
+    private static string? DecodeTextStatistic(byte[] max)
+    {
+        string text;
+        try
+        {
+            text = StrictUtf8.GetString(max);
+        }
+        catch (DecoderFallbackException)
+        {
+            // Not valid UTF-8 (a truncated maximum can end mid-character): no trustworthy maximum.
+            return null;
+        }
+
+        return text.Any(char.IsSurrogate) ? null : text;
     }
 
     // ---- Schema planning ----------------------------------------------------------------------------------
