@@ -187,7 +187,8 @@ public sealed class AzureBlobFileStore : IFileStore
         await gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var pageable = container.GetBlobsByHierarchyAsync(delimiter: "/", prefix: prefix, cancellationToken: ct);
+            var pageable = container.GetBlobsByHierarchyAsync(
+                new GetBlobsByHierarchyOptions { Delimiter = "/", Prefix = prefix }, ct);
             await foreach (var entry in pageable.ConfigureAwait(false))
             {
                 ct.ThrowIfCancellationRequested();
@@ -259,7 +260,7 @@ public sealed class AzureBlobFileStore : IFileStore
         List<FileRef> sink,
         CancellationToken ct)
     {
-        var pageable = container.GetBlobsAsync(prefix: prefix, cancellationToken: ct);
+        var pageable = container.GetBlobsAsync(new GetBlobsOptions { Prefix = prefix }, ct);
         await foreach (var blob in pageable.ConfigureAwait(false))
         {
             ct.ThrowIfCancellationRequested();

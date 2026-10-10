@@ -50,7 +50,8 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="9.0.17" />
     <!-- Identity for the control plane's user store: PasswordHasher (PBKDF2) for local SQLFlow users, and the
          OpenID Connect protocol stack for validating Microsoft Entra ID tokens on the /auth/exchange endpoint.
-         The OpenIdConnect version matches what JwtBearer already resolves transitively. -->
+         JwtBearer only declares an OpenIdConnect floor (8.0.1); transitive pinning lifts it to the version below,
+         so the whole Microsoft.IdentityModel.* stack resolves to that single version. -->
     <PackageVersion Include="Microsoft.Extensions.Identity.Core" Version="9.0.8" />
     <PackageVersion Include="Microsoft.IdentityModel.Protocols.OpenIdConnect" Version="8.23.0" />
     <!-- Cronos: standard-cron parsing with correct time-zone / DST handling, for the control-plane scheduler. -->

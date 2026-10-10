@@ -103,7 +103,7 @@ public sealed class AzureRawLandingStore : IRawLandingStore
             // Metadata is requested explicitly: the ADLS directory marker lives there, and without the trait the
             // dictionary comes back empty so every folder placeholder would be mistaken for a landed file.
             await foreach (var blob in container
-                .GetBlobsAsync(BlobTraits.Metadata, prefix: prefix, cancellationToken: ct)
+                .GetBlobsAsync(new GetBlobsOptions { Traits = BlobTraits.Metadata, Prefix = prefix }, ct)
                 .ConfigureAwait(false))
             {
                 // ADLS Gen2 folders surface as zero-length blobs carrying the directory metadata marker; they are

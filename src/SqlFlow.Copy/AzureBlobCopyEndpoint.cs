@@ -44,7 +44,9 @@ public sealed class AzureBlobCopyEndpoint : ICopyEndpoint
         var container = await ContainerAsync(endpoint, loc, ct).ConfigureAwait(false);
         var prefix = loc.BlobPath.Length == 0 ? null : loc.BlobPath.TrimEnd('/') + "/";
 
-        await foreach (var blob in container.GetBlobsAsync(prefix: prefix, cancellationToken: ct).ConfigureAwait(false))
+        await foreach (var blob in container
+            .GetBlobsAsync(new GetBlobsOptions { Prefix = prefix }, ct)
+            .ConfigureAwait(false))
         {
             ct.ThrowIfCancellationRequested();
             var name = blob.Name;
@@ -107,7 +109,9 @@ public sealed class AzureBlobCopyEndpoint : ICopyEndpoint
         {
             // One listing returns every target blob with its ContentHash (MD5), so the engine compares the whole set in
             // memory instead of a metadata call per file.
-            await foreach (var blob in container.GetBlobsAsync(prefix: prefix, cancellationToken: ct).ConfigureAwait(false))
+            await foreach (var blob in container
+                .GetBlobsAsync(new GetBlobsOptions { Prefix = prefix }, ct)
+                .ConfigureAwait(false))
             {
                 var name = blob.Name;
                 var leaf = name[(name.LastIndexOf('/') + 1)..];
