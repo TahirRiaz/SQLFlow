@@ -49,7 +49,7 @@ public sealed class S3CopyEndpoint : ICopyEndpoint
                 ContinuationToken = continuationToken,
             }, ct).ConfigureAwait(false);
 
-            foreach (var obj in response.S3Objects)
+            foreach (var obj in PageObjects(response))
             {
                 ct.ThrowIfCancellationRequested();
                 var key = obj.Key;
@@ -72,13 +72,13 @@ public sealed class S3CopyEndpoint : ICopyEndpoint
                     continue;
                 }
 
-                var modified = new DateTimeOffset(obj.LastModified.ToUniversalTime(), TimeSpan.Zero);
-                if (!window.Includes(modified))
+                var item = ToCopyItem(obj, relative, leaf);
+                if (!window.Includes(item.Modified))
                 {
                     continue;
                 }
 
-                yield return new CopyItem(key, relative, leaf, modified, obj.Size, Md5FromETag(obj.ETag));
+                yield return item;
             }
 
             continuationToken = response.IsTruncated == true ? response.NextContinuationToken : null;
@@ -121,7 +121,7 @@ public sealed class S3CopyEndpoint : ICopyEndpoint
                     ContinuationToken = continuationToken,
                 }, ct).ConfigureAwait(false);
 
-                foreach (var obj in response.S3Objects)
+                foreach (var obj in PageObjects(response))
                 {
                     var key = obj.Key;
                     var leaf = key[(key.LastIndexOf('/') + 1)..];
@@ -230,6 +230,22 @@ public sealed class S3CopyEndpoint : ICopyEndpoint
         }
 
         return await _secrets.ResolveAsync(secretRef, ct).ConfigureAwait(false);
+    }
+
+    /// <summary>The objects of one ListObjectsV2 page. AWS SDK v4 leaves a response collection null, not empty, when the
+    /// page carries none (an empty bucket or prefix), so an empty listing yields no objects instead of throwing.</summary>
+    internal static IReadOnlyList<S3Object> PageObjects(ListObjectsV2Response response) => response.S3Objects ?? [];
+
+    /// <summary>The copy item for a listed object. SDK v4 types <see cref="S3Object.LastModified"/> and
+    /// <see cref="S3Object.Size"/> as nullable; S3 always lists both, and an absent value maps to the
+    /// <see cref="CopyItem"/> conventions every endpoint shares: an undated item (which a modified window keeps) and
+    /// size -1.</summary>
+    internal static CopyItem ToCopyItem(S3Object obj, string relativePath, string leaf)
+    {
+        DateTimeOffset? modified = obj.LastModified is { } lastModified
+            ? new DateTimeOffset(lastModified.ToUniversalTime(), TimeSpan.Zero)
+            : null;
+        return new CopyItem(obj.Key, relativePath, leaf, modified, obj.Size ?? -1, Md5FromETag(obj.ETag));
     }
 
     /// <summary>The object's MD5 bytes when the ETag is a plain 32-hex MD5 (a single-part upload); null for a multipart

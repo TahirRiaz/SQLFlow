@@ -1,3 +1,4 @@
+using Amazon.S3.Model;
 using SqlFlow.Copy;
 using SqlFlow.Core.Secrets;
 using Xunit;
@@ -90,5 +91,42 @@ public sealed class S3EndpointTests
         Assert.Null(S3CopyEndpoint.Md5FromETag("\"not-a-hash\""));
         Assert.Null(S3CopyEndpoint.Md5FromETag(""));
         Assert.Null(S3CopyEndpoint.Md5FromETag(null));
+    }
+
+    [Fact]
+    public void PageObjects_reads_a_null_object_collection_as_an_empty_page()
+    {
+        // AWS SDK v4 leaves S3Objects null on a page with no objects (an empty bucket or prefix): the listing must yield
+        // nothing rather than throw, so an empty source copies nothing and an empty target reads as "every file is new".
+        Assert.Empty(S3CopyEndpoint.PageObjects(new ListObjectsV2Response { S3Objects = null }));
+
+        var page = new ListObjectsV2Response { S3Objects = [new S3Object { Key = "export/orders_1.json" }] };
+        Assert.Equal("export/orders_1.json", Assert.Single(S3CopyEndpoint.PageObjects(page)).Key);
+    }
+
+    [Fact]
+    public void ToCopyItem_maps_a_listed_object_and_its_nullable_timestamp_and_size()
+    {
+        var listed = new S3Object
+        {
+            Key = "export/orders_1.json",
+            LastModified = new DateTime(2026, 10, 1, 12, 30, 0, DateTimeKind.Utc),
+            Size = 1234,
+            ETag = "\"d41d8cd98f00b204e9800998ecf8427e\"",
+        };
+
+        var item = S3CopyEndpoint.ToCopyItem(listed, "orders_1.json", "orders_1.json");
+        Assert.Equal("export/orders_1.json", item.AbsolutePath);
+        Assert.Equal("orders_1.json", item.RelativePath);
+        Assert.Equal(new DateTimeOffset(2026, 10, 1, 12, 30, 0, TimeSpan.Zero), item.Modified);
+        Assert.Equal(1234, item.Size);
+        Assert.Equal("d41d8cd98f00b204e9800998ecf8427e", Convert.ToHexString(item.ContentHash!).ToLowerInvariant());
+
+        // SDK v4 types LastModified and Size as nullable: an absent value maps to the CopyItem conventions every endpoint
+        // shares (undated, which a modified window keeps; size -1), never to a fabricated timestamp or a zero size.
+        var bare = S3CopyEndpoint.ToCopyItem(new S3Object { Key = "k.json" }, "k.json", "k.json");
+        Assert.Null(bare.Modified);
+        Assert.Equal(-1, bare.Size);
+        Assert.Null(bare.ContentHash);
     }
 }
