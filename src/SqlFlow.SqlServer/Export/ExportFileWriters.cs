@@ -319,7 +319,17 @@ public sealed class ParquetExportFileWriter : IExportFileWriter
         }
 
         if (clr == typeof(DateTime)) return Value<DateTime>(name, capacity, static (r, i) => r.GetDateTime(i));
-        if (clr == typeof(DateTimeOffset)) return Value<DateTimeOffset>(name, capacity, static (r, i) => r.GetFieldValue<DateTimeOffset>(i));
+        if (clr == typeof(DateTimeOffset))
+        {
+            // Parquet has no type that keeps an offset, so a datetimeoffset is written as the UTC instant it denotes,
+            // in the same INT96 timestamp as every other date/time column (nanosecond precision, so nothing of a
+            // datetimeoffset(7) is lost). A micro/nanosecond TIMESTAMP is avoided on purpose: Parquet.Net writes its
+            // statistics in milliseconds, which would let a consumer's predicate pushdown skip row groups wrongly.
+            return new ValueColumnBuffer<DateTime>(
+                new DateTimeDataField(name, DateTimeFormat.Impala, isNullable: true),
+                capacity, static (r, i) => r.GetFieldValue<DateTimeOffset>(i).UtcDateTime);
+        }
+
         if (clr == typeof(TimeSpan))
         {
             // A SQL time is written as Parquet TIME_MILLIS (INT32 milliseconds since midnight, sub-millisecond

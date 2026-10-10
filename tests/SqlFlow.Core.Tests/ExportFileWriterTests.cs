@@ -176,6 +176,32 @@ public sealed class ExportFileWriterTests
     }
 
     [Fact]
+    public async Task Parquet_DateTimeOffset_IsWrittenAsTheUtcInstant()
+    {
+        // Parquet keeps no offset: a datetimeoffset lands as the UTC instant, at full 100 ns precision, and NULL stays
+        // NULL. (Writing it used to fail outright: Parquet.Net has no DateTimeOffset type.)
+        using var table = new DataTable();
+        table.Columns.Add("At", typeof(DateTimeOffset));
+        table.Rows.Add(new DateTimeOffset(2026, 10, 10, 12, 0, 0, TimeSpan.FromHours(2)).AddTicks(1234567));
+        table.Rows.Add(DBNull.Value);
+        table.Rows.Add(new DateTimeOffset(1999, 12, 31, 23, 59, 59, TimeSpan.FromHours(-5)));
+        using var reader = table.CreateDataReader();
+
+        using var stream = new MemoryStream();
+        Assert.Equal(3, await new ParquetExportFileWriter("snappy").WriteAsync(reader, stream));
+
+        stream.Position = 0;
+        await using var parquet = await ParquetReader.CreateAsync(stream);
+        using var rowGroup = parquet.OpenRowGroupReader(0);
+        var at = new DateTime?[rowGroup.RowCount];
+        await rowGroup.ReadAsync(parquet.Schema.DataFields[0], at.AsMemory());
+
+        Assert.Equal(new DateTime(2026, 10, 10, 10, 0, 0).AddTicks(1234567), at[0]);
+        Assert.Null(at[1]);
+        Assert.Equal(new DateTime(2000, 1, 1, 4, 59, 59), at[2]);
+    }
+
+    [Fact]
     public async Task Parquet_RoundTripsThroughParquetNet()
     {
         using var table = Sample();

@@ -150,6 +150,22 @@ The file name prefix. Defaults to the source object's table name. The final file
 
 `csv` (default) or `parquet` (alias `prq` is accepted and stored as `parquet`). Anything else fails with `'target.fileType' must be csv or parquet; got '<value>'.` The value is also the file extension.
 
+A Parquet export is typed; every column is written nullable, with these column types (src/SqlFlow.SqlServer/Export/ExportFileWriters.cs):
+
+| SQL Server source | Parquet column |
+| --- | --- |
+| `bit` | `BOOLEAN` |
+| `tinyint`, `smallint`, `int` | `INT32` |
+| `bigint` | `INT64` |
+| `real` / `float` | `FLOAT` / `DOUBLE` |
+| `decimal`/`numeric` | `DECIMAL(p,s)` at the source's precision and scale (`38,18` when the reader reports none) |
+| `datetime2`, `datetime`, `smalldatetime`, `date` | INT96 timestamp |
+| `datetimeoffset` | INT96 timestamp holding the UTC instant (Parquet has no type that keeps the offset) |
+| `time` | `TIME` in milliseconds (`INT32`); sub-millisecond digits are truncated |
+| `uniqueidentifier` | `UUID` (16-byte fixed) |
+| `binary`/`varbinary` | `BYTE_ARRAY` (a NULL is written as an empty array) |
+| everything else | UTF-8 string, the value formatted invariantly |
+
 #### target.encoding
 
 CSV only. Accepted tokens: `utf8`/`utf-8` (default, stored as null and written as UTF-8 without BOM),
