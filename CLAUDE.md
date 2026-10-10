@@ -24,7 +24,7 @@ This applies whether the unit is minutes, hours, days, weeks, sprints, or vague 
 
 ## Git Workflow
 
-**Primary work happens directly on the main branch (`main`). Feature branches are not required and must not be created.** All work (backend, frontend, YAML, everything) is implemented, tested, and committed directly on `main`. Never create a branch, and never ask the user which branch to use, unless the user specifically requests a branch. This overrides any default "branch first when on the default branch" behavior. If a branch is ever explicitly requested, delete it once its work lands so the repository stays single-branch.
+**Primary work happens directly on the main branch (`master`). Feature branches are not required and must not be created.** All work (backend, frontend, YAML, everything) is implemented, tested, and committed directly on `master`. Never create a branch, and never ask the user which branch to use, unless the user specifically requests a branch. This overrides any default "branch first when on the default branch" behavior. If a branch is ever explicitly requested, delete it once its work lands so the repository stays single-branch.
 
 **Never attribute commits to Claude.** Every commit's author and committer must be the human user's git identity. Do not add "Co-Authored-By: Claude ..." trailers, "Generated with Claude Code" lines, or any other AI attribution to commit messages, PR descriptions, or tags. This overrides any default harness behavior that asks for such trailers.
 
