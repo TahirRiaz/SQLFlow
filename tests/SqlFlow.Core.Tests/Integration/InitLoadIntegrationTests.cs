@@ -14,7 +14,7 @@ public sealed class InitLoadIntegrationTests
     [SkippableFact]
     public async Task InitLoad_ByMonth_StagesWindowAndNullDate_ExcludesOutOfWindow()
     {
-        const int flowId = 24;
+        const int flowId = 124;
         var cs = IntegrationDb.Require();
         const string src = "_SfInit_Src";
         const string trg = "_SfInit_Trg";
@@ -56,7 +56,7 @@ public sealed class InitLoadIntegrationTests
     [SkippableFact]
     public async Task InitLoad_ByKey_StagesBuckets_ExcludesAboveMax()
     {
-        const int flowId = 25;
+        const int flowId = 125;
         var cs = IntegrationDb.Require();
         const string src = "_SfInitK_Src";
         const string trg = "_SfInitK_Trg";

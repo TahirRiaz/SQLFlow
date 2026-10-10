@@ -96,7 +96,7 @@ public sealed class SqlTraceIntegrationTests
     [SkippableFact]
     public async Task BatchedApply_UpsertsCorrectly_WithWindowedScripts()
     {
-        const int flowId = 32;
+        const int flowId = 132;
         var cs = IntegrationDb.Require();
         const string src = "_SfTraceB_Src";
         const string trg = "_SfTraceB_Trg";

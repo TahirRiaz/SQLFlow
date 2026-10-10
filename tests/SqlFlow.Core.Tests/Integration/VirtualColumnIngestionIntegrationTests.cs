@@ -14,7 +14,7 @@ public sealed class VirtualColumnIngestionIntegrationTests
     [SkippableFact]
     public async Task AddedAndReplacedVirtualColumns_LandComputedValues_AndFollowUpdates()
     {
-        const int flowId = 61;
+        const int flowId = 161;
         var cs = IntegrationDb.Require();
         const string src = "_SfVc1_Src";
         const string trg = "_SfVc1_Trg";
@@ -68,7 +68,7 @@ public sealed class VirtualColumnIngestionIntegrationTests
     [SkippableFact]
     public async Task AVirtualColumn_KeysTheUpsert()
     {
-        const int flowId = 62;
+        const int flowId = 162;
         var cs = IntegrationDb.Require();
         const string src = "_SfVc2_Src";
         const string trg = "_SfVc2_Trg";

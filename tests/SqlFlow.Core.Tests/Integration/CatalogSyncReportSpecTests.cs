@@ -103,10 +103,28 @@ public sealed class CatalogSyncReportSpecTests : IDisposable
             await db.SubscriberQueries.CountAsync(q => q.RepoId == repoId && q.SubscriberKey == SubscriberKey));
     }
 
+    /// <summary>The object-registry key prefixes of the two databases this estate's flows name, as sync keys them.</summary>
+    private static readonly string[] EstateObjectPrefixes =
+    [
+        "${env:sqlflow_conn_dwh}|adventureworks|",
+        "${env:sqlflow_conn_pre}|predb|",
+    ];
+
     private static async Task CleanupAsync(string cs, string repo, Guid repoId)
     {
         await using var db = CatalogDatabase.Create(cs);
         await RepoStore.DeleteAsync(db, repoId);
+
+        // Sync also registers this estate's tables in the global object registry, which deleting a repo deliberately
+        // keeps (objects are estate facts shared across repos). Left behind, they would subject every later test that
+        // reads a same-named table (dbo.FactResellerSales) to these objects' empty column allow-list, so this estate's
+        // own objects go too.
+        foreach (var prefix in EstateObjectPrefixes)
+        {
+            await db.ObjectColumns.Where(c => c.ObjectKey.StartsWith(prefix)).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.Key.StartsWith(prefix)).ExecuteDeleteAsync();
+        }
+
         Assert.False(await db.SemanticReportSpecs.AnyAsync(s => s.RepoId == repoId));
         Assert.False(await db.SubscriberReportPages.AnyAsync(p => p.RepoId == repoId));
         Assert.False(await db.Repos.AnyAsync(r => r.Name == repo));

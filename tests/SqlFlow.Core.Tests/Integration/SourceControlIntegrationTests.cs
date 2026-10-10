@@ -11,9 +11,12 @@ namespace SqlFlow.Tests.Integration;
 /// The real SMO end to end: against a live database, create a table (with identity and a primary key), a view,
 /// and a stored procedure, then run the whole source-control flow into a local git repository and prove the
 /// objects were scripted to the legacy folder layout, the chosen table's data was scripted, and a commit was
-/// made. Skips when no sink database is configured, so the unit suite still runs everywhere.
+/// made. Skips when no sink database is configured, so the unit suite still runs everywhere. It snapshots the WHOLE
+/// database, so it runs alone (<see cref="WholeDatabaseSnapshot"/>): scripting every object while other tests
+/// create and drop theirs in the same database fails on objects that vanish mid-script.
 /// </summary>
 [Trait("Category", "Integration")]
+[Collection(WholeDatabaseSnapshot.Name)]
 public sealed class SourceControlIntegrationTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "sqlflow_scm_it_" + Guid.NewGuid().ToString("N"));
@@ -183,4 +186,12 @@ public sealed class SourceControlIntegrationTests : IDisposable
 
         Directory.Delete(_dir, recursive: true);
     }
+}
+
+/// <summary>The integration tests that read every object in the shared sink database (a source-control snapshot),
+/// run one at a time and after the parallel tests, so no other test's tables appear or vanish while they read.</summary>
+[CollectionDefinition(Name, DisableParallelization = true)]
+public sealed class WholeDatabaseSnapshot
+{
+    public const string Name = "whole-database snapshot";
 }

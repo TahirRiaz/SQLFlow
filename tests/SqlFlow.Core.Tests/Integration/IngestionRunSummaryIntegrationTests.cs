@@ -15,7 +15,7 @@ namespace SqlFlow.Tests.Integration;
 [Trait("Category", "Integration")]
 public sealed class IngestionRunSummaryIntegrationTests
 {
-    private const int FlowId = 91;
+    private const int FlowId = 191;
 
     /// <summary>Collects the run-boundary events so the assertions read exactly what the board renders.</summary>
     private sealed class CollectingSink : IRunEventSink

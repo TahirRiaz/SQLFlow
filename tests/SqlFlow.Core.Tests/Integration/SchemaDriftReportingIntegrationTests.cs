@@ -15,7 +15,7 @@ public sealed class SchemaDriftReportingIntegrationTests
     [SkippableFact]
     public async Task SyncOff_TargetMissingASourceColumn_FailsBeforeAnyDataMoves()
     {
-        const int flowId = 91;
+        const int flowId = 192;
         var cs = IntegrationDb.Require();
         const string src = "_SfDrift_Src";
         const string trg = "_SfDrift_Trg";
