@@ -371,7 +371,7 @@ public static class QuestionSearch
         {
             rows.AddRange(await visualQuestions
                 .Where(AnyTerm<CatalogSubscriberReportVisualQuestion>(
-                    terms, term => q => q.Question.Contains(term)))
+                    LikeForms(terms), form => q => q.Question.Contains(form)))
                 .Select(q => new QuestionRow(q.Question, PowerBiProvenance, q.VisualKey, 0L))
                 .Take(MaxCandidates)
                 .ToListAsync(ct).ConfigureAwait(false));
@@ -414,10 +414,39 @@ public static class QuestionSearch
         }
 
         return await examples
-            .Where(AnyTerm<CatalogSemanticExample>(terms, term => e => e.Question.Contains(term)))
+            .Where(AnyTerm<CatalogSemanticExample>(LikeForms(terms), form => e => e.Question.Contains(form)))
             .Select(e => new QuestionRow(e.Question, e.Provenance, null, e.Id))
             .Take(MaxCandidates)
             .ToListAsync(ct).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The substrings the LIKE fallback searches for, so it finds every row the scorer (<see cref="MatchesTerm"/>)
+    /// would credit, as the full-text path's FORMSOF(INFLECTIONAL, ...) does. A literal term misses inflections:
+    /// "categories" is not a substring of "category". Every word sharing a term's stem contains the stem itself
+    /// ("sell" in "sells", "selling"), except the "-ies" plural of a stem ending in "y", which is added as its own
+    /// form. A multi-word term, or a stem too short to be credited, is searched literally, as the scorer matches it.
+    /// </summary>
+    private static List<string> LikeForms(IReadOnlyList<string> terms)
+    {
+        var forms = new List<string>();
+        foreach (var term in terms)
+        {
+            var stem = Stem(term);
+            if (term.Contains(' ', StringComparison.Ordinal) || stem.Length < MinStemLength)
+            {
+                forms.Add(term);
+                continue;
+            }
+
+            forms.Add(stem);
+            if (stem.EndsWith('y'))
+            {
+                forms.Add(string.Concat(stem.AsSpan(0, stem.Length - 1), "ies"));
+            }
+        }
+
+        return forms.Distinct(StringComparer.Ordinal).ToList();
     }
 
     /// <summary>Folds one predicate per term into a single OR-ed predicate, so a row matching any term is a
