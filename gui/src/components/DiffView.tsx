@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { DiffEditor, type Monaco } from "@monaco-editor/react";
+import type { editor } from "monaco-editor";
 import { Columns2, Copy, Rows3 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -55,6 +56,27 @@ export function DiffView({
     monacoRef.current = monaco;
     defineSqlflowTheme(monaco, mode);
   }, [mode]);
+
+  // The two documents being compared. The library disposes them before the editor on unmount, which monaco refuses
+  // ("TextModel got disposed before DiffEditorWidget model got reset", an uncaught error on every view that unmounts a
+  // comparison). So the library keeps them, and they are disposed here once the editor is gone.
+  const modelsRef = useRef<editor.IDiffEditorModel | null>(null);
+  const handleMount = useCallback((diffEditor: editor.IStandaloneDiffEditor) => {
+    modelsRef.current = diffEditor.getModel();
+  }, []);
+  useEffect(() => () => {
+    const models = modelsRef.current;
+    modelsRef.current = null;
+    if (models !== null) {
+      setTimeout(() => {
+        for (const model of [models.original, models.modified]) {
+          if (!model.isDisposed()) {
+            model.dispose();
+          }
+        }
+      }, 0);
+    }
+  }, []);
 
   // The design tokens change when the app toggles; re-define and re-apply so the comparison tracks the theme.
   useEffect(() => {
@@ -137,6 +159,9 @@ export function DiffView({
         language={language}
         height={height}
         beforeMount={handleBeforeMount}
+        onMount={handleMount}
+        keepCurrentOriginalModel
+        keepCurrentModifiedModel
         theme={sqlflowEditorTheme}
         options={{
           readOnly: true,
