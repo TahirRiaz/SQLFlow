@@ -113,6 +113,86 @@ public sealed class ReadOnlyQueryGuardTests
         Assert.Throws<SqlFlowException>(() => ReadOnlyQueryGuard.Validate(sql));
     }
 
+    [Theory]
+    // Every OPENROWSET form: the BULK one reads a file on the database server's own disk.
+    [InlineData("SELECT * FROM OPENROWSET(BULK 'C:\\secrets.txt', SINGLE_CLOB) AS x", "BULK")]
+    [InlineData("SELECT BulkColumn FROM OPENROWSET(BULK N'/var/opt/mssql/data/x.bak', SINGLE_BLOB) AS b", "BULK")]
+    [InlineData("SELECT * FROM OPENDATASOURCE('SQLNCLI', 'Data Source=x').db.dbo.t", "ad-hoc")]
+    [InlineData("SELECT * FROM OPENXML(@h, '/r')", "OPENXML")]
+    // A sequence advanced from inside a SELECT is a write, wherever it appears.
+    [InlineData("SELECT NEXT VALUE FOR dbo.OrderNumbers", "sequence")]
+    [InlineData("SELECT o.Id FROM dbo.Orders o WHERE o.Id > NEXT VALUE FOR dbo.OrderNumbers", "sequence")]
+    // The server's own catalog, by view, by table-valued function, and by scalar function.
+    [InlineData("SELECT name FROM sys.columns", "system catalog")]
+    [InlineData("SELECT name FROM [SYS].objects", "system catalog")]
+    [InlineData("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS", "system catalog")]
+    [InlineData("SELECT name FROM master.sys.columns", "system catalog")]
+    [InlineData("SELECT text FROM sys.dm_exec_sql_text(0x01)", "system catalog")]
+    [InlineData("SELECT * FROM sys.fn_xe_file_target_read_file('x*.xel', NULL, NULL, NULL)", "system catalog")]
+    [InlineData("SELECT sys.fn_varbintohexstr(0x01)", "system catalog")]
+    // The metadata functions that hand back a column's name or a module's body.
+    [InlineData("SELECT COL_NAME(OBJECT_ID('dbo.Employee'), 3)", "COL_NAME")]
+    [InlineData("SELECT col_name(1, 1)", "col_name")]
+    [InlineData("SELECT OBJECT_DEFINITION(OBJECT_ID('dbo.v_Employee'))", "OBJECT_DEFINITION")]
+    [InlineData("SELECT INDEX_COL('dbo.Employee', 1, 1)", "INDEX_COL")]
+    [InlineData("SELECT COLUMNPROPERTY(OBJECT_ID('dbo.Employee'), 'Ssn', 'IsIdentity')", "COLUMNPROPERTY")]
+    [InlineData("SELECT COL_LENGTH('dbo.Employee', 'Ssn')", "COL_LENGTH")]
+    // Extended-procedure-style names, as a scalar and as a table.
+    [InlineData("SELECT * FROM fn_trace_gettable('x.trc', default)", "fn_trace_gettable")]
+    [InlineData("SELECT dbo.xp_something(1)", "xp_something")]
+    public void Refuses_TheReadsThatReachPastTheEstatesOwnData(string sql, string named)
+    {
+        var ex = Assert.Throws<SqlFlowException>(() => ReadOnlyQueryGuard.Validate(sql));
+        Assert.Contains(named, ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    // A common table expression in front of a write is still the write.
+    [InlineData("WITH c AS (SELECT 1 AS a) DELETE FROM edw.F")]
+    [InlineData("WITH c AS (SELECT 1 AS a) UPDATE edw.F SET A = 1")]
+    [InlineData("WITH c AS (SELECT 1 AS Id) MERGE edw.F AS t USING c AS s ON t.Id = s.Id WHEN MATCHED THEN DELETE;")]
+    // A SELECT ... INTO in the first branch of a union.
+    [InlineData("SELECT a INTO edw.Copy FROM edw.F UNION SELECT b FROM edw.G")]
+    // A transaction around a SELECT is three statements.
+    [InlineData("BEGIN TRAN; SELECT 1; COMMIT")]
+    public void Refuses_AWriteDressedAsAQuery(string sql)
+    {
+        Assert.Throws<SqlFlowException>(() => ReadOnlyQueryGuard.Validate(sql));
+    }
+
+    [Theory]
+    // A comment that reads like a second statement is a comment.
+    [InlineData("SELECT 1 -- ; DROP TABLE edw.F")]
+    [InlineData("SELECT 1 /* ; DROP TABLE edw.F */")]
+    // A linked-server name reads a table like any other: the column guard decides what it may read.
+    [InlineData("SELECT o.Id FROM srv.Sales.dbo.Orders o")]
+    // The built-in table functions read nothing outside the query.
+    [InlineData("SELECT j.[value] FROM OPENJSON('[1,2]') j")]
+    [InlineData("SELECT s.value FROM STRING_SPLIT('a,b', ',') s")]
+    // Window functions, hints and a user table-valued function are reads.
+    [InlineData("SELECT RouteId, ROW_NUMBER() OVER (PARTITION BY RouteId ORDER BY Dato) AS n FROM edw.F")]
+    [InlineData("SELECT * FROM edw.F WITH (NOLOCK)")]
+    [InlineData("SELECT * FROM dbo.ufn_Orders(2025)")]
+    // A name that only starts like a refused one is not refused.
+    [InlineData("SELECT * FROM edw.SysLog")]
+    [InlineData("SELECT ObjectName FROM edw.ColNames")]
+    public void Accepts_ReadsThatOnlyLookUnusual(string sql)
+    {
+        Assert.Equal(sql.Trim(), ReadOnlyQueryGuard.Validate(sql));
+    }
+
+    [Fact]
+    public void TheLengthLimit_IsMeasuredOnTheTrimmedStatement_AndIsInclusive()
+    {
+        var atLimit = "SELECT '" + new string('a', ReadOnlyQueryGuard.MaxLength - 9) + "'";
+        Assert.Equal(ReadOnlyQueryGuard.MaxLength, atLimit.Length);
+        Assert.Equal(atLimit, ReadOnlyQueryGuard.Validate("  \n" + atLimit + "\n  "));
+
+        var overLimit = "SELECT '" + new string('a', ReadOnlyQueryGuard.MaxLength - 8) + "'";
+        var ex = Assert.Throws<SqlFlowException>(() => ReadOnlyQueryGuard.Validate(overLimit));
+        Assert.Contains($"{ReadOnlyQueryGuard.MaxLength + 1} characters", ex.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void IsReadOnly_ReportsTheReason_WithoutThrowing()
     {

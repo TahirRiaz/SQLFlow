@@ -128,7 +128,14 @@ public static class DatasourceInference
             return null;
         }
 
+        // A registration whose source server no active pipeline declares as a whole reference points nowhere a query
+        // may run, so it is no evidence: the keys and the SQL are asked instead.
         var candidates = Resolve(declared, rows.Select(r => r.SourceServer));
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
         if (candidates.Count != 1)
         {
             return new DatasourceInferenceResult(null, candidates);
@@ -210,11 +217,12 @@ public static class DatasourceInference
             return [];
         }
 
+        // Only an unqualified name can be a CTE's; a schema-qualified one is the real object whatever a CTE is called.
         var cteNames = (select.WithCtesAndXmlNamespaces?.CommonTableExpressions ?? [])
             .Select(c => c.ExpressionName.Value)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var tables = SqlColumnAccessExtractor.ExtractTables(select)
-            .Where(t => !cteNames.Contains(t.Name))
+            .Where(t => !(t.Schema is null && cteNames.Contains(t.Name)))
             .ToList();
         if (tables.Count == 0)
         {

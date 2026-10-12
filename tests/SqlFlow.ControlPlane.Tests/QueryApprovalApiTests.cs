@@ -219,11 +219,13 @@ public sealed class QueryApprovalApiTests
                 Assert.Contains(refB, body, StringComparison.Ordinal);
             }
 
-            // 3. The table is unknown to the catalog: nothing to infer from, so it asks.
+            // 3. The table is unknown to the catalog: there is no allow-list to check it against, so it is refused, naming
+            //    the table, before any datasource is asked for.
             using (var unknown = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
                 new PrepareQueryRequest($"SELECT COUNT(*) AS N FROM edw.Nowhere_{suffix}", null)))
             {
-                Assert.Equal(HttpStatusCode.UnprocessableEntity, unknown.StatusCode);
+                Assert.Equal(HttpStatusCode.BadRequest, unknown.StatusCode);
+                Assert.Contains($"Nowhere_{suffix}", await unknown.Content.ReadAsStringAsync(), StringComparison.Ordinal);
             }
 
             // 4. A named datasource still wins over inference, exactly as before.

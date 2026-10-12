@@ -158,6 +158,21 @@ public static class ReadOnlyQueryGuard
         public override void Visit(OpenRowsetTableReference node)
             => Refuse("OPENROWSET reaches outside this connection and is refused.");
 
+        // OPENROWSET(BULK ...) reads a file from the database server's own disk, and the parser gives it, the TABLE form
+        // and the Cosmos form node types of their own: each is refused like the provider form.
+        public override void Visit(BulkOpenRowset node)
+            => Refuse("OPENROWSET(BULK ...) reads a file on the database server and is refused.");
+
+        public override void Visit(InternalOpenRowset node)
+            => Refuse("OPENROWSET reaches outside this connection and is refused.");
+
+        public override void Visit(OpenRowsetCosmos node)
+            => Refuse("OPENROWSET reaches outside this connection and is refused.");
+
+        // NEXT VALUE FOR advances a sequence: a write, however it is read.
+        public override void Visit(NextValueForExpression node)
+            => Refuse("NEXT VALUE FOR advances a sequence, so it is not read-only.");
+
         public override void Visit(OpenXmlTableReference node)
             => Refuse("OPENXML is refused.");
 
@@ -178,9 +193,7 @@ public static class ReadOnlyQueryGuard
             var schema = node?.SchemaObject?.SchemaIdentifier?.Value;
             if (schema is not null && IsSystemCatalogSchema(schema))
             {
-                Refuse(
-                    $"'{schema}' is a system catalog schema. A query here may read the estate's own data, not " +
-                    "the server's schema metadata; use describe_object/search_columns for that instead.");
+                Refuse(SystemCatalogRefusal(schema));
             }
         }
 
@@ -198,6 +211,13 @@ public static class ReadOnlyQueryGuard
             {
                 Refuse($"The function {name} is not allowed in a query here.");
             }
+
+            // A system-schema function (sys.fn_..., sys.dm_...) reads the server's own metadata, as its views do.
+            if (node?.CallTarget is MultiPartIdentifierCallTarget { MultiPartIdentifier.Identifiers: { Count: > 0 } target }
+                && IsSystemCatalogSchema(target[^1].Value))
+            {
+                Refuse(SystemCatalogRefusal(target[^1].Value));
+            }
         }
 
         public override void Visit(SchemaObjectFunctionTableReference node)
@@ -207,11 +227,29 @@ public static class ReadOnlyQueryGuard
             {
                 Refuse($"The function {name} is not allowed in a query here.");
             }
+
+            var schema = node?.SchemaObject?.SchemaIdentifier?.Value;
+            if (schema is not null && IsSystemCatalogSchema(schema))
+            {
+                Refuse(SystemCatalogRefusal(schema));
+            }
         }
+
+        private static string SystemCatalogRefusal(string schema)
+            => $"'{schema}' is a system catalog schema. A query here may read the estate's own data, not the server's " +
+                "schema metadata; use describe_object/search_columns for that instead.";
+
+        // The metadata functions that hand back a column's name, an index's column, or a module's body: the same schema
+        // metadata the system views are refused for, reached by a function instead of a view.
+        private static readonly HashSet<string> MetadataFunctions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "COL_NAME", "COL_LENGTH", "COLUMNPROPERTY", "INDEX_COL", "INDEXKEY_PROPERTY", "OBJECT_DEFINITION",
+        };
 
         private static bool IsRefusedFunction(string name)
             => name.StartsWith("xp_", StringComparison.OrdinalIgnoreCase)
                 || name.StartsWith("sp_", StringComparison.OrdinalIgnoreCase)
-                || name.StartsWith("fn_trace", StringComparison.OrdinalIgnoreCase);
+                || name.StartsWith("fn_trace", StringComparison.OrdinalIgnoreCase)
+                || MetadataFunctions.Contains(name);
     }
 }

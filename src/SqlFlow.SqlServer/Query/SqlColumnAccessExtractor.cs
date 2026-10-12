@@ -16,6 +16,11 @@ public sealed record AccessedTable(string? Schema, string Name)
 /// named elsewhere in the statement.</summary>
 public sealed record AccessedColumn(AccessedTable Table, string? Column);
 
+/// <summary>One column reference as written, with every table it may read: the one table (or several, for an alias
+/// reused at another nesting level) its qualifier names, or every table the statement reads when it has no qualifier
+/// or one this cannot place. <see cref="Column"/> is null for a star.</summary>
+public sealed record AccessedReference(string? Column, IReadOnlyList<AccessedTable> Tables);
+
 /// <summary>
 /// Extracts, from an already-parsed read-only SELECT (see <see cref="ReadOnlyQueryGuard"/>), every (table,
 /// column) pair the statement exposes, so a caller can check each one against a data-access policy before the
@@ -27,12 +32,38 @@ public sealed record AccessedColumn(AccessedTable Table, string? Column);
 /// this extractor is unsure about must fail closed, not open; an over-broad refusal costs a rewrite, a missed
 /// one costs data. Likewise, only a top-level alias map is built (FROM/JOIN of the outer query and of every
 /// subquery/derived table the fragment contains, all at once, not scoped per nesting level): an alias this
-/// extractor cannot place stays unresolved and falls back to the same fail-closed fan-out.
+/// extractor cannot place stays unresolved and falls back to the same fail-closed fan-out, and an alias given to
+/// more than one table (the same letter in a query and in its subquery) is attributed to every table it names.
+///
+/// A table-valued function a query reads from (<c>FROM dbo.ufn_Orders()</c>) is a table here like any other, by its
+/// schema and name, since what it returns is decided inside it. A call made on a column (<c>e.Doc.value(...)</c>,
+/// which parses exactly like a schema-qualified function call <c>dbo.fn(...)</c>) reads that column, so its target is
+/// reported as one; and the pseudo-columns <c>$IDENTITY</c> and <c>$ROWGUID</c> are reported under those names, which
+/// no policy allows, rather than being taken for no column at all.
 /// </summary>
 public static class SqlColumnAccessExtractor
 {
+    /// <summary>The name a <c>$IDENTITY</c> pseudo-column is reported under.</summary>
+    public const string IdentityPseudoColumn = "$IDENTITY";
+
+    /// <summary>The name a <c>$ROWGUID</c> pseudo-column is reported under.</summary>
+    public const string RowGuidPseudoColumn = "$ROWGUID";
+
     /// <summary>Extracts the (table, column) pairs a parsed SELECT statement exposes.</summary>
     public static IReadOnlyList<AccessedColumn> Extract(SelectStatement select)
+    {
+        ArgumentNullException.ThrowIfNull(select);
+
+        return ExtractReferences(select)
+            .SelectMany(reference => reference.Tables.Select(table => new AccessedColumn(table, reference.Column)))
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>Each column reference a parsed SELECT makes, with every table it may read (see
+    /// <see cref="AccessedReference"/>). A caller that must tell where a reference can resolve, rather than only which
+    /// (table, column) pairs to check, reads this instead of <see cref="Extract"/>.</summary>
+    public static IReadOnlyList<AccessedReference> ExtractReferences(SelectStatement select)
     {
         ArgumentNullException.ThrowIfNull(select);
 
@@ -54,10 +85,24 @@ public static class SqlColumnAccessExtractor
         return collector.Tables;
     }
 
+    /// <summary>
+    /// The columns a parsed SELECT names while reading no table at all (<c>SELECT dbo.fn(1)</c>, whose call target is
+    /// read as a column), which <see cref="Extract"/> cannot attribute to anything. A caller enforcing a policy refuses
+    /// a statement that has any, rather than let a reference it cannot check through.
+    /// </summary>
+    public static IReadOnlyList<string> ExtractUnattributed(SelectStatement select)
+    {
+        ArgumentNullException.ThrowIfNull(select);
+
+        var collector = new Collector();
+        select.Accept(collector);
+        return collector.Unattributed;
+    }
+
     private sealed class Collector : TSqlFragmentVisitor
     {
         private readonly List<AccessedTable> _tables = [];
-        private readonly Dictionary<string, AccessedTable> _aliases = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, HashSet<AccessedTable>> _aliases = new(StringComparer.OrdinalIgnoreCase);
 
         // Deferred until every table/alias in the statement has been seen: a column can appear in the AST
         // before the FROM clause that introduces its table (e.g. inside a CTE's own SELECT list, visited before
@@ -65,28 +110,75 @@ public static class SqlColumnAccessExtractor
         private readonly List<(string? Qualifier, string? Column)> _references = [];
 
         public override void Visit(NamedTableReference node)
+            => AddTable(node?.SchemaObject, node?.Alias?.Value);
+
+        public override void Visit(SchemaObjectFunctionTableReference node)
+            => AddTable(node?.SchemaObject, node?.Alias?.Value);
+
+        private void AddTable(SchemaObjectName? name, string? alias)
         {
-            var name = node?.SchemaObject?.BaseIdentifier?.Value;
-            if (string.IsNullOrEmpty(name))
+            var baseName = name?.BaseIdentifier?.Value;
+            if (string.IsNullOrEmpty(baseName))
             {
                 return;
             }
 
-            var table = new AccessedTable(node!.SchemaObject!.SchemaIdentifier?.Value, name);
+            var table = new AccessedTable(name!.SchemaIdentifier?.Value, baseName);
             _tables.Add(table);
 
-            var alias = node.Alias?.Value;
-            _aliases[string.IsNullOrEmpty(alias) ? name : alias] = table;
+            var key = string.IsNullOrEmpty(alias) ? baseName : alias;
+            if (!_aliases.TryGetValue(key, out var bound))
+            {
+                bound = [];
+                _aliases[key] = bound;
+            }
+
+            bound.Add(table);
         }
 
         public override void Visit(ColumnReferenceExpression node)
         {
-            var identifiers = node?.MultiPartIdentifier?.Identifiers;
+            if (node is null)
+            {
+                return;
+            }
+
+            var identifiers = node.MultiPartIdentifier?.Identifiers;
+            // IDENTITYCOL and $IDENTITY, ROWGUIDCOL and $ROWGUID, and the graph and change-tracking pseudo-columns
+            // ($node_id, $action, ...) name a real column without writing its name; COUNT(*)'s star is no column.
+            var pseudo = node.ColumnType switch
+            {
+                ColumnType.Regular or ColumnType.Wildcard => null,
+                ColumnType.IdentityCol or ColumnType.PseudoColumnIdentity => IdentityPseudoColumn,
+                ColumnType.RowGuidCol or ColumnType.PseudoColumnRowGuid => RowGuidPseudoColumn,
+                var other => "$" + other.ToString().Replace("PseudoColumn", string.Empty, StringComparison.Ordinal).ToUpperInvariant(),
+            };
+            if (pseudo is not null)
+            {
+                _references.Add((identifiers is { Count: > 0 } ? identifiers[^1].Value : null, pseudo));
+                return;
+            }
+
             if (identifiers is null || identifiers.Count == 0)
             {
                 return;
             }
 
+            AddReference(identifiers);
+        }
+
+        public override void Visit(FunctionCall node)
+        {
+            // dbo.fn(x) and e.Doc.value(x) parse alike: the target is read as the column it may be. A schema read that
+            // way is no column a policy allows, so a schema-qualified function call fails closed with the rest.
+            if (node?.CallTarget is MultiPartIdentifierCallTarget { MultiPartIdentifier.Identifiers: { Count: > 0 } target })
+            {
+                AddReference(target);
+            }
+        }
+
+        private void AddReference(IList<Identifier> identifiers)
+        {
             var column = identifiers[^1].Value;
             var qualifier = identifiers.Count >= 2 ? identifiers[^2].Value : null;
             _references.Add((qualifier, column));
@@ -100,22 +192,25 @@ public static class SqlColumnAccessExtractor
 
         public IReadOnlyList<AccessedTable> Tables => _tables.Distinct().ToList();
 
-        public IReadOnlyList<AccessedColumn> Resolve()
+        public IReadOnlyList<string> Unattributed => _tables.Count > 0
+            ? []
+            : _references.Select(r => r.Column ?? "*").Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+
+        public IReadOnlyList<AccessedReference> Resolve()
         {
-            var result = new List<AccessedColumn>();
+            var tables = _tables.Distinct().ToList();
+            var result = new List<AccessedReference>();
             foreach (var (qualifier, column) in _references)
             {
-                if (qualifier is not null && _aliases.TryGetValue(qualifier, out var resolved))
+                // An alias bound to several tables (reused at another nesting level) may read each of them; an
+                // unresolved qualifier (an alias this pass never saw) or none at all may read any table, per the
+                // fail-closed policy above.
+                IReadOnlyList<AccessedTable> candidates = qualifier is not null && _aliases.TryGetValue(qualifier, out var resolved)
+                    ? resolved.ToList()
+                    : tables;
+                if (candidates.Count > 0)
                 {
-                    result.Add(new AccessedColumn(resolved, column));
-                    continue;
-                }
-
-                // Unresolved qualifier (an alias this pass never saw) or none at all: fan out to every table,
-                // per the fail-closed policy above.
-                foreach (var table in _tables)
-                {
-                    result.Add(new AccessedColumn(table, column));
+                    result.Add(new AccessedReference(column, candidates));
                 }
             }
 

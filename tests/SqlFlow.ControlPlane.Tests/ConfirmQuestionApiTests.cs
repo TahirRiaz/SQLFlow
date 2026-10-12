@@ -73,9 +73,12 @@ public sealed class ConfirmQuestionApiTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
-        var question = $"How many parcels shipped on {Guid.NewGuid():N}?";
-        const string Sql = "SELECT COUNT(*) FROM Parcels";
-        var hash = SemanticExampleHash.Compute(question, Sql);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var question = $"How many parcels shipped on {suffix}?";
+        var table = "Parcels_" + suffix;
+        var objectKey = $"${{env:SQLFLOW_CONFIRM_{suffix}}}|dw|dbo|{table}".ToLowerInvariant();
+        var sql = $"SELECT COUNT(*) FROM {table}";
+        var hash = SemanticExampleHash.Compute(question, sql);
 
         await using var factory = Enabled(cs);
         using var client = factory.CreateClient();
@@ -84,8 +87,17 @@ public sealed class ConfirmQuestionApiTests
 
         try
         {
+            // The table is catalogued: the column guard refuses a statement over an object the catalog has no record of.
+            var now = DateTime.UtcNow;
+            db.Objects.Add(new CatalogObject
+            {
+                Key = objectKey, ServerRef = objectKey.Split('|')[0], Database = "dw", Schema = "dbo", Name = table,
+                Kind = "Table", FirstSeenUtc = now, LastSeenUtc = now,
+            });
+            await db.SaveChangesAsync();
+
             using (var first = await ConfirmAsync(client, token, new ConfirmQuestionRequest(
-                question, Sql, QuestionConfirmationOutcome.Accepted, ["[Dw].[arc].[Parcels]"], Confidence: 4)))
+                question, sql, QuestionConfirmationOutcome.Accepted, ["[Dw].[arc].[Parcels]"], Confidence: 4)))
             {
                 first.EnsureSuccessStatusCode();
                 var body = await first.Content.ReadFromJsonAsync<ConfirmedQuestionDto>();
@@ -95,7 +107,7 @@ public sealed class ConfirmQuestionApiTests
             }
 
             var stored = await db.SemanticExamples.AsNoTracking().SingleAsync(e => e.ContentHash == hash);
-            Assert.Equal(Sql, stored.Sql);
+            Assert.Equal(sql, stored.Sql);
             Assert.Equal("[Dw].[arc].[Parcels]", stored.ObjectKeys);
             Assert.Equal(4, stored.Confidence);
             Assert.Equal(SemanticExampleProvenance.UserConfirmed, stored.Provenance);
@@ -103,7 +115,7 @@ public sealed class ConfirmQuestionApiTests
             // The same pair again, differently spaced and capitalized: the hash normalizes both away, so this
             // is the same fact being reaffirmed rather than a second one to store.
             using (var second = await ConfirmAsync(client, token, new ConfirmQuestionRequest(
-                question.ToUpperInvariant(), "SELECT  COUNT(*)  FROM Parcels",
+                question.ToUpperInvariant(), $"SELECT  COUNT(*)  FROM {table}",
                 QuestionConfirmationOutcome.Corrected)))
             {
                 second.EnsureSuccessStatusCode();
@@ -118,13 +130,15 @@ public sealed class ConfirmQuestionApiTests
         finally
         {
             await db.SemanticExamples.Where(e => e.ContentHash == hash).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.Key == objectKey).ExecuteDeleteAsync();
         }
     }
 
     /// <summary>
     /// An example confirmed without a datasource is stored with the one its data lives on, so a later auto-run
     /// needs nobody to pick a connection: from the object keys when the caller supplies them (the lineage
-    /// identity, whose first segment is the connection reference), otherwise from the tables the SQL reads.
+    /// identity, whose first segment is the connection reference), otherwise from the tables the SQL reads. The
+    /// keys decide even where the SQL alone could not: a table both datasources hold.
     /// </summary>
     [SkippableFact]
     public async Task AnExampleConfirmedWithoutADatasource_IsStoredWithTheOneItsDataLivesOn()
@@ -134,19 +148,23 @@ public sealed class ConfirmQuestionApiTests
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var reference = "${env:SQLFLOW_CONFIRM_INFER_" + suffix + "}";
+        var other = "${env:SQLFLOW_CONFIRM_OTHER_" + suffix + "}";
         var table = "Parcels_" + suffix;
+        var shared = "Depots_" + suffix;
         var objectKey = $"{reference}|dw|edw|{table}".ToLowerInvariant();
+        var sharedKey = $"{reference}|dw|edw|{shared}".ToLowerInvariant();
+        var sharedElsewhere = $"{other}|dw|edw|{shared}".ToLowerInvariant();
         var repoId = Guid.NewGuid();
         var now = DateTime.UtcNow;
 
         var fromSqlQuestion = $"How many parcels are there ({suffix})?";
         var fromSql = $"SELECT COUNT(*) AS N FROM edw.{table}";
-        var fromKeysQuestion = $"How many parcels did the report count ({suffix})?";
-        const string FromKeysSql = "SELECT COUNT(*) AS N FROM ReportModelParcels";
+        var fromKeysQuestion = $"How many depots did the report count ({suffix})?";
+        var fromKeysSql = $"SELECT COUNT(*) AS N FROM edw.{shared}";
         var hashes = new[]
         {
             SemanticExampleHash.Compute(fromSqlQuestion, fromSql),
-            SemanticExampleHash.Compute(fromKeysQuestion, FromKeysSql),
+            SemanticExampleHash.Compute(fromKeysQuestion, fromKeysSql),
         };
 
         await using var factory = Enabled(cs);
@@ -157,17 +175,25 @@ public sealed class ConfirmQuestionApiTests
         try
         {
             db.Repos.Add(new CatalogRepo { Id = repoId, Name = "confirm_infer_" + suffix, FirstSeenUtc = now, LastSyncUtc = now });
-            db.Pipelines.Add(new CatalogPipeline
+            foreach (var declared in new[] { reference, other })
             {
-                Id = Guid.NewGuid(), RepoId = repoId, Name = "confirm_infer_flow_" + suffix, Kind = "ing",
-                RelativePath = "infer/flow.yaml", Active = true, SourceServer = reference, TargetServer = reference,
-                DefinitionJson = "{}", FirstSeenUtc = now, LastSeenUtc = now,
-            });
-            db.Objects.Add(new CatalogObject
+                db.Pipelines.Add(new CatalogPipeline
+                {
+                    Id = Guid.NewGuid(), RepoId = repoId, Name = "confirm_infer_flow_" + Guid.NewGuid().ToString("N")[..8],
+                    Kind = "ing", RelativePath = "infer/flow.yaml", Active = true, SourceServer = declared,
+                    TargetServer = declared, DefinitionJson = "{}", FirstSeenUtc = now, LastSeenUtc = now,
+                });
+            }
+
+            foreach (var (key, server, name) in new[] { (objectKey, reference, table), (sharedKey, reference, shared), (sharedElsewhere, other, shared) })
             {
-                Key = objectKey, ServerRef = reference, Database = "dw", Schema = "edw", Name = table, Kind = "Table",
-                FirstSeenUtc = now, LastSeenUtc = now,
-            });
+                db.Objects.Add(new CatalogObject
+                {
+                    Key = key, ServerRef = server, Database = "dw", Schema = "edw", Name = name, Kind = "Table",
+                    FirstSeenUtc = now, LastSeenUtc = now,
+                });
+            }
+
             await db.SaveChangesAsync();
 
             using (var response = await ConfirmAsync(client, token, new ConfirmQuestionRequest(
@@ -176,9 +202,9 @@ public sealed class ConfirmQuestionApiTests
                 response.EnsureSuccessStatusCode();
             }
 
-            // The SQL names a model entity the catalog does not know; the object keys still carry the reference.
+            // The SQL reads a table both datasources hold, so it cannot tell; the object keys carry the reference.
             using (var response = await ConfirmAsync(client, token, new ConfirmQuestionRequest(
-                fromKeysQuestion, FromKeysSql, QuestionConfirmationOutcome.Accepted, [objectKey])))
+                fromKeysQuestion, fromKeysSql, QuestionConfirmationOutcome.Accepted, [sharedKey])))
             {
                 response.EnsureSuccessStatusCode();
             }
@@ -192,7 +218,7 @@ public sealed class ConfirmQuestionApiTests
         finally
         {
             await db.SemanticExamples.Where(e => hashes.Contains(e.ContentHash)).ExecuteDeleteAsync();
-            await db.Objects.Where(o => o.Key == objectKey).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.Key == objectKey || o.Key == sharedKey || o.Key == sharedElsewhere).ExecuteDeleteAsync();
             await db.Pipelines.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
             await db.Repos.Where(r => r.Id == repoId).ExecuteDeleteAsync();
         }
