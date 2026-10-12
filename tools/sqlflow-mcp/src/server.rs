@@ -1073,7 +1073,7 @@ fn attach_answer_format(value: &mut Value, links: &GuiLinks) {
     let Some(sql) = value["result"]["sql"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
         return;
     };
-    let block = format!("```sql\n{sql}\n```");
+    let block = fenced_sql(sql);
     // Only the auto-run response carries `ran`; a compute task from run_query never does.
     let intro = if value.get("ran").is_some() { SAVED_QUERY_INTRO } else { QUERY_INTRO };
     if let Some(map) = value.as_object_mut() {
@@ -1091,6 +1091,19 @@ fn attach_answer_format(value: &mut Value, links: &GuiLinks) {
     if let (Some(chart), Some(map)) = (chart, value.as_object_mut()) {
         map.insert("chartLink".into(), json!(chart));
     }
+}
+
+/// `sql` as a fenced ```sql block, the fence one backtick longer than the longest run of backticks inside the SQL
+/// (and never shorter than three), so a statement carrying three backticks (in a comment or a string literal) cannot
+/// close its own block early, as Markdown reads fences.
+fn fenced_sql(sql: &str) -> String {
+    let longest = sql
+        .split(|c| c != '`')
+        .map(str::len)
+        .max()
+        .unwrap_or(0);
+    let fence = "`".repeat((longest + 1).max(3));
+    format!("{fence}sql\n{sql}\n{fence}")
 }
 
 /// Caps every string in a JSON document to `max` characters (marking the cut), recursively. The warehouse
@@ -3686,6 +3699,157 @@ mod surface_tests {
         assert_eq!(request_surface(Some("")), None);
         assert_eq!(request_surface(Some("surface=gui")), None);
         assert_eq!(request_surface(Some("surfaces=assistant")), None);
+    }
+
+    #[test]
+    fn the_surface_is_matched_exactly_as_the_control_plane_writes_it() {
+        // The control plane's gateways write exactly `surface=assistant`; nothing near it is read as it.
+        assert_eq!(request_surface(Some("surface=Assistant")), None);
+        assert_eq!(request_surface(Some("surface=assistant%20")), None);
+        assert_eq!(request_surface(Some("surface=assistant=x")), None);
+        assert_eq!(request_surface(Some("surface")), None);
+        // A pair without a value is skipped, and the marker found wherever it sits among the others.
+        assert_eq!(request_surface(Some("flag&surface=assistant")).as_deref(), Some("assistant"));
+        assert_eq!(request_surface(Some("surface=gui&surface=assistant")).as_deref(), Some("assistant"));
+    }
+}
+
+#[cfg(test)]
+mod bearer_tests {
+    use super::bearer_token;
+
+    fn headers(value: &[u8]) -> http::HeaderMap {
+        let mut map = http::HeaderMap::new();
+        map.insert(http::header::AUTHORIZATION, http::HeaderValue::from_bytes(value).expect("a header value"));
+        map
+    }
+
+    #[test]
+    fn a_bearer_token_is_read_whatever_the_schemes_case_or_the_surrounding_space() {
+        assert_eq!(bearer_token(&headers(b"Bearer abc")).as_deref(), Some("abc"));
+        assert_eq!(bearer_token(&headers(b"bearer abc")).as_deref(), Some("abc"));
+        assert_eq!(bearer_token(&headers(b"  BEARER   abc  ")).as_deref(), Some("abc"));
+        // Everything after the scheme is the token, as the control plane receives it.
+        assert_eq!(bearer_token(&headers(b"Bearer a b")).as_deref(), Some("a b"));
+    }
+
+    #[test]
+    fn anything_that_is_not_a_bearer_token_is_none() {
+        assert_eq!(bearer_token(&http::HeaderMap::new()), None);
+        assert_eq!(bearer_token(&headers(b"Bearer")), None);
+        assert_eq!(bearer_token(&headers(b"Bearer    ")), None);
+        assert_eq!(bearer_token(&headers(b"Bearer\tabc")), None);
+        assert_eq!(bearer_token(&headers(b"Basic abc")), None);
+        assert_eq!(bearer_token(&headers(b"Bearerabc")), None);
+        // A value that is not visible ASCII cannot be read as a string, so it carries no token.
+        assert_eq!(bearer_token(&headers(b"Bearer \xC3\xA9")), None);
+    }
+}
+
+#[cfg(test)]
+mod answer_format_edge_tests {
+    use super::*;
+
+    #[test]
+    fn sql_carrying_backticks_gets_a_fence_it_cannot_close() {
+        let sql = "SELECT '```' AS fence -- ````";
+        let mut value = json!({ "ran": true, "result": { "sql": sql } });
+        attach_answer_format(&mut value, &GuiLinks::new(""));
+
+        let block = value["sqlBlock"].as_str().expect("a block");
+        assert!(block.starts_with("`````sql\n"), "{block}");
+        assert!(block.ends_with("\n`````"), "{block}");
+        assert!(block.contains(sql));
+        assert_eq!(fenced_sql("SELECT 1"), "```sql\nSELECT 1\n```");
+    }
+
+    #[test]
+    fn blank_sql_or_a_value_that_is_not_an_object_gets_nothing() {
+        let mut blank = json!({ "ran": true, "result": { "sql": "   " } });
+        attach_answer_format(&mut blank, &GuiLinks::new("http://gui"));
+        assert!(blank.get("sqlBlock").is_none());
+        assert!(blank.get("answerFormat").is_none());
+
+        let mut missing = json!({ "status": "succeeded", "result": {} });
+        attach_answer_format(&mut missing, &GuiLinks::new("http://gui"));
+        assert!(missing.get("sqlBlock").is_none());
+
+        let mut array = json!([{ "ran": true }]);
+        attach_answer_format(&mut array, &GuiLinks::new("http://gui"));
+        assert_eq!(array, json!([{ "ran": true }]));
+    }
+
+    #[test]
+    fn a_saved_answer_is_introduced_as_one_and_offers_no_save() {
+        let mut auto_run = json!({ "ran": true, "taskId": "t-1", "result": { "sql": "SELECT 1" } });
+        attach_answer_format(&mut auto_run, &GuiLinks::new("http://gui"));
+        assert_eq!(auto_run["sqlIntro"], json!(SAVED_QUERY_INTRO));
+        assert!(auto_run.get("saveOffer").is_none());
+        assert!(auto_run["chartLink"].as_str().unwrap_or_default().contains("t-1"));
+
+        let mut fresh = json!({ "status": "succeeded", "taskId": "t-2", "result": { "sql": "SELECT 1" } });
+        attach_answer_format(&mut fresh, &GuiLinks::new(""));
+        assert_eq!(fresh["sqlIntro"], json!(QUERY_INTRO));
+        assert_eq!(fresh["saveOffer"], json!(SAVE_OFFER));
+        // With no GUI address there is nowhere to link a chart to.
+        assert!(fresh.get("chartLink").is_none());
+    }
+}
+
+#[cfg(test)]
+mod search_surface_tests {
+    use super::*;
+
+    fn server() -> SqlFlowMcp {
+        SqlFlowMcp::new(
+            Arc::new(DocsIndex::load()),
+            Arc::new(ControlPlane::new(&crate::control_plane::ClientIdentity::default(), "http://127.0.0.1:9", None, false)),
+        )
+    }
+
+    fn input(surface: &str) -> Parameters<SearchInput> {
+        Parameters(SearchInput { surface: surface.into(), query: "x".into(), days: None, page: None, page_size: None })
+    }
+
+    #[tokio::test]
+    async fn a_surface_served_by_the_other_search_tool_says_which_tool_serves_it() {
+        // Answered before any control-plane call: the address above refuses every connection.
+        let on_search: Value = serde_json::from_str(&server().search(input("objects")).await).expect("json");
+        assert!(on_search["hint"].as_str().unwrap_or_default().contains("on the other search tool"), "{on_search}");
+        assert_eq!(on_search["validSurfaces"], json!(["flows", "files", "statements"]));
+
+        let on_schema: Value = serde_json::from_str(&server().search_schema(input("statements")).await).expect("json");
+        assert!(on_schema["hint"].as_str().unwrap_or_default().contains("on the other search tool"), "{on_schema}");
+    }
+
+    #[tokio::test]
+    async fn an_unknown_surface_points_at_search_all_and_names_are_case_sensitive() {
+        let unknown: Value = serde_json::from_str(&server().search(input("nope")).await).expect("json");
+        assert!(unknown["hint"].as_str().unwrap_or_default().contains("search_all"), "{unknown}");
+
+        let cased: Value = serde_json::from_str(&server().search(input("Flows")).await).expect("json");
+        assert!(cased.get("error").is_some(), "{cased}");
+    }
+}
+
+#[cfg(test)]
+mod start_here_tests {
+    use super::*;
+
+    #[test]
+    fn the_one_tool_that_claims_start_here_is_the_semantic_layer() {
+        let server = SqlFlowMcp::new(
+            Arc::new(DocsIndex::load()),
+            Arc::new(ControlPlane::new(&crate::control_plane::ClientIdentity::default(), "http://127.0.0.1:9", None, false)),
+        );
+        let claiming: Vec<String> = server
+            .tool_router
+            .list_all()
+            .into_iter()
+            .filter(|tool| tool.description.as_deref().unwrap_or("").contains("START HERE"))
+            .map(|tool| tool.name.to_string())
+            .collect();
+        assert_eq!(claiming, vec!["get_semantic_layer".to_string()]);
     }
 }
 

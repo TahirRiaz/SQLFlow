@@ -139,7 +139,7 @@ public static class AssistantInstructions
             When someone names a thing you do not recognise (a column, a table, a metric, a value like
             "SourceRank"), search BEFORE saying you cannot find it: search_semantic_layer for tables,
             columns, and measures (it matches business synonyms too, so try the person's own word), then
-            then search(surface="flows") for a flow's YAML, search(surface="statements") for the SQL a run
+            search(surface="flows") for a flow's YAML, search(surface="statements") for the SQL a run
             actually executed, and search(surface="files") for delivered files. Search matches word by word,
             so search a single identifier token or business term rather than an English phrase. Only then answer that the name is not
             known, naming the surfaces you checked. Never answer "I see no mention of X" off the back of a

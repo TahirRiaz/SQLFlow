@@ -644,6 +644,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_call_inside_an_assistant_surface_scope_carries_the_marker_and_one_outside_does_not() {
+        let client = reqwest::Client::new();
+        let inside = HTTP_SURFACE.sync_scope(ASSISTANT_SURFACE.to_string(), || {
+            with_surface(client.get("http://127.0.0.1:9/api/v1/pipelines")).build().expect("a request")
+        });
+        assert_eq!(inside.headers().get(SURFACE_HEADER).and_then(|v| v.to_str().ok()), Some(ASSISTANT_SURFACE));
+
+        let outside = with_surface(client.get("http://127.0.0.1:9/api/v1/pipelines")).build().expect("a request");
+        assert!(outside.headers().get(SURFACE_HEADER).is_none());
+    }
+
+    #[test]
     fn reads_the_reason_a_problem_details_body_gives() {
         let body = r#"{"type":"about:blank","title":"Session has reached its maximum age","status":401,
             "detail":"A session renews for at most 30 days after signing in; sign in again to continue."}"#;
