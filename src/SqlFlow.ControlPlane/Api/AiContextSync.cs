@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
 using SqlFlow.Core;
 using SqlFlow.Core.AiContext;
+using SqlFlow.Core.Secrets;
 using SqlFlow.Yaml;
 
 namespace SqlFlow.ControlPlane.Api;
@@ -54,8 +55,8 @@ public static class AiContextSync
 
         // Which file of this repository defines which context: the first in path order, unless another repository's
         // file already does.
-        var claimed = new Dictionary<string, (string Path, AiContextParse Parse)>(StringComparer.Ordinal);
-        foreach (var (path, parse) in files)
+        var claimed = new Dictionary<string, (string Path, AiContextParse Parse, string Text)>(StringComparer.Ordinal);
+        foreach (var (path, parse, text) in files)
         {
             if (parse.Name is null)
             {
@@ -78,12 +79,12 @@ public static class AiContextSync
                 continue;
             }
 
-            claimed[parse.Name] = (path, parse);
+            claimed[parse.Name] = (path, parse, text);
         }
 
         // Resolve and check every claimed context before anything is written, so the writes below are one short step.
         var proposals = new List<Proposal>();
-        foreach (var (name, (path, parse)) in claimed)
+        foreach (var (name, (path, parse, text)) in claimed)
         {
             var problems = new List<string>(parse.Problems);
             AiContextVersion? version = null;
@@ -113,7 +114,7 @@ public static class AiContextSync
                 warnings.AddRange(problems.Take(MaxProblems).Select(p => "  " + p));
             }
 
-            proposals.Add(new Proposal(name, path, parse.Document?.Description, version, problems));
+            proposals.Add(new Proposal(name, path, parse.Document?.Description, version, problems, text));
         }
 
         var strategy = db.Database.CreateExecutionStrategy();
@@ -146,6 +147,7 @@ public static class AiContextSync
                 row.CurrentJson = proposal.Version?.ToJson();
                 row.CurrentHash = row.CurrentJson is null ? null : AiContextVersion.HashOf(row.CurrentJson);
                 row.Problems = proposal.Problems.Count == 0 ? null : ProblemsJson(proposal.Problems);
+                row.CurrentYaml = proposal.Text;
                 row.SyncedUtc = nowUtc;
             }
 
@@ -544,9 +546,11 @@ public static class AiContextSync
         return null;
     }
 
-    private static List<(string Path, AiContextParse Parse)> ReadFiles(string repoRoot, List<string> warnings)
+    /// <summary>The AI context files under <paramref name="repoRoot"/>, each with its parse and its text, credential-redacted
+    /// as a flow's YAML is before it is stored, in path order.</summary>
+    private static List<(string Path, AiContextParse Parse, string Text)> ReadFiles(string repoRoot, List<string> warnings)
     {
-        var result = new List<(string, AiContextParse)>();
+        var result = new List<(string, AiContextParse, string)>();
         if (!Directory.Exists(repoRoot))
         {
             warnings.Add($"AI contexts were not read: the repository folder '{repoRoot}' does not exist.");
@@ -569,7 +573,8 @@ public static class AiContextSync
                     continue;
                 }
 
-                result.Add((relative, YamlAiContextLoader.Parse(File.ReadAllText(full), relative)));
+                var text = File.ReadAllText(full);
+                result.Add((relative, YamlAiContextLoader.Parse(text, relative), SecretHygiene.RedactedMessage(text)));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -590,5 +595,5 @@ public static class AiContextSync
     private sealed record CatalogCandidate(string Key, string ServerRef, string? Database, string? Schema, string Name);
 
     private sealed record Proposal(
-        string Name, string Path, string? Description, AiContextVersion? Version, IReadOnlyList<string> Problems);
+        string Name, string Path, string? Description, AiContextVersion? Version, IReadOnlyList<string> Problems, string Text);
 }

@@ -146,7 +146,8 @@ What a column means comes from `columns:`; that is description, never permission
 
 The sync records each context's **current version**, the version its file proposes (a SHA-256 of the resolved
 context, shown by its first 12 characters), with any problems. An admin approves a version on the AI context page in
-the GUI, with `sqlflow ai-context approve <name> --version <version>`, or with
+the GUI (whose **File** view shows the file as the last sync read it, and its changes since the one approved), with
+`sqlflow ai-context approve <name> --version <version>`, or with
 `POST /api/v1/powerai/ai-contexts/{name}/approve` and `{"version": "<version>"}`. The version must be the one the
 file proposes now, so a file that changed while someone was reviewing it is never approved unseen (409), and a version
 with problems cannot be approved at all (409).

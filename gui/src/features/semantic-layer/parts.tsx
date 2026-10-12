@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AiContextStatus } from "../../api/types";
 import { RelativeTime } from "../../components/RelativeTime";
+import { CopyButton } from "../../components/CopyButton";
 import { RichTooltip } from "../../components/RichTooltip";
 import { TruncatedText } from "../../components/TruncatedText";
 import { useClipped } from "../../components/useClipped";
@@ -53,6 +54,21 @@ const statusVisuals: Record<AiContextStatus, { icon: LucideIcon; tone: string; l
     hint: "The version its file proposes has problems and cannot be approved. An approved version, if there is one, is still served.",
   },
 };
+
+/**
+ * A copy button for a question, to paste it into the chat or anywhere else. With `reveal` it stays out of sight until
+ * the grid row it sits in is hovered or focused, so a column of questions does not carry a column of buttons.
+ */
+export function CopyQuestion({ question, reveal = false }: { question: string; reveal?: boolean }) {
+  const button = <CopyButton iconOnly label="Copy the question" text={question} testId="copy-question" />;
+  return reveal
+    ? (
+      <span className="inline-flex shrink-0 opacity-0 transition-opacity duration-120 focus-within:opacity-100 group-hover/row:opacity-100">
+        {button}
+      </span>
+    )
+    : button;
+}
 
 /**
  * Where an AI context stands, as a neutral chip with its tone glyph; what the state means on hover. With `collapse`, the

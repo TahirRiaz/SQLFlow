@@ -50,6 +50,13 @@ public sealed record AiContextDetailDto(
     IReadOnlyList<AiContextChangeDto> Changes,
     IReadOnlyList<string> Problems);
 
+/// <summary>A context's file as text: as the last sync read it, and as it was when the approved version was approved,
+/// each credential-redacted as a flow's YAML is.</summary>
+/// <param name="Path">The file, within its repository.</param>
+/// <param name="Current">The file's text now, or null when it could not be read.</param>
+/// <param name="Approved">The file's text when the approved version was approved, or null while none is.</param>
+public sealed record AiContextYamlDto(string Path, string? Current, string? Approved);
+
 /// <summary>Approves the version an admin reviewed: <see cref="Version"/> must be the context's current version, so a
 /// file that changed while the admin was reading is never approved unseen.</summary>
 public sealed record ApproveAiContextRequest(string? Version);
@@ -72,7 +79,7 @@ public static class AiContextStatus
 
 /// <summary>
 /// The AI contexts files propose, for admins: every context and where it stands, one context in full with what approving
-/// it would change, approving the version an admin reviewed, revoking an approval, and the export of what was typed in the
+/// it would change, its file as text (now and as approved), approving the version an admin reviewed, revoking an approval, and the export of what was typed in the
 /// GUI before contexts were files. The admin scope throughout: deciding what an AI assistant may use is a governance
 /// decision, like the user administration beside it. Nothing here edits a context; its file does.
 /// </summary>
@@ -88,6 +95,7 @@ public static class AiContextEndpoints
         contexts.MapGet(string.Empty, ListAsync).WithName("ListAiContexts");
         contexts.MapGet("/earlier-content", ExportEarlierContentAsync).WithName("ExportEarlierAiContent");
         contexts.MapGet("/{name}", GetAsync).WithName("GetAiContext");
+        contexts.MapGet("/{name}/yaml", GetYamlAsync).WithName("GetAiContextYaml");
         contexts.MapPost("/{name}/approve", ApproveAsync).WithName("ApproveAiContext");
         contexts.MapPost("/{name}/revoke", RevokeAsync).WithName("RevokeAiContext");
         return group;
@@ -111,6 +119,16 @@ public static class AiContextEndpoints
         }
 
         return TypedResults.Ok(await DetailAsync(db, row, ct).ConfigureAwait(false));
+    }
+
+    private static async Task<Results<Ok<AiContextYamlDto>, ProblemHttpResult>> GetYamlAsync(
+        string name, CatalogDbContext db, CancellationToken ct)
+    {
+        var file = await db.AiContexts.AsNoTracking()
+            .Where(c => c.Name == name)
+            .Select(c => new AiContextYamlDto(c.Path, c.CurrentYaml, c.ApprovedYaml))
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        return file is null ? NotFound(name) : TypedResults.Ok(file);
     }
 
     private static async Task<Results<Ok<AiContextDetailDto>, ProblemHttpResult>> ApproveAsync(
@@ -170,6 +188,7 @@ public static class AiContextEndpoints
 
                 tracked.ApprovedJson = tracked.CurrentJson;
                 tracked.ApprovedHash = tracked.CurrentHash;
+                tracked.ApprovedYaml = tracked.CurrentYaml;
                 tracked.ApprovedBy = actor;
                 tracked.ApprovedUtc = now;
                 tracked.Problems = null;
@@ -206,6 +225,7 @@ public static class AiContextEndpoints
             await AiContextMaterializer.RemoveAsync(db, name, ct).ConfigureAwait(false);
             tracked.ApprovedJson = null;
             tracked.ApprovedHash = null;
+            tracked.ApprovedYaml = null;
             tracked.ApprovedBy = null;
             tracked.ApprovedUtc = null;
             tracked.Instructions = null;

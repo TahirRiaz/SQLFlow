@@ -2,13 +2,14 @@ import { useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import {
-  ArrowRight, ChevronRight, CircleCheck, Clock3, Columns3, EyeOff, FileCode2, Info, KeyRound, Link2, Loader2, Lock,
-  MessageSquareQuote, OctagonAlert, ScrollText, ShieldCheck, ShieldOff, Sigma, Sparkles, SquareDot, SquareMinus, SquarePlus,
-  Table2, type LucideIcon,
+  ArrowRight, ChevronRight, CircleCheck, ClipboardCheck, Clock3, Columns3, EyeOff, FileCode2, GitCompareArrows, Info, KeyRound,
+  Link2, Loader2, Lock, MessageSquareQuote, OctagonAlert, ScrollText, ShieldCheck, ShieldOff, Sigma, Sparkles, SquareDot,
+  SquareMinus, SquarePlus, Table2, type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { prettyPrintSql } from "@/lib/sql";
@@ -23,10 +24,11 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DataTable, type Column } from "../../components/DataTable";
 import { DetailPair } from "../../components/DetailPair";
+import { DiffView } from "../../components/DiffView";
 import { RelativeTime } from "../../components/RelativeTime";
 import { RichTooltip } from "../../components/RichTooltip";
-import { AiContextStatusChip, CellText, DescribedText, FileRef } from "./parts";
-import { aiContextKey, COMPACT_GRID, errorText, plural, refreshSemanticLayer, shortVersion } from "./shared";
+import { AiContextStatusChip, CellText, CopyQuestion, DescribedText, FileRef } from "./parts";
+import { aiContextKey, aiContextYamlKey, COMPACT_GRID, errorText, plural, refreshSemanticLayer, shortVersion } from "./shared";
 
 /** How each kind of change is drawn: a glyph in its tone, the words in the text tokens (DESIGN.md 3.2). */
 const changeGlyphs: Record<AiContextChange["kind"], { icon: LucideIcon; tone: string; label: string }> = {
@@ -76,9 +78,13 @@ function Card({ title, icon: Icon, tone, count, aside, children, testId }: {
   );
 }
 
-/** A disclosure row: a chevron, a line that says what is inside, and the content once opened. */
-function Disclosure({ summary, children, testId, framed = true }: {
+/**
+ * A disclosure row: a chevron, a line that says what is inside, and the content once opened. `actions` sit at the end of
+ * the row beside the toggle, not in it, since a button cannot hold another.
+ */
+function Disclosure({ summary, actions, children, testId, framed = true }: {
   summary: ReactNode;
+  actions?: ReactNode;
   children: ReactNode;
   testId?: string;
   /** A row of a list that draws its own separators goes without a frame of its own. */
@@ -87,10 +93,13 @@ function Disclosure({ summary, children, testId, framed = true }: {
   const [open, setOpen] = useState(false);
   return (
     <Collapsible open={open} onOpenChange={setOpen} className={cn(framed && "rounded-md border border-border")} data-testid={testId}>
-      <CollapsibleTrigger className="flex w-full min-w-0 items-center gap-2 px-3 py-2 text-left hover:bg-accent/50">
-        <ChevronRight className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-120", open && "rotate-90")} />
-        {summary}
-      </CollapsibleTrigger>
+      <div className="flex min-w-0 items-center hover:bg-accent/50">
+        <CollapsibleTrigger className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left">
+          <ChevronRight className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-120", open && "rotate-90")} />
+          {summary}
+        </CollapsibleTrigger>
+        {actions !== undefined && <div className="flex shrink-0 items-center gap-1 pr-2">{actions}</div>}
+      </div>
       <CollapsibleContent className="flex flex-col gap-3 border-t border-border bg-background/60 px-3 py-3">{children}</CollapsibleContent>
     </Collapsible>
   );
@@ -118,10 +127,11 @@ export function ExampleDisclosure({ question, sql, sourceRef, extra, testId = "a
       framed={framed}
       summary={(
         <>
-          <span className="min-w-0 flex-1 truncate text-[13px]">{question}</span>
+          <span className="min-w-0 flex-1 truncate text-[13px]" title={question}>{question}</span>
           {extra}
         </>
       )}
+      actions={<CopyQuestion question={question} />}
     >
       <SqlBlock sql={sql} testId="ai-context-example-sql" />
       <p className="text-xs text-muted-foreground">
@@ -629,8 +639,92 @@ function approveBlockedReason(detail: AiContextDetail): string | null {
   return summary.status === "awaiting-approval" || summary.status === "changed" ? null : "This version is already approved.";
 }
 
-/** The head of the review, which stays in view while it scrolls: what the context is, where it stands, and the actions. */
-function ReviewHeader({ summary, actions }: { summary: AiContextSummary; actions: ReactNode }) {
+/** The height a comparison takes for `lines` lines: the whole of a short file, a readable window onto a long one. */
+const diffHeight = (lines: number) => Math.min(900, Math.max(280, lines * 19 + 48));
+
+/**
+ * The context's file itself, as the last sync read it: the YAML an admin reviews beside what the review makes of it, with
+ * the language engine's hover docs and checks. When the file differs from the one approved, the changes since approval
+ * are one switch away.
+ */
+function ContextFileView({ summary }: { summary: AiContextSummary }) {
+  const [compare, setCompare] = useState(false);
+  const query = useQuery({ queryKey: aiContextYamlKey(summary.name), queryFn: () => aiContextApi.yaml(summary.name) });
+
+  if (query.isPending) {
+    return (
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <Skeleton className="h-5 w-96 max-w-full" />
+        <Skeleton className="min-h-60 flex-1 rounded-lg" />
+      </div>
+    );
+  }
+
+  if (query.isError) {
+    return (
+      <div className="p-4">
+        {isApiError(query.error)
+          ? <CorrelationError error={query.error} />
+          : <p className="text-[13px] text-destructive">{errorText(query.error)}</p>}
+      </div>
+    );
+  }
+
+  const current = query.data.current ?? null;
+  const approved = query.data.approved ?? null;
+  const comparable = current !== null && approved !== null && approved !== current;
+  const showing = current ?? approved;
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-2 p-4" data-testid="ai-context-file-view">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-[12px] text-muted-foreground">
+          <FileCode2 className="size-3.5 shrink-0" aria-hidden />
+          {current === null
+            ? approved === null
+              ? "The last sync could not read the file."
+              : "The last sync could not read the file; this is the file as it was approved."
+            : <>As the last sync read it, <RelativeTime value={summary.syncedUtc} absolute={false} /></>}
+        </span>
+        {comparable && (
+          <Tabs value={compare ? "changes" : "file"} onValueChange={(value) => setCompare(value === "changes")} className="ml-auto">
+            <TabsList className="h-8">
+              <TabsTrigger value="file" className="px-2.5 text-[12px]" data-testid="ai-context-file-whole">
+                <FileCode2 />
+                Whole file
+              </TabsTrigger>
+              <TabsTrigger value="changes" className="px-2.5 text-[12px]" data-testid="ai-context-file-changes">
+                <GitCompareArrows />
+                Changes since approval
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+      </div>
+      {showing === null
+        ? <p className="text-[13px] text-muted-foreground">Fix the problems the review lists; the next sync reads the file again.</p>
+        : comparable && compare
+          ? (
+            <DiffView
+              original={approved}
+              modified={current}
+              language="yaml"
+              height={diffHeight(Math.max(approved.split("\n").length, current.split("\n").length))}
+              sideLabels={{
+                original: `Approved ${shortVersion(summary.approvedVersion) ?? ""}`.trim(),
+                modified: `Proposed ${shortVersion(summary.currentVersion) ?? ""}`.trim(),
+              }}
+              data-testid="ai-context-file-diff"
+            />
+          )
+          : <CodeView value={showing} language="yaml" fill data-testid="ai-context-yaml" />}
+    </div>
+  );
+}
+
+/** The head of the review, which stays in view while it scrolls: what the context is, where it stands, the switch between
+ * the review and the file, and the actions. */
+function ReviewHeader({ summary, views, actions }: { summary: AiContextSummary; views: ReactNode; actions: ReactNode }) {
   return (
     <div className="sticky top-0 z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-border bg-card px-4 py-2.5">
       <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/60">
@@ -651,7 +745,10 @@ function ReviewHeader({ summary, actions }: { summary: AiContextSummary; actions
           </div>
         </div>
       </div>
-      {actions}
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {views}
+        {actions}
+      </div>
     </div>
   );
 }
@@ -668,6 +765,7 @@ export function AiContextDetailPanel({ name }: { name: string }) {
   const { hasScope } = useAuth();
   const admin = hasScope("admin");
   const [confirming, setConfirming] = useState<"approve" | "revoke" | null>(null);
+  const [view, setView] = useState<"review" | "file">("review");
 
   const query = useQuery({ queryKey: aiContextKey(name), queryFn: () => aiContextApi.get(name) });
 
@@ -731,7 +829,7 @@ export function AiContextDetailPanel({ name }: { name: string }) {
   const review = detail.problems.length > 0 || (summary.status !== "approved" && detail.changes.length > 0);
 
   const actions = admin && (
-    <div className="flex shrink-0 items-center gap-2">
+    <div className="flex items-center gap-2">
       {summary.approvedVersion != null && (
         <Button
           variant="outline"
@@ -761,11 +859,33 @@ export function AiContextDetailPanel({ name }: { name: string }) {
     </div>
   );
 
-  return (
-    <div className="@container min-h-full bg-background" data-testid="ai-context-detail">
-      <ReviewHeader summary={summary} actions={actions} />
+  const views = (
+    <TabsList className="h-8">
+      <TabsTrigger value="review" className="px-2.5 text-[12px]" data-testid="ai-context-view-review">
+        <ClipboardCheck />
+        Review
+      </TabsTrigger>
+      <TabsTrigger value="file" className="px-2.5 text-[12px]" data-testid="ai-context-view-file">
+        <FileCode2 />
+        File
+      </TabsTrigger>
+    </TabsList>
+  );
 
-      <div className="flex flex-col gap-3 p-4">
+  return (
+    <Tabs
+      value={view}
+      onValueChange={(value) => setView(value === "file" ? "file" : "review")}
+      className="@container flex min-h-full flex-col gap-0 bg-background"
+      data-testid="ai-context-detail"
+    >
+      <ReviewHeader summary={summary} views={views} actions={actions} />
+
+      <TabsContent value="file" className="flex min-h-0 flex-1 flex-col">
+        <ContextFileView summary={summary} />
+      </TabsContent>
+
+      <TabsContent value="review" className="flex flex-col gap-3 p-4">
         <VersionStrip detail={detail} />
 
         <div className={cn("grid items-start gap-3", review && "@4xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]")}>
@@ -787,7 +907,7 @@ export function AiContextDetailPanel({ name }: { name: string }) {
             </div>
           )}
         </div>
-      </div>
+      </TabsContent>
 
       <ConfirmDialog
         open={confirming === "approve"}
@@ -811,6 +931,6 @@ export function AiContextDetailPanel({ name }: { name: string }) {
         onConfirm={() => revoke.mutate()}
         onClose={() => setConfirming(null)}
       />
-    </div>
+    </Tabs>
   );
 }

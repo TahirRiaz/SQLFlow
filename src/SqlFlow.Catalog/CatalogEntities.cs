@@ -1824,6 +1824,14 @@ public class CatalogAiContext
     /// <summary>The instructions the context serves: the approved version's, while the file still gives instructions;
     /// null otherwise. Kept beside the served rows by the same writer, so a read needs no version JSON.</summary>
     public string? Instructions { get; set; }
+
+    /// <summary>The file's text as the last sync read it, credential-redacted as a flow's YAML is, so an admin reviews
+    /// the file itself and not only what was made of it; null when the file could not be read.</summary>
+    public string? CurrentYaml { get; set; }
+
+    /// <summary>The file's text when the approved version was approved, so a changed file can be compared with the one
+    /// approved; null while none is approved.</summary>
+    public string? ApprovedYaml { get; set; }
 }
 
 /// <summary>

@@ -143,6 +143,7 @@ as if it were approved, and a table, measure name, or join another context serve
 | --- | --- |
 | `GET /api/v1/powerai/ai-contexts` | Every context: status (`awaiting-approval`, `approved`, `changed`, `invalid`), file, proposed and approved versions, who approved it and when, tables proposed and served, problem count; and `hasEarlierContent` |
 | `GET /api/v1/powerai/ai-contexts/{name}` | One context: the version its file proposes, the approved version, what approving would change, and its problems |
+| `GET /api/v1/powerai/ai-contexts/{name}/yaml` | The context's file as text: `current`, as the last sync read it, and `approved`, as it was when the approved version was approved (absent while none is), each credential-redacted as a flow's YAML is |
 | `POST /api/v1/powerai/ai-contexts/{name}/approve` | Approve `{"version": "<the current version>"}`. 409 when the file proposes another version now, or the version has problems |
 | `POST /api/v1/powerai/ai-contexts/{name}/revoke` | Stop serving the context; its version waits for approval again |
 | `GET /api/v1/powerai/ai-contexts/earlier-content` | What the GUI held before contexts were files, as one context file to review and commit (404 when there is none) |
@@ -209,10 +210,12 @@ read-only. The only actions are an admin's: approve or revoke a context, and rem
 a person or a report gave. Everything else changes in the files.
 
 - **Contexts**: every context with its status, the version its file proposes, who approved what and when, tables
-  served and proposed, and its file. Opening one shows, in the workbench's bottom panel, its problems, what approving
-  would change, its instructions, tables (with columns, key, measures, and joins), and example questions, with
-  **Approve** (for the version shown) and **Revoke**. **Download earlier content** appears while content from before
-  contexts were files is waiting to be exported.
+  served and proposed, and its file. Opening one shows, in the workbench's bottom panel, a review: the version served
+  beside the one proposed, its problems, what approving would change, its instructions, tables (with columns, key,
+  measures, and joins), and example questions, with **Approve** (for the version shown) and **Revoke** in a header
+  that stays in view. Its **File** view shows the file itself as the last sync read it, with the editor's hover docs
+  and checks, and, when it differs from the file approved, the **Changes since approval** side by side. **Download
+  earlier content** appears while content from before contexts were files is waiting to be exported.
 - **Tables**: a database > schema > object tree badged with open/total columns and marked with the context serving
   each object, and for the selected object everything the layer holds for it, each item with its served/withheld
   state.
@@ -220,6 +223,9 @@ a person or a report gave. Everything else changes in the files.
   who last stood behind it, and its served/withheld state.
 - **Power BI reports**: the PowerBI subscribers with whether each generates business questions, and the report
   specifications the layer holds, with each visual's business questions.
+
+Every question on the page (a context's example questions, a saved answer, a report visual's questions) has a copy
+button; in the Saved answers grid it shows when the row is hovered or focused.
 
 ## Power BI reports
 

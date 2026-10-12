@@ -18,7 +18,7 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { tableContainer, useScrollFit } from "../../hooks/useScrollFit";
 import { useOwnedPanel } from "../../layout/workbench/useOwnedPanel";
 import { SqlBlock } from "./AiContextDetail";
-import { ServedMark, Stamp, ToneChip } from "./parts";
+import { CopyQuestion, ServedMark, Stamp, ToneChip } from "./parts";
 import { errorText, FIT_BELOW, FIT_MIN, FITTED_GRID, refreshSemanticLayer, SEMANTIC_ROOT } from "./shared";
 
 /** The bottom panel content ids this surface owns. */
@@ -51,7 +51,10 @@ function SavedAnswerDetail({ row, canRemove, onRemove }: { row: SemanticExampleA
   return (
     <div className="flex flex-col gap-3 px-4 py-3" data-testid="saved-answer-detail">
       <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5">
-        <h2 className="min-w-0 flex-[1_1_16rem] break-words text-sm font-medium">{row.question}</h2>
+        <div className="flex min-w-0 flex-[1_1_16rem] items-start gap-1">
+          <h2 className="min-w-0 break-words text-sm font-medium">{row.question}</h2>
+          <CopyQuestion question={row.question} />
+        </div>
         <ProvenanceChip provenance={row.provenance} />
         <ServedMark problem={row.problem} />
         {canRemove && row.provenance !== FROM_CONTEXT && (
@@ -127,7 +130,12 @@ export function SavedAnswersPanel() {
       header: "Question",
       fill: true,
       floor: 150,
-      render: (row) => <TruncatedText text={row.question} maxWidth={2000} className="font-medium" />,
+      render: (row) => (
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="min-w-0"><TruncatedText text={row.question} maxWidth={2000} className="font-medium" /></span>
+          <CopyQuestion question={row.question} reveal />
+        </span>
+      ),
     },
     {
       id: "sql",

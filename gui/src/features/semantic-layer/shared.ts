@@ -79,3 +79,6 @@ export function useAiContexts() {
 
 /** The query key of one context's detail, under the root every approval refreshes. */
 export const aiContextKey = (name: string) => [SEMANTIC_ROOT, "ai-contexts", name] as const;
+
+/** The query key of one context's file text, under the same root, so an approval or a sync refreshes it too. */
+export const aiContextYamlKey = (name: string) => [SEMANTIC_ROOT, "ai-contexts", name, "yaml"] as const;

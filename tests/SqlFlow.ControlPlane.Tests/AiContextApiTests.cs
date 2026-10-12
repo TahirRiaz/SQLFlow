@@ -192,6 +192,54 @@ public sealed class AiContextApiTests
     }
 
     [SkippableFact]
+    public async Task TheFileItself_IsKeptAsTheSyncReadIt_AndAsItWasApproved_WithCredentialsRedacted()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        await using var estate = new Estate(cs);
+        await estate.TableAsync("Orders", "OrderId", "Amount");
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+        await using var contexts = new AiContextTestKit(cs);
+        using var client = factory.CreateClient();
+        var admin = await AiContextTestKit.IssueTokenAsync(client, ["read", "operate", "admin"]);
+
+        var name = "sales-" + estate.Suffix;
+        var first = $"# Orders for the assistant.\naiContext: {name}\ntables:\n  - table: dbo.{estate.Name("Orders")}\n";
+        contexts.Write("sales.ai-context.yaml", first);
+        await contexts.SyncAsync();
+
+        var proposed = await YamlAsync(client, admin, name);
+        Assert.Equal("sales.ai-context.yaml", proposed.Path);
+        Assert.Equal(first, proposed.Current);
+        Assert.Null(proposed.Approved);
+
+        // Approving keeps the file as it was approved, comment and all, so a later change can be compared with it.
+        await AiContextTestKit.ApproveAsync(client, admin, name);
+        Assert.Equal(first, (await YamlAsync(client, admin, name)).Approved);
+
+        // A changed file is read again; a credential typed into it never reaches the catalog.
+        var second = first.Replace(
+            "tables:", "description: Reads the warehouse with password=Hunter2Secret for now.\ntables:", StringComparison.Ordinal);
+        contexts.Write("sales.ai-context.yaml", second);
+        await contexts.SyncAsync();
+        var changed = await YamlAsync(client, admin, name);
+        Assert.Equal(first, changed.Approved);
+        Assert.NotNull(changed.Current);
+        Assert.Contains("description: Reads the warehouse with", changed.Current, StringComparison.Ordinal);
+        Assert.DoesNotContain("Hunter2Secret", changed.Current, StringComparison.Ordinal);
+
+        // Revoking drops the approved file with the approval.
+        await AiContextTestKit.RevokeAsync(client, admin, name);
+        Assert.Null((await YamlAsync(client, admin, name)).Approved);
+
+        using var missing = await AiContextTestKit.SendAsync(client, admin, HttpMethod.Get, $"/api/v1/powerai/ai-contexts/missing-{estate.Suffix}/yaml");
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+
+        static async Task<AiContextYamlDto> YamlAsync(HttpClient client, string token, string context)
+            => await GetJsonAsync<AiContextYamlDto>(client, token, $"/api/v1/powerai/ai-contexts/{context}/yaml");
+    }
+
+    [SkippableFact]
     public async Task AColumnTheWarehouseAdds_OpensOnlyOnceApproved_AndOneItDrops_ClosesAtOnce()
     {
         var cs = CatalogTestDb.Require();
@@ -657,6 +705,7 @@ public sealed class AiContextApiTests
             (HttpMethod.Get, "/api/v1/powerai/ai-contexts"),
             (HttpMethod.Get, "/api/v1/powerai/ai-contexts/earlier-content"),
             (HttpMethod.Get, "/api/v1/powerai/ai-contexts/sales"),
+            (HttpMethod.Get, "/api/v1/powerai/ai-contexts/sales/yaml"),
             (HttpMethod.Post, "/api/v1/powerai/ai-contexts/sales/approve"),
             (HttpMethod.Post, "/api/v1/powerai/ai-contexts/sales/revoke"),
         })

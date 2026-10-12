@@ -16,7 +16,7 @@ import { RichTooltip } from "../../components/RichTooltip";
 import { TruncatedText } from "../../components/TruncatedText";
 import { tableContainer, useScrollFit } from "../../hooks/useScrollFit";
 import { useOwnedPanel } from "../../layout/workbench/useOwnedPanel";
-import { CellText, ServedMark, Stamp, ToneChip } from "./parts";
+import { CellText, CopyQuestion, ServedMark, Stamp, ToneChip } from "./parts";
 import {
   COMPACT_GRID, describeReport, errorText, FIT_BELOW, FIT_MIN, FITTED_GRID, plural, SEMANTIC_ROOT,
 } from "./shared";
@@ -57,6 +57,7 @@ function QuestionRow({ entry, reportId, admin }: { entry: SemanticReportQuestion
       <span className="shrink-0 text-[11px] text-muted-foreground" data-origin={entry.origin}>
         {entry.origin === "manual" ? "written by a person" : "generated"}
       </span>
+      <CopyQuestion question={entry.question} />
       {admin && (
         <IconAction
           label={`Remove "${entry.question}"`}

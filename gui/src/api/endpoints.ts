@@ -18,7 +18,7 @@ import type {
   GenerateNotificationDigestRequest, NotificationDelivery, NotificationDigest, NotificationDigestSummary,
   NotificationQueuedDelivery, NotificationSubscription, SendNotificationDigestRequest,
   ObjectHit, ObjectRepo, PagedResult,
-  AiContextDetail, AiContextList,
+  AiContextDetail, AiContextList, AiContextYaml,
   SemanticObjectAdmin, SemanticObjectCoverage, SemanticOverview, SemanticSchemaCoverage,
   ConfirmQuestionRequest, ConfirmedQuestion, SemanticExampleAdmin,
   SemanticReportCapabilities, SemanticReportSpec, SemanticReportSpecDetail, SemanticReportSubscriber,
@@ -612,6 +612,8 @@ export const aiContextApi = {
   list: () => get<AiContextList>("/api/v1/powerai/ai-contexts"),
   /** One context in full: both versions, what approving the proposed one would change, and its problems. */
   get: (name: string) => get<AiContextDetail>(`/api/v1/powerai/ai-contexts/${encodeURIComponent(name)}`),
+  /** The context's file as text: as the last sync read it, and as it was approved. */
+  yaml: (name: string) => get<AiContextYaml>(`/api/v1/powerai/ai-contexts/${encodeURIComponent(name)}/yaml`),
   /** Approves the version reviewed, which must still be the one the file proposes; 409 when it is not, or when the
    * version has problems. */
   approve: (name: string, version: string) =>

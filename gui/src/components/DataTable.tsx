@@ -209,7 +209,8 @@ export function DataTable<T>({
       <TableRow
         key={rowKey(row)}
         onClick={canClick ? () => onRowClick!(row) : undefined}
-        className={cn(canClick && "cursor-pointer hover:bg-accent/50")}
+        // A hover group, so a cell can reveal an action of its row (a copy, say) while the row is hovered or focused.
+        className={cn("group/row", canClick && "cursor-pointer hover:bg-accent/50")}
         style={rowSx?.(row)}
         data-testid="table-row"
         data-selected={selection?.selected.has(String(rowKey(row))) ? "true" : undefined}

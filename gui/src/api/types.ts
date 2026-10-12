@@ -2037,6 +2037,16 @@ export interface AiContextDetail {
   problems: string[];
 }
 
+/** A context's file as text: as the last sync read it, and as it was approved, each credential-redacted. */
+export interface AiContextYaml {
+  /** The file, within its repository. */
+  path: string;
+  /** The file's text now; absent when it could not be read. */
+  current?: string | null;
+  /** The file's text when the approved version was approved; absent while none is. */
+  approved?: string | null;
+}
+
 // ---- PowerAI confirmed examples ---------------------------------------------------------------------------------
 // The write half of question retrieval: what a person decided about an answer the assistant handed back.
 // An accepted or corrected answer becomes precedent the next similar question is matched against; a rejection
