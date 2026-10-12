@@ -503,10 +503,10 @@ public sealed class SemanticReportApiTests
     private static Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactory<Program> ExtractionEnabled(
         StubExtractor extractor, int maxUploadMegabytes)
         => new ControlPlaneAppFactory()
-            .WithSetting("ControlPlane:PowerAI:ReportExtraction:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:ReportExtraction:Endpoint", "http://pbix-extractor.test:8080")
-            .WithSetting("ControlPlane:PowerAI:ReportExtraction:ApiKey", ExtractorKey)
-            .WithSetting("ControlPlane:PowerAI:ReportExtraction:MaxUploadMegabytes", maxUploadMegabytes.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .WithSetting("ControlPlane:AiContext:ReportExtraction:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ReportExtraction:Endpoint", "http://pbix-extractor.test:8080")
+            .WithSetting("ControlPlane:AiContext:ReportExtraction:ApiKey", ExtractorKey)
+            .WithSetting("ControlPlane:AiContext:ReportExtraction:MaxUploadMegabytes", maxUploadMegabytes.ToString(System.Globalization.CultureInfo.InvariantCulture))
             .WithWebHostBuilder(builder => builder.ConfigureServices(services =>
                 services.AddHttpClient(ReportExtractionClient.HttpClientName)
                     .ConfigurePrimaryHttpMessageHandler(() => extractor)));

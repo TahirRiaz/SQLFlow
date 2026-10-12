@@ -30,7 +30,7 @@ public sealed class QueryApprovalApiTests
         var now = DateTime.UtcNow;
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:DataOps:Enabled", "true");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true");
         try
         {
             await using (var db = CatalogDatabase.Create(cs))
@@ -168,7 +168,7 @@ public sealed class QueryApprovalApiTests
             => $"{reference}|dw|edw|{name}".ToLowerInvariant();
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:DataOps:Enabled", "true");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true");
         try
         {
             await using (var db = CatalogDatabase.Create(cs))
@@ -255,7 +255,7 @@ public sealed class QueryApprovalApiTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
-        // The default: DataOps is off unless a deployment turns it on.
+        // The default: AI context is off unless a deployment turns it on.
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client);
@@ -263,10 +263,12 @@ public sealed class QueryApprovalApiTests
         using var prepare = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
             new PrepareQueryRequest("SELECT 1", "${env:SQLFLOW_ANY}"));
         Assert.Equal(HttpStatusCode.Forbidden, prepare.StatusCode);
+        Assert.Contains("ControlPlane__AiContext__Enabled", await prepare.Content.ReadAsStringAsync(), StringComparison.Ordinal);
 
         using var run = await PostAsync(
             client, token, $"/api/v1/dataops/queries/{Guid.NewGuid()}/run", new { });
         Assert.Equal(HttpStatusCode.Forbidden, run.StatusCode);
+        Assert.Contains("ControlPlane__AiContext__Enabled", await run.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     private static async Task<string> IssueTokenAsync(HttpClient client)

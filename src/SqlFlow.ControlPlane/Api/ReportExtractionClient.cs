@@ -33,7 +33,7 @@ public sealed class ReportExtractionClient
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(secrets);
         _http = http;
-        _options = options.Value.PowerAI.ReportExtraction;
+        _options = options.Value.AiContext.ReportExtraction;
         _secrets = secrets;
     }
 
@@ -52,7 +52,7 @@ public sealed class ReportExtractionClient
         {
             return new ReportExtractionOutcome(
                 null, StatusCodes.Status501NotImplemented,
-                "Report extraction is not enabled on this control plane (ControlPlane:PowerAI:ReportExtraction:Enabled). "
+                "Report extraction is not enabled on this control plane (ControlPlane:AiContext:ReportExtraction:Enabled). "
                 + "Upload a specification made with 'sqlflow powerbi extract' instead.");
         }
 
@@ -72,7 +72,7 @@ public sealed class ReportExtractionClient
         {
             return new ReportExtractionOutcome(
                 null, StatusCodes.Status503ServiceUnavailable,
-                "The extractor key (ControlPlane:PowerAI:ReportExtraction:ApiKey) did not resolve to a value.");
+                "The extractor key (ControlPlane:AiContext:ReportExtraction:ApiKey) did not resolve to a value.");
         }
 
         using var budget = CancellationTokenSource.CreateLinkedTokenSource(ct);

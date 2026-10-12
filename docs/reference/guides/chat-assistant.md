@@ -120,7 +120,7 @@ The query being judged is read from the answer's own ```sql fenced blocks, which
 
 The datasource is optional and must be a whole `${env:...}` / `${keyvault:...}` reference or an `@alias` that the catalog already declares. Without one, the confirm endpoint stores the datasource the query's objects live on (from the object keys when supplied, whose first segment is the connection reference, otherwise from the tables the SQL reads), and leaves it empty only when those do not point at exactly one declared datasource. The objects the example reads are resolved the same way when the caller sends none (the catalogued tables the SQL names), so an answer confirmed from this row is served as an example of those tables in the semantic layer.
 
-The row posts to `POST /api/v1/powerai/questions/confirm`, the same endpoint behind the `confirm_question` MCP tool, so a click and a tool call land the same row and nothing new is stored on this path. It appears only when the deployment has the example store turned on: `GET /api/v1/chat/capabilities` reports `questionConfirmation`, which is `ControlPlane:PowerAI:Retrieval:Enabled` read from the same options the confirm endpoint answers 501 on. Confirming the same question and query again refreshes the existing example rather than adding a duplicate, so reaffirming an answer does not give it extra weight in later searches.
+The row posts to `POST /api/v1/powerai/questions/confirm`, the same endpoint behind the `confirm_question` MCP tool, so a click and a tool call land the same row and nothing new is stored on this path. It appears only when the deployment has AI context turned on: `GET /api/v1/chat/capabilities` reports `questionConfirmation`, which is `ControlPlane:AiContext:Enabled` read from the same options the confirm endpoint answers 501 on. Confirming the same question and query again refreshes the existing example rather than adding a duplicate, so reaffirming an answer does not give it extra weight in later searches.
 
 The assistant itself calls `confirm_question` only when the person, after seeing a result, says it is right, corrects it, or asks to save it. Approving a run ("yes", "go ahead") is never that, and a person saying an answer is wrong saves nothing, so the assistant does not call it then.
 
@@ -179,7 +179,7 @@ A client outside the GUI (Claude Code, a desktop app) has no layout of its own f
 
 Every layout field opens by yielding to the client's own instructions, which is how the GUI chat and the Slack bot keep their layouts: the GUI chat's surface section tells the model to ignore them (it draws the chart inline), and Slack's to adopt `approvalFormat` and `answerFormat`. The MCP server cannot tell those clients apart, since both connect with `surface=assistant`.
 
-The affordance is gated by `dataOpsRunQuery` on `GET /api/v1/chat/capabilities` (`ControlPlane:DataOps:Enabled`, the same switch `prepare_query`/`run_query` answer 403 on), so it is absent, not merely disabled, on a deployment without the data-operations surface turned on.
+The affordance is gated by `runQuery` on `GET /api/v1/chat/capabilities` (`ControlPlane:AiContext:Enabled`, the same switch `prepare_query`/`run_query` answer 403 on), so it is absent, not merely disabled, on a deployment without AI context turned on.
 
 ## Voice input
 
@@ -198,6 +198,8 @@ The feature is off by default and reports itself through `GET /api/v1/chat/capab
 - `Mcp:ServerUrl`: the deployed SQLFlow MCP endpoint, whose instructions are the assistant's rules
 - optional: `Foundry:TranscriptionDeploymentName`, `MaxImages`, `MaxImageBytes`, `RunTimeoutSeconds`
 - optional: `Mcp:AllowedTools`, a deployment's own narrowing of the tools a run may call; empty, the default, means every tool the session's mode lists
+
+Answering a question from the data (running its query, saving an answer, running a trusted saved answer) is AI context, turned on separately with `ControlPlane:AiContext:Enabled` ([Semantic layer](../concepts/semantic-layer.md#turning-it-on)).
 - key-based modes: `OpenAI:ApiKey` / `Anthropic:ApiKey` accept `${env:...}`/`${keyvault:...}` references
 
 In the Bicep estate this wires itself: once `aiFoundryName` + `aiFoundryModelName` and `mcpImage` are set (the same inputs the Slack assistant needs), `main.bicep` enables the chat on the control plane, points it at the estate's Foundry project and MCP server, and grants the control-plane identity the Cognitive Services OpenAI User role. Set `aiFoundryTranscriptionModelName` (for example `gpt-4o-mini-transcribe`) to deploy the audio model and light up server-side voice input.

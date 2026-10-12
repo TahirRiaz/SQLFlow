@@ -70,8 +70,8 @@ public sealed class PowerAiQuestionReuseTests
         var askedDifferently = $"Show me the reseller sales broken down per region {suffix}";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -135,11 +135,11 @@ public sealed class PowerAiQuestionReuseTests
         var storedQuestion = $"Which products sold the most to resellers in {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false")
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false")
             // Stated rather than assumed: these assertions are about the threshold, so the test pins it instead
             // of inheriting whatever the shipped default happens to be (one higher than it, for the suffix).
-            .WithSetting("ControlPlane:PowerAI:Retrieval:RankThreshold", "3");
+            .WithSetting("ControlPlane:AiContext:SavedAnswers:RankThreshold", "3");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -206,9 +206,9 @@ public sealed class PowerAiQuestionReuseTests
         var storedQuestion = $"How many customers{suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:RankThreshold", "2");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false")
+            .WithSetting("ControlPlane:AiContext:SavedAnswers:RankThreshold", "2");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -261,10 +261,9 @@ public sealed class PowerAiQuestionReuseTests
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:DataOps:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:AutoRun:Enabled", "true");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false")
+            .WithSetting("ControlPlane:AiContext:AutoRun:Enabled", "true");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -309,8 +308,8 @@ public sealed class PowerAiQuestionReuseTests
 
     /// <summary>
     /// With auto-run switched off, reuse must fall back to the manual gate rather than quietly running anyway.
-    /// This is the other half of the switch, and it is the half that matters: a deployment that has not opted
-    /// in to running queries unattended must not run one, no matter how well a question matched.
+    /// Auto-run is on by default with AI context, so this is the switch a deployment that wants every query to wait
+    /// for a click turns off: no query then runs unattended, no matter how well a question matched.
     /// </summary>
     [SkippableFact]
     public async Task WithAutoRunOff_AReusableMatchIsNotRun_AndTheCallerIsSentToTheManualGate()
@@ -323,11 +322,11 @@ public sealed class PowerAiQuestionReuseTests
         await SeedCatalogObjectsAsync(cs, suffix, proof.Sql);
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
-        // Retrieval on, auto-run off: the shipped default, and the case a deployment lands in by doing nothing.
+        // AI context on, auto-run turned off explicitly.
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:DataOps:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false")
+            .WithSetting("ControlPlane:AiContext:AutoRun:Enabled", "false");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -361,12 +360,11 @@ public sealed class PowerAiQuestionReuseTests
     }
 
     /// <summary>
-    /// Auto-run executes a query, so it belongs to the data-operations surface and must be refused when that
-    /// surface is off, even with retrieval and auto-run both switched on. Reuse is not a way around the kill
-    /// switch: a deployment that has turned off ad-hoc querying has turned off ad-hoc querying.
+    /// Auto-run runs a query, and a query belongs to AI context: with AI context on and DataOps off, it is not refused
+    /// as disabled. DataOps is the engineer's checks and gates nothing an AI context answer needs.
     /// </summary>
     [SkippableFact]
-    public async Task WithDataOpsOff_AutoRunIsRefused_EvenThoughRetrievalAndAutoRunAreOn()
+    public async Task WithDataOpsOff_AutoRunIsStillReached_SinceAQueryBelongsToAiContext()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -377,9 +375,9 @@ public sealed class PowerAiQuestionReuseTests
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:AutoRun:Enabled", "true");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false")
+            .WithSetting("ControlPlane:AiContext:AutoRun:Enabled", "true");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -390,10 +388,12 @@ public sealed class PowerAiQuestionReuseTests
             using var response = await PostAsync(
                 client, token, $"/api/v1/powerai/questions/{stored.ExampleId}/auto-run", new { });
 
-            Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
-
-            await using var db = CatalogDatabase.Create(cs);
-            Assert.Equal(0, await db.ComputeTasks.CountAsync(t => t.SourceRef == AdventureWorksRef));
+            // Past the switches the endpoint does its own work (against a host without the sample it may find no
+            // source to run on); what matters is that neither AI context nor the absent DataOps switch refused it.
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            Assert.NotEqual(HttpStatusCode.NotImplemented, response.StatusCode);
+            Assert.DoesNotContain("DataOps", body, StringComparison.Ordinal);
         }
         finally
         {
@@ -423,8 +423,8 @@ public sealed class PowerAiQuestionReuseTests
         var storedQuestion = $"What are reseller sales by territory region {suffix}?";
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 
@@ -492,8 +492,8 @@ public sealed class PowerAiQuestionReuseTests
         }
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);
 

@@ -205,8 +205,8 @@ function ChatThread({
   // capability flag, so the thread is not handed a new component type on each render.
   const components = useMemo(() => ({
     AnswerFooter: () => <AnswerConfirmation enabled={capabilities.questionConfirmation} />,
-    dataOpsRunQuery: capabilities.dataOpsRunQuery,
-  }), [capabilities.questionConfirmation, capabilities.dataOpsRunQuery]);
+    runQuery: capabilities.runQuery,
+  }), [capabilities.questionConfirmation, capabilities.runQuery]);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>

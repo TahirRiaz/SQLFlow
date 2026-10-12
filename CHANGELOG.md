@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- AI context is turned on with one switch, `ControlPlane__AiContext__Enabled=true`, named as the GUI names the
+  feature: it covers a question's query (prepare/run and the chat's Run button), saved answers, and running a
+  trusted saved answer straight away, which is now on by default (`ControlPlane__AiContext__AutoRun__Enabled=false`
+  turns it off). The `ControlPlane:PowerAI` section is gone: `PowerAI:Retrieval:Enabled` is `AiContext:Enabled`,
+  `DefaultTopK` and `RankThreshold` are `AiContext:SavedAnswers:TopK` and `RankThreshold`, `AutoRun:*` and
+  `ReportExtraction:*` moved under `AiContext`, and `AiContext:ExpandSynonyms` follows the Anthropic key unless set,
+  so it no longer stops startup. `ControlPlane:DataOps:Enabled` now gates only the duplicate-key check and the
+  baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
+
 ### Added
 - Document-envelope `mode:` on every flow kind, with a new `disabled` value. `mode: manual` was
   documented as excluding a flow from schedule fires and batch/node group runs, but only health

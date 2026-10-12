@@ -24,17 +24,16 @@ namespace SqlFlow.ControlPlane.Api;
 /// <param name="MaxImages">The most images one question may carry.</param>
 /// <param name="MaxImageBytes">The largest single image the host accepts.</param>
 /// <param name="QuestionConfirmation">Whether <c>/powerai/questions/confirm</c> would accept a
-/// confirmation (POWERAI.md Section 6's learning loop). False when retrieval is off, in which case
-/// there is no store to confirm INTO and the GUI hides the accept/correct/reject affordance rather
-/// than offering a button whose only possible answer is 501.</param>
-/// <param name="DataOpsRunQuery">Whether a SQL block the assistant hands back can be run from the
-/// chat thread itself, through the existing <c>/dataops/queries/prepare</c> +
-/// <c>/dataops/queries/{id}/run</c> pair (the same human-in-the-loop path <c>prepare_query</c>/
-/// <c>run_query</c> use over MCP). False when the data-operations surface is off, in which case the
-/// GUI hides the Run affordance rather than offering a button that can only answer 403.</param>
+/// confirmation. False when AI context is off (<c>ControlPlane:AiContext:Enabled</c>), in which case
+/// the GUI hides the save affordance rather than offering a button whose only possible answer is 501.</param>
+/// <param name="RunQuery">Whether a SQL block the assistant hands back can be run from the
+/// chat thread itself, through the <c>/dataops/queries/prepare</c> + <c>/dataops/queries/{id}/run</c>
+/// pair (the same human-in-the-loop path <c>prepare_query</c>/<c>run_query</c> use over MCP). False
+/// when AI context is off, in which case the GUI hides the Run affordance rather than offering a
+/// button that can only answer 403.</param>
 public sealed record ChatCapabilitiesDto(
     bool Enabled, string Provider, bool Images, bool Transcription, int MaxImages, long MaxImageBytes,
-    bool QuestionConfirmation, bool DataOpsRunQuery);
+    bool QuestionConfirmation, bool RunQuery);
 
 /// <summary>One chat conversation in the owner's list (newest activity first).</summary>
 public sealed record ChatConversationDto(Guid Id, string Title, DateTime CreatedUtc, DateTime UpdatedUtc);
@@ -125,11 +124,10 @@ public static class ChatEndpoints
             assistant.Enabled && transcription,
             assistant.MaxImages,
             assistant.MaxImageBytes,
-            // The same gate the confirm endpoint answers 501 on, read from the same options, so the
-            // button appears exactly when pressing it would do something.
-            options.Value.PowerAI.Retrieval.Enabled,
-            // The same gate the prepare/run endpoints answer 403 on.
-            options.Value.DataOps.Enabled));
+            // The gate the confirm and prepare/run endpoints answer on, read from the same options, so each
+            // affordance appears exactly when pressing it would do something.
+            options.Value.AiContext.Enabled,
+            options.Value.AiContext.Enabled));
     }
 
     private static async Task<Results<Ok<IReadOnlyList<ChatConversationDto>>, ProblemHttpResult>> ListConversationsAsync(

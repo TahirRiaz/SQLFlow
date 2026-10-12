@@ -27,14 +27,14 @@ public sealed class DataOpsSwitchApiTests
         => ComputeOperations.All.Where(ComputeOperations.IsDataOps).ToArray();
 
     [SkippableFact]
-    public async Task WithTheSwitchOff_EveryGatedOperationIsRefused_AndTheRestOfTheProductIsUntouched()
+    public async Task WithBothSwitchesOff_TheChecksAndTheQueriesAreRefused_EachNamingItsOwnSetting()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
         var (repoId, serverRef) = (Guid.NewGuid(), "${env:SQLFLOW_OFF_" + Guid.NewGuid().ToString("N")[..8] + "}");
 
-        // No WithSetting: this is the shipped default, so the test also proves the feature ships OFF.
+        // No WithSetting: this is the shipped default, so the test also proves both features ship OFF.
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
         try
         {
@@ -42,7 +42,7 @@ public sealed class DataOpsSwitchApiTests
             using var client = factory.CreateClient();
             var token = await IssueTokenAsync(client);
 
-            // 1. Every gated compute operation is refused, and the refusal names the setting to change.
+            // 1. Every data check is refused, and the refusal names the setting to change.
             foreach (var operation in GatedOperations())
             {
                 using var response = await PostAsync(client, token, "/api/v1/datasources/tasks",
@@ -53,17 +53,19 @@ public sealed class DataOpsSwitchApiTests
                 Assert.Contains("DataOps__Enabled", problem, StringComparison.Ordinal);
             }
 
-            // 2. Both query endpoints are refused too, so the switch covers the surface and not just the queue.
+            // 2. Both query endpoints are refused too, naming AI context's switch, which is what queries belong to.
             using (var prepare = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
                        new PrepareQueryRequest("SELECT 1", serverRef)))
             {
                 Assert.Equal(HttpStatusCode.Forbidden, prepare.StatusCode);
+                Assert.Contains("AiContext__Enabled", await prepare.Content.ReadAsStringAsync(), StringComparison.Ordinal);
             }
 
             using (var run = await PostAsync(
                        client, token, $"/api/v1/dataops/queries/{Guid.NewGuid()}/run", new { }))
             {
                 Assert.Equal(HttpStatusCode.Forbidden, run.StatusCode);
+                Assert.Contains("AiContext__Enabled", await run.Content.ReadAsStringAsync(), StringComparison.Ordinal);
             }
 
             // 3. Nothing was queued. A refusal must refuse, not queue a task that fails later on a node.
@@ -73,12 +75,13 @@ public sealed class DataOpsSwitchApiTests
                 Assert.Equal(0, await db.QueryPlans.CountAsync(p => p.SourceRef == serverRef));
             }
 
-            // 4. Capabilities still ANSWERS while disabled, saying so. A client that cannot ask "is this on"
+            // 4. Capabilities still ANSWERS while disabled, saying so for each. A client that cannot ask "is this on"
             //    has to guess, and guessing is what makes an assistant claim a capability does not exist.
             var capabilities = await GetJsonAsync<DataOpsCapabilitiesDto>(
                 client, token, "/api/v1/dataops/capabilities");
             Assert.False(capabilities.Enabled);
             Assert.Contains("DataOps__Enabled", capabilities.DisabledReason, StringComparison.Ordinal);
+            Assert.Contains("AiContext__Enabled", capabilities.QuerySurface, StringComparison.Ordinal);
 
             // 5. The rest of the product is untouched. The warehouse-health probes predate this surface and
             //    the insights dashboard reads their results, so the switch must not reach them.
@@ -97,7 +100,7 @@ public sealed class DataOpsSwitchApiTests
     }
 
     [SkippableFact]
-    public async Task WithTheSwitchOn_EveryGatedOperationIsReachable_AndAdvertised()
+    public async Task WithDataOpsOn_TheChecksAreReachableAndAdvertised_AndQueriesStillWaitForAiContext()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -112,9 +115,7 @@ public sealed class DataOpsSwitchApiTests
             using var client = factory.CreateClient();
             var token = await IssueTokenAsync(client);
 
-            // 1. Capabilities ADVERTISES every gated operation. This is the check that was missing: the
-            //    surface worked and the endpoint that describes it omitted runQuery, so the assistant read
-            //    the description and correctly concluded the capability was absent.
+            // 1. Capabilities ADVERTISES every check, derived from the operation set rather than a copy of it.
             var capabilities = await GetJsonAsync<DataOpsCapabilitiesDto>(
                 client, token, "/api/v1/dataops/capabilities");
 
@@ -123,23 +124,69 @@ public sealed class DataOpsSwitchApiTests
             {
                 Assert.Contains(operation, capabilities.Operations);
             }
+            Assert.DoesNotContain(ComputeOperations.RunQuery, capabilities.Operations);
 
-            Assert.Contains("prepare_query", capabilities.QuerySurface, StringComparison.Ordinal);
-
-            // 2. The query surface accepts a real statement and mints a token.
-            using var prepare = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
-                new PrepareQueryRequest("SELECT 1 AS x", serverRef));
-            prepare.EnsureSuccessStatusCode();
-
-            // 3. Every gated compute operation is past the switch. They are validated on their own arguments
-            //    after it, so a 400 here is the ARGUMENTS being wrong, never the feature being off; what
-            //    matters is that none of them is refused as disabled.
-            foreach (var operation in GatedOperations().Where(o => o != ComputeOperations.RunQuery))
+            // 2. Every check is past the switch. They are validated on their own arguments after it, so a 400 here
+            //    is the ARGUMENTS being wrong, never the feature being off.
+            foreach (var operation in GatedOperations())
             {
                 using var response = await PostAsync(client, token, "/api/v1/datasources/tasks",
                     new { reference = serverRef, operation });
 
                 Assert.NotEqual(HttpStatusCode.Forbidden, response.StatusCode);
+            }
+
+            // 3. Queries are not part of it: they wait for AI context, whatever DataOps says.
+            using var prepare = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest("SELECT 1 AS x", serverRef));
+            Assert.Equal(HttpStatusCode.Forbidden, prepare.StatusCode);
+            Assert.Contains("AiContext__Enabled", await prepare.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+        finally
+        {
+            await CleanupAsync(cs, repoId, serverRef);
+        }
+    }
+
+    [SkippableFact]
+    public async Task WithAiContextOn_AQueryIsPrepared_WithoutDataOps_AndNeverQueuedAsATask()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var (repoId, serverRef) = (Guid.NewGuid(), "${env:SQLFLOW_AI_" + Guid.NewGuid().ToString("N")[..8] + "}");
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
+            .WithSetting("ControlPlane:AiContext:Enabled", "true");
+        try
+        {
+            await SeedAsync(cs, repoId, serverRef);
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client);
+
+            // 1. The query surface accepts a real statement and mints a token, with DataOps off.
+            using var prepare = await PostAsync(client, token, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest("SELECT 1 AS x", serverRef));
+            prepare.EnsureSuccessStatusCode();
+
+            var capabilities = await GetJsonAsync<DataOpsCapabilitiesDto>(
+                client, token, "/api/v1/dataops/capabilities");
+            Assert.False(capabilities.Enabled);
+            Assert.Contains("prepare_query", capabilities.QuerySurface, StringComparison.Ordinal);
+
+            // 2. A query is never a task queued directly: only a plan a person approved runs one.
+            using var queued = await PostAsync(client, token, "/api/v1/datasources/tasks",
+                new { reference = serverRef, operation = ComputeOperations.RunQuery });
+            Assert.Equal(HttpStatusCode.BadRequest, queued.StatusCode);
+            Assert.Contains("prepared plan", await queued.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+
+            // 3. The checks still wait for DataOps.
+            foreach (var operation in GatedOperations())
+            {
+                using var response = await PostAsync(client, token, "/api/v1/datasources/tasks",
+                    new { reference = serverRef, operation });
+
+                Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
             }
         }
         finally

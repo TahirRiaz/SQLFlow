@@ -129,9 +129,9 @@ Operate surface (policy `operate`):
 | `POST /repos/sources/{id}/sync` | Force a sync now |
 | `POST /repos/discover` | Preview a repo's flows without importing (the selective-scan wizard) |
 | `POST /repos/sources/{id}/proposals` | Propose pipelines to a source as a pull request (`author` scope) |
-| `POST /datasources/tasks` | Enqueue an ad-hoc compute task against a datasource: browse/introspect, detect a unique key, the warehouse-health DMV probes, and (behind `DataOps:Enabled`) `duplicateKeys`, `compareBaseline` and `runQuery`. References only; the executing node resolves the credential |
+| `POST /datasources/tasks` | Enqueue an ad-hoc compute task against a datasource: browse/introspect, detect a unique key, the warehouse-health DMV probes, and (behind `DataOps:Enabled`) `duplicateKeys` and `compareBaseline`. `runQuery` is refused here: a query runs only through a prepared plan. References only; the executing node resolves the credential |
 | `POST /datasources/tasks/{taskId}/cancel` | Cancel a queued or running compute task |
-| `POST /dataops/queries/prepare` | Validate an ad-hoc SELECT and mint a one-time plan token; nothing runs. Behind `DataOps:Enabled` |
+| `POST /dataops/queries/prepare` | Validate an ad-hoc SELECT and mint a one-time plan token; nothing runs. Behind `AiContext:Enabled` |
 | `POST /dataops/queries/{planId}/run` | Redeem an approved plan token and queue the query. Takes a token, never a statement, so the confirmation cannot be skipped |
 
 Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/activate` `/deactivate` `/password`, and `GET /roles` (src/SqlFlow.ControlPlane/Api/UserEndpoints.cs).
@@ -203,7 +203,8 @@ All settings bind from the `ControlPlane` configuration section (environment var
 | `Dispatch:MaxExecutionAttempts` | `3` | Hand-outs a run may consume before an interrupted attempt is failed |
 | `Dispatch:OwnershipTtlSeconds` / `Dispatch:OwnershipRenewSeconds` | `30` / `10` | The dispatch ownership lease; the TTL is at least twice the renew interval |
 | `Proxy:Enabled` | `false` | See proxy section above; `ForwardLimit` default `1` |
-| `DataOps:Enabled` | `false` | The kill switch for the data-operations surface: ad-hoc business queries, the duplicate-key check and the old-versus-new baseline comparison. All are read-only, and both are refused with a 403 naming this setting while it is off. The four warehouse-health DMV probes are a separate, older feature and are NOT gated by it (concept-data-operations) |
+| `AiContext:Enabled` | `false` | AI context: a question's query (prepare/run), saved answers, and running a trusted saved answer straight away, all behind this one switch; refused with a 403 or 501 naming it while it is off. Its tuning (`ExpandSynonyms`, `SavedAnswers:*`, `AutoRun:*`, `ReportExtraction:*`) is in concept-semantic-layer |
+| `DataOps:Enabled` | `false` | The engineer's data checks: the duplicate-key check and the old-versus-new baseline comparison. Both are read-only, and refused with a 403 naming this setting while it is off. Queries are AI context's, and the four warehouse-health DMV probes are a separate, older feature; neither is gated by it (concept-data-operations) |
 | `DataOps:Comparison:LinkedServers` | `[]` | The linked servers a baseline comparison may name. A linked-server name becomes an identifier in generated SQL and a route into another estate, so it is configuration, never something a request chooses; an unlisted name is refused |
 | `DataOps:Comparison:DefaultLinkedServer` | unset | Used when a comparison names none; must be one of `LinkedServers` or startup fails |
 | `DataOps:Comparison:Databases` | `[]` | Optional narrowing to named databases on those servers. Empty permits any database the linked server's own login can reach, which is the usual case because the linked server is the boundary |

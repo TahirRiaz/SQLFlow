@@ -292,7 +292,7 @@ public static class ControlPlaneHost
             builder.Services.AddSingleton<SqlFlow.Assistant.TranscriptionGateway>();
         }
 
-        // ---- PowerAI: question generation and retrieval, each independent of the interactive chat assistant above and
+        // ---- AI context: question generation and synonym expansion, each independent of the interactive chat assistant above and
         // of each other (a deployment may run any one without the others). Both reuse the same Anthropic account/model
         // rather than declaring their own, since both draw on the same subscription, so the resolved options are
         // registered once when EITHER needs them. Question generation runs for the subscribers whose library asks for it
@@ -300,7 +300,7 @@ public static class ControlPlaneHost
         // expansion is registered only when its own switch is on. A deployment without a key never attempts an Anthropic
         // call.
         var generationAvailable = QuestionGenerationAvailability.IsAvailable(options);
-        var expandsSynonyms = options.PowerAI.Retrieval.Enabled && options.PowerAI.Retrieval.ExpandSynonyms;
+        var expandsSynonyms = options.AiContext.ExpandsSynonyms(options.Assistant.Anthropic);
         if (generationAvailable || expandsSynonyms)
         {
             builder.Services.AddSingleton(sp =>
@@ -328,7 +328,7 @@ public static class ControlPlaneHost
 
         // PowerAI report uploads: a .pbix is forwarded to the isolated extractor service and never parsed in this process.
         // Registered unconditionally so the report endpoints can explain a disabled switch instead of failing to bind; the
-        // client itself refuses to call out while ControlPlane:PowerAI:ReportExtraction is off. The client applies its own
+        // client itself refuses to call out while ControlPlane:AiContext:ReportExtraction is off. The client applies its own
         // per-extraction budget, so the transport timeout is left unbounded.
         builder.Services.AddHttpClient(ReportExtractionClient.HttpClientName, client => client.Timeout = Timeout.InfiniteTimeSpan);
         builder.Services.AddSingleton<ReportExtractionClient>();

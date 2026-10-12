@@ -194,7 +194,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
   ]
 }
 
-@description('The address the control plane reaches the extractor at (ControlPlane:PowerAI:ReportExtraction:Endpoint): the environment-internal FQDN.')
+@description('The address the control plane reaches the extractor at (ControlPlane:AiContext:ReportExtraction:Endpoint): the environment-internal FQDN.')
 output endpoint string = 'https://${app.properties.configuration.ingress.fqdn}'
 
 @description('The principal (object) id of the app identity.')

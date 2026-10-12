@@ -141,7 +141,7 @@ sqlflow powerbi remove <id>
 report's own path plus `.yaml`; `--out -` writes to standard output and moves the summary to stderr. The report is
 read by the local `pbix-extract` tool when one is found (`SQLFLOW_PBIX_EXTRACT`, then beside the CLI, then `PATH`),
 and otherwise by the control plane's isolated extractor, which needs `--url`/`SQLFLOW_URL`, a sign-in, and
-`ControlPlane:PowerAI:ReportExtraction` enabled on the server. `--remote` forces the control plane even when a
+`ControlPlane:AiContext:ReportExtraction` enabled on the server. `--remote` forces the control plane even when a
 local tool exists. With neither available the verb fails and says how to get one. `--report-file` sets the label
 the report's pages carry (default: the file name).
 

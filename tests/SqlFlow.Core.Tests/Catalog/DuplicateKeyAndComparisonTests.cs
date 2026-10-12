@@ -252,8 +252,12 @@ public sealed class DuplicateKeyAndComparisonTests
 
         Assert.Contains(ComputeOperations.DuplicateKeys, gated);
         Assert.Contains(ComputeOperations.CompareBaseline, gated);
-        Assert.Contains(ComputeOperations.RunQuery, gated);
-        Assert.Equal(3, gated.Length);
+        Assert.Equal(2, gated.Length);
+
+        // A query is not a data check: it answers a question from the data, behind AI context, and only a plan a
+        // person approved runs one.
+        Assert.False(ComputeOperations.IsDataOps(ComputeOperations.RunQuery));
+        Assert.True(ComputeOperations.IsKnown(ComputeOperations.RunQuery));
     }
 
     [Fact]

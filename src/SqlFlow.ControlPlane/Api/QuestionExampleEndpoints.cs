@@ -156,15 +156,15 @@ public static class QuestionExampleEndpoints
             return Problem("A confirmation requires a request body.", StatusCodes.Status400BadRequest);
         }
 
-        // The same gate the search side answers 501 on. The store exists to be searched, so a deployment that
-        // has not enabled retrieval has not opted into this feature at all, and silently accumulating
-        // confirmations nobody can ever retrieve would be worse than saying so.
-        if (!options.Value.PowerAI.Retrieval.Enabled)
+        // The same gate the search side answers 501 on. Saved answers exist to be searched, so a deployment that has
+        // not turned AI context on has not opted into this feature at all, and silently accumulating answers nobody
+        // can ever find would be worse than saying so.
+        if (!options.Value.AiContext.Enabled)
         {
             return Problem(
-                "Question retrieval is not enabled on this deployment "
-                + "(ControlPlane:PowerAI:Retrieval:Enabled), so there is no example store to confirm into.",
-                StatusCodes.Status501NotImplemented, "Retrieval not configured");
+                "Answering questions from the data is not enabled on this deployment, so there are no saved answers "
+                + "to save into. Set ControlPlane__AiContext__Enabled=true to turn it on.",
+                StatusCodes.Status501NotImplemented, "AI context not enabled");
         }
 
         if (!QuestionConfirmationOutcome.IsKnown(request.Outcome))
@@ -355,20 +355,20 @@ public static class QuestionExampleEndpoints
         TimeProvider clock, ClaimsPrincipal user, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (!options.Value.DataOps.Enabled)
+        var aiContext = options.Value.AiContext;
+        if (!aiContext.Enabled)
         {
             return Problem(
-                "Auto-run executes a query, which is part of the data-operations surface, not enabled in this "
-                + "deployment. Set ControlPlane__DataOps__Enabled=true to turn it on.",
+                "Answering questions from the data is not enabled in this deployment. Set "
+                + "ControlPlane__AiContext__Enabled=true to turn it on.",
                 StatusCodes.Status403Forbidden, "Not enabled");
         }
 
-        var retrieval = options.Value.PowerAI.Retrieval;
-        if (!retrieval.Enabled || !retrieval.AutoRun.Enabled)
+        if (!aiContext.AutoRun.Enabled)
         {
             return Problem(
-                "Auto-run is not enabled on this deployment "
-                + "(ControlPlane:PowerAI:Retrieval:AutoRun:Enabled). Use prepare_query/run_query instead.",
+                "Running a trusted saved answer straight away is turned off on this deployment "
+                + "(ControlPlane:AiContext:AutoRun:Enabled is false). Use prepare_query/run_query instead.",
                 StatusCodes.Status501NotImplemented, "Not enabled");
         }
 
@@ -429,7 +429,7 @@ public static class QuestionExampleEndpoints
             return Problem(ex.Message, StatusCodes.Status400BadRequest, "Query refused");
         }
 
-        var autoRun = retrieval.AutoRun;
+        var autoRun = aiContext.AutoRun;
         var payload = new ComputeTaskPayload
         {
             Operation = ComputeOperations.RunQuery,

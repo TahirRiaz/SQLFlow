@@ -2606,9 +2606,9 @@ and fix every finding first."
             sentence and never leave it out, even for a one-line count. False means the query did not finish inside the \
             budget (or failed against the live source): do not retry auto-run for the same example, and do not tell the user \
             it ran - instead call prepare_query with the `sql` and `sourceRef` this response still carries, so a person \
-            approves it the normal way. This surface needs the same 'operate' scope and ControlPlane:DataOps:Enabled switch \
-            prepare_query does, plus its own ControlPlane:PowerAI:Retrieval:AutoRun:Enabled switch, off by default; a 501 \
-            here means it is not turned on in this deployment."
+            approves it the normal way. This surface needs the same 'operate' scope and ControlPlane:AiContext:Enabled switch \
+            prepare_query does; ControlPlane:AiContext:AutoRun:Enabled can turn it off, and a 501 here means it is off in \
+            this deployment."
     )]
     async fn auto_run_trusted_match(&self, Parameters(i): Parameters<AutoRunQuestionInput>) -> String {
         done(
@@ -2878,7 +2878,11 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Report what the data-operations surface offers in THIS deployment: whether the feature             switch is on, which read-only checks are available, and the linked servers a baseline comparison             may name. Call this FIRST before check_duplicate_keys or compare_baseline, because the whole             surface sits behind a deployment switch and the response says whether it is enabled here."
+        description = "Report what the data-operations surface offers in THIS deployment: whether its switch is on, \
+            which read-only checks are available (the duplicate-key check, the baseline comparison), and the linked \
+            servers a baseline comparison may name. Call this FIRST before check_duplicate_keys or compare_baseline, \
+            because the surface sits behind a deployment switch and the response says whether it is enabled here. \
+            Queries are not part of it: they answer a question from the data, behind AI context."
     )]
     async fn dataops_capabilities(&self, Parameters(_): Parameters<EmptyInput>) -> String {
         self.get("/api/v1/dataops/capabilities", &[]).await
@@ -2893,9 +2897,9 @@ and fix every finding first."
             initiative: preparing is not permission to run. Phrase the ask as the response's `approvalFormat` says: a line \
             saying there is no saved answer yet (or that a report already answers it), what the query will show, the SQL, \
             and \"Want me to run it?\", never a word about trust, scores, or matches, and never a request to judge the data \
-            source. Compose the SQL from real metadata first (get_table_key for the grain, get_table_joins for the ON \
-            clauses, describe_object for columns); never guess a join or a column name. This surface is behind a deployment \
-            switch, so check dataops_capabilities if it answers that it is not enabled."
+            source. Compose the SQL from the semantic layer (describe_semantic_table for the columns, key and joins of each \
+            table); never guess a join or a column name. A 403 saying queries are not enabled means AI context is off in \
+            this deployment (ControlPlane:AiContext:Enabled): say so, since a person has to turn it on."
     )]
     async fn prepare_query(&self, Parameters(i): Parameters<PrepareQueryInput>) -> String {
         done(self.run_prepare_query(i).await)

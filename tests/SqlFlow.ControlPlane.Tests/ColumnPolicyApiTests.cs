@@ -35,7 +35,7 @@ public sealed class ColumnPolicyApiTests
         var now = DateTime.UtcNow;
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:DataOps:Enabled", "true");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true");
         await using var contexts = new AiContextTestKit(cs, repoId);
         string ContextFile(params string[] denied)
             => $"aiContext: people-{suffix}\ntables:\n  - table: dw.dbo.{tableName}\n"
@@ -192,7 +192,7 @@ public sealed class ColumnPolicyApiTests
         var unknownTableName = "NoSuchSynonym_" + suffix;
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:DataOps:Enabled", "true");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true");
         try
         {
             await using (var db = CatalogDatabase.Create(cs))

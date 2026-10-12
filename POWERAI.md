@@ -67,7 +67,7 @@ Principle.
 - **The safety net.** Ad-hoc query execution
   ([docs/reference/concepts/data-operations.md](reference/concepts/data-operations.md)) is read-only
   by construction (single `SELECT`, always run inside a rolled-back transaction) and gated behind
-  human confirmation and the `ControlPlane__DataOps__Enabled` switch. Any query this feature proposes
+  human confirmation and the `ControlPlane__AiContext__Enabled` switch. Any query this feature proposes
   must go through that same gate, not a new one.
 
 What does NOT exist yet: a field to capture the *business question* a query answers (the current
@@ -592,7 +592,7 @@ In roughly the order it would need to land, since each depends on groundwork the
    many of those terms they match (through a full-text index where the instance has one, a `LIKE` scan
    where it does not), and `find_similar_questions` exposes it to every assistant surface, returning each
    match with the SQL that already answers it, the terms that matched, and a score-derived confidence
-   rather than an LLM's self-rating. All of it is off by default behind `ControlPlane:PowerAI:Retrieval`,
+   rather than an LLM's self-rating. All of it is off by default behind `ControlPlane:AiContext:Enabled`,
    and it adds no vendor beyond the Anthropic key: an embedding-based version was built first and removed
    for that reason, which
    [docs/powerai-question-retrieval-design.md](powerai-question-retrieval-design.md) records along with
@@ -629,7 +629,7 @@ In roughly the order it would need to land, since each depends on groundwork the
    example can only ever name a connection the reviewed git estate already declares.
 
    **It appears only where it would work.** `GET /api/v1/chat/capabilities` gained
-   `questionConfirmation`, read from the same `ControlPlane:PowerAI:Retrieval:Enabled` option the confirm
+   `questionConfirmation`, read from the same `ControlPlane:AiContext:Enabled` option the confirm
    endpoint answers 501 on, so a deployment without the example store shows no button rather than one whose
    only possible answer is an error.
 7. **Broader version coverage**: extraction is proven against one report from one PowerBI version.
@@ -639,7 +639,7 @@ In roughly the order it would need to land, since each depends on groundwork the
    semantic layer and read by every sync, and a `.pbix` uploaded through the GUI or `sqlflow powerbi` is read by
    the isolated `SqlFlow.PbixExtractor` service, never by the control plane. What remains of it is operational:
    the extractor is added to `deploy/compose`, but the Azure estate still needs its container app created (a
-   `pbix-extractor.bicep` module is provided) before `ControlPlane:PowerAI:ReportExtraction` can be enabled there.
+   `pbix-extractor.bicep` module is provided) before `ControlPlane:AiContext:ReportExtraction` can be enabled there.
 
 9. ~~**Questions about a database no flow loads.**~~ **Done.** A query could only run on a connection an active
    pipeline declares, so a dashboard over a database SQLFlow does not load could be searched but never run. A

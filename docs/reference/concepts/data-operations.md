@@ -2,7 +2,7 @@
 id: concept-data-operations
 title: "Data operations: ad-hoc business queries, duplicate keys, and baseline comparison"
 type: concept
-summary: The prepare-confirm-run query surface, the duplicate-key check, and baseline comparison, behind the ControlPlane DataOps switch.
+summary: The prepare-confirm-run query surface behind AI context's switch, and the duplicate-key check and baseline comparison behind DataOps'.
 keywords:
   - dataops
   - text to sql
@@ -61,15 +61,18 @@ All three are **off by default**, behind one switch.
 > `statisticsHealth`, `indexUsage`, `topQueries`) are a separate, older feature that backs the insights
 > recommendations; they are NOT part of this surface and are not gated by its switch.
 
-## The switch
+## The switches
 
 ```
-ControlPlane__DataOps__Enabled=true
+ControlPlane__AiContext__Enabled=true    # queries: prepare and run, answering a question from the data
+ControlPlane__DataOps__Enabled=true      # the checks: duplicate keys and the baseline comparison
 ```
 
-With it off, `POST /api/v1/datasources/tasks` refuses the `duplicateKeys`, `compareBaseline` and `runQuery` operations, both query endpoints answer 403,
-with a 403 naming the setting, and `GET /api/v1/dataops/capabilities` reports `enabled: false` so a GUI or an
-assistant explains the situation instead of showing a failing button. Nothing else in the product changes,
+The query surface belongs to AI context: with `AiContext:Enabled` off both query endpoints answer 403 naming it.
+The checks belong to DataOps: with `DataOps:Enabled` off `POST /api/v1/datasources/tasks` refuses `duplicateKeys`
+and `compareBaseline` with a 403 naming it. `runQuery` is never queued there: a query runs only through a prepared
+plan. `GET /api/v1/dataops/capabilities` reports both, so a GUI or an assistant explains the situation instead of
+showing a failing button. Nothing else in the product changes,
 and in particular the insights dashboard is unaffected.
 
 The comparison additionally needs its linked servers allowlisted. A linked-server name becomes an identifier
@@ -184,15 +187,15 @@ appears only when prepare answers 422 because it cannot tell.
 The result renders as a fitting chart (a stat tile for one row, a bar for one category column against one
 measure, a line for a date column against up to four measures, small multiples instead of a shared axis when
 those measures' scales are far apart) with a table always one click away, or a table alone when no chart
-shape fits; `gui/src/features/chat/QueryResultView.tsx` is the classifier. Gated by `dataOpsRunQuery` on
-`GET /api/v1/chat/capabilities` (mirroring `DataOps:Enabled`), so a deployment with the surface off shows no
+shape fits; `gui/src/features/chat/QueryResultView.tsx` is the classifier. Gated by `runQuery` on
+`GET /api/v1/chat/capabilities` (mirroring `AiContext:Enabled`), so a deployment with the surface off shows no
 Run button rather than one that can only answer 403.
 
 ## Column policy: what the assistant may read at all
 
 Read-only is a statement-shape guarantee: it says a query cannot write, not that every column it names is fair
 game. `CatalogColumnPolicy` (the `ColumnPolicy` table; see [Shadow catalog](shadow-catalog.md#column-access-policy))
-is a per-column **allow-list**, orthogonal to the `DataOps` switch and the RBAC scopes: it does not gate the
+is a per-column **allow-list**, orthogonal to the `AiContext` and `DataOps` switches and the RBAC scopes: it does not gate the
 surface, it narrows what the surface may touch. The model is **default-deny**: a column with no allowing row is
 blocked. The rows are written only from the [AI contexts](../flow/ai-context.md) an admin approved: a table an
 approved context names has a row for every column but the ones its file denies, and nothing else has any. The

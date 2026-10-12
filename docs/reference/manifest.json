@@ -780,7 +780,7 @@
       "path": "concepts/data-operations.md",
       "title": "Data operations: ad-hoc business queries, duplicate keys, and baseline comparison",
       "type": "concept",
-      "summary": "The prepare-confirm-run query surface, the duplicate-key check, and baseline comparison, behind the ControlPlane DataOps switch.",
+      "summary": "The prepare-confirm-run query surface behind AI context's switch, and the duplicate-key check and baseline comparison behind DataOps'.",
       "keywords": [
         "dataops",
         "text to sql",

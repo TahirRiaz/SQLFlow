@@ -188,21 +188,21 @@ var reportExtractionSecrets = !reportExtractionEnabled ? [] : [
 // Power BI uploads: the control plane forwards a .pbix to the isolated extractor and never parses it itself.
 var reportExtractionEnv = !reportExtractionEnabled ? [] : [
   {
-    name: 'ControlPlane__PowerAI__ReportExtraction__Enabled'
+    name: 'ControlPlane__AiContext__ReportExtraction__Enabled'
     value: 'true'
   }
   {
-    name: 'ControlPlane__PowerAI__ReportExtraction__Endpoint'
+    name: 'ControlPlane__AiContext__ReportExtraction__Endpoint'
     value: reportExtractionEndpoint
   }
   {
-    name: 'ControlPlane__PowerAI__ReportExtraction__ApiKey'
+    name: 'ControlPlane__AiContext__ReportExtraction__ApiKey'
     secretRef: 'pbix-extractor-key'
   }
   {
     // Container Apps ingress ends a request after 240 seconds, so the control plane gives up just before it
     // rather than waiting on an answer the platform will never deliver.
-    name: 'ControlPlane__PowerAI__ReportExtraction__TimeoutSeconds'
+    name: 'ControlPlane__AiContext__ReportExtraction__TimeoutSeconds'
     value: '230'
   }
 ]

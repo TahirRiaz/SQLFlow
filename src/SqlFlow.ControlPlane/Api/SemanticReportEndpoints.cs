@@ -316,7 +316,7 @@ public static class SemanticReportEndpoints
         if (!extraction.IsEnabled)
         {
             return TypedResults.Problem(
-                detail: "Report extraction is not enabled on this control plane (ControlPlane:PowerAI:ReportExtraction). "
+                detail: "Report extraction is not enabled on this control plane (ControlPlane:AiContext:ReportExtraction). "
                     + "Upload a specification made with 'sqlflow powerbi extract' instead.",
                 statusCode: StatusCodes.Status501NotImplemented, title: "Not enabled");
         }

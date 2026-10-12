@@ -46,7 +46,7 @@ public sealed class ControlPlaneOptions
 
     public DataOpsOptions DataOps { get; set; } = new();
 
-    public PowerAiOptions PowerAI { get; set; } = new();
+    public AiContextOptions AiContext { get; set; } = new();
 
     /// <summary>Validates the options, throwing a clear startup error for any missing or unsafe required value.
     /// Called during host build so a misconfigured deployment never starts serving.</summary>
@@ -124,8 +124,7 @@ public sealed class ControlPlaneOptions
         RunTrace.Validate();
         Assistant.Validate();
         DataOps.Validate();
-        PowerAI.Retrieval.Validate(Assistant.Anthropic);
-        PowerAI.ReportExtraction.Validate();
+        AiContext.Validate(Assistant.Anthropic);
     }
 }
 
@@ -950,12 +949,10 @@ public sealed class AssistantChatOptions
 }
 
 /// <summary>
-/// The data-operations surface: the standard warehouse maintenance actions and the old-versus-new baseline
-/// comparison. Both are READ-ONLY against the warehouse (they measure and emit review-ready SQL; nothing here
-/// executes a mutating statement), and both are OFF by default. A deployment that has finished its migration,
-/// or one that simply does not want an interactive surface reaching its warehouse and its old estate, leaves
-/// the switch alone and the operations are refused at the trust boundary with a clear "not enabled" problem
-/// rather than being queued.
+/// The data-operations surface: an engineer's checks over live rows, the duplicate-key check and the baseline
+/// comparison against the old estate. Both are READ-ONLY against the warehouse (they measure and emit review-ready SQL;
+/// nothing here executes a mutating statement), and both are OFF by default. Answering a question from the data is not
+/// part of it: that is <see cref="AiContextOptions"/>.
 ///
 /// Environment: <c>ControlPlane__DataOps__Enabled=true</c>, and
 /// <c>ControlPlane__DataOps__Comparison__LinkedServers__0=OLDPROD</c> for each linked server that may be
@@ -963,9 +960,8 @@ public sealed class AssistantChatOptions
 /// </summary>
 public sealed class DataOpsOptions
 {
-    /// <summary>Turns the maintenance and comparison operations on. Off, <c>POST /datasources/tasks</c> refuses
-    /// them and the capabilities endpoint reports the switch, so a GUI or an assistant can explain rather than
-    /// fail.</summary>
+    /// <summary>Turns the checks on. Off, <c>POST /datasources/tasks</c> refuses them and the capabilities endpoint
+    /// reports the switch, so a GUI or an assistant can explain rather than fail.</summary>
     public bool Enabled { get; set; }
 
     public BaselineComparisonOptions Comparison { get; set; } = new();
@@ -981,24 +977,164 @@ public sealed class DataOpsOptions
     }
 }
 
-/// <summary>The PowerAI (text-to-query) feature surface. See <c>POWERAI.md</c> for the roadmap this
-/// implements against.</summary>
-public sealed class PowerAiOptions
+/// <summary>
+/// AI context: answering a question from the data the approved AI contexts open, the feature the GUI's AI context page
+/// governs. One switch turns it on end to end: a question's query (prepare and run, and the chat's Run button), the
+/// saved answers a question is matched against and saved into, and running a trusted saved answer straight away. The
+/// AI context page itself, and what each approved context serves, needs no switch.
+///
+/// Environment: <c>ControlPlane__AiContext__Enabled=true</c>. Everything else here is optional tuning with defaults that
+/// never stop the control plane from starting.
+/// <para>
+/// Saved answers are ranked by SQL Server's full-text engine over an index the <c>AddQuestionFullTextSearch</c>
+/// migration creates. Full-text search is an installable SQL Server feature: where it is absent the migration skips the
+/// index (rather than failing the whole catalog upgrade) and the search reports itself unavailable, so a catalog on an
+/// instance without it still migrates and runs.
+/// </para>
+/// </summary>
+public sealed class AiContextOptions
 {
-    public RetrievalOptions Retrieval { get; set; } = new();
+    /// <summary>Turns answering questions from the data on. Off, the query, saved-answer and auto-run endpoints answer
+    /// that it is not enabled, naming this setting, and the chat hides its Run and Save affordances.</summary>
+    public bool Enabled { get; set; }
+
+    /// <summary>
+    /// Expands a question into related business vocabulary before matching it against saved answers, so "turnover"
+    /// also finds a saved answer phrased as "revenue". Uses <c>ControlPlane:Assistant:Anthropic</c>'s key and model, as
+    /// question generation does. Unset, the default, it is on exactly when that key is set; true without the key is a
+    /// configuration error, and false matches on the typed words and their inflections alone.
+    /// </summary>
+    public bool? ExpandSynonyms { get; set; }
+
+    public SavedAnswersOptions SavedAnswers { get; set; } = new();
+
+    public AutoRunOptions AutoRun { get; set; } = new();
 
     public ReportExtractionOptions ReportExtraction { get; set; } = new();
+
+    /// <summary>Whether questions are expanded before matching: the feature on, and <see cref="ExpandSynonyms"/> as set,
+    /// or, unset, whether <paramref name="anthropic"/> has a key to expand with.</summary>
+    public bool ExpandsSynonyms(SqlFlow.Assistant.AnthropicOptions anthropic)
+    {
+        ArgumentNullException.ThrowIfNull(anthropic);
+        return Enabled && (ExpandSynonyms ?? !string.IsNullOrWhiteSpace(anthropic.ApiKey));
+    }
+
+    public void Validate(SqlFlow.Assistant.AnthropicOptions anthropic)
+    {
+        ArgumentNullException.ThrowIfNull(anthropic);
+        ReportExtraction.Validate();
+        if (!Enabled)
+        {
+            return;
+        }
+
+        var problems = new List<string>();
+        problems.AddRange(SavedAnswers.Problems());
+        if (ExpandSynonyms == true && string.IsNullOrWhiteSpace(anthropic.ApiKey))
+        {
+            problems.Add(
+                "ControlPlane:AiContext:ExpandSynonyms is true but ControlPlane:Assistant:Anthropic:ApiKey is not set "
+                + "(set the key, or leave ExpandSynonyms unset to expand only when a key is there)");
+        }
+        if (AutoRun.Enabled)
+        {
+            problems.AddRange(AutoRun.Problems());
+        }
+
+        if (problems.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "ControlPlane:AiContext:Enabled is true but its configuration is incomplete: " + string.Join(", ", problems));
+        }
+    }
+}
+
+/// <summary>How saved answers are matched against a question: how many come back, and how strong a match must be to be
+/// trusted.</summary>
+public sealed class SavedAnswersOptions
+{
+    /// <summary>How many ranked saved answers a search returns by default: one to three examples is the useful amount
+    /// of grounding context.</summary>
+    public int TopK { get; set; } = 3;
+
+    /// <summary>
+    /// How many searched terms a saved answer must match before it is trusted rather than a lead. Two, because one
+    /// shared term is routinely coincidence ("sales" appears in half an estate's questions) while two independent ones
+    /// rarely are. A trusted answer still needs the same values as the question.
+    /// </summary>
+    public int RankThreshold { get; set; } = 2;
+
+    internal IEnumerable<string> Problems()
+    {
+        if (TopK < 1)
+        {
+            yield return $"ControlPlane:AiContext:SavedAnswers:TopK must be at least 1 (was {TopK})";
+        }
+        if (RankThreshold < 0)
+        {
+            yield return $"ControlPlane:AiContext:SavedAnswers:RankThreshold must not be negative (was {RankThreshold})";
+        }
+    }
 }
 
 /// <summary>
-/// Extracting an uploaded Power BI report. The control plane never parses a <c>.pbix</c> itself: it forwards the
-/// upload to the isolated extractor service (<c>SqlFlow.PbixExtractor</c>, its own container with no credentials) and
-/// validates the specification that comes back before storing it. Off by default; without it the semantic layer still
-/// accepts a specification made with <c>sqlflow powerbi extract</c>, only not a raw report.
+/// Running a TRUSTED saved answer straight away: SQL a person already confirmed, matching the question and its values,
+/// run without a second click, under a short server-enforced command timeout and row cap a caller cannot raise. On by
+/// default with AI context. When the query does not finish inside <see cref="TimeoutSeconds"/> (plus the fixed
+/// claim-latency allowance the endpoint adds), it is cancelled and the caller is told to fall back to
+/// <c>prepare_query</c>/<c>run_query</c>, where a person decides.
+/// </summary>
+public sealed class AutoRunOptions
+{
+    /// <summary>Turns auto-run on (the default). Off, a trusted saved answer is still found, but running it always
+    /// waits for a person's click.</summary>
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>The row cap every auto-run enqueues with, regardless of what a caller might otherwise ask for.
+    /// Small on purpose: this path exists to answer a quick, already-proven lookup instantly, not to page through
+    /// a large result with no one having looked at the query first.</summary>
+    public int MaxRows { get; set; } = 50;
+
+    /// <summary>The SQL command timeout every auto-run enqueues with, and (plus <see cref="ClaimLatencyAllowance"/>)
+    /// the wall-clock budget the endpoint waits for the task to finish before cancelling it and reporting the
+    /// budget as exceeded.</summary>
+    public int TimeoutSeconds { get; set; } = 5;
+
+    /// <summary>Extra wall-clock time the endpoint's wait budget allows beyond <see cref="TimeoutSeconds"/>, for
+    /// the task to be claimed off the queue before its own command timeout even starts counting. Not
+    /// configurable: it exists only to keep an idle-worker moment from being mistaken for a slow query.</summary>
+    public static readonly TimeSpan ClaimLatencyAllowance = TimeSpan.FromSeconds(3);
+
+    internal IEnumerable<string> Problems()
+    {
+        if (MaxRows is < 1 or > SqlFlow.Core.Query.QueryRunRequest.MaxMaxRows)
+        {
+            yield return $"ControlPlane:AiContext:AutoRun:MaxRows must be between 1 and "
+                + $"{SqlFlow.Core.Query.QueryRunRequest.MaxMaxRows} (was {MaxRows})";
+        }
+
+        // Capped well under the datasource task list's own long-poll ceiling (20s), so auto-run's wait budget
+        // (TimeoutSeconds + the fixed claim allowance) never approaches it: this path exists to be fast, and a slow
+        // query belongs to prepare_query/run_query and a person's decision.
+        const int maxTimeoutSeconds = 15;
+        if (TimeoutSeconds is < 1 or > maxTimeoutSeconds)
+        {
+            yield return $"ControlPlane:AiContext:AutoRun:TimeoutSeconds must be between 1 and {maxTimeoutSeconds} "
+                + $"(was {TimeoutSeconds})";
+        }
+    }
+}
+
+/// <summary>
+/// Extracting an uploaded Power BI report for the AI context page. The control plane never parses a <c>.pbix</c>
+/// itself: it forwards the upload to the isolated extractor service (<c>SqlFlow.PbixExtractor</c>, its own container
+/// with no credentials) and validates the specification that comes back before storing it. Off by default; without it
+/// the page still accepts a specification made with <c>sqlflow powerbi extract</c>, only not a raw report.
 ///
-/// Environment: <c>ControlPlane__PowerAI__ReportExtraction__Enabled=true</c>,
-/// <c>ControlPlane__PowerAI__ReportExtraction__Endpoint=http://pbix-extractor:8080</c>, and
-/// <c>ControlPlane__PowerAI__ReportExtraction__ApiKey=${keyvault:...}</c> (the same value the extractor's
+/// Environment: <c>ControlPlane__AiContext__ReportExtraction__Enabled=true</c>,
+/// <c>ControlPlane__AiContext__ReportExtraction__Endpoint=http://pbix-extractor:8080</c>, and
+/// <c>ControlPlane__AiContext__ReportExtraction__ApiKey=${keyvault:...}</c> (the same value the extractor's
 /// <c>PbixExtractor__ApiKey</c> holds).
 /// </summary>
 public sealed class ReportExtractionOptions
@@ -1033,187 +1169,28 @@ public sealed class ReportExtractionOptions
         if (!Uri.TryCreate(Endpoint, UriKind.Absolute, out var endpoint)
             || (endpoint.Scheme != Uri.UriSchemeHttp && endpoint.Scheme != Uri.UriSchemeHttps))
         {
-            missing.Add("ControlPlane:PowerAI:ReportExtraction:Endpoint must be an absolute http(s) address");
+            missing.Add("ControlPlane:AiContext:ReportExtraction:Endpoint must be an absolute http(s) address");
         }
 
         if (string.IsNullOrWhiteSpace(ApiKey))
         {
-            missing.Add("ControlPlane:PowerAI:ReportExtraction:ApiKey is required");
+            missing.Add("ControlPlane:AiContext:ReportExtraction:ApiKey is required");
         }
 
         if (MaxUploadMegabytes is < 1 or > 1024)
         {
-            missing.Add($"ControlPlane:PowerAI:ReportExtraction:MaxUploadMegabytes must be between 1 and 1024 (was {MaxUploadMegabytes})");
+            missing.Add($"ControlPlane:AiContext:ReportExtraction:MaxUploadMegabytes must be between 1 and 1024 (was {MaxUploadMegabytes})");
         }
 
         if (TimeoutSeconds is < 30 or > 3600)
         {
-            missing.Add($"ControlPlane:PowerAI:ReportExtraction:TimeoutSeconds must be between 30 and 3600 (was {TimeoutSeconds})");
+            missing.Add($"ControlPlane:AiContext:ReportExtraction:TimeoutSeconds must be between 30 and 3600 (was {TimeoutSeconds})");
         }
 
         if (missing.Count > 0)
         {
             throw new InvalidOperationException(
-                "ControlPlane:PowerAI:ReportExtraction:Enabled is true but its configuration is incomplete: "
-                + string.Join(", ", missing));
-        }
-    }
-}
-
-/// <summary>
-/// Retrieval over stored questions (POWERAI.md Section 6): an LLM expands a typed question into related
-/// business vocabulary, and SQL Server's full-text engine ranks the stored questions against those terms.
-/// Independently toggleable from both the chat assistant and question generation, so a deployment may run
-/// any one without the others.
-///
-/// Environment: <c>ControlPlane__PowerAI__Retrieval__Enabled=true</c>. Needs no vendor of its own: the
-/// ranking is SQL Server's, and the optional synonym expansion reuses
-/// <c>ControlPlane:Assistant:Anthropic</c>'s key and model exactly as question generation does.
-/// <para>
-/// Requires a full-text index on the stored questions, created by the <c>AddQuestionFullTextSearch</c>
-/// migration. Full-text search is an installable SQL Server feature: where it is absent the migration skips
-/// creating the index (rather than failing the whole catalog upgrade) and searches report themselves
-/// unavailable, so a catalog on an instance without it still migrates and runs.
-/// </para>
-/// </summary>
-public sealed class RetrievalOptions
-{
-    /// <summary>Turns question retrieval on. Off, the search surface reports itself unconfigured rather than
-    /// falling back to a weaker mechanism.</summary>
-    public bool Enabled { get; set; }
-
-    /// <summary>How many ranked examples a search returns by default. POWERAI.md's framing throughout is that
-    /// 1-3 examples is the useful amount of grounding context, matching the 1-3 questions per visual.</summary>
-    public int DefaultTopK { get; set; } = 3;
-
-    /// <summary>
-    /// How many searched terms a stored question must match before it is treated as a proven precedent rather
-    /// than a loose lead; below it, an answer built on the match is reported as an unverified guess. This never
-    /// decides WHETHER a human confirms (the DataOps gate always applies), only how much a caller is told to
-    /// trust a result already flagged for review. Two is the default because one shared term is routinely
-    /// coincidence ("sales" appears in half an estate's questions) while two independent ones rarely are.
-    /// </summary>
-    public int RankThreshold { get; set; } = 2;
-
-    /// <summary>
-    /// Expands a typed question into related business vocabulary before searching, so "turnover" also matches
-    /// a stored question phrased as "revenue", and so related words no stemmer connects ("sales" and "sells")
-    /// reach each other. Reuses <c>ControlPlane:Assistant:Anthropic</c>'s key and model, exactly as question
-    /// generation does. Off, the search still runs on the words the user typed and their inflections, which is
-    /// weaker but costs no LLM call and needs no key.
-    /// </summary>
-    public bool ExpandSynonyms { get; set; } = true;
-
-    /// <summary>Auto-running a TRUSTED match directly, capped small, instead of always routing it through the
-    /// manual prepare/confirm gate (POWERAI.md Section 6). Off by default like the rest of PowerAI.</summary>
-    public AutoRunOptions AutoRun { get; set; } = new();
-
-    public void Validate(SqlFlow.Assistant.AnthropicOptions anthropic)
-    {
-        if (!Enabled)
-        {
-            if (AutoRun.Enabled)
-            {
-                throw new InvalidOperationException(
-                    "ControlPlane:PowerAI:Retrieval:AutoRun:Enabled is true but "
-                    + "ControlPlane:PowerAI:Retrieval:Enabled is not: auto-run only ever runs a match this "
-                    + "retrieval search found, so it cannot be on while retrieval itself is off.");
-            }
-
-            return;
-        }
-
-        var missing = new List<string>();
-
-        if (DefaultTopK < 1)
-        {
-            missing.Add($"ControlPlane:PowerAI:Retrieval:DefaultTopK must be at least 1 (was {DefaultTopK})");
-        }
-        if (RankThreshold < 0)
-        {
-            missing.Add($"ControlPlane:PowerAI:Retrieval:RankThreshold must not be negative (was {RankThreshold})");
-        }
-        if (ExpandSynonyms && string.IsNullOrWhiteSpace(anthropic.ApiKey))
-        {
-            missing.Add(
-                "ControlPlane:PowerAI:Retrieval:ExpandSynonyms is true but "
-                + "ControlPlane:Assistant:Anthropic:ApiKey is not set (set the key, or turn expansion off to "
-                + "search on the typed words alone)");
-        }
-
-        if (missing.Count > 0)
-        {
-            throw new InvalidOperationException(
-                "ControlPlane:PowerAI:Retrieval:Enabled is true but its configuration is incomplete: "
-                + string.Join(", ", missing));
-        }
-
-        AutoRun.Validate();
-    }
-}
-
-/// <summary>
-/// Bounds for auto-running a TRUSTED confirmed example directly (POWERAI.md Section 6): a short,
-/// server-enforced command timeout and row cap that a caller cannot raise, plus the same wall-clock budget the
-/// endpoint waits before giving up. Deliberately NOT configurable per request, unlike <c>prepare_query</c>'s
-/// <c>maxRows</c>/<c>timeoutSeconds</c>: the entire safety argument for skipping the human confirmation click is
-/// that this path only ever runs a query a person already checked once, within limits nobody watching this
-/// particular call chose. When the query does not finish inside <see cref="TimeoutSeconds"/> (plus the fixed
-/// claim-latency allowance the endpoint adds), it is cancelled and the caller is told to fall back to
-/// <c>prepare_query</c>/<c>run_query</c>, unchanged: slower than this budget is treated as no longer "trivial
-/// lookup" territory, and gets a human decision like everything else DataOps runs.
-/// </summary>
-public sealed class AutoRunOptions
-{
-    /// <summary>Turns auto-run on. Off (the default), a trusted match is still returned by retrieval, but running
-    /// it always goes through prepare_query/run_query and a person's click, exactly as before this existed.</summary>
-    public bool Enabled { get; set; }
-
-    /// <summary>The row cap every auto-run enqueues with, regardless of what a caller might otherwise ask for.
-    /// Small on purpose: this path exists to answer a quick, already-proven lookup instantly, not to page through
-    /// a large result with no one having looked at the query first.</summary>
-    public int MaxRows { get; set; } = 50;
-
-    /// <summary>The SQL command timeout every auto-run enqueues with, and (plus <see cref="ClaimLatencyAllowance"/>)
-    /// the wall-clock budget the endpoint waits for the task to finish before cancelling it and reporting the
-    /// budget as exceeded.</summary>
-    public int TimeoutSeconds { get; set; } = 5;
-
-    /// <summary>Extra wall-clock time the endpoint's wait budget allows beyond <see cref="TimeoutSeconds"/>, for
-    /// the task to be claimed off the queue before its own command timeout even starts counting. Not
-    /// configurable: it exists only to keep an idle-worker moment from being mistaken for a slow query.</summary>
-    public static readonly TimeSpan ClaimLatencyAllowance = TimeSpan.FromSeconds(3);
-
-    public void Validate()
-    {
-        if (!Enabled)
-        {
-            return;
-        }
-
-        var missing = new List<string>();
-        if (MaxRows is < 1 or > SqlFlow.Core.Query.QueryRunRequest.MaxMaxRows)
-        {
-            missing.Add(
-                $"ControlPlane:PowerAI:Retrieval:AutoRun:MaxRows must be between 1 and "
-                + $"{SqlFlow.Core.Query.QueryRunRequest.MaxMaxRows} (was {MaxRows})");
-        }
-
-        // Capped well under the datasource task list's own long-poll ceiling (20s), so auto-run's wait budget
-        // (TimeoutSeconds + the fixed claim allowance) never approaches it: this path exists to be fast, and a
-        // deployment that wants a slow-but-unattended query already has prepare_query/run_query for that.
-        const int maxTimeoutSeconds = 15;
-        if (TimeoutSeconds is < 1 or > maxTimeoutSeconds)
-        {
-            missing.Add(
-                $"ControlPlane:PowerAI:Retrieval:AutoRun:TimeoutSeconds must be between 1 and "
-                + $"{maxTimeoutSeconds} (was {TimeoutSeconds})");
-        }
-
-        if (missing.Count > 0)
-        {
-            throw new InvalidOperationException(
-                "ControlPlane:PowerAI:Retrieval:AutoRun:Enabled is true but its configuration is incomplete: "
+                "ControlPlane:AiContext:ReportExtraction:Enabled is true but its configuration is incomplete: "
                 + string.Join(", ", missing));
         }
     }

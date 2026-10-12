@@ -303,7 +303,7 @@ Set `ControlPlane__Assistant__Anthropic__ApiKey` on the `controlplane` service a
   a `translationProblem`. The GUI subscriber page shows both under each query.
 
 ### T28: server-side expansion as the fallback
-- With `ControlPlane__PowerAI__Retrieval__ExpandSynonyms: "true"`, call the endpoint without terms:
+- With an Anthropic key set (`ControlPlane__AiContext__ExpandSynonyms` unset or `"true"`), call the endpoint without terms:
   `curl -G -H "Authorization: Bearer <token>" http://localhost:5000/api/v1/lineage/subscribers/similar-questions --data-urlencode "question=what drives our turnover"`
 - Pass: `searchedTerms` includes vocabulary beyond the typed words (for example revenue or sales). The same
   request with `ExpandSynonyms` off searches only `drives` and `turnover`.

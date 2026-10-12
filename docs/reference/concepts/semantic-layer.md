@@ -156,8 +156,31 @@ as if it were approved, and a table, measure name, or join another context serve
 | `DELETE /api/v1/powerai/semantic-layer/reports/questions/{id}` | Remove one business question of a visual. A visual left with none gets fresh ones at the next sync when its subscriber generates questions |
 | `GET /api/v1/powerai/semantic-layer/reports/subscribers` | The PowerBI subscribers the repositories declare, each with `generateQuestions` (set in its subscriber library) |
 | `POST /api/v1/powerai/semantic-layer/reports` | Store a specification for a subscriber (`sqlflow powerbi publish`): `repoId`, `subscriber` (name), `reportFile` (the report's label), `spec`. It is validated and rewritten into canonical, credential-redacted form first (400 when it is not a readable specification); the subscriber must be declared by that repo and be of type PowerBI. Storing the same `reportFile` again replaces the upload (`replaced`). `syncQueued` says whether the repo's managed sync was queued to apply it |
-| `POST /api/v1/powerai/semantic-layer/reports/extract?reportFile=` | Body: the raw `.pbix` (`application/octet-stream`). Forwarded to the isolated extractor and answered with the validated specification and its counts, without storing it. 501 when `ControlPlane:PowerAI:ReportExtraction` is off; 413 over `MaxUploadMegabytes`; the extractor's own refusal is passed on (422) |
+| `POST /api/v1/powerai/semantic-layer/reports/extract?reportFile=` | Body: the raw `.pbix` (`application/octet-stream`). Forwarded to the isolated extractor and answered with the validated specification and its counts, without storing it. 501 when `ControlPlane:AiContext:ReportExtraction` is off; 413 over `MaxUploadMegabytes`; the extractor's own refusal is passed on (422) |
 | `GET /api/v1/powerai/semantic-layer/reports/capabilities` | Whether `.pbix` extraction is enabled, the size limits, and whether this deployment can generate business questions (`questionGenerationAvailable`: an Anthropic key is set) |
+
+## Turning it on
+
+The AI context page, and what each approved context serves, need no switch. Answering a question from the data does:
+
+```bash
+ControlPlane__AiContext__Enabled=true
+```
+
+That one switch covers a question's query (prepare and run, and the chat's Run button), saved answers (matching a
+question against them, and saving one), and running a trusted saved answer straight away. Everything else is optional:
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `ControlPlane:AiContext:Enabled` | `false` | The switch |
+| `ControlPlane:AiContext:ExpandSynonyms` | unset | Expands a question into related business words before matching saved answers, with `ControlPlane:Assistant:Anthropic`'s key and model. Unset, it is on exactly when that key is set; `true` without the key stops startup, `false` matches the typed words alone |
+| `ControlPlane:AiContext:SavedAnswers:TopK` | `3` | How many saved answers a search returns by default |
+| `ControlPlane:AiContext:SavedAnswers:RankThreshold` | `2` | How many searched terms a saved answer must match to be trusted rather than a lead; it must also name the same values |
+| `ControlPlane:AiContext:AutoRun:Enabled` | `true` | Runs a trusted saved answer straight away; `false` makes every query wait for a person's click |
+| `ControlPlane:AiContext:AutoRun:MaxRows` | `50` | The row cap of a trusted run, which no caller can raise |
+| `ControlPlane:AiContext:AutoRun:TimeoutSeconds` | `5` | The command timeout of a trusted run (1 to 15); a slower query falls back to prepare and run |
+
+The Power BI extractor's settings (`ControlPlane:AiContext:ReportExtraction:*`) are under [Power BI reports](#power-bi-reports).
 
 ## MCP tools
 
@@ -248,10 +271,10 @@ documents, and malformed graphs, before showing or storing it.
 
 | Setting | Meaning |
 | --- | --- |
-| `ControlPlane:PowerAI:ReportExtraction:Enabled` | Turns `.pbix` uploads on (default off). Specification uploads work either way |
-| `ControlPlane:PowerAI:ReportExtraction:Endpoint` | The extractor's base address, e.g. `http://pbix-extractor:8080` |
-| `ControlPlane:PowerAI:ReportExtraction:ApiKey` | The shared key, literal or `${env:...}`/`${keyvault:...}` |
-| `ControlPlane:PowerAI:ReportExtraction:MaxUploadMegabytes` | Largest `.pbix` accepted (default 256) |
-| `ControlPlane:PowerAI:ReportExtraction:TimeoutSeconds` | Budget for one extraction, including waiting for a free slot (default 360) |
+| `ControlPlane:AiContext:ReportExtraction:Enabled` | Turns `.pbix` uploads on (default off). Specification uploads work either way |
+| `ControlPlane:AiContext:ReportExtraction:Endpoint` | The extractor's base address, e.g. `http://pbix-extractor:8080` |
+| `ControlPlane:AiContext:ReportExtraction:ApiKey` | The shared key, literal or `${env:...}`/`${keyvault:...}` |
+| `ControlPlane:AiContext:ReportExtraction:MaxUploadMegabytes` | Largest `.pbix` accepted (default 256) |
+| `ControlPlane:AiContext:ReportExtraction:TimeoutSeconds` | Budget for one extraction, including waiting for a free slot (default 360) |
 | `PbixExtractor:ApiKey` (extractor) | The same shared key, at least 32 bytes |
 | `PbixExtractor:MaxUploadMegabytes`, `MaxConcurrent`, `QueueLimit` (extractor) | Upload cap (256), reports extracted at once (2), and requests allowed to wait for a slot before new ones get 503 (8) |

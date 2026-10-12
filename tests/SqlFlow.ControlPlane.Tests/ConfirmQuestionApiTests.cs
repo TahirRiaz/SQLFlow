@@ -25,7 +25,7 @@ public sealed class ConfirmQuestionApiTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
-        // Retrieval is off in the shipped defaults. A confirmation accepted here would accumulate knowledge
+        // AI context is off in the shipped defaults. A confirmation accepted here would accumulate knowledge
         // nobody could ever retrieve, which is worse than refusing it with the key that turns it on.
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
         using var client = factory.CreateClient();
@@ -36,7 +36,7 @@ public sealed class ConfirmQuestionApiTests
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         Assert.Contains(
-            "PowerAI:Retrieval:Enabled", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            "ControlPlane__AiContext__Enabled", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [SkippableFact]
@@ -379,8 +379,7 @@ public sealed class ConfirmQuestionApiTests
         var hash = SemanticExampleHash.Compute(question, Sql);
 
         await using var factory = Enabled(cs)
-            .WithSetting("ControlPlane:DataOps:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:AutoRun:Enabled", "true");
+            .WithSetting("ControlPlane:AiContext:AutoRun:Enabled", "true");
         using var client = factory.CreateClient();
         var token = await IssueOperateTokenAsync(client);
         await using var db = CatalogDatabase.Create(cs);
@@ -412,15 +411,15 @@ public sealed class ConfirmQuestionApiTests
         }
     }
 
-    /// <summary>A host with retrieval turned on, which is what makes the example store writable at all. Synonym
+    /// <summary>A host with AI context turned on, which is what makes the example store writable at all. Synonym
     /// expansion is switched off: this file tests the write path and its storage semantics, not the LLM
     /// expansion (covered by <see cref="QuestionSearchTests"/>), and turning it on would require an Anthropic
     /// key that need not exist in a test environment for this file's assertions to hold.</summary>
     private static ControlPlaneAppFactory Enabled(string catalogConnection)
         => new ControlPlaneAppFactory()
             .WithCatalog(catalogConnection)
-            .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-            .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
 
     private static async Task<string> IssueOperateTokenAsync(HttpClient client)
     {

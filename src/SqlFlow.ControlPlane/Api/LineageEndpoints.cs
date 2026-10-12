@@ -1734,17 +1734,18 @@ public static class LineageEndpoints
                 statusCode: StatusCodes.Status400BadRequest, title: "Empty question");
         }
 
-        var retrieval = http.RequestServices
-            .GetRequiredService<IOptions<ControlPlaneOptions>>().Value.PowerAI.Retrieval;
-        if (!retrieval.Enabled)
+        var aiContext = http.RequestServices
+            .GetRequiredService<IOptions<ControlPlaneOptions>>().Value.AiContext;
+        if (!aiContext.Enabled)
         {
             return TypedResults.Problem(
-                detail: "Question retrieval is not enabled on this deployment "
-                    + "(ControlPlane:PowerAI:Retrieval:Enabled).",
-                statusCode: StatusCodes.Status501NotImplemented, title: "Retrieval not configured");
+                detail: "Answering questions from the data is not enabled on this deployment, so there are no saved "
+                    + "answers to search. Set ControlPlane__AiContext__Enabled=true to turn it on.",
+                statusCode: StatusCodes.Status501NotImplemented, title: "AI context not enabled");
         }
 
-        var requested = Math.Clamp(topK ?? retrieval.DefaultTopK, 1, MaxSimilarQuestions);
+        var savedAnswers = aiContext.SavedAnswers;
+        var requested = Math.Clamp(topK ?? savedAnswers.TopK, 1, MaxSimilarQuestions);
         var callerTerms = expandedTerms?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? [];
 
         var result = callerTerms.Count > 0
@@ -1778,13 +1779,13 @@ public static class LineageEndpoints
             var differingValues = m.DifferingValues ?? [];
             matches.Add(new SimilarQuestionDto(
                 m.Question, m.Score,
-                (m.Score >= retrieval.RankThreshold || m.SameQuestion) && differingValues.Count == 0,
+                (m.Score >= savedAnswers.RankThreshold || m.SameQuestion) && differingValues.Count == 0,
                 m.MatchedTerms, m.Provenance, m.Sql, m.ObjectKeys, m.SubscriberKey, m.VisualTitle, m.ConfirmedBy,
                 sourceRef, m.ExampleId, m.ReportSql, m.TranslationProblem, differingValues));
         }
 
         return TypedResults.Ok(new SimilarQuestionsDto(
-            question.Trim(), result.SearchedTerms, retrieval.RankThreshold, matches));
+            question.Trim(), result.SearchedTerms, savedAnswers.RankThreshold, matches));
     }
 
     /// <summary>The most matches one search will return however many a caller asks for. Past a handful, extra

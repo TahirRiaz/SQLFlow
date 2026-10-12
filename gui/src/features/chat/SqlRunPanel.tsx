@@ -24,7 +24,7 @@ import { QueryResultView } from "./QueryResultView";
 type Phase = "idle" | "picking" | "running" | "done" | "failed";
 
 export function useSqlRun(sql: string): { button: ReactNode; panel: ReactNode } {
-  const dataOpsRunQuery = useContext(ThreadComponentsContext).dataOpsRunQuery ?? false;
+  const runQuery = useContext(ThreadComponentsContext).runQuery ?? false;
   const [phase, setPhase] = useState<Phase>("idle");
   const [sourceRef, setSourceRef] = useState<string | null>(null);
   const [result, setResult] = useState<RunQueryResult | null>(null);
@@ -75,7 +75,7 @@ export function useSqlRun(sql: string): { button: ReactNode; panel: ReactNode } 
     },
   });
 
-  if (!dataOpsRunQuery) {
+  if (!runQuery) {
     return { button: null, panel: null };
   }
 

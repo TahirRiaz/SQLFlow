@@ -115,7 +115,7 @@ public static class DatasourceEndpoints
         ArgumentNullException.ThrowIfNull(group);
 
         // Open to an assistant run: every compute operation only reads (introspection, DMV probes, the data-ops
-        // checks), and runQuery cannot be queued here at all, only through a redeemed plan.
+        // checks), and runQuery is refused here: a query runs only through a redeemed plan.
         group.MapPost("/datasources/tasks", TriggerTaskAsync)
             .WithTags("Datasources").WithName("TriggerComputeTask").AllowAssistantWrite();
         group.MapPost("/datasources/tasks/{taskId:guid}/cancel", CancelTaskAsync)
@@ -135,8 +135,8 @@ public static class DatasourceEndpoints
 
         var reason = dataOps.Enabled
             ? ""
-            : "The data-operations surface is off. Set ControlPlane__DataOps__Enabled=true to enable ad-hoc " +
-              "queries, the duplicate-key check, and the baseline comparison.";
+            : "The data-operations surface is off. Set ControlPlane__DataOps__Enabled=true to enable the " +
+              "duplicate-key check and the baseline comparison.";
 
         // DERIVED from the operation set, never a hand-kept copy of it. A literal list here silently goes
         // stale the moment an operation is added, and the failure is invisible from the server: the endpoint
@@ -151,11 +151,11 @@ public static class DatasourceEndpoints
                 ? null
                 : dataOps.Comparison.DefaultLinkedServer.Trim(),
             Enum.GetNames<BaselineCompareMode>(),
-            dataOps.Enabled
-                ? "Ad-hoc queries run in two steps: prepare_query validates a SELECT and returns it with a " +
-                  "one-time token WITHOUT running anything, then run_query redeems that token after a person " +
-                  "has seen and approved the exact statement."
-                : ""));
+            options.Value.AiContext.Enabled
+                ? "Queries answer a question from the data and run in two steps: prepare_query validates a SELECT " +
+                  "and returns it with a one-time token WITHOUT running anything, then run_query redeems that token " +
+                  "after a person has seen and approved the exact statement."
+                : "Queries are not enabled here: they belong to AI context (ControlPlane__AiContext__Enabled=true)."));
     }
 
     /// <summary>
@@ -298,6 +298,15 @@ public static class DatasourceEndpoints
         ArgumentNullException.ThrowIfNull(options);
         var dataOps = options.Value.DataOps;
         var operation = request.Operation?.Trim() ?? string.Empty;
+
+        // A query runs only through a plan a person approved (prepare, then run), never as a task queued here.
+        if (operation == ComputeOperations.RunQuery)
+        {
+            return Problem(
+                $"The '{operation}' operation runs only through a prepared plan: POST /dataops/queries/prepare, then "
+                + "run the plan once a person has approved its statement.",
+                StatusCodes.Status400BadRequest, "Invalid compute task");
+        }
 
         // The feature switch is checked BEFORE anything else about the request, so a deployment with the
         // surface off answers the same way for a well-formed ask and a malformed one: not enabled here.

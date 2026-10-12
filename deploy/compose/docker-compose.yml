@@ -69,18 +69,17 @@ services:
       ControlPlane__Cors__AllowedOrigins__0: http://localhost:8081
       # Compute belongs to the worker service; this replica is API + scheduler + sync only.
       ControlPlane__Worker__Enabled: "false"
-      # PowerAI auto-run testing: DataOps (ad-hoc queries), question retrieval, and its auto-run step.
-      # ExpandSynonyms is off because this stack has no Anthropic key configured; retrieval still runs on the
-      # typed words and their inflections without it.
+      # AI context: answering a question from the data the approved AI contexts open (its query, saved answers, and
+      # running a trusted saved answer straight away). This stack has no Anthropic key, so a question is matched on
+      # its typed words and their inflections, without synonym expansion.
+      ControlPlane__AiContext__Enabled: "true"
+      # The engineer's data checks (duplicate keys, the baseline comparison), separate from AI context.
       ControlPlane__DataOps__Enabled: "true"
-      ControlPlane__PowerAI__Retrieval__Enabled: "true"
-      ControlPlane__PowerAI__Retrieval__ExpandSynonyms: "false"
-      ControlPlane__PowerAI__Retrieval__AutoRun__Enabled: "true"
-      # Power BI uploads from the Semantic layer page are extracted by the isolated pbix-extractor service below,
+      # Power BI uploads from the AI context page are extracted by the isolated pbix-extractor service below,
       # never inside this process.
-      ControlPlane__PowerAI__ReportExtraction__Enabled: "true"
-      ControlPlane__PowerAI__ReportExtraction__Endpoint: http://pbix-extractor:8080
-      ControlPlane__PowerAI__ReportExtraction__ApiKey: ${SQLFLOW_EXTRACTOR_KEY:?set SQLFLOW_EXTRACTOR_KEY in .env}
+      ControlPlane__AiContext__ReportExtraction__Enabled: "true"
+      ControlPlane__AiContext__ReportExtraction__Endpoint: http://pbix-extractor:8080
+      ControlPlane__AiContext__ReportExtraction__ApiKey: ${SQLFLOW_EXTRACTOR_KEY:?set SQLFLOW_EXTRACTOR_KEY in .env}
       # Flows in the demo estate reference this sink.
       SQLFlowSinkConStr: "Server=mssql;Database=SqlFlowDemo;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
     ports:
@@ -136,7 +135,7 @@ services:
       # the node protocol. The node reaches only the control plane and the data its flows touch.
       SQLFlowSinkConStr: "Server=mssql;Database=SqlFlowDemo;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       # Resolves ${env:SQLFLOW_DEMO_DB}, the reference samples/lineage-demo's flows declare, so a compute
-      # task (prepare_query/run_query, PowerAI auto-run) can actually reach the estate synced from it.
+      # task (prepare_query/run_query, AI context auto-run) can actually reach the estate synced from it.
       SQLFLOW_DEMO_DB: "Server=mssql;Database=SqlFlowCatalogTests;User ID=sa;Password=${MSSQL_SA_PASSWORD};TrustServerCertificate=True"
       # Resolves ${env:SQLFLOW_ADVENTUREWORKS_DB}, the connection samples/powerai-adventureworks declares, so the
       # AdventureWorks Sales report's questions can be run against the database adventureworks-init restores.

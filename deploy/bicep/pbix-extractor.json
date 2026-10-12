@@ -233,7 +233,7 @@
     "endpoint": {
       "type": "string",
       "metadata": {
-        "description": "The address the control plane reaches the extractor at (ControlPlane:PowerAI:ReportExtraction:Endpoint): the environment-internal FQDN."
+        "description": "The address the control plane reaches the extractor at (ControlPlane:AiContext:ReportExtraction:Endpoint): the environment-internal FQDN."
       },
       "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn)]"
     },

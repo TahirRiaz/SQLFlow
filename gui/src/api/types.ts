@@ -3007,12 +3007,12 @@ export interface ChatCapabilities {
   transcription: boolean;
   maxImages: number;
   maxImageBytes: number;
-  /** Whether an answer can be confirmed into the PowerAI example store; false hides the
-   * accept/correct/reject affordance, since retrieval is off and there is no store to confirm into. */
+  /** Whether an answer can be saved; false hides the save affordance, since AI context is off
+   * (ControlPlane:AiContext:Enabled) and there are no saved answers to save into. */
   questionConfirmation: boolean;
   /** Whether a SQL block the assistant hands back can be run from the thread itself; false hides
-   * the Run affordance, since the data-operations surface is off. */
-  dataOpsRunQuery: boolean;
+   * the Run affordance, since AI context is off. */
+  runQuery: boolean;
 }
 
 export interface ChatConversation {

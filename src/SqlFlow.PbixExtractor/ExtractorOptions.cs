@@ -36,7 +36,7 @@ public sealed class ExtractorOptions
         {
             throw new InvalidOperationException(
                 "PbixExtractor:ApiKey is required and must be at least 32 bytes. Set it from a secret, and give the "
-                + "control plane the same value (ControlPlane:PowerAI:ReportExtraction:ApiKey).");
+                + "control plane the same value (ControlPlane:AiContext:ReportExtraction:ApiKey).");
         }
 
         if (MaxUploadMegabytes is < 1 or > 1024)

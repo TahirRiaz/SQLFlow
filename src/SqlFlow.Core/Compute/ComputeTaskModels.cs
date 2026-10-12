@@ -61,8 +61,9 @@ public static class ComputeOperations
     public const string DuplicateKeys = "duplicateKeys";
 
     /// <summary>Run one APPROVED read-only business query. The statement reaches this operation only after a
-    /// human saw it and a one-time plan token was redeemed, so the queue row is the record of an approved
-    /// query, never of an ad-hoc one. Gated by <c>ControlPlane:DataOps:Enabled</c>.</summary>
+    /// human saw it and a one-time plan token was redeemed (or a trusted saved answer a person confirmed runs), so
+    /// the queue row is the record of an approved query, never of an ad-hoc one. Gated by
+    /// <c>ControlPlane:AiContext:Enabled</c>, and never queued through the compute task endpoint.</summary>
     public const string RunQuery = "runQuery";
 
     /// <summary>Compare the current estate against the OLD production baseline over a configured linked
@@ -79,7 +80,7 @@ public static class ComputeOperations
     /// <summary>The operations the DataOps feature switch gates. Off, the control plane refuses them with a
     /// clear "not enabled" problem instead of queueing a task no policy permits.</summary>
     public static bool IsDataOps(string? operation)
-        => operation is DuplicateKeys or CompareBaseline or RunQuery;
+        => operation is DuplicateKeys or CompareBaseline;
 
     /// <summary>The warehouse-health subset: DMV probes authored in T-SQL, so they require a SQL Server family
     /// source, exactly like <see cref="DetectUniqueKey"/>.</summary>
@@ -88,7 +89,7 @@ public static class ComputeOperations
 
     public static bool IsKnown(string? operation)
         => operation is TestConnection or ListDatabases or ListSchemas or ListObjects or SearchObjects
-            or IntrospectObject or DetectUniqueKey || IsWarehouseHealth(operation) || IsDataOps(operation);
+            or IntrospectObject or DetectUniqueKey or RunQuery || IsWarehouseHealth(operation) || IsDataOps(operation);
 
     /// <summary>The longest name an operation a host module registers may have.</summary>
     public const int MaxRegisteredNameLength = 32;

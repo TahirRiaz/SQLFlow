@@ -34,7 +34,7 @@ public sealed class SimilarQuestionsApiTests
 
         Assert.Equal(HttpStatusCode.NotImplemented, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Contains("PowerAI:Retrieval:Enabled", body, StringComparison.Ordinal);
+        Assert.Contains("ControlPlane__AiContext__Enabled", body, StringComparison.Ordinal);
     }
 
     [SkippableFact]
@@ -89,8 +89,8 @@ public sealed class SimilarQuestionsApiTests
 
             await using var factory = new ControlPlaneAppFactory()
                 .WithCatalog(cs)
-                .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-                .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+                .WithSetting("ControlPlane:AiContext:Enabled", "true")
+                .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
             using var client = factory.CreateClient();
             var token = await IssueReadTokenAsync(client);
 
@@ -166,8 +166,8 @@ public sealed class SimilarQuestionsApiTests
 
             await using var factory = new ControlPlaneAppFactory()
                 .WithCatalog(cs)
-                .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
-                .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+                .WithSetting("ControlPlane:AiContext:Enabled", "true")
+                .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
             using var client = factory.CreateClient();
             var token = await IssueReadTokenAsync(client);
 

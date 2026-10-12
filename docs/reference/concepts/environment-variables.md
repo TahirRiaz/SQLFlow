@@ -117,14 +117,21 @@ The control plane container takes ASP.NET configuration environment names, as `d
 
 ### Feature gates
 
-Two control-plane features are OFF unless a deployment turns them on. Both are gated by a single boolean, and with the gate off the feature's endpoints answer with a clear "not enabled" problem rather than failing obscurely, so a GUI or an assistant can explain instead of erroring.
+Three control-plane features are OFF unless a deployment turns them on. Each is gated by a single boolean named as the GUI names the feature, and with the gate off the feature's endpoints answer with a clear "not enabled" problem rather than failing obscurely, so a GUI or an assistant can explain instead of erroring.
 
 | Variable | Default | Gates |
 | --- | --- | --- |
 | `ControlPlane__Assistant__Enabled` | `false` | The GUI chat assistant (`/api/v1/chat`). Needs the provider settings alongside it; `GET /api/v1/chat/capabilities` reports the switch ([Chat assistant](../guides/chat-assistant.md)) |
-| `ControlPlane__DataOps__Enabled` | `false` | The data-operations surface: ad-hoc business queries (prepare/run), the duplicate-key check (`duplicateKeys`), and the old-versus-new baseline comparison (`compareBaseline`). `GET /api/v1/dataops/capabilities` reports the switch ([Data operations](data-operations.md)) |
+| `ControlPlane__AiContext__Enabled` | `false` | AI context: answering a question from the data the approved AI contexts open. The one switch covers a question's query (prepare/run, and the chat's Run button), saved answers (matching a question and saving one), and running a trusted saved answer straight away. The AI context page itself needs no switch ([Semantic layer](semantic-layer.md#turning-it-on)) |
+| `ControlPlane__DataOps__Enabled` | `false` | The engineer's data checks: the duplicate-key check (`duplicateKeys`) and the old-versus-new baseline comparison (`compareBaseline`). `GET /api/v1/dataops/capabilities` reports the switch ([Data operations](data-operations.md)) |
 
-`ControlPlane__DataOps__Enabled` is the one to set when the assistant reports it can only reach metadata and cannot run a query, or when someone asks for the duplicate-key check or a migration comparison against old production, and gets a 403 naming the setting:
+`ControlPlane__AiContext__Enabled` is the one to set when the assistant reports it cannot run a query or save an answer, and gets a 403 or 501 naming the setting. Its tuning is optional: synonym expansion follows `ControlPlane__Assistant__Anthropic__ApiKey` unless set, and a trusted saved answer runs straight away unless `ControlPlane__AiContext__AutoRun__Enabled=false`:
+
+```bash
+ControlPlane__AiContext__Enabled=true
+```
+
+`ControlPlane__DataOps__Enabled` is the one to set when someone asks for the duplicate-key check or a migration comparison against old production, and gets a 403 naming the setting:
 
 ```bash
 ControlPlane__DataOps__Enabled=true

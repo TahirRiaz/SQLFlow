@@ -43,7 +43,7 @@ public sealed record PreparedQueryDto(
 /// The plan row is single-use and short-lived, so an approval cannot be replayed, and it records who prepared
 /// what, so an executed query is attributable after the fact.
 ///
-/// Both endpoints sit behind <c>ControlPlane:DataOps:Enabled</c> and the <c>operate</c> scope. Everything they
+/// Both endpoints sit behind <c>ControlPlane:AiContext:Enabled</c> and the <c>operate</c> scope. Everything they
 /// run is proved read-only by parsing it, twice: here at prepare, and again on the node before execution.
 /// </summary>
 public static class QueryEndpoints
@@ -85,11 +85,11 @@ public static class QueryEndpoints
             return Problem("A prepare requires a request body.", StatusCodes.Status400BadRequest, "Invalid request");
         }
 
-        if (!options.Value.DataOps.Enabled)
+        if (!options.Value.AiContext.Enabled)
         {
             return Problem(
-                "The query surface is part of the data-operations surface, which is not enabled in this " +
-                "deployment. Set ControlPlane__DataOps__Enabled=true to turn it on.",
+                "Answering questions from the data is not enabled in this deployment. Set " +
+                "ControlPlane__AiContext__Enabled=true to turn it on.",
                 StatusCodes.Status403Forbidden, "Not enabled");
         }
 
@@ -211,10 +211,11 @@ public static class QueryEndpoints
         TimeProvider clock, ClaimsPrincipal user, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(options);
-        if (!options.Value.DataOps.Enabled)
+        if (!options.Value.AiContext.Enabled)
         {
             return Problem(
-                "The query surface is not enabled in this deployment. Set ControlPlane__DataOps__Enabled=true.",
+                "Answering questions from the data is not enabled in this deployment. Set " +
+                "ControlPlane__AiContext__Enabled=true to turn it on.",
                 StatusCodes.Status403Forbidden, "Not enabled");
         }
 

@@ -84,7 +84,7 @@ export type ThreadComponents = {
    * markdown component rather than here, so it is carried on this same host-supplied context
    * instead of a second provider.
    */
-  dataOpsRunQuery?: boolean;
+  runQuery?: boolean;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?:
     | ComponentType<PropsWithChildren<{ group: ThreadGroupPart }>>
