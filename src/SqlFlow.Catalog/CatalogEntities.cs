@@ -1007,6 +1007,9 @@ public static class SubscriberReportVisualHash
 /// </summary>
 public class CatalogSubscriberReportVisualQuestion
 {
+    /// <summary>The longest question stored: the column's width, which generation and a person's edit both respect.</summary>
+    public const int MaxQuestionLength = 400;
+
     public long Id { get; set; }
 
     public Guid RepoId { get; set; }

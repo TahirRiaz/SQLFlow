@@ -396,7 +396,7 @@ public sealed class CatalogDbContext : DbContext
             entity.ToTable("SubscriberReportVisualQuestion");
             entity.HasKey(q => q.Id);
             entity.Property(q => q.VisualKey).HasMaxLength(1192).IsRequired();
-            entity.Property(q => q.Question).HasMaxLength(400).IsRequired();
+            entity.Property(q => q.Question).HasMaxLength(CatalogSubscriberReportVisualQuestion.MaxQuestionLength).IsRequired();
             // Every question that predates the column was generated, so that is the default existing rows take.
             entity.Property(q => q.Origin).HasMaxLength(16).IsRequired()
                 .HasDefaultValue(SubscriberQuestionOrigin.Generated);

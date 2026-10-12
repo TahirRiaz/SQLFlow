@@ -148,6 +148,14 @@ public sealed class ReportSpecsTests
     [InlineData("../Sales.pbix")]
     [InlineData("team//Sales.pbix")]
     [InlineData("Sales\n.pbix")]
+    [InlineData("C:/Sales.pbix")]
+    [InlineData("c:Sales.pbix")]
+    [InlineData("Sales.pbix:stream")]
+    [InlineData("Sales.pbix/")]
+    [InlineData("./Sales.pbix")]
+    [InlineData("team/./Sales.pbix")]
+    [InlineData("Sales\t.pbix")]
+    [InlineData("Sales.pbix\u00A0")]
     public void ReportFile_RefusesWhatCannotKeyARow(string? label)
         => Assert.NotNull(ReportSpecs.ReportFileProblem(label));
 

@@ -633,6 +633,11 @@ public static class SemanticLayerAdminEndpoints
         var hash = SemanticLayer.JoinIdentity(
             fromKey, LineageEndpoints.SplitColumns(storedFrom), toKey, LineageEndpoints.SplitColumns(storedTo));
 
+        // The same relationship declared from its other end is the same relationship: both directions are served on
+        // both tables, so a reversed declaration is refused like a repeated one.
+        var reversed = SemanticLayer.JoinIdentity(
+            toKey, LineageEndpoints.SplitColumns(storedTo), fromKey, LineageEndpoints.SplitColumns(storedFrom));
+
         CatalogSemanticRelationship? row;
         if (id is { } existingId)
         {
@@ -650,7 +655,9 @@ public static class SemanticLayerAdminEndpoints
         }
 
         var ownId = id ?? 0;
-        if (await db.SemanticRelationships.AsNoTracking().AnyAsync(r => r.IdentityHash == hash && r.Id != ownId, ct).ConfigureAwait(false))
+        if (await db.SemanticRelationships.AsNoTracking()
+                .AnyAsync(r => (r.IdentityHash == hash || r.IdentityHash == reversed) && r.Id != ownId, ct)
+                .ConfigureAwait(false))
         {
             return JoinTaken();
         }

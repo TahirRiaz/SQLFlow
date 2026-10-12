@@ -161,6 +161,13 @@ public sealed class SemanticLayerApiTests
                 Assert.Equal(HttpStatusCode.Conflict, duplicateJoin.StatusCode);
             }
 
+            // The same relationship declared from its other end is the same relationship, served on both tables already.
+            using (var reversedJoin = await SendAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/relationships",
+                new UpsertSemanticJoinRequest(stationKey, ["StationId"], tripsKey, ["StationId"], "Inner", null)))
+            {
+                Assert.Equal(HttpStatusCode.Conflict, reversedJoin.StatusCode);
+            }
+
             // 5. The served bundle carries only the layer: allowed columns, the curated key, the curated join (the
             //    discovered twin is not repeated, the join on denied columns is withheld), the measure, and only the
             //    example whose SQL passes the guards. No denied column name appears anywhere in the payload.

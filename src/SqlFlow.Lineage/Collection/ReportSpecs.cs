@@ -81,9 +81,10 @@ public static class ReportSpecs
             return "The report file name may not start or end with whitespace.";
         }
 
-        if (reportFile.Any(c => char.IsControl(c) || c is '#' or '\\'))
+        // A colon is a drive ("C:/Sales.pbix") or an alternate stream, neither of which a relative name has.
+        if (reportFile.Any(c => char.IsControl(c) || c is '#' or '\\' or ':'))
         {
-            return "The report file name may not contain '#', a backslash, or a control character.";
+            return "The report file name may not contain '#', ':', a backslash, or a control character.";
         }
 
         if (reportFile.StartsWith('/') || reportFile.Split('/').Any(segment => segment is "" or "." or ".."))

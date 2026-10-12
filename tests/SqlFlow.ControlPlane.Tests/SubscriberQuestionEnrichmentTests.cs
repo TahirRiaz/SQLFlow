@@ -169,6 +169,127 @@ public sealed class SubscriberQuestionEnrichmentTests
     }
 
     [SkippableFact]
+    public async Task AVisualInsertedAtTheFront_LeavesEveryOtherVisualsQuestionsWithIt()
+    {
+        // Every old key still exists after the insert, so nothing is orphaned: the questions must follow content.
+        await using var scope = await Scope.CreateAsync();
+        var before = new Dictionary<string, string>
+        {
+            [Scope.Key(1)] = SubscriberReportVisualHash.Compute("Sales", "card", []),
+            [Scope.Key(2)] = SubscriberReportVisualHash.Compute("Margin", "card", []),
+        };
+        scope.AddVisual(1, "Brand new");
+        scope.AddVisual(2, "Sales");
+        scope.AddVisual(3, "Margin");
+        scope.AddQuestion(1, "What are sales?", SubscriberQuestionOrigin.Generated);
+        scope.AddQuestion(1, "A person's sales question?", SubscriberQuestionOrigin.Manual);
+        scope.AddQuestion(2, "A person's margin question?", SubscriberQuestionOrigin.Manual);
+        await scope.Db.SaveChangesAsync();
+
+        var reconciled = await SubscriberQuestionEnrichment.ReconcileAsync(scope.Db, scope.RepoId, before, CancellationToken.None);
+
+        Assert.Equal(
+            [
+                (Scope.Key(2), "What are sales?"), (Scope.Key(2), "A person's sales question?"),
+                (Scope.Key(3), "A person's margin question?"),
+            ],
+            await scope.QuestionsAsync());
+        Assert.Equal(before[Scope.Key(1)], reconciled[Scope.Key(2)]);
+        Assert.Equal(before[Scope.Key(2)], reconciled[Scope.Key(3)]);
+    }
+
+    [SkippableFact]
+    public async Task TwoVisualsThatSwappedPlaces_ExchangeTheirQuestions_RatherThanMergeThem()
+    {
+        await using var scope = await Scope.CreateAsync();
+        var sales = scope.AddVisual(2, "Sales");
+        var margin = scope.AddVisual(1, "Margin");
+        scope.AddQuestion(1, "What are sales?", SubscriberQuestionOrigin.Manual);
+        scope.AddQuestion(2, "What is the margin?", SubscriberQuestionOrigin.Manual);
+        await scope.Db.SaveChangesAsync();
+
+        await SubscriberQuestionEnrichment.ReconcileAsync(
+            scope.Db, scope.RepoId, new Dictionary<string, string> { [Scope.Key(1)] = sales, [Scope.Key(2)] = margin },
+            CancellationToken.None);
+
+        Assert.Equal([(Scope.Key(1), "What is the margin?"), (Scope.Key(2), "What are sales?")], await scope.QuestionsAsync());
+    }
+
+    [SkippableFact]
+    public async Task AVisualEditedInPlace_KeepsItsQuestions_AndNothingMovesOntoThem()
+    {
+        await using var scope = await Scope.CreateAsync();
+        var sales = SubscriberReportVisualHash.Compute("Sales", "card", []);
+        scope.AddVisual(1, "Sales, retitled");
+        scope.AddQuestion(1, "What are sales?", SubscriberQuestionOrigin.Manual);
+        await scope.Db.SaveChangesAsync();
+
+        await SubscriberQuestionEnrichment.ReconcileAsync(
+            scope.Db, scope.RepoId, new Dictionary<string, string> { [Scope.Key(1)] = sales }, CancellationToken.None);
+
+        Assert.Equal([(Scope.Key(1), "What are sales?")], await scope.QuestionsAsync());
+    }
+
+    [Fact]
+    public void PlanMoves_FollowsAThreeWayRotation_AndRefusesAReceiverThatKeepsItsOwn()
+    {
+        var before = new Dictionary<string, string> { ["k1"] = "A", ["k2"] = "B", ["k3"] = "C" };
+        var rotated = new Dictionary<string, string> { ["k1"] = "C", ["k2"] = "A", ["k3"] = "B" };
+        Assert.Equal(
+            new Dictionary<string, string> { ["k1"] = "k2", ["k2"] = "k3", ["k3"] = "k1" },
+            SubscriberQuestionEnrichment.PlanMoves(before, rotated, new HashSet<string> { "k1", "k2", "k3" }));
+
+        // k2 was edited in place (its content B is nowhere now), so it keeps its questions, and k1's cannot land on it.
+        var edited = new Dictionary<string, string> { ["k1"] = "X", ["k2"] = "A" };
+        Assert.Empty(SubscriberQuestionEnrichment.PlanMoves(
+            new Dictionary<string, string> { ["k1"] = "A", ["k2"] = "B" }, edited, new HashSet<string> { "k1", "k2" }));
+
+        // A key with no snapshot (a question added after it) cannot be placed, and stays where it is.
+        Assert.Empty(SubscriberQuestionEnrichment.PlanMoves(
+            new Dictionary<string, string>(), new Dictionary<string, string> { ["k2"] = "A" }, new HashSet<string> { "k1" }));
+    }
+
+    [SkippableFact]
+    public async Task AGenerationThatFailsPartWay_LeavesEveryVisualWithTheQuestionsItHad()
+    {
+        await using var scope = await Scope.CreateAsync();
+        scope.AddVisual(1, "First, changed");
+        scope.AddVisual(2, "Second, changed");
+        scope.AddQuestion(1, "First earlier?", SubscriberQuestionOrigin.Generated);
+        scope.AddQuestion(2, "Second earlier?", SubscriberQuestionOrigin.Generated);
+        await scope.Db.SaveChangesAsync();
+
+        var calls = 0;
+        await Assert.ThrowsAsync<OperationCanceledException>(() => SubscriberQuestionEnrichment.EnrichAsync(
+            scope.Db, scope.RepoId,
+            new Dictionary<string, string> { [Scope.Key(1)] = "old first", [Scope.Key(2)] = "old second" },
+            (_, _) => ++calls == 1
+                ? Task.FromResult<IReadOnlyList<string>>(["A new first question?"])
+                : throw new OperationCanceledException("the sync was stopped"),
+            CancellationToken.None));
+
+        Assert.Equal(2, calls);
+        Assert.Equal([(Scope.Key(1), "First earlier?"), (Scope.Key(2), "Second earlier?")], await scope.QuestionsAsync());
+    }
+
+    [SkippableFact]
+    public async Task AGeneratedQuestionTooLongToStore_IsLeftOut_AndSaidSo_WhileTheRestAreStored()
+    {
+        await using var scope = await Scope.CreateAsync();
+        scope.AddVisual(1, "Changed");
+        await scope.Db.SaveChangesAsync();
+
+        var tooLong = new string('q', CatalogSubscriberReportVisualQuestion.MaxQuestionLength + 1);
+        var warnings = await SubscriberQuestionEnrichment.EnrichAsync(
+            scope.Db, scope.RepoId, new Dictionary<string, string>(),
+            (_, _) => Task.FromResult<IReadOnlyList<string>>([tooLong, "  ", "What changed?", "WHAT CHANGED?"]),
+            CancellationToken.None);
+
+        Assert.Contains($"{tooLong.Length} characters", Assert.Single(warnings), StringComparison.Ordinal);
+        Assert.Equal([(Scope.Key(1), "What changed?")], await scope.QuestionsAsync());
+    }
+
+    [SkippableFact]
     public async Task RepoWithNoVisualsLeft_HasAllItsQuestionsPruned()
     {
         await using var scope = await Scope.CreateAsync();

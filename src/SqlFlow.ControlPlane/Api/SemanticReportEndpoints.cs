@@ -201,7 +201,7 @@ public static class SemanticReportEndpoints
     }
 
     /// <summary>The longest question the catalog stores.</summary>
-    private const int MaxQuestionLength = 400;
+    private const int MaxQuestionLength = CatalogSubscriberReportVisualQuestion.MaxQuestionLength;
 
     /// <summary>
     /// Adds a person's question to a visual the last sync served. It is served to question search at once, and no
