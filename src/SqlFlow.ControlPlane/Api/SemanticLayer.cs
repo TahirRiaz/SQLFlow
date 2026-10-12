@@ -9,29 +9,20 @@ using SqlFlow.SqlServer.Query;
 namespace SqlFlow.ControlPlane.Api;
 
 /// <summary>
-/// The semantic layer's rules, shared by the assistant-facing read endpoints (<see cref="SemanticLayerEndpoints"/>)
-/// and the admin editor (<see cref="SemanticLayerAdminEndpoints"/>), so what an admin is told is servable and what an
-/// assistant is actually served are decided by the same code.
+/// The semantic layer's rules, shared by the assistant-facing read endpoints (<see cref="SemanticLayerEndpoints"/>),
+/// the read-only AI context pages (<see cref="SemanticLayerAdminEndpoints"/>, <see cref="AiContextEndpoints"/>) and the
+/// sync that checks what a context file proposes (<see cref="AiContextSync"/>), so what an admin is told is servable and
+/// what an assistant is actually served are decided by the same code.
 ///
-/// The layer IS the column allow-list (<see cref="CatalogColumnPolicy"/>): an object is in the layer exactly when at
-/// least one of its catalogued columns is allowed, and only allowed columns are ever served. Everything else the layer
-/// holds (table and column descriptions, synonyms, curated keys and joins, measures, example queries) annotates that
-/// set and is re-checked against it every time it is served, because a column can be denied long after the annotation
-/// naming it was written: a key, join, measure, or example that would name a column no longer allowed is withheld
-/// rather than served stale.
+/// The layer is what the approved AI contexts serve (<see cref="CatalogAiContext"/>, written only by
+/// <see cref="AiContextMaterializer"/>): an object is in the layer exactly when at least one of its catalogued columns is
+/// allowed, and only allowed columns are ever served. Everything else the layer holds (table and column descriptions,
+/// synonyms, keys and joins, measures, example queries) annotates that set and is re-checked against it every time it is
+/// served: a key, join, measure, or example that would name a column no longer allowed is withheld rather than served
+/// stale.
 /// </summary>
 internal static partial class SemanticLayer
 {
-    /// <summary>The most synonyms one table or column may carry. Past a few dozen, synonyms stop disambiguating a
-    /// search and start matching everything.</summary>
-    internal const int MaxSynonyms = 30;
-
-    /// <summary>The longest one synonym may be: a synonym is a word or a short phrase, not a description.</summary>
-    internal const int MaxSynonymLength = 100;
-
-    /// <summary>The stored width of a newline-joined synonym list (matches the catalog column).</summary>
-    internal const int MaxSynonymsStoredLength = 1000;
-
     /// <summary>The most example queries one table's bundle carries: enough precedent to mirror, few enough to
     /// leave the context for the question.</summary>
     internal const int MaxServedExamples = 10;
@@ -42,9 +33,6 @@ internal static partial class SemanticLayer
     /// <summary>The most measures one evaluation loads. Each is validated through the query guards, so the cap
     /// bounds what one request can cost on an estate that has accumulated many.</summary>
     internal const int MaxMeasures = 500;
-
-    /// <summary>The longest the layer-wide instructions may be.</summary>
-    internal const int MaxInstructionsLength = 20000;
 
     /// <summary>What a curated key's origin reads as, beside the codebase-interpreted origins
     /// (Constraint / Declared / Merge).</summary>
@@ -150,76 +138,6 @@ internal static partial class SemanticLayer
             ? []
             : stored.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    /// <summary>
-    /// Validates and joins a synonym list for storage: entries are trimmed, blanks dropped, duplicates removed
-    /// case-insensitively, and line breaks inside an entry flattened to spaces (they are the stored separator). A
-    /// null list stores null. Returns false with <paramref name="problem"/> set when the list is over a limit.
-    /// </summary>
-    internal static bool TryJoinSynonyms(IReadOnlyList<string>? synonyms, out string? joined, out string? problem)
-    {
-        joined = null;
-        problem = null;
-        if (synonyms is null)
-        {
-            return true;
-        }
-
-        var cleaned = synonyms
-            .Select(s => (s ?? string.Empty).Replace('\r', ' ').Replace('\n', ' ').Trim())
-            .Where(s => s.Length > 0)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (cleaned.Count > MaxSynonyms)
-        {
-            problem = $"At most {MaxSynonyms} synonyms may be given; {cleaned.Count} were.";
-            return false;
-        }
-
-        var tooLong = cleaned.Find(s => s.Length > MaxSynonymLength);
-        if (tooLong is not null)
-        {
-            problem = $"The synonym beginning '{tooLong[..40]}' is longer than {MaxSynonymLength} characters.";
-            return false;
-        }
-
-        var value = string.Join('\n', cleaned);
-        if (value.Length > MaxSynonymsStoredLength)
-        {
-            problem = $"The synonyms together exceed {MaxSynonymsStoredLength} characters.";
-            return false;
-        }
-
-        joined = value.Length == 0 ? null : value;
-        return true;
-    }
-
-    /// <summary>
-    /// Validates a column list supplied by a caller: every name is trimmed and must be non-empty, free of commas
-    /// (the stored separator), and distinct. Order is preserved, since a key and a join pair columns by position.
-    /// </summary>
-    internal static bool TryNormalizeColumns(
-        IReadOnlyList<string>? columns, string label, out IReadOnlyList<string> normalized, out string? problem)
-    {
-        normalized = [];
-        problem = null;
-        var cleaned = (columns ?? []).Select(c => (c ?? string.Empty).Trim()).ToList();
-        if (cleaned.Exists(c => c.Length == 0 || c.Contains(',', StringComparison.Ordinal)))
-        {
-            problem = $"{label} holds an empty column name or one containing a comma.";
-            return false;
-        }
-
-        if (cleaned.Distinct(StringComparer.OrdinalIgnoreCase).Count() != cleaned.Count)
-        {
-            problem = $"{label} names the same column more than once.";
-            return false;
-        }
-
-        normalized = cleaned;
-        return true;
-    }
-
     /// <summary>Null when every one of <paramref name="columns"/> is an allow-listed column of the object, otherwise
     /// the first offending column, explained.</summary>
     internal static string? ColumnsProblem(
@@ -227,15 +145,14 @@ internal static partial class SemanticLayer
     {
         if (allowed is null || allowed.Count == 0)
         {
-            return $"'{objectName}' is not in the semantic layer: none of its columns is on the allow-list.";
+            return $"'{objectName}' is not in the semantic layer: no approved AI context opens it.";
         }
 
         foreach (var column in columns)
         {
             if (!allowed.Any(a => string.Equals(a.Name, column, StringComparison.OrdinalIgnoreCase)))
             {
-                return $"Column '{objectName}.{column}' is not an allow-listed column, so the semantic layer cannot " +
-                    "use it. Allow the column first, or check its spelling.";
+                return $"Column '{objectName}.{column}' is not open to the assistant: no approved AI context lists it.";
             }
         }
 
@@ -270,38 +187,40 @@ internal static partial class SemanticLayer
         return ([], null);
     }
 
-    /// <summary>The identity hash of a curated join: both endpoints and their column lists, case-normalized.</summary>
-    internal static string JoinIdentity(
-        string fromKey, IReadOnlyList<string> fromColumns, string toKey, IReadOnlyList<string> toColumns)
-        => CatalogProjection.Hash(string.Join(
-            '\n',
-            fromKey,
-            string.Join(',', fromColumns).ToUpperInvariant(),
-            toKey,
-            string.Join(',', toColumns).ToUpperInvariant()));
+    /// <summary>Every approved context's served instructions, each headed by its context's name, in name order; null when
+    /// no context serves any.</summary>
+    internal static async Task<string?> LoadInstructionsAsync(CatalogDbContext db, CancellationToken ct)
+    {
+        var served = await db.AiContexts.AsNoTracking()
+            .Where(c => c.ApprovedHash != null && c.Instructions != null)
+            .OrderBy(c => c.Name)
+            .Select(c => new { c.Name, c.Instructions })
+            .ToListAsync(ct).ConfigureAwait(false);
+        return served.Count == 0
+            ? null
+            : string.Join("\n\n", served.Select(c => $"Context '{c.Name}':\n{c.Instructions}"));
+    }
 
-    /// <summary>Whether <paramref name="name"/> is a valid measure identifier: a letter or underscore, then letters,
-    /// digits, or underscores, at most 128 characters.</summary>
-    internal static bool IsValidMeasureName(string name) => MeasureNamePattern().IsMatch(name);
-
-    [GeneratedRegex("^[A-Za-z_][A-Za-z0-9_]{0,127}$", RegexOptions.CultureInvariant)]
-    private static partial Regex MeasureNamePattern();
-
-    /// <summary>The layer-wide instructions, or null when none are written.</summary>
-    internal static Task<string?> LoadInstructionsAsync(CatalogDbContext db, CancellationToken ct)
-        => db.SemanticLayerSettings.AsNoTracking()
-            .Where(s => s.Id == CatalogSemanticLayerSettings.SingletonId)
-            .Select(s => s.Instructions)
-            .FirstOrDefaultAsync(ct);
+    /// <summary>The instructions context <paramref name="context"/> serves, or null.</summary>
+    internal static Task<string?> LoadContextInstructionsAsync(CatalogDbContext db, string? context, CancellationToken ct)
+        => context is null
+            ? Task.FromResult<string?>(null)
+            : db.AiContexts.AsNoTracking()
+                .Where(c => c.Name == context && c.ApprovedHash != null)
+                .Select(c => c.Instructions)
+                .FirstOrDefaultAsync(ct);
 
     /// <summary>Null when <paramref name="sql"/> is a single read-only SELECT reading only allow-listed columns of
-    /// catalogued objects; otherwise the refusal the query surface itself would give.</summary>
-    internal static async Task<string?> QueryProblemAsync(CatalogDbContext db, string sql, CancellationToken ct)
+    /// catalogued objects; otherwise the refusal the query surface itself would give. <paramref name="allowedOverride"/>
+    /// checks it as if those columns were the allowed ones (<see cref="ColumnPolicyGuard.EnsureAllowedAsync"/>).</summary>
+    internal static async Task<string?> QueryProblemAsync(
+        CatalogDbContext db, string sql, CancellationToken ct,
+        IReadOnlyDictionary<string, IReadOnlySet<string>>? allowedOverride = null)
     {
         try
         {
             var validated = ReadOnlyQueryGuard.Validate(sql);
-            await ColumnPolicyGuard.EnsureAllowedAsync(db, validated, ct).ConfigureAwait(false);
+            await ColumnPolicyGuard.EnsureAllowedAsync(db, validated, ct, allowedOverride).ConfigureAwait(false);
             return null;
         }
         catch (SqlFlowException ex)
@@ -318,7 +237,8 @@ internal static partial class SemanticLayer
     /// the composed FROM clause and let the expression bring its own.
     /// </summary>
     internal static async Task<string?> MeasureProblemAsync(
-        CatalogDbContext db, string objectKey, string expression, CancellationToken ct)
+        CatalogDbContext db, string objectKey, string expression, CancellationToken ct,
+        IReadOnlyDictionary<string, IReadOnlySet<string>>? allowedOverride = null)
     {
         var anchor = await db.Objects.AsNoTracking()
             .Where(o => o.Key == objectKey)
@@ -347,7 +267,7 @@ internal static partial class SemanticLayer
             return MeasureShapeProblem;
         }
 
-        return await QueryProblemAsync(db, sql, ct).ConfigureAwait(false);
+        return await QueryProblemAsync(db, sql, ct, allowedOverride).ConfigureAwait(false);
     }
 
     /// <summary>Whether <paramref name="select"/> is exactly <c>SELECT scalar FROM schema.name</c> with nothing else.</summary>
@@ -839,8 +759,8 @@ internal static partial class SemanticLayer
 
     /// <summary>
     /// One layer table's grounding bundle as an assistant is served it, or null when the object is unknown or not in
-    /// the layer: only allowed columns, the servable key, joins, measures and examples, and the layer-wide
-    /// instructions, so a single call is enough to write SQL against the table.
+    /// the layer: only allowed columns, the servable key, joins, measures and examples, and the instructions of the AI
+    /// context that serves it, so a single call is enough to write SQL against the table.
     /// </summary>
     internal static async Task<SemanticTableDto?> DescribeTableAsync(CatalogDbContext db, string key, CancellationToken ct)
     {
@@ -894,11 +814,12 @@ internal static partial class SemanticLayer
         // Who consumes the table is object-level (report names and owners), so it names no column and is served
         // whole: it is how an assistant answers "who uses this table" without a raw catalog reader.
         var consumers = await LineageEndpoints.LoadObjectSubscribersAsync(db, key, ct).ConfigureAwait(false);
-        var instructions = await LoadInstructionsAsync(db, ct).ConfigureAwait(false);
+        var context = annotation?.AiContext;
+        var instructions = await LoadContextInstructionsAsync(db, context, ct).ConfigureAwait(false);
 
         return new SemanticTableDto(
             obj.Key, obj.ServerRef, obj.Database, obj.Schema, obj.Name, obj.Kind,
             annotation?.BusinessName, annotation?.Description, SplitSynonyms(annotation?.Synonyms),
-            keyColumns, keyOrigin, columns, joins, measures, examples, reportModels, consumers, instructions);
+            keyColumns, keyOrigin, columns, joins, measures, examples, reportModels, consumers, context, instructions);
     }
 }

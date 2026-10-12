@@ -1936,6 +1936,7 @@ public sealed class CatalogSync
                 Description = subscriber.Description,
                 Notes = subscriber.Notes,
                 Url = subscriber.Url,
+                GenerateQuestions = subscriber.GenerateQuestions,
                 FirstSeenUtc = firstSeenByKey.TryGetValue(subscriber.ObjectKey, out var seen) ? seen : nowUtc,
                 LastSeenUtc = nowUtc,
             });

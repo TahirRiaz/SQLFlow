@@ -227,6 +227,7 @@ impl Census {
         match doc.kind {
             crate::document::DocumentKind::Subscribers => Census::for_subscribers(),
             crate::document::DocumentKind::Schedules => Census::for_schedules(),
+            crate::document::DocumentKind::AiContext => Census::for_ai_context(),
             crate::document::DocumentKind::Flow => Census::for_flow_type(doc.flow_type.as_deref()),
             crate::document::DocumentKind::Document => doc
                 .document_type
@@ -349,6 +350,12 @@ impl Census {
     /// a flow and takes none of the shared blocks.
     pub fn for_schedules() -> Census {
         Census { entries: Census::parse(SCHEDULES).unwrap_or_default(), strict: false }
+    }
+
+    /// The AI context census (`ai-context.yaml`, `*.ai-context.yaml`). Strict, as its loader is: an undocumented key
+    /// keeps the version from being approved rather than being ignored.
+    pub fn for_ai_context() -> Census {
+        Census { entries: Census::parse(AI_CONTEXT).unwrap_or_default(), strict: true }
     }
 
     /// Resolve an authored path to a census entry, container, or unknown.
@@ -631,6 +638,7 @@ const TRL: &str = include_str!("../../../docs/reference/flow/keys.trl.json");
 const SHARED: &str = include_str!("../../../docs/reference/flow/keys.shared.json");
 const SUBSCRIBERS: &str = include_str!("../../../docs/reference/flow/keys.subscribers.json");
 const SCHEDULES: &str = include_str!("../../../docs/reference/flow/keys.schedules.json");
+const AI_CONTEXT: &str = include_str!("../../../docs/reference/flow/keys.ai-context.json");
 
 #[cfg(test)]
 mod tests {

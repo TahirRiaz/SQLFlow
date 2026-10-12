@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
@@ -9,179 +8,170 @@ using Xunit;
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The semantic layer end to end: the column allow-list decides which tables and columns exist on the assistant's
-/// schema surface, and every annotation layered on top (a curated key or join, a measure, an example query) is
-/// refused when written over a column outside the layer and withheld when served once a column it names is denied.
-/// The denied columns' names must never appear anywhere in what an assistant is served. Every seeded row is removed
-/// in a finally so repeated runs stay isolated.
+/// The semantic layer end to end, as approved AI contexts make it: a table is on the assistant's schema surface only
+/// once an admin approves a context naming it, with every column but those its file denies, and every annotation the
+/// file gives (a key, a join, a measure) is refused when it names a denied column and withheld when served once a column
+/// it names is denied. The denied columns' names must never appear anywhere in what an assistant is served. Every seeded
+/// row is removed in a finally so repeated runs stay isolated.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class SemanticLayerApiTests
 {
     [SkippableFact]
-    public async Task TheLayerServesOnlyAllowListedSchema_AndRefusesAnnotationsOverAnythingElse()
+    public async Task TheLayerServesOnlyWhatAnApprovedContextOpens_AndRefusesAnnotationsOverDeniedColumns()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
         var serverRef = "${env:SQLFLOW_SEMLAYER_" + suffix + "}";
-        var tripsName = "Trips_" + suffix;
-        var stationName = "Station_" + suffix;
-        var tripsKey = $"{serverRef}|dw|dbo|{tripsName.ToLowerInvariant()}";
-        var stationKey = $"{serverRef}|dw|dbo|{stationName.ToLowerInvariant()}";
+        var ordersName = "Orders_" + suffix;
+        var storeName = "Store_" + suffix;
+        var ordersKey = $"{serverRef}|dw|dbo|{ordersName.ToLowerInvariant()}";
+        var storeKey = $"{serverRef}|dw|dbo|{storeName.ToLowerInvariant()}";
         var repoId = Guid.NewGuid();
+        var context = "orders-" + suffix;
         var measureName = "net_amount_" + suffix;
-        var blockedExampleSql = $"SELECT RiderSsn_{suffix} FROM dbo.{tripsName}";
-        var servableExampleSql = $"SELECT SUM(Amount) AS total FROM dbo.{tripsName}";
         var now = DateTime.UtcNow;
 
         // The two denied columns carry the suffix so their names cannot occur by accident in a served payload.
-        var riderSsn = "RiderSsn_" + suffix;
-        var stationSecret = "Secret_" + suffix;
+        var customerSsn = "CustomerSsn_" + suffix;
+        var storeSecret = "Secret_" + suffix;
+        var blockedExampleSql = $"SELECT {customerSsn} FROM dbo.{ordersName}";
+        var servableExampleSql = $"SELECT SUM(Amount) AS total FROM dbo.{ordersName}";
+
+        // The context file, with an extra Orders measure, key or join when a step needs one, and with Amount denied
+        // (and so no longer described) when a step closes it.
+        string ContextFile(string? extraMeasure = null, string key = "OrderId", string joinColumns = "StoreId", bool denyAmount = false)
+        {
+            var lines = new List<string>
+            {
+                $"aiContext: {context}",
+                "instructions: Amounts are in the reporting currency.",
+                "tables:",
+                $"  - table: dw.dbo.{ordersName}",
+                "    name: Orders",
+                "    description: One row per order line.",
+                "    synonyms: [sales]",
+                $"    key: [{key}]",
+            };
+            if (!denyAmount)
+            {
+                lines.AddRange([
+                    "    columns:",
+                    "      - column: Amount",
+                    "        description: Line amount excluding tax.",
+                    $"        synonyms: [turnover{suffix}, revenue]",
+                ]);
+            }
+
+            lines.Add(denyAmount ? $"    deny: [{customerSsn}, Amount]" : $"    deny: [{customerSsn}]");
+            lines.AddRange([
+                "    measures:",
+                $"      - name: {measureName}",
+                "        expression: SUM(Amount)",
+                "        description: Total amount",
+            ]);
+            if (extraMeasure is not null)
+            {
+                lines.AddRange([$"      - name: bad_{suffix}", $"        expression: \"{extraMeasure}\""]);
+            }
+
+            lines.AddRange([
+                "    joins:",
+                $"      - to: dw.dbo.{storeName}",
+                $"        columns: [{joinColumns}]",
+                $"        toColumns: [{(joinColumns == "StoreId" ? "StoreId" : storeSecret)}]",
+                "        type: left",
+                "        description: Orders to the store that took them",
+                $"  - table: dw.dbo.{storeName}",
+                $"    deny: [{storeSecret}]",
+            ]);
+            return string.Join('\n', lines) + "\n";
+        }
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+        await using var contexts = new AiContextTestKit(cs, repoId);
         try
         {
             await using (var db = CatalogDatabase.Create(cs))
             {
                 db.Objects.Add(new CatalogObject
                 {
-                    Key = tripsKey, ServerRef = serverRef, Database = "dw", Schema = "dbo", Name = tripsName,
-                    Kind = "Table", KeyColumns = riderSsn, KeyOrigin = "Declared", FirstSeenUtc = now, LastSeenUtc = now,
+                    Key = ordersKey, ServerRef = serverRef, Database = "dw", Schema = "dbo", Name = ordersName,
+                    Kind = "Table", KeyColumns = customerSsn, KeyOrigin = "Declared", FirstSeenUtc = now, LastSeenUtc = now,
                 });
                 db.Objects.Add(new CatalogObject
                 {
-                    Key = stationKey, ServerRef = serverRef, Database = "dw", Schema = "dbo", Name = stationName,
+                    Key = storeKey, ServerRef = serverRef, Database = "dw", Schema = "dbo", Name = storeName,
                     Kind = "Table", FirstSeenUtc = now, LastSeenUtc = now,
                 });
-                AddColumn(db, tripsKey, 1, "TripId", "bigint");
-                AddColumn(db, tripsKey, 2, "StationId", "int");
-                AddColumn(db, tripsKey, 3, "Amount", "decimal(18,2)");
-                AddColumn(db, tripsKey, 4, riderSsn, "varchar(11)");
-                AddColumn(db, stationKey, 1, "StationId", "int");
-                AddColumn(db, stationKey, 2, "StationName", "nvarchar(100)");
-                AddColumn(db, stationKey, 3, stationSecret, "nvarchar(100)");
+                AddColumn(db, ordersKey, 1, "OrderId", "bigint");
+                AddColumn(db, ordersKey, 2, "StoreId", "int");
+                AddColumn(db, ordersKey, 3, "Amount", "decimal(18,2)");
+                AddColumn(db, ordersKey, 4, customerSsn, "varchar(11)");
+                AddColumn(db, storeKey, 1, "StoreId", "int");
+                AddColumn(db, storeKey, 2, "StoreName", "nvarchar(100)");
+                AddColumn(db, storeKey, 3, storeSecret, "nvarchar(100)");
 
-                // Two joins the codebase exhibits: one on allowed columns, one on the two columns that stay denied.
+                // Two joins the codebase exhibits: one on open columns, one on the two columns that stay denied.
                 db.ObjectRelationships.Add(new CatalogObjectRelationship
                 {
-                    RepoId = repoId, FromObjectKey = tripsKey, FromColumns = "StationId", ToObjectKey = stationKey,
-                    ToColumns = "StationId", Operators = string.Empty, JoinTypes = "Inner", Origin = "Join",
+                    RepoId = repoId, FromObjectKey = ordersKey, FromColumns = "StoreId", ToObjectKey = storeKey,
+                    ToColumns = "StoreId", Operators = string.Empty, JoinTypes = "Inner", Origin = "Join",
                     Tier = "Observed", Occurrences = 4,
                 });
                 db.ObjectRelationships.Add(new CatalogObjectRelationship
                 {
-                    RepoId = repoId, FromObjectKey = tripsKey, FromColumns = riderSsn, ToObjectKey = stationKey,
-                    ToColumns = stationSecret, Operators = string.Empty, JoinTypes = "Left", Origin = "Join",
+                    RepoId = repoId, FromObjectKey = ordersKey, FromColumns = customerSsn, ToObjectKey = storeKey,
+                    ToColumns = storeSecret, Operators = string.Empty, JoinTypes = "Left", Origin = "Join",
                     Tier = "Observed", Occurrences = 1,
                 });
 
-                db.SemanticExamples.Add(Example($"who rode {suffix}", blockedExampleSql, tripsKey, now));
-                db.SemanticExamples.Add(Example($"total amount {suffix}", servableExampleSql, tripsKey, now.AddMinutes(-1)));
+                db.SemanticExamples.Add(Example($"who ordered {suffix}", blockedExampleSql, ordersKey, now));
+                db.SemanticExamples.Add(Example($"total amount {suffix}", servableExampleSql, ordersKey, now.AddMinutes(-1)));
                 await db.SaveChangesAsync();
             }
 
             using var client = factory.CreateClient();
-            var adminToken = await IssueTokenAsync(client, ["read", "operate", "admin"]);
+            var adminToken = await AiContextTestKit.IssueTokenAsync(client, ["read", "operate", "admin"]);
+            var describe = $"/api/v1/semantic-layer/tables/describe?key={Uri.EscapeDataString(ordersKey)}";
 
-            // 1. Nothing is allowed yet: neither table exists on the assistant's surface.
-            using (var notInLayer = await SendAsync(client, adminToken, HttpMethod.Get,
-                $"/api/v1/semantic-layer/tables/describe?key={Uri.EscapeDataString(tripsKey)}"))
+            // 1. Nothing is approved: neither table exists on the assistant's surface, even once a file proposes it.
+            contexts.Write("orders.ai-context.yaml", ContextFile());
+            await contexts.SyncAsync();
+            using (var notInLayer = await AiContextTestKit.SendAsync(client, adminToken, HttpMethod.Get, describe))
             {
                 Assert.Equal(HttpStatusCode.NotFound, notInLayer.StatusCode);
             }
 
-            var emptySearch = await GetJsonAsync<SemanticSearchDto>(client, adminToken, $"/api/v1/semantic-layer/search?q={tripsName}");
-            Assert.DoesNotContain(emptySearch.Tables.Items, h => h.Table.Key == tripsKey);
+            var emptySearch = await GetJsonAsync<SemanticSearchDto>(client, adminToken, $"/api/v1/semantic-layer/search?q={ordersName}");
+            Assert.DoesNotContain(emptySearch.Tables.Items, h => h.Table.Key == ordersKey);
 
-            // 2. Allow three of Trips' columns, one with a business description and synonym; allow the whole Station
-            //    table in one call, then deny its secret column again.
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(tripsKey, "TripId", true, null));
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(tripsKey, "StationId", true, null));
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(
-                tripsKey, "Amount", true, null, Description: "Fare paid, NOK", Synonyms: ["turnover" + suffix, "fare"]));
-
-            using (var bulk = await SendAsync(client, adminToken, HttpMethod.Put, "/api/v1/powerai/column-policies/objects",
-                new SetObjectColumnPoliciesRequest(stationKey, IsAllowed: true)))
-            {
-                bulk.EnsureSuccessStatusCode();
-                var state = await bulk.Content.ReadFromJsonAsync<List<ColumnPolicyStateDto>>();
-                Assert.NotNull(state);
-                Assert.All(state, c => Assert.True(c.IsAllowed));
-            }
-
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(stationKey, stationSecret, false, "internal"));
+            // 2. An admin approves it: both tables, every column but the denied ones.
+            await AiContextTestKit.ApproveAsync(client, adminToken, context);
 
             // 3. A business synonym finds the table through its column.
             var synonymSearch = await GetJsonAsync<SemanticSearchDto>(
                 client, adminToken, $"/api/v1/semantic-layer/search?q={Uri.EscapeDataString("turnover" + suffix)}");
-            var hit = Assert.Single(synonymSearch.Tables.Items, h => h.Table.Key == tripsKey);
+            var hit = Assert.Single(synonymSearch.Tables.Items, h => h.Table.Key == ordersKey);
             Assert.Contains(hit.MatchedColumns, c => c.Name == "Amount");
             Assert.Contains("columns", hit.MatchedOn);
 
-            // 4. Annotations over a denied column are refused; over allowed ones they are stored.
-            await AssertRefusedAsync(client, adminToken, HttpMethod.Put, "/api/v1/powerai/semantic-layer/objects/annotation",
-                new SetSemanticAnnotationRequest(tripsKey, "Bike trips", null, null, [riderSsn]));
-            using (var annotation = await SendAsync(client, adminToken, HttpMethod.Put, "/api/v1/powerai/semantic-layer/objects/annotation",
-                new SetSemanticAnnotationRequest(tripsKey, "Bike trips", "One row per completed trip.", ["rides"], ["tripid"])))
-            {
-                annotation.EnsureSuccessStatusCode();
-            }
+            // 4. The served bundle carries only what the context opens: the open columns, its key, its join (the
+            //    discovered twin is not repeated, the join on denied columns is withheld), the measure, the context's
+            //    instructions, and only the example whose SQL passes the guards. No denied name appears anywhere.
+            var tableJson = await GetStringAsync(client, adminToken, describe);
+            Assert.DoesNotContain(customerSsn, tableJson, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(storeSecret, tableJson, StringComparison.OrdinalIgnoreCase);
 
-            await AssertRefusedAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/measures",
-                new UpsertSemanticMeasureRequest(measureName, tripsKey, $"COUNT(DISTINCT {riderSsn})", null));
-            await AssertRefusedAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/measures",
-                new UpsertSemanticMeasureRequest(measureName, tripsKey, $"SUM(Amount) FROM dbo.{stationName} --", null));
-            await AssertRefusedAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/measures",
-                new UpsertSemanticMeasureRequest(measureName, tripsKey, $"(SELECT MAX(StationId) FROM dbo.{stationName})", null));
-            using (var measure = await SendAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/measures",
-                new UpsertSemanticMeasureRequest(measureName, tripsKey, "SUM(Amount)", "Total fare")))
-            {
-                measure.EnsureSuccessStatusCode();
-            }
-
-            using (var duplicateMeasure = await SendAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/measures",
-                new UpsertSemanticMeasureRequest(measureName, tripsKey, "COUNT(TripId)", null)))
-            {
-                Assert.Equal(HttpStatusCode.Conflict, duplicateMeasure.StatusCode);
-            }
-
-            await AssertRefusedAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/relationships",
-                new UpsertSemanticJoinRequest(tripsKey, [riderSsn], stationKey, [stationSecret], "Left", null));
-            using (var join = await SendAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/relationships",
-                new UpsertSemanticJoinRequest(tripsKey, ["StationId"], stationKey, ["StationId"], "left", "Trips to their start station")))
-            {
-                join.EnsureSuccessStatusCode();
-            }
-
-            using (var duplicateJoin = await SendAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/relationships",
-                new UpsertSemanticJoinRequest(tripsKey, ["stationid"], stationKey, ["STATIONID"], "Inner", null)))
-            {
-                Assert.Equal(HttpStatusCode.Conflict, duplicateJoin.StatusCode);
-            }
-
-            // The same relationship declared from its other end is the same relationship, served on both tables already.
-            using (var reversedJoin = await SendAsync(client, adminToken, HttpMethod.Post, "/api/v1/powerai/semantic-layer/relationships",
-                new UpsertSemanticJoinRequest(stationKey, ["StationId"], tripsKey, ["StationId"], "Inner", null)))
-            {
-                Assert.Equal(HttpStatusCode.Conflict, reversedJoin.StatusCode);
-            }
-
-            // 5. The served bundle carries only the layer: allowed columns, the curated key, the curated join (the
-            //    discovered twin is not repeated, the join on denied columns is withheld), the measure, and only the
-            //    example whose SQL passes the guards. No denied column name appears anywhere in the payload.
-            var tableJson = await GetStringAsync(
-                client, adminToken, $"/api/v1/semantic-layer/tables/describe?key={Uri.EscapeDataString(tripsKey)}");
-            Assert.DoesNotContain(riderSsn, tableJson, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain(stationSecret, tableJson, StringComparison.OrdinalIgnoreCase);
-
-            var table = await GetJsonAsync<SemanticTableDto>(
-                client, adminToken, $"/api/v1/semantic-layer/tables/describe?key={Uri.EscapeDataString(tripsKey)}");
-            Assert.Equal(["TripId", "StationId", "Amount"], table.Columns.Select(c => c.Name));
-            Assert.Equal("Bike trips", table.BusinessName);
-            Assert.Equal(["TripId"], table.KeyColumns);
+            var table = await GetJsonAsync<SemanticTableDto>(client, adminToken, describe);
+            Assert.Equal(["OrderId", "StoreId", "Amount"], table.Columns.Select(c => c.Name));
+            Assert.Equal("Orders", table.BusinessName);
+            Assert.Equal(["OrderId"], table.KeyColumns);
             Assert.Equal(SemanticLayer.CuratedOrigin, table.KeyOrigin);
+            Assert.Equal(context, table.Context);
+            Assert.Equal("Amounts are in the reporting currency.", table.Instructions);
             var servedJoin = Assert.Single(table.Joins);
             Assert.Equal(SemanticLayer.CuratedOrigin, servedJoin.Source);
             Assert.Equal(["Left"], servedJoin.JoinTypes);
@@ -189,43 +179,78 @@ public sealed class SemanticLayerApiTests
             var example = Assert.Single(table.Examples);
             Assert.Equal(servableExampleSql, example.Sql);
 
+            var overview = await GetJsonAsync<SemanticOverviewDto>(client, adminToken, "/api/v1/semantic-layer");
+            var served = Assert.Single(overview.Contexts, c => c.Name == context);
+            Assert.Equal(2, served.TableCount);
+            Assert.Contains($"Context '{context}':", overview.Instructions, StringComparison.Ordinal);
+
             // The admin view shows what is withheld and why.
             var adminObject = await GetJsonAsync<SemanticObjectAdminDto>(
-                client, adminToken, $"/api/v1/powerai/semantic-layer/objects/detail?key={Uri.EscapeDataString(tripsKey)}");
+                client, adminToken, $"/api/v1/powerai/semantic-layer/objects/detail?key={Uri.EscapeDataString(ordersKey)}");
+            Assert.Equal(context, adminObject.Context);
             Assert.Equal(4, adminObject.Columns.Count);
+            Assert.False(adminObject.Columns.Single(c => c.ColumnName == customerSsn).IsAllowed);
             Assert.Equal(2, adminObject.DiscoveredJoins.Count);
             Assert.All(adminObject.DiscoveredJoins, j => Assert.NotNull(j.Problem));
             Assert.Contains(adminObject.Examples, e => e.Sql == blockedExampleSql && e.Problem is not null);
 
-            // 6. Denying a column a measure reads withdraws the measure from the layer; the admin view says why.
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(tripsKey, "Amount", false, null));
-            var overview = await GetJsonAsync<SemanticOverviewDto>(client, adminToken, "/api/v1/semantic-layer");
-            Assert.DoesNotContain(overview.Measures, m => m.Name == measureName);
-            var measures = await GetJsonAsync<List<SemanticMeasureAdminDto>>(client, adminToken, "/api/v1/powerai/semantic-layer/measures");
-            Assert.NotNull(Assert.Single(measures, m => m.Name == measureName).Problem);
+            // 5. A measure over a denied column, a FROM smuggled in, a subquery, a key or a join over denied columns keeps
+            //    a version from being approved; the approved one stays served meanwhile.
+            var refusedVersions = new (string Name, string File)[]
+            {
+                ("denied measure", ContextFile(extraMeasure: $"COUNT(DISTINCT {customerSsn})")),
+                ("smuggled FROM", ContextFile(extraMeasure: $"SUM(Amount) FROM dbo.{storeName} --")),
+                ("subquery", ContextFile(extraMeasure: $"(SELECT MAX(StoreId) FROM dbo.{storeName})")),
+                ("denied key", ContextFile(key: customerSsn)),
+                ("denied join", ContextFile(joinColumns: customerSsn)),
+            };
+            foreach (var (what, file) in refusedVersions)
+            {
+                contexts.Write("orders.ai-context.yaml", file);
+                await contexts.SyncAsync();
+                var invalid = await AiContextTestKit.GetAsync(client, adminToken, context);
+                Assert.True(invalid.Summary.Status == AiContextStatus.Invalid, $"{what}: {invalid.Summary.Status}");
+                Assert.NotEmpty(invalid.Problems);
+                using (var refused = await AiContextTestKit.TryApproveAsync(client, adminToken, context, invalid.Summary.CurrentVersion))
+                {
+                    Assert.Equal(HttpStatusCode.Conflict, refused.StatusCode);
+                }
+
+                var stillServed = await GetJsonAsync<SemanticTableDto>(client, adminToken, describe);
+                Assert.Contains(stillServed.Measures, m => m.Name == measureName);
+                Assert.DoesNotContain(stillServed.Measures, m => m.Name == "bad_" + suffix);
+                Assert.Equal(["OrderId"], stillServed.KeyColumns);
+                Assert.Single(stillServed.Joins);
+            }
+
+            // 6. The file denies Amount: the next sync closes it with no approval, and the measure reading it is withdrawn.
+            contexts.Write("orders.ai-context.yaml", ContextFile(denyAmount: true));
+            await contexts.SyncAsync();
+            Assert.DoesNotContain("Amount", await contexts.AllowedColumnsAsync(ordersKey));
+            var afterDeny = await GetJsonAsync<SemanticOverviewDto>(client, adminToken, "/api/v1/semantic-layer");
+            Assert.DoesNotContain(afterDeny.Measures, m => m.Name == measureName);
+            var withdrawn = await GetJsonAsync<SemanticObjectAdminDto>(
+                client, adminToken, $"/api/v1/powerai/semantic-layer/objects/detail?key={Uri.EscapeDataString(ordersKey)}");
+            Assert.NotNull(Assert.Single(withdrawn.Measures, m => m.Name == measureName).Problem);
         }
         finally
         {
             await using var db = CatalogDatabase.Create(cs);
-            await db.SemanticMeasures.Where(m => m.ObjectKey == tripsKey).ExecuteDeleteAsync();
-            await db.SemanticRelationships.Where(r => r.FromObjectKey == tripsKey || r.ToObjectKey == tripsKey).ExecuteDeleteAsync();
-            await db.SemanticObjects.Where(s => s.ObjectKey == tripsKey || s.ObjectKey == stationKey).ExecuteDeleteAsync();
-            await db.SemanticExamples.Where(e => e.ObjectKeys == tripsKey).ExecuteDeleteAsync();
+            await db.SemanticExamples.Where(e => e.ObjectKeys == ordersKey).ExecuteDeleteAsync();
             await db.ObjectRelationships.Where(r => r.RepoId == repoId).ExecuteDeleteAsync();
-            await db.ColumnPolicies.Where(p => p.ObjectKey == tripsKey || p.ObjectKey == stationKey).ExecuteDeleteAsync();
-            await db.ObjectColumns.Where(c => c.ObjectKey == tripsKey || c.ObjectKey == stationKey).ExecuteDeleteAsync();
-            await db.Objects.Where(o => o.Key == tripsKey || o.Key == stationKey).ExecuteDeleteAsync();
+            await db.ObjectColumns.Where(c => c.ObjectKey == ordersKey || c.ObjectKey == storeKey).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.Key == ordersKey || o.Key == storeKey).ExecuteDeleteAsync();
         }
     }
 
     /// <summary>
-    /// A Power BI model built on a warehouse table is served in that table's bundle, graded against the allow-list the
-    /// same way every other annotation is: a measure reading only allowed columns is served, one reading a denied column
-    /// is withheld, and so is one that merely USES a withheld measure. A relationship is served only when both tables are
-    /// in the layer and both columns are allowed. The denied column's name never reaches the assistant.
+    /// A Power BI model built on a warehouse table is served in that table's bundle, graded against what the approved
+    /// context opens the same way every other annotation is: a measure reading only open columns is served, one reading a
+    /// denied column is withheld, and so is one that merely USES a withheld measure. A relationship is served only when
+    /// both tables are in the layer and both columns are open. The denied column's name never reaches the assistant.
     /// </summary>
     [SkippableFact]
-    public async Task APowerBiModel_IsServedOnTheTableItLoadsFrom_OnlyWhereEveryColumnItNamesIsAllowed()
+    public async Task APowerBiModel_IsServedOnTheTableItLoadsFrom_OnlyWhereEveryColumnItNamesIsOpen()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -243,6 +268,7 @@ public sealed class SemanticLayerApiTests
         var now = DateTime.UtcNow;
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+        await using var contexts = new AiContextTestKit(cs, repoId);
         try
         {
             await using (var db = CatalogDatabase.Create(cs))
@@ -279,10 +305,16 @@ public sealed class SemanticLayerApiTests
             }
 
             using var client = factory.CreateClient();
-            var adminToken = await IssueTokenAsync(client, ["read", "operate", "admin"]);
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(salesKey, "Amount", true, null));
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(salesKey, "DateKey", true, null));
-            await SetColumnAsync(client, adminToken, new SetColumnPolicyRequest(dateKey, "DateKey", true, null));
+            var adminToken = await AiContextTestKit.IssueTokenAsync(client, ["read", "operate", "admin"]);
+            contexts.Write("sales.ai-context.yaml", $"""
+                aiContext: sales-{suffix}
+                tables:
+                  - table: dw.dbo.{salesName}
+                    deny: [{customerSsn}]
+                  - table: dw.dbo.{dateName}
+                """);
+            await contexts.SyncAsync();
+            await AiContextTestKit.ApproveAsync(client, adminToken, $"sales-{suffix}");
 
             var describe = $"/api/v1/semantic-layer/tables/describe?key={Uri.EscapeDataString(salesKey)}";
             Assert.DoesNotContain(customerSsn, await GetStringAsync(client, adminToken, describe), StringComparison.OrdinalIgnoreCase);
@@ -298,7 +330,7 @@ public sealed class SemanticLayerApiTests
             Assert.Equal("DateKey", relationship.OtherColumn);
             Assert.False(relationship.IsActive);
 
-            // The editor shows everything the report defines, with why each withheld item is withheld.
+            // The read-only view shows everything the report defines, with why each withheld item is withheld.
             var admin = await GetJsonAsync<SemanticObjectAdminDto>(
                 client, adminToken, $"/api/v1/powerai/semantic-layer/objects/detail?key={Uri.EscapeDataString(salesKey)}");
             var adminModel = Assert.Single(admin.ReportModels);
@@ -316,7 +348,6 @@ public sealed class SemanticLayerApiTests
             await db.SubscriberModelRelationships.Where(r => r.SubscriberKey == subscriberKey).ExecuteDeleteAsync();
             await db.SubscriberModelTables.Where(t => t.SubscriberKey == subscriberKey).ExecuteDeleteAsync();
             await db.Subscribers.Where(s => s.ObjectKey == subscriberKey).ExecuteDeleteAsync();
-            await db.ColumnPolicies.Where(p => p.ObjectKey == salesKey || p.ObjectKey == dateKey).ExecuteDeleteAsync();
             await db.ObjectColumns.Where(c => c.ObjectKey == salesKey || c.ObjectKey == dateKey).ExecuteDeleteAsync();
             await db.Objects.Where(o => o.Key == salesKey || o.Key == dateKey).ExecuteDeleteAsync();
         }
@@ -359,58 +390,19 @@ public sealed class SemanticLayerApiTests
             ConfirmedUtc = confirmedUtc, ContentHash = SemanticExampleHash.Compute(question, sql),
         };
 
-    private static async Task SetColumnAsync(HttpClient client, string token, SetColumnPolicyRequest request)
-    {
-        using var response = await SendAsync(client, token, HttpMethod.Put, "/api/v1/powerai/column-policies", request);
-        response.EnsureSuccessStatusCode();
-    }
-
-    private static async Task AssertRefusedAsync<T>(HttpClient client, string token, HttpMethod method, string relativeUri, T body)
-    {
-        using var response = await SendAsync(client, token, method, relativeUri, body);
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    private static async Task<string> IssueTokenAsync(HttpClient client, IReadOnlyList<string> scopes)
-    {
-        using var response = await client.PostAsJsonAsync(
-            new Uri("/api/v1/auth/token", UriKind.Relative),
-            new TokenRequest(ControlPlaneAppFactory.BootstrapSecret, null, scopes));
-        response.EnsureSuccessStatusCode();
-        var token = await response.Content.ReadFromJsonAsync<TokenResponse>();
-        Assert.NotNull(token);
-        return token.AccessToken;
-    }
-
     private static async Task<string> GetStringAsync(HttpClient client, string token, string relativeUri)
     {
-        using var response = await SendAsync(client, token, HttpMethod.Get, relativeUri);
+        using var response = await AiContextTestKit.SendAsync(client, token, HttpMethod.Get, relativeUri);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsStringAsync();
     }
 
     private static async Task<T> GetJsonAsync<T>(HttpClient client, string token, string relativeUri)
     {
-        using var response = await SendAsync(client, token, HttpMethod.Get, relativeUri);
+        using var response = await AiContextTestKit.SendAsync(client, token, HttpMethod.Get, relativeUri);
         response.EnsureSuccessStatusCode();
         var value = await response.Content.ReadFromJsonAsync<T>();
         Assert.NotNull(value);
         return value;
-    }
-
-    private static Task<HttpResponseMessage> SendAsync(HttpClient client, string token, HttpMethod method, string relativeUri)
-        => SendAsync<object?>(client, token, method, relativeUri, null);
-
-    private static async Task<HttpResponseMessage> SendAsync<T>(
-        HttpClient client, string token, HttpMethod method, string relativeUri, T body)
-    {
-        using var request = new HttpRequestMessage(method, new Uri(relativeUri, UriKind.Relative));
-        if (body is not null)
-        {
-            request.Content = JsonContent.Create(body);
-        }
-
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return await client.SendAsync(request);
     }
 }

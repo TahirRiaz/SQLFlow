@@ -40,14 +40,24 @@ public static class SubscriberQuestionEnrichment
     /// <summary>
     /// The step every control-plane sync runs once its own transaction has committed: <see cref="ReconcileAsync"/>,
     /// then <see cref="EnrichAsync(CatalogDbContext, Guid, IReadOnlyDictionary{string, string}, QuestionGenerator, CancellationToken)"/>
-    /// when <paramref name="generator"/> is given (question generation is on for this sync). Returns the generation
-    /// warnings.
+    /// when <paramref name="generator"/> is given (the deployment can generate), for the subscribers whose library asks
+    /// for it. Returns the generation warnings.
     /// </summary>
     public static async Task<IReadOnlyList<string>> ApplyAfterSyncAsync(
         CatalogDbContext db, Guid repoId, IReadOnlyDictionary<string, string> before, QuestionGenerator? generator,
         CancellationToken ct)
     {
         var reconciled = await ReconcileAsync(db, repoId, before, ct).ConfigureAwait(false);
+
+        // A subscriber whose library does not ask for generated questions has none served: those a model wrote for it
+        // earlier go, while the ones a person wrote stay.
+        var notAsking = db.Subscribers.Where(s => s.RepoId == repoId && !s.GenerateQuestions).Select(s => s.ObjectKey);
+        var pages = db.SubscriberReportPages.Where(p => p.RepoId == repoId && notAsking.Contains(p.SubscriberKey)).Select(p => p.PageKey);
+        var visuals = db.SubscriberReportVisuals.Where(v => v.RepoId == repoId && pages.Contains(v.PageKey)).Select(v => v.VisualKey);
+        await db.SubscriberReportVisualQuestions
+            .Where(q => q.RepoId == repoId && q.Origin == SubscriberQuestionOrigin.Generated && visuals.Contains(q.VisualKey))
+            .ExecuteDeleteAsync(ct).ConfigureAwait(false);
+
         return generator is null
             ? []
             : await EnrichAsync(db, repoId, reconciled, generator, ct).ConfigureAwait(false);
@@ -222,8 +232,12 @@ public static class SubscriberQuestionEnrichment
         ArgumentNullException.ThrowIfNull(before);
         ArgumentNullException.ThrowIfNull(generate);
 
+        // Only the visuals of a subscriber whose library asks for generated questions (generateQuestions: true): a visual
+        // reaches its subscriber through its page.
+        var asking = db.Subscribers.Where(s => s.RepoId == repoId && s.GenerateQuestions).Select(s => s.ObjectKey);
+        var pages = db.SubscriberReportPages.Where(p => p.RepoId == repoId && asking.Contains(p.SubscriberKey)).Select(p => p.PageKey);
         var visuals = await db.SubscriberReportVisuals.AsNoTracking()
-            .Where(v => v.RepoId == repoId)
+            .Where(v => v.RepoId == repoId && pages.Contains(v.PageKey))
             .ToListAsync(ct).ConfigureAwait(false);
         if (visuals.Count == 0)
         {

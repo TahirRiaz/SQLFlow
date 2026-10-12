@@ -29,8 +29,14 @@ public sealed class QuestionExampleRulesTests
     [InlineData("  !CWD   what is our revenue  ", "what is our revenue")]
     [InlineData("!cwd\twhat is our revenue", "what is our revenue")]
     [InlineData("!cwd", "")]
-    [InlineData("!cwdx what", "!cwdx what")]
+    [InlineData("!what is our revenue", "what is our revenue")]
+    [InlineData("! what is our revenue", "what is our revenue")]
+    [InlineData("!!what is our revenue", "what is our revenue")]
+    [InlineData("!", "")]
+    [InlineData("!cwdx what", "cwdx what")]
+    [InlineData("!cwd!", "cwd!")]
     [InlineData("what about !cwd", "what about !cwd")]
+    [InlineData("what is 5! times 2", "what is 5! times 2")]
     [InlineData(null, "")]
     public void TheBusinessQuestionCommand_IsTakenOffTheFront_AndNothingElse(string? typed, string stored)
     {
@@ -43,6 +49,7 @@ public sealed class QuestionExampleRulesTests
         var atLimit = new string('q', QuestionExampleEndpoints.MaxQuestionLength);
         Assert.Null(QuestionExampleEndpoints.QuestionProblem(atLimit));
         Assert.Null(QuestionExampleEndpoints.QuestionProblem(QuestionExampleEndpoints.NormalizeQuestion("!cwd " + atLimit)));
+        Assert.Null(QuestionExampleEndpoints.QuestionProblem(QuestionExampleEndpoints.NormalizeQuestion("!" + atLimit)));
         Assert.Contains("over the 1000-character limit", QuestionExampleEndpoints.QuestionProblem(atLimit + "q"), StringComparison.Ordinal);
         Assert.Contains("must not be empty", QuestionExampleEndpoints.QuestionProblem(string.Empty), StringComparison.Ordinal);
     }

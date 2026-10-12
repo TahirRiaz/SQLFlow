@@ -36,6 +36,8 @@ public sealed class CliArguments
         "--branch", "--default-type", "--drain-seconds",
         // The powerbi verbs.
         "--subscriber", "--report-file",
+        // The ai-context verbs.
+        "--version",
     }.ToFrozenSet(StringComparer.Ordinal);
 
     /// <summary>

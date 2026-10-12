@@ -60,10 +60,11 @@ public sealed class FlowSetCollector
         // still matches, so existing repos keep working). A .yaml that does not parse as a flow is left out: quietly
         // when it is not a flow at all (a config or unrelated file), and with a warning when it is recognisably a flow
         // that does not load (FlowDocumentRecognition). Shared-schedule libraries are handled by ResolveSchedules,
-        // subscriber libraries by CollectSubscribers, and report specifications by the subscriber that declares them,
-        // so all three are excluded from the flow parse here.
+        // subscriber libraries by CollectSubscribers, report specifications by the subscriber that declares them, and
+        // AI context files by the control plane's AI context sync, so all four are excluded from the flow parse here.
         var files = Directory.EnumerateFiles(root, "*.yaml", SearchOption.AllDirectories)
-            .Where(f => !IsScheduleLibraryFile(f) && !IsSubscriberLibraryFile(f) && !ReportSpecs.IsSpecFile(f))
+            .Where(f => !IsScheduleLibraryFile(f) && !IsSubscriberLibraryFile(f) && !ReportSpecs.IsSpecFile(f)
+                && !IsAiContextFile(f))
             .OrderBy(f => f, StringComparer.Ordinal);
 
         // File producers (invokes that land files) and consumers (file ingestions) are gathered across the whole
@@ -187,6 +188,12 @@ public sealed class FlowSetCollector
         return name.Equals("subscribers.yaml", StringComparison.OrdinalIgnoreCase)
             || name.EndsWith(".subscribers.yaml", StringComparison.OrdinalIgnoreCase);
     }
+
+    /// <summary>Whether a file is an AI context file: <c>ai-context.yaml</c> or a name ending in <c>.ai-context.yaml</c>.
+    /// It is not a flow and never becomes a pipeline: it proposes what an AI assistant may use, which the control plane
+    /// records on each sync and an admin approves. Public for validate and the proposal preflight, mirroring
+    /// <see cref="IsScheduleLibraryFile"/>.</summary>
+    public static bool IsAiContextFile(string path) => YamlAiContextLoader.IsAiContextFile(path);
 
     /// <summary>
     /// Collects the estate's data subscribers: the reports, workbooks, notebooks, and applications that read the

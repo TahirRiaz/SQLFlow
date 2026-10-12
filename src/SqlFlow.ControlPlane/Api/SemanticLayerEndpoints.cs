@@ -48,7 +48,7 @@ public sealed record SemanticReportModelDto(
 
 /// <summary>One semantic layer table's whole grounding bundle: identity, business context, allowed columns, the
 /// servable key, joins, measures, example queries, the Power BI models built on it, the reports and dashboards that
-/// consume it, and the layer-wide instructions.</summary>
+/// consume it, and the AI context that serves it with that context's instructions.</summary>
 public sealed record SemanticTableDto(
     string Key, string ServerRef, string? Database, string? Schema, string Name, string Kind,
     string? BusinessName, string? Description, IReadOnlyList<string> Synonyms,
@@ -59,6 +59,7 @@ public sealed record SemanticTableDto(
     IReadOnlyList<SemanticExampleDto> Examples,
     IReadOnlyList<SemanticReportModelDto> ReportModels,
     IReadOnlyList<ObjectSubscriberDto> Consumers,
+    string? Context,
     string? Instructions);
 
 /// <summary>One semantic layer table in a list: identity, business context, and how many allowed columns it has.</summary>
@@ -69,10 +70,13 @@ public sealed record SemanticTableSummaryDto(
 /// <summary>A (database, schema) that holds semantic layer tables, with how many.</summary>
 public sealed record SemanticSchemaDto(string? Database, string? Schema, int TableCount);
 
-/// <summary>The semantic layer at a glance: the instructions to read first, where its tables live, and every
-/// servable measure.</summary>
+/// <summary>One approved AI context as the assistant sees it: what it covers and how many tables it serves.</summary>
+public sealed record SemanticContextDto(string Name, string? Description, int TableCount);
+
+/// <summary>The semantic layer at a glance: the approved AI contexts it is made of, the instructions to read first
+/// (each headed by its context), where its tables live, and every servable measure.</summary>
 public sealed record SemanticOverviewDto(
-    string? Instructions, int TableCount, IReadOnlyList<SemanticSchemaDto> Schemas,
+    IReadOnlyList<SemanticContextDto> Contexts, string? Instructions, int TableCount, IReadOnlyList<SemanticSchemaDto> Schemas,
     IReadOnlyList<SemanticMeasureDto> Measures);
 
 /// <summary>A table matching a semantic layer search: the table, which of its allowed columns matched, and which
@@ -87,10 +91,10 @@ public sealed record SemanticSearchDto(
     IReadOnlyList<SemanticMeasureDto> Measures);
 
 /// <summary>
-/// The semantic layer as an AI assistant reads it: the only schema surface the chat assistant is given. Everything
-/// here is built from the column allow-list (see <see cref="SemanticLayer"/>), so a table with no allowed column does
-/// not exist on this surface, and a column that is not allowed is never named, not even in a join, key, measure, or
-/// example. Under the read scope, like the catalog's other read surfaces.
+/// The semantic layer as an AI assistant reads it: the approved AI contexts, which are what it answers a question from
+/// warehouse data with. Everything here is built from what those contexts serve (see <see cref="SemanticLayer"/>), so a
+/// table no approved context opens does not exist on this surface, and a column it does not list is never named, not
+/// even in a join, key, measure, or example. Under the read scope, like the catalog's other read surfaces.
 /// </summary>
 public static class SemanticLayerEndpoints
 {
@@ -131,7 +135,22 @@ public static class SemanticLayerEndpoints
             .ToList();
 
         var instructions = await SemanticLayer.LoadInstructionsAsync(db, ct).ConfigureAwait(false);
-        return TypedResults.Ok(new SemanticOverviewDto(instructions, ordered.Sum(s => s.TableCount), ordered, measures));
+
+        // The contexts the layer is made of, so the assistant can tell which area a question belongs to before it
+        // searches: each with the number of tables it serves now (narrowed, it may serve fewer than it was approved with).
+        var contexts = await db.AiContexts.AsNoTracking()
+            .Where(c => c.ApprovedHash != null)
+            .OrderBy(c => c.Name)
+            .Select(c => new
+            {
+                c.Name,
+                c.Description,
+                Tables = db.SemanticObjects.Count(o => o.AiContext == c.Name),
+            })
+            .ToListAsync(ct).ConfigureAwait(false);
+        return TypedResults.Ok(new SemanticOverviewDto(
+            contexts.Where(c => c.Tables > 0).Select(c => new SemanticContextDto(c.Name, c.Description, c.Tables)).ToList(),
+            instructions, ordered.Sum(s => s.TableCount), ordered, measures));
     }
 
     private static async Task<Ok<PagedResult<SemanticTableSummaryDto>>> ListTablesAsync(

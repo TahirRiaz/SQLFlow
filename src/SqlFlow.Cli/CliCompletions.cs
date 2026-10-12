@@ -33,6 +33,7 @@ internal static class CliCompletions
         ("datasources", ["list", "test", "databases", "schemas", "objects", "search", "introspect", "detect-unique-key", "tasks", "task", "cancel"]),
         ("search", []),
         ("powerbi", ["extract", "publish", "list", "remove"]),
+        ("ai-context", ["list", "show", "approve", "revoke", "export"]),
         ("completions", ["bash", "zsh", "powershell"]),
     ];
 

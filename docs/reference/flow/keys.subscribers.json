@@ -4,7 +4,7 @@
   "flowType": "subscribers",
   "generatedFrom": "source code: src/SqlFlow.Core/Subscribers/DataSubscriber.cs, src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs, src/SqlFlow.Lineage/Collection/FlowSetCollector.cs",
   "naming": "The loader builds its YamlDotNet IDeserializer with CamelCaseNamingConvention + IgnoreUnmatchedProperties. A C# PascalCase property binds to the camelCase YAML key. A subscriber library is NOT a flow document: it is selected by the root 'subscribers:' key rather than by a flowType, never becomes a pipeline, and never joins a schedule or an execution wave. The 'connections' block is the shared one every flow document uses and is merged in from keys.shared.json, so there is one definition of it.",
-  "keyCount": 11,
+  "keyCount": 13,
   "keys": [
     {
       "path": "subscribers",
@@ -61,6 +61,22 @@
       "default": "null",
       "description": "The default connection alias for every query that does not name its own. It must be a key of this file's 'connections:' block.",
       "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs"
+    },
+    {
+      "path": "subscribers.<name>.pbix",
+      "type": "string (path)",
+      "required": false,
+      "default": "none",
+      "description": "The Power BI report backing the subscriber, relative to the scanned folder: a .pbix the sync extracts where it has pbix-extract, a .pbix.yaml specification made with 'sqlflow powerbi extract', or a folder holding either. Its pages, visuals and model join the catalog, and its visuals' queries become the subscriber's reads.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs, src/SqlFlow.Lineage/Collection/FlowSetCollector.cs"
+    },
+    {
+      "path": "subscribers.<name>.generateQuestions",
+      "type": "bool",
+      "required": false,
+      "default": "false",
+      "description": "Whether a control-plane sync asks a model to write business questions for this subscriber's report visuals, so the assistant can find a visual from a question. Off unless set: generating calls a model for every new or changed visual. Needs an Anthropic key on the control plane (ControlPlane:Assistant:Anthropic:ApiKey); without one the sync says so. Turning it off removes the questions a model wrote for the report; the ones a person wrote stay.",
+      "definedIn": "src/SqlFlow.Yaml/YamlSubscriberLibraryLoader.cs, src/SqlFlow.ControlPlane/Background/SubscriberQuestionEnrichment.cs"
     },
     {
       "path": "subscribers.<name>.queries",

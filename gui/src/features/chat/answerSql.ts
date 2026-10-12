@@ -6,9 +6,13 @@
  * question is caught before a round trip rather than coming back a 400. */
 export const MAX_QUESTION_LENGTH = 1000;
 
-/** The chat command that routes a message down the business-question path ("!cwd what is our revenue"). The store
- * keeps the question without it (QuestionExampleEndpoints.NormalizeQuestion). */
-export const BUSINESS_QUESTION_COMMAND = "!cwd";
+/** The chat command that routes a message down the business-question path: a message that begins with it ("!what is
+ * our revenue") is answered from the approved AI contexts. The store keeps the question without it
+ * (QuestionExampleEndpoints.NormalizeQuestion). */
+export const BUSINESS_QUESTION_COMMAND = "!";
+
+/** The word that may follow the command ("!cwd what is our revenue"), the command's earlier spelling. */
+export const BUSINESS_QUESTION_WORD = "cwd";
 
 const OPENING_FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
@@ -89,14 +93,24 @@ export function messageText(content: readonly { type: string; text?: string }[])
     .join("\n");
 }
 
-/** A question as the store keeps it: trimmed, and without a leading business-question command. */
+/** A question as the store keeps it: trimmed, and without the leading command (one or more of it, then the command's
+ * earlier word when that follows on its own). */
 export function normalizeQuestion(question: string): string {
   const trimmed = question.trim();
-  const command = BUSINESS_QUESTION_COMMAND.length;
-  if (trimmed.slice(0, command).toLowerCase() === BUSINESS_QUESTION_COMMAND
-    && (trimmed.length === command || /\s/.test(trimmed[command]))) {
-    return trimmed.slice(command).trimStart();
+  if (!trimmed.startsWith(BUSINESS_QUESTION_COMMAND)) {
+    return trimmed;
   }
 
-  return trimmed;
+  let rest = trimmed;
+  while (rest.startsWith(BUSINESS_QUESTION_COMMAND)) {
+    rest = rest.slice(BUSINESS_QUESTION_COMMAND.length);
+  }
+
+  rest = rest.trimStart();
+  const word = BUSINESS_QUESTION_WORD.length;
+  if (rest.slice(0, word).toLowerCase() === BUSINESS_QUESTION_WORD && (rest.length === word || /\s/.test(rest[word]))) {
+    rest = rest.slice(word).trimStart();
+  }
+
+  return rest;
 }

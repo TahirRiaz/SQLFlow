@@ -593,6 +593,41 @@ internal sealed class ControlPlaneClient : IDisposable
         }
     }
 
+    // ---- AI contexts --------------------------------------------------------------------------------------
+
+    /// <summary>Every AI context and where it stands.</summary>
+    public Task<AiContextListDto> ListAiContextsAsync(CancellationToken ct)
+        => GetAsync<AiContextListDto>("/api/v1/powerai/ai-contexts", ct);
+
+    /// <summary>One AI context in full; null when no context has the name.</summary>
+    public Task<AiContextDetailDto?> GetAiContextAsync(string name, CancellationToken ct)
+        => GetOrNullAsync<AiContextDetailDto>($"/api/v1/powerai/ai-contexts/{Uri.EscapeDataString(name)}", ct);
+
+    /// <summary>Approves <paramref name="version"/> of context <paramref name="name"/>.</summary>
+    public Task<AiContextDetailDto> ApproveAiContextAsync(string name, string version, CancellationToken ct)
+        => PostAsync<AiContextDetailDto>(
+            $"/api/v1/powerai/ai-contexts/{Uri.EscapeDataString(name)}/approve", new ApproveAiContextRequest(version), ct);
+
+    /// <summary>Revokes context <paramref name="name"/>'s approval.</summary>
+    public Task<AiContextDetailDto> RevokeAiContextAsync(string name, CancellationToken ct)
+        => PostAsync<AiContextDetailDto>($"/api/v1/powerai/ai-contexts/{Uri.EscapeDataString(name)}/revoke", new { }, ct);
+
+    /// <summary>What was written in the GUI before AI contexts were files, as a context file; null when nothing was.</summary>
+    public async Task<string?> ExportEarlierAiContentAsync(CancellationToken ct)
+    {
+        const string Path = "/api/v1/powerai/ai-contexts/earlier-content";
+        using var request = NewRequest(HttpMethod.Get, Path);
+        using var timeout = Budget(ct);
+        using var response = await _http.SendAsync(request, timeout.Token).ConfigureAwait(false);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        await EnsureSuccessAsync(response, timeout.Token).ConfigureAwait(false);
+        return await response.Content.ReadAsStringAsync(timeout.Token).ConfigureAwait(false);
+    }
+
     // ---- plumbing -----------------------------------------------------------------------------------------
 
     private static string Paging(int page, int pageSize)

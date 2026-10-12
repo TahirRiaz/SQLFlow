@@ -10,27 +10,13 @@ using SqlFlow.Core;
 namespace SqlFlow.ControlPlane.Api;
 
 /// <summary>
-/// An edit to a saved answer.
-/// </summary>
-/// <param name="Question">The question, as a person would type it.</param>
-/// <param name="Sql">The query that answers it; refused unless it is a single read-only SELECT over allow-listed
-/// columns, exactly as a confirmation is.</param>
-/// <param name="SourceRef">The datasource to run it against, or blank to work it out from the tables the query reads.</param>
-public sealed record UpdateSemanticExampleRequest(string? Question, string? Sql, string? SourceRef);
-
-/// <summary>
-/// Curating the semantic layer's example queries: the saved answers the PowerAI assistant reuses. List and search them,
-/// correct one, or delete one that should no longer be precedent. Confirming stays the only way an answer is ADDED
-/// (<see cref="QuestionExampleEndpoints"/>); this surface, part of the semantic layer editor, only curates what is stored.
+/// The semantic layer's example queries, the saved answers the assistant reuses: list and search them, read one, and
+/// remove one that should no longer be precedent. Answers are added by a person confirming one in chat
+/// (<see cref="QuestionExampleEndpoints"/>), by a report, or by an approved AI context's file; none is edited here.
 /// <para>
-/// It lives under the "admin" scope, not "operate" like confirming. Confirming adds a pair a person just checked in
-/// their own conversation; editing or deleting rewrites precedent other people's answers are grounded in, and a
-/// trusted example auto-runs with no approval, so changing one is curation of the layer rather than a user's own verdict.
-/// </para>
-/// <para>
-/// An edit goes through the same validation a confirmation does (<see cref="QuestionExampleEndpoints.QuestionProblem"/>,
-/// <see cref="QuestionExampleEndpoints.ValidateSqlAsync"/>, <see cref="QuestionExampleEndpoints.SourceRefProblemAsync"/>),
-/// so the store cannot come to hold anything through this door that the confirm door would refuse.
+/// It lives under the "admin" scope: removing an answer changes precedent other people's answers are grounded in, and a
+/// trusted example auto-runs with no approval. An example an AI context gives is removed from its file instead, so the
+/// file and what is served never disagree.
 /// </para>
 /// </summary>
 public static class SemanticExampleAdminEndpoints
@@ -42,7 +28,6 @@ public static class SemanticExampleAdminEndpoints
         var examples = group.MapGroup("/powerai/semantic-layer/examples").WithTags("PowerAI");
         examples.MapGet(string.Empty, ListAsync).WithName("ListSemanticLayerExamples");
         examples.MapGet("/{id:long}", GetAsync).WithName("GetSemanticLayerExample");
-        examples.MapPut("/{id:long}", UpdateAsync).WithName("UpdateSemanticLayerExample");
         examples.MapDelete("/{id:long}", DeleteAsync).WithName("DeleteSemanticLayerExample");
 
         return group;
@@ -102,115 +87,36 @@ public static class SemanticExampleAdminEndpoints
     /// out from those objects, the same inference confirming uses. The editor becomes the person standing behind the
     /// answer, because a trusted example auto-runs on the strength of someone having checked exactly this SQL.
     /// </summary>
-    private static async Task<Results<Ok<SemanticExampleAdminDto>, ProblemHttpResult>> UpdateAsync(
-        long id, UpdateSemanticExampleRequest request, CatalogDbContext db, TimeProvider clock, ClaimsPrincipal user,
-        CancellationToken ct)
+    /// <summary>Deletes a saved answer a person confirmed or a report gave. Later similar questions stop finding it, and
+    /// it can no longer be auto-run. One an AI context gives is refused: removing it from the context's file is what
+    /// removes it.</summary>
+    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
+        long id, CatalogDbContext db, CancellationToken ct)
     {
-        if (request is null)
-        {
-            return Invalid("A request body is required.");
-        }
-
-        var question = QuestionExampleEndpoints.NormalizeQuestion(request.Question);
-        if (QuestionExampleEndpoints.QuestionProblem(question) is { } questionProblem)
-        {
-            return Invalid(questionProblem);
-        }
-
-        string sql;
-        try
-        {
-            sql = await QuestionExampleEndpoints.ValidateSqlAsync(db, request.Sql, ct).ConfigureAwait(false);
-        }
-        catch (SqlFlowException ex)
-        {
-            return TypedResults.Problem(detail: ex.Message, statusCode: StatusCodes.Status400BadRequest, title: "Query refused");
-        }
-
-        var sourceRef = SemanticLayer.TrimToNull(request.SourceRef);
-        if (sourceRef is not null
-            && await QuestionExampleEndpoints.SourceRefProblemAsync(db, sourceRef, ct).ConfigureAwait(false) is { } sourceRefProblem)
-        {
-            return sourceRefProblem;
-        }
-
-        var example = await db.SemanticExamples.AsTracking()
-            .FirstOrDefaultAsync(e => e.Id == id, ct).ConfigureAwait(false);
-        if (example is null)
+        var context = await db.SemanticExamples.AsNoTracking()
+            .Where(e => e.Id == id)
+            .Select(e => new { e.AiContext })
+            .FirstOrDefaultAsync(ct).ConfigureAwait(false);
+        if (context is null)
         {
             return NotFound(id);
         }
 
-        var hash = SemanticExampleHash.Compute(question, sql);
-        if (await IsDuplicateAsync(db, hash, id, ct).ConfigureAwait(false))
+        if (context.AiContext is not null)
         {
-            return Duplicate();
+            return TypedResults.Problem(
+                detail: $"This answer is given by AI context '{context.AiContext}'. Remove it from that context's file; the "
+                    + "next sync stops serving it.",
+                statusCode: StatusCodes.Status409Conflict, title: "Given by an AI context");
         }
 
-        // Compared through the hash's own normalization (case and whitespace folded), so reformatting the SQL is not
-        // mistaken for a different query whose objects need resolving again.
-        var sqlChanged = !string.Equals(
-            SemanticExampleHash.Compute(string.Empty, example.Sql),
-            SemanticExampleHash.Compute(string.Empty, sql),
-            StringComparison.Ordinal);
-        if (sqlChanged)
-        {
-            example.ObjectKeys = QuestionExampleEndpoints.JoinObjectKeys(
-                await DatasourceInference.ObjectKeysFromSqlAsync(db, sql, ct).ConfigureAwait(false));
-        }
-
-        example.SourceRef = sourceRef
-            ?? (await DatasourceInference.InferAsync(
-                db, sql, QuestionExampleEndpoints.SplitObjectKeys(example.ObjectKeys), ct).ConfigureAwait(false)).Reference;
-        example.Question = question;
-        example.Sql = sql;
-        example.ContentHash = hash;
-        example.Provenance = SemanticExampleProvenance.UserConfirmed;
-        example.ConfirmedBy = SemanticLayer.Actor(user);
-        example.ConfirmedUtc = clock.GetUtcNow().UtcDateTime;
-
-        try
-        {
-            await db.SaveChangesAsync(ct).ConfigureAwait(false);
-        }
-        catch (DbUpdateException)
-        {
-            // The duplicate check above and the save are not atomic: the unique index on the hash is what finally
-            // decides, and a loss to a concurrent write of the same pair is reported as the conflict it is.
-            db.ChangeTracker.Clear();
-            if (await IsDuplicateAsync(db, hash, id, ct).ConfigureAwait(false))
-            {
-                return Duplicate();
-            }
-
-            throw;
-        }
-
-        return TypedResults.Ok((await SemanticLayer.ExampleEvaluation.OfAsync(db, example, ct).ConfigureAwait(false)).ToAdminDto());
-    }
-
-    /// <summary>Deletes a saved answer. Later similar questions stop finding it, and it can no longer be auto-run.</summary>
-    private static async Task<Results<NoContent, ProblemHttpResult>> DeleteAsync(
-        long id, CatalogDbContext db, CancellationToken ct)
-    {
-        var deleted = await db.SemanticExamples.Where(e => e.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+        var deleted = await db.SemanticExamples.Where(e => e.Id == id && e.AiContext == null)
+            .ExecuteDeleteAsync(ct).ConfigureAwait(false);
         return deleted == 0 ? NotFound(id) : TypedResults.NoContent();
     }
-
-    private static Task<bool> IsDuplicateAsync(CatalogDbContext db, string hash, long id, CancellationToken ct)
-        => db.SemanticExamples.AsNoTracking().AnyAsync(e => e.ContentHash == hash && e.Id != id, ct);
-
-    private static ProblemHttpResult Invalid(string detail)
-        => TypedResults.Problem(detail: detail, statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
 
     private static ProblemHttpResult NotFound(long id)
         => TypedResults.Problem(
             detail: $"No saved answer with id '{id.ToString(CultureInfo.InvariantCulture)}'.",
             statusCode: StatusCodes.Status404NotFound, title: "Not found");
-
-    private static ProblemHttpResult Duplicate()
-        => TypedResults.Problem(
-            detail: "Another saved answer already has this question and query. Delete one of them instead of making "
-                + "them identical.",
-            statusCode: StatusCodes.Status409Conflict, title: "Duplicate saved answer");
 }

@@ -73,7 +73,7 @@ internal static class Program
         var needsFile = moduleVerb is null && command is not ("healthcheck" or "auth" or "db" or "worker" or "runs" or "user" or "detect-unique-key"
             or "health" or "login" or "logout" or "trigger" or "groups"
             or "whoami" or "doctor" or "summary" or "nodes" or "schedules" or "repos" or "pipelines"
-            or "datasources" or "search" or "completions" or "powerbi");
+            or "datasources" or "search" or "completions" or "powerbi" or "ai-context");
         if (positional.Length < (needsFile ? 2 : 1) || args.Any(a => a is "-h" or "--help"))
         {
             PrintUsage(modules);
@@ -581,6 +581,9 @@ internal static class Program
 
                 case "powerbi":
                     return await RemoteVerbs.PowerBiAsync(positional, args).ConfigureAwait(false);
+
+                case "ai-context":
+                    return await RemoteVerbs.AiContextAsync(positional, args).ConfigureAwait(false);
 
                 case "completions":
                     return CliCompletions.Print(positional, modules);
@@ -2578,6 +2581,13 @@ internal static class Program
               sqlflow powerbi list [--repo r] [--subscriber s] | remove <id>
                                                  The reports the semantic layer holds (uploads, and the copies syncs
                                                  kept of declared .pbix files), and removing one.
+              sqlflow ai-context list | show <name> | approve <name> --version <v> | revoke <name>
+                               | export [--out <file>|-]
+                                                 The AI contexts repository files propose (ai-context.yaml,
+                                                 *.ai-context.yaml): where each stands, one in full with what approving
+                                                 it would change, approving the version shown (admin), revoking an
+                                                 approval, and exporting what was written in the GUI before contexts
+                                                 were files as a context file to commit.
               sqlflow doctor                     One pass over this machine's SQLFlow setup: the resolved .sqlflow/env,
                                                  which SQLFLOW_* variables are set (values never printed), control
                                                  plane live/ready + credential identity, and catalog DB reachability

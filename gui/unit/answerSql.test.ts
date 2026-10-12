@@ -74,15 +74,27 @@ describe("labels", () => {
 
 describe("normalizeQuestion", () => {
   it("takes the business-question command off the front, as the store does", () => {
+    assert.equal(normalizeQuestion("!what is our revenue"), "what is our revenue");
+    assert.equal(normalizeQuestion("! what"), "what");
+    assert.equal(normalizeQuestion("!!what"), "what");
+    assert.equal(normalizeQuestion("!"), "");
+  });
+
+  it("takes the command's earlier word off too, only as a word of its own", () => {
     assert.equal(normalizeQuestion("!cwd what is our revenue"), "what is our revenue");
     assert.equal(normalizeQuestion("  !CWD \t what is our revenue  "), "what is our revenue");
     assert.equal(normalizeQuestion("!cwd"), "");
-    assert.equal(normalizeQuestion("!cwdx what"), "!cwdx what");
+    assert.equal(normalizeQuestion("!cwdx what"), "cwdx what");
+  });
+
+  it("leaves a question that does not start with the command as it is, trimmed", () => {
     assert.equal(normalizeQuestion("what about !cwd"), "what about !cwd");
+    assert.equal(normalizeQuestion("  what is our revenue  "), "what is our revenue");
   });
 
   it("measures a question as it is stored, so the command never pushes it over the limit", () => {
     const atLimit = "q".repeat(MAX_QUESTION_LENGTH);
     assert.equal(normalizeQuestion("!cwd " + atLimit).length, MAX_QUESTION_LENGTH);
+    assert.equal(normalizeQuestion("!" + atLimit).length, MAX_QUESTION_LENGTH);
   });
 });

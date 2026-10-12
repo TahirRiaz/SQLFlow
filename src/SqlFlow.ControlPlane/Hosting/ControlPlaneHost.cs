@@ -104,6 +104,7 @@ public static class ControlPlaneHost
         {
             ("ControlPlane:Reaper", "ControlPlane:Dispatch (node leases replaced the orphan reaper)"),
             ("ControlPlane:Worker:PollMilliseconds", "ControlPlane:Dispatch:LongPollSeconds (nodes long-poll the dispatcher; there is no catalog poll)"),
+            ("ControlPlane:PowerAI:QuestionGeneration", "'generateQuestions: true' on each subscriber in its subscriber library (questions are generated per subscriber wherever ControlPlane:Assistant:Anthropic:ApiKey is set)"),
         })
         {
             if (builder.Configuration.GetSection(retired).Exists())
@@ -292,12 +293,11 @@ public static class ControlPlaneHost
         // ---- PowerAI: question generation and retrieval, each independent of the interactive chat assistant above and
         // of each other (a deployment may run any one without the others). Both reuse the same Anthropic account/model
         // rather than declaring their own, since both draw on the same subscription, so the resolved options are
-        // registered once when EITHER needs them. Question generation is switched at runtime (an admin can turn it on or
-        // off from the semantic layer page, over the configured default), so its generator is registered wherever there is
-        // a key to generate with and QuestionGenerationSwitch decides, per sync, whether it is called. Synonym expansion is
-        // registered only when its own switch is on. A deployment without a key never attempts an Anthropic call.
-        builder.Services.AddSingleton<QuestionGenerationSwitch>();
-        var generationAvailable = !string.IsNullOrWhiteSpace(options.Assistant.Anthropic.ApiKey);
+        // registered once when EITHER needs them. Question generation runs for the subscribers whose library asks for it
+        // (generateQuestions: true), so its generator is registered wherever there is a key to generate with. Synonym
+        // expansion is registered only when its own switch is on. A deployment without a key never attempts an Anthropic
+        // call.
+        var generationAvailable = QuestionGenerationAvailability.IsAvailable(options);
         var expandsSynonyms = options.PowerAI.Retrieval.Enabled && options.PowerAI.Retrieval.ExpandSynonyms;
         if (generationAvailable || expandsSynonyms)
         {
@@ -595,11 +595,13 @@ public static class ControlPlaneHost
         // token that requested it).
         v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Admin)
             .MapUserEndpoints()
+            // The AI contexts files propose: where each stands, what approving it would change, approve and revoke.
+            .MapAiContextEndpoints()
             .MapColumnPolicyEndpoints()
             .MapSemanticLayerAdminEndpoints()
-            // Curating the semantic layer's example queries (the saved answers): list, correct, and delete what confirming stored.
+            // The semantic layer's example queries (the saved answers): list, read, and remove one a person or a report gave.
             .MapSemanticExampleAdminEndpoints()
-            // The Power BI reports the layer holds: upload (extracted in the isolated extractor), list, and remove.
+            // The Power BI reports the layer holds: store (extracted in the isolated extractor), list, and remove.
             .MapSemanticReportEndpoints();
 
         // The node protocol: compute nodes poll for work and report outcomes here, under the "node" scope. This is the

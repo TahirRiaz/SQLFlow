@@ -73,6 +73,9 @@ public sealed class YamlSubscriberLibraryLoader
         /// <summary>The Power BI report file backing this subscriber, relative to the scanned folder.</summary>
         public string? Pbix { get; set; }
 
+        /// <summary>Whether a sync generates business questions for the report's visuals.</summary>
+        public bool? GenerateQuestions { get; set; }
+
         public List<QueryYaml?>? Queries { get; set; }
     }
 
@@ -197,6 +200,7 @@ public sealed class YamlSubscriberLibraryLoader
                 Server = defaultServer,
                 IsRegisteredSource = registeredSource,
                 Pbix = Trimmed(entry.Pbix),
+                GenerateQuestions = entry.GenerateQuestions ?? false,
                 Queries = queries,
             });
         }

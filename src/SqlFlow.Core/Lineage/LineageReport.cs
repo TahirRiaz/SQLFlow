@@ -116,6 +116,9 @@ public sealed record LineageSubscriberNode
     /// <summary>Where the subscriber lives (report URL, workbook path, repository).</summary>
     public string? Url { get; init; }
 
+    /// <summary>Whether its library asks a sync to generate business questions for its report's visuals.</summary>
+    public bool GenerateQuestions { get; init; }
+
     /// <summary>The queries it runs, in declaration order: the evidence behind its read edges.</summary>
     public required IReadOnlyList<LineageSubscriberQuery> Queries { get; init; }
 

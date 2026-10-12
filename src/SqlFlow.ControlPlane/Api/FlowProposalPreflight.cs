@@ -84,6 +84,18 @@ public static class FlowProposalPreflight
                 continue;
             }
 
+            if (FlowSetCollector.IsAiContextFile(file.Path))
+            {
+                // Its tables are resolved against the catalog once it merges and syncs; until an admin approves it, it
+                // changes nothing an assistant sees, so what the file itself says is all a proposal can check.
+                foreach (var problem in YamlAiContextLoader.Parse(file.Content, file.Path).Problems)
+                {
+                    warnings.Add(new ProposalFinding(file.Path, problem));
+                }
+
+                continue;
+            }
+
             if (FlowSetCollector.IsSubscriberLibraryFile(file.Path))
             {
                 // The unlinked-subscriber notes are included: a proposal cannot see reports uploaded to the

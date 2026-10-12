@@ -54,6 +54,11 @@ public sealed record DataSubscriber
     /// against the objects schema registration flows registered (see <see cref="RegisteredSource"/>).</summary>
     public bool IsRegisteredSource { get; init; }
 
+    /// <summary>Whether a control-plane sync generates business questions for this subscriber's report visuals
+    /// (<c>generateQuestions: true</c>). Off unless the library turns it on: generating calls a model for every new or
+    /// changed visual, so it is a decision about one report, written where the report is declared.</summary>
+    public bool GenerateQuestions { get; init; }
+
     /// <summary>The queries the subscriber runs against the warehouse. Every one is parsed, and the objects it
     /// touches become the subscriber's lineage edges; a subscriber with no queries is a node nothing connects
     /// to, which the collector reports rather than silently accepting.</summary>

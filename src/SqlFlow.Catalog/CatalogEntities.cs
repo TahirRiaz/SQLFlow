@@ -645,6 +645,11 @@ public class CatalogLineageEdge
 /// </summary>
 public class CatalogSubscriber
 {
+    /// <summary>Whether a sync generates business questions for this subscriber's report visuals, as its subscriber
+    /// library declares (<c>generateQuestions: true</c>). Off unless the library turns it on, and only acted on where
+    /// the deployment has an Anthropic key to generate with.</summary>
+    public bool GenerateQuestions { get; set; }
+
     public long Id { get; set; }
 
     public Guid RepoId { get; set; }
@@ -1120,6 +1125,11 @@ public class CatalogSemanticExample
     /// connection to run <see cref="Sql"/> against, the same way a person picks a datasource from the GUI before
     /// asking a question.</summary>
     public string? SourceRef { get; set; }
+
+    /// <summary>The AI context whose approved version wrote this example (<see cref="SemanticExampleProvenance.AiContext"/>),
+    /// or null for one a person confirmed or a report gave. A context's examples go with its approval: revoking it, or
+    /// a file that no longer gives the question, removes them.</summary>
+    public string? AiContext { get; set; }
 }
 
 /// <summary>
@@ -1209,10 +1219,14 @@ public static class SemanticExampleProvenance
     /// <summary>Accepted or corrected by a person: a question this estate has answered and checked.</summary>
     public const string UserConfirmed = "user-confirmed";
 
+    /// <summary>Given by an AI context file and approved, with the rest of its context, by an admin.</summary>
+    public const string AiContext = "ai-context";
+
     /// <summary>Whether <paramref name="value"/> is one of the provenances above.</summary>
     public static bool IsKnown(string? value)
         => string.Equals(value, PowerBi, StringComparison.Ordinal)
-            || string.Equals(value, UserConfirmed, StringComparison.Ordinal);
+            || string.Equals(value, UserConfirmed, StringComparison.Ordinal)
+            || string.Equals(value, AiContext, StringComparison.Ordinal);
 }
 
 /// <summary>
@@ -1554,13 +1568,13 @@ public class CatalogObjectColumn
 }
 
 /// <summary>
-/// An allow-list entry for one column of a catalog object: an admin-authored policy that decides whether the
-/// column may appear on every AI-facing surface (schema search, object describe/dossier, and the ad-hoc query
-/// guard) regardless of what the warehouse itself reports. The model is default-deny: a column with no row here
-/// at all, or a row with <see cref="IsAllowed"/> false, cannot be read; only a row with <see cref="IsAllowed"/>
-/// true opens it up. This closes the gap a blacklist cannot: an object the catalog has no record of (a synonym,
-/// or anything else not harvested into the catalog) has no allow-list entry either, so it is refused by the same
-/// rule rather than passing unchecked.
+/// An allow-list entry for one column of a catalog object: whether an AI assistant's queries may read it, and what it
+/// means. Rows are written only when an admin approves an AI context (<see cref="CatalogAiContext"/>) listing the
+/// column, and removed when that approval is revoked or the context stops listing it. The model is default-deny: a
+/// column with no row here at all, or a row with <see cref="IsAllowed"/> false, cannot be read; only a row with
+/// <see cref="IsAllowed"/> true opens it up. This closes the gap a blacklist cannot: an object the catalog has no
+/// record of (a synonym, or anything else not harvested into the catalog) has no allow-list entry either, so it is
+/// refused by the same rule rather than passing unchecked.
 ///
 /// Deliberately its own table, not a flag on <see cref="CatalogObjectColumn"/>, because that table is fully
 /// replaced (delete-by-key + re-insert) on every connected sync; a flag living there would be silently lost the
@@ -1587,8 +1601,8 @@ public class CatalogColumnPolicy
     /// "PII" or "compensation data"). Optional context, not enforced.</summary>
     public string? Reason { get; set; }
 
-    /// <summary>The column's business meaning as the semantic layer states it (for example "Net amount in NOK,
-    /// excluding VAT"). Lives on the policy row because this row already IS the semantic layer's per-column
+    /// <summary>The column's business meaning as the semantic layer states it (for example "Line amount in the
+    /// reporting currency, excluding tax"). Lives on the policy row because this row already IS the semantic layer's per-column
     /// record: the allow-list decides whether the column is in the layer at all, and this says what it means
     /// once it is. Only served to an assistant while <see cref="IsAllowed"/> is true.</summary>
     public string? Description { get; set; }
@@ -1598,10 +1612,14 @@ public class CatalogColumnPolicy
     public string? Synonyms { get; set; }
 
     /// <summary>The identity (subject claim) that last changed this row, for an audit trail on a restriction
-    /// that gates what an AI assistant may read.</summary>
+    /// that gates what an AI assistant may read: the admin who approved the context that wrote it.</summary>
     public string? UpdatedBy { get; set; }
 
     public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>The AI context whose approved version wrote this row, or null for a row written before contexts were
+    /// files (kept only so it can be exported). Only the context's own approval and revocation write or remove it.</summary>
+    public string? AiContext { get; set; }
 }
 
 /// <summary>
@@ -1619,7 +1637,7 @@ public class CatalogSemanticObject
     /// <summary>The annotated object's global key (server reference + database + schema + name).</summary>
     public string ObjectKey { get; set; } = string.Empty;
 
-    /// <summary>The name a business reader knows the table by (for example "Bike trips"), or null.</summary>
+    /// <summary>The name a business reader knows the table by (for example "Order lines"), or null.</summary>
     public string? BusinessName { get; set; }
 
     /// <summary>What one row of the table represents and anything a query author must know about it.</summary>
@@ -1636,6 +1654,10 @@ public class CatalogSemanticObject
     public string? UpdatedBy { get; set; }
 
     public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>The AI context whose approved version wrote this row, or null for a row written before contexts were
+    /// files (kept only so it can be exported). Only the context's own approval and revocation write or remove it.</summary>
+    public string? AiContext { get; set; }
 }
 
 /// <summary>
@@ -1672,6 +1694,10 @@ public class CatalogSemanticRelationship
     public string? UpdatedBy { get; set; }
 
     public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>The AI context whose approved version wrote this row, or null for a row written before contexts were
+    /// files (kept only so it can be exported). Only the context's own approval and revocation write or remove it.</summary>
+    public string? AiContext { get; set; }
 }
 
 /// <summary>The join types a <see cref="CatalogSemanticRelationship"/> may declare, named once so the writer, the
@@ -1706,7 +1732,7 @@ public class CatalogSemanticMeasure
     /// <summary>The object whose columns <see cref="Expression"/> reads.</summary>
     public string ObjectKey { get; set; } = string.Empty;
 
-    /// <summary>The SQL expression, stored verbatim as the admin wrote it.</summary>
+    /// <summary>The SQL expression, stored verbatim as its context file wrote it.</summary>
     public string Expression { get; set; } = string.Empty;
 
     public string? Description { get; set; }
@@ -1714,12 +1740,16 @@ public class CatalogSemanticMeasure
     public string? UpdatedBy { get; set; }
 
     public DateTime UpdatedUtc { get; set; }
+
+    /// <summary>The AI context whose approved version wrote this row, or null for a row written before contexts were
+    /// files (kept only so it can be exported). Only the context's own approval and revocation write or remove it.</summary>
+    public string? AiContext { get; set; }
 }
 
 /// <summary>
-/// The semantic layer's layer-wide settings: a single row (<see cref="SingletonId"/>) holding the general
-/// instructions an assistant reads before writing SQL against the layer (conventions, fiscal calendar, which
-/// status values count as active, and the like).
+/// The semantic layer's layer-wide settings: a single row (<see cref="SingletonId"/>). It held the general
+/// instructions an admin typed in the GUI before AI contexts were files. Those are no longer served (each approved
+/// context carries its own), and are kept only so they can be exported into a context file.
 /// </summary>
 public class CatalogSemanticLayerSettings
 {
@@ -1728,24 +1758,72 @@ public class CatalogSemanticLayerSettings
 
     public int Id { get; set; }
 
-    /// <summary>Markdown instructions for an assistant, or null when none are written yet.</summary>
+    /// <summary>The instructions typed in the GUI before contexts were files, or null. Exported, never served.</summary>
     public string? Instructions { get; set; }
-
-    /// <summary>An admin's choice of whether a sync generates business questions for Power BI report visuals, or null
-    /// to follow the deployment's <c>ControlPlane:PowerAI:QuestionGeneration:Enabled</c>. Only takes effect where the
-    /// deployment has an Anthropic key to generate with.</summary>
-    public bool? QuestionGeneration { get; set; }
-
-    /// <summary>Who last set <see cref="QuestionGeneration"/>, kept apart from <see cref="UpdatedBy"/> so an
-    /// instructions edit does not claim the switch.</summary>
-    public string? QuestionGenerationUpdatedBy { get; set; }
-
-    /// <summary>When <see cref="QuestionGeneration"/> was last set.</summary>
-    public DateTime? QuestionGenerationUpdatedUtc { get; set; }
 
     public string? UpdatedBy { get; set; }
 
     public DateTime UpdatedUtc { get; set; }
+}
+
+/// <summary>
+/// One AI context: what an AI assistant may use when it answers a question from warehouse data, as an AI context file
+/// in a synced repository proposes it and an admin approves it. A file only proposes: every sync records the version
+/// it finds (<see cref="CurrentJson"/>), and nothing of it reaches an assistant until an admin approves that exact
+/// version (<see cref="ApprovedJson"/>). The approved version is then what is served, narrowed by the file as it stands:
+/// a table, column, measure, join or example the file no longer gives stops being served at the next sync, while
+/// anything it adds or changes waits for the next approval.
+/// <para>
+/// What the approved version serves lives in the semantic layer's own tables, each row marked with this context's
+/// name (<c>AiContext</c>), so the assistant-facing reads and the query guards are unchanged and only an approval, a
+/// revocation or a sync's narrowing writes them.
+/// </para>
+/// </summary>
+public class CatalogAiContext
+{
+    public long Id { get; set; }
+
+    /// <summary>The context's name, from its file's root <c>aiContext:</c> key, unique across the estate.</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>The repository whose file defines the context. A file in another repository naming the same context
+    /// is reported and ignored while this one exists.</summary>
+    public Guid RepoId { get; set; }
+
+    /// <summary>The file's path within the repository, forward-slashed.</summary>
+    public string Path { get; set; } = string.Empty;
+
+    /// <summary>The context's description as the file currently gives it.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>The version the file currently proposes, resolved against the catalog, as JSON; null while the file
+    /// does not read (its problems say why).</summary>
+    public string? CurrentJson { get; set; }
+
+    /// <summary>The lowercase-hex SHA-256 of <see cref="CurrentJson"/>: the version an admin approves.</summary>
+    public string? CurrentHash { get; set; }
+
+    /// <summary>Why the current version cannot be approved, as a JSON array of messages, or null when it can.</summary>
+    public string? Problems { get; set; }
+
+    /// <summary>When a sync last read the file.</summary>
+    public DateTime SyncedUtc { get; set; }
+
+    /// <summary>The version an admin approved, as JSON, or null while none is.</summary>
+    public string? ApprovedJson { get; set; }
+
+    /// <summary>The SHA-256 of <see cref="ApprovedJson"/>.</summary>
+    public string? ApprovedHash { get; set; }
+
+    /// <summary>Who approved it (the subject claim, falling back to the principal's name).</summary>
+    public string? ApprovedBy { get; set; }
+
+    /// <summary>When it was approved.</summary>
+    public DateTime? ApprovedUtc { get; set; }
+
+    /// <summary>The instructions the context serves: the approved version's, while the file still gives instructions;
+    /// null otherwise. Kept beside the served rows by the same writer, so a read needs no version JSON.</summary>
+    public string? Instructions { get; set; }
 }
 
 /// <summary>

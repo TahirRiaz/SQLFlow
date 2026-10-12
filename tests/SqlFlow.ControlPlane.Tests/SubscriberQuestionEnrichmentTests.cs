@@ -12,18 +12,51 @@ namespace SqlFlow.ControlPlane.Tests;
 /// never the question rows, so these tests seed the post-sync state directly and run the step that follows a sync:
 /// an unchanged visual keeps its questions with NO generator call (proven with a generator whose every call fails),
 /// a new, changed, or unanswered one is sent to it, generation replaces only generated questions, a question follows
-/// a visual that only moved, and a question whose visual is gone is removed.
+/// a visual that only moved, and a question whose visual is gone is removed. Only a subscriber whose library asks for
+/// generated questions (<c>generateQuestions: true</c>) is sent to the generator; one that does not ask loses the questions
+/// a model wrote for it and keeps the ones a person wrote.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class SubscriberQuestionEnrichmentTests
 {
     private const string Page = "subscriber|enrich#report.pbix#1";
 
+    private const string SubscriberKey = "subscriber|enrich";
+
     /// <summary>An Anthropic key that authenticates with nobody: any call through it fails fast and yields no
     /// questions, so a test asserting "the generator was never invoked" proves it by seeing no warning.</summary>
     private static QuestionGenerator UncallableGenerator()
         => new(new AnthropicOptions { ApiKey = "sk-ant-invalid-test-key", Model = "claude-sonnet-5" },
             NullLogger<QuestionGenerator>.Instance);
+
+    [SkippableFact]
+    public async Task ASubscriberThatDoesNotAsk_IsNeverSentToTheGenerator_AndLosesOnlyItsGeneratedQuestions()
+    {
+        await using var scope = await Scope.CreateAsync(generateQuestions: false);
+        scope.AddVisual(1, "Sales by Region");
+        scope.AddVisual(2, "Never answered");
+        scope.AddQuestion(1, "What are sales by region?", SubscriberQuestionOrigin.Generated);
+        scope.AddQuestion(1, "Which region grew fastest?", SubscriberQuestionOrigin.Manual);
+        await scope.Db.SaveChangesAsync();
+
+        var calls = 0;
+        var warnings = await SubscriberQuestionEnrichment.EnrichAsync(
+            scope.Db, scope.RepoId, new Dictionary<string, string>(),
+            (_, _) =>
+            {
+                calls++;
+                return Task.FromResult<IReadOnlyList<string>>(["A generated question?"]);
+            },
+            CancellationToken.None);
+        Assert.Empty(warnings);
+        Assert.Equal(0, calls);
+
+        // The step every sync runs removes what a model wrote for a subscriber that no longer asks, generator or not.
+        using var generator = UncallableGenerator();
+        Assert.Empty(await SubscriberQuestionEnrichment.ApplyAfterSyncAsync(
+            scope.Db, scope.RepoId, new Dictionary<string, string>(), generator, CancellationToken.None));
+        Assert.Equal([(Scope.Key(1), "Which region grew fastest?")], await scope.QuestionsAsync());
+    }
 
     [SkippableFact]
     public async Task UnchangedVisualWithQuestions_KeepsThem_WithNoGeneratorCall()
@@ -313,11 +346,26 @@ public sealed class SubscriberQuestionEnrichmentTests
 
         public static string Key(int ordinal) => $"{Page}#{ordinal}";
 
-        public static async Task<Scope> CreateAsync()
+        /// <summary>A repo with one Power BI subscriber and one page, whose library asks for generated questions
+        /// unless <paramref name="generateQuestions"/> says otherwise.</summary>
+        public static async Task<Scope> CreateAsync(bool generateQuestions = true)
         {
             var cs = CatalogTestDb.Require();
             await CatalogDatabase.MigrateAsync(cs);
-            return new Scope(CatalogDatabase.Create(cs));
+            var scope = new Scope(CatalogDatabase.Create(cs));
+            var now = DateTime.UtcNow;
+            scope.Db.Subscribers.Add(new CatalogSubscriber
+            {
+                RepoId = scope.RepoId, Name = "Enrich", Type = "PowerBI", ObjectKey = SubscriberKey, File = "subscribers.yaml",
+                GenerateQuestions = generateQuestions, FirstSeenUtc = now, LastSeenUtc = now,
+            });
+            scope.Db.SubscriberReportPages.Add(new CatalogSubscriberReportPage
+            {
+                RepoId = scope.RepoId, SubscriberKey = SubscriberKey, PageKey = Page, ReportFile = "report.pbix", Ordinal = 1,
+                Name = "Page 1", DisplayName = "Page 1",
+            });
+            await scope.Db.SaveChangesAsync();
+            return scope;
         }
 
         /// <summary>Stages a visual at <paramref name="ordinal"/> and returns its content hash.</summary>
@@ -357,6 +405,8 @@ public sealed class SubscriberQuestionEnrichmentTests
         {
             await Db.SubscriberReportVisualQuestions.Where(q => q.RepoId == RepoId).ExecuteDeleteAsync();
             await Db.SubscriberReportVisuals.Where(v => v.RepoId == RepoId).ExecuteDeleteAsync();
+            await Db.SubscriberReportPages.Where(p => p.RepoId == RepoId).ExecuteDeleteAsync();
+            await Db.Subscribers.Where(s => s.RepoId == RepoId).ExecuteDeleteAsync();
             await Db.DisposeAsync();
         }
     }

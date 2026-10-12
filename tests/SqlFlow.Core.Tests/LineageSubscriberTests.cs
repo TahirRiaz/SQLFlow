@@ -149,6 +149,32 @@ public sealed class LineageSubscriberTests : IDisposable
         Assert.Single(subscriber.Queries);
     }
 
+    [Theory]
+    [InlineData("", false)]
+    [InlineData("    generateQuestions: false\n", false)]
+    [InlineData("    generateQuestions: true\n", true)]
+    public void Subscriber_GenerateQuestions_IsOffUnlessItsLibraryTurnsItOn(string line, bool expected)
+    {
+        Write("10_ing.yaml", Ingestion);
+        Write("subscribers.yaml", Subscribers("SELECT * FROM [OdsDb].[arc].[Bysykkel_Bikes];")
+            .Replace("    server: dwh\n", "    server: dwh\n" + line, StringComparison.Ordinal));
+
+        Assert.Equal(expected, Assert.Single(Build().Subscribers).GenerateQuestions);
+    }
+
+    [Fact]
+    public void AnAiContextFile_IsNeitherAFlowNorABrokenOne()
+    {
+        Write("10_ing.yaml", Ingestion);
+        Write("sales.ai-context.yaml", "aiContext: sales\ntables:\n  - table: OdsDb.arc.Bysykkel_Bikes\n    columns: [id]\n");
+        Write("ai-context.yaml", "aiContext: broken\ntables: nonsense\nsource: x\ntarget: y\n");
+
+        var collected = new FlowSetCollector().Collect(_root);
+
+        Assert.Single(collected.Flows);
+        Assert.DoesNotContain(collected.Warnings, w => w.Contains("ai-context", StringComparison.OrdinalIgnoreCase));
+    }
+
     [Fact]
     public void Subscriber_WithoutNotes_LeavesThemNull()
     {

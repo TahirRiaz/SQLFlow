@@ -350,3 +350,26 @@ internal sealed record ExtractedSemanticReportDto(
 
 /// <summary>The outcome of deleting a stored specification.</summary>
 internal sealed record DeleteSemanticReportSpecResult(bool SyncQueued);
+
+/// <summary>Where one AI context stands (<c>GET /api/v1/powerai/ai-contexts</c>).</summary>
+internal sealed record AiContextSummaryDto(
+    string Name, string? Description, Guid RepoId, string RepoName, string Path, string Status,
+    string? CurrentVersion, string? ApprovedVersion, string? ApprovedBy, DateTime? ApprovedUtc, DateTime SyncedUtc,
+    int TableCount, int ServedTableCount, int ProblemCount);
+
+/// <summary>Every AI context, and whether content written in the GUI before contexts were files waits to be exported.</summary>
+internal sealed record AiContextListDto(IReadOnlyList<AiContextSummaryDto> Contexts, bool HasEarlierContent);
+
+/// <summary>One difference between an approved version and the one its file proposes.</summary>
+internal sealed record AiContextChangeDto(string Kind, string Subject, string? Detail);
+
+/// <summary>One AI context in full (<c>GET /api/v1/powerai/ai-contexts/{name}</c>).</summary>
+internal sealed record AiContextDetailDto(
+    AiContextSummaryDto Summary,
+    SqlFlow.Catalog.AiContextVersion? Current,
+    SqlFlow.Catalog.AiContextVersion? Approved,
+    IReadOnlyList<AiContextChangeDto> Changes,
+    IReadOnlyList<string> Problems);
+
+/// <summary>Approves the version reviewed (<c>POST /api/v1/powerai/ai-contexts/{name}/approve</c>).</summary>
+internal sealed record ApproveAiContextRequest(string Version);

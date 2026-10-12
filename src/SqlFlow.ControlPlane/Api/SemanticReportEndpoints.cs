@@ -9,9 +9,10 @@ using SqlFlow.Lineage.Collection;
 
 namespace SqlFlow.ControlPlane.Api;
 
-/// <summary>A Power BI subscriber a report can be attached to.</summary>
+/// <summary>A Power BI subscriber a report can be attached to, and whether its library asks a sync to generate
+/// business questions for its report's visuals (<c>generateQuestions: true</c>).</summary>
 public sealed record SemanticReportSubscriberDto(
-    Guid RepoId, string RepoName, string SubscriberKey, string Name, string Type, string? Owner);
+    Guid RepoId, string RepoName, string SubscriberKey, string Name, string Type, string? Owner, bool GenerateQuestions);
 
 /// <summary>A report specification the semantic layer holds, without its text.</summary>
 /// <param name="Id">The row id.</param>
@@ -61,33 +62,6 @@ public sealed record StoreSemanticReportSpecResult(SemanticReportSpecDetailDto R
 /// <summary>A report the isolated extractor read, not yet stored.</summary>
 public sealed record ExtractedSemanticReportDto(string ReportFile, string Spec, ReportSpecSummary Summary);
 
-/// <summary>Adds a person's business question to a report visual.</summary>
-/// <param name="RepoId">The repo the visual belongs to.</param>
-/// <param name="VisualKey">The visual's key, as the report detail lists it.</param>
-/// <param name="Question">The question text.</param>
-public sealed record AddReportQuestionRequest(Guid? RepoId, string? VisualKey, string? Question);
-
-/// <summary>Rewrites a business question. The question becomes a person's, so generation no longer replaces it.</summary>
-public sealed record UpdateReportQuestionRequest(string? Question);
-
-/// <summary>Sets whether a sync generates business questions for report visuals.</summary>
-/// <param name="Enabled">True or false to decide, or null to follow the deployment's configured default.</param>
-public sealed record SetQuestionGenerationRequest(bool? Enabled);
-
-/// <summary>Whether a sync generates business questions for report visuals, and why.</summary>
-/// <param name="Available">The deployment has an Anthropic key; without one generation cannot be turned on.</param>
-/// <param name="DeploymentDefault"><c>ControlPlane:PowerAI:QuestionGeneration:Enabled</c>, followed while
-/// <paramref name="Override"/> is null.</param>
-/// <param name="Override">An admin's choice, or null.</param>
-/// <param name="Enabled">Whether the next sync generates questions.</param>
-/// <param name="UpdatedBy">Who last changed the switch.</param>
-/// <param name="UpdatedUtc">When the switch was last changed.</param>
-/// <param name="SyncsQueued">On a change that turned generation on, how many repos with report visuals had their
-/// managed sync queued to generate the missing questions; otherwise 0.</param>
-public sealed record QuestionGenerationDto(
-    bool Available, bool DeploymentDefault, bool? Override, bool Enabled, string? UpdatedBy, DateTime? UpdatedUtc,
-    int SyncsQueued);
-
 /// <summary>The outcome of deleting a specification.</summary>
 public sealed record DeleteSemanticReportSpecResult(bool SyncQueued);
 
@@ -95,10 +69,11 @@ public sealed record DeleteSemanticReportSpecResult(bool SyncQueued);
 /// <param name="ExtractionEnabled">Whether a raw <c>.pbix</c> can be uploaded (the isolated extractor is configured).</param>
 /// <param name="MaxReportBytes">The largest <c>.pbix</c> accepted.</param>
 /// <param name="MaxSpecBytes">The largest specification accepted.</param>
-/// <param name="QuestionGenerationEnabled">Whether a sync generates business questions for report visuals
-/// (<c>ControlPlane:PowerAI:QuestionGeneration:Enabled</c>).</param>
+/// <param name="QuestionGenerationAvailable">Whether this deployment can generate business questions for report
+/// visuals (it has an Anthropic key); a subscriber's library still decides whether it does
+/// (<c>generateQuestions: true</c>).</param>
 public sealed record SemanticReportCapabilitiesDto(
-    bool ExtractionEnabled, long MaxReportBytes, int MaxSpecBytes, bool QuestionGenerationEnabled);
+    bool ExtractionEnabled, long MaxReportBytes, int MaxSpecBytes, bool QuestionGenerationAvailable);
 
 /// <summary>
 /// The Power BI reports the semantic layer holds. A report reaches a subscriber's pages, visuals and model through a
@@ -106,8 +81,11 @@ public sealed record SemanticReportCapabilitiesDto(
 /// in the isolated extractor, never here), or a specification made with <c>sqlflow powerbi extract</c>. Both end at
 /// the one store endpoint, and a sync then reads the stored specification exactly as it reads a committed one.
 /// <para>
-/// Admin scope, like the rest of the semantic layer editor: a report's model and questions are what assistants answer
-/// from, so adding or removing one is curation of the layer.
+/// Admin scope, like the rest of the AI context pages: a report's model and questions are what assistants answer from,
+/// so storing or removing one is curation of the layer. The GUI only reads these; a specification is committed beside
+/// its subscriber library, or stored with <c>sqlflow powerbi publish</c>. A visual's business questions are generated by
+/// a sync when the subscriber's library asks for them (<c>generateQuestions: true</c>); none is written by hand, and an
+/// admin may remove one.
 /// </para>
 /// </summary>
 public static class SemanticReportEndpoints
@@ -122,10 +100,6 @@ public static class SemanticReportEndpoints
 
         var reports = group.MapGroup("/powerai/semantic-layer/reports").WithTags("PowerAI");
         reports.MapGet("/capabilities", GetCapabilities).WithName("GetSemanticLayerReportCapabilities");
-        reports.MapGet("/question-generation", GetQuestionGenerationAsync).WithName("GetSemanticLayerQuestionGeneration");
-        reports.MapPut("/question-generation", SetQuestionGenerationAsync).WithName("SetSemanticLayerQuestionGeneration");
-        reports.MapPost("/questions", AddQuestionAsync).WithName("AddSemanticLayerReportQuestion");
-        reports.MapPut("/questions/{id:long}", UpdateQuestionAsync).WithName("UpdateSemanticLayerReportQuestion");
         reports.MapDelete("/questions/{id:long}", DeleteQuestionAsync).WithName("DeleteSemanticLayerReportQuestion");
         reports.MapGet("/subscribers", ListSubscribersAsync).WithName("ListSemanticLayerReportSubscribers");
         reports.MapGet(string.Empty, ListAsync).WithName("ListSemanticLayerReports");
@@ -141,183 +115,15 @@ public static class SemanticReportEndpoints
         return group;
     }
 
-    private static async Task<Ok<SemanticReportCapabilitiesDto>> GetCapabilities(
-        ReportExtractionClient extraction, QuestionGenerationSwitch questionGeneration, CatalogDbContext db,
-        CancellationToken ct)
+    private static Ok<SemanticReportCapabilitiesDto> GetCapabilities(
+        ReportExtractionClient extraction, Microsoft.Extensions.Options.IOptions<Configuration.ControlPlaneOptions> options)
         => TypedResults.Ok(new SemanticReportCapabilitiesDto(
             extraction.IsEnabled, extraction.MaxUploadBytes, ReportSpecs.MaxBytes,
-            await questionGeneration.IsEnabledAsync(db, ct).ConfigureAwait(false)));
-
-    private static async Task<Ok<QuestionGenerationDto>> GetQuestionGenerationAsync(
-        QuestionGenerationSwitch questionGeneration, CatalogDbContext db, CancellationToken ct)
-        => TypedResults.Ok(ToDto(await questionGeneration.ReadAsync(db, ct).ConfigureAwait(false), syncsQueued: 0));
+            QuestionGenerationAvailability.IsAvailable(options.Value)));
 
     /// <summary>
-    /// Turns sync-time question generation on or off, or back to the deployment default. Refused (409) when it would
-    /// turn generation on where the deployment has no Anthropic key. A change that turns it on queues the managed
-    /// sync of every repo holding report visuals, since the questions only appear when a sync generates them.
-    /// </summary>
-    private static async Task<Results<Ok<QuestionGenerationDto>, ProblemHttpResult>> SetQuestionGenerationAsync(
-        SetQuestionGenerationRequest request, QuestionGenerationSwitch questionGeneration, CatalogDbContext db,
-        TimeProvider clock, ClaimsPrincipal user, RepoSyncSignal syncSignal, CancellationToken ct)
-    {
-        if (request is null)
-        {
-            return Invalid("A request body is required.");
-        }
-
-        var before = await questionGeneration.ReadAsync(db, ct).ConfigureAwait(false);
-        var wouldEnable = request.Enabled ?? before.DeploymentDefault;
-        if (wouldEnable && !before.Available)
-        {
-            return TypedResults.Problem(
-                detail: "Question generation needs an Anthropic key, and this deployment has none. Set "
-                    + "ControlPlane:Assistant:Anthropic:ApiKey and restart the control plane.",
-                statusCode: StatusCodes.Status409Conflict, title: "Question generation unavailable");
-        }
-
-        var after = await questionGeneration.SetAsync(
-            db, request.Enabled, SemanticLayer.Actor(user), clock.GetUtcNow().UtcDateTime, ct).ConfigureAwait(false);
-
-        var queued = 0;
-        if (after.Enabled && !before.Enabled)
-        {
-            var repoNames = await db.SubscriberReportVisuals.AsNoTracking()
-                .Select(v => v.RepoId).Distinct()
-                .Join(db.Repos.AsNoTracking(), id => id, r => r.Id, (_, r) => r.Name)
-                .OrderBy(name => name)
-                .ToListAsync(ct).ConfigureAwait(false);
-            foreach (var repoName in repoNames)
-            {
-                if (await RepoSourceEndpoints.QueueSyncForRepoAsync(
-                        db, repoName, "Power BI question generation turned on", clock, syncSignal, ct).ConfigureAwait(false))
-                {
-                    queued++;
-                }
-            }
-        }
-
-        return TypedResults.Ok(ToDto(after, queued));
-    }
-
-    /// <summary>The longest question the catalog stores.</summary>
-    private const int MaxQuestionLength = CatalogSubscriberReportVisualQuestion.MaxQuestionLength;
-
-    /// <summary>
-    /// Adds a person's question to a visual the last sync served. It is served to question search at once, and no
-    /// sync replaces it; it goes only when the visual leaves the report.
-    /// </summary>
-    private static async Task<Results<Ok<SubscriberReportQuestionDto>, ProblemHttpResult>> AddQuestionAsync(
-        AddReportQuestionRequest request, CatalogDbContext db, TimeProvider clock, ClaimsPrincipal user,
-        CancellationToken ct)
-    {
-        if (request is null)
-        {
-            return Invalid("A request body is required.");
-        }
-
-        if (request.RepoId is not { } repoId || repoId == Guid.Empty)
-        {
-            return Invalid("repoId is required.");
-        }
-
-        if (SemanticLayer.TrimToNull(request.VisualKey) is not { } visualKey)
-        {
-            return Invalid("visualKey is required.");
-        }
-
-        if (QuestionProblem(request.Question, out var question) is { } problem)
-        {
-            return Invalid(problem);
-        }
-
-        var visualExists = await db.SubscriberReportVisuals.AsNoTracking()
-            .AnyAsync(v => v.RepoId == repoId && v.VisualKey == visualKey, ct).ConfigureAwait(false);
-        if (!visualExists)
-        {
-            return TypedResults.Problem(
-                detail: $"No report visual '{visualKey}' in repo '{repoId}'. It may have left the report since the page "
-                    + "was loaded; reload it.",
-                statusCode: StatusCodes.Status404NotFound, title: "Not found");
-        }
-
-        var siblings = await db.SubscriberReportVisualQuestions.AsNoTracking()
-            .Where(q => q.RepoId == repoId && q.VisualKey == visualKey)
-            .Select(q => new { q.Ordinal, q.Question })
-            .ToListAsync(ct).ConfigureAwait(false);
-        if (siblings.Any(q => string.Equals(q.Question, question, StringComparison.OrdinalIgnoreCase)))
-        {
-            return Duplicate(question);
-        }
-
-        var row = new CatalogSubscriberReportVisualQuestion
-        {
-            RepoId = repoId,
-            VisualKey = visualKey,
-            Ordinal = siblings.Count == 0 ? 1 : siblings.Max(q => q.Ordinal) + 1,
-            Question = question,
-            Origin = SubscriberQuestionOrigin.Manual,
-            UpdatedBy = SemanticLayer.Actor(user),
-            UpdatedUtc = clock.GetUtcNow().UtcDateTime,
-        };
-        db.SubscriberReportVisualQuestions.Add(row);
-        await db.SaveChangesAsync(ct).ConfigureAwait(false);
-        return TypedResults.Ok(ToDto(row));
-    }
-
-    /// <summary>Rewrites a question. A generated one becomes a person's, so a later sync keeps it as written.</summary>
-    private static async Task<Results<Ok<SubscriberReportQuestionDto>, ProblemHttpResult>> UpdateQuestionAsync(
-        long id, UpdateReportQuestionRequest request, CatalogDbContext db, TimeProvider clock, ClaimsPrincipal user,
-        CancellationToken ct)
-    {
-        if (request is null)
-        {
-            return Invalid("A request body is required.");
-        }
-
-        if (QuestionProblem(request.Question, out var question) is { } problem)
-        {
-            return Invalid(problem);
-        }
-
-        var row = await db.SubscriberReportVisualQuestions.AsTracking()
-            .FirstOrDefaultAsync(q => q.Id == id, ct).ConfigureAwait(false);
-        if (row is null)
-        {
-            return QuestionNotFound(id);
-        }
-
-        var others = await db.SubscriberReportVisualQuestions.AsNoTracking()
-            .Where(q => q.RepoId == row.RepoId && q.VisualKey == row.VisualKey && q.Id != id)
-            .Select(q => q.Question)
-            .ToListAsync(ct).ConfigureAwait(false);
-        if (others.Any(q => string.Equals(q, question, StringComparison.OrdinalIgnoreCase)))
-        {
-            return Duplicate(question);
-        }
-
-        row.Question = question;
-        row.Origin = SubscriberQuestionOrigin.Manual;
-        row.UpdatedBy = SemanticLayer.Actor(user);
-        row.UpdatedUtc = clock.GetUtcNow().UtcDateTime;
-        try
-        {
-            await db.SaveChangesAsync(ct).ConfigureAwait(false);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // A sync regenerating this visual deleted the generated question between the read and the write.
-            return TypedResults.Problem(
-                detail: $"Question '{id}' was replaced by a sync while it was being edited. Reload and edit the new one.",
-                statusCode: StatusCodes.Status409Conflict, title: "Question changed");
-        }
-
-        return TypedResults.Ok(ToDto(row));
-    }
-
-    /// <summary>
-    /// Deletes a question, generated or a person's. A visual left with no questions at all gets freshly generated ones
-    /// at the next sync while generation is on.
+    /// Deletes a question, generated or a person's. A visual left with no questions at all gets freshly generated ones at
+    /// the next sync while its subscriber's library asks for generation.
     /// </summary>
     private static async Task<Results<NoContent, ProblemHttpResult>> DeleteQuestionAsync(
         long id, CatalogDbContext db, CancellationToken ct)
@@ -328,39 +134,12 @@ public static class SemanticReportEndpoints
         return deleted == 0 ? QuestionNotFound(id) : TypedResults.NoContent();
     }
 
-    /// <summary>Null when <paramref name="value"/> is a storable question, with the trimmed text in
-    /// <paramref name="question"/>; otherwise why it is not.</summary>
-    private static string? QuestionProblem(string? value, out string question)
-    {
-        question = SemanticLayer.TrimToNull(value) ?? string.Empty;
-        if (question.Length == 0)
-        {
-            return "question is required.";
-        }
-
-        if (question.Length > MaxQuestionLength)
-        {
-            return $"question is longer than {MaxQuestionLength} characters.";
-        }
-
-        return question.Any(char.IsControl) ? "question must be a single line of text." : null;
-    }
-
-    private static ProblemHttpResult Duplicate(string question)
-        => TypedResults.Problem(
-            detail: $"The visual already has the question '{question}'.",
-            statusCode: StatusCodes.Status409Conflict, title: "Duplicate question");
-
     private static ProblemHttpResult QuestionNotFound(long id)
         => TypedResults.Problem(
             detail: $"No report question with id '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
 
     private static SubscriberReportQuestionDto ToDto(CatalogSubscriberReportVisualQuestion row)
         => new(row.Id, row.Question, row.Origin, row.UpdatedBy, row.UpdatedUtc);
-
-    private static QuestionGenerationDto ToDto(QuestionGenerationState state, int syncsQueued)
-        => new(state.Available, state.DeploymentDefault, state.Override, state.Enabled, state.UpdatedBy,
-            state.UpdatedUtc, syncsQueued);
 
     /// <summary>The Power BI subscribers the repositories declare, which are what a report can be attached to.</summary>
     private static async Task<Ok<IReadOnlyList<SemanticReportSubscriberDto>>> ListSubscribersAsync(
@@ -369,12 +148,13 @@ public static class SemanticReportEndpoints
         var rows = await db.Subscribers.AsNoTracking()
             .Join(db.Repos.AsNoTracking(), s => s.RepoId, r => r.Id, (s, r) => new { s, RepoName = r.Name })
             .OrderBy(x => x.RepoName).ThenBy(x => x.s.Name)
-            .Select(x => new { x.s.RepoId, x.RepoName, x.s.ObjectKey, x.s.Name, x.s.Type, x.s.Owner })
+            .Select(x => new { x.s.RepoId, x.RepoName, x.s.ObjectKey, x.s.Name, x.s.Type, x.s.Owner, x.s.GenerateQuestions })
             .ToListAsync(ct).ConfigureAwait(false);
 
         var items = rows
             .Where(r => IsPowerBi(r.Type))
-            .Select(r => new SemanticReportSubscriberDto(r.RepoId, r.RepoName, r.ObjectKey, r.Name, r.Type, r.Owner))
+            .Select(r => new SemanticReportSubscriberDto(
+                r.RepoId, r.RepoName, r.ObjectKey, r.Name, r.Type, r.Owner, r.GenerateQuestions))
             .ToList();
         return TypedResults.Ok<IReadOnlyList<SemanticReportSubscriberDto>>(items);
     }

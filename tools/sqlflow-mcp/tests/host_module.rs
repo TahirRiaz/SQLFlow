@@ -583,7 +583,7 @@ async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
     let (mut session, initialized) = open_stdio(server).await;
 
     let instructions = initialized["result"]["instructions"].as_str().expect("instructions");
-    // SQLFlow's introduction, then the `!cwd` routing rule, since find_similar_questions is offered.
+    // SQLFlow's introduction, then the `!` routing rule, since find_similar_questions is offered.
     assert!(instructions.starts_with("SQLFlow MCP server.\n\nROUTING, BEFORE ANYTHING ELSE"), "{instructions}");
     assert!(instructions.contains("\n\nTwo tiers of tools:"), "{instructions}");
     assert!(instructions.contains("login (device flow)"), "the stdio setup text: {instructions}");
@@ -619,7 +619,7 @@ async fn a_host_introduces_its_product_and_does_not_recommend_a_tool_it_leaves_o
     );
     assert!(!instructions.contains("SQLFlow MCP server."), "{instructions}");
 
-    // The paragraph recommending source discovery and the rule routing `!cwd` to find_similar_questions are gone; the
+    // The paragraph recommending source discovery and the rule routing `!` to find_similar_questions are gone; the
     // closing note still names both tools as not offered.
     assert!(!instructions.contains("Source discovery"), "{instructions}");
     assert!(!instructions.contains("ROUTING, BEFORE ANYTHING ELSE"), "{instructions}");

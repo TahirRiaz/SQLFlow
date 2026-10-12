@@ -86,6 +86,9 @@ public sealed class CatalogDbContext : DbContext
 
     public DbSet<CatalogSemanticMeasure> SemanticMeasures => Set<CatalogSemanticMeasure>();
 
+    /// <summary>The AI contexts files propose and admins approve.</summary>
+    public DbSet<CatalogAiContext> AiContexts => Set<CatalogAiContext>();
+
     public DbSet<CatalogSemanticLayerSettings> SemanticLayerSettings => Set<CatalogSemanticLayerSettings>();
 
     public DbSet<CatalogPipelineColumn> PipelineColumns => Set<CatalogPipelineColumn>();
@@ -469,6 +472,8 @@ public sealed class CatalogDbContext : DbContext
             entity.HasIndex(e => e.RepoId);
             entity.HasIndex(e => e.Provenance);
             entity.Property(e => e.SourceRef).HasMaxLength(512);
+            entity.Property(e => e.AiContext).HasMaxLength(100);
+            entity.HasIndex(e => e.AiContext);
         });
 
         modelBuilder.Entity<CatalogSemanticReportSpec>(entity =>
@@ -624,9 +629,12 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(c => c.Description).HasMaxLength(2000);
             entity.Property(c => c.Synonyms).HasMaxLength(1000);
             entity.Property(c => c.UpdatedBy).HasMaxLength(256);
+            entity.Property(c => c.AiContext).HasMaxLength(100);
             // One policy row per (object, column); the enforcement lookups filter by ObjectKey, so it is the
             // leftmost prefix.
             entity.HasIndex(c => new { c.ObjectKey, c.ColumnName }).IsUnique();
+            // An approval or revocation replaces exactly its own context's rows.
+            entity.HasIndex(c => c.AiContext);
         });
 
         modelBuilder.Entity<CatalogSemanticObject>(entity =>
@@ -639,8 +647,10 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(o => o.Synonyms).HasMaxLength(1000);
             entity.Property(o => o.KeyColumns).HasMaxLength(1024);
             entity.Property(o => o.UpdatedBy).HasMaxLength(256);
+            entity.Property(o => o.AiContext).HasMaxLength(100);
             // At most one annotation per object.
             entity.HasIndex(o => o.ObjectKey).IsUnique();
+            entity.HasIndex(o => o.AiContext);
         });
 
         modelBuilder.Entity<CatalogSemanticRelationship>(entity =>
@@ -659,6 +669,8 @@ public sealed class CatalogDbContext : DbContext
             // An object's declared joins are read in either direction.
             entity.HasIndex(r => r.FromObjectKey);
             entity.HasIndex(r => r.ToObjectKey);
+            entity.Property(r => r.AiContext).HasMaxLength(100);
+            entity.HasIndex(r => r.AiContext);
         });
 
         modelBuilder.Entity<CatalogSemanticMeasure>(entity =>
@@ -672,6 +684,8 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(m => m.UpdatedBy).HasMaxLength(256);
             entity.HasIndex(m => m.Name).IsUnique();
             entity.HasIndex(m => m.ObjectKey);
+            entity.Property(m => m.AiContext).HasMaxLength(100);
+            entity.HasIndex(m => m.AiContext);
         });
 
         modelBuilder.Entity<CatalogSemanticLayerSettings>(entity =>
@@ -681,7 +695,22 @@ public sealed class CatalogDbContext : DbContext
             // The singleton's id is fixed by the application, never generated.
             entity.Property(s => s.Id).ValueGeneratedNever();
             entity.Property(s => s.UpdatedBy).HasMaxLength(256);
-            entity.Property(s => s.QuestionGenerationUpdatedBy).HasMaxLength(256);
+        });
+
+        modelBuilder.Entity<CatalogAiContext>(entity =>
+        {
+            entity.ToTable("AiContext");
+            entity.HasKey(c => c.Id);
+            entity.Property(c => c.Name).HasMaxLength(100).IsRequired();
+            entity.Property(c => c.Path).HasMaxLength(1024).IsRequired();
+            entity.Property(c => c.Description).HasMaxLength(1000);
+            entity.Property(c => c.CurrentHash).HasMaxLength(64);
+            entity.Property(c => c.ApprovedHash).HasMaxLength(64);
+            entity.Property(c => c.ApprovedBy).HasMaxLength(256);
+            // A context's name is its identity: what an admin approves and what marks the rows its approval serves.
+            entity.HasIndex(c => c.Name).IsUnique();
+            // A sync reads and settles one repository's contexts.
+            entity.HasIndex(c => c.RepoId);
         });
 
         modelBuilder.Entity<CatalogPipelineColumn>(entity =>

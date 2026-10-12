@@ -738,6 +738,7 @@ public static class LineageGraphBuilder
                     Description = s.Subscriber.Description,
                     Notes = s.Subscriber.Notes,
                     Url = s.Subscriber.Url,
+                    GenerateQuestions = s.Subscriber.GenerateQuestions,
                     Queries = s.Queries
                         .Select(q =>
                         {

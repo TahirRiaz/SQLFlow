@@ -287,6 +287,11 @@ $0",
             "Ordered multi-flow batch skeleton (flowType: batch)",
             "flowType: batch\nname: ${1:batchName}\nbatch: ${2:sourceSystem}\nmaxParallel: ${3:4}\n$0",
         ),
+        (
+            "ai-context",
+            "AI context skeleton (*.ai-context.yaml), approved by an admin before an assistant uses it",
+            "aiContext: ${1:sales}\ndescription: ${2:What the context covers}\ninstructions: |\n  ${3:Amounts are in the reporting currency, excluding tax.}\ntables:\n  - table: ${4:dw.sales.Orders}\n    name: ${5:Order lines}\n    description: ${6:One row per order line.}\n    key: [${7:OrderId}]\n    columns:\n      - column: ${8:Amount}\n        description: ${9:Line amount excluding tax.}\n    deny: [${10:CostPrice}]\n$0",
+        ),
     ];
     snippets
         .iter()
@@ -444,6 +449,7 @@ pub fn diagnostics(doc: &FlowDocument) -> Vec<Diagnostic> {
                 let subject = match doc.kind {
                     DocumentKind::Subscribers => "a subscriber library",
                     DocumentKind::Schedules => "a schedule library",
+                    DocumentKind::AiContext => "an AI context file",
                     DocumentKind::Flow => "this flow type",
                     DocumentKind::Document => "this document type",
                 };
@@ -1107,6 +1113,44 @@ mod tests {
             diags.iter().any(|d| d.message.contains("'scope'") && d.message.contains("schedule library")),
             "expected an unknown-key warning for 'scope', got: {diags:?}"
         );
+    }
+
+    #[test]
+    fn ai_context_file_is_clean_and_its_strict_loader_refuses_a_typo() {
+        let src = concat!(
+            "aiContext: sales\n",
+            "description: Orders and revenue.\n",
+            "instructions: |\n  Amounts exclude tax.\n",
+            "tables:\n",
+            "  - table: dw.sales.Orders\n    datasource: ${env:SQLFLOW_DW}\n    name: Order lines\n",
+            "    description: One row per order line.\n    synonyms: [sales]\n    key: [OrderId]\n",
+            "    columns:\n      - column: Amount\n        description: Line amount.\n",
+            "        synonyms: [revenue]\n",
+            "    deny: [CostPrice, InternalNote]\n",
+            "    measures:\n      - name: net_revenue\n        expression: SUM(Amount)\n        description: Revenue.\n",
+            "    joins:\n      - to: dw.sales.Customers\n        columns: [CustomerId]\n        toColumns: [Id]\n",
+            "        type: left\n        description: Every order has a customer.\n",
+            "examples:\n  - question: What was revenue last month?\n    sql: SELECT SUM(Amount) FROM sales.Orders\n",
+        );
+        let doc = FlowDocument::parse(src);
+        assert_eq!(doc.kind, DocumentKind::AiContext);
+        let diags = diagnostics(&doc);
+        assert!(diags.is_empty(), "a valid AI context file should be clean, got: {diags:?}");
+
+        // Its loader refuses an unknown key, so the editor says so as an error, under the file's own name.
+        let typo = src.replace("    name: Order lines", "    nmae: Order lines");
+        let diags = diagnostics(&FlowDocument::parse(&typo));
+        assert!(
+            diags.iter().any(|d| d.message.contains("'nmae'")
+                && d.message.contains("an AI context file")
+                && d.severity == Severity::Error),
+            "expected an unknown-key error for 'nmae', got: {diags:?}"
+        );
+
+        // A join type outside the two the loader takes is caught as a value, not just as a key.
+        let bad_type = src.replace("        type: left", "        type: full");
+        let diags = diagnostics(&FlowDocument::parse(&bad_type));
+        assert!(!diags.is_empty(), "expected a diagnostic for join type 'full', got none");
     }
 
     #[test]

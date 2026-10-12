@@ -33,6 +33,11 @@ public sealed class AssistantSurfaceApiTests
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
             .WithSetting("ControlPlane:DataOps:Enabled", "true");
+        await using var contexts = new AiContextTestKit(cs, repoId);
+        var context = "people-" + suffix;
+        string ContextFile(params string[] denied)
+            => $"aiContext: {context}\ntables:\n  - table: dw.dbo.{tableName}\n"
+                + (denied.Length == 0 ? string.Empty : $"    deny: [{string.Join(", ", denied)}]\n");
         try
         {
             await using (var db = CatalogDatabase.Create(cs))
@@ -58,15 +63,16 @@ public sealed class AssistantSurfaceApiTests
                     DefinitionJson = "{}", FirstSeenUtc = now, LastSeenUtc = now,
                     Yaml = $"source:\n  query: SELECT Name, {secret} FROM dbo.{tableName}\n",
                 });
-                db.ColumnPolicies.Add(new CatalogColumnPolicy
-                {
-                    ObjectKey = objectKey, ColumnName = "Name", IsAllowed = true, UpdatedUtc = now,
-                });
                 await db.SaveChangesAsync();
             }
 
             using var client = factory.CreateClient();
             var token = await IssueTokenAsync(client, ["read", "operate", "admin"]);
+
+            // The table is in an approved AI context that denies the secret column.
+            contexts.Write("people.ai-context.yaml", ContextFile(secret));
+            await contexts.SyncAsync();
+            await AiContextTestKit.ApproveAsync(client, token, context);
             var scriptUri = $"/api/v1/lineage/script?key={Uri.EscapeDataString(flowName)}";
 
             // 1. A person reads the flow's YAML whole; the assistant surface gets it withheld, with the flow still named.
@@ -101,12 +107,11 @@ public sealed class AssistantSurfaceApiTests
                 Assert.Equal(HttpStatusCode.Accepted, person.StatusCode);
             }
 
-            // 3. Once the column is allowed, the assistant surface reads the YAML whole too.
-            using (var allow = await SendAsync(client, token, HttpMethod.Put, "/api/v1/powerai/column-policies",
-                new SetColumnPolicyRequest(objectKey, secret, IsAllowed: true, Reason: null), assistant: false))
-            {
-                allow.EnsureSuccessStatusCode();
-            }
+            // 3. Once the file stops denying the column and an admin approves that, the assistant surface reads the YAML
+            //    whole too.
+            contexts.Write("people.ai-context.yaml", ContextFile());
+            await contexts.SyncAsync();
+            await AiContextTestKit.ApproveAsync(client, token, context);
 
             var afterAllow = await GetJsonAsync<NodeScriptDto>(client, token, scriptUri, assistant: true);
             Assert.Contains(secret, afterAllow.Script, StringComparison.Ordinal);

@@ -1,0 +1,234 @@
+{
+  "version": 1,
+  "product": "SQLFlow V3",
+  "flowType": "ai-context",
+  "generatedFrom": "source code: src/SqlFlow.Core/AiContext/AiContextDocument.cs, src/SqlFlow.Yaml/YamlAiContextLoader.cs, src/SqlFlow.ControlPlane/Api/AiContextSync.cs",
+  "naming": "An AI context file is NOT a flow document: it is named ai-context.yaml or *.ai-context.yaml, selected by its root 'aiContext:' key, never becomes a pipeline and never runs. Its loader is strict: a key it does not know is a problem that keeps the version from being approved, not something ignored. A file only proposes; an admin approves the exact version, and only then does an assistant use it.",
+  "keyCount": 30,
+  "keys": [
+    {
+      "path": "aiContext",
+      "type": "string (context name)",
+      "required": true,
+      "description": "The context's name, and what marks the file as an AI context. Unique across the estate: it is what an admin approves, so moving or renaming the file keeps the approval, while renaming the context makes it a new one awaiting approval. Lowercase letters, digits, '.', '_' and '-', starting with a letter or a digit, at most 100 characters. A second file naming the same context is reported and ignored.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+      "validation": "\"'<name>' is not a valid context name\" and, at sync, \"AI context '<name>' is already defined by <file>; this file is ignored.\""
+    },
+    {
+      "path": "description",
+      "type": "string",
+      "required": false,
+      "description": "What the context covers, in a sentence. Shown to admins beside the approval, and to the assistant choosing which context a question belongs to. At most 1000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "instructions",
+      "type": "string (Markdown)",
+      "required": false,
+      "description": "Rules the assistant follows for every query over this context's tables: units and currency, which status values count as active, the fiscal calendar, filters to always apply. Read before every query, so keep it to the few rules that matter. At most 4000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables",
+      "type": "list<table>",
+      "required": true,
+      "description": "The tables and views the context opens, each with every column but those it denies. Nothing else of the warehouse is in the context, and a table belongs to one context. At most 500.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+      "validation": "\"the context lists no 'tables'\" and \"table '<name>' is already described on line <n>.\""
+    },
+    {
+      "path": "tables[].table",
+      "type": "string (database.schema.name)",
+      "required": true,
+      "description": "The table as the catalog holds it: database.schema.name, or schema.name when the catalog has the name in one database only. Bracket a part that holds a dot, as in [Sales Mart].dbo.[Order Lines]. The sync resolves it to the one catalogued table or view with columns; a name it cannot place, or one it finds more than once, keeps the context from being approved.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs, src/SqlFlow.ControlPlane/Api/AiContextSync.cs",
+      "validation": "\"'<name>' is not a table or view the catalog holds with its columns.\" and \"'<name>' names <n> catalogued objects ... Give the database, and 'datasource' with the connection reference it lives on.\""
+    },
+    {
+      "path": "tables[].datasource",
+      "type": "string (connection reference)",
+      "required": false,
+      "description": "The connection reference the table lives on, as the estate's flows declare it: ${env:NAME}, ${keyvault:NAME} or @alias. Needed only when the name exists on more than one datasource. Never a connection string.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+      "validation": "\"'datasource' must be one connection reference ..., never a literal connection string.\""
+    },
+    {
+      "path": "tables[].name",
+      "type": "string",
+      "required": false,
+      "description": "The name a business reader knows the table by (\"Order lines\"). At most 200 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].description",
+      "type": "string",
+      "required": false,
+      "description": "What one row represents, and anything a query author must know: grain, filters to apply, how late data arrives. At most 4000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].synonyms",
+      "type": "list<string>",
+      "required": false,
+      "description": "Other words people use for it, matched by the assistant's search so a business term finds the physical name. A list, or one word as plain text. At most 30, each one line of at most 100 characters, no repeats.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].key",
+      "type": "list<string>",
+      "required": false,
+      "description": "The columns identifying one row, in order. None may be denied, and none may hold a comma. A list, or one column as plain text.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+      "validation": "\"key column '<column>' of table '<name>' is denied; a key is made of open columns.\""
+    },
+    {
+      "path": "tables[].columns",
+      "type": "list<column>",
+      "required": false,
+      "description": "What columns mean. Describing a column does not open it: a table in a context opens every one of its columns but those under 'deny'. Each entry is a mapping that starts with 'column:' and gives a description or synonyms.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+      "validation": "\"each entry of 'columns' ... describes a column\" and, at sync, \"described column '<column>' is not a column of '<table>'; it has ...\""
+    },
+    {
+      "path": "tables[].columns[].column",
+      "type": "string",
+      "required": true,
+      "description": "The column's name; matched to the catalog's spelling without regard to case. It may not also be denied.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].columns[].description",
+      "type": "string",
+      "required": false,
+      "description": "What the column means (\"Line amount in the reporting currency, excluding tax\"). At most 2000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].columns[].synonyms",
+      "type": "list<string>",
+      "required": false,
+      "description": "Other words people use for it, matched by the assistant's search so a business term finds the physical name. A list, or one word as plain text. At most 30, each one line of at most 100 characters, no repeats.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].deny",
+      "type": "list<string>",
+      "required": false,
+      "description": "The columns the assistant may not use: closed to its schema and to every query it runs. Every other column of the table is open. A list, or one column as plain text. Denying a column of an approved context closes it at the next sync, with no approval; a column the warehouse adds later opens only when an admin approves the change.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+      "validation": "\"column '<column>' is denied twice\" and, at sync, \"denied column '<column>' is not a column of '<table>'; it has ...\""
+    },
+    {
+      "path": "tables[].measures",
+      "type": "list<measure>",
+      "required": false,
+      "description": "Named SQL expressions over this table's open columns, which the assistant reuses verbatim rather than deriving its own. Checked at sync as SELECT <expression> FROM <table> through the same read-only and column guards a query passes, with this context's columns open.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].measures[].name",
+      "type": "string (identifier)",
+      "required": true,
+      "description": "The measure's name, unique across every context: a letter or underscore, then letters, digits or underscores, at most 128 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].measures[].expression",
+      "type": "string (T-SQL scalar expression)",
+      "required": true,
+      "description": "One scalar expression over the table's open columns, such as SUM(Amount) - SUM(RefundAmount): no FROM, WHERE, subquery, comment or statement separator. At most 4000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs, src/SqlFlow.ControlPlane/Api/AiContextSync.cs"
+    },
+    {
+      "path": "tables[].measures[].description",
+      "type": "string",
+      "required": false,
+      "description": "What the number means and when to use it. At most 1000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].joins",
+      "type": "list<join>",
+      "required": false,
+      "description": "How this table joins to others. A join is served only while every column it pairs is open, on both sides.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].joins[].to",
+      "type": "string (database.schema.name)",
+      "required": true,
+      "description": "The table joined to, named as 'table' names a table.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].joins[].datasource",
+      "type": "string (connection reference)",
+      "required": false,
+      "description": "The connection reference the joined table lives on, when its name exists on more than one datasource.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].joins[].columns",
+      "type": "list<string>",
+      "required": true,
+      "description": "This table's columns, none of them denied, paired by position with 'toColumns'.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].joins[].toColumns",
+      "type": "list<string>",
+      "required": false,
+      "default": "the names in 'columns'",
+      "description": "The other table's columns, paired by position with 'columns'. Left out, the same names are used.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].joins[].type",
+      "type": "string",
+      "required": false,
+      "default": "inner",
+      "enumValues": [
+        "inner",
+        "left"
+      ],
+      "description": "Which rows the join keeps.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "tables[].joins[].description",
+      "type": "string",
+      "required": false,
+      "description": "When to use the join. At most 1000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "examples",
+      "type": "list<example>",
+      "required": false,
+      "description": "Questions this context answers, each with the SQL that answers it. Once approved they are saved answers the assistant finds for similar questions, and can run as they are. Each is checked at sync through the read-only and column guards, with this context's columns open. At most 500.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs, src/SqlFlow.ControlPlane/Api/AiContextSync.cs"
+    },
+    {
+      "path": "examples[].question",
+      "type": "string",
+      "required": true,
+      "description": "The question as a person would ask it. A leading '!' (the business-question command) is dropped. At most 1000 characters, and given once.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "examples[].sql",
+      "type": "string (T-SQL)",
+      "required": true,
+      "description": "One read-only SELECT that answers the question, reading only open columns. At most 20000 characters.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs"
+    },
+    {
+      "path": "examples[].datasource",
+      "type": "string (connection reference)",
+      "required": false,
+      "description": "The connection reference the query runs on. Left out, it is worked out from the tables the query reads.",
+      "definedIn": "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+      "validation": "\"the example '<question>' names a datasource no active pipeline declares.\" (at sync)"
+    }
+  ]
+}

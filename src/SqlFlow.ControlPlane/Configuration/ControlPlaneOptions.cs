@@ -124,7 +124,6 @@ public sealed class ControlPlaneOptions
         RunTrace.Validate();
         Assistant.Validate();
         DataOps.Validate();
-        PowerAI.QuestionGeneration.Validate(Assistant.Anthropic);
         PowerAI.Retrieval.Validate(Assistant.Anthropic);
         PowerAI.ReportExtraction.Validate();
     }
@@ -986,8 +985,6 @@ public sealed class DataOpsOptions
 /// implements against.</summary>
 public sealed class PowerAiOptions
 {
-    public QuestionGenerationOptions QuestionGeneration { get; set; } = new();
-
     public RetrievalOptions Retrieval { get; set; } = new();
 
     public ReportExtractionOptions ReportExtraction { get; set; } = new();
@@ -1218,40 +1215,6 @@ public sealed class AutoRunOptions
             throw new InvalidOperationException(
                 "ControlPlane:PowerAI:Retrieval:AutoRun:Enabled is true but its configuration is incomplete: "
                 + string.Join(", ", missing));
-        }
-    }
-}
-
-/// <summary>
-/// Sync-time generation of 1-3 natural-language business questions per extracted PowerBI report visual
-/// (POWERAI.md Section 10, "the business-question field"), independently toggleable from the interactive
-/// chat assistant: a deployment may run one without the other. Runs only in the control plane, after a sync
-/// has written that sync's subscriber report rows, never in the bare CLI's <c>sqlflow db sync</c> (which has
-/// no Anthropic wiring and must not need one).
-///
-/// Environment: <c>ControlPlane__PowerAI__QuestionGeneration__Enabled=true</c>. Reuses
-/// <c>ControlPlane:Assistant:Anthropic</c>'s API key and model rather than declaring its own, since both are
-/// the same Anthropic account; enabling this without an Anthropic key configured there is a startup error.
-/// </summary>
-public sealed class QuestionGenerationOptions
-{
-    /// <summary>The deployment's default for sync-time LLM question generation on extracted PowerBI visuals. An admin
-    /// can override it at runtime from the semantic layer page (<c>QuestionGenerationSwitch</c>). Off, a sync writes
-    /// visuals/fields exactly as before: no questions, no Anthropic call.</summary>
-    public bool Enabled { get; set; }
-
-    public void Validate(SqlFlow.Assistant.AnthropicOptions anthropic)
-    {
-        if (!Enabled)
-        {
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(anthropic.ApiKey))
-        {
-            throw new InvalidOperationException(
-                "ControlPlane:PowerAI:QuestionGeneration:Enabled is true but "
-                + "ControlPlane:Assistant:Anthropic:ApiKey is not set.");
         }
     }
 }

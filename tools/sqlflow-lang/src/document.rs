@@ -55,6 +55,9 @@ pub enum DocumentKind {
     /// A schedule library: `schedules.yaml` or `*.schedules.yaml`, detected by its root `schedules:` key. It defines
     /// named schedules that flows join, and is analysed against its own census rather than the file flow's.
     Schedules,
+    /// An AI context file: `ai-context.yaml` or `*.ai-context.yaml`, detected by its root `aiContext:` key, which also
+    /// names the context. It proposes what an AI assistant may use, and is analysed against its own strict census.
+    AiContext,
     /// A document that is not a flow, named by its root `documentType`: a module's own document kind, analysed
     /// against the census the module registered for it, and left unchecked when none is registered.
     Document,
@@ -101,6 +104,10 @@ impl FlowDocument {
                     // schedule is the singular `schedule:`, so a flow is never misread as a library.
                     if flow_type.is_none() && map.get_node("schedules").is_some() {
                         kind = DocumentKind::Schedules;
+                    }
+                    // An AI context file is recognised by its root `aiContext:` key, which no flow takes.
+                    if flow_type.is_none() && map.get_node("aiContext").is_some() {
+                        kind = DocumentKind::AiContext;
                     }
                     // A root `documentType` names a document that is not a flow; a flowType still wins, so a flow is
                     // never analysed as anything else.

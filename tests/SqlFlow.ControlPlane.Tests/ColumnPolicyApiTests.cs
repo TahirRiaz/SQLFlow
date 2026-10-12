@@ -9,12 +9,12 @@ using Xunit;
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The "AI shouldn't be able to read everything" surface end to end, under the default-deny allow-list: a
-/// column with no policy row is hidden exactly like one explicitly denied, and an admin has to allow-list a
-/// column via <c>/powerai/column-policies</c> before it appears in schema search, the object dossier/column
-/// list, or is readable by the DataOps prepare step (including through a <c>SELECT *</c> that would otherwise
-/// smuggle a not-yet-allowed column through unnamed). Every seeded row is removed in a finally so repeated runs
-/// stay isolated.
+/// The "AI shouldn't be able to read everything" surface end to end, under the default-deny allow-list: nothing is
+/// open until an admin approves an AI context naming a table, and then every column of it is open but those its file
+/// denies. Before that a column is closed to schema search, the object dossier and column list, and the DataOps prepare
+/// step (including through a <c>SELECT *</c> that would otherwise smuggle it through unnamed). A file that stops
+/// denying a column changes nothing until it is approved again, and a file that denies one closes it at the next sync,
+/// with no approval. Every seeded row is removed in a finally so repeated runs stay isolated.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class ColumnPolicyApiTests
@@ -35,6 +35,10 @@ public sealed class ColumnPolicyApiTests
 
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
             .WithSetting("ControlPlane:DataOps:Enabled", "true");
+        await using var contexts = new AiContextTestKit(cs, repoId);
+        string ContextFile(params string[] denied)
+            => $"aiContext: people-{suffix}\ntables:\n  - table: dw.dbo.{tableName}\n"
+                + (denied.Length == 0 ? string.Empty : $"    deny: [{string.Join(", ", denied)}]\n");
         try
         {
             await using (var db = CatalogDatabase.Create(cs))
@@ -76,20 +80,25 @@ public sealed class ColumnPolicyApiTests
                 new PrepareQueryRequest($"SELECT Name FROM dbo.{tableName}", serverRef, Database: "dw"));
             Assert.Equal(HttpStatusCode.BadRequest, beforeRefusal.StatusCode);
 
-            // 2. An admin allow-lists only "Name", leaving "Ssn" unreviewed/denied.
-            using var setResponse = await PutAsync(client, adminToken, "/api/v1/powerai/column-policies",
-                new SetColumnPolicyRequest(objectKey, "Name", IsAllowed: true, Reason: "not PII"));
-            setResponse.EnsureSuccessStatusCode();
-            var setResult = await setResponse.Content.ReadFromJsonAsync<ColumnPolicyStateDto>();
-            Assert.NotNull(setResult);
-            Assert.True(setResult.IsAllowed);
-            Assert.Equal("not PII", setResult.Reason);
+            // 2. A file opens the table but denies "Ssn". Synced, it is a proposal: nothing opens until an admin approves it.
+            contexts.Write("people.ai-context.yaml", ContextFile("Ssn"));
+            await contexts.SyncAsync();
+            Assert.Empty(await contexts.AllowedColumnsAsync(objectKey));
+            using (var stillRefused = await PostAsync(client, adminToken, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest($"SELECT Name FROM dbo.{tableName}", serverRef, Database: "dw")))
+            {
+                Assert.Equal(HttpStatusCode.BadRequest, stillRefused.StatusCode);
+            }
+
+            await AiContextTestKit.ApproveAsync(client, adminToken, $"people-{suffix}");
 
             // 3. The admin state view shows Name allowed and Ssn still not.
             var state = await GetJsonAsync<IReadOnlyList<ColumnPolicyStateDto>>(
                 client, adminToken, $"/api/v1/powerai/column-policies/objects/{Uri.EscapeDataString(objectKey)}");
             Assert.True(state.Single(c => c.ColumnName == "Name").IsAllowed);
+            Assert.Equal($"people-{suffix}", state.Single(c => c.ColumnName == "Name").Context);
             Assert.False(state.Single(c => c.ColumnName == "Ssn").IsAllowed);
+            Assert.Null(state.Single(c => c.ColumnName == "Ssn").Context);
 
             // 4. The catalog-wide "not allowed" overview still lists Ssn (never reviewed, no policy row at all).
             var overview = await GetJsonAsync<PagedResult<RestrictedColumnDto>>(
@@ -131,19 +140,26 @@ public sealed class ColumnPolicyApiTests
                 new PrepareQueryRequest($"SELECT Name FROM dbo.{tableName}", serverRef, Database: "dw"));
             allowed.EnsureSuccessStatusCode();
 
-            // 7. Allowing Ssn too, SELECT * now works; denying it again reverses just that column.
-            using var allowSsn = await PutAsync(client, adminToken, "/api/v1/powerai/column-policies",
-                new SetColumnPolicyRequest(objectKey, "Ssn", IsAllowed: true, Reason: null));
-            allowSsn.EnsureSuccessStatusCode();
+            // 7. The file stops denying Ssn: a change waiting for approval, so Ssn stays closed and SELECT * stays refused...
+            contexts.Write("people.ai-context.yaml", ContextFile());
+            await contexts.SyncAsync();
+            Assert.Equal(AiContextStatus.Changed, (await AiContextTestKit.GetAsync(client, adminToken, $"people-{suffix}")).Summary.Status);
+            using (var notYet = await PostAsync(client, adminToken, "/api/v1/dataops/queries/prepare",
+                new PrepareQueryRequest($"SELECT * FROM dbo.{tableName}", serverRef, Database: "dw")))
+            {
+                Assert.Equal(HttpStatusCode.BadRequest, notYet.StatusCode);
+            }
 
+            // ...until an admin approves it; then SELECT * prepares.
+            await AiContextTestKit.ApproveAsync(client, adminToken, $"people-{suffix}");
             using var starNowAllowed = await PostAsync(client, adminToken, "/api/v1/dataops/queries/prepare",
                 new PrepareQueryRequest($"SELECT * FROM dbo.{tableName}", serverRef, Database: "dw"));
             starNowAllowed.EnsureSuccessStatusCode();
 
-            using var denySsnAgain = await PutAsync(client, adminToken, "/api/v1/powerai/column-policies",
-                new SetColumnPolicyRequest(objectKey, "Ssn", IsAllowed: false, Reason: "PII"));
-            denySsnAgain.EnsureSuccessStatusCode();
-
+            // 8. The file denies Ssn again: the next sync closes it at once, with no approval, while Name stays open.
+            contexts.Write("people.ai-context.yaml", ContextFile("Ssn"));
+            await contexts.SyncAsync();
+            Assert.Equal(["Name"], await contexts.AllowedColumnsAsync(objectKey));
             using var deniedAgain = await PostAsync(client, adminToken, "/api/v1/dataops/queries/prepare",
                 new PrepareQueryRequest($"SELECT Ssn FROM dbo.{tableName}", serverRef, Database: "dw"));
             Assert.Equal(HttpStatusCode.BadRequest, deniedAgain.StatusCode);
@@ -239,13 +255,6 @@ public sealed class ColumnPolicyApiTests
     private static async Task<HttpResponseMessage> PostAsync<T>(HttpClient client, string token, string relativeUri, T body)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, new Uri(relativeUri, UriKind.Relative)) { Content = JsonContent.Create(body) };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return await client.SendAsync(request);
-    }
-
-    private static async Task<HttpResponseMessage> PutAsync<T>(HttpClient client, string token, string relativeUri, T body)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Put, new Uri(relativeUri, UriKind.Relative)) { Content = JsonContent.Create(body) };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return await client.SendAsync(request);
     }

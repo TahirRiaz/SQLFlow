@@ -128,6 +128,71 @@ namespace SqlFlow.Catalog.Migrations
                     b.ToTable("ActivityEvent", "catalog");
                 });
 
+            modelBuilder.Entity("SqlFlow.Catalog.CatalogAiContext", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ApprovedHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ApprovedJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("ApprovedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrentHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("CurrentJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("Instructions")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Path")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<string>("Problems")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<Guid>("RepoId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("SyncedUtc")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("RepoId");
+
+                    b.ToTable("AiContext", "catalog");
+                });
+
             modelBuilder.Entity("SqlFlow.Catalog.CatalogChatConversation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -203,6 +268,10 @@ namespace SqlFlow.Catalog.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("AiContext")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("ColumnName")
                         .IsRequired()
                         .HasMaxLength(512)
@@ -236,6 +305,8 @@ namespace SqlFlow.Catalog.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AiContext");
 
                     b.HasIndex("ObjectKey", "ColumnName")
                         .IsUnique();
@@ -2091,6 +2162,10 @@ namespace SqlFlow.Catalog.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
 
+                    b.Property<string>("AiContext")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<int?>("Confidence")
                         .HasColumnType("int");
 
@@ -2133,6 +2208,8 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AiContext");
+
                     b.HasIndex("ContentHash")
                         .IsUnique();
 
@@ -2150,16 +2227,6 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.Property<string>("Instructions")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool?>("QuestionGeneration")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("QuestionGenerationUpdatedBy")
-                        .HasMaxLength(256)
-                        .HasColumnType("nvarchar(256)");
-
-                    b.Property<DateTime?>("QuestionGenerationUpdatedUtc")
-                        .HasColumnType("datetime2");
 
                     b.Property<string>("UpdatedBy")
                         .HasMaxLength(256)
@@ -2180,6 +2247,10 @@ namespace SqlFlow.Catalog.Migrations
                         .HasColumnType("bigint");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AiContext")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -2209,6 +2280,8 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AiContext");
+
                     b.HasIndex("Name")
                         .IsUnique();
 
@@ -2224,6 +2297,10 @@ namespace SqlFlow.Catalog.Migrations
                         .HasColumnType("bigint");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AiContext")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("BusinessName")
                         .HasMaxLength(200)
@@ -2255,6 +2332,8 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AiContext");
+
                     b.HasIndex("ObjectKey")
                         .IsUnique();
 
@@ -2268,6 +2347,10 @@ namespace SqlFlow.Catalog.Migrations
                         .HasColumnType("bigint");
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<string>("AiContext")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
@@ -2311,6 +2394,8 @@ namespace SqlFlow.Catalog.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AiContext");
 
                     b.HasIndex("FromObjectKey");
 
@@ -2412,6 +2497,9 @@ namespace SqlFlow.Catalog.Migrations
 
                     b.Property<DateTime>("FirstSeenUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("GenerateQuestions")
+                        .HasColumnType("bit");
 
                     b.Property<DateTime>("LastSeenUtc")
                         .HasColumnType("datetime2");

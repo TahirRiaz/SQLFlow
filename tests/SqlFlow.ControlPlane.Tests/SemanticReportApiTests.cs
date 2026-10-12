@@ -137,65 +137,26 @@ public sealed class SemanticReportApiTests
                 var generated = Assert.Single(visual.QuestionEntries);
                 Assert.Equal(SubscriberQuestionOrigin.Generated, generated.Origin);
 
-                // A person adds a question to the visual...
-                SubscriberReportQuestionDto added;
+                // A question is never written through the API: a model writes them when the subscriber's library asks for
+                // it, and a person curates by removing one.
                 using (var add = await SendAsync(client, token, HttpMethod.Post, $"{Route}/questions",
-                    new AddReportQuestionRequest(repo.Id, visual.VisualKey, "  Which region grew fastest?  ")))
+                    new { repoId = repo.Id, visualKey = visual.VisualKey, question = "Which region grew fastest?" }))
                 {
-                    Assert.Equal(HttpStatusCode.OK, add.StatusCode);
-                    added = (await add.Content.ReadFromJsonAsync<SubscriberReportQuestionDto>())!;
-                    Assert.Equal("Which region grew fastest?", added.Question);
-                    Assert.Equal(SubscriberQuestionOrigin.Manual, added.Origin);
-                    Assert.False(string.IsNullOrEmpty(added.UpdatedBy));
+                    Assert.False(add.IsSuccessStatusCode);
                 }
 
-                // ...but not the same one twice, not an empty or multi-line one, and not on a visual that is gone.
-                using (var twice = await SendAsync(client, token, HttpMethod.Post, $"{Route}/questions",
-                    new AddReportQuestionRequest(repo.Id, visual.VisualKey, "which region GREW fastest?")))
-                {
-                    Assert.Equal(HttpStatusCode.Conflict, twice.StatusCode);
-                }
-
-                using (var blank = await SendAsync(client, token, HttpMethod.Post, $"{Route}/questions",
-                    new AddReportQuestionRequest(repo.Id, visual.VisualKey, "   ")))
-                {
-                    Assert.Equal(HttpStatusCode.BadRequest, blank.StatusCode);
-                }
-
-                using (var multiline = await SendAsync(client, token, HttpMethod.Post, $"{Route}/questions",
-                    new AddReportQuestionRequest(repo.Id, visual.VisualKey, "one\ntwo")))
-                {
-                    Assert.Equal(HttpStatusCode.BadRequest, multiline.StatusCode);
-                }
-
-                using (var missing = await SendAsync(client, token, HttpMethod.Post, $"{Route}/questions",
-                    new AddReportQuestionRequest(repo.Id, $"{visual.VisualKey}-gone", "Anything?")))
-                {
-                    Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
-                }
-
-                // Editing a generated question makes it the person's.
                 using (var edit = await SendAsync(client, token, HttpMethod.Put, $"{Route}/questions/{generated.Id}",
-                    new UpdateReportQuestionRequest("Which region sells the most units?")))
+                    new { question = "Which region sells the most units?" }))
                 {
-                    Assert.Equal(HttpStatusCode.OK, edit.StatusCode);
-                    var edited = (await edit.Content.ReadFromJsonAsync<SubscriberReportQuestionDto>())!;
-                    Assert.Equal("Which region sells the most units?", edited.Question);
-                    Assert.Equal(SubscriberQuestionOrigin.Manual, edited.Origin);
+                    Assert.False(edit.IsSuccessStatusCode);
                 }
 
-                using (var clash = await SendAsync(client, token, HttpMethod.Put, $"{Route}/questions/{generated.Id}",
-                    new UpdateReportQuestionRequest("Which region grew fastest?")))
-                {
-                    Assert.Equal(HttpStatusCode.Conflict, clash.StatusCode);
-                }
-
-                using (var delete = await SendAsync(client, token, HttpMethod.Delete, $"{Route}/questions/{added.Id}", body: null))
+                using (var delete = await SendAsync(client, token, HttpMethod.Delete, $"{Route}/questions/{generated.Id}", body: null))
                 {
                     Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
                 }
 
-                using (var again = await SendAsync(client, token, HttpMethod.Delete, $"{Route}/questions/{added.Id}", body: null))
+                using (var again = await SendAsync(client, token, HttpMethod.Delete, $"{Route}/questions/{generated.Id}", body: null))
                 {
                     Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
                 }
@@ -205,15 +166,16 @@ public sealed class SemanticReportApiTests
             {
                 response.EnsureSuccessStatusCode();
                 var detail = (await response.Content.ReadFromJsonAsync<SemanticReportSpecDetailDto>())!;
-                var entry = Assert.Single(Assert.Single(Assert.Single(detail.Pages).Visuals).QuestionEntries);
-                Assert.Equal(("Which region sells the most units?", SubscriberQuestionOrigin.Manual), (entry.Question, entry.Origin));
+                Assert.Empty(Assert.Single(Assert.Single(detail.Pages).Visuals).QuestionEntries);
             }
 
             using (var response = await SendAsync(client, token, HttpMethod.Get, $"{Route}/subscribers", body: null))
             {
                 response.EnsureSuccessStatusCode();
                 var subscribers = (await response.Content.ReadFromJsonAsync<List<SemanticReportSubscriberDto>>())!;
-                Assert.Contains(subscribers, s => s.RepoId == repo.Id && s.Name == "Sales_Report");
+                var sales = Assert.Single(subscribers, s => s.RepoId == repo.Id && s.Name == "Sales_Report");
+                // Generating questions is the library's decision, and off unless it says so.
+                Assert.False(sales.GenerateQuestions);
                 // Only Power BI subscribers can hold a report.
                 Assert.DoesNotContain(subscribers, s => s.RepoId == repo.Id && s.Name == "Revenue_Workbook");
             }
@@ -349,145 +311,63 @@ public sealed class SemanticReportApiTests
         Assert.Equal(HttpStatusCode.Forbidden, extract.StatusCode);
     }
 
-    // ---- question generation switch ------------------------------------------------------------------------
+    // ---- question generation -------------------------------------------------------------------------------
 
-    [SkippableFact]
-    public async Task QuestionGeneration_CannotBeTurnedOn_WithoutAnAnthropicKey()
+    [Fact]
+    public async Task QuestionGeneration_IsAvailable_OnlyWhereTheDeploymentHasAnAnthropicKey()
     {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
-        using var client = factory.CreateClient();
-        var token = await IssueTokenAsync(client, ["read", "operate", "admin"]);
-        var before = await ReadQuestionGenerationColumnsAsync(cs);
-        try
+        await using (var withoutKey = new ControlPlaneAppFactory())
         {
-            using (var response = await SendAsync(client, token, HttpMethod.Get, $"{Route}/question-generation", body: null))
-            {
-                response.EnsureSuccessStatusCode();
-                var state = (await response.Content.ReadFromJsonAsync<QuestionGenerationDto>())!;
-                Assert.False(state.Available);
-                Assert.False(state.Enabled);
-            }
-
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/question-generation",
-                new SetQuestionGenerationRequest(true)))
-            {
-                Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
-                Assert.Contains("Anthropic key", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
-            }
-
-            // Turning it off needs no key.
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/question-generation",
-                new SetQuestionGenerationRequest(false)))
-            {
-                response.EnsureSuccessStatusCode();
-                var state = (await response.Content.ReadFromJsonAsync<QuestionGenerationDto>())!;
-                Assert.False(state.Override);
-                Assert.False(state.Enabled);
-                Assert.False(string.IsNullOrEmpty(state.UpdatedBy));
-            }
+            using var client = withoutKey.CreateClient();
+            var token = await IssueTokenAsync(client, ["read", "admin"]);
+            using var capabilities = await SendAsync(client, token, HttpMethod.Get, $"{Route}/capabilities", body: null);
+            capabilities.EnsureSuccessStatusCode();
+            Assert.False((await capabilities.Content.ReadFromJsonAsync<SemanticReportCapabilitiesDto>())!.QuestionGenerationAvailable);
         }
-        finally
+
+        await using (var withKey = new ControlPlaneAppFactory()
+            .WithSetting("ControlPlane:Assistant:Anthropic:ApiKey", "sk-ant-test-key-not-used"))
         {
-            await RestoreQuestionGenerationColumnsAsync(cs, before);
+            using var client = withKey.CreateClient();
+            var token = await IssueTokenAsync(client, ["read", "admin"]);
+            using var capabilities = await SendAsync(client, token, HttpMethod.Get, $"{Route}/capabilities", body: null);
+            capabilities.EnsureSuccessStatusCode();
+            Assert.True((await capabilities.Content.ReadFromJsonAsync<SemanticReportCapabilitiesDto>())!.QuestionGenerationAvailable);
+        }
+
+        // The switch an admin turned in the GUI is gone: what generates is the subscriber library, in source control.
+        await using (var factory = new ControlPlaneAppFactory())
+        {
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["read", "admin"]);
+            using var read = await SendAsync(client, token, HttpMethod.Get, $"{Route}/question-generation", body: null);
+            Assert.False(read.IsSuccessStatusCode);
+            using var write = await SendAsync(client, token, HttpMethod.Put, $"{Route}/question-generation", new { enabled = true });
+            Assert.False(write.IsSuccessStatusCode);
         }
     }
 
-    [SkippableFact]
-    public async Task QuestionGeneration_AdminOverridesTheDeploymentDefault_UntilReset()
+    [Fact]
+    public async Task TheRetiredDeploymentSwitch_StopsTheHostFromStarting_NamingWhatReplacedIt()
     {
-        var cs = CatalogTestDb.Require();
-        await CatalogDatabase.MigrateAsync(cs);
-        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
-            .WithSetting("ControlPlane:Assistant:Anthropic:ApiKey", "sk-ant-test-key-never-called");
-        using var client = factory.CreateClient();
-        var token = await IssueTokenAsync(client, ["read", "operate", "admin"]);
-        var before = await ReadQuestionGenerationColumnsAsync(cs);
-        try
+        // A deployment that still sets it would otherwise believe it turned generation on.
+        await using var factory = new ControlPlaneAppFactory()
+            .WithSetting("ControlPlane:PowerAI:QuestionGeneration:Enabled", "true");
+
+        var error = Assert.ThrowsAny<Exception>(() => factory.CreateClient());
+
+        var message = string.Join(" | ", Unwrap(error).Select(e => e.Message));
+        Assert.Contains("ControlPlane:PowerAI:QuestionGeneration is no longer a setting", message, StringComparison.Ordinal);
+        Assert.Contains("generateQuestions: true", message, StringComparison.Ordinal);
+
+        static IEnumerable<Exception> Unwrap(Exception? e)
         {
-            // The deployment default is off (the shipped setting), so an admin turning it on is what enables it.
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/question-generation",
-                new SetQuestionGenerationRequest(null)))
+            for (; e is not null; e = e.InnerException)
             {
-                response.EnsureSuccessStatusCode();
-                var state = (await response.Content.ReadFromJsonAsync<QuestionGenerationDto>())!;
-                Assert.True(state.Available);
-                Assert.False(state.DeploymentDefault);
-                Assert.Null(state.Override);
-                Assert.False(state.Enabled);
-            }
-
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/question-generation",
-                new SetQuestionGenerationRequest(true)))
-            {
-                response.EnsureSuccessStatusCode();
-                var state = (await response.Content.ReadFromJsonAsync<QuestionGenerationDto>())!;
-                Assert.True(state.Override);
-                Assert.True(state.Enabled);
-            }
-
-            using (var capabilities = await SendAsync(client, token, HttpMethod.Get, $"{Route}/capabilities", body: null))
-            {
-                capabilities.EnsureSuccessStatusCode();
-                var body = (await capabilities.Content.ReadFromJsonAsync<SemanticReportCapabilitiesDto>())!;
-                Assert.True(body.QuestionGenerationEnabled);
-            }
-
-            // Every sync path asks the registered switch, so it must now say yes.
-            await using (var db = CatalogDatabase.Create(cs))
-            {
-                var questionGeneration = factory.Services.GetRequiredService<QuestionGenerationSwitch>();
-                Assert.True(await questionGeneration.IsEnabledAsync(db, CancellationToken.None));
-            }
-
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/question-generation",
-                new SetQuestionGenerationRequest(null)))
-            {
-                response.EnsureSuccessStatusCode();
-                var state = (await response.Content.ReadFromJsonAsync<QuestionGenerationDto>())!;
-                Assert.Null(state.Override);
-                Assert.False(state.Enabled);
-                Assert.Equal(0, state.SyncsQueued);
+                yield return e;
             }
         }
-        finally
-        {
-            await RestoreQuestionGenerationColumnsAsync(cs, before);
-        }
     }
-
-    /// <summary>The switch lives on the catalog's one settings row, which other tests share, so each test puts back
-    /// exactly what it found.</summary>
-    private static async Task<QuestionGenerationColumns> ReadQuestionGenerationColumnsAsync(string cs)
-    {
-        await using var db = CatalogDatabase.Create(cs);
-        var row = await db.SemanticLayerSettings.AsNoTracking()
-            .FirstOrDefaultAsync(s => s.Id == CatalogSemanticLayerSettings.SingletonId);
-        return new QuestionGenerationColumns(
-            row is not null, row?.QuestionGeneration, row?.QuestionGenerationUpdatedBy, row?.QuestionGenerationUpdatedUtc);
-    }
-
-    private static async Task RestoreQuestionGenerationColumnsAsync(string cs, QuestionGenerationColumns before)
-    {
-        await using var db = CatalogDatabase.Create(cs);
-        var rows = db.SemanticLayerSettings.Where(s => s.Id == CatalogSemanticLayerSettings.SingletonId);
-        if (!before.Exists)
-        {
-            // The test created the row; remove it unless something wrote instructions to it meanwhile.
-            await rows.Where(s => s.Instructions == null).ExecuteDeleteAsync();
-            return;
-        }
-
-        await rows.ExecuteUpdateAsync(u => u
-            .SetProperty(s => s.QuestionGeneration, before.Value)
-            .SetProperty(s => s.QuestionGenerationUpdatedBy, before.UpdatedBy)
-            .SetProperty(s => s.QuestionGenerationUpdatedUtc, before.UpdatedUtc));
-    }
-
-    private sealed record QuestionGenerationColumns(bool Exists, bool? Value, string? UpdatedBy, DateTime? UpdatedUtc);
-
-    // ---- extraction (no catalog needed) --------------------------------------------------------------------
 
     [Fact]
     public async Task Extraction_IsRefusedPlainly_WhenItIsNotEnabled()
@@ -502,7 +382,7 @@ public sealed class SemanticReportApiTests
             var body = (await capabilities.Content.ReadFromJsonAsync<SemanticReportCapabilitiesDto>())!;
             Assert.False(body.ExtractionEnabled);
             Assert.Equal(ReportSpecs.MaxBytes, body.MaxSpecBytes);
-            Assert.False(body.QuestionGenerationEnabled);
+            Assert.False(body.QuestionGenerationAvailable);
         }
 
         using var response = await SendRawAsync(client, token, $"{Route}/extract?reportFile=Sales.pbix", [1, 2, 3]);

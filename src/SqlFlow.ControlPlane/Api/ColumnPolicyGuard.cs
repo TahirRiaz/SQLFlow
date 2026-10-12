@@ -40,7 +40,15 @@ public static class ColumnPolicyGuard
     /// statement this parses differently than the guard already did passes: this is a second, narrower check
     /// layered on the guard's own parse, not a replacement for it.
     /// </summary>
-    public static async Task EnsureAllowedAsync(CatalogDbContext db, string sql, CancellationToken ct)
+    /// <param name="db">The catalog.</param>
+    /// <param name="sql">The statement.</param>
+    /// <param name="ct">Cancellation.</param>
+    /// <param name="allowedOverride">For the objects it names, the columns to treat as allowed in place of the
+    /// allow-list: how an AI context version is checked as if it were approved, by these same rules. Null checks
+    /// against the allow-list alone.</param>
+    public static async Task EnsureAllowedAsync(
+        CatalogDbContext db, string sql, CancellationToken ct,
+        IReadOnlyDictionary<string, IReadOnlySet<string>>? allowedOverride = null)
     {
         ArgumentNullException.ThrowIfNull(db);
 
@@ -138,6 +146,10 @@ public static class ColumnPolicyGuard
         var allowedByKey = allowed
             .GroupBy(p => p.ObjectKey, StringComparer.Ordinal)
             .ToDictionary(g => g.Key, g => g.Select(p => p.ColumnName).ToHashSet(StringComparer.OrdinalIgnoreCase));
+        foreach (var (key, columns) in allowedOverride ?? new Dictionary<string, IReadOnlySet<string>>())
+        {
+            allowedByKey[key] = columns.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        }
 
         var objectColumns = await db.ObjectColumns.AsNoTracking()
             .Where(c => candidateKeys.Contains(c.ObjectKey))

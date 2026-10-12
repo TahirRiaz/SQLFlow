@@ -70,6 +70,18 @@ public static class RepoStore
             await catalog.SubscriberModelRelationships.Where(r => r.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.SubscriberModelTables.Where(t => t.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.SemanticReportSpecs.Where(s => s.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
+
+            // The AI contexts the repository's files define go with it, and so does everything they served.
+            var contexts = await catalog.AiContexts.AsNoTracking()
+                .Where(c => c.RepoId == repoId)
+                .Select(c => c.Name)
+                .ToListAsync(ct).ConfigureAwait(false);
+            foreach (var context in contexts)
+            {
+                await AiContextMaterializer.RemoveAsync(catalog, context, ct).ConfigureAwait(false);
+            }
+
+            await catalog.AiContexts.Where(c => c.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.Subscribers.Where(s => s.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.FlowDependencies.Where(d => d.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             await catalog.ScheduleMembers.Where(m => m.RepoId == repoId).ExecuteDeleteAsync(ct).ConfigureAwait(false);

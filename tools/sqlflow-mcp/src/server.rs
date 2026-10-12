@@ -440,9 +440,9 @@ pub struct SemanticTablesInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SimilarQuestionsInput {
-    /// The question to answer from warehouse data, in the user's own words, with the `!cwd` command prefix
-    /// stripped. It need not be about business: an operational or data-quality question asked with `!cwd`
-    /// belongs here too. Pass the
+    /// The question to answer from warehouse data, in the user's own words, with the leading `!` (and a `cwd`
+    /// right after it) stripped. It need not be about business: an operational or data-quality question asked
+    /// with `!` belongs here too. Pass the
     /// rest exactly as they typed it: the match is on meaning, so rewording it into schema terms first
     /// throws away the signal this searches on.
     pub question: String,
@@ -1843,15 +1843,16 @@ and fix every finding first."
         self.get("/api/v1/lineage/objects/dossier", &[("key", i.key)]).await
     }
 
-    // ---- Semantic layer (the allow-listed schema) --------------------------
+    // ---- Semantic layer (the approved AI contexts) --------------------------
 
     #[tool(
-        description = "START HERE to write SQL for someone, unless the person's message begins with the literal `!cwd` \
-            prefix, which activates find_similar_questions instead and is that tool's alone to answer: the governed \
+        description = "START HERE to write SQL for someone, unless the person's message begins with `!`, which \
+            activates find_similar_questions instead and is that tool's alone to answer: the governed \
             schema a query may read. Answers which tables exist, what \
-            their columns mean, and what may be queried at all. The semantic layer is the governed schema: only the tables \
-            and columns an admin has allow-listed exist in it, each with its business description and synonyms. Returns the \
-            layer's general instructions (read and follow them whenever you write SQL), where its tables live \
+            their columns mean, and what may be queried at all. The semantic layer is the governed schema, made of the AI \
+            contexts an admin approved: only the tables and columns those contexts open exist in it, each with its business \
+            description and synonyms. Returns the contexts (what each covers), each context's instructions (read and \
+            follow them whenever you write SQL over its tables), where its tables live \
             (database/schema with table counts), and every measure: a named SQL expression anchored to one table, to reuse \
             verbatim rather than re-derive. A table or column that is not in the layer is not available to query, however it \
             is named: say so rather than guessing at it."
@@ -1861,7 +1862,7 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Search the semantic layer (the allow-listed schema) for tables, columns, and measures by \
+        description = "Search the semantic layer (the approved AI contexts) for tables, columns, and measures by \
             physical name OR business term. Every word must match somewhere on one table: its name, schema, \
             business name, description, or synonyms, or one of its allowed columns' names, descriptions, or \
             synonyms. So a business word like \"turnover\" finds the column an admin tagged with it even when \
@@ -2253,10 +2254,10 @@ and fix every finding first."
     #[tool(
         description = "Locate a named identifier anywhere in the estate - a table, column, flow, or file whose name (or a fragment of \
             it) you already have, as in \"where does CustomerId live\" or \"where is Sales computed\". Not for a message \
-            given as the `!cwd <question>` command (e.g. \"!cwd what is our revenue by region\", \"!cwd how many rows \
-            landed last night\") - that exact prefix routes to find_similar_questions instead, called before this tool, \
+            beginning with `!` (e.g. \"!what is our revenue by region\", \"! how many rows \
+            landed last night\") - that leading `!` routes to find_similar_questions instead, called before this tool, \
             since a question to be answered from warehouse data names no single identifier this can search for. A question phrased the same way but without \
-            the `!cwd` prefix still belongs here, not there. One term fanned across every catalog surface at once - \
+            the leading `!` still belongs here, not there. One term fanned across every catalog surface at once - \
             warehouse objects, their columns, their code, processed files, flow YAML, and the columns flows produce - \
             returning each surface's full match count with a preview of its top hits, plus a nextSteps plan naming the tool \
             that pages each surface and the tool that turns a hit into an answer. A term absent from the synced warehouse \
@@ -2387,16 +2388,17 @@ and fix every finding first."
         // The first sentence is SILENT_RETRIEVAL_RULE, kept verbatim in sync by the
         // `tool_description_leads_with_the_silent_rule` test below: rmcp's #[tool] attribute takes only a
         // literal, so this one site cannot compose the macro and is asserted instead.
-        description = "THE `!cwd` COMMAND ROUTES HERE. Call this, before any schema or semantic-layer lookup, whenever the \
-            user's message is the explicit command `!cwd <question>` - e.g. \"!cwd what is our revenue by region\", \
-            \"!cwd how many rows landed last night\". The `!cwd` prefix is what marks a message as a question to be \
+        description = "THE `!` COMMAND ROUTES HERE. Call this, before any schema or semantic-layer lookup, whenever the \
+            user's message begins with `!`, the explicit command `!<question>` - e.g. \"!what is our revenue by region\", \
+            \"! how many rows landed last night\" (`!cwd <question>` is the same command). The leading `!` is what marks a message as a question to be \
             answered from warehouse data, whatever it is about: a reported figure, an operational count, a data-quality \
             check. Who is asking and whether the subject sounds commercial or technical make no difference; needing SQL \
-            over the warehouse to answer is the whole criterion. Strip the prefix and pass the remainder as `question`. \
-            Do not guess from phrasing alone that a message unprefixed by `!cwd` belongs here, even one that reads like \
-            \"what is our revenue by region\" or names things that sound like table or column names: without the `!cwd` \
+            over the warehouse to answer is the whole criterion. Strip the `!` (and a `cwd` right after it) and pass the \
+            remainder as `question`. \
+            Do not guess from phrasing alone that a message not beginning with `!` belongs here, even one that reads like \
+            \"what is our revenue by region\" or names things that sound like table or column names: without the `!` \
             prefix, route it through search_semantic_layer/describe_semantic_table like any other question instead. A \
-            full question is not an identifier to a schema search's index; it is what this tool matches, once `!cwd` has \
+            full question is not an identifier to a schema search's index; it is what this tool matches, once `!` has \
             activated it. \
             Say nothing to the person before or between the tool calls on this path: no preamble, no restating the question, \
             no announcing what you are about to look up or that you are building a query, and no commentary on what came \
@@ -3915,7 +3917,7 @@ impl ServerHandler for SqlFlowMcp {
         let opening = if self.modules.withholds("find_similar_questions") {
             format!("{introduction} ")
         } else {
-            format!("{introduction}\n\n{ROUTING_CWD}\n\n")
+            format!("{introduction}\n\n{ROUTING_COMMAND}\n\n")
         };
         let modules = self.modules.instructions();
         let withheld = self.modules.withheld_note();
@@ -3949,14 +3951,15 @@ impl SqlFlowMcp {
 /// How SQLFlow's own server introduces itself; a host may replace it (`McpHost::introduced_as`).
 const INTRODUCTION: &str = "SQLFlow MCP server.";
 
-/// The rule that follows the introduction while find_similar_questions is offered: a `!cwd` question goes to it before
-/// anything else. A host that leaves the tool out does not get the rule, so it is never told to call a tool it lacks.
-const ROUTING_CWD: &str = "\
-ROUTING, BEFORE ANYTHING ELSE: a message beginning with the literal `!cwd` is a question to be answered
-from warehouse data. Strip the prefix and call find_similar_questions FIRST, before any schema lookup,
+/// The rule that follows the introduction while find_similar_questions is offered: a question beginning with `!` goes
+/// to it before anything else. A host that leaves the tool out does not get the rule, so it is never told to call a tool
+/// it lacks.
+const ROUTING_COMMAND: &str = "\
+ROUTING, BEFORE ANYTHING ELSE: a message beginning with `!` is a question to be answered from warehouse
+data (`!cwd` is the same command). Strip the `!` (and a `cwd` right after it) and call find_similar_questions FIRST, before any schema lookup,
 any semantic-layer search, and any word to the person. It returns SQL that already answers the question,
 confirmed by a human; a `trusted` match with an `exampleId` is then run with auto_run_trusted_match. Do
-not compose SQL by hand until that path has come up empty. A message WITHOUT the `!cwd` prefix never goes
+not compose SQL by hand until that path has come up empty. A message WITHOUT the leading `!` never goes
 to find_similar_questions, however much it reads like a question the warehouse could answer. The fuller
 rule, including how to lay out the answer, is in the online section below.";
 
@@ -4012,11 +4015,12 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   row that came back without links. A result about something the CALL named rather than about its rows (a
   flow's columns, an object's columns, a repo's edges, one file's provenance, the insights boards, summary)
   carries the subject's links on the envelope beside `items`, so those answers have a destination too.
-- The command `!cwd <question>` (e.g. \"!cwd what is our revenue by region?\", \"!cwd how many rows landed
-  last night\"): this exact prefix, not phrasing, is what activates the path for a question answered from
+- The command `!<question>`, a message beginning with `!` (e.g. \"!what is our revenue by region?\", \"! how many
+  rows landed last night\"; `!cwd <question>` is the same command): this leading `!`, not phrasing, is what
+  activates the path for a question answered from
   warehouse data. It covers any such question, commercial or operational; needing SQL over the warehouse is
   the criterion, not the subject.
-  Strip `!cwd` and call find_similar_questions FIRST, before any schema lookup, with the
+  Strip the `!` (and a `cwd` right after it) and call find_similar_questions FIRST, before any schema lookup, with the
   remainder as the question. It matches the question against ones this estate's dashboards and confirmed
   answers already answer, expanding the wording so a paraphrase still finds them, and returns the SQL
   that already answers it plus a trustworthy score (`trusted`) rather than an LLM's own confidence.
@@ -4048,17 +4052,18 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   saved. When you do call it, first say in one line what you will save as the question, quoting it, so they
   can amend the wording; the question is stored as typed and is what later questions match against, so a
   typo is theirs to fix, not yours to correct silently, and amending it leaves the query untouched. A
-  message with NO `!cwd` prefix is never routed to find_similar_questions, no matter how much it reads
+  message with NO leading `!` is never routed to find_similar_questions, no matter how much it reads
   like a question the warehouse could answer: treat it as a normal schema/lookup question and work it
   through the semantic layer and the rest of this list instead.
 - Writing SQL, or any question about which tables and columns exist and what they mean: use the SEMANTIC
-  LAYER, the governed schema holding only the tables and columns an admin has allow-listed, with their
+  LAYER, the governed schema made of the AI contexts an admin approved, holding only the tables and columns
+  those contexts open, with their
   business descriptions, synonyms, curated keys and joins, measures, and example queries. get_semantic_layer
   first (its general instructions apply to every query you write), then search_semantic_layer with a name or
   a business term, then describe_semantic_table(key) for the columns, key, joins, and measures of one table.
   A query may read only the allowed columns describe_semantic_table lists: anything else is refused when it
   runs. The raw catalog readers below (describe_object, search_objects/_columns/_definitions, get_table_key,
-  get_table_joins) see every catalogued column regardless of the allow-list; where a client exposes them,
+  get_table_joins) see every catalogued column whatever the approved contexts open; where a client exposes them,
   use them for lineage and code questions, never to find columns to query.
 - \"Where does <name> live / where is <X> computed / what is <X>?\": call search_all FIRST. It fans one term
   across all seven surfaces at once and answers with each surface's full count plus a nextSteps plan naming
@@ -4316,7 +4321,7 @@ mod tests {
     /// `responseRule` in the payload arrives only after a call has been made. So the rule leads the description
     /// rather than sitting deep inside it, where a model composing a preamble has already passed it by.
     #[test]
-    fn tool_description_leads_with_the_cwd_trigger_and_carries_the_silent_rule() {
+    fn tool_description_leads_with_the_command_trigger_and_carries_the_silent_rule() {
         let router = SqlFlowMcp::tool_router();
         let tool = router
             .list_all()
@@ -4326,12 +4331,12 @@ mod tests {
         let description = tool.description.clone().unwrap_or_default();
 
         // This tool is surfaced to some clients by NAME ALONE, deferred until a tool search loads its
-        // schema. The name says nothing about `!cwd`, so the trigger has to be the first thing in the
+        // schema. The name says nothing about `!`, so the trigger has to be the first thing in the
         // description for the routing to be discoverable at all: an agent that has not yet read this
         // text is exactly the one that needs to know the command routes here.
         assert!(
-            description.starts_with("THE `!cwd` COMMAND ROUTES HERE."),
-            "find_similar_questions must lead with the `!cwd` trigger, but began:\n{}",
+            description.starts_with("THE `!` COMMAND ROUTES HERE."),
+            "find_similar_questions must lead with the `!` trigger, but began:\n{}",
             &description[..description.len().min(240)]
         );
 

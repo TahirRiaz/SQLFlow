@@ -9,9 +9,9 @@ using Xunit;
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// Curating the semantic layer's example queries (the saved answers) at the HTTP boundary. What matters is that
-/// curation cannot put anything into the store the confirm endpoint would refuse (an edit is re-validated and its
-/// duplicate hash recomputed), that a deleted answer is gone, and that only an admin can do either.
+/// The semantic layer's saved answers at the HTTP boundary: they are listed and searched, a deleted answer is gone, an
+/// answer an AI context gives is not deleted here (its file is where it is removed, so the file and what is served never
+/// disagree), and only an admin can do any of it.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class SemanticExampleAdminApiTests
@@ -19,12 +19,13 @@ public sealed class SemanticExampleAdminApiTests
     private const string Route = "/api/v1/powerai/semantic-layer/examples";
 
     [SkippableFact]
-    public async Task AnEdit_IsRevalidated_RecomputesItsHash_AndCannotDuplicateAnotherAnswer()
+    public async Task AnAnswerAnAiContextGives_IsNotDeletedHere_AndStaysServed()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
         var suffix = Guid.NewGuid().ToString("N")[..8];
+        var context = "orders-" + suffix;
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate", "admin"]);
@@ -32,41 +33,25 @@ public sealed class SemanticExampleAdminApiTests
 
         try
         {
-            var edited = Seed(db, $"How many trips ran ({suffix})?", "SELECT 1 AS Trips");
-            var other = Seed(db, $"How many stops are there ({suffix})?", "SELECT 2 AS Stops");
+            var given = Seed(db, $"How many orders were placed ({suffix})?", "SELECT 1 AS Orders");
+            given.Provenance = SemanticExampleProvenance.AiContext;
+            given.AiContext = context;
             await db.SaveChangesAsync();
 
-            var newQuestion = $"How many trips ran yesterday ({suffix})?";
-            const string NewSql = "SELECT 3 AS Trips";
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/{edited.Id}",
-                new UpdateSemanticExampleRequest(newQuestion, NewSql, SourceRef: null)))
+            using (var response = await SendAsync(client, token, HttpMethod.Delete, $"{Route}/{given.Id}", body: null))
+            {
+                Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+                Assert.Contains(context, await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            }
+
+            Assert.True(await db.SemanticExamples.AnyAsync(e => e.Id == given.Id));
+
+            using (var response = await SendAsync(client, token, HttpMethod.Get, $"{Route}/{given.Id}", body: null))
             {
                 response.EnsureSuccessStatusCode();
                 var body = await response.Content.ReadFromJsonAsync<SemanticExampleAdminDto>();
                 Assert.NotNull(body);
-                Assert.Equal(newQuestion, body.Question);
-                Assert.Equal(NewSql, body.Sql);
-                Assert.Null(body.Problem);
-            }
-
-            var stored = await db.SemanticExamples.AsNoTracking().SingleAsync(e => e.Id == edited.Id);
-            Assert.Equal(SemanticExampleHash.Compute(newQuestion, NewSql), stored.ContentHash);
-            Assert.False(string.IsNullOrEmpty(stored.ConfirmedBy));
-
-            // A query that would write is refused exactly as confirming refuses it, and the row is left as it was.
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/{edited.Id}",
-                new UpdateSemanticExampleRequest(newQuestion, "DELETE FROM Trips", SourceRef: null)))
-            {
-                Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-            }
-
-            Assert.Equal(NewSql, (await db.SemanticExamples.AsNoTracking().SingleAsync(e => e.Id == edited.Id)).Sql);
-
-            // Making it identical to another saved answer would leave two rows scoring the same in every search.
-            using (var response = await SendAsync(client, token, HttpMethod.Put, $"{Route}/{edited.Id}",
-                new UpdateSemanticExampleRequest(other.Question, other.Sql, SourceRef: null)))
-            {
-                Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+                Assert.Equal(SemanticExampleProvenance.AiContext, body.Provenance);
             }
         }
         finally
@@ -89,8 +74,8 @@ public sealed class SemanticExampleAdminApiTests
 
         try
         {
-            var byQuestion = Seed(db, $"Which depot is busiest ({suffix})?", "SELECT 1 AS Depot");
-            var bySql = Seed(db, "Which route is longest?", $"SELECT 1 AS Route_{suffix}");
+            var byQuestion = Seed(db, $"Which region sells most ({suffix})?", "SELECT 1 AS Region");
+            var bySql = Seed(db, "Which product sells best?", $"SELECT 1 AS Product_{suffix}");
             await db.SaveChangesAsync();
 
             using (var response = await SendAsync(client, token, HttpMethod.Get, $"{Route}?search={suffix}", body: null))
@@ -127,7 +112,7 @@ public sealed class SemanticExampleAdminApiTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
-        // Confirming is an operate-scope action, but rewriting precedent other people's answers rest on is not.
+        // Confirming is an operate-scope action, but removing precedent other people's answers rest on is not.
         await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
         using var client = factory.CreateClient();
         var token = await IssueTokenAsync(client, ["read", "operate"]);

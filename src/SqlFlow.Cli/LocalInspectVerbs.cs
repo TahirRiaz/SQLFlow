@@ -82,6 +82,12 @@ internal static class LocalInspectVerbs
                 continue;
             }
 
+            if (FlowSetCollector.IsAiContextFile(file))
+            {
+                results.Add(ValidateAiContext(file, relative));
+                continue;
+            }
+
             try
             {
                 // A companion document (a registered kind's mapping, say) validates under its own document type.
@@ -144,6 +150,26 @@ internal static class LocalInspectVerbs
         return library.Warnings.Count > 0
             ? new ValidationResult(relative, false, null, null, string.Join(" ", library.Warnings))
             : new ValidationResult(relative, true, "schedules", string.Join(", ", library.Schedules.Select(s => s.Name)), null);
+    }
+
+    /// <summary>An AI context file, read as the sync reads it. Whether its tables and columns exist is only known
+    /// against a catalog, so this checks what the file itself says.</summary>
+    private static ValidationResult ValidateAiContext(string file, string relative)
+    {
+        string yaml;
+        try
+        {
+            yaml = File.ReadAllText(file);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return new ValidationResult(relative, false, null, null, ex.Message);
+        }
+
+        var parsed = YamlAiContextLoader.Parse(yaml, relative);
+        return parsed.Document is null
+            ? new ValidationResult(relative, false, "ai-context", parsed.Name, string.Join(" ", parsed.Problems))
+            : new ValidationResult(relative, true, "ai-context", parsed.Document.Name, null);
     }
 
     /// <summary>The (kind, name) of a loaded document, mirroring the discriminators single-file validate prints.</summary>
