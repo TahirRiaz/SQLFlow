@@ -332,10 +332,11 @@ public static class ChatEndpoints
         var prior = await db.ChatMessages.AsNoTracking()
             .Where(m => m.ConversationId == conversation.Id)
             .OrderBy(m => m.Ordinal)
-            .Select(m => new { m.Ordinal, m.Role, m.Text })
+            .Select(m => new { m.Ordinal, m.Role, m.Text, m.AssistantMode })
             .ToListAsync(ct).ConfigureAwait(false);
         var priorTurns = prior
-            .Select(m => new ConversationTurn(m.Role == ChatMessageRoles.Assistant, m.Text))
+            .Select(m => new ConversationTurn(
+                m.Role == ChatMessageRoles.Assistant, m.Text, ParseAssistantMode(m.AssistantMode)))
             .ToList();
 
         var userMessage = new CatalogChatMessage
@@ -375,6 +376,10 @@ public static class ChatEndpoints
         var toolCalls = new List<ChatToolCallDto>();
         var streamedText = new System.Text.StringBuilder();
         string? completedText = null;
+        // The mode the answer is in, saved with it so the next question starts there: the completed answer's own, or,
+        // for an answer stopped or failed part way, the mode its run last restarted in (none: the run never switched,
+        // so the conversation is still in the mode the earlier turns give).
+        AssistantMode? answerMode = null;
         try
         {
             var assistantRequest = new AssistantRequest
@@ -402,14 +407,16 @@ public static class ChatEndpoints
                             .ConfigureAwait(false);
                         break;
                     }
-                    case AssistantEvent.Restarted:
+                    case AssistantEvent.Restarted restarted:
                         // The question is asked again in another mode: the first attempt's text is not the answer,
                         // here or in the browser. The tool calls it made stay on record.
                         streamedText.Clear();
+                        answerMode = restarted.Mode;
                         await WriteSseAsync(response, "restart", "{}", ct).ConfigureAwait(false);
                         break;
                     case AssistantEvent.Completed completed:
                         completedText = completed.Text;
+                        answerMode = completed.Mode;
                         break;
                 }
             }
@@ -420,7 +427,8 @@ public static class ChatEndpoints
             }
 
             var saved = await PersistAssistantMessageAsync(
-                db, clock, conversation, userMessage.Ordinal, completedText, toolCalls, ct).ConfigureAwait(false);
+                db, clock, conversation, userMessage.Ordinal, completedText, toolCalls, answerMode, ct)
+                .ConfigureAwait(false);
             await WriteSseAsync(response, "done", JsonSerializer.Serialize(
                 new ChatStreamDoneDto(saved.Id, saved.Ordinal, completedText, toolCalls), serializer), ct)
                 .ConfigureAwait(false);
@@ -433,7 +441,7 @@ public static class ChatEndpoints
             if (streamedText.Length > 0)
             {
                 await PersistAssistantMessageAsync(
-                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls,
+                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls, answerMode,
                     CancellationToken.None).ConfigureAwait(false);
             }
         }
@@ -448,7 +456,7 @@ public static class ChatEndpoints
             if (streamedText.Length > 0)
             {
                 await PersistAssistantMessageAsync(
-                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls,
+                    db, clock, conversation, userMessage.Ordinal, streamedText.ToString(), toolCalls, answerMode,
                     CancellationToken.None).ConfigureAwait(false);
             }
 
@@ -543,7 +551,7 @@ public static class ChatEndpoints
 
     private static async Task<CatalogChatMessage> PersistAssistantMessageAsync(
         CatalogDbContext db, TimeProvider clock, CatalogChatConversation conversation, int userOrdinal,
-        string text, IReadOnlyList<ChatToolCallDto> toolCalls, CancellationToken ct)
+        string text, IReadOnlyList<ChatToolCallDto> toolCalls, AssistantMode? mode, CancellationToken ct)
     {
         var nowUtc = clock.GetUtcNow().UtcDateTime;
         var message = new CatalogChatMessage
@@ -553,6 +561,7 @@ public static class ChatEndpoints
             Role = ChatMessageRoles.Assistant,
             Text = text,
             ToolCallsJson = toolCalls.Count > 0 ? JsonSerializer.Serialize(toolCalls) : null,
+            AssistantMode = mode is { } m ? FormatAssistantMode(m) : null,
             CreatedUtc = nowUtc,
         };
         db.ChatMessages.Add(message);
@@ -560,6 +569,23 @@ public static class ChatEndpoints
         await db.SaveChangesAsync(ct).ConfigureAwait(false);
         return message;
     }
+
+    /// <summary>The stored spelling of a mode, the MCP server's own (<c>data</c>, <c>estate</c>).</summary>
+    internal static string FormatAssistantMode(AssistantMode mode) => mode switch
+    {
+        AssistantMode.Data => "data",
+        AssistantMode.Estate => "estate",
+        _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, "Not an assistant mode."),
+    };
+
+    /// <summary>A stored mode, or null for a message without one (a question, or an answer saved before modes were
+    /// recorded); a value this build does not know is treated as none, so the earlier turns decide.</summary>
+    internal static AssistantMode? ParseAssistantMode(string? stored) => stored switch
+    {
+        "data" => AssistantMode.Data,
+        "estate" => AssistantMode.Estate,
+        _ => null,
+    };
 
     private static ProblemHttpResult? ValidateImages(IReadOnlyList<string> images, AssistantChatOptions options)
     {

@@ -48,7 +48,7 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
     }
 
     /// <inheritdoc />
-    public Task<string> AskAsync(AssistantRequest request, CancellationToken ct)
+    public Task<AssistantAnswer> AskAsync(AssistantRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
         return AssistantRuns.AskAsync(StreamAsync(request, ct), request, _settings, "Anthropic", ct);

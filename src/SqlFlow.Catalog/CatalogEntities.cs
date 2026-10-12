@@ -2988,5 +2988,10 @@ public class CatalogChatMessage
     /// the answer used no tools (or for user messages).</summary>
     public string? ToolCallsJson { get; set; }
 
+    /// <summary>For an assistant answer, the mode the conversation was in when it was given (<c>data</c> or
+    /// <c>estate</c>), so the next message starts from it even when the assistant switched without a command; null for
+    /// a person's message and for an answer recorded before modes were.</summary>
+    public string? AssistantMode { get; set; }
+
     public DateTime CreatedUtc { get; set; }
 }

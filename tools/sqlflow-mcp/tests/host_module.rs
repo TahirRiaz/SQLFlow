@@ -345,14 +345,17 @@ async fn a_module_is_served_beside_sqlflows_own_tools_over_http() {
         "{instructions}"
     );
 
-    // Both sets of tools are listed: a session naming no mode lists every tool but the way out of data mode. Over HTTP
+    // Both sets of tools are listed: a session naming no mode lists every tool, the mode tools included. Over HTTP
     // the tools that sign in or move the server are not among them, since every call carries its own bearer.
     let names = tool_names(&session.request("tools/list", json!({})).await);
-    for tool in ["list_probes", "run_probe", "list_repos", "search_docs", "validate_flow", "trigger_run", "run_query"] {
+    for tool in ["list_probes", "run_probe", "list_repos", "search_docs", "validate_flow", "trigger_run", "run_query"]
+        .iter()
+        .chain(&[modes::GET_MODE, modes::START_DATA_MODE, modes::END_DATA_MODE])
+    {
         assert!(names.contains(&tool.to_string()), "{tool} is not listed: {names:?}");
     }
-    for tool in SIGN_IN_TOOLS.iter().chain(&[modes::END_DATA_MODE]) {
-        assert!(!names.contains(&tool.to_string()), "{tool} is listed: {names:?}");
+    for tool in SIGN_IN_TOOLS {
+        assert!(!names.contains(&tool.to_string()), "{tool} is listed over HTTP: {names:?}");
     }
     assert_eq!(names.len(), listed_over_http(None, &[]).len() + 2);
     assert_eq!(names.iter().filter(|n| n.as_str() == "list_probes").count(), 1);
@@ -546,6 +549,14 @@ async fn an_http_session_lists_the_tools_of_the_mode_its_address_names_and_keeps
     listed.sort();
     assert_eq!(listed, listed_over_http(Some(Mode::Data), &[]), "a data-mode session lists its own tools and the shared ones");
     assert!(listed.contains(&"end_data_mode".to_string()) && !listed.contains(&"list_probes".to_string()), "{listed:?}");
+    assert!(!listed.contains(&"start_data_mode".to_string()), "{listed:?}");
+
+    // get_mode says so, and that the client opened the session in it.
+    let mode = data.request("tools/call", json!({ "name": "get_mode", "arguments": {} })).await;
+    let mode: Value = serde_json::from_str(mode["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
+    assert_eq!(mode["mode"], json!("data"), "{mode}");
+    assert_eq!(mode["listsEveryTool"], json!(false), "{mode}");
+    assert!(mode["setBy"].as_str().unwrap_or_default().contains("client"), "{mode}");
 
     // An estate tool is answered with the switch to make, not run.
     let refused = data.request("tools/call", json!({ "name": "list_repos", "arguments": {} })).await;
@@ -561,7 +572,8 @@ async fn an_http_session_lists_the_tools_of_the_mode_its_address_names_and_keeps
     assert_eq!(listed, listed_over_http(Some(Mode::Estate), &[]));
     let refused = estate_session.request("tools/call", json!({ "name": "run_query", "arguments": { "planId": "p-1" } })).await;
     let text = refused["result"]["content"][0]["text"].as_str().unwrap_or_default();
-    assert!(refused["result"]["isError"] == json!(true) && text.contains("starting with `!`"), "{refused}");
+    assert!(refused["result"]["isError"] == json!(true) && text.contains("start_data_mode"), "{refused}");
+    assert!(tool_names(&estate_session.request("tools/list", json!({})).await).contains(&"start_data_mode".to_string()));
 
     // end_data_mode switches the data session to the estate's tools, and leaves every other session where it was.
     let ended = data.request("tools/call", json!({ "name": "end_data_mode", "arguments": {} })).await;
@@ -569,6 +581,10 @@ async fn an_http_session_lists_the_tools_of_the_mode_its_address_names_and_keeps
     assert_eq!(answer["mode"], json!("estate"));
     let after = tool_names(&data.request("tools/list", json!({})).await);
     assert!(after.contains(&"list_probes".to_string()) && !after.contains(&"run_query".to_string()), "{after:?}");
+    let mode = data.request("tools/call", json!({ "name": "get_mode", "arguments": {} })).await;
+    let mode: Value = serde_json::from_str(mode["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
+    assert_eq!(mode["mode"], json!("estate"), "{mode}");
+    assert!(mode["setBy"].as_str().unwrap_or_default().contains("switch"), "{mode}");
     let (mut fresh, _) = HttpSession::open(&format!("{url}?mode=data"), "caller-c").await;
     assert!(tool_names(&fresh.request("tools/list", json!({})).await).contains(&"run_query".to_string()));
 }
@@ -685,21 +701,34 @@ async fn a_stdio_session_names_no_mode_and_lists_every_tool() {
         .expect("the probe host composes");
     let (mut session, initialized) = open_stdio(server).await;
 
-    // A stdio client keeps one session for a whole chat and may not refresh its tools mid-answer, so it is offered
-    // everything and keeps the mode from the instructions; a list change is still announced as a capability.
+    // A stdio client keeps one session across chats and does not reliably refresh its tools mid-session, so it is
+    // offered everything, the mode tools included; a list change is still announced as a capability.
     assert_eq!(initialized["result"]["capabilities"]["tools"]["listChanged"], json!(true), "{initialized}");
     let names = tool_names(&session.request("tools/list", json!({})).await);
-    for tool in ["find_similar_questions", "run_query", "list_runs", "list_probes", "login"] {
+    for tool in ["find_similar_questions", "run_query", "list_runs", "list_probes", "login", "get_mode", "start_data_mode", "end_data_mode"] {
         assert!(names.contains(&tool.to_string()), "{tool}: {names:?}");
     }
-    assert!(!names.contains(&"end_data_mode".to_string()), "{names:?}");
+
+    // Estate mode until someone asks for data mode; then get_mode says data, and every tool is still listed and answered.
+    let (mode, _) = session.call("get_mode", json!({})).await;
+    let mode: Value = serde_json::from_str(&mode).expect("json");
+    assert_eq!(mode["mode"], json!("estate"), "{mode}");
+    assert_eq!(mode["listsEveryTool"], json!(true), "{mode}");
+    assert!(mode["setBy"].as_str().unwrap_or_default().contains("default"), "{mode}");
+
+    let (started, is_error) = session.call("start_data_mode", json!({})).await;
+    assert!(!is_error, "{started}");
+    assert!(session.notifications.contains(&"notifications/tools/list_changed".to_string()), "{:?}", session.notifications);
+    let (mode, _) = session.call("get_mode", json!({})).await;
+    let mode: Value = serde_json::from_str(&mode).expect("json");
+    assert_eq!(mode["mode"], json!("data"), "{mode}");
+    assert!(mode["setBy"].as_str().unwrap_or_default().contains("switch"), "{mode}");
     let (answer, is_error) = session.call("list_probes", json!({})).await;
     assert!(!is_error, "{answer}");
-
-    // A tool the session does not list is not answered either: there is no data mode here to end.
-    let (refused, is_error) = session.call("end_data_mode", json!({})).await;
-    assert!(is_error && refused.contains("no mode to end"), "{refused}");
     assert!(tool_names(&session.request("tools/list", json!({})).await).contains(&"list_runs".to_string()));
+
+    let (ended, _) = session.call("end_data_mode", json!({})).await;
+    assert_eq!(serde_json::from_str::<Value>(&ended).expect("json")["mode"], json!("estate"));
 }
 
 #[tokio::test(flavor = "multi_thread")]

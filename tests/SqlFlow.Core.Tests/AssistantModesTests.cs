@@ -17,7 +17,8 @@ public sealed class AssistantModesTests
     [Theory]
     [InlineData("!what is our revenue by region", AssistantMode.Data)]
     [InlineData("  ! how many customers", AssistantMode.Data)]
-    [InlineData("!cwd total sales", AssistantMode.Data)]
+    [InlineData("!data total sales", AssistantMode.Data)]
+    [InlineData("!DATA", AssistantMode.Data)]
     [InlineData("!!", AssistantMode.Data)]
     [InlineData("!exit", AssistantMode.Estate)]
     [InlineData("  !EXIT which flow loads the sales table?", AssistantMode.Estate)]
@@ -70,6 +71,43 @@ public sealed class AssistantModesTests
             new(true, "!what is our revenue by region answers that from the data."),
         ];
         Assert.Equal(AssistantMode.Estate, AssistantQuestions.ModeOf("which flow loads the sales table?", estate));
+    }
+
+    [Fact]
+    public void TheModeAnAnswerEndedIn_CarriesTheConversation()
+    {
+        // The person asked for data mode in words; the assistant switched, and the answer was recorded in data mode.
+        ConversationTurn[] inWords =
+        [
+            new(false, "switch to data mode please"),
+            new(true, "Data mode is on: ask your question.", AssistantMode.Data),
+        ];
+        Assert.Equal(AssistantMode.Data, AssistantQuestions.ModeOf("how many customers do we have?", inWords));
+
+        // A follow-up turned to the estate and the assistant ended data mode itself: the next message starts there,
+        // though the person's last command was `!`.
+        ConversationTurn[] ended =
+        [
+            new(false, "!how many customers do we have"),
+            new(true, "You have 1,204 customers.", AssistantMode.Data),
+            new(false, "which flow loads that table?"),
+            new(true, "The customers flow loads it nightly.", AssistantMode.Estate),
+        ];
+        Assert.Equal(AssistantMode.Estate, AssistantQuestions.ModeOf("and when did it last run?", ended));
+
+        // A newer command of the person's wins over an older answer's mode, and a message's own command over both.
+        Assert.Equal(AssistantMode.Data, AssistantQuestions.ModeOf("and by region?", [.. ended, new(false, "!data revenue")]));
+        Assert.Equal(AssistantMode.Data, AssistantQuestions.ModeOf("!data revenue by region", ended));
+        Assert.Equal(AssistantMode.Estate, AssistantQuestions.ModeOf("!exit", inWords));
+
+        // An answer recorded without a mode (an error reply, or one saved before modes were recorded) says nothing:
+        // the turns before it decide.
+        ConversationTurn[] unrecorded =
+        [
+            new(false, "!how many customers do we have"),
+            new(true, "Sorry, something went wrong."),
+        ];
+        Assert.Equal(AssistantMode.Data, AssistantQuestions.ModeOf("try again", unrecorded));
     }
 
     [Fact]

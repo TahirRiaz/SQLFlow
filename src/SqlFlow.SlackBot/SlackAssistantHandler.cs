@@ -160,7 +160,9 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
                 McpBearer = _options.SqlFlow.AccessToken,
             }, timeout.Token).ConfigureAwait(false);
 
-            await PostAsync(channel, threadTs, SlackMrkdwn.FromMarkdown(answer)).ConfigureAwait(false);
+            // The reply carries the mode the answer ended in, so the thread's next question starts from it.
+            await PostAsync(channel, threadTs, SlackMrkdwn.FromMarkdown(answer.Text), SlackAssistantMode.For(answer.Mode))
+                .ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -205,7 +207,8 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
     /// The Slack-thread transcript before the current message, oldest first, for rebuilding the Foundry
     /// conversation after a restart. A top-level mention is answered on its own (no thread, so no prior
     /// turns): the bot only takes surrounding context from a thread it is invoked inside, never from the
-    /// broader channel. A follow-up in a thread fetches that thread's replies, the durable transcript.
+    /// broader channel. A follow-up in a thread fetches that thread's replies, the durable transcript,
+    /// with their metadata, which holds the mode each of the bot's answers ended in.
     /// </summary>
     private async Task<IReadOnlyList<ConversationTurn>> PriorTurnsAsync(string channel, string ts, string threadTs)
     {
@@ -222,7 +225,8 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
         string? cursor = null;
         do
         {
-            var page = await _slack.Conversations.Replies(channel, threadTs, limit: 200, cursor: cursor).ConfigureAwait(false);
+            var page = await _slack.Conversations.Replies(
+                channel, threadTs, limit: 200, includeAllMetadata: true, cursor: cursor).ConfigureAwait(false);
             messages.AddRange(page.Messages);
             cursor = page.HasMore ? page.ResponseMetadata?.NextCursor : null;
         }
@@ -230,9 +234,14 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
 
         return messages
             .Where(m => m.Ts != ts && !string.IsNullOrWhiteSpace(m.Text))
-            .Select(m => new ConversationTurn(
-                m is BotMessage || m.User == self,
-                MentionRegex().Replace(m.Text, "").Trim()))
+            .Select(m =>
+            {
+                var fromAssistant = m is BotMessage || m.User == self;
+                return new ConversationTurn(
+                    fromAssistant,
+                    MentionRegex().Replace(m.Text, "").Trim(),
+                    fromAssistant ? SlackAssistantMode.Of(m.Metadata) : null);
+            })
             .Where(t => t.Text.Length > 0)
             .ToList();
     }
@@ -292,8 +301,9 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
     }
 
     /// <summary>Posts with a short retry on Slack rate limiting (chat.postMessage is limited to
-    /// roughly one message per second per channel); other Slack errors surface immediately.</summary>
-    private async Task PostAsync(string channel, string threadTs, string text)
+    /// roughly one message per second per channel); other Slack errors surface immediately. An answer
+    /// carries <paramref name="metadata"/> (its mode); an error reply carries none.</summary>
+    private async Task PostAsync(string channel, string threadTs, string text, MessageMetadata? metadata = null)
     {
         const int maxAttempts = 4;
         for (var attempt = 1; ; attempt++)
@@ -306,6 +316,7 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
                     ThreadTs = threadTs,
                     Text = text,
                     UnfurlLinks = false,
+                    MetadataJson = metadata,
                 }).ConfigureAwait(false);
                 return;
             }

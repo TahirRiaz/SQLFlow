@@ -89,7 +89,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
     }
 
     /// <inheritdoc />
-    public Task<string> AskAsync(AssistantRequest request, CancellationToken ct)
+    public Task<AssistantAnswer> AskAsync(AssistantRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
         return AssistantRuns.AskAsync(StreamAsync(request, ct), request, _settings, _providerName, ct);

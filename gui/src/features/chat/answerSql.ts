@@ -11,8 +11,8 @@ export const MAX_QUESTION_LENGTH = 1000;
  * (QuestionExampleEndpoints.NormalizeQuestion). */
 export const BUSINESS_QUESTION_COMMAND = "!";
 
-/** The word that may follow the command ("!cwd what is our revenue"), the command's earlier spelling. */
-export const BUSINESS_QUESTION_WORD = "cwd";
+/** The word that may follow the command, touching it ("!data what is our revenue"). */
+export const BUSINESS_QUESTION_WORD = "data";
 
 const OPENING_FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
@@ -94,7 +94,7 @@ export function messageText(content: readonly { type: string; text?: string }[])
 }
 
 /** A question as the store keeps it: trimmed, and without the leading command (one or more of it, then the command's
- * earlier word when that follows on its own). */
+ * word when that follows it directly and ends there; "! data quality" keeps its first word, since "data" is a word). */
 export function normalizeQuestion(question: string): string {
   const trimmed = question.trim();
   if (!trimmed.startsWith(BUSINESS_QUESTION_COMMAND)) {
@@ -106,11 +106,10 @@ export function normalizeQuestion(question: string): string {
     rest = rest.slice(BUSINESS_QUESTION_COMMAND.length);
   }
 
-  rest = rest.trimStart();
   const word = BUSINESS_QUESTION_WORD.length;
   if (rest.slice(0, word).toLowerCase() === BUSINESS_QUESTION_WORD && (rest.length === word || /\s/.test(rest[word]))) {
-    rest = rest.slice(word).trimStart();
+    rest = rest.slice(word);
   }
 
-  return rest;
+  return rest.trimStart();
 }

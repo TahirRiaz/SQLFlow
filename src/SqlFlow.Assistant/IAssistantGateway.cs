@@ -3,7 +3,13 @@ namespace SqlFlow.Assistant;
 /// <summary>One prior message of a conversation, replayed when the model conversation must be rebuilt.</summary>
 /// <param name="FromAssistant">True when the message is an assistant turn (a previous answer).</param>
 /// <param name="Text">The message text as the host recorded it.</param>
-public readonly record struct ConversationTurn(bool FromAssistant, string Text);
+/// <param name="Mode">For an assistant turn, the mode its answer ended in, when the host recorded it
+/// (<see cref="AssistantAnswer.Mode"/>); null for a person's message and for an answer recorded without one.</param>
+public readonly record struct ConversationTurn(bool FromAssistant, string Text, AssistantMode? Mode = null);
+
+/// <summary>A complete answer, and the mode the conversation was in when it was given, which a host records with the
+/// answer so the next message starts from it.</summary>
+public sealed record AssistantAnswer(string Text, AssistantMode Mode);
 
 /// <summary>How far a streamed tool call has progressed.</summary>
 public enum AssistantToolCallStatus
@@ -39,8 +45,12 @@ public abstract record AssistantEvent
     /// the text the stream wrote so far, since the answer starts over; the tool calls already reported stand.</summary>
     public sealed record Restarted(AssistantMode Mode) : AssistantEvent;
 
-    /// <summary>The terminal event: the complete answer text.</summary>
-    public sealed record Completed(string Text) : AssistantEvent;
+    /// <summary>The terminal event: the complete answer text, and the mode the run that gave it was in, which a host
+    /// records with the answer so the next message starts from it.</summary>
+    public sealed record Completed(string Text) : AssistantEvent
+    {
+        public AssistantMode Mode { get; init; }
+    }
 }
 
 /// <summary>One question for the assistant, with the conversational context it runs in.</summary>
@@ -85,7 +95,7 @@ public interface IAssistantGateway
 {
     /// <summary>Answers one question and returns the complete answer text (the buffered
     /// equivalent of draining <see cref="StreamAsync"/>).</summary>
-    Task<string> AskAsync(AssistantRequest request, CancellationToken ct);
+    Task<AssistantAnswer> AskAsync(AssistantRequest request, CancellationToken ct);
 
     /// <summary>
     /// Answers one question as a live event stream: text deltas and tool-call transitions as the

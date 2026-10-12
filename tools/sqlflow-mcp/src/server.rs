@@ -47,12 +47,12 @@ pub struct SqlFlowMcp {
     /// What the host's modules add to dispatch and to the instructions; empty for SQLFlow's own server.
     modules: Arc<ModuleSet>,
     tool_router: ToolRouter<Self>,
-    /// The mode this session switched to with end_data_mode (`crate::modes`), which from then on is what every listing
-    /// and call of the session follows; while unset, the mode the request's MCP address names, or none, and a session
-    /// in no mode lists every tool. One cell per session: an HTTP session gets its own from `for_session`.
+    /// The mode a switch tool set in this session (`crate::modes`), which from then on is the conversation's mode as
+    /// get_mode reports it and, in a session opened in a named mode, the mode whose tools it lists. One cell per
+    /// session: an HTTP session gets its own from `for_session`.
     mode: Arc<std::sync::Mutex<Option<Mode>>>,
     /// Whether the host has data mode at all: it does while find_similar_questions, where a data question starts, is
-    /// offered. Without it nothing is filtered by mode and end_data_mode is not listed.
+    /// offered. Without it nothing is filtered by mode and the mode tools are not listed.
     has_data_mode: bool,
 }
 
@@ -99,7 +99,9 @@ impl SqlFlowMcp {
         }
         let has_data_mode = !modules.withholds("find_similar_questions");
         if !has_data_mode {
-            tool_router.disable_route(modes::END_DATA_MODE);
+            for name in [modes::START_DATA_MODE, modes::END_DATA_MODE, modes::GET_MODE] {
+                tool_router.disable_route(name);
+            }
         }
         SqlFlowMcp {
             docs,
@@ -134,15 +136,44 @@ impl SqlFlowMcp {
         session
     }
 
-    /// The mode a request of this session is answered in: the one end_data_mode set, else the one the request's MCP
-    /// address names (`mode=data`, `mode=estate`), else none, and a session in no mode lists every tool. A host without
-    /// data mode has no modes at all.
-    fn mode_of(&self, parts: Option<&http::request::Parts>) -> Option<Mode> {
+    /// The mode the request's MCP address names (`mode=data`, `mode=estate`), when its client opened the session in
+    /// one. A host without data mode has no modes at all.
+    fn named_mode(&self, parts: Option<&http::request::Parts>) -> Option<Mode> {
         if !self.has_data_mode {
             return None;
         }
-        let set = *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
-        set.or_else(|| parts.and_then(|parts| modes::requested(parts.uri.query())))
+        parts.and_then(|parts| modes::requested(parts.uri.query()))
+    }
+
+    /// The mode a switch set in this session, if one did.
+    fn switched_mode(&self) -> Option<Mode> {
+        *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// The conversation's mode as this session knows it: the one a switch set, else the one the address named, else
+    /// estate mode, the default.
+    fn current_mode(&self, parts: Option<&http::request::Parts>) -> Mode {
+        self.switched_mode().or_else(|| self.named_mode(parts)).unwrap_or(Mode::Estate)
+    }
+
+    /// The mode whose tools the session lists: a session opened in a named mode lists that mode's, as a switch moves
+    /// it; one opened in none lists every tool, since its client may not refresh its list.
+    fn listing_mode(&self, parts: Option<&http::request::Parts>) -> Option<Mode> {
+        self.named_mode(parts).map(|_| self.current_mode(parts))
+    }
+
+    /// Switches the conversation to `mode` and tells the client its tools changed, so one that refreshes lists the new
+    /// mode's tools at once.
+    async fn switch_to(&self, mode: Mode, peer: rmcp::Peer<rmcp::RoleServer>) -> String {
+        *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(mode);
+        let notified = match peer.notify_tool_list_changed().await {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!("could not tell the client its tools changed after switching to {} mode: {e}", mode.name());
+                false
+            }
+        };
+        json_str(&json!({ "mode": mode.name(), "toolsChangedSent": notified }))
     }
 
     /// The generated router with [`GROUNDING_RULE`] appended to every tool description. The description is
@@ -508,7 +539,7 @@ pub struct SemanticTablesInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct SimilarQuestionsInput {
-    /// The question to answer from warehouse data, in the user's own words, with the leading `!` (and a `cwd`
+    /// The question to answer from warehouse data, in the user's own words, with the leading `!` (and a `data`
     /// right after it) stripped. It need not be about business: an operational or data-quality question asked
     /// with `!` belongs here too. Pass the
     /// rest exactly as they typed it: the match is on meaning, so rewording it into schema terms first
@@ -1567,27 +1598,59 @@ and fix every finding first."
     // ---- Modes ------------------------------------------------------------
 
     #[tool(
-        description = "End data mode: call it, before writing anything, when the person's message begins with `!exit` \
-            or a follow-up turns to the estate (a flow, a run, lineage, a schedule, the docs, how a table is loaded or \
-            where it comes from). This session then lists the estate's tools; a client that opened it for one message \
-            asks the question again with them, so write nothing more."
+        description = "Which mode this conversation is in: data mode, answering questions from warehouse data through the \
+            semantic layer, saved answers and the query tools, or estate mode, questions about flows, runs, lineage, the \
+            catalog and the docs. Call it when the person asks which mode they are in. The answer says how the mode was \
+            set and whether this session lists every tool."
+    )]
+    async fn get_mode(
+        &self,
+        context: rmcp::service::RequestContext<rmcp::RoleServer>,
+        Parameters(_): Parameters<EmptyInput>,
+    ) -> String {
+        let parts = context.extensions.get::<http::request::Parts>();
+        let set_by = if self.switched_mode().is_some() {
+            "a switch in this session (start_data_mode or end_data_mode)"
+        } else if self.named_mode(parts).is_some() {
+            "the client, which opened this session in it"
+        } else {
+            "nothing yet: estate mode is the default"
+        };
+        json_str(&json!({
+            "mode": self.current_mode(parts).name(),
+            "setBy": set_by,
+            "listsEveryTool": self.listing_mode(parts).is_none(),
+            "commands": "`!data` (or a bare `!`) starts data mode and `!exit` ends it; start_data_mode and end_data_mode \
+                switch when the person asks in words.",
+        }))
+    }
+
+    #[tool(
+        description = "Start data mode: answering questions from warehouse data. Call it when the person asks for it, by \
+            `!data` or a bare `!` or in words (\"switch to data mode\"), which is how they ask where a leading `!` does \
+            not reach you: Claude Code runs a `!` message as a shell command. A question's wording never starts it on its \
+            own. In a session opened in estate mode for one message, write nothing more: the client asks again in data mode."
+    )]
+    async fn start_data_mode(
+        &self,
+        peer: rmcp::Peer<rmcp::RoleServer>,
+        Parameters(_): Parameters<EmptyInput>,
+    ) -> String {
+        self.switch_to(Mode::Data, peer).await
+    }
+
+    #[tool(
+        description = "End data mode and return to questions about the estate. Call it, before writing anything, when the \
+            person's message begins with `!exit` or asks in words to leave data mode, or when a follow-up turns to the \
+            estate (a flow, a run, lineage, a schedule, the docs, how a table is loaded or where it comes from). In a \
+            session opened in data mode for one message, write nothing more: the client asks again in estate mode."
     )]
     async fn end_data_mode(
         &self,
         peer: rmcp::Peer<rmcp::RoleServer>,
         Parameters(_): Parameters<EmptyInput>,
     ) -> String {
-        *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Mode::Estate);
-        // A client that keeps the session lists the estate's tools at once; one that opened it for one message starts
-        // the next in estate mode. Either way the switch stands: a client that missed the notice reads the list again.
-        let notified = match peer.notify_tool_list_changed().await {
-            Ok(()) => true,
-            Err(e) => {
-                tracing::warn!("could not tell the client its tools changed after leaving data mode: {e}");
-                false
-            }
-        };
-        json_str(&json!({ "mode": Mode::Estate.name(), "toolsChangedSent": notified }))
+        self.switch_to(Mode::Estate, peer).await
     }
 
     // ---- Control-plane setup & auth --------------------------------------
@@ -2469,10 +2532,10 @@ and fix every finding first."
         // literal, so this one site cannot compose the macro and is asserted instead.
         description = "THE `!` COMMAND ROUTES HERE. Call this, before any schema or semantic-layer lookup, whenever the \
             user's message begins with `!`, the explicit command `!<question>` - e.g. \"!what is our revenue by region\", \
-            \"! how many rows landed last night\" (`!cwd <question>` is the same command). The leading `!` is what marks a message as a question to be \
+            \"! how many rows landed last night\" (`!data <question>` is the same command). The leading `!` is what marks a message as a question to be \
             answered from warehouse data, whatever it is about: a reported figure, an operational count, a data-quality \
             check. Who is asking and whether the subject sounds commercial or technical make no difference; needing SQL \
-            over the warehouse to answer is the whole criterion. Strip the `!` (and a `cwd` right after it) and pass the \
+            over the warehouse to answer is the whole criterion. Strip the `!` (and a `data` right after it) and pass the \
             remainder as `question`. \
             Do not guess from phrasing alone that a message not beginning with `!` belongs here, even one that reads like \
             \"what is our revenue by region\" or names things that sound like table or column names: without the `!` \
@@ -3753,19 +3816,16 @@ pub struct ProposeFileInput {
 
 /// The answer to a call of a tool the session's mode does not list: what the model has to do instead, so a client
 /// holding another mode's list (one that does not refresh it) is told rather than failing blind.
-fn wrong_mode(tool: &str, mode: Option<Mode>) -> String {
+fn wrong_mode(tool: &str, mode: Mode) -> String {
     match mode {
-        None => format!(
-            "{tool} is for a session opened in data mode; this one lists every tool, so there is no mode to end: \
-             answer the question with the tools it needs."
-        ),
-        Some(Mode::Data) => format!(
-            "{tool} answers questions about the estate, and this session is in data mode. Call {} first, then {tool}.",
+        Mode::Data => format!(
+            "{tool} answers questions about the estate, and this conversation is in data mode. Call {} first, then {tool}.",
             modes::END_DATA_MODE
         ),
-        Some(Mode::Estate) => format!(
-            "{tool} answers a question from warehouse data, and this session is in estate mode: only a message \
-             beginning with `!` or `!cwd` starts data mode, so say that asking again starting with `!` answers it."
+        Mode::Estate => format!(
+            "{tool} answers a question from warehouse data, and this conversation is in estate mode: `!data`, a bare `!`, \
+             or the person asking for data mode in words starts it ({}), never the question's wording alone.",
+            modes::START_DATA_MODE
         ),
     }
 }
@@ -3981,12 +4041,16 @@ impl ServerHandler for SqlFlowMcp {
         let parts = context.extensions.get::<http::request::Parts>();
         let bearer = parts.and_then(|parts| bearer_token(&parts.headers));
         let surface = parts.and_then(|parts| request_surface(parts.uri.query()));
-        let mode = self.mode_of(parts);
-        if self.has_data_mode && self.get_tool(&request.name).is_some() && !modes::lists(mode, &request.name) {
-            return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(wrong_mode(
-                &request.name,
-                mode,
-            ))]));
+        if let Some(mode) = self.listing_mode(parts) {
+            if !modes::is_mode_tool(&request.name)
+                && self.get_tool(&request.name).is_some()
+                && !modes::lists(Some(mode), &request.name)
+            {
+                return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(wrong_mode(
+                    &request.name,
+                    mode,
+                ))]));
+            }
         }
         let call = self.dispatch(request, context);
         match (bearer, surface) {
@@ -4008,10 +4072,8 @@ impl ServerHandler for SqlFlowMcp {
     ) -> Result<rmcp::model::ListToolsResult, rmcp::ErrorData> {
         let mut tools = self.tool_router.list_all();
         tools.extend(self.modules.list().iter().cloned());
-        if self.has_data_mode {
-            let mode = self.mode_of(context.extensions.get::<http::request::Parts>());
-            tools.retain(|tool| modes::lists(mode, &tool.name));
-        }
+        let mode = self.listing_mode(context.extensions.get::<http::request::Parts>());
+        tools.retain(|tool| modes::lists(mode, &tool.name));
         Ok(rmcp::model::ListToolsResult {
             tools,
             meta: None,
@@ -4076,10 +4138,11 @@ const INTRODUCTION: &str = "SQLFlow MCP server.";
 const MODES: &str = "\
 MODES AND ROUTING, BEFORE ANYTHING ELSE: a conversation is in one of two modes. Estate mode, the default, answers
 questions about the estate (flows, runs, lineage, schedules, the catalog, the docs) and reads no rows. Data mode
-answers questions from warehouse data through the semantic layer, the stored questions and the query tools.
-- A message beginning with `!` or `!cwd` starts data mode with a question to answer from warehouse data: strip the
-  command and call find_similar_questions FIRST, before any schema lookup, any semantic-layer search, and any word
-  to the person. It returns SQL that already answers the question,
+answers questions from warehouse data through the semantic layer, the stored questions and the query tools. get_mode
+says which mode the conversation is in.
+- A message beginning with `!data` or a bare `!` starts data mode with a question to answer from warehouse data:
+  strip the command and call find_similar_questions FIRST, before any schema lookup, any semantic-layer search, and
+  any word to the person. It returns SQL that already answers the question,
   confirmed by a human; a `trusted` match with an `exampleId` is then run with auto_run_trusted_match. Do not
   compose SQL by hand until that path has come up empty.
 - Data mode lasts for the conversation's follow-ups, and they need no `!`: \"and by region?\", another year or a
@@ -4090,12 +4153,15 @@ answers questions from warehouse data through the semantic layer, the stored que
   about the estate; with nothing after the command, say in one line that you are back to questions about the estate.
 - When someone forgets `!exit` and a follow-up in data mode turns to the estate (a flow, a run, lineage, a schedule,
   the docs, how a table is loaded or where it comes from), it is a question about the estate again.
-- Only `!` or `!cwd` starts data mode. In estate mode a message without it is a question about the estate however
-  much it reads like one the warehouse could answer: answer what the metadata can say, and say that asking it again
-  starting with `!` answers it from the data.
+- Where a leading `!` does not reach you (Claude Code runs it as a shell command), the person switches in words
+  (\"switch to data mode\", \"back to estate mode\"): call start_data_mode or end_data_mode. Call them too when a
+  command or a follow-up moves the conversation, so get_mode stays right.
+- Only `!data`, a bare `!`, or the person asking for data mode starts it. In estate mode a message without it is a
+  question about the estate however much it reads like one the warehouse could answer: answer what the metadata can
+  say, and say that starting the question with `!` answers it from the data.
 - A client that opens a session for each message names the conversation's mode, and the session then lists only
-  that mode's tools. A data-mode session lists end_data_mode: for `!exit`, or a follow-up that turns to the estate,
-  call it before writing anything and write nothing more, since the client asks again with the estate's tools.
+  that mode's tools; after start_data_mode or end_data_mode in such a session, write nothing more, since the client
+  asks the question again in the other mode.
 The fuller rule, including how to lay out the answer, is in the online section below.";
 
 const INSTRUCTIONS_OFFLINE: &str = "\
@@ -4151,11 +4217,11 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   flow's columns, an object's columns, a repo's edges, one file's provenance, the insights boards, summary)
   carries the subject's links on the envelope beside `items`, so those answers have a destination too.
 - The command `!<question>`, a message beginning with `!` (e.g. \"!what is our revenue by region?\", \"! how many
-  rows landed last night\"; `!cwd <question>` is the same command): this leading `!`, not phrasing, is what
+  rows landed last night\"; `!data <question>` is the same command): this leading `!`, not phrasing, is what
   activates the path for a question answered from
   warehouse data. It covers any such question, commercial or operational; needing SQL over the warehouse is
   the criterion, not the subject.
-  Strip the `!` (and a `cwd` right after it) and call find_similar_questions FIRST, before any schema lookup, with the
+  Strip the `!` (and a `data` right after it) and call find_similar_questions FIRST, before any schema lookup, with the
   remainder as the question. It matches the question against ones this estate's dashboards and confirmed
   answers already answer, expanding the wording so a paraphrase still finds them, and returns the SQL
   that already answers it plus a trustworthy score (`trusted`) rather than an LLM's own confidence.
@@ -4562,12 +4628,14 @@ mod tests {
         let (modes, online) = (flat(MODES), flat(INSTRUCTIONS_ONLINE_TAIL));
         // The modes and their commands.
         for rule in [
-            "Only `!` or `!cwd` starts data mode",
+            "Only `!data`, a bare `!`, or the person asking for data mode starts it",
+            "get_mode says which mode the conversation is in",
+            "call start_data_mode or end_data_mode",
             "Data mode lasts for the conversation's follow-ups, and they need no `!`",
             "never the reply's few words",
             "A message beginning with `!exit` returns to estate mode",
             "When someone forgets `!exit`",
-            "A data-mode session lists end_data_mode",
+            "after start_data_mode or end_data_mode in such a session, write nothing more",
         ] {
             assert!(modes.contains(rule), "the modes block lost: {rule}");
         }

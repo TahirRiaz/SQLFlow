@@ -1005,6 +1005,7 @@ public sealed class CatalogDbContext : DbContext
             entity.ToTable("ChatMessage");
             entity.HasKey(m => m.Id);
             entity.Property(m => m.Role).HasMaxLength(16).IsRequired();
+            entity.Property(m => m.AssistantMode).HasMaxLength(16);
             // Text / ImagesJson / ToolCallsJson are nvarchar(max): an answer, a set of pasted
             // screenshots, or a long tool trail has no useful column bound.
             entity.Property(m => m.Text).IsRequired();

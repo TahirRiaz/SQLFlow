@@ -264,12 +264,12 @@ public sealed class ConfirmQuestionApiTests
     }
 
     [SkippableFact]
-    public async Task AQuestionConfirmedWithTheCwdCommand_IsStoredWithoutIt()
+    public async Task AQuestionConfirmedWithTheDataCommand_IsStoredWithoutIt()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
-        // The GUI row sends the message as typed ("!cwd ..."); an assistant strips the command. Both must land the
+        // The GUI row sends the message as typed ("!data ..."); an assistant strips the command. Both must land the
         // same stored question, or one question saved from two surfaces becomes two examples.
         var question = $"How many depots are open ({Guid.NewGuid():N})?";
         const string Sql = "SELECT 1 AS Depots";
@@ -281,7 +281,7 @@ public sealed class ConfirmQuestionApiTests
         try
         {
             using (var response = await ConfirmAsync(client, token, new ConfirmQuestionRequest(
-                $"!cwd   {question}", Sql, QuestionConfirmationOutcome.Accepted)))
+                $"!data   {question}", Sql, QuestionConfirmationOutcome.Accepted)))
             {
                 response.EnsureSuccessStatusCode();
             }

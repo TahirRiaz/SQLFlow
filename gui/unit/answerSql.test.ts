@@ -80,21 +80,24 @@ describe("normalizeQuestion", () => {
     assert.equal(normalizeQuestion("!"), "");
   });
 
-  it("takes the command's earlier word off too, only as a word of its own", () => {
-    assert.equal(normalizeQuestion("!cwd what is our revenue"), "what is our revenue");
-    assert.equal(normalizeQuestion("  !CWD \t what is our revenue  "), "what is our revenue");
-    assert.equal(normalizeQuestion("!cwd"), "");
-    assert.equal(normalizeQuestion("!cwdx what"), "cwdx what");
+  it("takes the command's word off too, only touching the command and as a word of its own", () => {
+    assert.equal(normalizeQuestion("!data what is our revenue"), "what is our revenue");
+    assert.equal(normalizeQuestion("  !DATA \t what is our revenue  "), "what is our revenue");
+    assert.equal(normalizeQuestion("!!data what is our revenue"), "what is our revenue");
+    assert.equal(normalizeQuestion("!data"), "");
+    assert.equal(normalizeQuestion("!datax what"), "datax what");
+    assert.equal(normalizeQuestion("!database size by schema"), "database size by schema");
+    assert.equal(normalizeQuestion("! data quality by region"), "data quality by region");
   });
 
   it("leaves a question that does not start with the command as it is, trimmed", () => {
-    assert.equal(normalizeQuestion("what about !cwd"), "what about !cwd");
+    assert.equal(normalizeQuestion("what about !data"), "what about !data");
     assert.equal(normalizeQuestion("  what is our revenue  "), "what is our revenue");
   });
 
   it("measures a question as it is stored, so the command never pushes it over the limit", () => {
     const atLimit = "q".repeat(MAX_QUESTION_LENGTH);
-    assert.equal(normalizeQuestion("!cwd " + atLimit).length, MAX_QUESTION_LENGTH);
+    assert.equal(normalizeQuestion("!data " + atLimit).length, MAX_QUESTION_LENGTH);
     assert.equal(normalizeQuestion("!" + atLimit).length, MAX_QUESTION_LENGTH);
   });
 });

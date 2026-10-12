@@ -4,20 +4,35 @@ namespace SqlFlow.Assistant;
 
 /// <summary>
 /// How one question runs, whatever the provider: under one deadline, in the route its conversation's mode gives, and
-/// once more in estate mode when a data-mode run ends data mode. A provider's MCP connector opens a session for each
-/// request and cannot take a new tool list mid-answer, so when the model calls <see cref="EndDataModeTool"/> (a
-/// follow-up turned to the estate) the run is dropped and the question asked again with the estate's tools; hosts are
-/// told with <see cref="AssistantEvent.Restarted"/> to drop what the first attempt wrote.
+/// once more in the other mode when the run switches. A provider's MCP connector opens a session for each request and
+/// cannot take a new tool list mid-answer, so when the model calls <see cref="StartDataModeTool"/> (the person asked
+/// for data mode in words) or <see cref="EndDataModeTool"/> (<c>!exit</c> in words, or a follow-up turned to the
+/// estate), the run is dropped and the question asked again with the other mode's tools; hosts are told with
+/// <see cref="AssistantEvent.Restarted"/> to drop what the first attempt wrote. The completed answer carries the mode
+/// it ended in, which a host records so the next message starts from it.
 /// </summary>
 public static class AssistantRuns
 {
-    /// <summary>The MCP server's tool for leaving data mode, listed only in a data-mode session.</summary>
+    /// <summary>The MCP server's tool for switching to data mode, listed in an estate-mode session.</summary>
+    public const string StartDataModeTool = "start_data_mode";
+
+    /// <summary>The MCP server's tool for leaving data mode, listed in a data-mode session.</summary>
     public const string EndDataModeTool = "end_data_mode";
+
+    /// <summary>The mode <paramref name="tool"/> switches a conversation to, when it is one of the switches.</summary>
+    public static AssistantMode? SwitchesTo(string tool) => tool switch
+    {
+        StartDataModeTool => AssistantMode.Data,
+        EndDataModeTool => AssistantMode.Estate,
+        _ => null,
+    };
 
     /// <summary>
     /// Streams one question through <paramref name="attempt"/>, the provider's own run of a route. The deadline
-    /// (<see cref="AssistantSettings.RunTimeoutSeconds"/>) covers the whole question, a restart included; a run already
-    /// in estate mode is never restarted, so a question runs at most twice.
+    /// (<see cref="AssistantSettings.RunTimeoutSeconds"/>) covers the whole question, a restart included; a question is
+    /// asked again at most once, so a model that keeps switching cannot loop. A switch after that one restart is not
+    /// acted on in this answer, which its session cannot take, but the answer is recorded in the mode it switched to,
+    /// so the next message starts there.
     /// </summary>
     public static async IAsyncEnumerable<AssistantEvent> StreamAsync(
         AssistantRouter router,
@@ -35,34 +50,51 @@ public static class AssistantRuns
         var token = runCts.Token;
 
         var route = await router.ForAsync(request, token).ConfigureAwait(false);
+        var restarted = false;
         while (true)
         {
-            var leftDataMode = false;
+            AssistantMode? switchedTo = null;
+            var endedIn = route.Mode;
             await foreach (var evt in attempt(route, token).WithCancellation(token).ConfigureAwait(false))
             {
-                yield return evt;
-                if (route.Mode == AssistantMode.Data
-                    && evt is AssistantEvent.ToolCall { Name: EndDataModeTool, Status: AssistantToolCallStatus.Started })
+                if (evt is AssistantEvent.Completed completed)
                 {
+                    yield return completed with { Mode = endedIn };
+                    continue;
+                }
+
+                yield return evt;
+                if (evt is AssistantEvent.ToolCall { Status: AssistantToolCallStatus.Started } call
+                    && SwitchesTo(call.Name) is { } target
+                    && target != endedIn)
+                {
+                    if (restarted)
+                    {
+                        endedIn = target;
+                        continue;
+                    }
+
                     // Leaving the loop disposes the attempt, which closes its stream: nothing it would still write
-                    // could use the estate's tools, which its session does not list.
-                    leftDataMode = true;
+                    // could use the other mode's tools, which its session does not list.
+                    switchedTo = target;
                     break;
                 }
             }
-            if (!leftDataMode)
+            if (switchedTo is not { } mode)
             {
                 yield break;
             }
 
-            route = await router.InAsync(AssistantMode.Estate, request.McpBearer, token).ConfigureAwait(false);
-            yield return new AssistantEvent.Restarted(AssistantMode.Estate);
+            restarted = true;
+            route = await router.InAsync(mode, request.McpBearer, token).ConfigureAwait(false);
+            yield return new AssistantEvent.Restarted(mode);
         }
     }
 
-    /// <summary>The buffered form of a stream: the completed answer's text. A cancellation that is not the caller's is
-    /// the run's own deadline, reported as a <see cref="TimeoutException"/> naming <paramref name="provider"/>.</summary>
-    public static async Task<string> AskAsync(
+    /// <summary>The buffered form of a stream: the completed answer, with the mode it ended in. A cancellation that is
+    /// not the caller's is the run's own deadline, reported as a <see cref="TimeoutException"/> naming
+    /// <paramref name="provider"/>.</summary>
+    public static async Task<AssistantAnswer> AskAsync(
         IAsyncEnumerable<AssistantEvent> stream, AssistantRequest request, AssistantSettings settings, string provider,
         CancellationToken ct)
     {
@@ -71,12 +103,12 @@ public static class AssistantRuns
         ArgumentNullException.ThrowIfNull(settings);
         try
         {
-            string? answer = null;
+            AssistantAnswer? answer = null;
             await foreach (var evt in stream.WithCancellation(ct).ConfigureAwait(false))
             {
                 if (evt is AssistantEvent.Completed completed)
                 {
-                    answer = completed.Text;
+                    answer = new AssistantAnswer(completed.Text, completed.Mode);
                 }
             }
             return answer ?? throw new InvalidOperationException(
