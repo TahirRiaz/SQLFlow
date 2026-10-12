@@ -1,88 +1,95 @@
+using System.Text.RegularExpressions;
 using SqlFlow.Assistant;
 using Xunit;
 
 namespace SqlFlow.Tests;
 
 /// <summary>
-/// The parts of the assistant instructions that encode a product decision rather than wording: saving an answer is a
-/// separate, explicit decision from running a query, a rejection is never recorded, and each kind of question is told
-/// about the tools it is given and no others. The model follows these sentences, so a rewrite that drops one silently
-/// changes what the assistant stores or which tools it reaches for.
+/// What a surface adds to the MCP server's instructions, and nothing more. The rules (what a <c>!</c> question is, the
+/// modes, which tool answers what, how a business answer reads) are the server's, the one text every client of it
+/// follows; a surface says only how an answer is laid out where it is read. A rule written here would be a second copy
+/// that drifts from the server's, so the surface text naming any of the server's tools fails the build.
 /// </summary>
 public sealed class AssistantInstructionsTests
 {
-    private static string Build(AssistantSurface surface, AssistantQuestionKind kind)
-        => AssistantInstructions.Build(new AssistantSettings { Surface = surface, GuiBaseUrl = string.Empty }, kind);
-
     private static readonly AssistantSurface[] Surfaces = [AssistantSurface.Slack, AssistantSurface.Gui];
 
     [Fact]
-    public void Slack_OffersToSaveAResult_AndNeverTreatsARunApprovalAsASave()
+    public void TheSystemPrompt_IsTheServersInstructions_ThenTheSurfaces()
     {
-        var slack = Build(AssistantSurface.Slack, AssistantQuestionKind.Business);
+        foreach (var surface in Surfaces)
+        {
+            var settings = AssistantModesTests.Settings(surface);
 
-        // The offer's wording travels on the run_query result (`saveOffer`), so every client shows the same line.
+            var prompt = AssistantInstructions.Compose("SERVER RULES: the modes and the tools.\n\n", settings);
+
+            Assert.StartsWith("SERVER RULES: the modes and the tools.\n\nWHERE YOU ARE ANSWERING: ", prompt, StringComparison.Ordinal);
+            Assert.EndsWith(AssistantInstructions.Surface(settings), prompt, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public void ASurfaceNamesNoToolOfTheServer_SoItCarriesNoRuleOfItsOwn()
+    {
+        var tools = McpToolNames();
+        foreach (var surface in Surfaces)
+        {
+            var text = AssistantInstructions.Surface(AssistantModesTests.Settings(surface));
+            foreach (var tool in tools)
+            {
+                Assert.False(Regex.IsMatch(text, $@"\b{Regex.Escape(tool)}\b"), $"The {surface} section names {tool}.");
+            }
+        }
+    }
+
+    [Fact]
+    public void Slack_LaysOutAQueryAnswerByTheResultsOwnFields_AndSaysARepliesMustMentionTheBot()
+    {
+        var slack = AssistantInstructions.Surface(AssistantModesTests.Settings(AssistantSurface.Slack));
+
+        Assert.Contains("Slack mrkdwn", slack, StringComparison.Ordinal);
+        Assert.Contains("`approvalFormat`", slack, StringComparison.Ordinal);
         Assert.Contains("`saveOffer`", slack, StringComparison.Ordinal);
-        Assert.Contains("Saying yes to running a query is never a request to save it.", slack, StringComparison.Ordinal);
+        Assert.Contains("only when it mentions you", slack, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void Slack_AsksForRepliesThatStartWithTheCommand_SinceOnlyThoseReachTheBusinessTools()
+    public void TheGui_DrawsTheResultItself_AndRunsAndSavesWithItsButtons()
     {
-        var slack = Build(AssistantSurface.Slack, AssistantQuestionKind.Business);
+        var gui = AssistantInstructions.Surface(AssistantModesTests.Settings(AssistantSurface.Gui));
 
-        Assert.Contains("\"!run\"", slack, StringComparison.Ordinal);
-        Assert.Contains("\"!save\"", slack, StringComparison.Ordinal);
+        Assert.Contains("query-result", gui, StringComparison.Ordinal);
+        Assert.Contains("pressing Run shows the result", gui, StringComparison.Ordinal);
+        Assert.Contains("never ask them to reply to run or save it", gui, StringComparison.Ordinal);
+        Assert.Contains("ignore them here", gui, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void NoSurface_IsToldToRecordARejection()
+    public void Links_PointAtTheGui_OnlyWhenItsAddressIsKnown()
     {
-        foreach (var surface in Surfaces)
-        {
-            var instructions = Build(surface, AssistantQuestionKind.Business);
+        var withGui = AssistantModesTests.Settings(AssistantSurface.Slack);
+        withGui.GuiBaseUrl = "https://sqlflow.example/";
+        Assert.Contains("prefix it with https://sqlflow.example.", AssistantInstructions.Surface(withGui), StringComparison.Ordinal);
 
-            Assert.DoesNotContain("outcome \"rejected\"", instructions, StringComparison.Ordinal);
-            Assert.Contains("nothing is saved, so do not call confirm_question", instructions, StringComparison.Ordinal);
-        }
+        var withoutGui = AssistantModesTests.Settings(AssistantSurface.Slack);
+        Assert.Contains("without links", AssistantInstructions.Surface(withoutGui), StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void ABusinessQuestion_IsToldOnlyAboutTheSemanticLayer_TheStoredQuestions_AndTheQueryTools()
+    /// <summary>The MCP server's tools, read from its source: the server is Rust and this check C#, so reading the one
+    /// from the other is what keeps the check honest as tools are added.</summary>
+    private static IReadOnlyList<string> McpToolNames()
     {
-        foreach (var surface in Surfaces)
-        {
-            var business = Build(surface, AssistantQuestionKind.Business);
-
-            Assert.Contains("find_similar_questions FIRST", business, StringComparison.Ordinal);
-            Assert.Contains("SEMANTIC LAYER", business, StringComparison.Ordinal);
-            foreach (var estateTool in new[] { "describe_object", "search_schema", "search_all", "list_runs", "object_lineage", "search_docs" })
-            {
-                Assert.DoesNotContain(estateTool, business, StringComparison.Ordinal);
-            }
-        }
-    }
-
-    [Fact]
-    public void AnEstateQuestion_IsToldAboutTheWholeSchema_AndNeverAboutTheBusinessTools()
-    {
-        foreach (var surface in Surfaces)
-        {
-            var estate = Build(surface, AssistantQuestionKind.Estate);
-
-            Assert.Contains("describe_object", estate, StringComparison.Ordinal);
-            Assert.Contains("every table, view, and column the catalog holds", estate, StringComparison.Ordinal);
-            foreach (var businessTool in new[]
-            {
-                "get_semantic_layer", "search_semantic_layer", "describe_semantic_table", "find_similar_questions",
-                "prepare_query", "run_query", "auto_run_trusted_match", "confirm_question",
-            })
-            {
-                Assert.DoesNotContain(businessTool, estate, StringComparison.Ordinal);
-            }
-
-            // And it says how to ask a business question instead of answering one from the schema.
-            Assert.Contains("starting with \"!\"", estate, StringComparison.Ordinal);
-        }
+        var path = Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tools", "sqlflow-mcp", "src", "server.rs");
+        Assert.True(File.Exists(path), $"Expected the MCP server source at {Path.GetFullPath(path)}.");
+        var names = Regex.Matches(
+                File.ReadAllText(path),
+                @"#\[tool\((?:[^\]]|\][^\)])*?\)\]\s*(?:pub\s+)?async\s+fn\s+(\w+)",
+                RegexOptions.Singleline)
+            .Select(m => m.Groups[1].Value)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        Assert.True(names.Count > 40, $"Only found {names.Count} MCP tools; the parse is probably wrong.");
+        Assert.Contains(AssistantRuns.EndDataModeTool, names);
+        return names;
     }
 }

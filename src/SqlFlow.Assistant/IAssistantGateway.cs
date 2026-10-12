@@ -22,7 +22,8 @@ public enum AssistantToolCallStatus
 /// One event of a streamed assistant run, in the order the model produced it: text arrives as
 /// incremental <see cref="TextDelta"/> fragments, tool activity as <see cref="ToolCall"/>
 /// transitions, and exactly one terminal <see cref="Completed"/> carries the full answer (already
-/// equal to the concatenated deltas). Failures surface as thrown exceptions, never as events.
+/// equal to the deltas concatenated since the last <see cref="Restarted"/>, or since the start).
+/// Failures surface as thrown exceptions, never as events.
 /// </summary>
 public abstract record AssistantEvent
 {
@@ -33,6 +34,10 @@ public abstract record AssistantEvent
 
     /// <summary>A tool-call status transition, for rendering live tool activity.</summary>
     public sealed record ToolCall(string Name, AssistantToolCallStatus Status) : AssistantEvent;
+
+    /// <summary>The question is being asked again in <paramref name="Mode"/> (<see cref="AssistantRuns"/>): a host drops
+    /// the text the stream wrote so far, since the answer starts over; the tool calls already reported stand.</summary>
+    public sealed record Restarted(AssistantMode Mode) : AssistantEvent;
 
     /// <summary>The terminal event: the complete answer text.</summary>
     public sealed record Completed(string Text) : AssistantEvent;

@@ -11,9 +11,9 @@ namespace SqlFlow.Assistant;
 /// one (or, after a <c>pause_turn</c>, a few chained) streamed <c>POST /v1/messages</c> calls
 /// carrying the model, the assistant instructions as the system prompt, and the SQLFlow MCP server as an
 /// <c>mcp_servers</c> entry whose tools Claude calls server-side. The run's bearer
-/// (<see cref="AssistantRequest.McpBearer"/>) rides as the connector's authorization token, and the tool set of the
-/// question's kind (<see cref="AssistantQuestions.KindOf"/>), with the instructions that go with it, is enforced
-/// through the <c>mcp_toolset</c> configuration. Anthropic keeps no server-side conversation state, so every
+/// (<see cref="AssistantRequest.McpBearer"/>) rides as the connector's authorization token, the MCP address opens the
+/// session in the conversation's mode (<see cref="AssistantRouter"/>), and the system prompt is the MCP server's own
+/// instructions with this surface's rendering added. <see cref="AssistantRuns"/> runs the question. Anthropic keeps no server-side conversation state, so every
 /// call sends the transcript (already capped by MaxReplayMessages); the host's record stays the
 /// single durable transcript, which also means a host restart loses nothing.
 /// </summary>
@@ -31,12 +31,13 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
     private readonly ILogger<AnthropicGateway> _logger;
     private readonly AssistantRouter _router;
 
-    public AnthropicGateway(AssistantSettings settings, ILogger<AnthropicGateway> logger)
+    public AnthropicGateway(AssistantSettings settings, McpServerInstructions instructions, ILogger<AnthropicGateway> logger)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(instructions);
         _settings = settings;
         _logger = logger;
-        _router = new AssistantRouter(settings);
+        _router = new AssistantRouter(settings, instructions);
         _client = new AnthropicClient
         {
             ApiKey = settings.Anthropic.ApiKey,
@@ -47,42 +48,27 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<string> AskAsync(AssistantRequest request, CancellationToken ct)
+    public Task<string> AskAsync(AssistantRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        try
-        {
-            string? answer = null;
-            await foreach (var evt in StreamAsync(request, ct).ConfigureAwait(false))
-            {
-                if (evt is AssistantEvent.Completed completed)
-                {
-                    answer = completed.Text;
-                }
-            }
-            return answer ?? throw new InvalidOperationException(
-                $"Anthropic stream for {request.ConversationKey} ended without a completed answer.");
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            throw new TimeoutException(
-                $"The Anthropic run for {request.ConversationKey} exceeded {_settings.RunTimeoutSeconds}s and was cancelled.");
-        }
+        return AssistantRuns.AskAsync(StreamAsync(request, ct), request, _settings, "Anthropic", ct);
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<AssistantEvent> StreamAsync(
-        AssistantRequest request,
-        [EnumeratorCancellation] CancellationToken ct)
+    public IAsyncEnumerable<AssistantEvent> StreamAsync(AssistantRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        using var runCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        runCts.CancelAfter(TimeSpan.FromSeconds(_settings.RunTimeoutSeconds));
-        var token = runCts.Token;
+        return AssistantRuns.StreamAsync(_router, _settings, request, (route, token) => RunAsync(request, route, token), ct);
+    }
 
+    /// <summary>One attempt at <paramref name="request"/> in <paramref name="route"/>; a resume after pause_turn keeps
+    /// the route.</summary>
+    private async IAsyncEnumerable<AssistantEvent> RunAsync(
+        AssistantRequest request,
+        AssistantRoute route,
+        [EnumeratorCancellation] CancellationToken token)
+    {
         var messages = BuildMessages(request.PriorTurns, request.Question, request.ImageDataUris);
-        // The question's kind decides the run's tools and instructions; a resume after pause_turn keeps them.
-        var route = _router.For(request.Question);
         var answer = new StringBuilder();
 
         for (var resumes = 0; ; resumes++)
@@ -184,17 +170,23 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
 
     private MessageCreateParams BuildParams(List<BetaMessageParam> messages, string mcpBearer, AssistantRoute route)
     {
-        // Allowlist mode, always: everything off by default, each permitted tool enabled explicitly, mirroring the
-        // tools the other providers get via allowed_tools. The message's tool set is never empty.
-        var mcpToolset = new BetaMcpToolset
-        {
-            McpServerName = _settings.Mcp.ServerLabel,
-            DefaultConfig = new BetaMcpToolDefaultConfig { Enabled = false },
-            Configs = route.Tools.ToDictionary(
-                tool => tool,
-                _ => new BetaMcpToolConfig { Enabled = true },
-                StringComparer.Ordinal),
-        };
+        // Every tool the session lists, which the MCP server chose for the session's mode; a deployment that narrowed
+        // the tools gets an allowlist instead, everything else off, as the other providers get it via allowed_tools.
+        var mcpToolset = route.Tools.Count == 0
+            ? new BetaMcpToolset
+            {
+                McpServerName = _settings.Mcp.ServerLabel,
+                DefaultConfig = new BetaMcpToolDefaultConfig { Enabled = true },
+            }
+            : new BetaMcpToolset
+            {
+                McpServerName = _settings.Mcp.ServerLabel,
+                DefaultConfig = new BetaMcpToolDefaultConfig { Enabled = false },
+                Configs = route.Tools.ToDictionary(
+                    tool => tool,
+                    _ => new BetaMcpToolConfig { Enabled = true },
+                    StringComparer.Ordinal),
+            };
 
         return new MessageCreateParams
         {
@@ -208,7 +200,7 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
                 new BetaRequestMcpServerUrlDefinition
                 {
                     Name = _settings.Mcp.ServerLabel,
-                    Url = _settings.Mcp.AssistantServerUri.AbsoluteUri,
+                    Url = route.ServerUri.AbsoluteUri,
                     // Sent by the connector as "Authorization: Bearer <token>"; the MCP server
                     // forwards it verbatim to the control plane, which enforces the token's scopes.
                     AuthorizationToken = mcpBearer,

@@ -75,11 +75,34 @@ public sealed class AssistantSurfaceTests
     public void TheAssistantMcpAddress_CarriesTheSurfaceQueryOnce()
     {
         Assert.Equal("https://mcp.example/mcp?surface=assistant",
-            new McpOptions { ServerUrl = "https://mcp.example/mcp" }.AssistantServerUri.AbsoluteUri);
+            new McpOptions { ServerUrl = "https://mcp.example/mcp" }.AssistantServerUri(null).AbsoluteUri);
         Assert.Equal("http://localhost:8090/mcp?x=1&surface=assistant",
-            new McpOptions { ServerUrl = "http://localhost:8090/mcp?x=1" }.AssistantServerUri.AbsoluteUri);
+            new McpOptions { ServerUrl = "http://localhost:8090/mcp?x=1" }.AssistantServerUri(null).AbsoluteUri);
         Assert.Equal("https://mcp.example/mcp?surface=assistant",
-            new McpOptions { ServerUrl = "https://mcp.example/mcp?surface=assistant" }.AssistantServerUri.AbsoluteUri);
+            new McpOptions { ServerUrl = "https://mcp.example/mcp?surface=assistant" }.AssistantServerUri(null).AbsoluteUri);
+    }
+
+    [Fact]
+    public void TheAssistantMcpAddress_NamesTheConversationsMode_ReplacingAnyTheConfigurationNamed()
+    {
+        Assert.Equal("https://mcp.example/mcp?surface=assistant&mode=data",
+            new McpOptions { ServerUrl = "https://mcp.example/mcp" }.AssistantServerUri(AssistantMode.Data).AbsoluteUri);
+        Assert.Equal("https://mcp.example/mcp?x=1&surface=assistant&mode=estate",
+            new McpOptions { ServerUrl = "https://mcp.example/mcp?mode=data&x=1" }.AssistantServerUri(AssistantMode.Estate).AbsoluteUri);
+        Assert.Equal("https://mcp.example/mcp?x=1&surface=assistant",
+            new McpOptions { ServerUrl = "https://mcp.example/mcp?mode=data&x=1" }.AssistantServerUri(null).AbsoluteUri);
+    }
+
+    [Fact]
+    public void TheMcpServerReadsTheModesThisControlPlaneNames()
+    {
+        // The MCP server defines the modes; this control plane only names one on the address, so the two spellings are
+        // held together here, read from the server's source.
+        var source = File.ReadAllText(Path.Combine(
+            AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tools", "sqlflow-mcp", "src", "modes.rs"));
+        Assert.Contains($"(\"{McpOptions.ModeQueryName}\", \"data\") => Some(Mode::Data)", source, StringComparison.Ordinal);
+        Assert.Contains($"(\"{McpOptions.ModeQueryName}\", \"estate\") => Some(Mode::Estate)", source, StringComparison.Ordinal);
+        Assert.Contains($"pub const END_DATA_MODE: &str = \"{AssistantRuns.EndDataModeTool}\";", source, StringComparison.Ordinal);
     }
 
     [Fact]

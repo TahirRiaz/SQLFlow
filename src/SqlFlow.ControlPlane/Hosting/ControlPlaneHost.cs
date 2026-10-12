@@ -278,6 +278,8 @@ public static class ControlPlaneHost
                 };
                 return settings;
             });
+            // The gateways read the assistant's rules from the MCP server itself, the one text every client of it follows.
+            builder.Services.AddSingleton<SqlFlow.Assistant.McpServerInstructions>();
             if (options.Assistant.Provider == SqlFlow.Assistant.AssistantProvider.Anthropic)
             {
                 builder.Services.AddSingleton<SqlFlow.Assistant.IAssistantGateway, SqlFlow.Assistant.AnthropicGateway>();

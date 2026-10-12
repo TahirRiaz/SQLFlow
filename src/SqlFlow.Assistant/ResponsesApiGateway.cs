@@ -17,8 +17,8 @@ namespace SqlFlow.Assistant;
 /// name, and the credential differ (Azure token via managed identity for Foundry, a static API
 /// key for OpenAI). Each question is one streamed <c>POST .../responses</c> carrying the model,
 /// the assistant instructions, the MCP tool (the deployed SQLFlow MCP server, with the run's
-/// bearer as its Authorization header and the tool set of the question's kind,
-/// <see cref="AssistantQuestions.KindOf"/>), and either the new turn plus a
+/// bearer as its Authorization header and the MCP address that opens the session in the conversation's mode,
+/// <see cref="AssistantRouter"/>), and either the new turn plus a
 /// <c>previous_response_id</c> that chains the conversation server-side, or - when that link is
 /// lost (host restart, server-side expiry) - the transcript replayed as the input. On Foundry the
 /// Responses API supersedes the persistent-agents API for MCP tools: current model deployments
@@ -54,10 +54,12 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
     public ResponsesApiGateway(
         AssistantSettings settings,
         IAzureCredentialFactory credentialFactory,
+        McpServerInstructions instructions,
         ILogger<ResponsesApiGateway> logger)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(credentialFactory);
+        ArgumentNullException.ThrowIfNull(instructions);
         _settings = settings;
         _logger = logger;
         switch (settings.Provider)
@@ -80,49 +82,34 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
                 throw new InvalidOperationException(
                     $"ResponsesApiGateway serves AzureFoundry and OpenAI, not {settings.Provider}.");
         }
-        _router = new AssistantRouter(settings);
+        _router = new AssistantRouter(settings, instructions);
         // Responses stream for the whole agent run, so no per-request client timeout: the run
         // ceiling is enforced with a linked CancellationTokenSource per call.
         _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
     }
 
     /// <inheritdoc />
-    public async Task<string> AskAsync(AssistantRequest request, CancellationToken ct)
+    public Task<string> AskAsync(AssistantRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        try
-        {
-            string? answer = null;
-            await foreach (var evt in StreamAsync(request, ct).ConfigureAwait(false))
-            {
-                if (evt is AssistantEvent.Completed completed)
-                {
-                    answer = completed.Text;
-                }
-            }
-            return answer ?? throw new InvalidOperationException(
-                $"{_providerName} stream for {request.ConversationKey} ended without a completed answer.");
-        }
-        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
-        {
-            throw new TimeoutException(
-                $"The {_providerName} run for {request.ConversationKey} exceeded {_settings.RunTimeoutSeconds}s and was cancelled.");
-        }
+        return AssistantRuns.AskAsync(StreamAsync(request, ct), request, _settings, _providerName, ct);
     }
 
     /// <inheritdoc />
-    public async IAsyncEnumerable<AssistantEvent> StreamAsync(
-        AssistantRequest request,
-        [EnumeratorCancellation] CancellationToken ct)
+    public IAsyncEnumerable<AssistantEvent> StreamAsync(AssistantRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
-        using var runCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        runCts.CancelAfter(TimeSpan.FromSeconds(_settings.RunTimeoutSeconds));
-        var token = runCts.Token;
+        return AssistantRuns.StreamAsync(_router, _settings, request, (route, token) => RunAsync(request, route, token), ct);
+    }
 
-        // The question's kind decides the run's tools and instructions, per message, so a conversation can mix the two:
-        // the tools are per request, and a chained response does not carry the previous request's tools over.
-        var route = _router.For(request.Question);
+    /// <summary>One attempt at <paramref name="request"/> in <paramref name="route"/>. The tools are per request, so a
+    /// chained response never carries an earlier request's mode over; an attempt that is dropped never completes, so
+    /// it never becomes the link the next request chains from.</summary>
+    private async IAsyncEnumerable<AssistantEvent> RunAsync(
+        AssistantRequest request,
+        AssistantRoute route,
+        [EnumeratorCancellation] CancellationToken token)
+    {
 
         // A cached previous-response id chains the conversation server-side: send only the new turn.
         // The 404/400 that reveals a lost link arrives before any streamed byte, so falling back to a
@@ -444,7 +431,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
         {
             ["type"] = "mcp",
             ["server_label"] = _settings.Mcp.ServerLabel,
-            ["server_url"] = _settings.Mcp.AssistantServerUri.AbsoluteUri,
+            ["server_url"] = route.ServerUri.AbsoluteUri,
             // Approval is off because there is no human in the loop to approve a tool call mid-run;
             // authority is bounded by what the bearer may reach and the tool allowlist instead.
             ["require_approval"] = "never",
@@ -455,13 +442,17 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
                 ["Authorization"] = "Bearer " + mcpBearer,
             },
         };
-        // Always sent: the message's tool set is never empty, so the model never sees every tool the MCP server ships.
-        var allowed = new JsonArray();
-        foreach (var tool in route.Tools)
+        // Sent only when a deployment narrowed the tools: otherwise the run may call every tool the session lists,
+        // which the MCP server chose for the session's mode.
+        if (route.Tools.Count > 0)
         {
-            allowed.Add(tool);
+            var allowed = new JsonArray();
+            foreach (var tool in route.Tools)
+            {
+                allowed.Add(tool);
+            }
+            mcpTool["allowed_tools"] = allowed;
         }
-        mcpTool["allowed_tools"] = allowed;
 
         var body = new JsonObject
         {

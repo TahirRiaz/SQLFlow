@@ -33,10 +33,13 @@ builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<SlackBotOptio
 // construct; each gateway still receives its settings through the validated options.
 var provider = builder.Configuration.GetSection("SlackBot").GetValue<AssistantProvider?>("Provider")
     ?? AssistantProvider.AzureFoundry;
+// Both read the assistant's rules from the MCP server itself, the one text every client of it follows.
+builder.Services.AddSingleton<McpServerInstructions>();
 if (provider == AssistantProvider.Anthropic)
 {
     builder.Services.AddSingleton<IAssistantGateway>(sp => new AnthropicGateway(
         sp.GetRequiredService<AssistantSettings>(),
+        sp.GetRequiredService<McpServerInstructions>(),
         sp.GetRequiredService<ILogger<AnthropicGateway>>()));
 }
 else
@@ -44,6 +47,7 @@ else
     builder.Services.AddSingleton<IAssistantGateway>(sp => new ResponsesApiGateway(
         sp.GetRequiredService<AssistantSettings>(),
         sp.GetRequiredService<IAzureCredentialFactory>(),
+        sp.GetRequiredService<McpServerInstructions>(),
         sp.GetRequiredService<ILogger<ResponsesApiGateway>>()));
 }
 builder.Services.AddHostedService<SlackSocketWorker>();

@@ -9,6 +9,7 @@ using SqlFlow.Assistant;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Background;
 using SqlFlow.ControlPlane.Configuration;
+using SqlFlow.ControlPlane.Security;
 using SqlFlow.Core;
 using SqlFlow.Core.Compute;
 using SqlFlow.SqlServer.Query;
@@ -129,10 +130,13 @@ public static class QuestionExampleEndpoints
     {
         ArgumentNullException.ThrowIfNull(group);
 
+        // Both are open to an assistant run, as prepare and run are, since the MCP server's rules call them on every
+        // surface: confirming stores the verdict a person gave on an answer and runs nothing, and an auto-run replays
+        // SQL a person already confirmed, re-checked here against the read-only and column guards.
         group.MapPost("/powerai/questions/confirm", ConfirmAsync)
-            .WithTags("PowerAI").WithName("ConfirmQuestionExample");
+            .WithTags("PowerAI").WithName("ConfirmQuestionExample").AllowAssistantWrite();
         group.MapPost("/powerai/questions/{exampleId:long}/auto-run", AutoRunAsync)
-            .WithTags("PowerAI").WithName("AutoRunQuestionExample");
+            .WithTags("PowerAI").WithName("AutoRunQuestionExample").AllowAssistantWrite();
 
         return group;
     }
@@ -533,7 +537,7 @@ public static class QuestionExampleEndpoints
     internal static string NormalizeQuestion(string? question)
     {
         var trimmed = question?.Trim() ?? string.Empty;
-        if (AssistantQuestions.KindOf(trimmed) != AssistantQuestionKind.Business)
+        if (AssistantQuestions.CommandOf(trimmed) != AssistantMode.Data)
         {
             return trimmed;
         }

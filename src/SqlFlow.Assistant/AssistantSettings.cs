@@ -46,10 +46,6 @@ public sealed class AssistantSettings
 
     public McpOptions Mcp { get; set; } = new();
 
-    /// <summary>The MCP tools a message of <paramref name="kind"/> is answered with on this surface: the deployment's
-    /// configured list, or the default when it configured none (<see cref="McpOptions.EffectiveTools"/>).</summary>
-    public IReadOnlyList<string> ToolsFor(AssistantQuestionKind kind) => Mcp.EffectiveTools(Surface, kind);
-
     public FoundryOptions Foundry { get; set; } = new();
     public OpenAIOptions OpenAI { get; set; } = new();
     public AnthropicOptions Anthropic { get; set; } = new();
@@ -149,156 +145,48 @@ public sealed class McpOptions
     /// <c>server.rs</c>.</summary>
     public const string AssistantSurfaceQuery = "surface=assistant";
 
-    /// <summary><see cref="ServerUrl"/> with <see cref="AssistantSurfaceQuery"/> added (once, keeping any existing
-    /// query): the address every assistant gateway gives its MCP connector, so no provider can reach the MCP server
-    /// without the assistant marker.</summary>
-    public Uri AssistantServerUri
-    {
-        get
-        {
-            var builder = new UriBuilder(ServerUrl);
-            var query = builder.Query.TrimStart('?');
-            if (!query.Split('&').Contains(AssistantSurfaceQuery, StringComparer.Ordinal))
-            {
-                builder.Query = query.Length == 0 ? AssistantSurfaceQuery : $"{query}&{AssistantSurfaceQuery}";
-            }
+    /// <summary>The query parameter naming the mode an MCP session opens in (<c>mode=data</c>, <c>mode=estate</c>). The
+    /// MCP server lists only that mode's tools. Mirrored by <c>requested</c> in the MCP server's <c>modes.rs</c>.</summary>
+    public const string ModeQueryName = "mode";
 
-            return builder.Uri;
+    /// <summary>
+    /// <see cref="ServerUrl"/> with <see cref="AssistantSurfaceQuery"/> added (once, keeping any existing query), and the
+    /// session's <paramref name="mode"/> when one is given: the address every assistant gateway gives its MCP connector,
+    /// so no provider reaches the MCP server without the assistant marker, and each run's session lists the tools of the
+    /// conversation's mode. Any mode the configured address named is replaced, never doubled.
+    /// </summary>
+    public Uri AssistantServerUri(AssistantMode? mode)
+    {
+        var builder = new UriBuilder(ServerUrl);
+        var pairs = builder.Query.TrimStart('?')
+            .Split('&', StringSplitOptions.RemoveEmptyEntries)
+            .Where(pair => !pair.StartsWith(ModeQueryName + "=", StringComparison.Ordinal))
+            .ToList();
+        if (!pairs.Contains(AssistantSurfaceQuery, StringComparer.Ordinal))
+        {
+            pairs.Add(AssistantSurfaceQuery);
         }
+        if (mode is { } named)
+        {
+            pairs.Add($"{ModeQueryName}={(named == AssistantMode.Data ? "data" : "estate")}");
+        }
+        builder.Query = string.Join('&', pairs);
+        return builder.Uri;
     }
 
     /// <summary>The MCP server label shared between the tool definition and its per-run resources.</summary>
     public string ServerLabel { get; set; } = "sqlflow";
 
     /// <summary>
-    /// What an estate question reads on every surface: the catalog and its schema (every table and column, with
-    /// definitions and keys), lineage, runs, search, schedules, subscribers, insights and the docs. Schema is not
-    /// sensitive, and nothing here reads a row, so it is safe on any surface however public.
-    /// </summary>
-    public static IReadOnlyList<string> EstateReadTools { get; } =
-    [
-        "search_docs", "get_doc", "get_doc_by_yaml_path", "get_doc_by_cli_command", "related_docs", "list_docs",
-        "validate_flow", "list_flow_keys", "describe_flow_key",
-        "check_connectivity", "get_control_plane_url",
-        "list_repos", "get_repo", "list_pipelines", "list_flow_batches", "get_pipeline", "pipeline_definition",
-        "pipeline_file_stats", "pipeline_columns",
-        "list_runs", "get_run", "run_statements", "run_assertions", "run_files", "run_health_metrics",
-        // The catalog's schema, whole: every table and column, view and procedure bodies, keys and joins.
-        "list_schemas", "catalog_tree", "describe_object", "get_table_key", "get_table_joins",
-        "search_all", "search_schema",
-        "lineage_objects", "lineage_object_detail", "lineage_object_columns",
-        "describe_object_refresh", "object_lineage", "list_file_sources", "file_provenance",
-        "lineage_edges", "lineage_waves", "lineage_dependencies",
-        "list_subscribers", "describe_subscriber", "describe_subscriber_report",
-        "search",
-        "list_schedules", "get_schedule", "get_schedule_plan", "list_nodes", "list_repo_sources", "summary",
-        "insights_flows", "insights_attention", "insights_recommendations", "insights_steps",
-        "detect_stream_anomalies",
-    ];
-
-    /// <summary>
-    /// The GUI's estate questions: everything an estate question reads, plus the data-operations checks. The GUI is a
-    /// signed-in, per-user surface where a token delegated from the caller authorises every call, so an engineer's
-    /// diagnostics over live rows belong here. They read rows, so the control plane holds each to the column guards,
-    /// as it holds a business question's query.
-    /// </summary>
-    public static IReadOnlyList<string> GuiDefaultTools { get; } =
-    [
-        .. EstateReadTools,
-        // Read-only, and behind ControlPlane:DataOps:Enabled, which is the switch that actually governs them.
-        "dataops_capabilities", "check_duplicate_keys", "compare_baseline",
-    ];
-
-    /// <summary>
-    /// Slack's estate questions: everything an estate question reads. Slack is a SHARED channel with one bot identity
-    /// rather than a signed-in per-user session, so the engineer's checks over live rows stay on the GUI.
-    /// </summary>
-    public static IReadOnlyList<string> SlackDefaultTools { get; } = EstateReadTools;
-
-    /// <summary>
-    /// A business question's tools, on every surface: the semantic layer (the approved AI contexts) as its only
-    /// schema, the stored questions, and answering end to end: running a query a person approved, running a trusted
-    /// saved answer, and saving an answer a person said is right.
+    /// A deployment's own narrowing of the tools a run may call (<c>Mcp:AllowedTools</c>); empty, the default, means
+    /// every tool the MCP server lists in the session's mode. The server decides what each mode offers and the control
+    /// plane decides what the run's token may do, so this exists only for an operator who wants fewer: a list that
+    /// leaves out a mode's tools leaves that mode without them.
     ///
-    /// A query is only ever a single read-only SELECT over the columns the approved contexts open (the read-only and
-    /// column guards run on prepare, run, confirm and auto-run), and a prepared plan is single-use, which is what makes
-    /// these safe on Slack too, where anyone in a thread can approve a query and every query and saved answer is
-    /// attributed to the bot token's owner.
-    /// </summary>
-    public static IReadOnlyList<string> BusinessDefaultTools { get; } =
-    [
-        "get_semantic_layer", "search_semantic_layer", "list_semantic_tables", "describe_semantic_table",
-        "find_similar_questions",
-        // prepare_query executes nothing, and run_query only redeems a single-use token minted by a prepare whose
-        // exact SQL was shown to a person.
-        "prepare_query", "run_query",
-        // Running a TRUSTED match with no fresh approval: its exact SQL was confirmed by a person when it was stored,
-        // and it runs under the deployment's own row and timeout caps behind its own AutoRun switch.
-        "auto_run_trusted_match",
-        // Recording a person's verdict on an answer into the stored questions. It runs nothing.
-        "confirm_question",
-    ];
-
-    /// <summary>
-    /// The MCP tools a deployment configured for estate questions (<c>Mcp:AllowedTools</c>), or empty when it
-    /// configured none, in which case the surface's own default applies (<see cref="EffectiveTools"/>).
-    ///
-    /// The default deliberately does NOT live in this property. The configuration binder adds configured items to a
-    /// list that already holds values rather than replacing it, so a pre-filled default here turned a deployment's
-    /// narrower list into the whole default plus that list: silently the opposite of what was configured.
+    /// The list starts empty on purpose. The configuration binder adds configured items to a list that already holds
+    /// values rather than replacing it, so a pre-filled default turned a narrower list into the default plus that list.
     /// </summary>
     public List<string> AllowedTools { get; set; } = [];
-
-    /// <summary>The MCP tools a deployment configured for business questions (<c>Mcp:BusinessTools</c>), or empty when
-    /// it configured none, in which case <see cref="BusinessDefaultTools"/> applies. Empty by default for the same
-    /// reason as <see cref="AllowedTools"/>.</summary>
-    public List<string> BusinessTools { get; set; } = [];
-
-    /// <summary>
-    /// The tools a message is answered with: for a business question the configured business list or
-    /// <see cref="BusinessDefaultTools"/>, for any other question the configured list or the surface's default
-    /// (<see cref="SlackDefaultTools"/> or <see cref="GuiDefaultTools"/>). Never empty, so no gateway can offer every
-    /// tool the MCP server ships by omission.
-    ///
-    /// The two sets are what makes the business-question command hold by construction: a business question has no
-    /// schema but the semantic layer to find, and an estate question has no query to run, whatever either is told.
-    /// A tool absent from a set does not look restricted to the model, it looks ABSENT: the assistant reports the
-    /// product cannot do the thing. That is why <see cref="ExcludedTools"/> exists beside the defaults and why a test
-    /// asserts that together they cover every tool the MCP server ships.
-    /// </summary>
-    public IReadOnlyList<string> EffectiveTools(AssistantSurface surface, AssistantQuestionKind kind)
-        => kind == AssistantQuestionKind.Business
-            ? BusinessTools.Count > 0 ? BusinessTools : BusinessDefaultTools
-            : AllowedTools.Count > 0 ? AllowedTools : surface == AssistantSurface.Slack ? SlackDefaultTools : GuiDefaultTools;
-
-    /// <summary>
-    /// The tools deliberately kept from the assistant, listed rather than merely absent so the omission is a
-    /// decision on the record. Everything here either starts work, authors code, reads rows outside a business
-    /// question, or is inert over HTTP.
-    /// </summary>
-    public static IReadOnlyList<string> ExcludedTools { get; } =
-    [
-        // Start or stop work in the estate.
-        "trigger_run", "cancel_run",
-        // Executes DMV probes as a side effect; the read-only insights_* tools already expose their results.
-        "analyze_warehouse_health",
-        // Authors code and opens a pull request.
-        "propose_pipelines",
-        // Scans a live location and generates YAML; an authoring step, not a question.
-        "discover_source",
-        // Introspects a source and generates ing-flow YAML; the required lead-in to propose_pipelines,
-        // so it is excluded for the same reason: authoring, not a question.
-        "scaffold_ingestion_flow",
-        // Session and transport plumbing, inert or meaningless over HTTP with a forwarded bearer.
-        "login", "logout", "check_auth_status", "set_access_token", "set_control_plane_url",
-        // Profiles a table's live rows to find its key: data, not schema, and no part of a business question.
-        "detect_unique_key",
-        // Git history and schema-diff readers reachable through the GUI, kept off the chat surface to bound
-        // the tool count the model has to choose between.
-        "database_schema_changes", "database_schema_history_databases", "database_object_ddl",
-        "database_object_compare", "flow_definition_history", "flow_definition_file_history",
-        "flow_definition_diff",
-    ];
 }
 
 /// <summary>Settings for <see cref="AssistantProvider.AzureFoundry"/> mode.</summary>
@@ -321,7 +209,7 @@ public sealed class FoundryOptions
     public string McpServerLabel { get; set; } = "";
 
     /// <summary>Legacy alias for the host's Mcp:AllowedTools; read only when the new key is unset.
-    /// Empty here means "not customized" (the effective default list lives on <see cref="McpOptions"/>).</summary>
+    /// Empty here means "not customized" (<see cref="McpOptions.AllowedTools"/> says what empty means).</summary>
     public List<string> AllowedTools { get; set; } = [];
 }
 

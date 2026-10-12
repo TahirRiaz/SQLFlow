@@ -114,7 +114,7 @@ public class SlackBotOptionsTests
     }
 
     [Fact]
-    public void LegacyPromotion_KeepsDefaultAllowlist_WhenLegacyListNotCustomized()
+    public void LegacyPromotion_LeavesTheToolsToTheMcpServer_WhenLegacyListNotCustomized()
     {
         var options = BaseOptions();
         options.Provider = AssistantProvider.OpenAI;
@@ -125,9 +125,7 @@ public class SlackBotOptionsTests
         options.Validate();
 
         Assert.Equal("https://legacy.example.com/mcp", options.Mcp.ServerUrl);
-        var tools = options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Estate);
-        Assert.Contains("describe_object", tools);
-        Assert.DoesNotContain("trigger_run", tools);
+        Assert.Empty(options.ToAssistantSettings().Mcp.AllowedTools);
     }
 
     [Fact]

@@ -6,10 +6,10 @@ using Xunit;
 namespace SqlFlow.SlackBot.Tests;
 
 /// <summary>
-/// The tool list the Slack bot actually runs with, bound from configuration exactly the way Program.cs binds it
-/// (<c>SlackBot</c> section, then <see cref="SlackBotOptions.Validate"/>). Constructing the options in code, as the
-/// other option tests do, cannot catch how the configuration binder treats a list property that already holds a
-/// default, which is exactly what decides whether a deployment's own allowlist replaces the default or is added to it.
+/// The tools the Slack bot runs with, bound from configuration exactly the way Program.cs binds it (<c>SlackBot</c>
+/// section, then <see cref="SlackBotOptions.Validate"/>). The MCP server decides what each mode lists, so an unconfigured
+/// bot narrows nothing; a deployment's own list must replace the empty default rather than be added to a pre-filled one,
+/// which only binding through the configuration, as the bot does, can show.
 /// </summary>
 public sealed class SlackBotAllowlistBindingTests
 {
@@ -37,41 +37,18 @@ public sealed class SlackBotAllowlistBindingTests
     }
 
     [Fact]
-    public void Unconfigured_RunsWithTheSlackList()
-    {
-        var options = Bind(new Dictionary<string, string?>());
-
-        Assert.Empty(options.Mcp.AllowedTools);
-        Assert.Empty(options.Mcp.BusinessTools);
-        Assert.Equal(McpOptions.SlackDefaultTools, options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Estate));
-        Assert.Equal(McpOptions.BusinessDefaultTools, options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Business));
-    }
-
-    [Fact]
-    public void Slack_AnswersBusinessQuestionsWithTheBusinessSet_AndNeverStartsWork()
+    public void Unconfigured_LeavesTheToolsToTheMcpServer()
     {
         var settings = Bind(new Dictionary<string, string?>()).ToAssistantSettings();
-        var business = settings.ToolsFor(AssistantQuestionKind.Business);
-        var estate = settings.ToolsFor(AssistantQuestionKind.Estate);
 
-        Assert.Contains("find_similar_questions", business);
-        Assert.Contains("prepare_query", business);
-        Assert.Contains("run_query", business);
-        Assert.Contains("auto_run_trusted_match", business);
-        Assert.Contains("confirm_question", business);
-        Assert.DoesNotContain("run_query", estate);
-        Assert.DoesNotContain("find_similar_questions", estate);
-        foreach (var tools in new[] { business, estate })
-        {
-            Assert.DoesNotContain("trigger_run", tools);
-            Assert.DoesNotContain("cancel_run", tools);
-            Assert.DoesNotContain("propose_pipelines", tools);
-            Assert.DoesNotContain("check_duplicate_keys", tools);
-        }
+        Assert.Empty(settings.Mcp.AllowedTools);
+        Assert.Equal(AssistantSurface.Slack, settings.Surface);
+        Assert.Equal("https://mcp.example.com/mcp?surface=assistant&mode=data",
+            settings.Mcp.AssistantServerUri(AssistantMode.Data).AbsoluteUri);
     }
 
     [Fact]
-    public void AConfiguredList_ReplacesTheDefault_RatherThanBeingAddedToIt()
+    public void AConfiguredList_ReplacesTheEmptyDefault_RatherThanBeingAddedToIt()
     {
         var options = Bind(new Dictionary<string, string?>
         {
@@ -79,6 +56,6 @@ public sealed class SlackBotAllowlistBindingTests
             ["SlackBot:Mcp:AllowedTools:1"] = "list_runs",
         });
 
-        Assert.Equal(["summary", "list_runs"], options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Estate));
+        Assert.Equal(["summary", "list_runs"], options.ToAssistantSettings().Mcp.AllowedTools);
     }
 }

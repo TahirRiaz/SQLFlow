@@ -404,6 +404,12 @@ public static class ChatEndpoints
                             .ConfigureAwait(false);
                         break;
                     }
+                    case AssistantEvent.Restarted:
+                        // The question is asked again in another mode: the first attempt's text is not the answer,
+                        // here or in the browser. The tool calls it made stay on record.
+                        streamedText.Clear();
+                        await WriteSseAsync(response, "restart", "{}", ct).ConfigureAwait(false);
+                        break;
                     case AssistantEvent.Completed completed:
                         completedText = completed.Text;
                         break;
