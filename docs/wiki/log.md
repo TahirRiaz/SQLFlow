@@ -377,3 +377,12 @@ assistant fence now holds every call the MCP server marks as the assistant's, wh
 personal access token from starting work. Marked [The assistant has a tool set per kind of question](decisions/assistant-tool-sets-by-question.md)
 as history. The surfaces are documented in `guide-chat-assistant`, `guide-slack-assistant`, `concept-semantic-layer`,
 `concept-data-operations`, and `concept-authentication-and-identity`.
+
+## [2026-10-12] ingest | `!data`, the mode tools, and a remembered switch
+
+Updated [The MCP server is the assistant's one definition](decisions/the-mcp-server-is-the-assistants-one-definition.md)
+with the human's report that Claude Code reads `!cwd` as a shell command, and their request for a way to see the
+server's mode: the command's word is now `!data` (`!cwd` is gone), `start_data_mode`, `end_data_mode` and `get_mode`
+switch and report a session's mode, and the GUI chat and the Slack bot store the mode each answer ended in, so a switch
+the assistant made holds for the next message. The surfaces are documented in `guide-chat-assistant`,
+`guide-slack-assistant` and `concept-semantic-layer`.

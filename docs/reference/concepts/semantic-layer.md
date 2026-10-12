@@ -66,7 +66,7 @@ A file only proposes; nothing in it is used until an admin approves that exact v
 - A table is **in the layer** exactly when an approved context names it. A table belongs to one context.
 - Its **open columns** are every column the approved version resolved for it but the ones the file denies. Only open
   columns are ever served, and nothing served names any other column: not a key, a join, a measure, or an example query.
-- A question reaches the layer when the chat message starts with **`!`** (the business-question command; `!cwd` is the
+- A question reaches the layer when the chat message starts with **`!`** (the business-question command; `!data` is the
   same command). Such a message is answered with the business tool set, whose only schema is the layer; any other
   message is a question about the estate, answered with the estate tool set, which sees every table and column and
   runs no query (see [MCP tools](#mcp-tools)).
@@ -192,19 +192,23 @@ The Power BI extractor's settings (`ControlPlane:AiContext:ReportExtraction:*`) 
 | `describe_semantic_table` | `GET /api/v1/semantic-layer/tables/describe` |
 
 A conversation is in one of two modes, which the MCP server defines (`tools/sqlflow-mcp/src/modes.rs`) and its
-instructions explain to every client. A message starting with `!` (or `!cwd`) puts it in data mode, where it stays, so
-a follow-up needs no `!`; `!exit` returns it to estate mode, and the assistant ends data mode itself when a follow-up
-turns to the estate. A client that opens an MCP session per message (the GUI chat and the Slack bot, through the model
-provider) names the conversation's mode on the address (`?surface=assistant&mode=data`), and the session lists only
-that mode's tools:
+instructions explain to every client. A message starting with `!data` or a bare `!` puts it in data mode, where it
+stays, so a follow-up needs no `!`; `!exit` returns it to estate mode, and the assistant ends data mode itself when a
+follow-up turns to the estate. Where a leading `!` never reaches the model (Claude Code runs a prompt starting with `!`
+as a shell command), the person asks in words ("switch to data mode") and the assistant calls `start_data_mode`, or
+`end_data_mode` to leave. `get_mode` answers which mode the session is in, how it got there (named by the client,
+switched by a tool, or the default), whether the session lists every tool, and the commands. A client that opens an
+MCP session per message (the GUI chat and the Slack bot, through the model provider) names the conversation's mode on
+the address (`?surface=assistant&mode=data`), and the session lists only that mode's tools:
 
 | Mode | What its session lists |
 | --- | --- |
-| Data | The four semantic layer tools above, `describe_subscriber_report`, `find_similar_questions`, and the query tools: `prepare_query`, `run_query`, `auto_run_trusted_match`, `confirm_question`. Nothing else, so the layer is the only schema a data question finds |
-| Estate (the default) | Every other tool: docs, flows, runs, lineage, schedules, subscribers, insights, search, the whole schema (`list_schemas`, `catalog_tree`, `describe_object`, `search_all`, `search_schema`, `pipeline_columns`, `get_table_key`, `get_table_joins`, the `lineage_object*` readers), any tools a product adds, and the semantic layer readers; no query tool |
+| Data | The four semantic layer tools above, `describe_subscriber_report`, `find_similar_questions`, the query tools (`prepare_query`, `run_query`, `auto_run_trusted_match`, `confirm_question`), `end_data_mode` and `get_mode`. Nothing else, so the layer is the only schema a data question finds |
+| Estate (the default) | Every other tool: docs, flows, runs, lineage, schedules, subscribers, insights, search, the whole schema (`list_schemas`, `catalog_tree`, `describe_object`, `search_all`, `search_schema`, `pipeline_columns`, `get_table_key`, `get_table_joins`, the `lineage_object*` readers), any tools a product adds, the semantic layer readers, `start_data_mode` and `get_mode`; no query tool |
 
-A session that names no mode (an editor's assistant over stdio, such as VS Code or Claude Code) lists every tool, and
-the model keeps the mode from the instructions. What a query reads does not depend on the mode: every query is checked
+A session that names no mode (an editor's assistant over stdio, such as VS Code or Claude Code) lists every tool, the
+mode tools included, and the model keeps the mode from the instructions; the switch tools record it for the session,
+so `get_mode` reports it. What a query reads does not depend on the mode: every query is checked
 against the columns the approved contexts open, on prepare and on run. What an assistant run may do beyond reading is
 the control plane's fence ([assistant run tokens](authentication-and-identity.md#assistant-run-tokens)), not a tool
 list: `Mcp:AllowedTools` exists only for a deployment that wants fewer tools.

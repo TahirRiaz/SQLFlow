@@ -10,6 +10,9 @@ keywords:
   - data mode
   - estate mode
   - "!exit"
+  - "!data"
+  - get_mode
+  - start_data_mode
   - follow-up
   - tools/list_changed
   - assistant fence
@@ -21,6 +24,8 @@ sourceRefs:
   - src/SqlFlow.Assistant/AssistantQuestions.cs
   - src/SqlFlow.Assistant/AssistantRouter.cs
   - src/SqlFlow.Assistant/AssistantRuns.cs
+  - src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs
+  - src/SqlFlow.SlackBot/SlackAssistantMode.cs
   - src/SqlFlow.Assistant/AssistantInstructions.cs
   - src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs
   - src/SqlFlow.ControlPlane/Api/AssistantScope.cs
@@ -67,8 +72,8 @@ canonical flow authoring path, refusals) moved into the server's instructions, w
 ## Two modes, and the commands between them
 
 Forgetting the `!` on a follow-up was the problem the human raised: "A user starts with ! the asks a question. The in a
-refining or followup question he may forget to use !." So a conversation has a mode. A message starting with `!` (or
-`!cwd`) puts it in data mode, where it stays, so "and by region?", "run it" and "save" need no command; `!exit` returns
+refining or followup question he may forget to use !." So a conversation has a mode. A message starting with `!` (then
+`!cwd`, now `!data`) puts it in data mode, where it stays, so "and by region?", "run it" and "save" need no command; `!exit` returns
 it to estate mode, and the assistant ends data mode itself when someone forgets `!exit` and a follow-up turns to the
 estate (the human chose both). Only a command starts data mode: phrasing never does, for the reason the earlier record
 gives. The human asked to keep every command even where switching may not be perfect: "you dont need to remove any
@@ -90,6 +95,25 @@ tools together, without the query tools.
   and the model keeps the mode from the instructions.
 - **Rejected: one mode per conversation, set by its first message.** Simpler, and briefly built, but it dropped `!exit`
   and the assistant ending data mode, which the human wanted kept.
+
+## The command's word, asking the mode, and remembering a switch
+
+`!cwd` did not survive an editor: "!cdw is read as change folder rather than switching mode. we should also have a
+method to check which mode the server currently is in." Claude Code runs a prompt that starts with `!` as a shell
+command, so neither `!` nor `!cwd` reaches the model there. The human chose `!data` as the command's word; a bare `!`
+still works wherever it reaches the model, and `!cwd` is gone. When a stored question is cleaned, the word is taken off
+only when it touches the `!`, since "data" also starts ordinary questions ("! data quality by region").
+
+- **Switching in words.** `start_data_mode` (listed in estate mode) and `end_data_mode` (in data mode) move a
+  session's mode and announce the new tool list. An editor's session lists both, since it lists every tool.
+- **Asking the mode.** `get_mode`, in every session, says the mode, how it was set (named by the client, switched by a
+  tool, or the default), whether the session lists every tool, and the commands.
+- **A switch is remembered.** A per-message session forgets a switch when it closes, so the GUI chat stores each
+  answer's mode with the message and the Slack bot puts it on its reply as message metadata. The next message starts
+  from the newest of the person's commands and the answers' modes. A run that switches is asked again in the other
+  mode at most once; a second switch is recorded for the next message rather than acted on.
+- **Rejected: the MCP server keeping the mode across sessions.** The server would need a conversation identity the
+  model provider's connector does not send, and the host already keeps the transcript, so the mode lives beside it.
 
 ## The fence bounds a run, not a tool list
 

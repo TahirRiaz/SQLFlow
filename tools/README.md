@@ -90,8 +90,11 @@ The server's instructions are the assistant's one set of rules: the GUI chat
 and the Slack bot read them from the server's `initialize` answer and add only
 how their surface renders an answer, and an editor's assistant reads the same
 text. A conversation is in estate mode or data mode (`src/modes.rs`): a message
-starting with `!` (or `!cwd`) puts it in data mode until `!exit`, so follow-ups
-need no command. A client that opens a session per message names the mode on
+starting with `!data` or a bare `!` puts it in data mode until `!exit`, so
+follow-ups need no command. Where a leading `!` never reaches the model (Claude
+Code runs it as a shell command), the person asks in words and the model calls
+`start_data_mode` or `end_data_mode`; `get_mode` says which mode a session is
+in and how it got there. A client that opens a session per message names the mode on
 the address (`?mode=data`, `?mode=estate`) and the session lists only that
 mode's tools; a session that names none lists every tool.
 

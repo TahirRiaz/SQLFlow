@@ -4564,6 +4564,9 @@
         "data mode",
         "estate mode",
         "!exit",
+        "!data",
+        "get_mode",
+        "start_data_mode",
         "follow-up",
         "tools/list_changed",
         "assistant fence",
@@ -4580,6 +4583,8 @@
         "src/SqlFlow.Assistant/AssistantQuestions.cs",
         "src/SqlFlow.Assistant/AssistantRouter.cs",
         "src/SqlFlow.Assistant/AssistantRuns.cs",
+        "src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs",
+        "src/SqlFlow.SlackBot/SlackAssistantMode.cs",
         "src/SqlFlow.Assistant/AssistantInstructions.cs",
         "src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs",
         "src/SqlFlow.ControlPlane/Api/AssistantScope.cs"

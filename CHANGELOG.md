@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- The data-mode command is `!data` (or a bare `!`); `!cwd` is gone, since an editor's assistant such as Claude Code
+  runs a prompt that starts with `!` as a shell command. The MCP server gained `get_mode` (the session's mode, how it
+  was set, and whether the session lists every tool) and `start_data_mode` beside `end_data_mode`, so a person can
+  switch in words, and an assistant run is asked again in the other mode whichever way it switches, at most once. The
+  GUI chat stores the mode each answer ended in (`catalog.ChatMessage.AssistantMode`, migration
+  `AddChatMessageAssistantMode`) and the Slack bot puts it on its reply as message metadata, so a switch the assistant
+  made holds for the next message. `IAssistantGateway.AskAsync` returns an `AssistantAnswer`, the text and the mode.
 - AI context is turned on with one switch, `ControlPlane__AiContext__Enabled=true`, named as the GUI names the
   feature: it covers a question's query (prepare/run and the chat's Run button), saved answers, and running a
   trusted saved answer straight away, which is now on by default (`ControlPlane__AiContext__AutoRun__Enabled=false`

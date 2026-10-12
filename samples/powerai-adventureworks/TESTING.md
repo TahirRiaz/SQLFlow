@@ -136,8 +136,15 @@ the tool result shows the terms actually sent.
 ### T11c: a forgotten `!exit` is ended by the assistant
 - Prompt: after T11a, `where does that table get its data from?`
 - Pass: the data-mode run calls `end_data_mode`, the chat drops its first attempt (a `restart` event), and the answer
-  comes from `object_lineage` in estate mode. The conversation's newest command is still the `!`, so the next message
-  without a command starts in data mode again; `!exit` is what keeps it in estate mode.
+  comes from `object_lineage` in estate mode. The answer is stored in estate mode, so the next message without a
+  command starts in estate mode too.
+
+### T11d: switching in words, and asking the mode
+- Prompt: in a new conversation, `switch to data mode`, then `what are reseller sales by region?`, then
+  `which mode are you in?`
+- Pass: the first run calls `start_data_mode` and is asked again in data mode (a `restart` event); the second message,
+  with no command, runs with `mode=data` on its MCP address; the third is answered from `get_mode`, which says data
+  mode, named by the client.
 
 ## E. Question retrieval (`!`)
 
