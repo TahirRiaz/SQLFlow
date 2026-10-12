@@ -7,7 +7,8 @@ namespace SqlFlow.ControlPlane.Api;
 /// gateways point the MCP connector at <c>?surface=assistant</c>, and the MCP server marks every control-plane call
 /// of such a session with <see cref="HeaderName"/>. The caller's own bearer still decides what it may do; the header
 /// only narrows, so a request that omits it gets nothing more than its token already allows. The model cannot set the
-/// header, which is the property that matters: it cannot opt out of the narrowing.
+/// header, which is the property that matters: it cannot opt out of the narrowing. A marked call is held to the routes
+/// opened to assistant runs (<c>AssistantDelegationMiddleware</c>), whatever credential it carries.
 /// <para>
 /// What the marker narrows is data, never schema. Schema (table and column names, definitions, flow YAML, executed
 /// statements) is not sensitive and is served to the assistant as to anyone else. A data-operations task the

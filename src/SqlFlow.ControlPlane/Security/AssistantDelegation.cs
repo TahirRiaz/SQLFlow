@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
+using SqlFlow.ControlPlane.Api;
 
 namespace SqlFlow.ControlPlane.Security;
 
@@ -88,9 +89,13 @@ public sealed class AssistantAccess
 }
 
 /// <summary>
-/// Refuses a delegated assistant token on any endpoint it has not been explicitly opened to. Runs after
+/// Refuses an AI assistant run on any endpoint it has not been explicitly opened to. A run is one either way it can
+/// reach the control plane: with a delegated token (the GUI chat's), or with any other credential on a call the MCP
+/// server marked as the assistant's (<see cref="AssistantScope"/>; the Slack bot's personal access token, whose read,
+/// operate and author policies only ask for a signed-in principal). The MCP server lists every tool to every client, so
+/// this fence, not a tool list, is what keeps a model answering for a channel or a chat from starting work. Runs after
 /// authorization, so the principal is resolved and an anonymous or otherwise unauthorized request has already been
-/// answered by the normal policies; every credential that is not delegated passes straight through.
+/// answered by the normal policies; every other request passes straight through.
 /// </summary>
 public sealed class AssistantDelegationMiddleware
 {
@@ -103,15 +108,15 @@ public sealed class AssistantDelegationMiddleware
     {
         ArgumentNullException.ThrowIfNull(context);
 
-        if (AssistantDelegation.IsDelegated(context.User) && !IsAdmitted(context))
+        if ((AssistantDelegation.IsDelegated(context.User) || AssistantScope.IsAssistant(context)) && !IsAdmitted(context))
         {
             context.Response.StatusCode = StatusCodes.Status403Forbidden;
             await Results.Problem(
                 statusCode: StatusCodes.Status403Forbidden,
                 title: DeniedTitle,
-                detail: "This credential was issued for a single AI assistant run and may only use the read surface " +
-                    "the assistant's tools need. It cannot manage tokens, renew or approve sign-ins, start work, " +
-                    "or reach any other part of SQLFlow.")
+                detail: "An AI assistant run may only use the surface the assistant's tools need. It cannot manage " +
+                    "tokens, renew or approve sign-ins, start work, or reach any other part of SQLFlow; a person does " +
+                    "that in the GUI or with the sqlflow CLI.")
                 .ExecuteAsync(context).ConfigureAwait(false);
             return;
         }

@@ -80,6 +80,8 @@ public sealed class AssistantDelegationTests : IClassFixture<ControlPlaneAppFact
     [InlineData("POST", "/api/v1/datasources/tasks")]
     [InlineData("POST", "/api/v1/dataops/queries/prepare")]
     [InlineData("POST", "/api/v1/dataops/queries/" + SomeGuid + "/run")]
+    [InlineData("POST", "/api/v1/powerai/questions/confirm")]
+    [InlineData("POST", "/api/v1/powerai/questions/1/auto-run")]
     public async Task DelegatedToken_PassesTheFence_OnTheSurfaceTheAssistantToolsUse(string method, string path)
     {
         // Past the fence the endpoint does its own work (and against the placeholder catalog may fail, or refuse
@@ -195,11 +197,51 @@ public sealed class AssistantDelegationTests : IClassFixture<ControlPlaneAppFact
         return token.AccessToken;
     }
 
+    [Theory]
+    [InlineData("POST", "/api/v1/runs")]
+    [InlineData("POST", "/api/v1/runs/" + SomeGuid + "/cancel")]
+    [InlineData("POST", "/api/v1/schedules/" + SomeGuid + "/run")]
+    [InlineData("POST", "/api/v1/repos/sources/" + SomeGuid + "/proposals")]
+    [InlineData("POST", "/api/v1/me/tokens")]
+    public async Task AnyCredential_OnACallMarkedAsTheAssistants_IsRefused_WhereARunIsNot(string method, string path)
+    {
+        // The Slack bot runs on a personal access token, which the read, operate and author policies admit wherever a
+        // signed-in principal is; the MCP server marks its calls, and the mark holds them to an assistant run's surface.
+        using var client = _factory.CreateClient();
+        var token = Issuer().Issue("slack-bot-owner", ["read", "operate"], DateTime.UtcNow, "Operator", Guid.NewGuid(), DateTime.UtcNow).Token;
+
+        using var marked = await SendAsync(client, token, method, path, assistant: true);
+        using var unmarked = await SendAsync(client, token, method, path);
+
+        Assert.Equal(HttpStatusCode.Forbidden, marked.StatusCode);
+        Assert.Contains(AssistantDelegationMiddleware.DeniedTitle, await marked.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        Assert.DoesNotContain(AssistantDelegationMiddleware.DeniedTitle, await unmarked.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("GET", "/api/v1/pipelines")]
+    [InlineData("POST", "/api/v1/dataops/queries/prepare")]
+    [InlineData("POST", "/api/v1/powerai/questions/confirm")]
+    public async Task AnyCredential_OnACallMarkedAsTheAssistants_PassesTheFence_OnTheAssistantsSurface(string method, string path)
+    {
+        using var client = _factory.CreateClient();
+        var token = Issuer().Issue("slack-bot-owner", ["read", "operate"], DateTime.UtcNow, "Operator", Guid.NewGuid(), DateTime.UtcNow).Token;
+
+        using var response = await SendAsync(client, token, method, path, assistant: true);
+
+        Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.DoesNotContain(AssistantDelegationMiddleware.DeniedTitle, await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+    }
+
     private static async Task<HttpResponseMessage> SendAsync(
-        HttpClient client, string token, string method, string path, object? body = null)
+        HttpClient client, string token, string method, string path, object? body = null, bool assistant = false)
     {
         using var request = new HttpRequestMessage(new HttpMethod(method), new Uri(path, UriKind.Relative));
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        if (assistant)
+        {
+            request.Headers.Add(AssistantScope.HeaderName, AssistantScope.AssistantValue);
+        }
         if (body is not null || method is "POST" or "PUT" or "DELETE")
         {
             request.Content = JsonContent.Create(body ?? new { });
