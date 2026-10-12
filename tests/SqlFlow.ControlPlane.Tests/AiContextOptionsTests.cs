@@ -83,6 +83,32 @@ public sealed class AiContextOptionsTests
     }
 
     [Fact]
+    public void SavedAnswersAreSentFromHalfCoverage_ByDefault()
+    {
+        var options = Bind(new Dictionary<string, string?> { ["ControlPlane:AiContext:Enabled"] = "true" });
+
+        Assert.Equal(0.5, options.AiContext.SavedAnswers.MinCoverage);
+        options.AiContext.Validate(new AnthropicOptions());
+    }
+
+    [Theory]
+    [InlineData("-0.1")]
+    [InlineData("1.5")]
+    [InlineData("NaN")]
+    public void ACoverageFloorOutsideZeroToOne_IsRefused_NamingTheKey(string floor)
+    {
+        var options = Bind(new Dictionary<string, string?>
+        {
+            ["ControlPlane:AiContext:Enabled"] = "true",
+            ["ControlPlane:AiContext:SavedAnswers:MinCoverage"] = floor,
+        });
+
+        var refused = Assert.Throws<InvalidOperationException>(() => options.AiContext.Validate(new AnthropicOptions()));
+
+        Assert.Contains("ControlPlane:AiContext:SavedAnswers:MinCoverage", refused.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AutoRunTurnedOff_IsNotValidated_AndTheRestStillRuns()
     {
         var options = Bind(new Dictionary<string, string?>

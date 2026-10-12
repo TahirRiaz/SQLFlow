@@ -458,42 +458,70 @@ internal static partial class SemanticLayer
         return result;
     }
 
+    /// <summary>
+    /// The question an assistant is answering, which a table's examples are chosen against: <see cref="Question"/>'s
+    /// own words and any <see cref="Terms"/> a search expanded it into, the share of an example's question they must
+    /// cover (<see cref="QuestionSearch.CoverageOf"/>), and the examples already sent beside it, which are not sent twice.
+    /// </summary>
+    /// <param name="Question">The question as typed.</param>
+    /// <param name="Terms">Terms a search expanded the question into, beyond its own words; empty when none were.</param>
+    /// <param name="MinCoverage">How much of an example's question must be covered for it to be served, from 0 to 1.</param>
+    /// <param name="AlreadySent">The ids of the examples already sent with the same answer.</param>
+    internal sealed record ExampleQuestion(
+        string Question, IReadOnlyList<string> Terms, double MinCoverage, IReadOnlySet<long> AlreadySent);
+
     /// <summary>The stored example queries that read <paramref name="objectKey"/> (at most <paramref name="take"/>),
-    /// each checked through the query guards: the newest, or with a <paramref name="question"/> the ones closest to it.
-    /// When <paramref name="servableOnly"/> is set, examples that would be refused are skipped rather than counted, so
-    /// the bundle still fills with usable ones.</summary>
+    /// each checked through the query guards: the newest, or with a question the ones close to it. When
+    /// <paramref name="servableOnly"/> is set, examples that would be refused are skipped rather than counted, so the
+    /// bundle still fills with usable ones.</summary>
     /// <param name="db">The catalog.</param>
     /// <param name="objectKey">The table the examples read.</param>
     /// <param name="take">The most examples returned.</param>
     /// <param name="servableOnly">Whether to skip, rather than return with their problem, examples the guards refuse.</param>
-    /// <param name="question">The question an assistant is answering, or null. With one, the table's newest
-    /// <see cref="MaxRankedExamples"/> examples are ranked by how many of its meaningful words each question shares,
-    /// scored as the stored-question search scores them, and the newest first among equals: the precedent an
-    /// assistant mirrors is then the closest it has, not whichever was confirmed last.</param>
+    /// <param name="closestTo">The question an assistant is answering, or null for the newest examples. With one, the
+    /// table's newest <see cref="MaxRankedExamples"/> examples are scored and cut as the stored-question search scores
+    /// and cuts them: an example sharing no word with the question, or covering less of its own question than the floor,
+    /// is not served, so a table whose examples answer other questions is served without any rather than with ten
+    /// queries the assistant reads for nothing. The rest are ranked by score, then coverage, the newest first among
+    /// equals: the precedent an assistant mirrors is then the closest it has, not whichever was confirmed last.</param>
     /// <param name="ct">Cancellation.</param>
     internal static async Task<IReadOnlyList<ExampleEvaluation>> EvaluateExamplesAsync(
-        CatalogDbContext db, string objectKey, int take, bool servableOnly, string? question, CancellationToken ct)
+        CatalogDbContext db, string objectKey, int take, bool servableOnly, ExampleQuestion? closestTo,
+        CancellationToken ct)
     {
         // The stored key list is newline-joined, so a substring match narrows in SQL and an exact split confirms it.
         var newest = db.SemanticExamples.AsNoTracking()
             .Where(e => e.ObjectKeys.Contains(objectKey))
             .OrderByDescending(e => e.ConfirmedUtc).ThenByDescending(e => e.Id);
-        IReadOnlyList<string> terms = string.IsNullOrWhiteSpace(question) ? [] : QuestionSearch.TypedTerms(question);
 
         List<CatalogSemanticExample> candidates;
-        if (terms.Count == 0)
+        if (closestTo is null)
         {
             candidates = await newest.Take(take * 4).ToListAsync(ct).ConfigureAwait(false);
         }
         else
         {
+            QuestionSearch.CheckCoverage(closestTo.MinCoverage);
+            var terms = closestTo.Terms.Concat(QuestionSearch.TypedTerms(closestTo.Question))
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            var typedWords = QuestionSearch.MeaningfulStems(closestTo.Question);
+
             // Ranked on the questions alone, so the SQL of every example is not read to choose ten; OrderBy is
             // stable, so equal scores keep the newest-first order they were read in.
             var questions = await newest.Take(MaxRankedExamples)
                 .Select(e => new { e.Id, e.Question })
                 .ToListAsync(ct).ConfigureAwait(false);
             var ranked = questions
-                .OrderByDescending(e => QuestionSearch.ScoreOf(QuestionSearch.MatchedTerms(e.Question, terms)))
+                .Where(e => !closestTo.AlreadySent.Contains(e.Id))
+                .Select(e => (
+                    e.Id,
+                    Score: QuestionSearch.ScoreOf(QuestionSearch.MatchedTerms(e.Question, terms)),
+                    Coverage: QuestionSearch.CoverageOf(e.Question, terms),
+                    Same: typedWords.Count > 0 && typedWords.SetEquals(QuestionSearch.MeaningfulStems(e.Question))))
+                .Where(e => e.Score > 0 && (e.Same || e.Coverage >= closestTo.MinCoverage))
+                .OrderByDescending(e => e.Score)
+                .ThenByDescending(e => e.Coverage)
                 .Take(take * 4)
                 .Select(e => e.Id)
                 .ToList();
@@ -798,13 +826,39 @@ internal static partial class SemanticLayer
     }
 
     /// <summary>
-    /// One layer table's grounding bundle as an assistant is served it, or null when the object is unknown or not in
-    /// the layer: only allowed columns, the servable key, joins, measures and examples, and the instructions of the AI
-    /// context that serves it, so a single call is enough to write SQL against the table. With a
-    /// <paramref name="question"/>, the examples are the ones closest to it (see <see cref="EvaluateExamplesAsync"/>).
+    /// One layer table's grounding bundle as describe_semantic_table serves it, or null when the object is unknown or
+    /// not in the layer: the table as <see cref="ServeTableAsync"/> serves it, the reports and dashboards that consume
+    /// it, and the instructions of the AI context that serves it, so a single call is enough to write SQL against the
+    /// table. With <paramref name="closestTo"/>, the examples are the ones close to that question (see
+    /// <see cref="EvaluateExamplesAsync"/>), and none when none is.
     /// </summary>
     internal static async Task<SemanticTableDto?> DescribeTableAsync(
-        CatalogDbContext db, string key, string? question, CancellationToken ct)
+        CatalogDbContext db, string key, ExampleQuestion? closestTo, CancellationToken ct)
+    {
+        if (await ServeTableAsync(db, key, closestTo, ct).ConfigureAwait(false) is not { } table)
+        {
+            return null;
+        }
+
+        // Who consumes the table is object-level (report names and owners), so it names no column and is served
+        // whole: it is how an assistant answers "who uses this table" without a raw catalog reader.
+        var consumers = await LineageEndpoints.LoadObjectSubscribersAsync(db, key, ct).ConfigureAwait(false);
+        var instructions = await LoadContextInstructionsAsync(db, table.Context, ct).ConfigureAwait(false);
+
+        return new SemanticTableDto(
+            table.Key, table.ServerRef, table.Database, table.Schema, table.Name, table.Kind,
+            table.BusinessName, table.Description, table.Synonyms, table.KeyColumns, table.KeyOrigin, table.Columns,
+            table.Joins, table.Measures, table.Examples, table.ReportModels, consumers, table.Context, instructions);
+    }
+
+    /// <summary>
+    /// One layer table as an assistant writes SQL against it, or null when the object is unknown or not in the layer:
+    /// its identity and business context, only its allowed columns, the servable key, joins, measures and examples, the
+    /// Power BI models built on it, and the AI context that serves it. A table's description and a question's grounding
+    /// (<see cref="GroundingAsync"/>) are both built from it, so what either serves is decided once.
+    /// </summary>
+    internal static async Task<SemanticGroundingTableDto?> ServeTableAsync(
+        CatalogDbContext db, string key, ExampleQuestion? closestTo, CancellationToken ct)
     {
         var obj = await db.Objects.AsNoTracking()
             .Where(o => o.Key == key)
@@ -842,7 +896,7 @@ internal static partial class SemanticLayer
             .Select(m => m.ToDto())
             .ToList();
 
-        var examples = (await EvaluateExamplesAsync(db, key, MaxServedExamples, servableOnly: true, question, ct).ConfigureAwait(false))
+        var examples = (await EvaluateExamplesAsync(db, key, MaxServedExamples, servableOnly: true, closestTo, ct).ConfigureAwait(false))
             .Select(e => new SemanticExampleDto(e.Id, e.Question, e.Sql, e.Provenance, e.ConfirmedUtc))
             .ToList();
 
@@ -853,15 +907,9 @@ internal static partial class SemanticLayer
             .Where(m => m.Measures.Count > 0 || m.CalculatedColumns.Count > 0 || m.Relationships.Count > 0)
             .ToList();
 
-        // Who consumes the table is object-level (report names and owners), so it names no column and is served
-        // whole: it is how an assistant answers "who uses this table" without a raw catalog reader.
-        var consumers = await LineageEndpoints.LoadObjectSubscribersAsync(db, key, ct).ConfigureAwait(false);
-        var context = annotation?.AiContext;
-        var instructions = await LoadContextInstructionsAsync(db, context, ct).ConfigureAwait(false);
-
-        return new SemanticTableDto(
+        return new SemanticGroundingTableDto(
             obj.Key, obj.ServerRef, obj.Database, obj.Schema, obj.Name, obj.Kind,
             annotation?.BusinessName, annotation?.Description, SplitSynonyms(annotation?.Synonyms),
-            keyColumns, keyOrigin, columns, joins, measures, examples, reportModels, consumers, context, instructions);
+            keyColumns, keyOrigin, columns, joins, measures, examples, reportModels, annotation?.AiContext);
     }
 }

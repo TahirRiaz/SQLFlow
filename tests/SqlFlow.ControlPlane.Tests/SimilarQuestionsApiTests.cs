@@ -64,10 +64,11 @@ public sealed class SimilarQuestionsApiTests
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
 
-        var suffix = Guid.NewGuid().ToString("N")[..8];
+        // Letters only, so the word carrying it is a word the stored question is about, not a value.
+        var suffix = string.Concat(Guid.NewGuid().ToString("N")[..8].Select(c => (char)('a' + (c % 16))));
         var repoId = Guid.NewGuid();
         var vocabulary = $"takings{suffix}";
-        var question = $"What are total {vocabulary} by country?";
+        var question = $"What are our total {vocabulary}?";
         var sql = "SELECT Country, SUM(Amount) FROM Orders GROUP BY Country";
         var hash = SemanticExampleHash.Compute(question, sql);
 
@@ -191,6 +192,93 @@ public sealed class SimilarQuestionsApiTests
         {
             await db.SemanticExamples.Where(e => e.ContentHash == hash).ExecuteDeleteAsync();
         }
+    }
+
+    /// <summary>
+    /// A dashboard match's <c>reportSql</c> is the visual's own query against the report's model, evidence that is never
+    /// run. While the match carries runnable <c>sql</c> it would only repeat it, so it is not sent; a visual whose query
+    /// could not be translated has no <c>sql</c>, and then <c>reportSql</c> is what says which fields the report uses.
+    /// </summary>
+    [SkippableFact]
+    public async Task ReportSql_IsSentOnlyForAVisualWhoseQueryCouldNotBeTranslated()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = string.Concat(Guid.NewGuid().ToString("N")[..8].Select(c => (char)('a' + (c % 16))));
+        var repoId = Guid.NewGuid();
+        var subscriberKey = $"subscriber|reportsql_{suffix}";
+        var pageKey = $"{subscriberKey}#report.pbix#1";
+        var translated = $"What is margin{suffix} by store?";
+        var untranslated = $"What is margin{suffix} by region?";
+
+        await using var db = CatalogDatabase.Create(cs);
+        try
+        {
+            db.SubscriberReportPages.Add(new CatalogSubscriberReportPage
+            {
+                RepoId = repoId, SubscriberKey = subscriberKey, PageKey = pageKey,
+                ReportFile = "report.pbix", Ordinal = 1, DisplayName = "Page 1",
+            });
+            AddVisual(db, repoId, subscriberKey, pageKey, 1, translated, "EVALUATE 'Margin by store'", "SELECT Store FROM dbo.Margin");
+            AddVisual(db, repoId, subscriberKey, pageKey, 2, untranslated, "EVALUATE 'Margin by region'", sourceSql: null);
+            await db.SaveChangesAsync();
+
+            await using var factory = new ControlPlaneAppFactory()
+                .WithCatalog(cs)
+                .WithSetting("ControlPlane:AiContext:Enabled", "true")
+                .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
+            using var client = factory.CreateClient();
+            var token = await IssueReadTokenAsync(client);
+
+            string PathFor(string typed)
+                => $"/api/v1/lineage/subscribers/similar-questions?question={Uri.EscapeDataString(typed)}&repoId={repoId}";
+
+            var runnable = await FindWhenIndexedAsync(client, token, PathFor($"margin{suffix} by store"), translated);
+            Assert.Equal("SELECT Store FROM dbo.Margin", runnable.Sql);
+            Assert.Null(runnable.ReportSql);
+            Assert.Null(runnable.TranslationProblem);
+
+            var lead = await FindWhenIndexedAsync(client, token, PathFor($"margin{suffix} by region"), untranslated);
+            Assert.Equal(string.Empty, lead.Sql);
+            Assert.Equal("EVALUATE 'Margin by region'", lead.ReportSql);
+            Assert.NotNull(lead.TranslationProblem);
+        }
+        finally
+        {
+            await db.SubscriberReportVisualQuestions.Where(q => q.RepoId == repoId).ExecuteDeleteAsync();
+            await db.SubscriberQueries.Where(q => q.RepoId == repoId).ExecuteDeleteAsync();
+            await db.SubscriberReportVisuals.Where(v => v.RepoId == repoId).ExecuteDeleteAsync();
+            await db.SubscriberReportPages.Where(p => p.RepoId == repoId).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>Adds one report visual asking <paramref name="question"/>, with its query: the report's own
+    /// (<paramref name="reportSql"/>) and, when it could be translated, the one over the source tables.</summary>
+    private static void AddVisual(
+        CatalogDbContext db, Guid repoId, string subscriberKey, string pageKey, int ordinal, string question,
+        string reportSql, string? sourceSql)
+    {
+        var visualKey = $"{pageKey}#{ordinal}";
+        var title = $"Visual {ordinal}";
+        var queryName = $"report.pbix / Page 1 / {title}";
+        db.SubscriberReportVisuals.Add(new CatalogSubscriberReportVisual
+        {
+            RepoId = repoId, PageKey = pageKey, VisualKey = visualKey, Ordinal = ordinal,
+            VisualType = "barChart", Title = title, QueryName = queryName,
+            ContentHash = SubscriberReportVisualHash.Compute(title, "barChart", []),
+        });
+        db.SubscriberQueries.Add(new CatalogSubscriberQuery
+        {
+            RepoId = repoId, SubscriberKey = subscriberKey, Ordinal = ordinal, Name = queryName,
+            ServerRef = "dw", Sql = reportSql, ObjectKeys = "[Dw].[dbo].[Margin]",
+            SourceSql = sourceSql,
+            TranslationProblem = sourceSql is null ? "the report is not translatable here" : null,
+        });
+        db.SubscriberReportVisualQuestions.Add(new CatalogSubscriberReportVisualQuestion
+        {
+            RepoId = repoId, VisualKey = visualKey, Ordinal = 1, Question = question,
+        });
     }
 
     /// <summary>The match for <paramref name="question"/>, polling while the full-text index catches up with the row.</summary>

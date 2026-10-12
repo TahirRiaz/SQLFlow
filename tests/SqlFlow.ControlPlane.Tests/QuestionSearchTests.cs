@@ -14,6 +14,10 @@ namespace SqlFlow.ControlPlane.Tests;
 [Trait("Category", "Integration")]
 public sealed class QuestionSearchTests
 {
+    /// <summary>No coverage floor: every stored question sharing a searched word is returned. These tests are about
+    /// matching, scoring and resolution; the floor has its own test, which also shows what it leaves out.</summary>
+    private const double NoFloor = 0;
+
     [SkippableFact]
     public async Task ExpandedTerms_FindAQuestionWordedDifferently_AndCarryTheSqlThatAnswersIt()
     {
@@ -42,7 +46,7 @@ public sealed class QuestionSearchTests
             // "revenue"/"region"): the expansion is what closes that gap, which is the whole point of the
             // LLM step. Supplied here directly so the test does not depend on a model's wording.
             var result = await QuestionSearch.FindSimilarAsync(
-                db, "what was our turnover per territory", topK: 3,
+                db, "what was our turnover per territory", topK: 3, minCoverage: NoFloor,
                 ["turnover", "revenue", "sales", "territory", "region", "product"], repoId,
                 CancellationToken.None);
 
@@ -108,22 +112,22 @@ public sealed class QuestionSearchTests
 
             // A different grammatical form of a word in the question.
             var inflected = await QuestionSearch.FindSimilarAsync(
-                db, "sell", topK: 3, ["sell"], repoId, CancellationToken.None);
+                db, "sell", topK: 3, minCoverage: NoFloor, ["sell"], repoId, CancellationToken.None);
             Assert.Single(inflected.Matches);
 
             // A plural whose singular appears in the question.
             var plural = await QuestionSearch.FindSimilarAsync(
-                db, "categories", topK: 3, ["categories"], repoId, CancellationToken.None);
+                db, "categories", topK: 3, minCoverage: NoFloor, ["categories"], repoId, CancellationToken.None);
             Assert.Single(plural.Matches);
 
             // A different lemma entirely: no stemmer bridges this, which is what expansion is for.
             var otherLemma = await QuestionSearch.FindSimilarAsync(
-                db, "sales", topK: 3, ["sales"], repoId, CancellationToken.None);
+                db, "sales", topK: 3, minCoverage: NoFloor, ["sales"], repoId, CancellationToken.None);
             Assert.Empty(otherLemma.Matches);
 
             // ...and with expansion supplying the related word, it is found.
             var expanded = await QuestionSearch.FindSimilarAsync(
-                db, "sales", topK: 3, ["sales", "sell"], repoId, CancellationToken.None);
+                db, "sales", topK: 3, minCoverage: NoFloor, ["sales", "sell"], repoId, CancellationToken.None);
             Assert.Single(expanded.Matches);
         }
         finally
@@ -163,7 +167,7 @@ public sealed class QuestionSearchTests
             // Every word here is a stop word. Were they kept, they would match nearly every stored question
             // and rank noise above real vocabulary matches, so the correct answer is no match at all.
             var result = await QuestionSearch.FindSimilarAsync(
-                db, "what is our the", topK: 3, expander: null, repoId, CancellationToken.None);
+                db, "what is our the", topK: 3, minCoverage: NoFloor, expander: null, repoId, CancellationToken.None);
 
             Assert.Empty(result.Matches);
             Assert.Empty(result.SearchedTerms);
@@ -196,7 +200,7 @@ public sealed class QuestionSearchTests
             // Expansion off (or Anthropic unreachable): the search must still run on the typed words, so a
             // model outage degrades retrieval rather than breaking it.
             var result = await QuestionSearch.FindSimilarAsync(
-                db, "revenue by region", topK: 3, expander: null, repoId, CancellationToken.None);
+                db, "revenue by region", topK: 3, minCoverage: NoFloor, expander: null, repoId, CancellationToken.None);
 
             var match = Assert.Single(result.Matches);
             Assert.Equal("What is our revenue by region?", match.Question);
@@ -230,7 +234,7 @@ public sealed class QuestionSearchTests
 
             // An assistant's expansion that normalizes to nothing is no expansion: the question's own words still search.
             var result = await QuestionSearch.FindSimilarAsync(
-                db, "employees per region", topK: 3, ["the", "of", "x"], repoId, CancellationToken.None);
+                db, "employees per region", topK: 3, minCoverage: NoFloor, ["the", "of", "x"], repoId, CancellationToken.None);
 
             var match = Assert.Single(result.Matches);
             Assert.Equal(2, match.Score);
@@ -263,11 +267,11 @@ public sealed class QuestionSearchTests
             ]);
 
             var plural = await QuestionSearch.FindSimilarAsync(
-                db, "employees", topK: 3, ["employees"], repoId, CancellationToken.None);
+                db, "employees", topK: 3, minCoverage: NoFloor, ["employees"], repoId, CancellationToken.None);
             Assert.Equal("Which employee joined last?", Assert.Single(plural.Matches).Question);
 
             var phrase = await QuestionSearch.FindSimilarAsync(
-                db, "net revenue", topK: 3, ["net revenue"], repoId, CancellationToken.None);
+                db, "net revenue", topK: 3, minCoverage: NoFloor, ["net revenue"], repoId, CancellationToken.None);
             Assert.Empty(phrase.Matches);
         }
         finally
@@ -305,13 +309,13 @@ public sealed class QuestionSearchTests
                 .ToList();
 
             var pastTheBound = await QuestionSearch.FindSimilarAsync(
-                db, "revenue", topK: 3, [.. fillers, "revenue"], repoId, CancellationToken.None);
+                db, "revenue", topK: 3, minCoverage: NoFloor, [.. fillers, "revenue"], repoId, CancellationToken.None);
             Assert.Empty(pastTheBound.Matches);
             Assert.Equal(SqlFlow.Assistant.QuestionExpander.MaxTerms, pastTheBound.SearchedTerms.Count);
             Assert.DoesNotContain("revenue", pastTheBound.SearchedTerms);
 
             var withinTheBound = await QuestionSearch.FindSimilarAsync(
-                db, "revenue", topK: 3, ["revenue", .. fillers], repoId, CancellationToken.None);
+                db, "revenue", topK: 3, minCoverage: NoFloor, ["revenue", .. fillers], repoId, CancellationToken.None);
             var match = Assert.Single(withinTheBound.Matches);
             Assert.Equal("What is our revenue by region?", match.Question);
             Assert.Equal(SqlFlow.Assistant.QuestionExpander.MaxTerms, withinTheBound.SearchedTerms.Count);
@@ -348,7 +352,7 @@ public sealed class QuestionSearchTests
             ]);
 
             var result = await QuestionSearch.FindSimilarAsync(
-                db, "total order amount for customers in Germany", topK: 3,
+                db, "total order amount for customers in Germany", topK: 3, minCoverage: NoFloor,
                 ["total", "order", "amount", "customer", "customers", "germany"], repoId, CancellationToken.None);
 
             var match = Assert.Single(result.Matches);
@@ -406,6 +410,65 @@ public sealed class QuestionSearchTests
         }
     }
 
+    /// <summary>
+    /// A stored question that shares a word or two but asks mostly about other things answers something else, and its
+    /// SQL is noise to an assistant composing from it, however high it scores: below the coverage floor it is not
+    /// returned at all. A close variant (most of its words asked) and the same question are, and a close match is not
+    /// crowded out by a distant one that outscores it.
+    /// </summary>
+    [SkippableFact]
+    public async Task ACoverageFloor_LeavesOutAStoredQuestionMostlyNotAsked_AndKeepsTheCloseOnes()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoId = Guid.NewGuid();
+        var subscriberKey = $"subscriber|cover_{suffix}";
+        var pageKey = $"{subscriberKey}#report.pbix#1";
+        const string distant = "How many wellbores and well logs are there per country, basin, field, operator and licence?";
+        const string variant = "Which wellbores have NMR data?";
+        const string same = "How many wellbores have NMR logs?";
+
+        await using var db = CatalogDatabase.Create(cs);
+        try
+        {
+            await SeedAsync(db, repoId, subscriberKey, pageKey,
+            [
+                (distant, "SELECT 1", "[Dw].[arc].[Curves]", "Wellbores by area"),
+                (variant, "SELECT 2", "[Dw].[arc].[Curves]", "NMR wellbores"),
+                (same, "SELECT 3", "[Dw].[arc].[Curves]", "NMR wellbore count"),
+            ]);
+
+            string[] terms = ["wellbores", "wellbore", "well", "logs", "log", "nmr"];
+            const string asked = "how many wellbores have NMR logs";
+
+            // Without a floor all three come back, the distant one (three of its eight words asked) outscoring the
+            // variant (two of its three), so a top-two cut keeps it and loses the variant.
+            var unfloored = await FindWhenIndexedAsync(db, asked, terms, repoId, r => r.Matches.Count == 3);
+            var distantMatch = Assert.Single(unfloored.Matches, m => m.Question == distant);
+            Assert.Equal(3, distantMatch.Score);
+            Assert.Equal(3.0 / 8, distantMatch.Coverage, precision: 6);
+            Assert.Equal(2, Assert.Single(unfloored.Matches, m => m.Question == variant).Score);
+            var crowded = await QuestionSearch.FindSimilarAsync(
+                db, asked, topK: 2, minCoverage: NoFloor, terms, repoId, CancellationToken.None);
+            Assert.Equal([same, distant], crowded.Matches.Select(m => m.Question));
+
+            // With the shipped floor of a half, the distant one is not returned, and the variant takes its place.
+            var floored = await QuestionSearch.FindSimilarAsync(
+                db, asked, topK: 2, minCoverage: 0.5, terms, repoId, CancellationToken.None);
+            Assert.Equal([same, variant], floored.Matches.Select(m => m.Question));
+            var sameMatch = floored.Matches[0];
+            Assert.True(sameMatch.SameQuestion);
+            Assert.Equal(1.0, sameMatch.Coverage);
+            Assert.Equal(2.0 / 3, floored.Matches[1].Coverage, precision: 6);
+        }
+        finally
+        {
+            await CleanupAsync(db, repoId);
+        }
+    }
+
     [SkippableFact]
     public async Task AWordIsMatchedWhole_SoSaleDoesNotMatchWholesale()
     {
@@ -428,7 +491,7 @@ public sealed class QuestionSearchTests
             // "sale" occurs INSIDE "wholesale". Scoring on substrings would call that a match and hand a
             // caller an unrelated dashboard, so the term must match on word boundaries.
             var result = await QuestionSearch.FindSimilarAsync(
-                db, "sale", topK: 3, expander: null, repoId, CancellationToken.None);
+                db, "sale", topK: 3, minCoverage: NoFloor, expander: null, repoId, CancellationToken.None);
 
             Assert.Empty(result.Matches);
         }
@@ -460,7 +523,7 @@ public sealed class QuestionSearchTests
             // A term carrying an apostrophe, and one carrying full-text operators, must be treated as text.
             // Were terms pasted into a predicate string these would break the query or change its meaning.
             var result = await QuestionSearch.FindSimilarAsync(
-                db, "customer's lifetime value OR NEAR(\"x\")", topK: 3, expander: null, repoId,
+                db, "customer's lifetime value OR NEAR(\"x\")", topK: 3, minCoverage: NoFloor, expander: null, repoId,
                 CancellationToken.None);
 
             var match = Assert.Single(result.Matches);
@@ -501,13 +564,13 @@ public sealed class QuestionSearchTests
                 translated: false);
 
             var margin = await QuestionSearch.FindSimilarAsync(
-                db, "margin", topK: 3, ["margin", suffix], repoId, CancellationToken.None);
+                db, "margin", topK: 3, minCoverage: NoFloor, ["margin", suffix], repoId, CancellationToken.None);
             var match = Assert.Single(margin.Matches, m => m.Question.Contains("margin", StringComparison.Ordinal));
             Assert.Equal(SourceSqlOf("SELECT A FROM X"), match.Sql);
             Assert.Equal(firstKey, match.SubscriberKey);
 
             var churn = await QuestionSearch.FindSimilarAsync(
-                db, "churn", topK: 3, ["churn", suffix], repoId, CancellationToken.None);
+                db, "churn", topK: 3, minCoverage: NoFloor, ["churn", suffix], repoId, CancellationToken.None);
             var untranslated = Assert.Single(churn.Matches, m => m.Question.Contains("churn", StringComparison.Ordinal));
             Assert.Equal(string.Empty, untranslated.Sql);
             Assert.Equal("SELECT B FROM Y", untranslated.ReportSql);
@@ -753,7 +816,7 @@ public sealed class QuestionSearchTests
         do
         {
             result = await QuestionSearch.FindSimilarAsync(
-                db, question, topK: 5, terms, repoId, CancellationToken.None);
+                db, question, topK: 5, minCoverage: NoFloor, terms, repoId, CancellationToken.None);
             if (ready(result))
             {
                 return result;

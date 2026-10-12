@@ -29,7 +29,10 @@ related:
   - guide-chat-assistant
 sourceRefs:
   - src/SqlFlow.ControlPlane/Api/SemanticLayer.cs
+  - src/SqlFlow.ControlPlane/Api/SemanticLayer.Grounding.cs
   - src/SqlFlow.ControlPlane/Api/SemanticLayerEndpoints.cs
+  - src/SqlFlow.ControlPlane/Background/QuestionSearch.cs
+  - src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/SemanticLayerAdminEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/SemanticExampleAdminEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/SemanticReportEndpoints.cs
@@ -110,10 +113,12 @@ closed after something naming it was approved withholds that thing at once:
   refused outright) and passes `ReadOnlyQueryGuard` and `ColumnPolicyGuard`.
 - **Examples**: the `SemanticExample` rows whose `ObjectKeys` include the table, served only when their SQL passes
   `ReadOnlyQueryGuard` and `ColumnPolicyGuard`; at most 10 per table. They are the newest, or, when the describe call
-  carries the question being answered, the closest to it: the table's newest 500 are ranked by how many of the
-  question's meaningful words each example question shares, scored as stored-question search scores them, with the
-  newest first among equals. An older example that answers the question is then the one an assistant mirrors, not
-  lost behind ten newer ones about something else. A confirmed example sent without object keys gets them from the
+  carries the question being answered, the ones close to it: the table's newest 500 are scored and cut as saved answers
+  are (see [A question's saved answers and grounding](#a-questions-saved-answers-and-grounding)), so an example sharing
+  no word with the question, or covering less of its own question than `SavedAnswers:MinCoverage`, is not served, and
+  the rest are ranked by score, then coverage, the newest first among equals. An older example that answers the
+  question is then the one an assistant mirrors, and a table whose examples answer other questions is served without
+  any rather than with ten queries read for nothing. A confirmed example sent without object keys gets them from the
   catalogued tables its SQL names.
 - **Power BI models**: every report model table whose `ObjectKey` is the table (at most 20). A measure or calculated
   column is served only when every column its DAX reads (`Table[Column]`, `'Table'[Column]`, `[Column]`) is an open
@@ -135,7 +140,37 @@ as if it were approved, and a table, measure name, or join another context serve
 | `GET /api/v1/semantic-layer` | The approved contexts serving tables (name, description, table count), their instructions (each headed `Context '<name>':`), the (database, schema) pairs holding layer tables with counts, and every servable measure |
 | `GET /api/v1/semantic-layer/search?q=` | Layer tables matching every word (name, schema, business name, description, synonyms, or an open column's name, description, or synonyms), with the matched columns; plus matching measures |
 | `GET /api/v1/semantic-layer/tables?database=&schema=` | Layer tables, paged, with business context and open column count |
-| `GET /api/v1/semantic-layer/tables/describe?key=&question=` | One table's bundle: open columns, key, joins with a ready `on` clause, measures, examples (the closest to `question` when given, else the newest), the Power BI `reportModels` built on it, consumers, the `context` serving it and that context's `instructions`. 404 when the table is not in the layer; 400 for a question over 1000 characters |
+| `GET /api/v1/semantic-layer/tables/describe?key=&question=` | One table's bundle: open columns, key, joins with a ready `on` clause, measures, examples (the ones close to `question` when given, possibly none, else the newest), the Power BI `reportModels` built on it, consumers, the `context` serving it and that context's `instructions`. 404 when the table is not in the layer; 400 for a question over 1000 characters |
+
+## A question's saved answers and grounding
+
+`GET /api/v1/lineage/subscribers/similar-questions?question=&expandedTerms=&topK=&repoId=` (read scope, behind
+`ControlPlane:AiContext:Enabled`; the MCP tool `find_similar_questions`) matches a question against the saved answers:
+the questions dashboards ask and the answers people confirmed or AI contexts give (`QuestionSearch.cs`). It answers with
+the terms it searched, the trust threshold, the matches, and, when none of them is trusted, the layer the question is
+answered from.
+
+- **Which saved answers come back.** A saved answer is found when its question carries a searched term, and is sent only
+  when the question covers enough of it: its `coverage` is the share of the saved question's own words that the searched
+  terms or the typed question carry, each form of a word counted once, leaving out stop words, words that only ask for a
+  count or a list (`show`, `list`, `number`, `total`, ...) and words holding a digit, which are values. A saved answer
+  covering less than `SavedAnswers:MinCoverage` (half, by default) answers something else ("how many wellbores per
+  country, basin and field" for "how many wellbores"), and is not sent at all, however many words it shares; the same
+  question as the one typed is sent whatever it covers. The cut comes before the top `TopK` are taken, so a close answer
+  is not crowded out by distant ones that share more words.
+- **A match.** Its question, `score` (the searched words it carries), `trusted`, `matchedTerms`, `provenance`, `sql`,
+  the objects the SQL reads, the datasource it runs against, `differingValues`, and for a confirmed answer its
+  `exampleId` and who confirmed it. A dashboard match's `reportSql`, the visual's own query against the report's model,
+  is sent only when its query could not be translated (`sql` is empty and `translationProblem` says why), as evidence of
+  the fields the report uses; it is never run.
+- **Grounding.** When no match is trusted, the assistant writes the query, so `grounding` carries what it writes it
+  from (`SemanticLayer.Grounding.cs`): `layerTableCount`, the tables, and each serving context's `instructions` once.
+  A layer of three tables or fewer is sent whole; a larger one sends at most three, the ones the question's words
+  mention most in a table's name, description, synonyms or open columns (a word is looked for by its stem, so
+  "wellbores" finds `WellboreID`), and none when no word mentions any. Each table is what `describe_semantic_table`
+  serves without its consumers and instructions: open columns, key, joins, measures, the Power BI models built on it,
+  and the examples close to the question, leaving out the saved answers already sent as matches. `grounding` is null
+  when a match is trusted, since that answer is what runs.
 
 ## Admin API (admin scope)
 
@@ -176,6 +211,7 @@ question against them, and saving one), and running a trusted saved answer strai
 | `ControlPlane:AiContext:ExpandSynonyms` | unset | Expands a question into related business words before matching saved answers, with `ControlPlane:Assistant:Anthropic`'s key and model. Unset, it is on exactly when that key is set; `true` without the key stops startup, `false` matches the typed words alone |
 | `ControlPlane:AiContext:SavedAnswers:TopK` | `3` | How many saved answers a search returns by default |
 | `ControlPlane:AiContext:SavedAnswers:RankThreshold` | `2` | How many searched terms a saved answer must match to be trusted rather than a lead; it must also name the same values |
+| `ControlPlane:AiContext:SavedAnswers:MinCoverage` | `0.5` | How much of a saved answer's question the asked one must cover for the answer to be sent at all, from 0 to 1 (see [A question's saved answers and grounding](#a-questions-saved-answers-and-grounding)); the examples a table is described with follow the same cut. `0` sends every saved answer sharing a word; outside 0 to 1 stops startup |
 | `ControlPlane:AiContext:AutoRun:Enabled` | `true` | Runs a trusted saved answer straight away; `false` makes every query wait for a person's click |
 | `ControlPlane:AiContext:AutoRun:MaxRows` | `50` | The row cap of a trusted run, which no caller can raise |
 | `ControlPlane:AiContext:AutoRun:TimeoutSeconds` | `5` | The command timeout of a trusted run (1 to 15); a slower query falls back to prepare and run |

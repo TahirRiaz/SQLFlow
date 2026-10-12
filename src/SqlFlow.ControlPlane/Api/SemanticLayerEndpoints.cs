@@ -2,7 +2,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
+using SqlFlow.ControlPlane.Configuration;
 
 namespace SqlFlow.ControlPlane.Api;
 
@@ -61,6 +63,31 @@ public sealed record SemanticTableDto(
     IReadOnlyList<ObjectSubscriberDto> Consumers,
     string? Context,
     string? Instructions);
+
+/// <summary>One semantic layer table as an assistant writes SQL against it: what <see cref="SemanticTableDto"/> holds but
+/// the reports that consume it and its context's instructions, which a question's grounding serves once per context
+/// rather than once per table.</summary>
+public sealed record SemanticGroundingTableDto(
+    string Key, string ServerRef, string? Database, string? Schema, string Name, string Kind,
+    string? BusinessName, string? Description, IReadOnlyList<string> Synonyms,
+    IReadOnlyList<string> KeyColumns, string? KeyOrigin,
+    IReadOnlyList<SemanticColumnDto> Columns,
+    IReadOnlyList<SemanticJoinDto> Joins,
+    IReadOnlyList<SemanticMeasureDto> Measures,
+    IReadOnlyList<SemanticExampleDto> Examples,
+    IReadOnlyList<SemanticReportModelDto> ReportModels,
+    string? Context);
+
+/// <summary>An approved AI context's instructions, to read and follow whenever SQL is written over its tables.</summary>
+public sealed record SemanticContextInstructionsDto(string Name, string Instructions);
+
+/// <summary>The semantic layer a question is answered from, served beside its saved answers when none of them is
+/// trusted: the tables it needs (the whole layer when it has three tables or fewer, else the ones its words mention
+/// most), the instructions of the contexts serving them, and how many tables the layer holds in all, so a caller knows
+/// whether a table the grounding does not hold may still be found by searching the layer.</summary>
+public sealed record SemanticGroundingDto(
+    int LayerTableCount, IReadOnlyList<SemanticContextInstructionsDto> Contexts,
+    IReadOnlyList<SemanticGroundingTableDto> Tables);
 
 /// <summary>One semantic layer table in a list: identity, business context, and how many allowed columns it has.</summary>
 public sealed record SemanticTableSummaryDto(
@@ -175,15 +202,15 @@ public static class SemanticLayerEndpoints
             .Select(o => o.Key)
             .ToListAsync(ct).ConfigureAwait(false);
 
-        var summaries = await LoadSummariesAsync(db, keys, ct).ConfigureAwait(false);
+        var summaries = await SemanticLayer.LoadSummariesAsync(db, keys, ct).ConfigureAwait(false);
         var items = keys.Where(summaries.ContainsKey).Select(k => summaries[k].Summary).ToList();
         return TypedResults.Ok(new PagedResult<SemanticTableSummaryDto>(items, p, size, total));
     }
 
     /// <summary>One table's bundle. <paramref name="question"/>, when given, is the question being answered: the bundle's
-    /// examples are then the ones closest to it rather than the newest.</summary>
+    /// examples are then the ones close to it, cut by the saved answers' coverage floor, rather than the newest.</summary>
     private static async Task<Results<Ok<SemanticTableDto>, ProblemHttpResult>> DescribeTableAsync(
-        string? key, string? question, CatalogDbContext db, CancellationToken ct)
+        string? key, string? question, CatalogDbContext db, IOptions<ControlPlaneOptions> options, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
@@ -200,7 +227,11 @@ public static class SemanticLayerEndpoints
                 statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
         }
 
-        var table = await SemanticLayer.DescribeTableAsync(db, key.Trim(), question?.Trim(), ct).ConfigureAwait(false);
+        var closestTo = string.IsNullOrWhiteSpace(question)
+            ? null
+            : new SemanticLayer.ExampleQuestion(
+                question.Trim(), [], options.Value.AiContext.SavedAnswers.MinCoverage, new HashSet<long>());
+        var table = await SemanticLayer.DescribeTableAsync(db, key.Trim(), closestTo, ct).ConfigureAwait(false);
         return table is null
             ? TypedResults.Problem(
                 detail: $"'{key}' is not a table in the semantic layer. Only tables with at least one allow-listed " +
@@ -229,25 +260,10 @@ public static class SemanticLayerEndpoints
 
         var (p, size) = PageRequest.Normalize(page, pageSize);
 
-        var rows = from o in SemanticLayer.LayerObjects(db)
-                   join s in db.SemanticObjects.AsNoTracking() on o.Key equals s.ObjectKey into annotations
-                   from s in annotations.DefaultIfEmpty()
-                   select new { Object = o, Annotation = s };
-
+        var rows = SemanticLayer.LayerRows(db);
         foreach (var token in term.Tokens)
         {
-            var t = token;
-            rows = rows.Where(x => x.Object.Name.Contains(t)
-                || (x.Object.Schema != null && x.Object.Schema.Contains(t))
-                || (x.Annotation != null
-                    && ((x.Annotation.BusinessName != null && x.Annotation.BusinessName.Contains(t))
-                        || (x.Annotation.Description != null && x.Annotation.Description.Contains(t))
-                        || (x.Annotation.Synonyms != null && x.Annotation.Synonyms.Contains(t))))
-                || db.ColumnPolicies.Any(pol => pol.IsAllowed && pol.ObjectKey == x.Object.Key
-                    && (pol.ColumnName.Contains(t)
-                        || (pol.Description != null && pol.Description.Contains(t))
-                        || (pol.Synonyms != null && pol.Synonyms.Contains(t)))
-                    && db.ObjectColumns.Any(c => c.ObjectKey == pol.ObjectKey && c.Name == pol.ColumnName)));
+            rows = rows.Where(SemanticLayer.Mentions(db, token));
         }
 
         var phrase = term.Phrase;
@@ -261,7 +277,7 @@ public static class SemanticLayerEndpoints
             .Select(x => x.Object.Key)
             .ToListAsync(ct).ConfigureAwait(false);
 
-        var summaries = await LoadSummariesAsync(db, keys, ct).ConfigureAwait(false);
+        var summaries = await SemanticLayer.LoadSummariesAsync(db, keys, ct).ConfigureAwait(false);
         var hits = new List<SemanticTableHitDto>(keys.Count);
         foreach (var key in keys)
         {
@@ -307,46 +323,5 @@ public static class SemanticLayerEndpoints
 
         return TypedResults.Ok(new SemanticSearchDto(
             term.Phrase, term.Tokens, new PagedResult<SemanticTableHitDto>(hits, p, size, total), measures));
-    }
-
-    /// <summary>The summary and allowed columns of each of <paramref name="keys"/> that is in the layer.</summary>
-    private static async Task<Dictionary<string, (SemanticTableSummaryDto Summary, IReadOnlyList<SemanticLayer.AllowedColumn> Columns)>>
-        LoadSummariesAsync(CatalogDbContext db, IReadOnlyList<string> keys, CancellationToken ct)
-    {
-        var result = new Dictionary<string, (SemanticTableSummaryDto, IReadOnlyList<SemanticLayer.AllowedColumn>)>(StringComparer.Ordinal);
-        if (keys.Count == 0)
-        {
-            return result;
-        }
-
-        var objects = await (from o in db.Objects.AsNoTracking()
-                             where keys.Contains(o.Key)
-                             join s in db.SemanticObjects.AsNoTracking() on o.Key equals s.ObjectKey into annotations
-                             from s in annotations.DefaultIfEmpty()
-                             select new
-                             {
-                                 o.Key, o.ServerRef, o.Database, o.Schema, o.Name, o.Kind,
-                                 BusinessName = s == null ? null : s.BusinessName,
-                                 Description = s == null ? null : s.Description,
-                                 Synonyms = s == null ? null : s.Synonyms,
-                             })
-            .ToListAsync(ct).ConfigureAwait(false);
-        var allowed = await SemanticLayer.LoadAllowedColumnsAsync(db, keys, ct).ConfigureAwait(false);
-
-        foreach (var o in objects)
-        {
-            if (!allowed.TryGetValue(o.Key, out var columns))
-            {
-                continue;
-            }
-
-            result[o.Key] = (
-                new SemanticTableSummaryDto(
-                    o.Key, o.ServerRef, o.Database, o.Schema, o.Name, o.Kind, o.BusinessName, o.Description,
-                    SemanticLayer.SplitSynonyms(o.Synonyms), columns.Count),
-                columns);
-        }
-
-        return result;
     }
 }

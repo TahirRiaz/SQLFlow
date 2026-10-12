@@ -301,9 +301,10 @@ public sealed record SubscriberReportPageDto(
 /// </para>
 /// <para>
 /// For a PowerBI-derived question, <c>Sql</c> is the visual's query translated into T-SQL over the source tables the
-/// report's model loads from, runnable through <c>prepare_query</c>; <c>ReportSql</c> is the visual's own query
-/// (model names, no joins), kept as evidence and never run. When the visual's query could not be translated,
-/// <c>Sql</c> is empty and <c>TranslationProblem</c> says why, so the match is a lead rather than an answer.
+/// report's model loads from, runnable through <c>prepare_query</c>. When the visual's query could not be translated,
+/// <c>Sql</c> is empty, <c>TranslationProblem</c> says why, and <c>ReportSql</c> carries the visual's own query
+/// (model names, no joins) as evidence of the fields it uses, never to run: the match is then a lead rather than an
+/// answer. While <c>Sql</c> is runnable, <c>ReportSql</c> is null, since it would only repeat what <c>Sql</c> says.
 /// </para></summary>
 public sealed record SimilarQuestionDto(
     string Question, int Score, bool Trusted, IReadOnlyList<string> MatchedTerms, string Provenance,
@@ -313,10 +314,13 @@ public sealed record SimilarQuestionDto(
 
 /// <summary>The matches for a question, with the terms actually searched for (the LLM's expansion of the typed
 /// question, or its own words when expansion is off or unavailable) and the score threshold they were judged
-/// against, so a caller explains its own confidence rather than inventing one.</summary>
+/// against, so a caller explains its own confidence rather than inventing one. Only a saved answer close enough to
+/// the question is a match (<c>ControlPlane:AiContext:SavedAnswers:MinCoverage</c>). When none of the matches is
+/// trusted, <c>Grounding</c> holds the semantic layer the question is answered from, so the caller writes the query
+/// from this one answer; it is null when a match is trusted, which is the answer to run.</summary>
 public sealed record SimilarQuestionsDto(
     string Question, IReadOnlyList<string> SearchedTerms, int ScoreThreshold,
-    IReadOnlyList<SimilarQuestionDto> Matches);
+    IReadOnlyList<SimilarQuestionDto> Matches, SemanticGroundingDto? Grounding);
 
 /// <summary>The Power BI report structure behind one subscriber: every page, the visuals on it, and each
 /// field's role. This is the consumption-side answer to "what questions does this dashboard already ask, and in
@@ -1747,14 +1751,15 @@ public static class LineageEndpoints
         var savedAnswers = aiContext.SavedAnswers;
         var requested = Math.Clamp(topK ?? savedAnswers.TopK, 1, MaxSimilarQuestions);
         var callerTerms = expandedTerms?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? [];
+        var asked = question.Trim();
 
         var result = callerTerms.Count > 0
             ? await Background.QuestionSearch
-                .FindSimilarAsync(db, question.Trim(), requested, callerTerms, repoId, ct)
+                .FindSimilarAsync(db, asked, requested, savedAnswers.MinCoverage, callerTerms, repoId, ct)
                 .ConfigureAwait(false)
             : await Background.QuestionSearch
                 .FindSimilarAsync(
-                    db, question.Trim(), requested,
+                    db, asked, requested, savedAnswers.MinCoverage,
                     // Absent when expansion is switched off, in which case the search runs on the typed
                     // words alone.
                     http.RequestServices.GetService<SqlFlow.Assistant.QuestionExpander>(),
@@ -1781,11 +1786,24 @@ public static class LineageEndpoints
                 m.Question, m.Score,
                 (m.Score >= savedAnswers.RankThreshold || m.SameQuestion) && differingValues.Count == 0,
                 m.MatchedTerms, m.Provenance, m.Sql, m.ObjectKeys, m.SubscriberKey, m.VisualTitle, m.ConfirmedBy,
-                sourceRef, m.ExampleId, m.ReportSql, m.TranslationProblem, differingValues));
+                sourceRef, m.ExampleId, m.Sql.Length == 0 ? m.ReportSql : null, m.TranslationProblem, differingValues));
         }
 
+        // A trusted match is the answer to run, and needs nothing more. Otherwise the caller writes the query, so the
+        // layer it writes it from comes with the answer, saving the searches and descriptions it would make next. The
+        // examples it serves skip the saved answers already sent as matches.
+        var grounding = matches.Exists(m => m.Trusted)
+            ? null
+            : await SemanticLayer.GroundingAsync(
+                    db,
+                    new SemanticLayer.ExampleQuestion(
+                        asked, result.SearchedTerms, savedAnswers.MinCoverage,
+                        matches.Where(m => m.ExampleId is not null).Select(m => m.ExampleId!.Value).ToHashSet()),
+                    ct)
+                .ConfigureAwait(false);
+
         return TypedResults.Ok(new SimilarQuestionsDto(
-            question.Trim(), result.SearchedTerms, savedAnswers.RankThreshold, matches));
+            asked, result.SearchedTerms, savedAnswers.RankThreshold, matches, grounding));
     }
 
     /// <summary>The most matches one search will return however many a caller asks for. Past a handful, extra

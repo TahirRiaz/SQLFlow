@@ -229,7 +229,7 @@ public static class SemanticLayerAdminEndpoints
             .ToList();
 
         var examples = (await SemanticLayer.EvaluateExamplesAsync(
-                db, key, SemanticLayer.MaxAdminExamples, servableOnly: false, question: null, ct)
+                db, key, SemanticLayer.MaxAdminExamples, servableOnly: false, closestTo: null, ct)
                 .ConfigureAwait(false))
             .Select(e => e.ToAdminDto())
             .ToList();

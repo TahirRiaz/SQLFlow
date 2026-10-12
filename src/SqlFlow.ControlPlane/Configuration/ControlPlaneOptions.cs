@@ -1050,8 +1050,8 @@ public sealed class AiContextOptions
     }
 }
 
-/// <summary>How saved answers are matched against a question: how many come back, and how strong a match must be to be
-/// trusted.</summary>
+/// <summary>How saved answers are matched against a question: how many come back, how close one must be to come back
+/// at all, and how strong a match must be to be trusted.</summary>
 public sealed class SavedAnswersOptions
 {
     /// <summary>How many ranked saved answers a search returns by default: one to three examples is the useful amount
@@ -1065,6 +1065,17 @@ public sealed class SavedAnswersOptions
     /// </summary>
     public int RankThreshold { get; set; } = 2;
 
+    /// <summary>
+    /// How much of a saved answer's question the asked one must cover for the answer to be sent at all, from 0 to 1:
+    /// the share of the saved question's own words (phrasing and values aside) that the question or its synonyms
+    /// carry. A saved answer that shares one word of six answers something else, and its SQL is tokens the assistant
+    /// reads for nothing and may adapt wrongly, so it stays out; the same question is sent whatever it covers. Half,
+    /// because a close variant ("which wellbores have NMR logs" for "which wellbores have NMR data") keeps most of its
+    /// words while a distant one keeps a third or less. The examples a semantic layer table is served with follow the
+    /// same floor. 0 sends every saved answer that shares a word.
+    /// </summary>
+    public double MinCoverage { get; set; } = 0.5;
+
     internal IEnumerable<string> Problems()
     {
         if (TopK < 1)
@@ -1074,6 +1085,12 @@ public sealed class SavedAnswersOptions
         if (RankThreshold < 0)
         {
             yield return $"ControlPlane:AiContext:SavedAnswers:RankThreshold must not be negative (was {RankThreshold})";
+        }
+        if (double.IsNaN(MinCoverage) || MinCoverage < 0 || MinCoverage > 1)
+        {
+            yield return string.Create(
+                System.Globalization.CultureInfo.InvariantCulture,
+                $"ControlPlane:AiContext:SavedAnswers:MinCoverage must be from 0 to 1 (was {MinCoverage})");
         }
     }
 }

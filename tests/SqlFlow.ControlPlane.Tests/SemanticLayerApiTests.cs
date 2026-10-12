@@ -354,12 +354,13 @@ public sealed class SemanticLayerApiTests
     }
 
     /// <summary>
-    /// A table's bundle carries ten examples. Without a question they are the newest; with one, they are the closest to
-    /// it, scored as the stored-question search scores, so an older example that answers the question is still the one
-    /// mirrored rather than lost behind ten newer ones about something else. A question past the stored width is refused.
+    /// A table's bundle carries up to ten examples. Without a question they are the newest; with one, they are the ones
+    /// close to it, scored and cut as the stored-question search scores and cuts saved answers, so an older example that
+    /// answers the question is the one mirrored, and ten newer ones about something else are not sent at all. A question
+    /// past the stored width is refused.
     /// </summary>
     [SkippableFact]
-    public async Task ATablesExamples_AreTheClosestToTheQuestion_WhenOneIsGiven()
+    public async Task ATablesExamples_AreTheOnesCloseToTheQuestion_WhenOneIsGiven()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -416,9 +417,7 @@ public sealed class SemanticLayerApiTests
             var asked = $"which store sold most widgets{suffix} last year";
             var closest = await GetJsonAsync<SemanticTableDto>(
                 client, adminToken, $"{describe}&question={Uri.EscapeDataString(asked)}");
-            Assert.Equal(SemanticLayer.MaxServedExamples, closest.Examples.Count);
-            Assert.Equal(older, closest.Examples[0].Question);
-            Assert.Equal($"Total amount {suffix} number 0", closest.Examples[1].Question);
+            Assert.Equal(older, Assert.Single(closest.Examples).Question);
 
             using var tooLong = await AiContextTestKit.SendAsync(
                 client, adminToken, HttpMethod.Get, $"{describe}&question={new string('q', SemanticLayer.MaxQuestionLength + 1)}");
@@ -430,6 +429,134 @@ public sealed class SemanticLayerApiTests
             await db.SemanticExamples.Where(e => e.ObjectKeys == salesKey).ExecuteDeleteAsync();
             await db.ObjectColumns.Where(c => c.ObjectKey == salesKey).ExecuteDeleteAsync();
             await db.Objects.Where(o => o.Key == salesKey).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// A question none of whose saved answers is trusted comes back with the layer it is answered from, so an assistant
+    /// writes the query from the one answer instead of searching and describing next: the table with its columns,
+    /// measure and close examples, and its context's instructions once. A saved answer already sent as a match is not
+    /// sent again as an example, and one about something else is sent as neither. The question a trusted saved answer
+    /// answers needs no grounding, since that answer is what runs.
+    /// </summary>
+    [SkippableFact]
+    public async Task AQuestionWithNoTrustedAnswer_ComesWithTheLayer_AndATrustedOneDoesNot()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        // Letters only, so a word carrying it is a word rather than a value the coverage leaves out.
+        var suffix = string.Concat(Guid.NewGuid().ToString("N")[..8].Select(c => (char)('a' + (c % 16))));
+        var serverRef = "${env:SQLFLOW_GROUNDING_" + suffix + "}";
+        var tableName = "Wellbores" + suffix;
+        var key = $"{serverRef}|dw|dbo|{tableName.ToLowerInvariant()}";
+        var repoId = Guid.NewGuid();
+        var context = "grounding-" + suffix;
+        var now = DateTime.UtcNow;
+        var word = "wellbores" + suffix;
+        var sql = $"SELECT COUNT(*) AS wellbores FROM dbo.{tableName}";
+        var close = $"Which {word} reach deeper than 3000 m?";
+        var distant = $"How many {word} are there per basin, field, operator and licence?";
+        const string instructionsText = "Depths are measured depth in metres.";
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs)
+            .WithSetting("ControlPlane:AiContext:Enabled", "true")
+            .WithSetting("ControlPlane:AiContext:ExpandSynonyms", "false");
+        await using var contexts = new AiContextTestKit(cs, repoId);
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Objects.Add(new CatalogObject
+                {
+                    Key = key, ServerRef = serverRef, Database = "dw", Schema = "dbo", Name = tableName,
+                    Kind = "Table", FirstSeenUtc = now, LastSeenUtc = now,
+                });
+                AddColumn(db, key, 1, "WellboreId", "nvarchar(100)");
+                AddColumn(db, key, 2, "Basin", "nvarchar(100)");
+                AddColumn(db, key, 3, "MaxDepth", "float");
+                db.SemanticExamples.Add(Example(close, sql, key, now));
+                db.SemanticExamples.Add(Example(distant, sql, key, now.AddMinutes(-1)));
+                await db.SaveChangesAsync();
+            }
+
+            using var client = factory.CreateClient();
+            var adminToken = await AiContextTestKit.IssueTokenAsync(client, ["read", "operate", "admin"]);
+            contexts.Write("wellbores.ai-context.yaml", $"""
+                aiContext: {context}
+                instructions: {instructionsText}
+                tables:
+                  - table: dw.dbo.{tableName}
+                    description: One row per wellbore.
+                    measures:
+                      - name: deepest_{suffix}
+                        expression: MAX(MaxDepth)
+                """);
+            await contexts.SyncAsync();
+            await AiContextTestKit.ApproveAsync(client, adminToken, context);
+
+            string Ask(string question)
+                => $"/api/v1/lineage/subscribers/similar-questions?question={Uri.EscapeDataString(question)}&repoId={repoId}"
+                    + $"&expandedTerms={Uri.EscapeDataString(word)}&expandedTerms=deeper&expandedTerms=reach&expandedTerms=depth";
+            var deeper = Ask($"which {word} reach deeper than 4000 m");
+
+            // Another depth than the close answer's own: a match, but untrusted, so the layer comes with it.
+            var untrusted = await AskWhenIndexedAsync(client, adminToken, deeper, close);
+            var match = Assert.Single(untrusted.Matches, m => m.Question == close);
+            Assert.False(match.Trusted);
+            Assert.DoesNotContain(untrusted.Matches, m => m.Question == distant);
+            Assert.DoesNotContain(untrusted.Matches, m => m.Trusted);
+
+            var grounding = untrusted.Grounding;
+            Assert.NotNull(grounding);
+            Assert.True(grounding.LayerTableCount >= 1);
+            var table = Assert.Single(grounding.Tables, t => t.Key == key);
+            Assert.Equal(["WellboreId", "Basin", "MaxDepth"], table.Columns.Select(c => c.Name));
+            Assert.Contains(table.Measures, m => m.Name == $"deepest_{suffix}");
+            Assert.Equal(context, table.Context);
+            // The close answer was sent as the match and the distant one is not close: no example repeats either.
+            Assert.Empty(table.Examples);
+            Assert.Equal(instructionsText, Assert.Single(grounding.Contexts, c => c.Name == context).Instructions);
+
+            // The grounding names neither the consumers nor a per-table copy of the instructions.
+            var json = await GetStringAsync(client, adminToken, deeper);
+            Assert.DoesNotContain("\"consumers\"", json, StringComparison.Ordinal);
+            Assert.Equal(1, json.Split(instructionsText).Length - 1);
+
+            // The close answer's own question is trusted, and comes without grounding.
+            var trusted = await AskWhenIndexedAsync(client, adminToken, Ask(close), close);
+            Assert.True(Assert.Single(trusted.Matches, m => m.Question == close).Trusted);
+            Assert.Null(trusted.Grounding);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.SemanticExamples.Where(e => e.ObjectKeys == key).ExecuteDeleteAsync();
+            await db.ObjectColumns.Where(c => c.ObjectKey == key).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.Key == key).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>The similar questions for a request, polling while the full-text index catches up with the stored
+    /// question <paramref name="expected"/>.</summary>
+    private static async Task<SimilarQuestionsDto> AskWhenIndexedAsync(
+        HttpClient client, string token, string relativeUri, string expected)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (true)
+        {
+            var result = await GetJsonAsync<SimilarQuestionsDto>(client, token, relativeUri);
+            if (result.Matches.Any(m => m.Question == expected))
+            {
+                return result;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                throw new TimeoutException($"'{expected}' was not found within 30s at {relativeUri}.");
+            }
+
+            await Task.Delay(250);
         }
     }
 

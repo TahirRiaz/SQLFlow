@@ -148,4 +148,46 @@ public sealed class QuestionSearchRulesTests
     {
         Assert.Equal(expected, QuestionSearch.DifferingValues(typed, stored));
     }
+
+    [Theory]
+    // One word of six: a stored question about a breakdown nobody asked for.
+    [InlineData("How many wellbores and well logs are there per country, basin and field?", new[] { "wellbores" }, 1.0 / 6)]
+    // A close variant keeps most of its words.
+    [InlineData("Which wellbores have NMR data?", new[] { "wellbores", "nmr", "logs" }, 2.0 / 3)]
+    // Words holding a digit are values, not counted; "m" is too short to count.
+    [InlineData("Which wellbores have a DT curve from 3000 to 3005 m MD?", new[] { "wellbores", "dt", "curve", "2000" }, 3.0 / 4)]
+    // Words that only ask for a count or a list are phrasing, not what the question is about.
+    [InlineData("Show me the number of customers", new[] { "customers" }, 1.0)]
+    [InlineData("List all customers with each total", new[] { "customer" }, 1.0)]
+    // Forms of a word count once and cover each other.
+    [InlineData("Which categories sell most, and which category sells least?", new[] { "category", "selling", "least" }, 1.0)]
+    // A phrase covers its words only where the stored question holds the whole phrase.
+    [InlineData("What is net revenue by region?", new[] { "net revenue" }, 2.0 / 3)]
+    [InlineData("What is cabinet revenue by region?", new[] { "net revenue" }, 0.0)]
+    // A question left with no word to count covers nothing.
+    [InlineData("Show all 2024?", new[] { "2024", "show" }, 0.0)]
+    [InlineData("How many customers?", new string[0], 0.0)]
+    public void AStoredQuestionsCoverage_IsTheShareOfItsOwnWordsTheSearchCarries(
+        string stored, string[] terms, double expected)
+    {
+        Assert.Equal(expected, QuestionSearch.CoverageOf(stored, terms), precision: 6);
+    }
+
+    [Theory]
+    [InlineData(-0.01)]
+    [InlineData(1.01)]
+    [InlineData(double.NaN)]
+    public void ACoverageFloor_OutsideZeroToOne_IsRefused(double floor)
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() => QuestionSearch.CheckCoverage(floor));
+    }
+
+    [Theory]
+    [InlineData(0.0)]
+    [InlineData(0.5)]
+    [InlineData(1.0)]
+    public void ACoverageFloor_FromZeroToOne_IsAccepted(double floor)
+    {
+        QuestionSearch.CheckCoverage(floor);
+    }
 }

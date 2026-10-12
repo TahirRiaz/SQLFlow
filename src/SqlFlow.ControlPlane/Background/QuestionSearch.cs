@@ -21,6 +21,10 @@ namespace SqlFlow.ControlPlane.Background;
 /// against "a person checked this" rather than treating every match as equally settled.</param>
 /// <param name="Score">How many of the searched terms this question matched. Unbounded and relative to the
 /// other matches in the same search rather than a 0-1 similarity.</param>
+/// <param name="Coverage">How much of the stored question the search covers, from 0 to 1 (see
+/// <see cref="QuestionSearch.CoverageOf"/>): the share of its own words the searched terms or the typed question
+/// carry. A stored answer computes what its question asks, so one whose words are mostly not asked answers something
+/// else, however high it scores.</param>
 /// <param name="MatchedTerms">The searched terms this question actually contains, so a caller can show WHY it
 /// matched rather than only how strongly.</param>
 /// <param name="SubscriberKey">The report (subscriber) this question came from, empty for a confirmed example
@@ -57,6 +61,7 @@ public sealed record QuestionMatch(
     IReadOnlyList<string> ObjectKeys,
     string Provenance,
     int Score,
+    double Coverage,
     IReadOnlyList<string> MatchedTerms,
     string SubscriberKey,
     string? VisualTitle,
@@ -114,6 +119,8 @@ public static class QuestionSearch
     /// <param name="db">The catalog to search.</param>
     /// <param name="question">The newly typed question to match stored examples against.</param>
     /// <param name="topK">How many matches to return, best first.</param>
+    /// <param name="minCoverage">How much of a stored question the search must cover for it to be returned, from 0
+    /// to 1 (see <see cref="CoverageOf"/>); the same question as the one typed is returned whatever it covers.</param>
     /// <param name="expander">Expands the question into business-vocabulary terms, or null to search the typed
     /// words alone.</param>
     /// <param name="repoId">Restricts the search to one repo, or searches the whole estate when null. Estate-wide
@@ -121,12 +128,12 @@ public static class QuestionSearch
     /// asked it.</param>
     /// <param name="ct">Cancels the search.</param>
     public static async Task<QuestionSearchResult> FindSimilarAsync(
-        CatalogDbContext db, string question, int topK, QuestionExpander? expander, Guid? repoId,
+        CatalogDbContext db, string question, int topK, double minCoverage, QuestionExpander? expander, Guid? repoId,
         CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
         var terms = await BuildTermsAsync(question, expander, ct).ConfigureAwait(false);
-        return await FindSimilarAsync(db, question, topK, terms, repoId, ct).ConfigureAwait(false);
+        return await FindSimilarAsync(db, question, topK, minCoverage, terms, repoId, ct).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -137,19 +144,23 @@ public static class QuestionSearch
     /// caller's expansion is held to the same bound as the server's own.
     /// </summary>
     /// <param name="db">The catalog to search.</param>
-    /// <param name="question">The typed question, for context only; matching is on <paramref name="terms"/>.</param>
+    /// <param name="question">The typed question: candidates are found and scored on <paramref name="terms"/>, while
+    /// its own words count toward a stored question's coverage and decide whether the two are the same question.</param>
     /// <param name="topK">How many matches to return, best first.</param>
+    /// <param name="minCoverage">How much of a stored question the search must cover for it to be returned, from 0
+    /// to 1 (see <see cref="CoverageOf"/>); the same question as the one typed is returned whatever it covers.</param>
     /// <param name="terms">The vocabulary to match stored questions against.</param>
     /// <param name="repoId">Restricts the search to one repo, or the whole estate when null.</param>
     /// <param name="ct">Cancels the search.</param>
     public static async Task<QuestionSearchResult> FindSimilarAsync(
-        CatalogDbContext db, string question, int topK, IReadOnlyList<string> terms, Guid? repoId,
+        CatalogDbContext db, string question, int topK, double minCoverage, IReadOnlyList<string> terms, Guid? repoId,
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(db);
         ArgumentNullException.ThrowIfNull(question);
         ArgumentNullException.ThrowIfNull(terms);
         ArgumentOutOfRangeException.ThrowIfLessThan(topK, 1);
+        CheckCoverage(minCoverage);
 
         // An expansion that is nothing but stop words is no expansion: the typed words are searched instead.
         var normalized = Normalize(terms);
@@ -183,12 +194,28 @@ public static class QuestionSearch
         // grammatical forms ("customer", "customers"), and every one of them matches the same word of a stored
         // question. Counting them separately would let one shared word clear the trust threshold on its own and
         // auto-run an unrelated query. MatchedTerms still names every term that hit.
+        //
+        // A stored question that shares a word or two but whose other words are not asked answers something else
+        // ("how many wellbores per country, basin and field" for "how many wellbores"), and its SQL is noise to a
+        // caller that composes from it: it is dropped before ranking unless it covers enough of what was asked, so a
+        // close match below the cut is not crowded out by distant ones. The same question is kept whatever it covers.
+        //
+        // Identity is judged on the TYPED question's own words, never on the expansion: the expansion adds synonyms
+        // no stored question is expected to carry all of, so comparing against it would never match.
+        var typedWords = MeaningfulStems(question);
+        var coverageTerms = terms.Concat(TypedTerms(question)).Distinct(StringComparer.Ordinal).ToList();
         var ranked = candidates
             .Select(c => (Row: c, Matched: MatchedTerms(c.Question, terms)))
-            .Select(c => (c.Row, c.Matched, Score: ScoreOf(c.Matched)))
-            .Where(c => c.Score > 0)
+            .Select(c => (
+                c.Row,
+                c.Matched,
+                Score: ScoreOf(c.Matched),
+                Coverage: CoverageOf(c.Row.Question, coverageTerms),
+                Same: typedWords.Count > 0 && typedWords.SetEquals(MeaningfulStems(c.Row.Question))))
+            .Where(c => c.Score > 0 && (c.Same || c.Coverage >= minCoverage))
             .OrderByDescending(c => c.Score)
             .ThenByDescending(c => c.Row.ExampleId > 0)
+            .ThenByDescending(c => c.Coverage)
             .ThenBy(c => c.Row.Question.Length)
             .Take(topK)
             .ToList();
@@ -200,21 +227,86 @@ public static class QuestionSearch
         var visuals = await ResolveVisualsAsync(db, ranked.Select(r => r.Row), ct).ConfigureAwait(false);
         var examples = await ResolveExamplesAsync(db, ranked.Select(r => r.Row), ct).ConfigureAwait(false);
 
-        // Identity is judged on the TYPED question's own words, never on the expansion: the expansion adds
-        // synonyms no stored question is expected to carry all of, so comparing against it would never match.
-        var typedWords = MeaningfulStems(question);
         var matches = new List<QuestionMatch>(ranked.Count);
-        foreach (var (row, matched, score) in ranked)
+        foreach (var (row, matched, score, coverage, sameQuestion) in ranked)
         {
-            var sameQuestion = typedWords.Count > 0 && typedWords.SetEquals(MeaningfulStems(row.Question));
             var differing = DifferingValues(question, row.Question);
-            matches.Add(row.ExampleId > 0
-                ? ExampleMatch(row, matched, score, sameQuestion, differing, examples)
-                : VisualMatch(row, matched, score, sameQuestion, differing, visuals));
+            var scored = new Scored(matched, score, coverage, sameQuestion, differing);
+            matches.Add(row.ExampleId > 0 ? ExampleMatch(row, scored, examples) : VisualMatch(row, scored, visuals));
         }
 
         return new QuestionSearchResult(terms, matches);
     }
+
+    /// <summary>
+    /// How much of a stored question the searched terms cover, from 0 to 1: the share of its words that one of
+    /// <paramref name="terms"/> matches, each form of a word counted once. Stop words, one-character tokens and
+    /// phrasing words that only ask for a count or a list (<see cref="PhrasingWords"/>) are left out, so "show me the
+    /// number of customers" is about customers alone. So is a word holding a digit: it is a value (a year, a depth, a
+    /// code), which <see cref="DifferingValues"/> judges, and a stored question naming other values is still the same
+    /// kind of question. A multi-word term covers each of its words the stored question holds as that phrase. A stored
+    /// question with no word left to count covers nothing.
+    /// </summary>
+    /// <param name="storedQuestion">The stored question.</param>
+    /// <param name="terms">What was asked: the searched terms, with the typed question's own words.</param>
+    internal static double CoverageOf(string storedQuestion, IReadOnlyList<string> terms)
+    {
+        ArgumentNullException.ThrowIfNull(storedQuestion);
+        ArgumentNullException.ThrowIfNull(terms);
+        var words = Normalize(storedQuestion.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries))
+            .Where(w => !w.Any(char.IsDigit) && !PhrasingWords.Contains(w))
+            .DistinctBy(Stem, StringComparer.Ordinal)
+            .ToList();
+        if (words.Count == 0)
+        {
+            return 0;
+        }
+
+        var covered = words.Count(word => terms.Any(term => Covers(storedQuestion, word, term)));
+        return (double)covered / words.Count;
+    }
+
+    /// <summary>Whether <paramref name="term"/> covers <paramref name="word"/> of <paramref name="storedQuestion"/>: a
+    /// single-word term as the word itself or another form of it, a phrase when the stored question holds the whole
+    /// phrase and the word is one of its words.</summary>
+    private static bool Covers(string storedQuestion, string word, string term)
+    {
+        if (!term.Contains(' ', StringComparison.Ordinal))
+        {
+            return MatchesTerm(word, term);
+        }
+
+        var stem = Stem(word);
+        return MatchesTerm(storedQuestion, term)
+            && term.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                .Any(part => string.Equals(Stem(part), stem, StringComparison.Ordinal));
+    }
+
+    /// <summary>Refuses a coverage floor outside 0 to 1, which no share of a question's words can be compared to.</summary>
+    internal static void CheckCoverage(double minCoverage)
+    {
+        if (double.IsNaN(minCoverage) || minCoverage < 0 || minCoverage > 1)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(minCoverage), minCoverage, "A coverage floor is a share of a question's words, from 0 to 1.");
+        }
+    }
+
+    /// <summary>
+    /// Words that say how an answer is asked for (a count, a list, everything) rather than what it is about. They are
+    /// searched and scored like any other word; only a stored question's coverage leaves them out, since "list all
+    /// customers" and "how many customers" are both about customers, and counting "list" and "all" would let the
+    /// phrasing of a stored question decide whether it is close.
+    /// </summary>
+    private static readonly HashSet<string> PhrasingWords = new(StringComparer.Ordinal)
+    {
+        "show", "list", "give", "tell", "find", "get", "me", "my", "please", "all", "each", "every", "any", "some",
+        "number", "count", "total",
+    };
+
+    /// <summary>How one candidate matched, carried from the ranking into the match it becomes.</summary>
+    private sealed record Scored(
+        IReadOnlyList<string> Matched, int Score, double Coverage, bool SameQuestion, IReadOnlyList<string> DifferingValues);
 
     /// <summary>
     /// Resolves the winning report-derived rows to the SQL that answers them. A visual's <c>QueryName</c> names
@@ -290,9 +382,7 @@ public static class QuestionSearch
     }
 
     /// <summary>Builds the match for a report-derived question, from the visual and the query behind it.</summary>
-    private static QuestionMatch VisualMatch(
-        QuestionRow row, IReadOnlyList<string> matched, int score, bool sameQuestion,
-        IReadOnlyList<string> differingValues, VisualLookup lookup)
+    private static QuestionMatch VisualMatch(QuestionRow row, Scored scored, VisualLookup lookup)
     {
         var visualKey = row.VisualKey ?? string.Empty;
         lookup.Visuals.TryGetValue(visualKey, out var visual);
@@ -306,22 +396,22 @@ public static class QuestionSearch
             query?.SourceSql ?? string.Empty,
             SplitObjectKeys(query?.ObjectKeys),
             row.Provenance,
-            score,
-            matched,
+            scored.Score,
+            scored.Coverage,
+            scored.Matched,
             query?.SubscriberKey ?? SubscriberKeyFromVisualKey(visualKey),
             visual?.Title,
-            SameQuestion: sameQuestion,
+            SameQuestion: scored.SameQuestion,
             ReportSql: query?.Sql,
             TranslationProblem: query is null
                 ? "the visual's query was not found"
                 : query.SourceSql is null ? query.TranslationProblem ?? "the visual's query has not been translated yet" : null,
-            DifferingValues: differingValues);
+            DifferingValues: scored.DifferingValues);
     }
 
     /// <summary>Builds the match for a confirmed example, whose answer lives on its own row.</summary>
     private static QuestionMatch ExampleMatch(
-        QuestionRow row, IReadOnlyList<string> matched, int score, bool sameQuestion,
-        IReadOnlyList<string> differingValues, IReadOnlyDictionary<long, ResolvedExample> lookup)
+        QuestionRow row, Scored scored, IReadOnlyDictionary<long, ResolvedExample> lookup)
     {
         lookup.TryGetValue(row.ExampleId, out var example);
 
@@ -330,15 +420,16 @@ public static class QuestionSearch
             example?.Sql ?? string.Empty,
             SplitObjectKeys(example?.ObjectKeys),
             row.Provenance,
-            score,
-            matched,
+            scored.Score,
+            scored.Coverage,
+            scored.Matched,
             string.Empty,
             null,
             example?.ConfirmedBy,
             example?.SourceRef,
             row.ExampleId,
-            sameQuestion,
-            DifferingValues: differingValues);
+            scored.SameQuestion,
+            DifferingValues: scored.DifferingValues);
     }
 
     /// <summary>The searched terms a stored question matches (see <see cref="MatchesTerm"/>), in the order searched.</summary>
@@ -592,7 +683,7 @@ public static class QuestionSearch
 
     /// <summary>Folds one predicate per term into a single OR-ed predicate, so a row matching any term is a
     /// candidate and a per-term factory is all each store has to supply.</summary>
-    private static System.Linq.Expressions.Expression<Func<T, bool>> AnyTerm<T>(
+    internal static System.Linq.Expressions.Expression<Func<T, bool>> AnyTerm<T>(
         IReadOnlyList<string> terms,
         Func<string, System.Linq.Expressions.Expression<Func<T, bool>>> forTerm)
         => terms.Aggregate(
