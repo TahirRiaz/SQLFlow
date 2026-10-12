@@ -105,4 +105,47 @@ public sealed class QuestionSearchRulesTests
     {
         Assert.Equal(expected, QuestionSearch.TypedTerms(question));
     }
+
+    [Theory]
+    // Numbers, and codes kept whole with their slashes, dashes and decimal points.
+    [InlineData("Which stores sold SKU-1042 from 3000 to 3005 units in EMEA?", new[] { "SKU-1042", "3000", "3005", "EMEA" })]
+    [InlineData("Which orders shipped to UK warehouse 12/4-K?", new[] { "UK", "12/4-K" })]
+    [InlineData("Revenue in Q3 2024, by region.", new[] { "Q3", "2024" })]
+    // A capitalised word is a name anywhere but at the start.
+    [InlineData("Which customers in Oslo and Bergen bought VAT-exempt items?", new[] { "Oslo", "Bergen", "VAT-exempt" })]
+    // Every word in quotes, whatever its case.
+    [InlineData("Sales for 'new york' at 0.5 percent", new[] { "new", "york", "0.5" })]
+    [InlineData("Sales in “north west”.", new[] { "north", "west" })]
+    // A question naming nothing in particular, and an apostrophe inside a word, which opens no quote.
+    [InlineData("How many customers do we have?", new string[0])]
+    [InlineData("Which customer's orders are newest", new string[0])]
+    public void AQuestionsValues_AreItsNumbersCodesNamesAndQuotedWords(string question, string[] expected)
+    {
+        Assert.Equal(expected, QuestionSearch.NamedValues(question));
+    }
+
+    [Theory]
+    // The same values however the question is written: case, inflection and the words around them aside.
+    [InlineData("Which customers bought VAT items?", "which customers bought vat items", new string[0])]
+    [InlineData("Which Customers Hold VAT Numbers?", "Which customer holds VAT numbers?", new string[0])]
+    [InlineData("Which stores in the Oslo region sold most?", "which stores in oslo sold most", new string[0])]
+    [InlineData("What were sales in 2024?", "Sales in 2024, please", new string[0])]
+    [InlineData("How many customers do we have?", "How many customers are there?", new string[0])]
+    // Another value on either side, each as its own question writes it, the typed question's first.
+    [InlineData("What was revenue in 2023?", "What was revenue in 2024?", new[] { "2023", "2024" })]
+    [InlineData(
+        "Which stores sold SKU-77 from 2000 to 2100 units?",
+        "Which stores sold SKU-42 from 3000 to 3005 units in EMEA?",
+        new[] { "SKU-77", "2000", "2100", "SKU-42", "3000", "3005", "EMEA" })]
+    [InlineData(
+        "What were sales for order PO-2291/4-B-17?",
+        "What were sales for order PO-8813/2-C-05?",
+        new[] { "PO-2291/4-B-17", "PO-8813/2-C-05" })]
+    // A value only one of them names: the typed question narrows the stored answer, or the stored answer is narrower.
+    [InlineData("Which stores in the Bergen region sold VAT items?", "Which stores sold VAT items?", new[] { "Bergen" })]
+    [InlineData("Which stores sold VAT items?", "Which stores in the Oslo region sold VAT items?", new[] { "Oslo" })]
+    public void TwoQuestions_DifferInTheValuesOnlyOneOfThemNames(string typed, string stored, string[] expected)
+    {
+        Assert.Equal(expected, QuestionSearch.DifferingValues(typed, stored));
+    }
 }

@@ -274,6 +274,12 @@ public sealed record SubscriberReportPageDto(
 /// few words to count. <c>MatchedTerms</c> says
 /// WHICH terms hit, so an answer can explain why this question was considered relevant.
 /// <para>
+/// Neither makes a match trusted while the two questions name different values: <c>DifferingValues</c> lists the
+/// numbers, codes, names and quoted words one of them names and the other does not ("2023" and "2024", "EMEA" and
+/// "APAC"). Such a stored answer was written for its own values, so it is a pattern for the typed question rather
+/// than its answer, however many other words the two share; a caller adapts its SQL to the typed values.
+/// </para>
+/// <para>
 /// <c>Provenance</c> says which half of the store it came from: <c>powerbi</c> for a question derived from a
 /// report a team runs, <c>user-confirmed</c> for one a person accepted or corrected, in which case
 /// <c>ConfirmedBy</c> names who. A confirmed match is the stronger precedent at the same score, and
@@ -303,7 +309,7 @@ public sealed record SimilarQuestionDto(
     string Question, int Score, bool Trusted, IReadOnlyList<string> MatchedTerms, string Provenance,
     string Sql, IReadOnlyList<string> ObjectKeys, string SubscriberKey, string? VisualTitle,
     string? ConfirmedBy, string? SourceRef = null, long? ExampleId = null,
-    string? ReportSql = null, string? TranslationProblem = null);
+    string? ReportSql = null, string? TranslationProblem = null, IReadOnlyList<string>? DifferingValues = null);
 
 /// <summary>The matches for a question, with the terms actually searched for (the LLM's expansion of the typed
 /// question, or its own words when expansion is off or unavailable) and the score threshold they were judged
@@ -1767,10 +1773,14 @@ public static class LineageEndpoints
                     .Reference;
             }
 
+            // A stored answer naming other values than the typed question (another year, code or place) answers the
+            // same kind of question for those values, so it is never trusted, however many words the two share.
+            var differingValues = m.DifferingValues ?? [];
             matches.Add(new SimilarQuestionDto(
-                m.Question, m.Score, m.Score >= retrieval.RankThreshold || m.SameQuestion, m.MatchedTerms,
-                m.Provenance, m.Sql, m.ObjectKeys, m.SubscriberKey, m.VisualTitle, m.ConfirmedBy, sourceRef,
-                m.ExampleId, m.ReportSql, m.TranslationProblem));
+                m.Question, m.Score,
+                (m.Score >= retrieval.RankThreshold || m.SameQuestion) && differingValues.Count == 0,
+                m.MatchedTerms, m.Provenance, m.Sql, m.ObjectKeys, m.SubscriberKey, m.VisualTitle, m.ConfirmedBy,
+                sourceRef, m.ExampleId, m.ReportSql, m.TranslationProblem, differingValues));
         }
 
         return TypedResults.Ok(new SimilarQuestionsDto(

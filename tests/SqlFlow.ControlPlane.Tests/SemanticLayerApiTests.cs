@@ -353,6 +353,86 @@ public sealed class SemanticLayerApiTests
         }
     }
 
+    /// <summary>
+    /// A table's bundle carries ten examples. Without a question they are the newest; with one, they are the closest to
+    /// it, scored as the stored-question search scores, so an older example that answers the question is still the one
+    /// mirrored rather than lost behind ten newer ones about something else. A question past the stored width is refused.
+    /// </summary>
+    [SkippableFact]
+    public async Task ATablesExamples_AreTheClosestToTheQuestion_WhenOneIsGiven()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var serverRef = "${env:SQLFLOW_EXAMPLES_" + suffix + "}";
+        var salesName = "Sales_" + suffix;
+        var salesKey = $"{serverRef}|dw|dbo|{salesName.ToLowerInvariant()}";
+        var repoId = Guid.NewGuid();
+        var context = "examples-" + suffix;
+        var now = DateTime.UtcNow;
+        var sql = $"SELECT SUM(Amount) AS total FROM dbo.{salesName}";
+        var older = $"Which stores sold the most widgets{suffix}?";
+
+        await using var factory = new ControlPlaneAppFactory().WithCatalog(cs);
+        await using var contexts = new AiContextTestKit(cs, repoId);
+        try
+        {
+            await using (var db = CatalogDatabase.Create(cs))
+            {
+                db.Objects.Add(new CatalogObject
+                {
+                    Key = salesKey, ServerRef = serverRef, Database = "dw", Schema = "dbo", Name = salesName,
+                    Kind = "Table", FirstSeenUtc = now, LastSeenUtc = now,
+                });
+                AddColumn(db, salesKey, 1, "Amount", "decimal(18,2)");
+
+                // Eleven newer examples about something else, and the one that answers the question, a day older.
+                for (var i = 0; i < 11; i++)
+                {
+                    db.SemanticExamples.Add(Example($"Total amount {suffix} number {i}", sql, salesKey, now.AddMinutes(-i)));
+                }
+
+                db.SemanticExamples.Add(Example(older, sql, salesKey, now.AddDays(-1)));
+                await db.SaveChangesAsync();
+            }
+
+            using var client = factory.CreateClient();
+            var adminToken = await AiContextTestKit.IssueTokenAsync(client, ["read", "operate", "admin"]);
+            contexts.Write("sales.ai-context.yaml", $"""
+                aiContext: {context}
+                tables:
+                  - table: dw.dbo.{salesName}
+                """);
+            await contexts.SyncAsync();
+            await AiContextTestKit.ApproveAsync(client, adminToken, context);
+
+            var describe = $"/api/v1/semantic-layer/tables/describe?key={Uri.EscapeDataString(salesKey)}";
+            var newest = await GetJsonAsync<SemanticTableDto>(client, adminToken, describe);
+            Assert.Equal(SemanticLayer.MaxServedExamples, newest.Examples.Count);
+            Assert.Equal($"Total amount {suffix} number 0", newest.Examples[0].Question);
+            Assert.DoesNotContain(newest.Examples, e => e.Question == older);
+
+            var asked = $"which store sold most widgets{suffix} last year";
+            var closest = await GetJsonAsync<SemanticTableDto>(
+                client, adminToken, $"{describe}&question={Uri.EscapeDataString(asked)}");
+            Assert.Equal(SemanticLayer.MaxServedExamples, closest.Examples.Count);
+            Assert.Equal(older, closest.Examples[0].Question);
+            Assert.Equal($"Total amount {suffix} number 0", closest.Examples[1].Question);
+
+            using var tooLong = await AiContextTestKit.SendAsync(
+                client, adminToken, HttpMethod.Get, $"{describe}&question={new string('q', SemanticLayer.MaxQuestionLength + 1)}");
+            Assert.Equal(HttpStatusCode.BadRequest, tooLong.StatusCode);
+        }
+        finally
+        {
+            await using var db = CatalogDatabase.Create(cs);
+            await db.SemanticExamples.Where(e => e.ObjectKeys == salesKey).ExecuteDeleteAsync();
+            await db.ObjectColumns.Where(c => c.ObjectKey == salesKey).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.Key == salesKey).ExecuteDeleteAsync();
+        }
+    }
+
     private static CatalogSubscriberModelTable ModelTable(
         Guid repoId, string subscriberKey, string reportFile, string name, string objectKey)
         => new()

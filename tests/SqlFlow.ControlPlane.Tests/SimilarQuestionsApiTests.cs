@@ -129,6 +129,92 @@ public sealed class SimilarQuestionsApiTests
         }
     }
 
+    /// <summary>
+    /// A stored answer is written for the values it names. A question that shares its words but names another year
+    /// scores as well as its twin and is still not answered by it, so it comes back untrusted, with the values that
+    /// differ, for a caller to adapt the SQL rather than run it; the question naming the same year is trusted.
+    /// </summary>
+    [SkippableFact]
+    public async Task AStoredAnswerNamingOtherValues_IsNotTrusted_AndSaysWhichValuesDiffer()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        // Letters only, so the word carrying it is no value of its own.
+        var suffix = string.Concat(Guid.NewGuid().ToString("N")[..8].Select(c => (char)('a' + (c % 16))));
+        var repoId = Guid.NewGuid();
+        var vocabulary = $"takings{suffix}";
+        var question = $"What were {vocabulary} by region in 2024?";
+        var sql = "SELECT Region, SUM(Amount) FROM Orders WHERE OrderYear = 2024 GROUP BY Region";
+        var hash = SemanticExampleHash.Compute(question, sql);
+
+        await using var db = CatalogDatabase.Create(cs);
+        try
+        {
+            db.SemanticExamples.Add(new CatalogSemanticExample
+            {
+                RepoId = repoId,
+                Question = question,
+                Sql = sql,
+                ObjectKeys = "[Dw].[arc].[Orders]",
+                Provenance = SemanticExampleProvenance.UserConfirmed,
+                ConfirmedUtc = DateTime.UtcNow,
+                ConfirmedBy = "analyst@example.com",
+                ContentHash = hash,
+            });
+            await db.SaveChangesAsync();
+
+            await using var factory = new ControlPlaneAppFactory()
+                .WithCatalog(cs)
+                .WithSetting("ControlPlane:PowerAI:Retrieval:Enabled", "true")
+                .WithSetting("ControlPlane:PowerAI:Retrieval:ExpandSynonyms", "false");
+            using var client = factory.CreateClient();
+            var token = await IssueReadTokenAsync(client);
+
+            // Both questions share the two searched words, which clears the shipped threshold of two.
+            string PathFor(string typed)
+                => $"/api/v1/lineage/subscribers/similar-questions?question={Uri.EscapeDataString(typed)}&repoId={repoId}"
+                    + $"&expandedTerms={Uri.EscapeDataString(vocabulary)}&expandedTerms=region";
+
+            var other = await FindWhenIndexedAsync(client, token, PathFor($"what were {vocabulary} by region in 2023"), question);
+            Assert.Equal(2, other.Score);
+            Assert.False(other.Trusted);
+            Assert.Equal(["2023", "2024"], other.DifferingValues);
+            Assert.Equal(sql, other.Sql);
+
+            var same = await FindWhenIndexedAsync(client, token, PathFor($"{vocabulary} by region in 2024"), question);
+            Assert.Equal(2, same.Score);
+            Assert.True(same.Trusted);
+            Assert.Empty(same.DifferingValues ?? ["missing"]);
+        }
+        finally
+        {
+            await db.SemanticExamples.Where(e => e.ContentHash == hash).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>The match for <paramref name="question"/>, polling while the full-text index catches up with the row.</summary>
+    private static async Task<SimilarQuestionDto> FindWhenIndexedAsync(
+        HttpClient client, string token, string relativeUri, string question)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(30);
+        while (true)
+        {
+            var result = await GetAsync(client, token, relativeUri);
+            if (result.Matches.FirstOrDefault(m => m.Question == question) is { } match)
+            {
+                return match;
+            }
+
+            if (DateTime.UtcNow >= deadline)
+            {
+                throw new TimeoutException($"'{question}' was not found within 30s at {relativeUri}.");
+            }
+
+            await Task.Delay(250);
+        }
+    }
+
     private static async Task<SimilarQuestionsDto> GetAsync(HttpClient client, string token, string relativeUri)
     {
         using var response = await SendAsync(client, token, relativeUri);

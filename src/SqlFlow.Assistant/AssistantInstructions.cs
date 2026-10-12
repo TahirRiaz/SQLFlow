@@ -254,11 +254,16 @@ public static class AssistantInstructions
             T-SQL over the source tables and runs as it is; its `reportSql` is the visual's own query against the
             report's model and never runs. A dashboard match carrying a `translationProblem` (and an empty `sql`)
             is only a lead: it says which question a report answers and which fields it uses, and you compose the
-            query from the semantic layer. Only an untrusted match, a match with a `translationProblem`, or no
+            query from the semantic layer. A match whose `differingValues` is not empty is never trusted: it answers
+            the same kind of question for other values (another year, code, name or place than the person's), so use
+            its SQL as the pattern, put the person's values in place of its own, and offer that as a query you wrote,
+            never its result as theirs. Only an untrusted match, a match with a `translationProblem`, or no
             match at all, is a lead rather than an answer; only then fall through to
             search_semantic_layer/describe_semantic_table to compose or verify something yourself. It matches
-            business synonyms too, so try the person's own word. A query reads only the columns
-            describe_semantic_table lists, and never SELECT *. When prepare_query is among your tools, prepare
+            business synonyms too, so try the person's own word. Pass the person's question to
+            describe_semantic_table as `question`, so the example queries it serves are the ones closest to it. A
+            query reads only the columns describe_semantic_table lists, and never SELECT *. When prepare_query is
+            among your tools, prepare
             such a query WITHOUT naming a datasource (it is worked out from the tables the query reads) and name
             one only if prepare reports it cannot tell. Never ask the person which database or datasource to
             query unless a tool told you it could not work that out.

@@ -46,6 +46,11 @@ namespace SqlFlow.ControlPlane.Background;
 /// rather than the source tables and so is evidence, not something to run. Null for a confirmed example.</param>
 /// <param name="TranslationProblem">For a report-derived question with no runnable <paramref name="Sql"/>: why its
 /// query could not be translated. Null otherwise.</param>
+/// <param name="DifferingValues">The values one of the two questions names and the other does not (see
+/// <see cref="QuestionSearch.DifferingValues"/>): "revenue in 2023" against a stored "revenue in 2024" differs in
+/// 2023 and 2024. A stored answer is written for the values it names, so a match that names others answers the same
+/// kind of question for different values: its SQL is a pattern to adapt, never the answer as it stands, however many
+/// words it shares. Null or empty when both name the same values.</param>
 public sealed record QuestionMatch(
     string Question,
     string Sql,
@@ -60,7 +65,8 @@ public sealed record QuestionMatch(
     long? ExampleId = null,
     bool SameQuestion = false,
     string? ReportSql = null,
-    string? TranslationProblem = null);
+    string? TranslationProblem = null,
+    IReadOnlyList<string>? DifferingValues = null);
 
 /// <summary>The outcome of one search: the terms actually searched for (the expansion, or the question's own
 /// words when expansion is off or unavailable) and the trustworthy matches. The terms travel with the result
@@ -178,8 +184,8 @@ public static class QuestionSearch
         // question. Counting them separately would let one shared word clear the trust threshold on its own and
         // auto-run an unrelated query. MatchedTerms still names every term that hit.
         var ranked = candidates
-            .Select(c => (Row: c, Matched: terms.Where(t => MatchesTerm(c.Question, t)).ToList()))
-            .Select(c => (c.Row, c.Matched, Score: c.Matched.Select(Stem).Distinct(StringComparer.Ordinal).Count()))
+            .Select(c => (Row: c, Matched: MatchedTerms(c.Question, terms)))
+            .Select(c => (c.Row, c.Matched, Score: ScoreOf(c.Matched)))
             .Where(c => c.Score > 0)
             .OrderByDescending(c => c.Score)
             .ThenByDescending(c => c.Row.ExampleId > 0)
@@ -201,9 +207,10 @@ public static class QuestionSearch
         foreach (var (row, matched, score) in ranked)
         {
             var sameQuestion = typedWords.Count > 0 && typedWords.SetEquals(MeaningfulStems(row.Question));
+            var differing = DifferingValues(question, row.Question);
             matches.Add(row.ExampleId > 0
-                ? ExampleMatch(row, matched, score, sameQuestion, examples)
-                : VisualMatch(row, matched, score, sameQuestion, visuals));
+                ? ExampleMatch(row, matched, score, sameQuestion, differing, examples)
+                : VisualMatch(row, matched, score, sameQuestion, differing, visuals));
         }
 
         return new QuestionSearchResult(terms, matches);
@@ -284,7 +291,8 @@ public static class QuestionSearch
 
     /// <summary>Builds the match for a report-derived question, from the visual and the query behind it.</summary>
     private static QuestionMatch VisualMatch(
-        QuestionRow row, IReadOnlyList<string> matched, int score, bool sameQuestion, VisualLookup lookup)
+        QuestionRow row, IReadOnlyList<string> matched, int score, bool sameQuestion,
+        IReadOnlyList<string> differingValues, VisualLookup lookup)
     {
         var visualKey = row.VisualKey ?? string.Empty;
         lookup.Visuals.TryGetValue(visualKey, out var visual);
@@ -306,13 +314,14 @@ public static class QuestionSearch
             ReportSql: query?.Sql,
             TranslationProblem: query is null
                 ? "the visual's query was not found"
-                : query.SourceSql is null ? query.TranslationProblem ?? "the visual's query has not been translated yet" : null);
+                : query.SourceSql is null ? query.TranslationProblem ?? "the visual's query has not been translated yet" : null,
+            DifferingValues: differingValues);
     }
 
     /// <summary>Builds the match for a confirmed example, whose answer lives on its own row.</summary>
     private static QuestionMatch ExampleMatch(
         QuestionRow row, IReadOnlyList<string> matched, int score, bool sameQuestion,
-        IReadOnlyDictionary<long, ResolvedExample> lookup)
+        IReadOnlyList<string> differingValues, IReadOnlyDictionary<long, ResolvedExample> lookup)
     {
         lookup.TryGetValue(row.ExampleId, out var example);
 
@@ -328,8 +337,18 @@ public static class QuestionSearch
             example?.ConfirmedBy,
             example?.SourceRef,
             row.ExampleId,
-            sameQuestion);
+            sameQuestion,
+            DifferingValues: differingValues);
     }
+
+    /// <summary>The searched terms a stored question matches (see <see cref="MatchesTerm"/>), in the order searched.</summary>
+    internal static IReadOnlyList<string> MatchedTerms(string question, IReadOnlyList<string> terms)
+        => terms.Where(t => MatchesTerm(question, t)).ToList();
+
+    /// <summary>A stored question's score: how many distinct word stems its matched terms carry, so several forms of
+    /// one word (an expansion lists "customer" and "customers") count once and cannot clear a threshold alone.</summary>
+    internal static int ScoreOf(IEnumerable<string> matchedTerms)
+        => matchedTerms.Select(Stem).Distinct(StringComparer.Ordinal).Count();
 
     /// <summary>A question reduced to its meaningful words: split, stop words and one-character tokens dropped
     /// (the same <see cref="Normalize"/> the search terms go through), and each word stemmed so "customer" and
@@ -338,6 +357,120 @@ public static class QuestionSearch
         => Normalize(question.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries))
             .Select(Stem)
             .ToHashSet(StringComparer.Ordinal);
+
+    /// <summary>
+    /// The values one question names that the other does not, each as the question naming it writes it, the typed
+    /// question's first. A stored answer is written for the values it names (a year, a code, a place, a product), so
+    /// "revenue in 2023" shares every word but one with a stored "revenue in 2024" and is still not answered by it.
+    /// A value counts as named by the other question when that question holds the same word, case aside, or another
+    /// form of it ("Customers" and "customer"); a value holding a digit must be the same text. Empty when the two name
+    /// the same values, which is what a trusted match requires.
+    /// </summary>
+    internal static IReadOnlyList<string> DifferingValues(string typed, string stored)
+    {
+        ArgumentNullException.ThrowIfNull(typed);
+        ArgumentNullException.ThrowIfNull(stored);
+        var typedWords = ValueVocabulary(typed);
+        var storedWords = ValueVocabulary(stored);
+        return NamedValues(typed).Where(v => !storedWords.Names(v))
+            .Concat(NamedValues(stored).Where(v => !typedWords.Names(v)))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// The specific values a question names, as it writes them: a word holding a digit (a number, a year, a code such as
+    /// "SKU-1042" or "Q3"), a word written in capitals with at least two letters (a code or an acronym: "EMEA", "VAT"), a
+    /// capitalised word anywhere but at the start (a name: "Oslo", "January"), and every word inside quotes. A word is
+    /// split only at spaces and sentence punctuation, so a code keeps its slashes and dashes and a decimal its point, and
+    /// the quotes and the full stop or colon around it are dropped.
+    /// </summary>
+    internal static IReadOnlyList<string> NamedValues(string question)
+    {
+        ArgumentNullException.ThrowIfNull(question);
+        var values = new List<string>();
+        var quoted = false;
+        var first = true;
+        foreach (var token in question.Split(ValueSeparators, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var word = token.Trim(ValueTrim);
+            if (word.Length == 0)
+            {
+                continue;
+            }
+
+            var opens = IsQuote(token[0]);
+            var closes = IsQuote(token.TrimEnd(SentenceEnd)[^1]);
+            if (quoted || opens || IsValueWord(word, first))
+            {
+                values.Add(word);
+            }
+
+            // A word that opens and closes its own quotes is quoted alone; an unbalanced quote leaves every word after it
+            // a value, which only ever withholds trust and never grants it.
+            quoted = (quoted || opens) && !closes;
+            first = false;
+        }
+
+        return values.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
+    private static bool IsValueWord(string word, bool first)
+    {
+        if (word.Any(char.IsDigit))
+        {
+            return true;
+        }
+
+        var letters = word.Where(char.IsLetter).ToList();
+        if (letters.Count < 2)
+        {
+            return false;
+        }
+
+        return letters.TrueForAll(char.IsUpper) || (!first && char.IsUpper(word[0]));
+    }
+
+    private static bool IsQuote(char c) => c is '"' or '\'' or '‘' or '’' or '“' or '”' or '«' or '»';
+
+    /// <summary>Every word of a question as <see cref="NamedValues"/> splits it, with its stem, so another question's value
+    /// can be looked up in it.</summary>
+    private static ValueWords ValueVocabulary(string question)
+    {
+        var words = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var stems = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var token in question.Split(ValueSeparators, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var word = token.Trim(ValueTrim);
+            if (word.Length > 0)
+            {
+                words.Add(word);
+                stems.Add(Stem(word));
+            }
+        }
+
+        return new ValueWords(words, stems);
+    }
+
+    /// <summary>A question's words and their stems, for <see cref="DifferingValues"/>.</summary>
+    private sealed record ValueWords(HashSet<string> Words, HashSet<string> Stems)
+    {
+        /// <summary>Whether this question names <paramref name="value"/>, a value of the other question: the same word,
+        /// case aside, or for a value without a digit another form of it.</summary>
+        public bool Names(string value)
+            => Words.Contains(value) || (!value.Any(char.IsDigit) && Stems.Contains(Stem(value)));
+    }
+
+    /// <summary>What separates the words <see cref="NamedValues"/> reads: spaces and the punctuation that ends or
+    /// interrupts a sentence. Not '/', '-' or '.', which hold a code, a range or a decimal together.</summary>
+    private static readonly char[] ValueSeparators = [' ', '\t', '\n', '\r', '?', '!', ',', ';', '(', ')', '[', ']'];
+
+    /// <summary>What is trimmed from a word's ends before it is read as a value: quotes, and a full stop or colon.</summary>
+    private static readonly char[] ValueTrim =
+        ['"', '\'', '‘', '’', '“', '”', '«', '»', '.', ':'];
+
+    /// <summary>What may follow a closing quote within the same word: a full stop or a colon.</summary>
+    private static readonly char[] SentenceEnd = ['.', ':'];
 
     /// <summary>
     /// Loads the stored questions containing any of <paramref name="terms"/> from BOTH stores, using each

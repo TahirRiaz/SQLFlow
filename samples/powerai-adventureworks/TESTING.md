@@ -166,6 +166,14 @@ the tool description, not of the search.
   (Australia 1594335.3767, Canada 14377925.5965, Central 7906008.1777, France 4607537.9350, Germany
   1983988.0373, ...), then shows the SQL in its own `sql` block.
 
+### T16a: a question naming another value adapts the stored query
+- Prompt: `! what is total revenue for country NO`
+- Expect: `find_similar_questions` returns example 1 "What is total revenue by country?" with a score of at
+  least 2 and `trusted` false, `differingValues` `["NO"]`: the stored answer names no country, so it is not
+  this question's answer however many words they share. `auto_run_trusted_match` is NOT called.
+- Pass: the assistant offers example 1's query narrowed to `NO` (a `WHERE` on the country) and asks before
+  running it; run, it returns one row, NO 365.50. The answer does not mention trust, scores or matches.
+
 ## F. The learning loop (confirmation discipline)
 
 ### T17: approving a run is not confirmation

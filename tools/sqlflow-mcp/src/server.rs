@@ -417,6 +417,25 @@ pub struct KeyInput {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct DescribeSemanticTableInput {
+    /// The catalog object key (serverRef+db+schema+name composite), from search_semantic_layer or
+    /// list_semantic_tables.
+    pub key: String,
+    /// The person's question, as asked (without the leading `!`). The example questions served are then the
+    /// ones closest to it rather than the newest, so the SQL you mirror is the nearest precedent there is.
+    pub question: Option<String>,
+}
+
+/// The query string for `GET /semantic-layer/tables/describe`: the key, and the question only when one was given.
+fn describe_semantic_table_query(input: DescribeSemanticTableInput) -> Vec<(&'static str, String)> {
+    let mut query = vec![("key", input.key)];
+    if let Some(question) = input.question.map(|q| q.trim().to_string()).filter(|q| !q.is_empty()) {
+        query.push(("question", question));
+    }
+    query
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 pub struct SemanticSearchInput {
     /// One or more words: a table or column name, or a business term (a synonym such as "turnover" finds
     /// the column an admin tagged with it). Every word must match somewhere on the same table.
@@ -965,7 +984,9 @@ is refused when the query runs, and SELECT * is refused on a table with columns 
 name them). `keyOrigin` Curated means an admin stated the key. On a join, `source` Curated = declared by an \
 admin, so prefer it; Discovered = inferred from the codebase's own joins, ranked by `occurrences`; \
 `isRangeJoin` marks an interval join that must never be treated as a key match. Reuse a measure's \
-`expression` verbatim, and mirror an example question's SQL shape for a similar question. `reportModels` \
+`expression` verbatim, and mirror an example question's SQL shape for a similar question, with the person's \
+values in place of the example's own. `examples` are the ones closest to the `question` you passed, else the \
+newest. `reportModels` \
 holds the Power BI models built on this table: their `measures` and `calculatedColumns` carry DAX \
 `expression`s, and DAX is not SQL, so mirror the logic rather than pasting it; a `relationships` entry with \
 `isActive` false applies only where a measure invokes USERELATIONSHIP. `consumers` answers who uses this \
@@ -1868,7 +1889,7 @@ and fix every finding first."
             (which allowed columns matched), and `matchedOn` (which fields carried the match); measures \
             matching every word come back beside the tables. Search single words or short terms, not whole \
             sentences, and try a synonym when a word finds nothing. Follow a hit with \
-            describe_semantic_table(key) before writing any SQL."
+            describe_semantic_table(key, question) before writing any SQL."
     )]
     async fn search_semantic_layer(&self, Parameters(i): Parameters<SemanticSearchInput>) -> String {
         let q = vec![
@@ -1901,14 +1922,14 @@ and fix every finding first."
             clause each, the measures anchored to it, example questions with the SQL that answers them, the Power BI models \
             built on it, the reports that consume it, and the layer's general instructions. This is the last call before \
             composing a query: search_semantic_layer or list_semantic_tables finds the table, this serves everything you \
-            write the SQL from. The response explains its own fields in `readingThis`. Takes the `key` from either. A 404 \
-            means the table is not in the semantic layer, so it cannot be queried: say so rather than composing SQL against \
-            it."
+            write the SQL from. The response explains its own fields in `readingThis`. Takes the `key` from either, and \
+            the person's `question`, which makes the examples served the ones closest to it. A 404 means the table is not \
+            in the semantic layer, so it cannot be queried: say so rather than composing SQL against it."
     )]
-    async fn describe_semantic_table(&self, Parameters(i): Parameters<KeyInput>) -> String {
+    async fn describe_semantic_table(&self, Parameters(i): Parameters<DescribeSemanticTableInput>) -> String {
         self.get_with_guide(
             "/api/v1/semantic-layer/tables/describe",
-            &[("key", i.key)],
+            &describe_semantic_table_query(i),
             SEMANTIC_TABLE_GUIDE,
         )
         .await
@@ -2413,7 +2434,10 @@ and fix every finding first."
             composing one from the schema, and beats searching the schema for the words in the question. `score` (how many \
             distinct searched words the question matched, several forms of one word counting once) is the ONLY trustworthy \
             confidence signal here, and `trusted` reports whether it cleared this deployment's threshold or is the same \
-            question as the one typed (the same meaningful words). Do not substitute your own confidence for it: a query you \
+            question as the one typed (the same meaningful words), and names the same values. A match whose \
+            `differingValues` is not empty is never trusted: it answers the same kind of question for other values (another \
+            year, code, name or place), so use its SQL as the pattern, put the person's values in place of its own, and offer \
+            that as a query you wrote. Do not substitute your own confidence for it: a query you \
             wrote from a 1-term match can read exactly as convincingly as one from a 4-term match and still be wrong. \
             `searchedTerms` shows what was actually looked for (the question expanded into business vocabulary) and \
             `matchedTerms` which of those each hit, for your own judgement; do not recite them to the person, who wants the \
@@ -4055,7 +4079,8 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   AI contexts an admin approved, holding only the tables and columns those contexts open, with their
   business descriptions, synonyms, curated keys and joins, measures, and example queries. get_semantic_layer
   first (its general instructions apply to every query you write), then search_semantic_layer with a name or
-  a business term, then describe_semantic_table(key) for the columns, key, joins, and measures of one table.
+  a business term, then describe_semantic_table(key, question) for the columns, key, joins, and measures of one
+  table, with the example queries closest to the person's question.
   A query may read only the columns describe_semantic_table lists: anything else is refused when it runs. The
   catalog readers below (describe_object, search_schema, get_table_key, get_table_joins) see every catalogued table
   and column whatever the approved contexts open, since schema is not sensitive: use them for every other question
@@ -4298,6 +4323,26 @@ mod tests {
         });
 
         assert_eq!(query, vec![("question", "revenue by country".to_string())]);
+    }
+
+    #[test]
+    fn a_tables_description_carries_the_question_only_when_one_was_asked() {
+        let asked = describe_semantic_table_query(DescribeSemanticTableInput {
+            key: "k1".into(),
+            question: Some("  which stores sold the most widgets ".into()),
+        });
+        assert_eq!(
+            asked,
+            vec![
+                ("key", "k1".to_string()),
+                ("question", "which stores sold the most widgets".to_string()),
+            ]
+        );
+
+        for question in [None, Some("   ".to_string())] {
+            let unasked = describe_semantic_table_query(DescribeSemanticTableInput { key: "k1".into(), question });
+            assert_eq!(unasked, vec![("key", "k1".to_string())]);
+        }
     }
 
     #[test]

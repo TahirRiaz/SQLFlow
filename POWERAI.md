@@ -262,6 +262,10 @@ Landed since that:
   inside its budget. A match is `trusted` when its score clears `RankThreshold` OR it is the same
   question as the one typed (equal sets of meaningful words, stop words dropped and inflections folded):
   a threshold on term count alone could never trust a short question, whose verbatim twin scores 1.
+  Either way only when both questions name the same values (numbers, codes, capitalised names, quoted
+  words; `QuestionSearch.DifferingValues`): a stored answer is written for its own values, so "revenue
+  in 2023" is not answered by a stored "revenue in 2024", however many words they share. The match then
+  carries `differingValues`, and its SQL is a pattern the assistant adapts rather than an answer it runs.
 
 Still needed: nothing from this section's original list. The confirm/correct/reject flow that calls
 into the store (Section 10) and the GUI control that sets `SourceRef` have both landed.

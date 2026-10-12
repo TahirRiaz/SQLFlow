@@ -108,9 +108,13 @@ closed after something naming it was approved withholds that thing at once:
 - **Measures**: composed as `SELECT expression AS [measure_value] FROM anchor` and served only when that parses to
   exactly one scalar select over the anchor (no second table, filter, grouping, or subquery; comments and `;` are
   refused outright) and passes `ReadOnlyQueryGuard` and `ColumnPolicyGuard`.
-- **Examples**: the newest `SemanticExample` rows whose `ObjectKeys` include the table, served only when their SQL
-  passes `ReadOnlyQueryGuard` and `ColumnPolicyGuard`; at most 10 per table. A confirmed example sent without object
-  keys gets them from the catalogued tables its SQL names.
+- **Examples**: the `SemanticExample` rows whose `ObjectKeys` include the table, served only when their SQL passes
+  `ReadOnlyQueryGuard` and `ColumnPolicyGuard`; at most 10 per table. They are the newest, or, when the describe call
+  carries the question being answered, the closest to it: the table's newest 500 are ranked by how many of the
+  question's meaningful words each example question shares, scored as stored-question search scores them, with the
+  newest first among equals. An older example that answers the question is then the one an assistant mirrors, not
+  lost behind ten newer ones about something else. A confirmed example sent without object keys gets them from the
+  catalogued tables its SQL names.
 - **Power BI models**: every report model table whose `ObjectKey` is the table (at most 20). A measure or calculated
   column is served only when every column its DAX reads (`Table[Column]`, `'Table'[Column]`, `[Column]`) is an open
   column of the warehouse table its model table loads from, and every measure or calculated column it uses is itself
@@ -131,7 +135,7 @@ as if it were approved, and a table, measure name, or join another context serve
 | `GET /api/v1/semantic-layer` | The approved contexts serving tables (name, description, table count), their instructions (each headed `Context '<name>':`), the (database, schema) pairs holding layer tables with counts, and every servable measure |
 | `GET /api/v1/semantic-layer/search?q=` | Layer tables matching every word (name, schema, business name, description, synonyms, or an open column's name, description, or synonyms), with the matched columns; plus matching measures |
 | `GET /api/v1/semantic-layer/tables?database=&schema=` | Layer tables, paged, with business context and open column count |
-| `GET /api/v1/semantic-layer/tables/describe?key=` | One table's bundle: open columns, key, joins with a ready `on` clause, measures, examples, the Power BI `reportModels` built on it, consumers, the `context` serving it and that context's `instructions`. 404 when the table is not in the layer |
+| `GET /api/v1/semantic-layer/tables/describe?key=&question=` | One table's bundle: open columns, key, joins with a ready `on` clause, measures, examples (the closest to `question` when given, else the newest), the Power BI `reportModels` built on it, consumers, the `context` serving it and that context's `instructions`. 404 when the table is not in the layer; 400 for a question over 1000 characters |
 
 ## Admin API (admin scope)
 

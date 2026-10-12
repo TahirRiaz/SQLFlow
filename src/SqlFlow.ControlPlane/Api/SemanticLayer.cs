@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SqlServer.TransactSql.ScriptDom;
 using SqlFlow.Catalog;
+using SqlFlow.ControlPlane.Background;
 using SqlFlow.Core;
 using SqlFlow.SqlServer.Query;
 
@@ -29,6 +30,13 @@ internal static partial class SemanticLayer
 
     /// <summary>The most example queries the admin editor lists for one table.</summary>
     internal const int MaxAdminExamples = 25;
+
+    /// <summary>How many of a table's newest examples are ranked against a question to choose the ones served. Only
+    /// their questions are read to rank them, and the bound keeps that read small however many accumulate.</summary>
+    internal const int MaxRankedExamples = 500;
+
+    /// <summary>The longest question a table's bundle ranks its examples against: the width of a stored question.</summary>
+    internal const int MaxQuestionLength = 1000;
 
     /// <summary>The most measures one evaluation loads. Each is validated through the query guards, so the cap
     /// bounds what one request can cost on an estate that has accumulated many.</summary>
@@ -450,18 +458,50 @@ internal static partial class SemanticLayer
         return result;
     }
 
-    /// <summary>The newest stored example queries that read <paramref name="objectKey"/> (at most
-    /// <paramref name="take"/>), each checked through the query guards. When <paramref name="servableOnly"/> is set,
-    /// examples that would be refused are skipped rather than counted, so the bundle still fills with usable ones.</summary>
+    /// <summary>The stored example queries that read <paramref name="objectKey"/> (at most <paramref name="take"/>),
+    /// each checked through the query guards: the newest, or with a <paramref name="question"/> the ones closest to it.
+    /// When <paramref name="servableOnly"/> is set, examples that would be refused are skipped rather than counted, so
+    /// the bundle still fills with usable ones.</summary>
+    /// <param name="db">The catalog.</param>
+    /// <param name="objectKey">The table the examples read.</param>
+    /// <param name="take">The most examples returned.</param>
+    /// <param name="servableOnly">Whether to skip, rather than return with their problem, examples the guards refuse.</param>
+    /// <param name="question">The question an assistant is answering, or null. With one, the table's newest
+    /// <see cref="MaxRankedExamples"/> examples are ranked by how many of its meaningful words each question shares,
+    /// scored as the stored-question search scores them, and the newest first among equals: the precedent an
+    /// assistant mirrors is then the closest it has, not whichever was confirmed last.</param>
+    /// <param name="ct">Cancellation.</param>
     internal static async Task<IReadOnlyList<ExampleEvaluation>> EvaluateExamplesAsync(
-        CatalogDbContext db, string objectKey, int take, bool servableOnly, CancellationToken ct)
+        CatalogDbContext db, string objectKey, int take, bool servableOnly, string? question, CancellationToken ct)
     {
         // The stored key list is newline-joined, so a substring match narrows in SQL and an exact split confirms it.
-        var candidates = await db.SemanticExamples.AsNoTracking()
+        var newest = db.SemanticExamples.AsNoTracking()
             .Where(e => e.ObjectKeys.Contains(objectKey))
-            .OrderByDescending(e => e.ConfirmedUtc).ThenByDescending(e => e.Id)
-            .Take(take * 4)
-            .ToListAsync(ct).ConfigureAwait(false);
+            .OrderByDescending(e => e.ConfirmedUtc).ThenByDescending(e => e.Id);
+        IReadOnlyList<string> terms = string.IsNullOrWhiteSpace(question) ? [] : QuestionSearch.TypedTerms(question);
+
+        List<CatalogSemanticExample> candidates;
+        if (terms.Count == 0)
+        {
+            candidates = await newest.Take(take * 4).ToListAsync(ct).ConfigureAwait(false);
+        }
+        else
+        {
+            // Ranked on the questions alone, so the SQL of every example is not read to choose ten; OrderBy is
+            // stable, so equal scores keep the newest-first order they were read in.
+            var questions = await newest.Take(MaxRankedExamples)
+                .Select(e => new { e.Id, e.Question })
+                .ToListAsync(ct).ConfigureAwait(false);
+            var ranked = questions
+                .OrderByDescending(e => QuestionSearch.ScoreOf(QuestionSearch.MatchedTerms(e.Question, terms)))
+                .Take(take * 4)
+                .Select(e => e.Id)
+                .ToList();
+            var rows = await db.SemanticExamples.AsNoTracking()
+                .Where(e => ranked.Contains(e.Id))
+                .ToDictionaryAsync(e => e.Id, ct).ConfigureAwait(false);
+            candidates = ranked.Where(rows.ContainsKey).Select(id => rows[id]).ToList();
+        }
 
         var result = new List<ExampleEvaluation>(take);
         foreach (var example in candidates)
@@ -760,9 +800,11 @@ internal static partial class SemanticLayer
     /// <summary>
     /// One layer table's grounding bundle as an assistant is served it, or null when the object is unknown or not in
     /// the layer: only allowed columns, the servable key, joins, measures and examples, and the instructions of the AI
-    /// context that serves it, so a single call is enough to write SQL against the table.
+    /// context that serves it, so a single call is enough to write SQL against the table. With a
+    /// <paramref name="question"/>, the examples are the ones closest to it (see <see cref="EvaluateExamplesAsync"/>).
     /// </summary>
-    internal static async Task<SemanticTableDto?> DescribeTableAsync(CatalogDbContext db, string key, CancellationToken ct)
+    internal static async Task<SemanticTableDto?> DescribeTableAsync(
+        CatalogDbContext db, string key, string? question, CancellationToken ct)
     {
         var obj = await db.Objects.AsNoTracking()
             .Where(o => o.Key == key)
@@ -800,7 +842,7 @@ internal static partial class SemanticLayer
             .Select(m => m.ToDto())
             .ToList();
 
-        var examples = (await EvaluateExamplesAsync(db, key, MaxServedExamples, servableOnly: true, ct).ConfigureAwait(false))
+        var examples = (await EvaluateExamplesAsync(db, key, MaxServedExamples, servableOnly: true, question, ct).ConfigureAwait(false))
             .Select(e => new SemanticExampleDto(e.Id, e.Question, e.Sql, e.Provenance, e.ConfirmedUtc))
             .ToList();
 

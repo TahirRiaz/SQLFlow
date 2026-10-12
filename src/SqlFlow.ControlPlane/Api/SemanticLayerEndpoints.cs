@@ -180,8 +180,10 @@ public static class SemanticLayerEndpoints
         return TypedResults.Ok(new PagedResult<SemanticTableSummaryDto>(items, p, size, total));
     }
 
+    /// <summary>One table's bundle. <paramref name="question"/>, when given, is the question being answered: the bundle's
+    /// examples are then the ones closest to it rather than the newest.</summary>
     private static async Task<Results<Ok<SemanticTableDto>, ProblemHttpResult>> DescribeTableAsync(
-        string? key, CatalogDbContext db, CancellationToken ct)
+        string? key, string? question, CatalogDbContext db, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
@@ -190,7 +192,15 @@ public static class SemanticLayerEndpoints
                 statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
         }
 
-        var table = await SemanticLayer.DescribeTableAsync(db, key.Trim(), ct).ConfigureAwait(false);
+        if (question is { Length: > SemanticLayer.MaxQuestionLength })
+        {
+            return TypedResults.Problem(
+                detail: $"The 'question' query parameter is {question.Length} characters; a question is at most " +
+                    $"{SemanticLayer.MaxQuestionLength}.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+        }
+
+        var table = await SemanticLayer.DescribeTableAsync(db, key.Trim(), question?.Trim(), ct).ConfigureAwait(false);
         return table is null
             ? TypedResults.Problem(
                 detail: $"'{key}' is not a table in the semantic layer. Only tables with at least one allow-listed " +
