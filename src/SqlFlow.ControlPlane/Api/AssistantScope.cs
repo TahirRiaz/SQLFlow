@@ -50,10 +50,11 @@ public static partial class AssistantScope
             && values.Any(v => string.Equals(v?.Trim(), AssistantValue, StringComparison.OrdinalIgnoreCase));
     }
 
-    // A bracket-quoted identifier, a double-quoted identifier, or a bare word. Bare words split on anything that is
-    // not a letter, digit, or identifier punctuation, so "dbo.Employee.Ssn", "Employee_Ssn = 1", and a key such as
-    // "srv|dw|dbo|employee" all yield their parts.
-    [GeneratedRegex(@"\[([^\]\r\n]{1,128})\]|""([^""\r\n]{1,128})""|([\p{L}_][\p{L}\p{N}_$#@]*)", RegexOptions.CultureInvariant)]
+    // A bracket-quoted identifier (a ]] inside it is one ]), a double-quoted identifier (a "" inside it is one "), or a
+    // bare word. Bare words split on anything that is not a letter, digit, or identifier punctuation, so
+    // "dbo.Employee.Ssn", "Employee_Ssn = 1", and a key such as "srv|dw|dbo|employee" all yield their parts; a bare word
+    // may start with digits when a letter follows them ("2FA_Code"), so a plain number is not one.
+    [GeneratedRegex(@"\[((?:[^\]\r\n]|\]\]){1,128})\]|""((?:[^""\r\n]|""""){1,128})""|(\p{N}*[\p{L}_][\p{L}\p{N}_$#@]*)", RegexOptions.CultureInvariant)]
     private static partial Regex IdentifierPattern();
 
     /// <summary>The identifiers in <paramref name="text"/>, case-insensitively distinct.</summary>
@@ -63,8 +64,8 @@ public static partial class AssistantScope
         var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (Match match in IdentifierPattern().Matches(text))
         {
-            var value = match.Groups[1].Success ? match.Groups[1].Value
-                : match.Groups[2].Success ? match.Groups[2].Value
+            var value = match.Groups[1].Success ? match.Groups[1].Value.Replace("]]", "]", StringComparison.Ordinal)
+                : match.Groups[2].Success ? match.Groups[2].Value.Replace("\"\"", "\"", StringComparison.Ordinal)
                 : match.Groups[3].Value;
             if (value.Length is > 0 and <= MaxIdentifierLength)
             {
@@ -78,9 +79,12 @@ public static partial class AssistantScope
     /// <summary>
     /// Withholds every string in <paramref name="node"/> that names a column outside the semantic layer.
     /// <paramref name="denied"/> maps an object name to its columns outside the layer (case-insensitive both ways).
-    /// A string is withheld when it contains one of those column names AND its object's name appears either in the
-    /// string itself or in a string of the same JSON object or array, or of an enclosing one: that is what lets
+    /// A string is withheld when it contains one of those column names (or is one, whole, which is how a name with a
+    /// space in it is caught unquoted) AND its object's name appears either in the string itself or in a string or
+    /// property name of the same JSON object or array, or of an enclosing one: that is what lets
     /// <c>{ "objectName": "Employee", "columnName": "Ssn" }</c> be caught as well as <c>SELECT Ssn FROM dbo.Employee</c>.
+    /// A property whose NAME is such a column is withheld whole, its name included, since a response keyed by column
+    /// names says them in its keys.
     /// A column name that also exists, allowed, on an unrelated table is withheld too when both tables are named
     /// nearby; the rule errs toward withholding, like the query guard it mirrors. Returns the redacted node (a new
     /// node only when the root itself is a withheld string) and how many strings were withheld.
@@ -116,10 +120,24 @@ public static partial class AssistantScope
         {
             case JsonObject obj:
             {
+                var names = obj.Select(property => property.Key).ToList();
                 var context = ContextOf(obj.Select(property => property.Value), inherited);
-                var withheld = 0;
-                foreach (var name in obj.Select(property => property.Key).ToList())
+                foreach (var name in names)
                 {
+                    context.UnionWith(Tokenize(name));
+                }
+
+                var withheld = 0;
+                foreach (var name in names)
+                {
+                    if (NamesDeniedColumn(name, context, denied))
+                    {
+                        obj.Remove(name);
+                        obj[WithheldKey(obj)] = JsonValue.Create(WithheldText);
+                        withheld++;
+                        continue;
+                    }
+
                     var child = obj[name];
                     if (child is null)
                     {
@@ -177,6 +195,18 @@ public static partial class AssistantScope
         }
     }
 
+    /// <summary>A property name for a withheld property that <paramref name="obj"/> does not already have.</summary>
+    private static string WithheldKey(JsonObject obj)
+    {
+        var key = WithheldText;
+        for (var n = 2; obj.ContainsKey(key); n++)
+        {
+            key = $"{WithheldText} ({n})";
+        }
+
+        return key;
+    }
+
     /// <summary>The inherited context plus every identifier in the direct string members of one object or array.</summary>
     private static HashSet<string> ContextOf(IEnumerable<JsonNode?> members, IReadOnlySet<string> inherited)
     {
@@ -196,6 +226,12 @@ public static partial class AssistantScope
         string text, IReadOnlySet<string> context, IReadOnlyDictionary<string, IReadOnlySet<string>> denied)
     {
         var own = new HashSet<string>(Tokenize(text), StringComparer.OrdinalIgnoreCase);
+        var whole = text.Trim();
+        if (whole.Length is > 0 and <= MaxIdentifierLength)
+        {
+            own.Add(whole);
+        }
+
         if (own.Count == 0)
         {
             return false;
@@ -231,6 +267,7 @@ public static partial class AssistantScope
             case JsonObject obj:
                 foreach (var property in obj)
                 {
+                    tokens.UnionWith(Tokenize(property.Key));
                     CollectTokens(property.Value, tokens);
                 }
 
@@ -244,6 +281,11 @@ public static partial class AssistantScope
                 break;
             case JsonValue value when value.TryGetValue<string>(out var text):
                 tokens.UnionWith(Tokenize(text));
+                if (text.Trim() is { Length: > 0 and <= MaxIdentifierLength } whole)
+                {
+                    tokens.Add(whole);
+                }
+
                 break;
         }
     }
@@ -311,10 +353,12 @@ public static partial class AssistantScope
     }
 
     /// <summary>
-    /// Redacts one endpoint result for the assistant surface. A successful value result (<c>Ok&lt;T&gt;</c>, a plain
-    /// DTO) is serialized with the app's JSON options, redacted, and returned as JSON only when something was
-    /// withheld, so an unaffected response is returned exactly as the endpoint produced it. A problem result has its
-    /// detail redacted in place. Anything else (a stream, a file, a 201/202 with headers) passes through unchanged.
+    /// Redacts one endpoint result for the assistant surface. A value result (<c>Ok&lt;T&gt;</c>, a plain DTO, or an
+    /// error carrying a value) is serialized with the app's JSON options, redacted, and returned as JSON with its own
+    /// status only when something was withheld, so an unaffected response is returned exactly as the endpoint produced
+    /// it. A text result (a flow's YAML, a run's trace) is redacted line by line, every line read in the context of the
+    /// whole text. A problem result has its title, detail and extensions redacted in place, read together. A
+    /// 201/202/3xx result (its headers carry meaning) and a stream or a file pass through unchanged.
     /// </summary>
     public static async Task<object?> RedactResultAsync(HttpContext http, object? result, CancellationToken ct)
     {
@@ -325,26 +369,19 @@ public static partial class AssistantScope
         switch (inner)
         {
             case ProblemHttpResult problem:
-            {
-                if (problem.ProblemDetails.Detail is { Length: > 0 } detail)
-                {
-                    var denied = await LoadDeniedAsync(db, Tokenize(detail), ct).ConfigureAwait(false);
-                    Redact(JsonValue.Create(detail), denied, out var withheld);
-                    if (withheld > 0)
-                    {
-                        problem.ProblemDetails.Detail = WithheldText;
-                    }
-                }
-
+                await RedactProblemAsync(http, db, problem.ProblemDetails, ct).ConfigureAwait(false);
                 return result;
-            }
 
-            case IValueHttpResult { Value: { } value } when inner is IStatusCodeHttpResult { StatusCode: null or StatusCodes.Status200OK }:
-                return await RedactValueAsync(http, db, value, result, ct).ConfigureAwait(false);
+            case ContentHttpResult content:
+                return await RedactTextAsync(db, content, ct).ConfigureAwait(false) ?? result;
+
+            case IValueHttpResult { Value: { } value } when inner is IStatusCodeHttpResult { StatusCode: var status }
+                && (status is null or StatusCodes.Status200OK || status >= StatusCodes.Status400BadRequest):
+                return await RedactValueAsync(http, db, value, result, status, ct).ConfigureAwait(false);
 
             case string text:
             {
-                var denied = await LoadDeniedAsync(db, Tokenize(text), ct).ConfigureAwait(false);
+                var denied = await LoadDeniedAsync(db, TokensOf(text), ct).ConfigureAwait(false);
                 Redact(JsonValue.Create(text), denied, out var withheld);
                 return withheld > 0 ? WithheldText : result;
             }
@@ -353,12 +390,96 @@ public static partial class AssistantScope
                 return result;
 
             default:
-                return await RedactValueAsync(http, db, inner, result, ct).ConfigureAwait(false);
+                return await RedactValueAsync(http, db, inner, result, null, ct).ConfigureAwait(false);
         }
     }
 
+    /// <summary>The identifiers of <paramref name="text"/>, and the whole of it when it is short enough to be a name.</summary>
+    private static HashSet<string> TokensOf(string text)
+    {
+        var tokens = new HashSet<string>(Tokenize(text), StringComparer.OrdinalIgnoreCase);
+        if (text.Trim() is { Length: > 0 and <= MaxIdentifierLength } whole)
+        {
+            tokens.Add(whole);
+        }
+
+        return tokens;
+    }
+
+    private static async Task RedactProblemAsync(
+        HttpContext http, CatalogDbContext db, Microsoft.AspNetCore.Mvc.ProblemDetails problem, CancellationToken ct)
+    {
+        var options = http.RequestServices
+            .GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>().Value.SerializerOptions;
+        var node = new JsonObject
+        {
+            ["title"] = problem.Title,
+            ["detail"] = problem.Detail,
+        };
+        foreach (var (key, value) in problem.Extensions)
+        {
+            node["extension:" + key] = value is null ? null : JsonSerializer.SerializeToNode(value, value.GetType(), options);
+        }
+
+        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        CollectTokens(node, tokens);
+        var denied = await LoadDeniedAsync(db, tokens, ct).ConfigureAwait(false);
+        var before = node.DeepClone().AsObject();
+        Redact(node, denied, out var withheld);
+        if (withheld == 0)
+        {
+            return;
+        }
+
+        problem.Title = node.ContainsKey("title") ? node["title"]?.GetValue<string>() : WithheldText;
+        problem.Detail = node.ContainsKey("detail") ? node["detail"]?.GetValue<string>() : WithheldText;
+        foreach (var key in problem.Extensions.Keys.ToList())
+        {
+            // An extension redaction left alone keeps its own value; one whose NAME is a withheld column goes, name
+            // and all, as a withheld property of the JSON does.
+            if (!node.TryGetPropertyValue("extension:" + key, out var redacted))
+            {
+                problem.Extensions.Remove(key);
+                var placeholder = WithheldText;
+                for (var n = 2; problem.Extensions.ContainsKey(placeholder); n++)
+                {
+                    placeholder = $"{WithheldText} ({n})";
+                }
+
+                problem.Extensions[placeholder] = WithheldText;
+            }
+            else if (!JsonNode.DeepEquals(before["extension:" + key], redacted))
+            {
+                problem.Extensions[key] = redacted?.DeepClone();
+            }
+        }
+    }
+
+    /// <summary>The text result with every line that names a column outside the layer withheld, or null when nothing was.</summary>
+    private static async Task<object?> RedactTextAsync(CatalogDbContext db, ContentHttpResult content, CancellationToken ct)
+    {
+        if (string.IsNullOrEmpty(content.ResponseContent))
+        {
+            return null;
+        }
+
+        var lines = content.ResponseContent.Split('\n');
+        var node = new JsonArray(lines.Select(line => (JsonNode?)JsonValue.Create(line)).ToArray());
+        var tokens = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        CollectTokens(node, tokens);
+        var denied = await LoadDeniedAsync(db, tokens, ct).ConfigureAwait(false);
+        Redact(node, denied, out var withheld);
+        if (withheld == 0)
+        {
+            return null;
+        }
+
+        var redacted = string.Join('\n', node.Select(line => line!.GetValue<string>()));
+        return TypedResults.Content(redacted, content.ContentType, statusCode: content.StatusCode);
+    }
+
     private static async Task<object?> RedactValueAsync(
-        HttpContext http, CatalogDbContext db, object value, object? original, CancellationToken ct)
+        HttpContext http, CatalogDbContext db, object value, object? original, int? status, CancellationToken ct)
     {
         var options = http.RequestServices
             .GetRequiredService<IOptions<Microsoft.AspNetCore.Http.Json.JsonOptions>>().Value.SerializerOptions;
@@ -372,7 +493,7 @@ public static partial class AssistantScope
         CollectTokens(node, tokens);
         var denied = await LoadDeniedAsync(db, tokens, ct).ConfigureAwait(false);
         var redacted = Redact(node, denied, out var withheld);
-        return withheld == 0 ? original : TypedResults.Json(redacted, options);
+        return withheld == 0 ? original : TypedResults.Json(redacted, options, statusCode: status);
     }
 }
 
