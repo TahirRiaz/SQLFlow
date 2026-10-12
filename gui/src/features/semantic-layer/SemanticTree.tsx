@@ -13,7 +13,8 @@ import { semanticLayerApi } from "../../api/endpoints";
 import type { SemanticObjectCoverage, SemanticSchemaCoverage } from "../../api/types";
 import { metaForKind } from "../catalog/kindMeta";
 import { UNRESOLVED_LABEL } from "../catalog/nodeIds";
-import { errorText, SEMANTIC_ROOT, useDebouncedValue } from "./shared";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import { errorText, SEMANTIC_ROOT } from "./shared";
 
 const LEAF_PAGE_SIZE = 200;
 const OBJECT_PREFIX = "obj:";
@@ -28,7 +29,7 @@ interface DatabaseBranch { database: string | null; objectCount: number; layerOb
 
 const byNameCi = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base" });
 
-/** Folds the flat coverage rows into database > schema; with `layerOnly`, schemas holding no layer table drop out. */
+/** Folds the flat coverage rows into database > schema; with `layerOnly`, schemas holding no served table drop out. */
 function foldDatabases(rows: SemanticSchemaCoverage[], layerOnly: boolean): DatabaseBranch[] {
   const databases = new Map<string | null, DatabaseBranch>();
   for (const row of rows) {
@@ -52,7 +53,7 @@ function foldDatabases(rows: SemanticSchemaCoverage[], layerOnly: boolean): Data
   return branches.sort((a, b) => byNameCi(a.database ?? "", b.database ?? ""));
 }
 
-/** One object row: its kind icon, its name (and business name), and allowed/total columns as the coverage badge. */
+/** One object row: its kind icon, its name (and business name), and open/total columns as the coverage badge. */
 function ObjectLeaf({ row }: { row: SemanticObjectCoverage }) {
   return (
     <TreeNode
@@ -125,10 +126,10 @@ function ObjectLeaves({
 }
 
 /**
- * The semantic layer editor's explorer: database > schema > object over every object that has catalogued columns
- * (the only objects a column policy applies to), each object badged with allowed/total columns so the layer's
- * coverage reads at a glance. "In the layer only" narrows to objects with at least one allowed column. Typing two or
- * more characters replaces the tree with a flat name/business-name search.
+ * The AI context page's explorer: database > schema > object over every object that has catalogued columns (the only
+ * objects a context can open), each object badged with open/total columns so what the assistant may use reads at a
+ * glance. "In an AI context only" narrows to the objects an approved context serves (at least one open column). Typing
+ * two or more characters replaces the tree with a flat name/business-name search.
  */
 export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | null; onSelect: (key: string) => void }) {
   const [filter, setFilter] = useLocalStorageState("sqlflow.filters.semantic-layer.tree", "");
@@ -194,7 +195,7 @@ export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | 
           onCheckedChange={(checked) => setScope(checked ? "layer" : "all")}
           data-testid="semantic-tree-layer-only"
         />
-        <Label htmlFor="semantic-tree-layer-only" className="text-[13px] font-normal">In the layer only</Label>
+        <Label htmlFor="semantic-tree-layer-only" className="text-[13px] font-normal">In an AI context only</Label>
       </div>
 
       {schemas.isError && (
@@ -214,7 +215,7 @@ export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | 
       )}
 
       {schemas.data !== undefined && (
-        <div role="tree" aria-label="Semantic layer tables" tabIndex={0} onFocus={onTreeFocus} className="outline-none">
+        <div role="tree" aria-label="Tables an AI context can open" tabIndex={0} onFocus={onTreeFocus} className="outline-none">
           <TreeContext.Provider value={treeState}>
             {searching && (
               <>
@@ -233,7 +234,7 @@ export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | 
               <TreeNode
                 id="dbs#empty"
                 disabled
-                label={<NodeLabel text={layerOnly ? "No table is in the semantic layer yet" : "No object has catalogued columns yet"} />}
+                label={<NodeLabel text={layerOnly ? "No approved AI context serves a table yet" : "No object has catalogued columns yet"} />}
               />
             )}
             {!searching && databases.map((database) => {

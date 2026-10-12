@@ -147,9 +147,9 @@ export default function App() {
               </RequireScope>
             )}
           />
-          {/* Saved answers moved into the semantic layer as its example queries; keep old links working. */}
+          {/* Saved answers moved into the AI context page as its example queries; keep old links working. */}
           <Route path="/saved-answers" element={<Navigate to="/semantic-layer?tab=examples" replace />} />
-          {/* The column policy page became the semantic layer editor; keep old links working. */}
+          {/* The column policy page became the AI context page; keep old links working. */}
           <Route path="/column-policies" element={<Navigate to="/semantic-layer" replace />} />
           {/* The pages this build's GUI modules add (none in SQLFlow's own build), inside the workbench like every page. */}
           {moduleRouteElements("workbench")}

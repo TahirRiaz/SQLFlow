@@ -28,7 +28,8 @@ export function PanelHost() {
           <X className="size-3.5" />
         </button>
       </header>
-      <div className="min-h-0 flex-1 overflow-auto">{content.node}</div>
+      {/* Keyed by what it shows, so other content opens at its top rather than where the last one was scrolled to. */}
+      <div key={content.id} className="min-h-0 flex-1 overflow-auto">{content.node}</div>
     </section>
   );
 }

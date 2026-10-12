@@ -1,731 +1,143 @@
-import { useEffect, useState } from "react";
+import { useRef, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-import { KeyRound, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { CircleCheck, CircleSlash, KeyRound, Lock, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Switch } from "@/components/ui/switch";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isApiError } from "../../api/client";
-import { columnPolicyApi, semanticLayerApi } from "../../api/endpoints";
-import type {
-  ColumnPolicyState, SemanticCuratedJoin, SemanticDiscoveredJoin, SemanticExampleAdmin, SemanticMeasureAdmin,
-  SemanticObjectAdmin,
-} from "../../api/types";
-import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { semanticLayerApi } from "../../api/endpoints";
+import type { ColumnPolicyState, SemanticObjectAdmin } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DataTable, type Column } from "../../components/DataTable";
-import { EmptyState } from "../../components/EmptyState";
-import { Mono } from "../../components/Mono";
-import { RelativeTime } from "../../components/RelativeTime";
+import { DetailPair } from "../../components/DetailPair";
+import { tableContainer, useScrollFit } from "../../hooks/useScrollFit";
 import { encodeNodeId } from "../catalog/nodeIds";
-import { ExampleDialog } from "./ExampleDialog";
-import { JoinDialog, type JoinDraft } from "./JoinDialog";
-import type { PickedTable } from "./LayerTablePicker";
-import { MeasureDialog } from "./MeasureDialog";
-import {
-  errorText, formatList, parseList, qualifiedName, refreshSemanticLayer, SEMANTIC_ROOT, ServedBadge, textOrNull,
-} from "./shared";
+import { ExampleDisclosure } from "./AiContextDetail";
+import { CellText, DescribedText, ServedMark, ToneChip } from "./parts";
+import { errorText, FIT_MIN, FITTED_GRID, plural, qualifiedName, SEMANTIC_ROOT } from "./shared";
 
-type ObjectTab = "about" | "columns" | "relationships" | "measures" | "examples" | "powerbi";
+/** The explorer pane's own padding, which the fitted columns leave under them. */
+const PANE_PADDING = 12;
 
-// ---- About ---------------------------------------------------------------------------------------------------------
-
-/** The table-level business context: what the table is called and means, what people call it, and its key. */
-function AboutTab({ detail }: { detail: SemanticObjectAdmin }) {
-  const queryClient = useQueryClient();
-  const { annotation } = detail;
-  const [businessName, setBusinessName] = useState(annotation.businessName ?? "");
-  const [description, setDescription] = useState(annotation.description ?? "");
-  const [synonyms, setSynonyms] = useState(formatList(annotation.synonyms));
-  const [keyColumns, setKeyColumns] = useState(formatList(annotation.keyColumns));
-
-  const storedSynonyms = formatList(annotation.synonyms);
-  const storedKey = formatList(annotation.keyColumns);
-  useEffect(() => {
-    setBusinessName(annotation.businessName ?? "");
-    setDescription(annotation.description ?? "");
-    setSynonyms(storedSynonyms);
-    setKeyColumns(storedKey);
-  }, [annotation.businessName, annotation.description, storedSynonyms, storedKey]);
-
-  const save = useMutation({
-    mutationFn: () => semanticLayerApi.setAnnotation({
-      objectKey: detail.key,
-      businessName: textOrNull(businessName),
-      description: textOrNull(description),
-      synonyms: parseList(synonyms),
-      keyColumns: parseList(keyColumns),
-    }),
-    onSuccess: () => {
-      toast.success(`Saved the business context for ${detail.name}.`);
-      refreshSemanticLayer(queryClient);
-    },
-  });
-
-  const dirty = (annotation.businessName ?? "") !== businessName
-    || (annotation.description ?? "") !== description
-    || formatList(parseList(synonyms)) !== storedSynonyms
-    || formatList(parseList(keyColumns)) !== storedKey;
-
-  return (
-    <div className="flex max-w-3xl flex-col gap-4" data-testid="semantic-about">
-      {save.isError && <p className="text-[13px] text-destructive">{errorText(save.error)}</p>}
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="semantic-business-name">Business name</Label>
-        <Input
-          id="semantic-business-name"
-          value={businessName}
-          onChange={(event) => setBusinessName(event.target.value)}
-          placeholder="Bike trips"
-          className="h-8"
-          data-testid="semantic-business-name"
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="semantic-description">Description</Label>
-        <Textarea
-          id="semantic-description"
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          placeholder="What one row represents, and anything a query author must know (filters to apply, grain, lateness)."
-          className="min-h-28"
-          data-testid="semantic-description"
-        />
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="semantic-synonyms">Synonyms</Label>
-        <Input
-          id="semantic-synonyms"
-          value={synonyms}
-          onChange={(event) => setSynonyms(event.target.value)}
-          placeholder="rides, journeys"
-          className="h-8"
-          data-testid="semantic-synonyms"
-        />
-        <p className="text-xs text-muted-foreground">Comma-separated. The assistant&apos;s search matches these words.</p>
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="semantic-key">Key columns</Label>
-        <Input
-          id="semantic-key"
-          value={keyColumns}
-          onChange={(event) => setKeyColumns(event.target.value)}
-          placeholder="TripId"
-          className="h-8 font-mono text-[12px]"
-          data-testid="semantic-key"
-        />
-        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-          The columns identifying one row, in order. Every one must be allowed.
-          {detail.interpretedKeyColumns !== null && (
-            <>
-              <span>{`Interpreted from the code (${detail.interpretedKeyOrigin?.toLowerCase() ?? "unknown"}):`}</span>
-              <Mono>{detail.interpretedKeyColumns}</Mono>
-              <Button variant="ghost" size="xs" onClick={() => setKeyColumns(detail.interpretedKeyColumns ?? "")}>
-                Use it
-              </Button>
-            </>
-          )}
-        </p>
-      </div>
-      <div className="flex items-center gap-3">
-        <Button size="sm" onClick={() => save.mutate()} disabled={!dirty || save.isPending} data-testid="semantic-about-save">
-          {save.isPending && <Loader2 className="animate-spin" />}
-          Save
-        </Button>
-        {annotation.updatedUtc !== null && (
-          <span className="text-xs text-muted-foreground">
-            {`Last changed by ${annotation.updatedBy ?? "unknown"} `}
-            <RelativeTime value={annotation.updatedUtc} />
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---- Columns -------------------------------------------------------------------------------------------------------
-
-/**
- * One column: whether it is in the layer, and what it means. The switch saves immediately (the point of a toggle);
- * the text fields save when they lose focus, so typing does not fire a request per keystroke. Every save sends every
- * field, since the endpoint is a full upsert of the row. A column with no policy row yet renders unchecked: the
- * allow-list is default-deny.
- */
-function ColumnRow({ objectKey, column }: { objectKey: string; column: ColumnPolicyState }) {
-  const queryClient = useQueryClient();
-  const storedSynonyms = formatList(column.synonyms);
-  const [description, setDescription] = useState(column.description ?? "");
-  const [synonyms, setSynonyms] = useState(storedSynonyms);
-  const [reason, setReason] = useState(column.reason ?? "");
-
-  useEffect(() => {
-    setDescription(column.description ?? "");
-    setSynonyms(storedSynonyms);
-    setReason(column.reason ?? "");
-  }, [column.description, storedSynonyms, column.reason]);
-
-  const save = useMutation({
-    mutationFn: (isAllowed: boolean) => columnPolicyApi.set({
-      objectKey,
-      columnName: column.columnName,
-      isAllowed,
-      reason: textOrNull(reason),
-      description: textOrNull(description),
-      synonyms: parseList(synonyms),
-    }),
-    onSuccess: () => refreshSemanticLayer(queryClient),
-    onError: (error) => toast.error(errorText(error)),
-  });
-
-  const dirty = (column.description ?? "") !== description.trim()
-    || storedSynonyms !== formatList(parseList(synonyms))
-    || (column.reason ?? "") !== reason.trim();
-  const saveIfDirty = () => {
-    if (dirty && !save.isPending) {
-      save.mutate(column.isAllowed);
-    }
-  };
-
-  return (
-    <TableRow data-testid="semantic-column-row">
-      <TableCell className="whitespace-nowrap px-3 py-1.5 text-[13px] text-muted-foreground">{column.ordinal}</TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-1.5">
-        <span className="font-mono text-[12px] font-medium">{column.columnName}</span>
-      </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-1.5">
-        <Mono>{column.dataType ?? "-"}</Mono>
-        {column.nullable && <span className="ml-1 text-xs text-muted-foreground">null</span>}
-      </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-1.5">
-        <div className="flex items-center gap-2">
-          <Switch
-            checked={column.isAllowed}
-            disabled={save.isPending}
-            onCheckedChange={(checked) => save.mutate(checked)}
-            aria-label={`Allow ${column.columnName}`}
-            data-testid="semantic-column-toggle"
-          />
-          {save.isPending && <Loader2 className="size-3.5 animate-spin text-muted-foreground" />}
-        </div>
-      </TableCell>
-      <TableCell className="px-3 py-1.5">
-        <Input
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
-          onBlur={saveIfDirty}
-          placeholder="What it means"
-          className="h-7 min-w-56 text-[12px]"
-          disabled={save.isPending}
-          data-testid="semantic-column-description"
-        />
-      </TableCell>
-      <TableCell className="px-3 py-1.5">
-        <Input
-          value={synonyms}
-          onChange={(event) => setSynonyms(event.target.value)}
-          onBlur={saveIfDirty}
-          placeholder="turnover, sales"
-          className="h-7 min-w-40 text-[12px]"
-          disabled={save.isPending}
-          data-testid="semantic-column-synonyms"
-        />
-      </TableCell>
-      <TableCell className="px-3 py-1.5">
-        <Input
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          onBlur={saveIfDirty}
-          placeholder="Why (optional)"
-          className="h-7 min-w-36 text-[12px]"
-          disabled={save.isPending}
-          data-testid="semantic-column-reason"
-        />
-      </TableCell>
-      <TableCell className="whitespace-nowrap px-3 py-1.5 text-[13px] text-muted-foreground">
-        {column.updatedBy ?? "-"} <RelativeTime value={column.updatedUtc} />
-      </TableCell>
-    </TableRow>
-  );
-}
-
-const COLUMN_HEADERS = ["#", "Column", "Type", "Allowed", "Description", "Synonyms", "Reason", "Last changed"];
-
-function ColumnsTab({ detail }: { detail: SemanticObjectAdmin }) {
-  const queryClient = useQueryClient();
-  const [confirmDenyAll, setConfirmDenyAll] = useState(false);
-
-  const bulk = useMutation({
-    mutationFn: (isAllowed: boolean) => columnPolicyApi.setObject({ objectKey: detail.key, isAllowed }),
-    onSuccess: (_, isAllowed) => {
-      toast.success(isAllowed ? `Every column of ${detail.name} is allowed.` : `Every column of ${detail.name} is denied.`);
-      setConfirmDenyAll(false);
-      refreshSemanticLayer(queryClient);
-    },
-    onError: (error) => toast.error(errorText(error)),
-  });
-
-  if (detail.columns.length === 0) {
-    return <EmptyState title="This object has no catalogued columns yet" description="A connected catalog sync fills the column dictionary." />;
-  }
-
-  return (
-    <div className="flex flex-col gap-3" data-testid="semantic-columns">
-      <div className="flex flex-wrap items-center gap-2">
-        <p className="mr-auto text-[13px] text-muted-foreground">
-          Only an allowed column is visible to the assistant and readable by its queries. A toggle saves at once; text
-          saves when you leave the field.
-        </p>
-        <Button variant="outline" size="xs" onClick={() => bulk.mutate(true)} disabled={bulk.isPending} data-testid="semantic-allow-all">
-          Allow all
-        </Button>
-        <Button variant="outline" size="xs" onClick={() => setConfirmDenyAll(true)} disabled={bulk.isPending} data-testid="semantic-deny-all">
-          Deny all
-        </Button>
-      </div>
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              {COLUMN_HEADERS.map((header) => (
-                <TableHead key={header} className="h-8 whitespace-nowrap px-3 text-xs font-medium text-muted-foreground">
-                  {header}
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {detail.columns.map((column) => (
-              <ColumnRow key={column.columnName} objectKey={detail.key} column={column} />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      <ConfirmDialog
-        open={confirmDenyAll}
-        title={`Deny every column of ${detail.name}?`}
-        message="The table leaves the semantic layer: the assistant can no longer see it, and every measure, relationship, and example query that reads it is withheld until columns are allowed again."
-        confirmLabel="Deny all"
-        danger
-        busy={bulk.isPending}
-        onConfirm={() => bulk.mutate(false)}
-        onClose={() => setConfirmDenyAll(false)}
-      />
-    </div>
-  );
-}
-
-// ---- Relationships -------------------------------------------------------------------------------------------------
-
-function RelationshipsTab({ detail, table, inLayer }: { detail: SemanticObjectAdmin; table: PickedTable; inLayer: boolean }) {
-  const queryClient = useQueryClient();
-  const [draft, setDraft] = useState<JoinDraft | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<SemanticCuratedJoin | null>(null);
-
-  const remove = useMutation({
-    mutationFn: (id: number) => semanticLayerApi.deleteRelationship(id),
-    onSuccess: () => {
-      toast.success("Relationship deleted.");
-      setPendingDelete(null);
-      refreshSemanticLayer(queryClient);
-    },
-    onError: (error) => toast.error(errorText(error)),
-  });
-
-  const curatedColumns: Column<SemanticCuratedJoin>[] = [
-    {
-      id: "join",
-      header: "Join",
-      render: (row) => (
-        <span className="whitespace-normal break-words font-mono text-[12px]">
-          {row.fromColumns.map((column, i) => `${row.fromObjectName}.${column} = ${row.toObjectName}.${row.toColumns[i] ?? "?"}`).join(" AND ")}
-        </span>
-      ),
-    },
-    { id: "type", header: "Type", render: (row) => <Badge variant="outline" className="text-[11px]">{row.joinType}</Badge>, width: 80 },
-    { id: "description", header: "Description", render: (row) => row.description ?? <span className="text-muted-foreground">-</span> },
-    { id: "status", header: "Status", render: (row) => <ServedBadge problem={row.problem} />, width: 100 },
-    {
-      id: "actions",
-      header: "Actions",
-      align: "right",
-      width: 100,
-      render: (row) => (
-        <div className="flex justify-end gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-7"
-            aria-label="Edit relationship"
-            onClick={() => setDraft({
-              id: row.id,
-              from: { key: row.fromObjectKey, name: row.fromObjectName, database: null, schema: null },
-              to: { key: row.toObjectKey, name: row.toObjectName, database: null, schema: null },
-              pairs: row.fromColumns.map((column, i) => ({ from: column, to: row.toColumns[i] ?? "" })),
-              joinType: row.joinType,
-              description: row.description ?? "",
-            })}
-          >
-            <Pencil />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-7" aria-label="Delete relationship" onClick={() => setPendingDelete(row)}>
-            <Trash2 />
-          </Button>
-        </div>
-      ),
-    },
-  ];
-
-  const discoveredColumns: Column<SemanticDiscoveredJoin>[] = [
-    {
-      id: "other",
-      header: "Table",
-      render: (row) => <Mono>{qualifiedName(row.join.otherDatabase, row.join.otherSchema, row.join.otherName)}</Mono>,
-    },
-    { id: "on", header: "Join on", render: (row) => <span className="whitespace-normal break-words font-mono text-[12px]">{row.join.on}</span> },
-    {
-      id: "types",
-      header: "Used as",
-      render: (row) => (
-        <span className="flex flex-wrap gap-1">
-          {row.join.joinTypes.map((type) => <Badge key={type} variant="outline" className="text-[11px]">{type}</Badge>)}
-          {row.join.isRangeJoin && <Badge variant="outline" className="text-[11px]">range</Badge>}
-        </span>
-      ),
-      width: 130,
-    },
-    { id: "seen", header: "Seen in", render: (row) => `${row.join.occurrences ?? 0} script${row.join.occurrences === 1 ? "" : "s"}`, width: 100 },
-    { id: "status", header: "Status", render: (row) => <ServedBadge problem={row.problem} />, width: 100 },
-  ];
-
-  return (
-    <div className="flex flex-col gap-5" data-testid="semantic-relationships">
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <h3 className="mr-auto text-sm font-medium">{`Curated (${detail.curatedJoins.length})`}</h3>
-          <Button
-            size="xs"
-            variant="outline"
-            disabled={!inLayer}
-            onClick={() => setDraft({ id: null, from: table, to: null, pairs: [], joinType: "Inner", description: "" })}
-            data-testid="semantic-add-relationship"
-          >
-            <Plus />
-            Add relationship
-          </Button>
-        </div>
-        <DataTable<SemanticCuratedJoin>
-          columns={curatedColumns}
-          rows={detail.curatedJoins}
-          rowKey={(row) => row.id}
-          emptyMessage={inLayer
-            ? "No relationship declared. Add one to tell the assistant exactly how this table joins."
-            : "Allow at least one column to bring this table into the layer before declaring its joins."}
-          data-testid="semantic-curated-joins"
-        />
-      </section>
-      <section className="flex flex-col gap-2">
-        <h3 className="text-sm font-medium">{`Discovered from the code (${detail.discoveredJoins.length})`}</h3>
-        <p className="text-[13px] text-muted-foreground">
-          Joins the codebase&apos;s own SQL makes. One is served only when both tables are in the layer and every column
-          it joins on is allowed.
-        </p>
-        <DataTable<SemanticDiscoveredJoin>
-          columns={discoveredColumns}
-          rows={detail.discoveredJoins}
-          rowKey={(row) => `${row.join.otherObjectKey}|${row.join.ownColumns.join(",")}|${row.join.otherColumns.join(",")}`}
-          emptyMessage="Nothing in the codebase joins this table to another."
-          data-testid="semantic-discovered-joins"
-        />
-      </section>
-
-      {draft !== null && <JoinDialog draft={draft} onClose={() => setDraft(null)} />}
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title="Delete this relationship?"
-        message="The assistant stops being told about this join. Joins discovered from the code are unaffected."
-        confirmLabel="Delete"
-        danger
-        busy={remove.isPending}
-        onConfirm={() => pendingDelete !== null && remove.mutate(pendingDelete.id)}
-        onClose={() => setPendingDelete(null)}
-      />
-    </div>
-  );
-}
-
-// ---- Measures ------------------------------------------------------------------------------------------------------
-
-/** The measures table with edit and delete, shared by one table's Measures tab and the layer-wide measure list. */
-export function MeasuresTable({
-  measures, anchor, onOpenObject, emptyMessage, testId,
-}: {
-  measures: SemanticMeasureAdmin[];
-  /** Fixes the anchor of measures edited from here (a table's own tab); null for the layer-wide list. */
-  anchor: PickedTable | null;
-  /** Opens a measure's table; omitted where the table is already the one shown. */
-  onOpenObject?: (key: string) => void;
-  emptyMessage: string;
+/** A part of the object's detail: a caption with its count over the content, or one quiet line when there is nothing. */
+function Part({ title, count, empty, children, testId }: {
+  title: string;
+  count: number;
+  /** What the line says when the part holds nothing. */
+  empty: string;
+  children: ReactNode;
   testId: string;
 }) {
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<SemanticMeasureAdmin | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<SemanticMeasureAdmin | null>(null);
+  return (
+    <section className="flex flex-col gap-1.5" data-testid={testId}>
+      <h3 className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+        {title}
+        <span className={count === 0 ? "ml-1.5 font-mono" : "ml-1.5 font-mono text-foreground"}>{count}</span>
+      </h3>
+      {count === 0 ? <p className="text-[12px] text-muted-foreground">{empty}</p> : children}
+    </section>
+  );
+}
 
-  const remove = useMutation({
-    mutationFn: (id: number) => semanticLayerApi.deleteMeasure(id),
-    onSuccess: () => {
-      toast.success("Measure deleted.");
-      setPendingDelete(null);
-      refreshSemanticLayer(queryClient);
-    },
-    onError: (error) => toast.error(errorText(error)),
-  });
+/** Whether the assistant may use a column, as a glyph with the word on hover; a key column carries the key glyph too. */
+function OpenMark({ column, isKey }: { column: ColumnPolicyState; isKey: boolean }) {
+  const label = column.isAllowed
+    ? `Open to the assistant${column.context == null ? "" : ` through AI context '${column.context}'`}`
+    : "Closed: no approved AI context opens it";
+  return (
+    <span className="inline-flex items-center gap-1">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex" data-testid="semantic-column-open" data-open={column.isAllowed ? "true" : "false"}>
+            {column.isAllowed
+              ? <CircleCheck className="size-3.5 text-success" aria-label={label} />
+              : <Lock className="size-3.5 text-muted-foreground" aria-label={label} />}
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+      {isKey && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex"><KeyRound className="size-3.5 text-warning" aria-label="Key column" /></span>
+          </TooltipTrigger>
+          <TooltipContent>Key column</TooltipContent>
+        </Tooltip>
+      )}
+    </span>
+  );
+}
 
-  const columns: Column<SemanticMeasureAdmin>[] = [
-    { id: "name", header: "Name", render: (row) => <span className="font-mono text-[12px] font-medium">{row.name}</span> },
-    ...(onOpenObject === undefined ? [] : [{
-      id: "table",
-      header: "Table",
-      render: (row: SemanticMeasureAdmin) => (
-        <button type="button" className="font-mono text-[12px] text-primary hover:underline" onClick={() => onOpenObject(row.objectKey)}>
-          {row.objectName}
-        </button>
-      ),
-    }]),
-    { id: "expression", header: "Expression", render: (row) => <span className="whitespace-normal break-words font-mono text-[12px]">{row.expression}</span> },
-    { id: "description", header: "Description", render: (row) => row.description ?? <span className="text-muted-foreground">-</span> },
-    { id: "status", header: "Status", render: (row) => <ServedBadge problem={row.problem} />, width: 100 },
+/**
+ * The object's columns, compact enough to fit the explorer's pane: name, type, whether it is open, what it means. The rows
+ * scroll inside the room the pane shows under the object's header, so the first screen of the pane is the columns.
+ */
+function ColumnsGrid({ detail }: { detail: SemanticObjectAdmin }) {
+  const grid = useRef<HTMLDivElement>(null);
+  useScrollFit(grid, PANE_PADDING, FIT_MIN, tableContainer);
+  const key = new Set(detail.annotation.keyColumns.map((column) => column.toLowerCase()));
+  const columns: Column<ColumnPolicyState>[] = [
     {
-      id: "actions",
-      header: "Actions",
-      align: "right",
-      width: 100,
+      id: "name",
+      header: "Column",
+      render: (row) => <CellText text={row.columnName} maxWidth={136} mono className="font-medium" />,
+    },
+    {
+      id: "type",
+      header: "Type",
       render: (row) => (
-        <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="icon" className="size-7" aria-label={`Edit ${row.name}`} onClick={() => setEditing(row)}>
-            <Pencil />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-7" aria-label={`Delete ${row.name}`} onClick={() => setPendingDelete(row)}>
-            <Trash2 />
-          </Button>
-        </div>
+        <CellText text={`${row.dataType ?? "-"}${row.nullable ? " null" : ""}`} maxWidth={88} mono className="text-muted-foreground" />
       ),
+    },
+    {
+      id: "open",
+      header: "In context",
+      render: (row) => <OpenMark column={row} isKey={key.has(row.columnName.toLowerCase())} />,
+    },
+    {
+      id: "description",
+      header: "Description",
+      fill: true,
+      floor: 80,
+      render: (row) => <DescribedText description={row.description} synonyms={row.synonyms} />,
     },
   ];
 
   return (
-    <>
-      <DataTable<SemanticMeasureAdmin>
+    <div ref={grid} className={FITTED_GRID}>
+      <DataTable<ColumnPolicyState>
         columns={columns}
-        rows={measures}
-        rowKey={(row) => row.id}
-        emptyMessage={emptyMessage}
-        data-testid={testId}
+        rows={detail.columns}
+        rowKey={(row) => row.columnName}
+        emptyMessage="This object has no catalogued columns yet; a connected catalog sync fills the column dictionary."
+        data-testid="semantic-columns"
       />
-      {editing !== null && <MeasureDialog measure={editing} anchor={anchor} onClose={() => setEditing(null)} />}
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title={`Delete ${pendingDelete?.name ?? "this measure"}?`}
-        message="The assistant stops being offered this definition."
-        confirmLabel="Delete"
-        danger
-        busy={remove.isPending}
-        onConfirm={() => pendingDelete !== null && remove.mutate(pendingDelete.id)}
-        onClose={() => setPendingDelete(null)}
-      />
-    </>
+    </div>
   );
 }
 
-function MeasuresTab({ detail, table, inLayer }: { detail: SemanticObjectAdmin; table: PickedTable; inLayer: boolean }) {
-  const [creating, setCreating] = useState(false);
+/** One served-or-not line: what it is in mono, a quiet note under it, and whether the assistant is given it. */
+function ServedLine({ text, note, problem, testId }: { text: string; note?: ReactNode; problem: string | null; testId: string }) {
   return (
-    <div className="flex flex-col gap-2" data-testid="semantic-measures">
-      <div className="flex items-center gap-2">
-        <p className="mr-auto text-[13px] text-muted-foreground">
-          Named expressions over this table&apos;s allowed columns, reused verbatim by the assistant.
-        </p>
-        <Button size="xs" variant="outline" disabled={!inLayer} onClick={() => setCreating(true)} data-testid="semantic-add-measure">
-          <Plus />
-          Add measure
-        </Button>
+    <div className="flex min-w-0 flex-col gap-0.5" data-testid={testId}>
+      <div className="flex min-w-0 items-start gap-2">
+        <span className="min-w-0 flex-1 break-words font-mono text-[12px]">{text}</span>
+        <span className="shrink-0"><ServedMark problem={problem} /></span>
       </div>
-      <MeasuresTable
-        measures={detail.measures}
-        anchor={table}
-        emptyMessage={inLayer ? "No measure is defined over this table." : "Allow at least one column before defining measures."}
-        testId="semantic-object-measures"
-      />
-      {creating && <MeasureDialog measure={null} anchor={table} onClose={() => setCreating(false)} />}
+      {note !== undefined && <span className="text-[12px] text-muted-foreground">{note}</span>}
     </div>
   );
 }
-
-// ---- Examples ------------------------------------------------------------------------------------------------------
-
-function ExamplesTab({ detail }: { detail: SemanticObjectAdmin }) {
-  const queryClient = useQueryClient();
-  const [editing, setEditing] = useState<SemanticExampleAdmin | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<SemanticExampleAdmin | null>(null);
-
-  const remove = useMutation({
-    mutationFn: (id: number) => semanticLayerApi.deleteExample(id),
-    onSuccess: () => {
-      toast.success("Saved answer deleted.");
-      setPendingDelete(null);
-      refreshSemanticLayer(queryClient);
-    },
-    onError: (error) => toast.error(errorText(error)),
-  });
-
-  if (detail.examples.length === 0) {
-    return (
-      <EmptyState
-        title="No example query reads this table yet"
-        description="Examples are saved answers: questions someone confirmed an assistant answer to, matched to the tables their SQL reads."
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-3" data-testid="semantic-examples">
-      <p className="text-[13px] text-muted-foreground">
-        Questions already answered with SQL reading this table. The assistant is shown the ones that pass the column
-        allow-list, as precedent to mirror.
-      </p>
-      {detail.examples.map((example) => (
-        <div key={example.id} className="flex flex-col gap-2 rounded-md border p-3" data-testid="semantic-example">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="mr-auto text-[13px] font-medium">{example.question}</span>
-            <Badge variant="outline" className="text-[11px]">{example.provenance}</Badge>
-            <ServedBadge problem={example.problem} />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label={`Edit the saved answer to "${example.question}"`}
-              onClick={() => setEditing(example)}
-              data-testid="semantic-example-edit"
-            >
-              <Pencil />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label={`Delete the saved answer to "${example.question}"`}
-              onClick={() => setPendingDelete(example)}
-              data-testid="semantic-example-delete"
-            >
-              <Trash2 />
-            </Button>
-          </div>
-          <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono text-[12px]">{example.sql}</pre>
-          <span className="text-xs text-muted-foreground">
-            {example.confirmedBy === null ? "Confirmed " : `Confirmed by ${example.confirmedBy} `}
-            <RelativeTime value={example.confirmedUtc} />
-          </span>
-        </div>
-      ))}
-      {editing !== null && <ExampleDialog example={editing} onClose={() => setEditing(null)} />}
-      <ConfirmDialog
-        open={pendingDelete !== null}
-        title="Delete this saved answer?"
-        message="The assistant stops reusing this query, and questions that matched it are answered from scratch again."
-        confirmLabel="Delete"
-        danger
-        busy={remove.isPending}
-        onConfirm={() => pendingDelete !== null && remove.mutate(pendingDelete.id)}
-        onClose={() => setPendingDelete(null)}
-      />
-    </div>
-  );
-}
-
-// ---- Power BI ------------------------------------------------------------------------------------------------------
-
-/** What Power BI reports define on this table: read-only, since each report is the source of its definitions. */
-function PowerBiTab({ detail }: { detail: SemanticObjectAdmin }) {
-  if (detail.reportModels.length === 0) {
-    return (
-      <EmptyState
-        title="No Power BI report loads from this table"
-        description="A report's model appears here once a sync that ran pbix-extract has read it and one of its model tables resolved to this warehouse table."
-      />
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4" data-testid="semantic-report-models">
-      <p className="text-[13px] text-muted-foreground">
-        Measures, calculated columns, and relationships Power BI reports build on this table. The assistant is served only
-        those whose every column is allowed; a column the report renamed counts as not allowed.
-      </p>
-      {detail.reportModels.map((model) => (
-        <section
-          key={`${model.subscriberKey}#${model.reportFile}#${model.modelTable}`}
-          className="flex flex-col gap-3 rounded-md border p-3"
-          data-testid="semantic-report-model"
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[13px] font-medium">{model.subscriberName}</span>
-            <span className="font-mono text-[12px] text-muted-foreground">{model.reportFile}</span>
-            <Badge variant="outline" className="text-[11px]">{`model table ${model.modelTable}`}</Badge>
-          </div>
-          {model.fields.map((field) => (
-            <div key={`${field.kind}:${field.name}`} className="flex flex-col gap-1" data-testid="semantic-report-field">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="mr-auto font-mono text-[12px] font-medium">{field.name}</span>
-                <Badge variant="secondary" className="text-[11px]">
-                  {field.kind === "measure" ? "measure" : "calculated column"}
-                </Badge>
-                <ServedBadge problem={field.problem} />
-              </div>
-              {field.description !== null && <p className="text-xs text-muted-foreground">{field.description}</p>}
-              <pre className="overflow-x-auto whitespace-pre-wrap rounded-md bg-muted p-2 font-mono text-[12px]">{field.expression}</pre>
-            </div>
-          ))}
-          {model.relationships.map((relationship) => (
-            <div
-              key={`${relationship.ownColumn ?? ""}>${relationship.otherModelTable}.${relationship.otherColumn ?? ""}`}
-              className="flex flex-wrap items-center gap-2"
-              data-testid="semantic-report-relationship"
-            >
-              <span className="mr-auto font-mono text-[12px]">
-                {`${relationship.modelTable}[${relationship.ownColumn ?? "?"}] to ${relationship.otherModelTable}[${relationship.otherColumn ?? "?"}]`}
-              </span>
-              {relationship.cardinality !== null && (
-                <Badge variant="secondary" className="text-[11px]">{relationship.cardinality}</Badge>
-              )}
-              {!relationship.isActive && <Badge variant="outline" className="text-[11px]">inactive</Badge>}
-              <ServedBadge problem={relationship.problem} />
-            </div>
-          ))}
-        </section>
-      ))}
-    </div>
-  );
-}
-
-// ---- The panel -----------------------------------------------------------------------------------------------------
 
 /**
- * The semantic layer editor for one object: whether it is in the layer (its allowed columns) and the business
- * context an assistant is served with it, across About / Columns / Relationships / Measures / Examples. Each
- * annotation shows whether it is currently served or withheld (and why), because a column denied later silently
- * withdraws everything that names it.
+ * What the assistant may use of one object, read-only: whether an approved AI context serves it (and which), its columns
+ * with which are open, what its context says it means, and the joins, measures, example queries and Power BI models
+ * around it, each with whether it is served and, when it is not, why. Changing any of it is done in the context's file:
+ * what the file takes away stops at the next sync, and what it adds or changes waits for an admin's approval.
  */
 export function SemanticObjectPanel({ objectKey }: { objectKey: string }) {
-  const [tab, setTab] = useState<ObjectTab>("columns");
-  useEffect(() => setTab("columns"), [objectKey]);
-
   const query = useQuery({
     queryKey: [SEMANTIC_ROOT, "object", objectKey],
     queryFn: () => semanticLayerApi.object(objectKey),
@@ -747,55 +159,153 @@ export function SemanticObjectPanel({ objectKey }: { objectKey: string }) {
   }
 
   const detail = query.data;
-  const allowedCount = detail.columns.filter((column) => column.isAllowed).length;
-  const inLayer = allowedCount > 0;
-  const table: PickedTable = { key: detail.key, name: detail.name, database: detail.database, schema: detail.schema };
-  const servedKey = detail.annotation.keyColumns.length > 0;
+  const { annotation } = detail;
+  const openCount = detail.columns.filter((column) => column.isAllowed).length;
+  const fieldCount = detail.reportModels.reduce((sum, model) => sum + model.fields.length + model.relationships.length, 0);
 
   return (
-    <div data-testid="semantic-object-panel">
-      <div className="mb-1 flex flex-wrap items-center gap-2">
-        <h2 className="min-w-0 break-words font-mono text-base font-medium">{detail.name}</h2>
-        <Badge variant="secondary">{detail.kind}</Badge>
-        <Badge variant={inLayer ? "default" : "outline"} data-testid="semantic-object-coverage">
-          {inLayer ? `In the layer: ${allowedCount}/${detail.columns.length} columns` : "Not in the layer"}
-        </Badge>
-        {servedKey && (
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
-            <KeyRound className="size-3.5 text-warning" />
-            <Mono>{formatList(detail.annotation.keyColumns)}</Mono>
+    <div className="flex flex-col gap-4" data-testid="semantic-object-panel">
+      <div className="flex flex-col gap-1" data-testid="semantic-object-header">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="min-w-0 break-words font-mono text-base font-medium">{detail.name}</h2>
+          <Badge variant="secondary" className="text-[11px]">{detail.kind}</Badge>
+          <span data-testid="semantic-object-context">
+            {detail.context == null
+              ? <ToneChip icon={CircleSlash} tone="text-muted-foreground">Not in any AI context</ToneChip>
+              : <ToneChip icon={Sparkles} tone="text-success">{`In AI context '${detail.context}'`}</ToneChip>}
           </span>
-        )}
-        <div className="grow" />
-        <Button variant="outline" size="xs" asChild>
-          <Link to={`/catalog?node=${encodeURIComponent(encodeNodeId({ type: "object", objectKey: detail.key }))}`}>
-            Open in catalog
-          </Link>
-        </Button>
+          <div className="grow" />
+          <Button variant="outline" size="xs" asChild>
+            <Link to={`/catalog?node=${encodeURIComponent(encodeNodeId({ type: "object", objectKey: detail.key }))}`}>
+              Open in catalog
+            </Link>
+          </Button>
+        </div>
+        <p className="break-words text-xs text-muted-foreground">
+          <span className="break-all font-mono">{qualifiedName(detail.database, detail.schema, detail.name)}</span>
+          {annotation.businessName != null && <span>{`, known as ${annotation.businessName}`}</span>}
+        </p>
+        <p className="text-[12px] text-muted-foreground" data-testid="semantic-object-source">
+          {detail.context == null
+            ? "No approved AI context lists this table, so the assistant cannot use it. To open it, list it under tables: in an AI context file and approve that context."
+            : `${plural(openCount, "column")} of ${detail.columns.length} open. To change what the assistant may use here, edit the file of AI context '${detail.context}'; what it takes away stops at the next sync, and what it adds waits until an admin approves it.`}
+        </p>
       </div>
-      <p className="mb-1 font-mono text-xs text-muted-foreground">{qualifiedName(detail.database, detail.schema, detail.name)}</p>
-      {detail.annotation.businessName !== null && (
-        <p className="mb-4 text-[13px]">{detail.annotation.businessName}</p>
+
+      <Part title="Columns" count={detail.columns.length} empty="No catalogued columns yet." testId="semantic-columns-part">
+        <ColumnsGrid detail={detail} />
+      </Part>
+
+      {(annotation.description != null || annotation.synonyms.length > 0
+        || annotation.keyColumns.length > 0 || detail.interpretedKeyColumns != null) && (
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-x-6 gap-y-2" data-testid="semantic-about">
+          {annotation.synonyms.length > 0 && <DetailPair label="Synonyms">{annotation.synonyms.join(", ")}</DetailPair>}
+          {annotation.keyColumns.length > 0 && (
+            <DetailPair label="Key"><span className="font-mono text-[12px]">{annotation.keyColumns.join(", ")}</span></DetailPair>
+          )}
+          {detail.interpretedKeyColumns != null && (
+            <DetailPair label={`Key in the code (${detail.interpretedKeyOrigin?.toLowerCase() ?? "unknown"})`}>
+              <span className="font-mono text-[12px]">{detail.interpretedKeyColumns}</span>
+            </DetailPair>
+          )}
+          {annotation.description != null && (
+            <div className="col-span-full">
+              <DetailPair label="Description"><span className="whitespace-pre-wrap">{annotation.description}</span></DetailPair>
+            </div>
+          )}
+        </div>
       )}
 
-      <Tabs value={tab} onValueChange={(value) => setTab(value as ObjectTab)} className="mt-3 gap-4">
-        <TabsList variant="line">
-          <TabsTrigger value="about" data-testid="semantic-tab-about">About</TabsTrigger>
-          <TabsTrigger value="columns" data-testid="semantic-tab-columns">{`Columns (${allowedCount}/${detail.columns.length})`}</TabsTrigger>
-          <TabsTrigger value="relationships" data-testid="semantic-tab-relationships">
-            {`Relationships (${detail.curatedJoins.length})`}
-          </TabsTrigger>
-          <TabsTrigger value="measures" data-testid="semantic-tab-measures">{`Measures (${detail.measures.length})`}</TabsTrigger>
-          <TabsTrigger value="examples" data-testid="semantic-tab-examples">{`Examples (${detail.examples.length})`}</TabsTrigger>
-          <TabsTrigger value="powerbi" data-testid="semantic-tab-powerbi">{`Power BI (${detail.reportModels.length})`}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="about"><AboutTab detail={detail} /></TabsContent>
-        <TabsContent value="columns"><ColumnsTab detail={detail} /></TabsContent>
-        <TabsContent value="relationships"><RelationshipsTab detail={detail} table={table} inLayer={inLayer} /></TabsContent>
-        <TabsContent value="measures"><MeasuresTab detail={detail} table={table} inLayer={inLayer} /></TabsContent>
-        <TabsContent value="examples"><ExamplesTab detail={detail} /></TabsContent>
-        <TabsContent value="powerbi"><PowerBiTab detail={detail} /></TabsContent>
-      </Tabs>
+      <Part
+        title="Joins"
+        count={detail.curatedJoins.length + detail.discoveredJoins.length}
+        empty="No join declared in a context, and nothing in the codebase joins this table to another."
+        testId="semantic-relationships"
+      >
+        {detail.curatedJoins.map((join) => (
+          <ServedLine
+            key={join.id}
+            text={join.fromColumns.map((column, i) => `${join.fromObjectName}.${column} = ${join.toObjectName}.${join.toColumns[i] ?? "?"}`).join(" and ")}
+            note={[join.joinType === "Left" ? "Left join" : "Inner join", join.description]
+              .filter((part): part is string => part != null).join(". ")}
+            problem={join.problem}
+            testId="semantic-curated-join"
+          />
+        ))}
+        {detail.discoveredJoins.map((row) => (
+          <ServedLine
+            key={`${row.join.otherObjectKey}|${row.join.ownColumns.join(",")}|${row.join.otherColumns.join(",")}`}
+            text={`${qualifiedName(row.join.otherDatabase, row.join.otherSchema, row.join.otherName)} on ${row.join.on}`}
+            note={`Found in ${plural(row.join.occurrences ?? 0, "script")} of the codebase (${[...row.join.joinTypes, ...(row.join.isRangeJoin ? ["range"] : [])].join(", ")})`}
+            problem={row.problem}
+            testId="semantic-discovered-join"
+          />
+        ))}
+      </Part>
+
+      <Part title="Measures" count={detail.measures.length} empty="No measure is defined over this table." testId="semantic-measures">
+        {detail.measures.map((measure) => (
+          <ServedLine
+            key={measure.id}
+            text={`${measure.name} = ${measure.expression}`}
+            note={measure.description ?? undefined}
+            problem={measure.problem}
+            testId="semantic-measure"
+          />
+        ))}
+      </Part>
+
+      <Part
+        title="Examples"
+        count={detail.examples.length}
+        empty="No saved answer or context example reads this table."
+        testId="semantic-examples"
+      >
+        {detail.examples.map((example) => (
+          <ExampleDisclosure
+            key={example.id}
+            question={example.question}
+            sql={example.sql}
+            sourceRef={example.sourceRef}
+            extra={<span className="shrink-0"><ServedMark problem={example.problem} /></span>}
+            testId="semantic-example"
+          />
+        ))}
+      </Part>
+
+      <Part title="Power BI" count={fieldCount} empty="No Power BI report builds on this table." testId="semantic-report-models">
+        {detail.reportModels.map((model) => (
+          <div
+            key={`${model.subscriberKey}#${model.reportFile}#${model.modelTable}`}
+            className="flex flex-col gap-1.5 rounded-md border border-border p-2"
+            data-testid="semantic-report-model"
+          >
+            <div className="flex flex-wrap items-baseline gap-x-2 text-[12px]">
+              <span className="font-medium">{model.subscriberName}</span>
+              <span className="font-mono text-muted-foreground">{`${model.reportFile}, model table ${model.modelTable}`}</span>
+            </div>
+            {model.fields.map((field) => (
+              <ServedLine
+                key={`${field.kind}:${field.name}`}
+                text={`${field.name} = ${field.expression}`}
+                note={[field.kind === "measure" ? "Measure" : "Calculated column", field.description]
+                  .filter((part): part is string => part != null).join(". ")}
+                problem={field.problem}
+                testId="semantic-report-field"
+              />
+            ))}
+            {model.relationships.map((relationship) => (
+              <ServedLine
+                key={`${relationship.ownColumn ?? ""}>${relationship.otherModelTable}.${relationship.otherColumn ?? ""}`}
+                text={`${relationship.modelTable}[${relationship.ownColumn ?? "?"}] to ${relationship.otherModelTable}[${relationship.otherColumn ?? "?"}]`}
+                note={[relationship.cardinality, relationship.isActive ? null : "inactive"].filter((part): part is string => part != null).join(", ") || undefined}
+                problem={relationship.problem}
+                testId="semantic-report-relationship"
+              />
+            ))}
+          </div>
+        ))}
+      </Part>
     </div>
   );
 }

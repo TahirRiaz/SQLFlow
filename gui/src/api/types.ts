@@ -1617,13 +1617,13 @@ export interface CreateUserRequest {
 }
 
 // ---- PowerAI column policies ----------------------------------------------------------------------------------------
-// Admin-scope governance over which columns the AI assistant (and the ad-hoc query surface generally) may
-// read at all, as a default-deny allow-list: SearchEndpoints/LineageEndpoints show only a column an admin has
-// explicitly allowed, and ColumnPolicyGuard refuses any ad-hoc query that touches one that is not. The allow-list
-// IS the semantic layer's membership; a column's description and synonyms are its semantic annotations.
+// Which columns the AI assistant (and the ad-hoc query surface generally) may read at all, as a default-deny allow-list:
+// SearchEndpoints/LineageEndpoints show only an open column, and ColumnPolicyGuard refuses any ad-hoc query that touches
+// one that is not. The allow-list is written only by approving an AI context; it IS the semantic layer's membership,
+// and a column's description and synonyms are what its context says about it.
 
-/** One column of an object with its current allow state and annotations; used to render the per-table column
- * editor. A column with no policy row yet defaults to not allowed. */
+/** One column of an object, with whether an approved AI context opens it (and which), and what that context says it
+ * means. A column no approved context opens is closed. */
 export interface ColumnPolicyState {
   objectKey: string;
   columnName: string;
@@ -1636,41 +1636,14 @@ export interface ColumnPolicyState {
   updatedUtc: string | null;
   description: string | null;
   synonyms: string[];
-}
-
-/** One column currently NOT allowed - explicitly denied, or never reviewed at all - with enough of its owning
- * object to render the flat "everything currently blocked" overview without a second lookup per row.
- * `updatedUtc` is null for a column that has never been reviewed. */
-export interface RestrictedColumn {
-  objectKey: string;
-  objectName: string;
-  database: string | null;
-  schema: string | null;
-  columnName: string;
-  reason: string | null;
-  updatedBy: string | null;
-  updatedUtc: string | null;
-}
-
-/** Sets one column's allow flag and annotations; a full upsert of the row, safe to call repeatedly. */
-export interface SetColumnPolicyRequest {
-  objectKey: string;
-  columnName: string;
-  isAllowed: boolean;
-  reason: string | null;
-  description: string | null;
-  synonyms: string[];
-}
-
-/** Allows or denies every catalogued column of one object at once. */
-export interface SetObjectColumnPoliciesRequest {
-  objectKey: string;
-  isAllowed: boolean;
+  /** The AI context that opens the column, when one does. */
+  context?: string | null;
 }
 
 // ---- Semantic layer ---------------------------------------------------------------------------------------------
-// The allow-listed schema with its business context: what the AI assistant's schema tools serve. The admin editor
-// reads coverage and per-object state; the read side (overview) is what an assistant sees.
+// The allow-listed schema with its business context: what the AI assistant's schema tools serve, as the approved AI
+// contexts define it. The AI context page reads coverage and per-object state; the read side (overview) is what an
+// assistant sees.
 
 /** One (database, schema) of objects with catalogued columns, and how many are in the layer. */
 export interface SemanticSchemaCoverage {
@@ -1691,6 +1664,8 @@ export interface SemanticObjectCoverage {
   businessName: string | null;
   allowedColumns: number;
   totalColumns: number;
+  /** The AI context that serves the object, when one does. */
+  context?: string | null;
 }
 
 /** An object's table-level business context as stored. */
@@ -1774,15 +1749,7 @@ export interface SemanticExampleAdmin {
   problem: string | null;
 }
 
-/** An edit to a saved answer. The SQL is validated exactly as a confirmation is; a null `sourceRef` is worked out
- * from the tables the query reads. */
-export interface UpdateSemanticExampleRequest {
-  question: string;
-  sql: string;
-  sourceRef: string | null;
-}
-
-/** Everything the semantic layer editor shows for one object. */
+/** Everything the AI context page shows for one object: what it serves, and why anything it could serve is not. */
 export interface SemanticObjectAdmin {
   key: string;
   serverRef: string;
@@ -1799,6 +1766,8 @@ export interface SemanticObjectAdmin {
   measures: SemanticMeasureAdmin[];
   examples: SemanticExampleAdmin[];
   reportModels: SemanticReportModelAdmin[];
+  /** The AI context that serves the object, when one does. */
+  context?: string | null;
 }
 
 /** A Power BI measure or calculated column built on the object; `problem` says why it is withheld, null when served. */
@@ -1822,7 +1791,6 @@ export interface SemanticReportRelationshipAdmin {
   problem: string | null;
 }
 
-/** One report's model table that loads from the object: what the report defines on it, read-only. */
 /** What a report specification holds, counted. `warnings` are what the extractor declined to extract, and why. */
 export interface ReportSpecSummary {
   pages: number;
@@ -1834,7 +1802,8 @@ export interface ReportSpecSummary {
   warnings: string[];
 }
 
-/** A Power BI subscriber a report can be attached to. */
+/** A Power BI subscriber the repositories declare, and whether its library asks a sync to generate business questions
+ * for its report's visuals (`generateQuestions: true` in the subscriber library). */
 export interface SemanticReportSubscriber {
   repoId: string;
   repoName: string;
@@ -1842,6 +1811,7 @@ export interface SemanticReportSubscriber {
   name: string;
   type: string;
   owner: string | null;
+  generateQuestions: boolean;
 }
 
 /** A Power BI report the semantic layer holds. `origin` is "upload" (a person's) or "extracted" (the copy a sync
@@ -1865,7 +1835,7 @@ export interface SemanticReportSpec {
 }
 
 /** Where a report question came from: a sync generated it (and may replace it when the visual changes), or a person
- * added or edited it (and generation leaves it alone). */
+ * wrote it when questions could still be written by hand (generation leaves it alone). */
 export type ReportQuestionOrigin = "generated" | "manual";
 
 /** One business question on a report visual. */
@@ -1890,13 +1860,6 @@ export interface SemanticReportVisual {
   questionEntries: SemanticReportQuestion[];
 }
 
-/** Adds a person's question to a report visual. */
-export interface AddReportQuestionRequest {
-  repoId: string;
-  visualKey: string;
-  question: string;
-}
-
 /** One page of a served report, with its visuals in order. */
 export interface SemanticReportPage {
   reportFile: string;
@@ -1913,54 +1876,17 @@ export interface SemanticReportSpecDetail {
   pages: SemanticReportPage[];
 }
 
-/** Stores a specification for a Power BI subscriber, replacing an earlier upload of the same report. */
-export interface StoreSemanticReportSpecRequest {
-  repoId: string;
-  subscriber: string;
-  reportFile: string;
-  spec: string;
-}
-
-/** `syncQueued` is false for a repo synced from a local path, which applies the report on its next `sqlflow db sync`. */
-export interface StoreSemanticReportSpecResult {
-  report: SemanticReportSpecDetail;
-  replaced: boolean;
-  syncQueued: boolean;
-}
-
-/** A report the isolated extractor read, not yet stored. */
-export interface ExtractedSemanticReport {
-  reportFile: string;
-  spec: string;
-  summary: ReportSpecSummary;
-}
-
-export interface DeleteSemanticReportSpecResult {
-  syncQueued: boolean;
-}
-
-/** Whether a raw .pbix can be uploaded here, and the size limits. */
+/** What the report surface can do on this deployment: whether a raw .pbix can be extracted, the size limits, and
+ * whether business questions can be generated at all (the deployment has an Anthropic key; a subscriber's library then
+ * asks for them with `generateQuestions: true`). */
 export interface SemanticReportCapabilities {
   extractionEnabled: boolean;
   maxReportBytes: number;
   maxSpecBytes: number;
-  /** Whether a sync generates business questions for report visuals (a deployment setting). */
-  questionGenerationEnabled: boolean;
+  questionGenerationAvailable: boolean;
 }
 
-/** Whether a sync generates business questions for report visuals. `override` is an admin's choice (null follows
- * `deploymentDefault`); nothing can turn generation on while `available` is false (no Anthropic key). */
-export interface QuestionGeneration {
-  available: boolean;
-  deploymentDefault: boolean;
-  override: boolean | null;
-  enabled: boolean;
-  updatedBy: string | null;
-  updatedUtc: string | null;
-  /** On a change that turned generation on, how many repos had a sync queued to generate the missing questions. */
-  syncsQueued: number;
-}
-
+/** One report's model table that loads from the object: what the report defines on it, read-only. */
 export interface SemanticReportModelAdmin {
   subscriberKey: string;
   subscriberName: string;
@@ -1970,36 +1896,6 @@ export interface SemanticReportModelAdmin {
   relationships: SemanticReportRelationshipAdmin[];
 }
 
-export interface SetSemanticAnnotationRequest {
-  objectKey: string;
-  businessName: string | null;
-  description: string | null;
-  synonyms: string[];
-  keyColumns: string[];
-}
-
-export interface SemanticInstructions {
-  instructions: string | null;
-  updatedBy: string | null;
-  updatedUtc: string | null;
-}
-
-export interface UpsertSemanticMeasureRequest {
-  name: string;
-  objectKey: string;
-  expression: string;
-  description: string | null;
-}
-
-export interface UpsertSemanticJoinRequest {
-  fromObjectKey: string;
-  fromColumns: string[];
-  toObjectKey: string;
-  toColumns: string[];
-  joinType: string;
-  description: string | null;
-}
-
 /** A (database, schema) holding layer tables. */
 export interface SemanticSchema {
   database: string | null;
@@ -2007,12 +1903,138 @@ export interface SemanticSchema {
   tableCount: number;
 }
 
-/** The layer at a glance, exactly as an assistant's get_semantic_layer call reads it. */
+/** An approved AI context as the assistant sees it: what it covers and how many tables it serves now. */
+export interface SemanticContext {
+  name: string;
+  description?: string | null;
+  tableCount: number;
+}
+
+/** The layer at a glance, exactly as an assistant's get_semantic_layer call reads it: the approved AI contexts it is
+ * made of, their instructions, where its tables live, and every servable measure. */
 export interface SemanticOverview {
+  contexts: SemanticContext[];
   instructions: string | null;
   tableCount: number;
   schemas: SemanticSchema[];
   measures: SemanticMeasure[];
+}
+
+// ---- AI contexts --------------------------------------------------------------------------------------------------
+// What the assistant may use for business questions, defined in ai-context.yaml / *.ai-context.yaml files in source
+// control. A file only proposes a context; nothing of it is served until an admin approves that exact version (its
+// hash). A changed file waits for approval again while the approved version keeps being served, narrowed to what the
+// file still gives.
+
+/** `awaiting-approval`: never approved, and the current version can be. `approved`: the approved version is the one
+ * the file proposes. `changed`: the file proposes another version; the approved one is still served, narrowed.
+ * `invalid`: the current version has problems and cannot be approved (an approved version, if any, is still served). */
+export type AiContextStatus = "awaiting-approval" | "approved" | "changed" | "invalid";
+
+/** Where one AI context stands. The versions are 64-character hex hashes. */
+export interface AiContextSummary {
+  name: string;
+  description?: string | null;
+  repoId: string;
+  repoName: string;
+  /** The file within the repository. */
+  path: string;
+  status: AiContextStatus;
+  /** The version the file proposes; absent while the file does not read. */
+  currentVersion?: string | null;
+  approvedVersion?: string | null;
+  approvedBy?: string | null;
+  approvedUtc?: string | null;
+  /** When a sync last read the file. */
+  syncedUtc: string;
+  /** How many tables the file proposes. */
+  tableCount: number;
+  /** How many tables the context serves now. */
+  servedTableCount: number;
+  /** How many problems keep the current version from being approved. */
+  problemCount: number;
+}
+
+export interface AiContextList {
+  contexts: AiContextSummary[];
+  /** Whether content an admin typed in the GUI before contexts were files is waiting to be exported. */
+  hasEarlierContent: boolean;
+}
+
+/** One open column of a context's table, with what the file says about it. */
+export interface AiContextColumn {
+  name: string;
+  description?: string | null;
+  synonyms: string[];
+}
+
+export interface AiContextMeasure {
+  name: string;
+  expression: string;
+  description?: string | null;
+}
+
+/** One join from a context's table, its columns paired by position. */
+export interface AiContextJoin {
+  toObjectKey: string;
+  /** The joined table as the file names it. */
+  toDisplay: string;
+  columns: string[];
+  toColumns: string[];
+  joinType: "Inner" | "Left";
+  description?: string | null;
+}
+
+/** One table of a context version. Listing a table opens every column of it except those under its `deny:` list;
+ * `columns` describes the open ones. */
+export interface AiContextTable {
+  objectKey: string;
+  /** The table as the file names it. */
+  display: string;
+  businessName?: string | null;
+  description?: string | null;
+  synonyms: string[];
+  /** The columns identifying one row. */
+  key: string[];
+  /** Every open column: the table's columns but the denied ones. */
+  columns: AiContextColumn[];
+  /** The columns kept closed to the assistant. */
+  denied: string[];
+  measures: AiContextMeasure[];
+  joins: AiContextJoin[];
+}
+
+export interface AiContextExample {
+  question: string;
+  sql: string;
+  sourceRef?: string | null;
+  objectKeys: string[];
+}
+
+/** One version of an AI context, resolved against the catalog. */
+export interface AiContextVersion {
+  name: string;
+  description?: string | null;
+  instructions?: string | null;
+  tables: AiContextTable[];
+  examples: AiContextExample[];
+}
+
+/** One thing approving the proposed version would change (or, never approved, would serve). */
+export interface AiContextChange {
+  kind: "added" | "removed" | "changed";
+  subject: string;
+  detail?: string | null;
+}
+
+/** One AI context in full: where it stands, the version its file proposes, the version approved, what approving the
+ * proposed one would change, and why it cannot be approved when it cannot. */
+export interface AiContextDetail {
+  summary: AiContextSummary;
+  current?: AiContextVersion | null;
+  approved?: AiContextVersion | null;
+  changes: AiContextChange[];
+  problems: string[];
 }
 
 // ---- PowerAI confirmed examples ---------------------------------------------------------------------------------

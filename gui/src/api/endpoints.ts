@@ -18,14 +18,10 @@ import type {
   GenerateNotificationDigestRequest, NotificationDelivery, NotificationDigest, NotificationDigestSummary,
   NotificationQueuedDelivery, NotificationSubscription, SendNotificationDigestRequest,
   ObjectHit, ObjectRepo, PagedResult,
-  ColumnPolicyState, RestrictedColumn, SetColumnPolicyRequest, SetObjectColumnPoliciesRequest,
-  SemanticAnnotation, SemanticCuratedJoin, SemanticInstructions, SemanticMeasureAdmin, SemanticObjectAdmin,
-  SemanticObjectCoverage, SemanticOverview, SemanticSchemaCoverage, SetSemanticAnnotationRequest,
-  UpsertSemanticJoinRequest, UpsertSemanticMeasureRequest,
-  ConfirmQuestionRequest, ConfirmedQuestion, SemanticExampleAdmin, UpdateSemanticExampleRequest,
-  AddReportQuestionRequest, DeleteSemanticReportSpecResult, ExtractedSemanticReport, QuestionGeneration,
-  SemanticReportQuestion, SemanticReportCapabilities, SemanticReportSpec,
-  SemanticReportSpecDetail, SemanticReportSubscriber, StoreSemanticReportSpecRequest, StoreSemanticReportSpecResult,
+  AiContextDetail, AiContextList,
+  SemanticObjectAdmin, SemanticObjectCoverage, SemanticOverview, SemanticSchemaCoverage,
+  ConfirmQuestionRequest, ConfirmedQuestion, SemanticExampleAdmin,
+  SemanticReportCapabilities, SemanticReportSpec, SemanticReportSpecDetail, SemanticReportSubscriber,
   PrepareQueryRequest, PreparedQuery,
   FlowParameters,
   PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
@@ -609,24 +605,25 @@ export const userApi = {
   roles: () => get<Role[]>("/api/v1/roles"),
 };
 
-// ---- PowerAI column policies (admin-scope: which columns are in the semantic layer at all) ------------------------
+// ---- AI contexts (admin scope: what the assistant may use, and the approval that lets it) ---------------------------
 
-export const columnPolicyApi = {
-  /** Every column currently NOT allowed (explicitly denied, or never reviewed), across the whole catalog, for
-   * the blocked-columns audit. */
-  list: (query: PageQuery = {}) =>
-    get<PagedResult<RestrictedColumn>>("/api/v1/powerai/column-policies", query as QueryParams),
-  /** Every column of one object with its current policy state and annotations. */
-  forObject: (objectKey: string) =>
-    get<ColumnPolicyState[]>(`/api/v1/powerai/column-policies/objects/${encodeURIComponent(objectKey)}`),
-  /** A full upsert of one column's allow flag, reason, description, and synonyms. */
-  set: (request: SetColumnPolicyRequest) => put<ColumnPolicyState>("/api/v1/powerai/column-policies", request),
-  /** Allows or denies every column of one object at once. */
-  setObject: (request: SetObjectColumnPoliciesRequest) =>
-    put<ColumnPolicyState[]>("/api/v1/powerai/column-policies/objects", request),
+export const aiContextApi = {
+  /** Every AI context a file proposes and where it stands, and whether earlier GUI content waits to be exported. */
+  list: () => get<AiContextList>("/api/v1/powerai/ai-contexts"),
+  /** One context in full: both versions, what approving the proposed one would change, and its problems. */
+  get: (name: string) => get<AiContextDetail>(`/api/v1/powerai/ai-contexts/${encodeURIComponent(name)}`),
+  /** Approves the version reviewed, which must still be the one the file proposes; 409 when it is not, or when the
+   * version has problems. */
+  approve: (name: string, version: string) =>
+    post<AiContextDetail>(`/api/v1/powerai/ai-contexts/${encodeURIComponent(name)}/approve`, { version }),
+  /** Stops serving the context at once; its file stays, and approving it again serves it again. */
+  revoke: (name: string) => post<AiContextDetail>(`/api/v1/powerai/ai-contexts/${encodeURIComponent(name)}/revoke`, {}),
+  /** What an admin typed in the GUI before contexts were files, as one context file to review and commit; 404 when
+   * there is none. */
+  earlierContent: () => getText("/api/v1/powerai/ai-contexts/earlier-content"),
 };
 
-// ---- Semantic layer (the allow-listed schema and its business context) ---------------------------------------------
+// ---- Semantic layer (the served schema and its business context, read-only) ---------------------------------------
 
 export interface SemanticObjectQuery extends PageQuery {
   database?: string;
@@ -644,14 +641,13 @@ export const semanticLayerApi = {
    * contains every search word. */
   examples: (query: SemanticExampleQuery = {}) =>
     get<PagedResult<SemanticExampleAdmin>>("/api/v1/powerai/semantic-layer/examples", query as QueryParams),
-  /** Corrects a saved answer, validated exactly as a confirmation is; 409 when it would duplicate another. */
-  updateExample: (id: number, request: UpdateSemanticExampleRequest) =>
-    put<SemanticExampleAdmin>(`/api/v1/powerai/semantic-layer/examples/${id}`, request),
-  /** Deletes a saved answer: later questions stop finding it and it can no longer be auto-run. */
+  /** Removes a saved answer a person confirmed or a report gave: later questions stop finding it and it can no longer
+   * be auto-run. 409 for one an AI context gives, which is removed from its file instead. */
   deleteExample: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/examples/${id}`),
-  /** The layer as an assistant reads it (read scope): instructions, where its tables live, servable measures. */
+  /** The layer as an assistant reads it (read scope): the approved contexts, their instructions, where the tables
+   * live, servable measures. */
   overview: () => get<SemanticOverview>("/api/v1/semantic-layer"),
-  /** Coverage per (database, schema), for the editor's tree skeleton. */
+  /** Coverage per (database, schema), for the explorer's tree skeleton. */
   schemas: () => get<SemanticSchemaCoverage[]>("/api/v1/powerai/semantic-layer/schemas"),
   /** Objects with catalogued columns and their coverage, filterable, paged. */
   objects: ({ inLayer, ...query }: SemanticObjectQuery = {}) =>
@@ -659,52 +655,18 @@ export const semanticLayerApi = {
       ...query,
       inLayer: inLayer === true ? "true" : undefined,
     } as QueryParams),
-  /** Everything the editor shows for one object. */
+  /** Everything the page shows for one object. */
   object: (key: string) => get<SemanticObjectAdmin>("/api/v1/powerai/semantic-layer/objects/detail", { key }),
-  setAnnotation: (request: SetSemanticAnnotationRequest) =>
-    put<SemanticAnnotation>("/api/v1/powerai/semantic-layer/objects/annotation", request),
-  instructions: () => get<SemanticInstructions>("/api/v1/powerai/semantic-layer/instructions"),
-  setInstructions: (instructions: string | null) =>
-    put<SemanticInstructions>("/api/v1/powerai/semantic-layer/instructions", { instructions }),
-  measures: () => get<SemanticMeasureAdmin[]>("/api/v1/powerai/semantic-layer/measures"),
-  createMeasure: (request: UpsertSemanticMeasureRequest) =>
-    post<SemanticMeasureAdmin>("/api/v1/powerai/semantic-layer/measures", request),
-  updateMeasure: (id: number, request: UpsertSemanticMeasureRequest) =>
-    put<SemanticMeasureAdmin>(`/api/v1/powerai/semantic-layer/measures/${id}`, request),
-  deleteMeasure: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/measures/${id}`),
-  createRelationship: (request: UpsertSemanticJoinRequest) =>
-    post<SemanticCuratedJoin>("/api/v1/powerai/semantic-layer/relationships", request),
-  updateRelationship: (id: number, request: UpsertSemanticJoinRequest) =>
-    put<SemanticCuratedJoin>(`/api/v1/powerai/semantic-layer/relationships/${id}`, request),
-  deleteRelationship: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/relationships/${id}`),
-  /** Whether a raw .pbix can be uploaded (the isolated extractor is configured), and the size limits. */
+  /** Whether business questions can be generated on this deployment, and the report size limits. */
   reportCapabilities: () => get<SemanticReportCapabilities>("/api/v1/powerai/semantic-layer/reports/capabilities"),
-  /** Adds a person's question to a report visual; generation never replaces it. */
-  addReportQuestion: (request: AddReportQuestionRequest) =>
-    post<SemanticReportQuestion>("/api/v1/powerai/semantic-layer/reports/questions", request),
-  /** Rewrites a report question; a generated one becomes the person's. */
-  updateReportQuestion: (id: number, question: string) =>
-    put<SemanticReportQuestion>(`/api/v1/powerai/semantic-layer/reports/questions/${id}`, { question }),
+  /** Removes one business question from a report visual; a visual left with none gets fresh ones at the next sync
+   * while its subscriber's library asks for generation. */
   deleteReportQuestion: (id: number) => del<void>(`/api/v1/powerai/semantic-layer/reports/questions/${id}`),
-  /** Whether a sync generates business questions for report visuals. */
-  questionGeneration: () => get<QuestionGeneration>("/api/v1/powerai/semantic-layer/reports/question-generation"),
-  /** Turns question generation on or off (`enabled: null` follows the deployment default). */
-  setQuestionGeneration: (enabled: boolean | null) =>
-    put<QuestionGeneration>("/api/v1/powerai/semantic-layer/reports/question-generation", { enabled }),
-  /** The Power BI subscribers the repositories declare: what a report can be attached to. */
+  /** The Power BI subscribers the repositories declare, with whether each asks for generated questions. */
   reportSubscribers: () => get<SemanticReportSubscriber[]>("/api/v1/powerai/semantic-layer/reports/subscribers"),
   /** The Power BI reports the layer holds, uploads first. */
   reports: () => get<SemanticReportSpec[]>("/api/v1/powerai/semantic-layer/reports"),
   report: (id: number) => get<SemanticReportSpecDetail>(`/api/v1/powerai/semantic-layer/reports/${id}`),
-  /** Has the isolated extractor read a .pbix; nothing is stored until storeReport is called with the answer. */
-  extractReport: (file: Blob, reportFile: string, signal?: AbortSignal) =>
-    postBinary<ExtractedSemanticReport>(
-      "/api/v1/powerai/semantic-layer/reports/extract", file, "application/octet-stream", { reportFile }, signal),
-  /** Stores a specification for a subscriber; the repo's managed sync is then asked to apply it. */
-  storeReport: (request: StoreSemanticReportSpecRequest) =>
-    post<StoreSemanticReportSpecResult>("/api/v1/powerai/semantic-layer/reports", request),
-  deleteReport: (id: number) =>
-    del<DeleteSemanticReportSpecResult>(`/api/v1/powerai/semantic-layer/reports/${id}`),
 };
 
 // ---- PowerAI confirmed examples (the learning loop's write half) ---------------------------------------------------

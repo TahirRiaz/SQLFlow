@@ -17,7 +17,6 @@
   "include": [
     "unit/**/*.ts",
     "src/features/chat/answerSql.ts",
-    "src/features/chat/queryResultPlan.ts",
-    "src/features/semantic-layer/reportFile.ts"
+    "src/features/chat/queryResultPlan.ts"
   ]
 }

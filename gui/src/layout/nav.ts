@@ -122,7 +122,8 @@ export const navGroups: NavGroup[] = [
     requiresScope: "admin",
     items: [
       { label: "Users", to: "/users", icon: Users, testId: "nav-users" },
-      { label: "AI knowledge", to: "/semantic-layer", icon: Sparkles, testId: "nav-semantic-layer" },    ],
+      { label: "AI context", to: "/semantic-layer", icon: Sparkles, testId: "nav-semantic-layer" },
+    ],
   },
   {
     id: "settings",
