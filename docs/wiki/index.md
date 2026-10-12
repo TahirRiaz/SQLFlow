@@ -87,6 +87,9 @@ to narrow a search to one kind of page.
 - [The semantic layer is the column allow-list](decisions/semantic-layer-is-the-allow-list.md) - one
   estate-wide layer instead of named contexts, removing raw schema tools from the chat instead of filtering the
   shared endpoints, and the no-tracking update bug building it exposed.
+- [AI contexts are files an admin approves](decisions/ai-contexts-are-files-an-admin-approves.md) - why the
+  layer moved from GUI editing into files that only propose, why an admin approves an exact version, why a file
+  denies columns instead of listing them, and why removals apply at once while additions wait.
 - [A Power BI report travels as its specification](decisions/powerbi-report-specifications.md) - why the
   extractor stayed put while its output moved into committed files and the semantic layer, why uploads are read by
   an isolated service, and the silent model loss on control plane syncs that forced it.

@@ -10,8 +10,9 @@ stack on 2026-09-16; if a case disagrees, check the "State" section first before
 1. Stack up: `cd deploy/compose && docker compose up -d --build`. `curl http://localhost:5000/health/live`
    answers `Healthy`. GUI at http://localhost:8081.
 2. Estate synced: `lineage-demo` (flows plus confirmed examples 1 to 3) and `powerai-adventureworks` (this
-   folder, synced with `--connect`; see [README.md](README.md)), with the six AdventureWorks tables the report
-   reads allow-listed.
+   folder, synced with `--connect`; see [README.md](README.md)), and the AI contexts both carry approved
+   (`lineage-demo` and `adventureworks-sales`, on the GUI's AI context page or with
+   `sqlflow ai-context approve <name> --version <version>`).
 3. MCP binary current: `cargo build -p sqlflow-mcp` in `tools/`. The project `.mcp.json` runs
    `tools/target/debug/sqlflow-mcp.exe` against `http://localhost:5000`. Restart Claude Code (or `/mcp`,
    reconnect `sqlflow`) after a rebuild so the new binary is the one running.
@@ -26,9 +27,9 @@ stack on 2026-09-16; if a case disagrees, check the "State" section first before
 | Schema registration | `adventureworks_00_sch` (kind `sch`) registers 31 tables and 5 views of `AdventureWorks.dbo` through `${env:SQLFLOW_ADVENTUREWORKS_DB}`; the `AdventureWorks_Sales` library declares no connection |
 | Subscribers | `AdventureWorks_Sales` (PowerBI, key `subscriber\|\|\|adventureworks_sales`), `Exec_Dashboard`, `Finance_Workbook` |
 | Semantic layer | 15 tables: `AdventureWorks.dbo` 6, `sqlflowcatalogtests.demo` 9 |
-| AdventureWorks allow-list | `DimCustomer`, `DimDate`, `DimProduct`, `DimReseller`, `DimSalesTerritory`, `FactResellerSales` (all columns). `DimEmployee` and the rest are NOT allowed |
+| AI contexts | `lineage-demo` (the 9 `demo` tables) and `adventureworks-sales` (`DimCustomer`, `DimDate`, `DimProduct`, `DimReseller`, `DimSalesTerritory`, `FactResellerSales`, all columns), both approved. `DimEmployee` and the rest are in no context |
 | Confirmed examples | 1 "What is total revenue by country?", 2 "how many customers do we have?", 3 "how much revenue have we made?" (all on `${env:SQLFLOW_DEMO_DB}`), 10003 "What are reseller sales by region?" (AdventureWorks, no datasource stored; it is inferred from the registration) |
-| Generated visual questions | none: the stack has no Anthropic key, so question generation is off |
+| Generated visual questions | none: no subscriber sets `generateQuestions`, and the stack has no Anthropic key |
 | Question expansion | done by Claude Code itself: `find_similar_questions` takes `expanded_terms`, and the server's own expansion (`ExpandSynonyms`) is off |
 | Auto-run budget | `maxRows` 50, `timeoutSeconds` 5 |
 
@@ -100,7 +101,7 @@ the tool result shows the terms actually sent.
   cardinality.
 - Pass: the measure "Sales Amount by Due Date" is NOT served. Its DAX reads `Sales[Sales Amount]`, a
   column the report renamed from the warehouse's `SalesAmount`, and a renamed column counts as not
-  allowed. The Semantic layer page (GUI, `/semantic-layer`) shows it with that reason.
+  allowed. The AI context page (GUI, `/semantic-layer`, Tables tab) shows it with that reason.
 
 ## D. Semantic layer as the only schema
 
@@ -119,16 +120,16 @@ the tool result shows the terms actually sent.
 ### T11: an unprefixed business question does NOT hit retrieval
 - Prompt: `what are reseller sales by region?`
 - Pass: `search_semantic_layer` / `describe_semantic_table` are used. `find_similar_questions` is NOT
-  called, because the message does not start with `!cwd`.
+  called, because the message does not start with `!`.
 
-## E. Question retrieval (`!cwd`)
+## E. Question retrieval (`!`)
 
 Every case here must show `find_similar_questions` called with `expanded_terms`: the question's own
 meaningful words plus business synonyms and their grammatical forms. A call without them is a failure of
 the tool description, not of the search.
 
 ### T12: trusted confirmed match auto-runs
-- Prompt: `!cwd revenue by country`
+- Prompt: `! revenue by country`
 - Expect: `find_similar_questions` (question `revenue by country`, `expanded_terms` including at least
   revenue and country), then `auto_run_trusted_match` with example 1, with no approval prompt in between.
 - Pass: the top match is "What is total revenue by country?", trusted, provenance user-confirmed, sourceRef
@@ -137,13 +138,13 @@ the tool description, not of the search.
   block. It does not mention scores, thresholds, terms or "trusted".
 
 ### T13: a same-meaning question is trusted
-- Prompt: `!cwd how many customers`
+- Prompt: `! how many customers`
 - Pass: example 2 is the top match and trusted (it is the same question once stop words go, even on a
   single matched term), auto-runs, and the answer is 4 customers, followed by
   `SELECT COUNT(*) AS CustomerCount FROM demo.Customers` in a code block.
 
 ### T14: wording that shares no word with the stored question
-- Prompt: `!cwd what is our turnover per nation`
+- Prompt: `! what is our turnover per nation`
 - Pass: `searchedTerms` includes vocabulary the prompt does not contain (revenue, country), and example 1
   "What is total revenue by country?" is found anyway. This is the case expansion exists for: before
   `expanded_terms`, this stack searched only "turnover" and "nation" and found nothing.
@@ -152,12 +153,12 @@ the tool description, not of the search.
   low-scoring.
 
 ### T15: no match falls back silently
-- Prompt: `!cwd what is our average product weight`
+- Prompt: `! what is our average product weight`
 - Pass: no demo or AdventureWorks example matches (none is about weight), and the assistant moves on to the
   semantic layer without announcing that nothing was found.
 
 ### T16: an AdventureWorks question runs where its tables were registered
-- Prompt: `!cwd reseller sales by region`
+- Prompt: `! reseller sales by region`
 - Expect: `find_similar_questions` returns example 10003, trusted, `sourceRef` `${env:SQLFLOW_ADVENTUREWORKS_DB}`
   (inferred: the example stores no datasource, and its tables carry `Registers` edges from
   `adventureworks_00_sch`), then `auto_run_trusted_match` with 10003 and no datasource question.
@@ -168,7 +169,7 @@ the tool description, not of the search.
 ## F. The learning loop (confirmation discipline)
 
 ### T17: approving a run is not confirmation
-- Prompt: `!cwd list the five largest orders` (no stored example matches it, so the assistant composes a
+- Prompt: `! list the five largest orders` (no stored example matches it, so the assistant composes a
   query from the semantic layer and asks before running it), then reply: `yes, run it`
 - Pass: `prepare_query` then `run_query`. `confirm_question` is NOT called.
 
@@ -179,7 +180,7 @@ the tool description, not of the search.
   and SQL refreshes that example rather than creating a second one.
 
 ### T19: a correction stores the corrected SQL
-- Prompt: `!cwd how much revenue have we made`, let it run, then reply: `close, but only count orders from NO`
+- Prompt: `! how much revenue have we made`, let it run, then reply: `close, but only count orders from NO`
 - Pass: the assistant fixes the query. Only after you then say `yes that's correct now` does it call
   `confirm_question` with outcome `corrected` and the CORRECTED SQL (with the NO filter), never the original.
 
@@ -254,9 +255,8 @@ the tool description, not of the search.
 ## H. Needs an Anthropic key (skipped on this stack)
 
 Set `ControlPlane__Assistant__Anthropic__ApiKey` on the `controlplane` service and run
-`docker compose up -d controlplane`. Then turn on **Generate business questions at sync** on the semantic layer's
-Power BI reports tab (or set `ControlPlane__PowerAI__QuestionGeneration__Enabled: "true"` to make it the
-default) and trigger a sync from the GUI. Expansion needs no key: Claude Code supplies it (section E).
+`docker compose up -d controlplane`. Then add `generateQuestions: true` to `AdventureWorks_Sales` in
+`subscribers/adventureworks_sales.subscribers.yaml` and trigger a sync from the GUI. Expansion needs no key: Claude Code supplies it (section E).
 
 ### T26: questions generated per visual
 - Prompt: `show me the business questions each AdventureWorks visual answers`
@@ -264,7 +264,7 @@ default) and trigger a sync from the GUI. Expansion needs no key: Claude Code su
   change makes no new LLM calls (the visuals' content hashes are unchanged).
 
 ### T27: dashboard matches need approval
-- Prompt: `!cwd sales by product category and reseller type`
+- Prompt: `! sales by product category and reseller type`
 - Pass: a `powerbi` provenance match from the pivot table. Its `sql` is T-SQL over
   `[AdventureWorks].[dbo]` tables (grouped, with `LEFT JOIN`s), its `reportSql` is the visual's model query,
   and it has no `translationProblem`. It has no `exampleId`, so it goes through `prepare_query` (no

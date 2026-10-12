@@ -1,0 +1,17 @@
+# The AdventureWorks tables the AdventureWorks Sales report reads, opened to the AI assistant for questions that start
+# with '!'. DimEmployee and the rest of the registered tables stay closed. Nothing in this file is used until an admin
+# approves it: sync the repository, then approve 'adventureworks-sales' on the AI context page or with
+#
+#   sqlflow ai-context show adventureworks-sales
+#   sqlflow ai-context approve adventureworks-sales --version <the version 'show' prints>
+#
+# Every column of a table listed here is open; a column the assistant must not use goes under that table's 'deny'.
+aiContext: adventureworks-sales
+description: Reseller sales by product, region and date, as the AdventureWorks Sales report reads them.
+tables:
+  - table: AdventureWorks.dbo.DimCustomer
+  - table: AdventureWorks.dbo.DimDate
+  - table: AdventureWorks.dbo.DimProduct
+  - table: AdventureWorks.dbo.DimReseller
+  - table: AdventureWorks.dbo.DimSalesTerritory
+  - table: AdventureWorks.dbo.FactResellerSales

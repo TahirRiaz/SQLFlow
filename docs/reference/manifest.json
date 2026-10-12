@@ -1400,31 +1400,34 @@
       "id": "concept-semantic-layer",
       "corpus": "reference",
       "path": "concepts/semantic-layer.md",
-      "title": "Semantic layer: the allow-listed schema an assistant writes SQL against",
+      "title": "Semantic layer: the schema approved AI contexts let an assistant use",
       "type": "concept",
-      "summary": "The column allow-list as the AI assistant's only schema, with descriptions, synonyms, curated keys and joins, measures, examples, and instructions.",
+      "summary": "The approved AI contexts as the assistant's only schema: open columns, meanings, keys, joins, measures, examples, and instructions, re-checked whenever served.",
       "keywords": [
         "semantic layer",
         "semantic context",
+        "ai context",
+        "approved context",
         "column policy",
         "allow-list",
-        "whitelist",
         "business glossary",
         "synonyms",
         "measures",
         "curated relationships",
         "text to sql",
         "schema grounding",
+        "business question",
         "get_semantic_layer",
         "search_semantic_layer",
         "describe_semantic_table",
-        "power bi upload",
         "report specification",
         "pbix-extractor"
       ],
       "related": [
+        "flow-ai-context",
         "concept-data-operations",
-        "concept-shadow-catalog"
+        "concept-shadow-catalog",
+        "guide-chat-assistant"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Api/SemanticLayer.cs",
@@ -1432,16 +1435,17 @@
         "src/SqlFlow.ControlPlane/Api/SemanticLayerAdminEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/SemanticExampleAdminEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/SemanticReportEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/AiContextEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/AiContextSync.cs",
+        "src/SqlFlow.Catalog/AiContextMaterializer.cs",
         "src/SqlFlow.ControlPlane/Api/ReportExtractionClient.cs",
         "src/SqlFlow.PbixExtractor/ExtractionEndpoint.cs",
         "src/SqlFlow.PbixExtractor/ExtractorOptions.cs",
-        "gui/src/features/semantic-layer/ReportsPanel.tsx",
-        "gui/src/features/semantic-layer/ReportUploadDialog.tsx",
         "src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs",
         "src/SqlFlow.Catalog/CatalogSync.cs",
-        "gui/src/features/semantic-layer/SavedAnswersPanel.tsx",
         "src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/ColumnPolicyGuard.cs",
+        "src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs",
         "src/SqlFlow.Catalog/CatalogEntities.cs",
         "src/SqlFlow.Assistant/AssistantSettings.cs",
         "src/SqlFlow.Assistant/AssistantInstructions.cs",
@@ -1585,6 +1589,54 @@
         "src/SqlFlow.SqlServer/Ingestion/IngestionFlowRunner.cs",
         "src/SqlFlow.Core/Ingestion/IngestionPolicies.cs",
         "src/SqlFlow.Yaml/YamlIngestionFlowLoader.cs"
+      ]
+    },
+    {
+      "id": "flow-ai-context",
+      "corpus": "reference",
+      "path": "flow/ai-context.md",
+      "title": "ai-context.yaml: what the AI assistant may use",
+      "type": "flow-reference",
+      "summary": "A file naming the tables an assistant may use, every column open but those it denies, with meanings, measures, and examples; an admin approves each version.",
+      "keywords": [
+        "ai context",
+        "ai-context.yaml",
+        "aiContext",
+        "semantic layer",
+        "deny",
+        "denied columns",
+        "column allow-list",
+        "approve",
+        "approval",
+        "revoke",
+        "context version",
+        "business question",
+        "instructions",
+        "measures",
+        "joins",
+        "example questions",
+        "sqlflow ai-context",
+        "earlier gui content"
+      ],
+      "yamlPath": "aiContext",
+      "related": [
+        "concept-semantic-layer",
+        "concept-data-operations",
+        "flow-subscribers",
+        "guide-chat-assistant"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Core/AiContext/AiContextDocument.cs",
+        "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+        "src/SqlFlow.Yaml/AiContextYamlWriter.cs",
+        "src/SqlFlow.Catalog/AiContextVersion.cs",
+        "src/SqlFlow.Catalog/AiContextMaterializer.cs",
+        "src/SqlFlow.ControlPlane/Api/AiContextSync.cs",
+        "src/SqlFlow.ControlPlane/Api/AiContextEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncFollowUp.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.AiContext.cs",
+        "docs/reference/flow/keys.ai-context.json",
+        "tools/sqlflow-lang/src/document.rs"
       ]
     },
     {
@@ -3417,6 +3469,44 @@
       ]
     },
     {
+      "id": "wiki-ai-contexts-are-files-an-admin-approves",
+      "corpus": "wiki",
+      "path": "decisions/ai-contexts-are-files-an-admin-approves.md",
+      "title": "AI contexts are files an admin approves",
+      "type": "decision",
+      "summary": "Why AI contexts are files that only propose, why an admin approves an exact version, why files deny columns, and why removals apply at once and additions wait.",
+      "keywords": [
+        "ai context",
+        "ai-context.yaml",
+        "approval",
+        "context version",
+        "deny list",
+        "default deny",
+        "narrowing",
+        "source control",
+        "semantic layer",
+        "column allow-list",
+        "read-only gui",
+        "generateQuestions",
+        "business question command"
+      ],
+      "related": [
+        "wiki-semantic-layer-is-the-allow-list"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Yaml/YamlAiContextLoader.cs",
+        "src/SqlFlow.Catalog/AiContextVersion.cs",
+        "src/SqlFlow.Catalog/AiContextMaterializer.cs",
+        "src/SqlFlow.ControlPlane/Api/AiContextSync.cs",
+        "src/SqlFlow.ControlPlane/Api/AiContextEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Background/RepoSyncFollowUp.cs",
+        "src/SqlFlow.Catalog/Migrations/20261012070812_AiContextsFromFiles.cs",
+        "src/SqlFlow.Catalog/Migrations/20260915090833_RenameColumnPolicyToAllowList.cs",
+        "src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs",
+        "tests/SqlFlow.ControlPlane.Tests/AiContextApiTests.cs"
+      ]
+    },
+    {
       "id": "wiki-api-authentication",
       "corpus": "wiki",
       "path": "patterns/api-authentication.md",
@@ -4364,7 +4454,8 @@
       ],
       "related": [
         "wiki-design-doc-drift",
-        "wiki-powerbi-model-entity-resolution"
+        "wiki-powerbi-model-entity-resolution",
+        "wiki-ai-contexts-are-files-an-admin-approves"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Api/SemanticLayer.cs",

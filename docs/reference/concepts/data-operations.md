@@ -192,12 +192,12 @@ Run button rather than one that can only answer 403.
 
 Read-only is a statement-shape guarantee: it says a query cannot write, not that every column it names is fair
 game. `CatalogColumnPolicy` (the `ColumnPolicy` table; see [Shadow catalog](shadow-catalog.md#column-access-policy))
-is a per-column, admin-authored **allow-list**, orthogonal to the `DataOps` switch and the RBAC scopes: it does
-not gate the surface, it narrows what the surface may touch. The model is **default-deny**: a column with no
-policy row at all - never reviewed - is exactly as blocked as one an admin has explicitly denied. Policy rows are
-per column; the bulk route below writes one for every column of an object at once. The allow-list is also the
-[semantic layer](semantic-layer.md)'s membership: an object with at least one allowed column is in the layer, and
-a policy row carries the column's semantic `description` and `synonyms`.
+is a per-column **allow-list**, orthogonal to the `DataOps` switch and the RBAC scopes: it does not gate the
+surface, it narrows what the surface may touch. The model is **default-deny**: a column with no allowing row is
+blocked. The rows are written only from the [AI contexts](../flow/ai-context.md) an admin approved: a table an
+approved context names has a row for every column but the ones its file denies, and nothing else has any. The
+allow-list is also the [semantic layer](semantic-layer.md)'s membership, and a row carries the column's semantic
+`description` and `synonyms` from the context file.
 
 Default-deny also applies one level up, to the table itself: a query naming a table, view, or synonym the
 catalog has no `CatalogObject` record for at all has no allow-list to check it against, and is refused outright
@@ -206,17 +206,17 @@ sensitive table, or any other object type the harvester does not track, can neve
 and slip through, because the same default-deny rule that blocks an unreviewed column also blocks an unresolved
 table.
 
-An admin sets a column's allow state through the admin-scope API, never through a sync:
+A column opens when an admin approves a context version that opens it, and closes when its context's file denies
+it (at the next sync, with no approval), when the context is revoked, or when its file is removed. The admin-scope
+API reads the result:
 
 | Route | Purpose |
 | --- | --- |
-| `GET /api/v1/powerai/column-policies` | Every column currently NOT allowed, across the whole catalog - denied, or never reviewed |
-| `GET /api/v1/powerai/column-policies/objects/{key}` | Every column of one object with its current allow state |
-| `PUT /api/v1/powerai/column-policies` | Full upsert of one column's row (`objectKey`, `columnName`, `isAllowed`, `reason`, `description`, `synonyms`) |
-| `PUT /api/v1/powerai/column-policies/objects` | Allow or deny every column of one object (`objectKey`, `isAllowed`), keeping each row's reason and annotations |
+| `GET /api/v1/powerai/column-policies` | Every column currently NOT allowed, across the whole catalog |
+| `GET /api/v1/powerai/column-policies/objects/{key}` | Every column of one object with its current allow state and the context opening it |
 
-The GUI edits all of this on the AI knowledge page (`/semantic-layer`, Admin; the old `/column-policies` link
-redirects there).
+The GUI shows it on the AI context page (`/semantic-layer`, Admin; the old `/column-policies` link redirects
+there).
 
 A column that is not allowed disappears from every surface that could otherwise teach an assistant it exists or
 let it read it:
@@ -387,9 +387,7 @@ the builder, so a name carrying its own bracket is refused rather than escaped.
 | `POST /api/v1/datasources/tasks` | `operation: "duplicateKeys"` or `"compareBaseline"` |
 | `GET /api/v1/datasources/tasks/{id}?waitMs=20000` | Long-poll the result |
 | `GET /api/v1/powerai/column-policies` | Every column currently NOT allowed, across the whole catalog (admin scope) |
-| `GET /api/v1/powerai/column-policies/objects/{key}` | One object's columns with their allow state (admin scope) |
-| `PUT /api/v1/powerai/column-policies` | Allow or deny one column, with its annotations (admin scope) |
-| `PUT /api/v1/powerai/column-policies/objects` | Allow or deny every column of one object (admin scope) |
+| `GET /api/v1/powerai/column-policies/objects/{key}` | One object's columns with their allow state and context (admin scope) |
 
 ## MCP tools
 

@@ -1,45 +1,49 @@
 ---
 id: concept-semantic-layer
-title: "Semantic layer: the allow-listed schema an assistant writes SQL against"
+title: "Semantic layer: the schema approved AI contexts let an assistant use"
 type: concept
-summary: The column allow-list as the AI assistant's only schema, with descriptions, synonyms, curated keys and joins, measures, examples, and instructions.
+summary: "The approved AI contexts as the assistant's only schema: open columns, meanings, keys, joins, measures, examples, and instructions, re-checked whenever served."
 keywords:
   - semantic layer
   - semantic context
+  - ai context
+  - approved context
   - column policy
   - allow-list
-  - whitelist
   - business glossary
   - synonyms
   - measures
   - curated relationships
   - text to sql
   - schema grounding
+  - business question
   - get_semantic_layer
   - search_semantic_layer
   - describe_semantic_table
-  - power bi upload
   - report specification
   - pbix-extractor
 related:
+  - flow-ai-context
   - concept-data-operations
   - concept-shadow-catalog
+  - guide-chat-assistant
 sourceRefs:
   - src/SqlFlow.ControlPlane/Api/SemanticLayer.cs
   - src/SqlFlow.ControlPlane/Api/SemanticLayerEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/SemanticLayerAdminEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/SemanticExampleAdminEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/SemanticReportEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/AiContextEndpoints.cs
+  - src/SqlFlow.ControlPlane/Api/AiContextSync.cs
+  - src/SqlFlow.Catalog/AiContextMaterializer.cs
   - src/SqlFlow.ControlPlane/Api/ReportExtractionClient.cs
   - src/SqlFlow.PbixExtractor/ExtractionEndpoint.cs
   - src/SqlFlow.PbixExtractor/ExtractorOptions.cs
-  - gui/src/features/semantic-layer/ReportsPanel.tsx
-  - gui/src/features/semantic-layer/ReportUploadDialog.tsx
   - src/SqlFlow.Lineage/Graph/LineageGraphBuilder.cs
   - src/SqlFlow.Catalog/CatalogSync.cs
-  - gui/src/features/semantic-layer/SavedAnswersPanel.tsx
   - src/SqlFlow.ControlPlane/Api/ColumnPolicyEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/ColumnPolicyGuard.cs
+  - src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - src/SqlFlow.Assistant/AssistantSettings.cs
   - src/SqlFlow.Assistant/AssistantInstructions.cs
@@ -52,91 +56,96 @@ sourceRefs:
 
 # Semantic layer
 
-The semantic layer is the schema the AI assistant is allowed to use, together with what that schema means. It
-is built on the column allow-list (`CatalogColumnPolicy`, see
-[Data operations](data-operations.md#column-policy-what-the-assistant-may-read-at-all)):
+The semantic layer is the schema an AI assistant is allowed to use, together with what that schema means. It is
+made of the **AI contexts an admin approved**: files in a repository (`ai-context.yaml`, `*.ai-context.yaml`; see
+[ai-context.yaml](../flow/ai-context.md)) that each name tables, the columns they deny, and what everything means.
+A file only proposes; nothing in it is used until an admin approves that exact version. Everything is off by default.
 
-- An object (table or view) is **in the layer** exactly when at least one of its catalogued columns is allowed.
-  Nothing else records membership.
-- Only **allowed columns** are ever served, and nothing served names a column outside the layer: not a key, a
-  join, a measure, or an example query.
+- A table is **in the layer** exactly when an approved context names it. A table belongs to one context.
+- Its **open columns** are every column the approved version resolved for it but the ones the file denies. Only open
+  columns are ever served, and nothing served names any other column: not a key, a join, a measure, or an example query.
+- A question reaches the layer when the chat message starts with **`!`** (the business-question command; `!cwd` is the
+  same command). Other messages are ordinary questions about the estate.
 
-On top of that set the layer holds business context, all admin-authored:
+Approving a context, revoking it, and every sync that narrows it go through one writer (`AiContextMaterializer`),
+which writes the serving tables below with each row marked by its context (`AiContext`). It writes by difference, so a
+sync that changes nothing writes nothing and a served example keeps its id. Nothing else writes those rows: the GUI,
+the API, and the CLI only read them, approve, revoke, and remove saved answers a person gave.
 
-| Element | Where it lives | What the assistant gets |
-| --- | --- | --- |
-| Column description and synonyms | `ColumnPolicy.Description`, `ColumnPolicy.Synonyms` | The meaning of each allowed column; synonyms are matched by search |
-| Table business name, description, synonyms | `SemanticObject` | What a row represents and what people call the table |
-| Curated key | `SemanticObject.KeyColumns` | The columns identifying one row, preferred over the key interpreted from code |
-| Curated relationships | `SemanticRelationship` | Joins an admin vouches for, preferred over joins discovered from code |
-| Measures | `SemanticMeasure` | Named SQL expressions anchored to one table, to reuse verbatim |
-| General instructions | `SemanticLayerSettings.Instructions` | Conventions every query must follow |
-| Power BI models | `SubscriberModelTable`, `SubscriberModelField`, `SubscriberModelRelationship`, written at sync from each report and tied to the warehouse table each model table loads from (`ObjectKey`) | The measures, calculated columns (DAX), and relationships reports build on the table |
-| Example queries (saved answers) | `SemanticExample` (every question/query pair a person confirmed; renamed from `QuestionExample` by migration `MoveQuestionExamplesIntoSemanticLayer`) | Questions already answered with SQL reading the table |
+| Element | From the context file | Served from | What the assistant gets |
+| --- | --- | --- | --- |
+| Open columns, their descriptions and synonyms | `tables[]` with `deny`, `columns` | `ColumnPolicy` (`IsAllowed`, `Description`, `Synonyms`) | The columns it may use and what each means; synonyms are matched by search |
+| Table business name, description, synonyms, key | `name`, `description`, `synonyms`, `key` | `SemanticObject` | What a row represents, what people call the table, and the columns identifying a row |
+| Joins | `joins` | `SemanticRelationship` | Joins the context vouches for, preferred over joins discovered from code |
+| Measures | `measures` | `SemanticMeasure` | Named SQL expressions anchored to one table, to reuse verbatim |
+| Instructions | `instructions` | `AiContext.Instructions` | Conventions every query over the context's tables must follow, headed by the context's name |
+| Example questions | `examples` | `SemanticExample`, provenance `ai-context` | Questions already answered with SQL reading the table |
+| Saved answers | (confirmed in chat) | `SemanticExample` | Every question/query pair a person confirmed, served on the tables its SQL reads |
+| Power BI models | (the subscriber library) | `SubscriberModelTable`, `SubscriberModelField`, `SubscriberModelRelationship`, tied to the warehouse table each model table loads from (`ObjectKey`) | The measures, calculated columns (DAX), and relationships reports build on the table |
+
+While a file proposes a version other than the approved one, the served version is the approved one narrowed by the
+file: what the file takes away (a table, a denied column, a measure, a join, an example, the instructions) stops at
+the next sync, and what it adds or changes waits for approval. A column the warehouse adds opens only on approval. See
+[Approval](../flow/ai-context.md#approval).
 
 ## What is served, and what is withheld
 
-Every annotation is re-checked against the allow-list each time it is served, because a column can be denied
-long after something naming it was written (`SemanticLayer.cs`):
+Every annotation is re-checked against the open columns each time it is served (`SemanticLayer.cs`), so a column
+closed after something naming it was approved withholds that thing at once:
 
-- **Key**: the curated key if every column of it is still allowed, else the codebase-interpreted key
+- **Key**: the context's key if every column of it is open, else the codebase-interpreted key
   (`CatalogObject.KeyColumns`) under the same condition, else none. A partial key is never served.
-- **Joins**: a curated join, then each join discovered from the codebase (`CatalogObjectRelationship`, folded by
-  the same code as the object dossier), served only when the other table is in the layer and every column on
-  both sides is allowed. A discovered join with the same columns as a curated one is not served twice.
-- **Measures**: composed as `SELECT expression AS [measure_value] FROM anchor` and served only when that parses
-  to exactly one scalar select over the anchor (no second table, filter, grouping, or subquery; comments and `;`
-  are refused outright) and passes `ReadOnlyQueryGuard` and `ColumnPolicyGuard`.
-- **Examples**: the newest `SemanticExample` rows whose `ObjectKeys` include the table, served only when their
-  SQL passes `ReadOnlyQueryGuard` and `ColumnPolicyGuard`; at most 10 per table. A confirmed example sent without
-  object keys gets them from the catalogued tables its SQL names, and admins correct or delete them on the editor's
-  Saved answers tab and on each table's Examples tab.
+- **Joins**: the context's joins, then each join discovered from the codebase (`CatalogObjectRelationship`, folded by
+  the same code as the object dossier), served only when the other table is in the layer and every column on both sides
+  is open. A discovered join with the same columns as a context's join is not served twice.
+- **Measures**: composed as `SELECT expression AS [measure_value] FROM anchor` and served only when that parses to
+  exactly one scalar select over the anchor (no second table, filter, grouping, or subquery; comments and `;` are
+  refused outright) and passes `ReadOnlyQueryGuard` and `ColumnPolicyGuard`.
+- **Examples**: the newest `SemanticExample` rows whose `ObjectKeys` include the table, served only when their SQL
+  passes `ReadOnlyQueryGuard` and `ColumnPolicyGuard`; at most 10 per table. A confirmed example sent without object
+  keys gets them from the catalogued tables its SQL names.
 - **Power BI models**: every report model table whose `ObjectKey` is the table (at most 20). A measure or calculated
-  column is served only when every column its DAX reads (`Table[Column]`, `'Table'[Column]`, `[Column]`) is an allowed
+  column is served only when every column its DAX reads (`Table[Column]`, `'Table'[Column]`, `[Column]`) is an open
   column of the warehouse table its model table loads from, and every measure or calculated column it uses is itself
-  servable. A column the report renamed counts as not allowed, since nothing maps it back to its warehouse column. A
-  relationship is served only when both model tables load from layer tables and both columns are allowed, spelled as
-  the catalog spells them. A report none of whose definitions pass is left out. DAX is served verbatim and never
-  evaluated.
+  servable. A column the report renamed counts as closed, since nothing maps it back to its warehouse column. A
+  relationship is served only when both model tables load from layer tables and both columns are open, spelled as the
+  catalog spells them. A report none of whose definitions pass is left out. DAX is served verbatim and never evaluated.
 
-The admin editor shows every annotation with its state: `served`, or `withheld` with the reason.
+The AI context page shows every annotation with its state: `served`, or `withheld` with the reason.
 
-Writes are checked the same way: saving a curated key, a relationship, or a measure over a column that is not
-allowed is refused with 400. A duplicate measure name, or a relationship repeating the same tables and columns,
-is refused with 409.
+The same checks run before a version can be approved: a sync checks every measure and example of a proposed version
+as if it were approved, and a table, measure name, or join another context serves is a problem too (see
+[What a sync checks](../flow/ai-context.md#what-a-sync-checks)).
 
 ## Read API (read scope)
 
 | Route | Returns |
 | --- | --- |
-| `GET /api/v1/semantic-layer` | Instructions, the (database, schema) pairs holding layer tables with counts, and every servable measure |
-| `GET /api/v1/semantic-layer/search?q=` | Layer tables matching every word (name, schema, business name, description, synonyms, or an allowed column's name, description, or synonyms), with the matched columns; plus matching measures |
-| `GET /api/v1/semantic-layer/tables?database=&schema=` | Layer tables, paged, with business context and allowed column count |
-| `GET /api/v1/semantic-layer/tables/describe?key=` | One table's bundle: allowed columns, key, joins with a ready `on` clause, measures, examples, the Power BI `reportModels` built on it, consumers, instructions. 404 when the table is not in the layer |
+| `GET /api/v1/semantic-layer` | The approved contexts serving tables (name, description, table count), their instructions (each headed `Context '<name>':`), the (database, schema) pairs holding layer tables with counts, and every servable measure |
+| `GET /api/v1/semantic-layer/search?q=` | Layer tables matching every word (name, schema, business name, description, synonyms, or an open column's name, description, or synonyms), with the matched columns; plus matching measures |
+| `GET /api/v1/semantic-layer/tables?database=&schema=` | Layer tables, paged, with business context and open column count |
+| `GET /api/v1/semantic-layer/tables/describe?key=` | One table's bundle: open columns, key, joins with a ready `on` clause, measures, examples, the Power BI `reportModels` built on it, consumers, the `context` serving it and that context's `instructions`. 404 when the table is not in the layer |
 
 ## Admin API (admin scope)
 
 | Route | Purpose |
 | --- | --- |
+| `GET /api/v1/powerai/ai-contexts` | Every context: status (`awaiting-approval`, `approved`, `changed`, `invalid`), file, proposed and approved versions, who approved it and when, tables proposed and served, problem count; and `hasEarlierContent` |
+| `GET /api/v1/powerai/ai-contexts/{name}` | One context: the version its file proposes, the approved version, what approving would change, and its problems |
+| `POST /api/v1/powerai/ai-contexts/{name}/approve` | Approve `{"version": "<the current version>"}`. 409 when the file proposes another version now, or the version has problems |
+| `POST /api/v1/powerai/ai-contexts/{name}/revoke` | Stop serving the context; its version waits for approval again |
+| `GET /api/v1/powerai/ai-contexts/earlier-content` | What the GUI held before contexts were files, as one context file to review and commit (404 when there is none) |
 | `GET /api/v1/powerai/semantic-layer/schemas` | Objects with catalogued columns per (database, schema), and how many are in the layer |
-| `GET /api/v1/powerai/semantic-layer/objects?database=&schema=&name=&inLayer=` | Objects with allowed/total column counts, paged |
-| `GET /api/v1/powerai/semantic-layer/objects/detail?key=` | One object's editor state: every column with its policy, annotation, curated and discovered joins, measures, examples, and Power BI report models, each with served/withheld state |
-| `PUT /api/v1/powerai/semantic-layer/objects/annotation` | Replace business name, description, synonyms, curated key (all empty removes the annotation) |
-| `GET`, `PUT /api/v1/powerai/semantic-layer/instructions` | Read or replace the layer-wide instructions (at most 20000 characters) |
-| `GET`, `POST /api/v1/powerai/semantic-layer/measures`; `PUT`, `DELETE .../measures/{id}` | List (with state), create, replace, delete measures |
-| `POST /api/v1/powerai/semantic-layer/relationships`; `PUT`, `DELETE .../relationships/{id}` | Create, replace, delete curated relationships (`joinType` `Inner` or `Left`) |
-| `GET /api/v1/powerai/semantic-layer/examples?search=`; `GET`, `PUT`, `DELETE .../examples/{id}` | List (newest first, with state), read, correct, and delete saved answers. An edit takes `question`, `sql`, and `sourceRef` (blank to infer), is validated exactly as a confirmation is, re-resolves the tables it reads when the SQL changes, and answers 409 when it would duplicate another. Confirming a new one stays `POST /api/v1/powerai/questions/confirm` (operate scope) |
-
-| `GET /api/v1/powerai/semantic-layer/reports?repoId=&subscriber=`; `GET`, `DELETE .../reports/{id}` | List, read (with the specification, what it holds, and `pages`: the pages and visuals the last sync served under that report's label, each visual with its generated `questions`; empty until a sync has read the report), and delete the Power BI report specifications the layer holds. Deleting queues the repo's managed sync |
-| `POST /api/v1/powerai/semantic-layer/reports/questions`; `PUT`, `DELETE .../reports/questions/{id}` | Curate a visual's business questions. `POST` takes `repoId`, `visualKey` (from the report detail), and `question`; `PUT` takes `question`. The text is trimmed, required, one line, and at most 400 characters; a question the visual already has (ignoring case) is refused (409), as is a `visualKey` the repo no longer has (404). Added and edited questions are `manual`: generation never replaces them, and they go only with their visual. An edit that races a sync regenerating the same generated question answers 409 |
-| `GET /api/v1/powerai/semantic-layer/reports/subscribers` | The PowerBI subscribers the repositories declare, which are what a report can be attached to |
-| `POST /api/v1/powerai/semantic-layer/reports` | Store a specification for a subscriber: `repoId`, `subscriber` (name), `reportFile` (the report's label), `spec`. It is validated and rewritten into canonical, credential-redacted form first (400 when it is not a readable specification); the subscriber must be declared by that repo and be of type PowerBI. Storing the same `reportFile` again replaces the upload (`replaced`). `syncQueued` says whether the repo's managed sync was queued to apply it |
+| `GET /api/v1/powerai/semantic-layer/objects?database=&schema=&name=&inLayer=` | Objects with open/total column counts and the context serving each, paged |
+| `GET /api/v1/powerai/semantic-layer/objects/detail?key=` | One object as the layer holds it: every column with its state, the annotation, the context's and discovered joins, measures, examples, and Power BI report models, each with served/withheld state, and the context serving it |
+| `GET /api/v1/powerai/column-policies`; `GET .../column-policies/objects/{key}` | Every column not open, across the catalog; one object's columns with their state and context |
+| `GET /api/v1/powerai/semantic-layer/examples?search=`; `GET`, `DELETE .../examples/{id}` | List (newest first, with state), read, and remove saved answers. One an AI context gives is removed from its file, so `DELETE` answers 409 for it. Confirming a new one stays `POST /api/v1/powerai/questions/confirm` (operate scope) |
+| `GET /api/v1/powerai/semantic-layer/reports?repoId=&subscriber=`; `GET`, `DELETE .../reports/{id}` | List, read (with the specification, what it holds, and `pages`: the pages and visuals the last sync served under that report's label, each visual with its business `questions`; empty until a sync has read the report), and delete the Power BI report specifications the layer holds. Deleting queues the repo's managed sync |
+| `DELETE /api/v1/powerai/semantic-layer/reports/questions/{id}` | Remove one business question of a visual. A visual left with none gets fresh ones at the next sync when its subscriber generates questions |
+| `GET /api/v1/powerai/semantic-layer/reports/subscribers` | The PowerBI subscribers the repositories declare, each with `generateQuestions` (set in its subscriber library) |
+| `POST /api/v1/powerai/semantic-layer/reports` | Store a specification for a subscriber (`sqlflow powerbi publish`): `repoId`, `subscriber` (name), `reportFile` (the report's label), `spec`. It is validated and rewritten into canonical, credential-redacted form first (400 when it is not a readable specification); the subscriber must be declared by that repo and be of type PowerBI. Storing the same `reportFile` again replaces the upload (`replaced`). `syncQueued` says whether the repo's managed sync was queued to apply it |
 | `POST /api/v1/powerai/semantic-layer/reports/extract?reportFile=` | Body: the raw `.pbix` (`application/octet-stream`). Forwarded to the isolated extractor and answered with the validated specification and its counts, without storing it. 501 when `ControlPlane:PowerAI:ReportExtraction` is off; 413 over `MaxUploadMegabytes`; the extractor's own refusal is passed on (422) |
-| `GET /api/v1/powerai/semantic-layer/reports/capabilities` | Whether `.pbix` extraction is enabled, the size limits, and whether sync-time question generation is on (`questionGenerationEnabled`) |
-| `GET`, `PUT /api/v1/powerai/semantic-layer/reports/question-generation` | Read or set whether a sync generates business questions for report visuals. `PUT` takes `enabled`: `true` or `false` overrides the deployment's `ControlPlane:PowerAI:QuestionGeneration:Enabled`, `null` follows it again. The answer carries `available` (the deployment has an Anthropic key), `deploymentDefault`, `override`, the effective `enabled`, who changed it and when, and `syncsQueued`. Turning generation on without a key is refused (409). A change that turns it on queues the managed sync of every repo holding report visuals, so the missing questions are generated |
-
-Column allow state, description, and synonyms are written through `PUT /api/v1/powerai/column-policies` (one
-column) and `PUT /api/v1/powerai/column-policies/objects` (every column of an object).
+| `GET /api/v1/powerai/semantic-layer/reports/capabilities` | Whether `.pbix` extraction is enabled, the size limits, and whether this deployment can generate business questions (`questionGenerationAvailable`: an Anthropic key is set) |
 
 ## MCP tools
 
@@ -148,8 +157,8 @@ column) and `PUT /api/v1/powerai/column-policies/objects` (every column of an ob
 | `describe_semantic_table` | `GET /api/v1/semantic-layer/tables/describe` |
 
 On the GUI chat and Slack assistants these are the **only** schema tools (`McpOptions.GuiDefaultTools`,
-`McpOptions.SlackDefaultTools`). The raw schema readers, which see every catalogued column regardless of the
-allow-list (`list_schemas`, `catalog_tree`, `lineage_objects`, `lineage_object_detail`, `lineage_object_columns`,
+`McpOptions.SlackDefaultTools`). The raw schema readers, which see every catalogued column regardless of the layer
+(`list_schemas`, `catalog_tree`, `lineage_objects`, `lineage_object_detail`, `lineage_object_columns`,
 `describe_object`, `search_all`, `search_schema` (its `objects`, `columns`, `definitions`, and `flowColumns` surfaces),
 `pipeline_columns`, `get_table_key`, `get_table_joins`, `detect_unique_key`), are in `McpOptions.ExcludedTools`.
 They remain available to other MCP clients, and the GUI's Catalog pages are unchanged.
@@ -159,7 +168,7 @@ They remain available to other MCP clients, and the GUI's Catalog pages are unch
 The tool allowlist decides which tools the chat assistants have; the assistant surface decides what the remaining
 tools show them. Operational tools such as `run_statements`, `search` (its `statements` and `flows` surfaces),
 `pipeline_definition`, and `find_similar_questions` return free text (SQL, flow YAML, stored example queries) that
-can name any column, so the allow-list is applied to that text too:
+can name any column, so the open columns are applied to that text too:
 
 - **Marking.** Both chat gateways give their MCP connector `McpOptions.AssistantServerUri`: `Mcp:ServerUrl` with
   `surface=assistant` added to its query. The MCP server reads the query (`request_surface`) and sends
@@ -172,8 +181,8 @@ can name any column, so the allow-list is applied to that text too:
   withheld string reads `[withheld: names a column outside the semantic layer]`; a problem result's `detail` is
   withheld the same way. Results that are not a 200 JSON value (streams, files, 201 and 202 responses) pass through
   unchanged. Matching is by identifier token (bare words, `[bracketed]` and `"quoted"` names), case-insensitive,
-  and errs toward withholding: a column name that is allowed on one table but denied on another is withheld when
-  the denying table is named nearby.
+  and errs toward withholding: a column name that is open on one table but closed on another is withheld when
+  the closing table is named nearby.
 - **Tasks.** `POST /api/v1/datasources/tasks` from a marked request checks the task as the SELECT it would read,
   through `ReadOnlyQueryGuard` and `ColumnPolicyGuard` (`ColumnPolicyGuard.ComposeTaskSelect`), and refuses it with
   400 `Refused by the column allow-list` otherwise:
@@ -191,34 +200,30 @@ step), but never their columns.
 
 ## GUI
 
-Admin > **AI knowledge** (`/semantic-layer`; `/column-policies` redirects there) is the semantic layer's editor, labelled for
-the people who use it. It has five tabs:
+Admin > **AI context** (`/semantic-layer`; `/column-policies` and `/saved-answers` redirect there) shows the layer
+read-only. The only actions are an admin's: approve or revoke a context, and remove a saved answer or a report question
+a person or a report gave. Everything else changes in the files.
 
-- **Tables**: a database > schema > object tree badged with allowed/total columns (optionally only objects in
-  the layer), and for the selected object the About (business name, description, synonyms, key), Columns (allow
-  toggle, description, synonyms, reason; allow all, deny all), Relationships (curated and discovered), Measures,
-  and Examples (each saved answer reading the table, with edit and delete), and Power BI (what reports define on the table, read-only, each with its
-  served/withheld state) tabs. The selected object is in the URL
-  as `?object=`.
-- **Instructions & measures**: the layer-wide instructions and every measure.
-- **Saved answers** (`?tab=examples`; `/saved-answers` redirects here): every saved answer across the layer, with a
-  search over question and query text, its datasource, who last stood behind it, its served/withheld state, and
-  edit and delete.
-- **Power BI reports** (`?tab=reports`): a **Generate business questions at sync** switch (disabled without an
-  Anthropic key, with **Use deployment default** to drop an override), then every report specification the layer
-  holds, uploaded or kept by a sync,
-  with what it contains, who stored it, and whether its subscriber is still declared; open it to see the business
-  questions of each of its visuals (page by page, each marked generated or curated) and add, edit, or delete them,
-  see its specification, or remove it. **Upload report** attaches a `.pbix` (read by the isolated extractor and shown for review before it is
-  saved) or a `.pbix.yaml` specification to a PowerBI subscriber.
-- **Blocked columns**: every column outside the layer, denied or never reviewed.
+- **Contexts**: every context with its status, the version its file proposes, who approved what and when, tables
+  served and proposed, and its file. Opening one shows, in the workbench's bottom panel, its problems, what approving
+  would change, its instructions, tables (with columns, key, measures, and joins), and example questions, with
+  **Approve** (for the version shown) and **Revoke**. **Download earlier content** appears while content from before
+  contexts were files is waiting to be exported.
+- **Tables**: a database > schema > object tree badged with open/total columns and marked with the context serving
+  each object, and for the selected object everything the layer holds for it, each item with its served/withheld
+  state.
+- **Saved answers**: every saved answer, with a search over question and query text, its datasource, its provenance,
+  who last stood behind it, and its served/withheld state.
+- **Power BI reports**: the PowerBI subscribers with whether each generates business questions, and the report
+  specifications the layer holds, with each visual's business questions.
 
 ## Power BI reports
 
 A report's measures, relationships, and visuals reach the layer through its specification (see
 [subscribers.yaml](../flow/subscribers.md#where-a-report-comes-from)). The layer holds the specifications a
 repository does not carry in `catalog.SemanticReportSpec`, which a sync reads but never deletes wholesale: an
-`upload` stays until someone removes it, and an `extracted` row is a sync's own copy of a declared `.pbix`.
+`upload` (from `sqlflow powerbi publish`) stays until someone removes it, and an `extracted` row is a sync's own copy
+of a declared `.pbix`.
 
 The control plane never parses a `.pbix`. `POST .../reports/extract` streams the upload to the isolated extractor
 (`SqlFlow.PbixExtractor`, image `Dockerfile.pbix-extractor`), a separate service holding no catalog, warehouse, or

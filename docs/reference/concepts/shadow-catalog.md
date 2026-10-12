@@ -74,22 +74,29 @@ set on every pass (`CatalogSync`, delete-by-`ObjectKey` then re-insert), so a fl
 silently lost the next time the object's columns were re-read from the live database. `ColumnPolicy` is keyed by
 `(ObjectKey, ColumnName)`, the same soft-link shape as the rest of the catalog, so it survives resyncs and even
 outlives a column the sync has not (yet) reported - which also means a column a future sync discovers for the
-first time starts out with no row, and so starts out denied until an admin reviews it. It is written only
-through the admin-scope `/api/v1/powerai/column-policies` endpoints, never by a sync pass. See
+first time starts out with no row, and so starts out denied until an admin approves a context version that opens
+it. It is written only by `AiContextMaterializer`, from the [AI contexts](../flow/ai-context.md) an admin approved,
+each row marked with its context (`AiContext`); a catalog sync never writes it. See
 [Data operations](data-operations.md#column-policy-what-the-assistant-may-read-at-all) for how it is enforced.
 A policy row also carries the column's semantic annotations (`Description`, `Synonyms`), since the allow-list is
 the semantic layer's membership.
 
 ## Semantic layer tables
 
-The [semantic layer](semantic-layer.md)'s business context lives in four admin-authored tables, all keyed by soft
-link like `ColumnPolicy` and all written only through the admin-scope `/api/v1/powerai/semantic-layer` endpoints:
-`SemanticObject` (`CatalogSemanticObject`: one row per annotated object, unique on `ObjectKey`, holding its business
-name, description, synonyms, and curated key), `SemanticRelationship` (`CatalogSemanticRelationship`: a declared
-join, unique on `IdentityHash`, the SHA-256 of both endpoints and their column lists), `SemanticMeasure`
-(`CatalogSemanticMeasure`: a named expression anchored to one object, unique on `Name`), and
-`SemanticLayerSettings` (`CatalogSemanticLayerSettings`: a single row, `Id` 1, holding the layer-wide instructions).
-None of them records whether an object is in the layer: that is decided by `ColumnPolicy` alone.
+The [semantic layer](semantic-layer.md)'s business context is served from tables keyed by soft link like
+`ColumnPolicy`, each row marked with the AI context that wrote it (`AiContext`) and written only by
+`AiContextMaterializer`: `SemanticObject` (`CatalogSemanticObject`: one row per object in a context, unique on
+`ObjectKey`, holding its business name, description, synonyms, and key), `SemanticRelationship`
+(`CatalogSemanticRelationship`: a declared join, unique on `IdentityHash`, the SHA-256 of both endpoints and their
+column lists), and `SemanticMeasure` (`CatalogSemanticMeasure`: a named expression anchored to one object, unique on
+`Name`). None of them records whether an object is in the layer: that is decided by `ColumnPolicy` alone.
+
+`AiContext` (`CatalogAiContext`) holds one row per context a repository file defines, unique on `Name`: the
+repository and file, the version the file proposes (`CurrentJson`, `CurrentHash`) with its `Problems`, the version an
+admin approved (`ApprovedJson`, `ApprovedHash`, `ApprovedBy`, `ApprovedUtc`), and the instructions it serves. Rows
+with no `AiContext` in the serving tables, and `SemanticLayerSettings` (a single row holding the instructions once
+typed in the GUI), are content from before contexts were files: none of it is served, it is kept for
+`GET /api/v1/powerai/ai-contexts/earlier-content`, and a context that takes one of its tables replaces it.
 
 ## Pipeline sync: hashing, redaction, soft deactivation
 

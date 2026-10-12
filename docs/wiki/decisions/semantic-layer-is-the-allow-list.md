@@ -35,7 +35,8 @@ referenceRefs:
 related:
   - wiki-design-doc-drift
   - wiki-powerbi-model-entity-resolution
-updated: 2026-10-10
+  - wiki-ai-contexts-are-files-an-admin-approves
+updated: 2026-10-12
 ---
 
 # The semantic layer is the column allow-list
@@ -45,6 +46,11 @@ semantic layer did not add a second decision on top of it. It reuses that one, a
 it lets through: descriptions, synonyms, keys, joins, measures, instructions. What the layer serves is
 documented in [Semantic layer](../../reference/concepts/semantic-layer.md). This page records why it has that
 shape.
+
+The layer is no longer edited in the GUI: since 2026-10-12 it is written from AI context files an admin approves,
+and [AI contexts are files an admin approves](ai-contexts-are-files-an-admin-approves.md) records why, including how
+those contexts avoid what named contexts were rejected for below. What this page says about what the layer serves
+still holds; where it describes the GUI editor, it is history.
 
 ## One layer, defined by the allow-list
 

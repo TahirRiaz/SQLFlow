@@ -344,3 +344,14 @@ endpoint groups) out of `src/SqlFlow.ControlPlane/Program.cs`, which now only ca
 `src/SqlFlow.ControlPlane/Hosting/ControlPlaneHost.cs`, so a host can compose the control plane with modules of its
 own. [The semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md) cited `Program.cs` for
 the catalog context's no-tracking registration; it now cites `ControlPlaneHost`, where that registration lives.
+
+## [2026-10-12] ingest | AI contexts: files an admin approves
+
+The semantic layer is now authored in `ai-context.yaml` files that only propose, with an admin approving each exact
+version, instead of being edited in the GUI, which became read-only. Recorded why in
+[AI contexts are files an admin approves](decisions/ai-contexts-are-files-an-admin-approves.md): the seeded allow-list
+that left every column open, the version hash an approval names, the deny list and how a resolved version keeps new
+warehouse columns closed, narrowing (removals at once, additions on approval), the one writer writing by difference,
+and question generation moving into the subscriber library. Linked it from
+[the semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md), whose GUI editor sections are
+now history. The surfaces are documented in `flow-ai-context`, `concept-semantic-layer`, and `flow-subscribers`.

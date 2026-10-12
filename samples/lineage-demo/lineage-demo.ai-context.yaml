@@ -1,0 +1,19 @@
+# The lineage demo's tables, opened to the AI assistant for questions that start with '!'. Nothing in this file is
+# used until an admin approves it: sync the repository, then approve 'lineage-demo' on the AI context page or with
+#
+#   sqlflow ai-context show lineage-demo
+#   sqlflow ai-context approve lineage-demo --version <the version 'show' prints>
+#
+# Every column of a table listed here is open; a column the assistant must not use goes under that table's 'deny'.
+aiContext: lineage-demo
+description: The lineage demo's orders and customers, from landing through the executive KPI.
+tables:
+  - table: SqlFlowCatalogTests.demo.Orders_Pre
+  - table: SqlFlowCatalogTests.demo.Customers_Pre
+  - table: SqlFlowCatalogTests.demo.v_Orders_Pre
+  - table: SqlFlowCatalogTests.demo.v_Customers_Pre
+  - table: SqlFlowCatalogTests.demo.Orders
+  - table: SqlFlowCatalogTests.demo.Customers
+  - table: SqlFlowCatalogTests.demo.Fact_OrderSummary
+  - table: SqlFlowCatalogTests.demo.Fact_CountryRollup
+  - table: SqlFlowCatalogTests.demo.Kpi_Executive

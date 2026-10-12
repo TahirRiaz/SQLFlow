@@ -21,6 +21,9 @@ keywords:
   - powerbi
   - pbix
   - report specification
+  - ai-context
+  - approve
+  - revoke
 cliCommand: control-plane
 related:
   - cli-run
@@ -32,6 +35,7 @@ sourceRefs:
   - src/SqlFlow.Cli/Remote/RemoteVerbs.cs
   - src/SqlFlow.Cli/Remote/RemoteVerbs.Estate.cs
   - src/SqlFlow.Cli/Remote/RemoteVerbs.PowerBi.cs
+  - src/SqlFlow.Cli/Remote/RemoteVerbs.AiContext.cs
   - src/SqlFlow.Lineage/Collection/ReportSpecs.cs
   - src/SqlFlow.Cli/Remote/ControlPlaneClient.cs
 ---
@@ -148,6 +152,28 @@ the managed sync is queued to apply it; a repo synced from a local path applies 
 `list` shows every stored report, including the copies syncs kept of declared `.pbix` files, and marks one whose
 subscriber the repository no longer declares; `remove` deletes one by id. `publish`, `list`, and `remove` need the
 admin scope.
+
+## AI contexts
+
+```
+sqlflow ai-context list [--json]
+sqlflow ai-context show sales [--json]
+sqlflow ai-context approve sales --version 3f9c2a1b7d04e8a6...
+sqlflow ai-context revoke sales
+sqlflow ai-context export [--out earlier.ai-context.yaml | --out -]
+```
+
+The AI contexts repository files propose (see [ai-context.yaml](../flow/ai-context.md)). `list` prints each
+context's status (`awaiting-approval`, `approved`, `changed`, `invalid`), the version its file proposes, the tables it
+proposes and serves, its repository and file, and how many problems it has. `show` prints one context: its file, the
+version proposed and the one approved (by whom and when), its tables and their open columns, and either its problems
+or what approving would change, followed by the exact `approve` command for the version shown.
+
+`approve` needs `--version`, the version `show` printed, so what is approved is always a version someone looked at:
+the control plane refuses it when the file proposes another version by now, or when the version has problems.
+`revoke` stops serving the context; its version then waits for approval again. `export` writes what the GUI held
+before contexts were files as one context file (default `earlier-gui-content.ai-context.yaml`, `--out -` for
+standard output), or says there is none. Every verb needs the admin scope.
 
 ## Lineage as data
 

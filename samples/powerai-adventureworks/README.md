@@ -32,9 +32,10 @@ without a sync:
 dotnet run --project src/SqlFlow.Cli -- run samples/powerai-adventureworks/adventureworks_00_sch.yaml --db '${env:SQLFLOW_CATALOG_DB}'
 ```
 
-The semantic layer needs the registered tables before any of their columns can be allowed. PowerAI's
-column policy is default-deny, so allow the report's tables afterwards (the Semantic layer page's Allow
-all, or `PUT /api/v1/powerai/column-policies/objects` per object).
+The semantic layer needs the registered tables before an AI context can open them. Everything is off by
+default, so afterwards commit an AI context file naming the report's tables (see
+`docs/reference/flow/ai-context.md`), let the repository sync, and approve the context on the AI context page
+or with `sqlflow ai-context approve`.
 
 The worker resolves `${env:SQLFLOW_ADVENTUREWORKS_DB}` from the compose file, so queries against the
 registered database run inside the stack.
