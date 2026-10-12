@@ -2839,7 +2839,8 @@
         "saved answers",
         "data mode",
         "estate mode",
-        "!exit"
+        "!exit",
+        "sql layout"
       ],
       "related": [
         "guide-slack-assistant",
@@ -2876,6 +2877,7 @@
         "src/SqlFlow.Assistant/AssistantRuns.cs",
         "src/SqlFlow.Assistant/McpServerInstructions.cs",
         "tools/sqlflow-mcp/src/modes.rs",
+        "tools/sqlflow-mcp/src/sql_format.rs",
         "src/SqlFlow.ControlPlane/Api/QueryEndpoints.cs",
         "deploy/bicep/control-plane.bicep",
         "deploy/bicep/ai-foundry.bicep"

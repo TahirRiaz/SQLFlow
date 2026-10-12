@@ -27,6 +27,7 @@ use crate::docs::DocsIndex;
 use crate::links::GuiLinks;
 use crate::modes::{self, Mode};
 use crate::module::{McpContext, ModuleSet, TASK_TEXT_LIMIT};
+use crate::sql_format;
 use sqlflow_lang::census::Census;
 
 #[derive(Clone)]
@@ -1002,9 +1003,13 @@ pub fn done(result: anyhow::Result<String>) -> String {
     }
 }
 
-/// A JSON value as the text a tool returns.
+/// A JSON value as the text a tool returns, with every SQL statement in it laid out on lines for the person who reads
+/// the answer ([`crate::sql_format`]). Every tool's answer, a host module's included, is rendered here, so none of
+/// them hands a person a statement as one line.
 pub fn json_str(v: &Value) -> String {
-    serde_json::to_string_pretty(v).unwrap_or_else(|_| v.to_string())
+    let mut v = v.clone();
+    sql_format::format_sql_fields(&mut v);
+    serde_json::to_string_pretty(&v).unwrap_or_else(|_| v.to_string())
 }
 
 /// How a query answer must be laid out. Carried IN the tool result rather than only in the server instructions,
@@ -1157,8 +1162,8 @@ const QUERY_INTRO: &str = "Here's the query I ran:";
 /// replayed an answer someone already saved, so offering to save it again would ask for a decision already made.
 const SAVE_OFFER: &str = "If this is right, reply *save* and I'll remember it for next time.";
 
-/// Attaches the answer layout to a query result that actually produced rows: `sqlBlock` is the SQL that ran,
-/// already fenced, so the model copies a finished element instead of deciding how to render it. Both the
+/// Attaches the answer layout to a query result that actually produced rows: `sqlBlock` is the SQL that ran, laid out
+/// on lines and already fenced, so the model copies a finished element instead of deciding how to render it. Both the
 /// auto-run response and a compute task carry the executed statement at `result.sql`; a result that did not
 /// run (or carries no SQL) is left untouched, so nothing suggests an answer exists.
 ///
@@ -1174,7 +1179,7 @@ fn attach_answer_format(value: &mut Value, links: &GuiLinks) {
     let Some(sql) = value["result"]["sql"].as_str().map(str::trim).filter(|s| !s.is_empty()) else {
         return;
     };
-    let block = fenced_sql(sql);
+    let block = fenced_sql(&sql_format::format_sql(sql));
     // Only the auto-run response carries `ran`; a compute task from run_query never does.
     let intro = if value.get("ran").is_some() { SAVED_QUERY_INTRO } else { QUERY_INTRO };
     if let Some(map) = value.as_object_mut() {
@@ -3928,8 +3933,21 @@ mod answer_format_edge_tests {
         let block = value["sqlBlock"].as_str().expect("a block");
         assert!(block.starts_with("`````sql\n"), "{block}");
         assert!(block.ends_with("\n`````"), "{block}");
-        assert!(block.contains(sql));
+        assert!(block.contains("'```' AS fence -- ````"), "{block}");
         assert_eq!(fenced_sql("SELECT 1"), "```sql\nSELECT 1\n```");
+    }
+
+    #[test]
+    fn every_answer_carries_its_sql_laid_out() {
+        let text = json_str(&json!({
+            "planId": "efcca224",
+            "sql": "SELECT a FROM t WHERE b = 1",
+            "matches": [{ "question": "SELECT a FROM t", "reportSql": "SELECT a FROM t" }]
+        }));
+        let answer: Value = serde_json::from_str(&text).expect("the answer is JSON");
+        assert_eq!(answer["sql"], json!("SELECT\n  a\nFROM\n  t\nWHERE\n  b = 1"));
+        assert_eq!(answer["matches"][0]["reportSql"], json!("SELECT\n  a\nFROM\n  t"));
+        assert_eq!(answer["matches"][0]["question"], json!("SELECT a FROM t"));
     }
 
     #[test]
@@ -4471,9 +4489,10 @@ mod tests {
             "result": { "sql": "SELECT COUNT(*) AS CustomerCount FROM demo.Customers\n", "rows": [["4"]] }
         });
         attach_answer_format(&mut value, &GuiLinks::new(""));
+        // Laid out on lines: the one line the control plane holds is not what a person should have to read.
         assert_eq!(
             value["sqlBlock"],
-            json!("```sql\nSELECT COUNT(*) AS CustomerCount FROM demo.Customers\n```")
+            json!("```sql\nSELECT\n  COUNT(*) AS CustomerCount\nFROM\n  demo.Customers\n```")
         );
         assert_eq!(value["answerFormat"], json!(ANSWER_FORMAT));
         assert_eq!(value["sqlIntro"], json!("Here's the saved query I ran:"));
@@ -4484,7 +4503,7 @@ mod tests {
     fn a_succeeded_query_task_carries_the_sql_as_a_fenced_block() {
         let mut value = json!({ "status": "succeeded", "result": { "sql": "SELECT 1 AS One" } });
         attach_answer_format(&mut value, &GuiLinks::new(""));
-        assert_eq!(value["sqlBlock"], json!("```sql\nSELECT 1 AS One\n```"));
+        assert_eq!(value["sqlBlock"], json!("```sql\nSELECT\n  1 AS One\n```"));
         assert_eq!(value["sqlIntro"], json!("Here's the query I ran:"));
         assert_eq!(value["saveOffer"], json!(SAVE_OFFER));
     }

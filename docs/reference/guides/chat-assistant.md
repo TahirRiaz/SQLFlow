@@ -29,6 +29,7 @@ keywords:
   - data mode
   - estate mode
   - "!exit"
+  - sql layout
 related:
   - guide-slack-assistant
   - guide-deployment
@@ -63,6 +64,7 @@ sourceRefs:
   - src/SqlFlow.Assistant/AssistantRuns.cs
   - src/SqlFlow.Assistant/McpServerInstructions.cs
   - tools/sqlflow-mcp/src/modes.rs
+  - tools/sqlflow-mcp/src/sql_format.rs
   - src/SqlFlow.ControlPlane/Api/QueryEndpoints.cs
   - deploy/bicep/control-plane.bicep
   - deploy/bicep/ai-foundry.bicep
@@ -171,11 +173,13 @@ A client outside the GUI (Claude Code, a desktop app) has no layout of its own f
 | --- | --- | --- |
 | `responseRule` | `find_similar_questions` | Say nothing between tool calls; no remarks about matches, trust, or scores |
 | `approvalFormat` | `prepare_query` | The no-saved-answer opening, what the query will show, the SQL, then "Want me to run it?"; never a word about trust or scores, never a request to judge the data source |
-| `answerFormat`, `sqlIntro`, `sqlBlock` | `run_query`, `auto_run_trusted_match` (successful results only) | The finding, then `sqlIntro` ("Here's the saved query I ran:" for a trusted auto-run, "Here's the query I ran:" otherwise), then `sqlBlock`, the SQL already fenced; and that running is not confirming |
+| `answerFormat`, `sqlIntro`, `sqlBlock` | `run_query`, `auto_run_trusted_match` (successful results only) | The finding, then `sqlIntro` ("Here's the saved query I ran:" for a trusted auto-run, "Here's the query I ran:" otherwise), then `sqlBlock`, the SQL laid out on lines and already fenced; and that running is not confirming |
 | `saveOffer` | `run_query` only (an auto-run replays an answer already saved) | The last line, "If this is right, reply *save* and I'll remember it for next time." (the reply stays in data mode, which is where `confirm_question` is); saving still happens only on that explicit reply |
 | `chartLink` | the same, only when the MCP server has `SQLFLOW_GUI_URL` | `/query-results/<taskId>`, a GUI page that draws the stored result with `QueryResultEmbed` (the same chart as the chat) and shows its SQL, without running it again |
 
 Every layout field opens by yielding to the client's own instructions, which is how the GUI chat and the Slack bot keep their layouts: the GUI chat's surface section tells the model to ignore them (it draws the chart inline), and Slack's to adopt `approvalFormat` and `answerFormat`. The MCP server cannot tell those clients apart, since both connect with `surface=assistant`.
+
+The SQL in a tool result is laid out for a person too: every `sql` field, and every field whose name ends in `Sql`, comes a clause to a line with two spaces to an indent, since the control plane holds most statements (a composed query, a visual's translated query, a statement the engine ran) as one line. Only the whitespace between tokens changes; names, literals, comments and keyword case stay as written, and a statement that cannot be laid out without changing a token is returned exactly as it was. The GUI lays SQL out as well, in `CodeView`.
 
 The affordance is gated by `runQuery` on `GET /api/v1/chat/capabilities` (`ControlPlane:AiContext:Enabled`, the same switch `prepare_query`/`run_query` answer 403 on), so it is absent, not merely disabled, on a deployment without AI context turned on.
 

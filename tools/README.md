@@ -130,6 +130,15 @@ itself, its lineage graph, and the entities it references (its flow, the objects
 a lineage step touches, the run behind a file). Use them when an answer names a
 table, flow, or run, so the reader can open it instead of hunting for it.
 
+Every SQL field of a result (`sql`, and any field whose name ends in `Sql`, such
+as `sourceSql`, `reportSql` or `failedStatementSql`) comes laid out on lines, a
+clause to a line and two spaces to an indent, because the control plane holds
+most statements as one line and an editor or Slack shows them as they come
+(`src/sql_format.rs`). Only the whitespace between tokens changes: names,
+literals, comments and keyword case stay as written, and a statement that cannot
+be laid out without changing a token comes back exactly as it was. A host
+module's results, rendered with `json_str`, get the same layout.
+
 Environment: `SQLFLOW_CONTROL_PLANE_URL` (default `http://localhost:8080`),
 `SQLFLOW_CONTROL_PLANE_TOKEN` (optional token override), `SQLFLOW_GUI_URL`
 (public GUI base URL; makes those links absolute instead of root-relative),

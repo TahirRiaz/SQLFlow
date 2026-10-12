@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- The MCP server lays out the SQL in its answers. Every `sql` field of a tool result, and every field whose name ends
+  in `Sql` (`sourceSql`, `reportSql`, `suggestedSql`, `sampleSql`, `failedStatementSql`), comes a clause to a line with
+  two spaces to an indent, and so does the fenced `sqlBlock` of a query answer; until now an editor's assistant or
+  Slack showed a composed query, a visual's translated query or an engine statement as the one line the control
+  plane holds. Only the whitespace between tokens changes: names, literals, comments and keyword case stay as
+  written, and a statement that cannot be laid out without changing a token (checked against its own T-SQL tokens)
+  is returned exactly as it was. Layout is `sqlformat` (`tools/sqlflow-mcp/src/sql_format.rs`), applied in `json_str`,
+  so a host module's answers get it too.
 - The data-mode command is `!data` (or a bare `!`); `!cwd` is gone, since an editor's assistant such as Claude Code
   runs a prompt that starts with `!` as a shell command. The MCP server gained `get_mode` (the session's mode, how it
   was set, and whether the session lists every tool) and `start_data_mode` beside `end_data_mode`, so a person can

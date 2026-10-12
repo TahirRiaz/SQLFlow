@@ -20,6 +20,7 @@ pub mod links;
 pub mod modes;
 pub mod module;
 pub mod server;
+pub mod sql_format;
 
 pub use docs::{DocMeta, DocPage};
 pub use host::{run, McpHost};
