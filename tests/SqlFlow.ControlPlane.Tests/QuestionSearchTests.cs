@@ -209,6 +209,73 @@ public sealed class QuestionSearchTests
         }
     }
 
+    [SkippableFact]
+    public async Task AnExpansionOfOnlyStopWords_FallsBackToTheTypedWords()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoId = Guid.NewGuid();
+        var subscriberKey = $"subscriber|stopexp_{suffix}";
+        var pageKey = $"{subscriberKey}#report.pbix#1";
+
+        await using var db = CatalogDatabase.Create(cs);
+        try
+        {
+            await SeedAsync(db, repoId, subscriberKey, pageKey,
+            [
+                ("How many employees work in each region?", "SELECT 1", "[Dw].[arc].[Staff]", "Headcount"),
+            ]);
+
+            // An assistant's expansion that normalizes to nothing is no expansion: the question's own words still search.
+            var result = await QuestionSearch.FindSimilarAsync(
+                db, "employees per region", topK: 3, ["the", "of", "x"], repoId, CancellationToken.None);
+
+            var match = Assert.Single(result.Matches);
+            Assert.Equal(2, match.Score);
+            Assert.Equal(["employees", "region"], result.SearchedTerms);
+        }
+        finally
+        {
+            await CleanupAsync(db, repoId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task APluralOfAWordEndingInE_FindsItsSingular_AndAPhraseMatchesOnlyWhole()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var repoId = Guid.NewGuid();
+        var subscriberKey = $"subscriber|plural_{suffix}";
+        var pageKey = $"{subscriberKey}#report.pbix#1";
+
+        await using var db = CatalogDatabase.Create(cs);
+        try
+        {
+            await SeedAsync(db, repoId, subscriberKey, pageKey,
+            [
+                ("Which employee joined last?", "SELECT 1", "[Dw].[arc].[Staff]", "Newest"),
+                ("What is cabinet revenue this year?", "SELECT 2", "[Dw].[arc].[Cabinet]", "Cabinet"),
+            ]);
+
+            var plural = await QuestionSearch.FindSimilarAsync(
+                db, "employees", topK: 3, ["employees"], repoId, CancellationToken.None);
+            Assert.Equal("Which employee joined last?", Assert.Single(plural.Matches).Question);
+
+            var phrase = await QuestionSearch.FindSimilarAsync(
+                db, "net revenue", topK: 3, ["net revenue"], repoId, CancellationToken.None);
+            Assert.Empty(phrase.Matches);
+        }
+        finally
+        {
+            await CleanupAsync(db, repoId);
+        }
+    }
+
     /// <summary>
     /// A caller's own expansion is held to the bound the server's expander uses: each term is its own predicate,
     /// so an assistant sending hundreds of terms must not turn one question into hundreds of index probes. Terms

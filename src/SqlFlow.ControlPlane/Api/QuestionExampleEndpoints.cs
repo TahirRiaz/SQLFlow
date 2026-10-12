@@ -31,11 +31,15 @@ public static class QuestionConfirmationOutcome
     /// only correct, verified answers become precedent, so a rejection leaves no trace in the store.</summary>
     public const string Rejected = "rejected";
 
-    /// <summary>Whether <paramref name="value"/> is one of the three outcomes, case-insensitively.</summary>
+    /// <summary>Whether <paramref name="value"/> is one of the three outcomes, case-insensitively and with surrounding
+    /// space ignored, as the endpoint reads it.</summary>
     public static bool IsKnown(string? value)
-        => string.Equals(value, Accepted, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(value, Corrected, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(value, Rejected, StringComparison.OrdinalIgnoreCase);
+    {
+        var outcome = value?.Trim();
+        return string.Equals(outcome, Accepted, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(outcome, Corrected, StringComparison.OrdinalIgnoreCase)
+            || string.Equals(outcome, Rejected, StringComparison.OrdinalIgnoreCase);
+    }
 }
 
 /// <summary>
@@ -218,8 +222,14 @@ public static class QuestionExampleEndpoints
         // The objects the query reads: the caller's when it resolved them, otherwise the catalogued tables the SQL
         // names, so an example confirmed without keys (every GUI confirmation) is still tied to the tables it reads
         // and served as one of their examples.
-        var objectKeys = request.ObjectKeys is { Count: > 0 }
-            ? request.ObjectKeys
+        // A blank key names nothing, so a list of blanks is no keys at all, and never replaces the ones stored.
+        var requestedKeys = (request.ObjectKeys ?? [])
+            .Where(key => !string.IsNullOrWhiteSpace(key))
+            .Select(key => key.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var objectKeys = requestedKeys.Count > 0
+            ? requestedKeys
             : await DatasourceInference.ObjectKeysFromSqlAsync(db, sql, ct).ConfigureAwait(false);
 
         // Named by nobody: the objects the query reads decide it, so an example is runnable later without a
@@ -248,13 +258,16 @@ public static class QuestionExampleEndpoints
         if (existing is not null)
         {
             // Reaffirming an answer updates who last stood behind it and when, and takes the newer confidence
-            // when one was supplied. The question and SQL are not rewritten: they are what the hash is OF, so
-            // a change to either is a different example rather than an edit to this one.
+            // when one was supplied. The hash folds case and spacing (inside string literals too), so the same hash
+            // can carry a correction that changed only those, a literal's case being the usual one: the text a person
+            // just confirmed is the one kept, since it is what they checked.
+            existing.Question = question;
+            existing.Sql = sql;
             existing.ConfirmedUtc = now;
             existing.ConfirmedBy = confirmedBy;
             existing.Provenance = SemanticExampleProvenance.UserConfirmed;
             existing.Confidence = request.Confidence ?? existing.Confidence;
-            if (request.ObjectKeys is { Count: > 0 } || (existing.ObjectKeys.Length == 0 && objectKeys.Count > 0))
+            if (requestedKeys.Count > 0 || (existing.ObjectKeys.Length == 0 && objectKeys.Count > 0))
             {
                 existing.ObjectKeys = JoinObjectKeys(objectKeys);
             }
@@ -385,6 +398,13 @@ public static class QuestionExampleEndpoints
                 + "exactly one datasource the estate declares, so there is nothing to run it against. Use "
                 + "prepare_query/run_query with the datasource named.",
                 StatusCodes.Status409Conflict, "No datasource");
+        }
+
+        // The stored datasource passes the gate prepare and confirm apply, again here: the pipeline that declared it
+        // may have been retired since the example was confirmed, or the row edited outside the confirm endpoint.
+        if (await SourceRefProblemAsync(db, sourceRef, ct).ConfigureAwait(false) is { } sourceRefProblem)
+        {
+            return sourceRefProblem;
         }
 
         string sql;

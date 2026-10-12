@@ -141,10 +141,13 @@ public static class QuestionSearch
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(db);
+        ArgumentNullException.ThrowIfNull(question);
         ArgumentNullException.ThrowIfNull(terms);
         ArgumentOutOfRangeException.ThrowIfLessThan(topK, 1);
 
-        terms = Normalize(terms).Take(QuestionExpander.MaxTerms).ToList();
+        // An expansion that is nothing but stop words is no expansion: the typed words are searched instead.
+        var normalized = Normalize(terms);
+        terms = (normalized.Count > 0 ? normalized : TypedTerms(question)).Take(QuestionExpander.MaxTerms).ToList();
         if (terms.Count == 0)
         {
             return new QuestionSearchResult([], []);
@@ -331,7 +334,7 @@ public static class QuestionSearch
     /// <summary>A question reduced to its meaningful words: split, stop words and one-character tokens dropped
     /// (the same <see cref="Normalize"/> the search terms go through), and each word stemmed so "customer" and
     /// "customers" count as one. Two questions with equal sets ask the same thing.</summary>
-    private static HashSet<string> MeaningfulStems(string question)
+    internal static HashSet<string> MeaningfulStems(string question)
         => Normalize(question.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries))
             .Select(Stem)
             .ToHashSet(StringComparer.Ordinal);
@@ -363,6 +366,7 @@ public static class QuestionSearch
                     var condition = InflectionalCondition(term);
                     return q => EF.Functions.Contains(q.Question, condition);
                 }))
+                .OrderByDescending(q => q.Id)
                 .Select(q => new QuestionRow(q.Question, PowerBiProvenance, q.VisualKey, 0L))
                 .Take(MaxCandidates)
                 .ToListAsync(ct).ConfigureAwait(false));
@@ -372,6 +376,7 @@ public static class QuestionSearch
             rows.AddRange(await visualQuestions
                 .Where(AnyTerm<CatalogSubscriberReportVisualQuestion>(
                     LikeForms(terms), form => q => q.Question.Contains(form)))
+                .OrderByDescending(q => q.Id)
                 .Select(q => new QuestionRow(q.Question, PowerBiProvenance, q.VisualKey, 0L))
                 .Take(MaxCandidates)
                 .ToListAsync(ct).ConfigureAwait(false));
@@ -408,6 +413,7 @@ public static class QuestionSearch
                     var condition = InflectionalCondition(term);
                     return e => EF.Functions.Contains(e.Question, condition);
                 }))
+                .OrderByDescending(e => e.Id)
                 .Select(e => new QuestionRow(e.Question, e.Provenance, null, e.Id))
                 .Take(MaxCandidates)
                 .ToListAsync(ct).ConfigureAwait(false);
@@ -415,6 +421,7 @@ public static class QuestionSearch
 
         return await examples
             .Where(AnyTerm<CatalogSemanticExample>(LikeForms(terms), form => e => e.Question.Contains(form)))
+            .OrderByDescending(e => e.Id)
             .Select(e => new QuestionRow(e.Question, e.Provenance, null, e.Id))
             .Take(MaxCandidates)
             .ToListAsync(ct).ConfigureAwait(false);
@@ -424,8 +431,8 @@ public static class QuestionSearch
     /// The substrings the LIKE fallback searches for, so it finds every row the scorer (<see cref="MatchesTerm"/>)
     /// would credit, as the full-text path's FORMSOF(INFLECTIONAL, ...) does. A literal term misses inflections:
     /// "categories" is not a substring of "category". Every word sharing a term's stem contains the stem itself
-    /// ("sell" in "sells", "selling"), except the "-ies" plural of a stem ending in "y", which is added as its own
-    /// form. A multi-word term, or a stem too short to be credited, is searched literally, as the scorer matches it.
+    /// ("sell" in "sells", "selling", "pric" in "price", "prices", "pricing"), except the "-ies" and "-ied" forms of a
+    /// stem ending in "y", which are added as forms of their own. A multi-word term, or a stem too short to be credited, is searched literally, as the scorer matches it.
     /// </summary>
     private static List<string> LikeForms(IReadOnlyList<string> terms)
     {
@@ -443,6 +450,7 @@ public static class QuestionSearch
             if (stem.EndsWith('y'))
             {
                 forms.Add(string.Concat(stem.AsSpan(0, stem.Length - 1), "ies"));
+                forms.Add(string.Concat(stem.AsSpan(0, stem.Length - 1), "ied"));
             }
         }
 
@@ -519,9 +527,9 @@ public static class QuestionSearch
     private static string InflectionalCondition(string term)
         => $"FORMSOF(INFLECTIONAL, \"{term.Replace("\"", "\"\"", StringComparison.Ordinal)}\")";
 
-    /// <summary>The most stored questions one search pulls back FROM EACH STORE before ranking. A ceiling
-    /// rather than a page: past this many term hits the query is too broad for the extra rows to change the
-    /// winners.</summary>
+    /// <summary>The most stored questions one search pulls back FROM EACH STORE before ranking, newest first so the
+    /// same search returns the same rows. A ceiling rather than a page: past this many term hits the query is too broad
+    /// for the extra rows to change the winners.</summary>
     private const int MaxCandidates = 500;
 
     /// <summary>One candidate before resolution: its text, its provenance, and whichever identity resolves the
@@ -570,22 +578,25 @@ public static class QuestionSearch
     {
         if (expander is not null)
         {
-            var expanded = await expander.ExpandAsync(question, ct).ConfigureAwait(false);
+            var expanded = Normalize(await expander.ExpandAsync(question, ct).ConfigureAwait(false));
             if (expanded.Count > 0)
             {
-                return Normalize(expanded);
+                return expanded;
             }
         }
 
-        return Normalize(question.Split(
-            [' ', '\t', '\n', '\r', '?', '!', ',', '.', ';', ':', '(', ')', '"', '\''],
-            StringSplitOptions.RemoveEmptyEntries));
+        return TypedTerms(question);
     }
+
+    /// <summary>The meaningful words of the typed question, split exactly as a stored question's words are split for
+    /// scoring, so "sales/region" and "year-over-year" give their words.</summary>
+    internal static IReadOnlyList<string> TypedTerms(string question)
+        => Normalize(question.Split(WordSeparators, StringSplitOptions.RemoveEmptyEntries));
 
     /// <summary>Trims, lowercases, drops stop words and one-character tokens, and de-duplicates. Stop words are
     /// dropped here rather than left to SQL Server because they would otherwise count toward a question's score
     /// and let "what is the" outrank a real vocabulary match.</summary>
-    private static IReadOnlyList<string> Normalize(IEnumerable<string> terms)
+    internal static IReadOnlyList<string> Normalize(IEnumerable<string> terms)
         => terms
             .Select(t => t.Trim().Trim('"').ToLowerInvariant())
             .Where(t => t.Length > 1 && !StopWords.Contains(t))
@@ -608,7 +619,7 @@ public static class QuestionSearch
     /// and then silently discarded. It is a deliberately small suffix comparison rather than a real stemmer:
     /// its only job is to agree with matches the database already made, not to find new ones.
     /// </summary>
-    private static bool MatchesTerm(string question, string term)
+    internal static bool MatchesTerm(string question, string term)
     {
         if (ContainsWord(question, term))
         {
@@ -633,44 +644,63 @@ public static class QuestionSearch
         return false;
     }
 
-    /// <summary>Strips the regular English endings that separate one form of a word from another, so "sells",
-    /// "selling" and "sell" reduce alike, as do "categories" and "category". Irregulars ("sold") are out of
-    /// scope on purpose: the expansion supplies those, and a rule that tried to cover them would mis-stem far
-    /// more words than it fixed.</summary>
-    private static string Stem(string word)
+    /// <summary>
+    /// Strips the regular English endings that separate one form of a word from another, so "sells", "selling" and
+    /// "sell" reduce alike, as do "categories" and "category", "boxes" and "box", and "employees" and "employee". The
+    /// "-es" plural is taken off only after a sibilant ("boxes", "classes", "statuses"), since everywhere else it is
+    /// the word's own "e" plus "s" ("employees", "prices"); a word already ending in "ss", "us" or "is" is singular. A
+    /// final silent "e" is then dropped from every form, so "price", "prices", "priced" and "pricing" share one stem.
+    /// Irregulars ("sold") are out of scope on purpose: the expansion supplies those, and a rule that tried to cover
+    /// them would mis-stem far more words than it fixed.
+    /// </summary>
+    internal static string Stem(string word)
     {
         var w = word.Trim().ToLowerInvariant();
-        if (w.EndsWith("ies", StringComparison.Ordinal) && w.Length > 4)
+        if (w.Length > 4 && (w.EndsWith("ies", StringComparison.Ordinal) || w.EndsWith("ied", StringComparison.Ordinal)))
         {
-            return string.Concat(w.AsSpan(0, w.Length - 3), "y");
+            w = string.Concat(w.AsSpan(0, w.Length - 3), "y");
         }
-        foreach (var suffix in Suffixes)
+        else if (w.EndsWith("es", StringComparison.Ordinal) && w.Length - 2 >= MinStemLength && EndsWithSibilant(w[..^2]))
         {
-            if (w.Length - suffix.Length >= MinStemLength && w.EndsWith(suffix, StringComparison.Ordinal))
-            {
-                return w[..^suffix.Length];
-            }
+            w = w[..^2];
         }
-        return w;
+        else if (w.EndsWith('s') && w.Length - 1 >= MinStemLength
+            && !w.EndsWith("ss", StringComparison.Ordinal) && !w.EndsWith("us", StringComparison.Ordinal)
+            && !w.EndsWith("is", StringComparison.Ordinal))
+        {
+            w = w[..^1];
+        }
+        else if (w.EndsWith("ing", StringComparison.Ordinal) && w.Length - 3 >= MinStemLength)
+        {
+            w = w[..^3];
+        }
+        else if (w.EndsWith("ed", StringComparison.Ordinal) && w.Length - 2 >= MinStemLength)
+        {
+            w = w[..^2];
+        }
+
+        return w.Length - 1 >= MinStemLength && w.EndsWith('e') ? w[..^1] : w;
     }
 
-    private static readonly string[] Suffixes = ["ing", "ed", "es", "s"];
+    private static bool EndsWithSibilant(string stem)
+        => stem.EndsWith('s') || stem.EndsWith('x') || stem.EndsWith('z')
+            || stem.EndsWith("ch", StringComparison.Ordinal) || stem.EndsWith("sh", StringComparison.Ordinal);
 
-    /// <summary>Below this many characters a stem is too short to be a meaningful match, and stripping a
-    /// suffix from an already-short word ("sales" to "sal") produces noise rather than a root.</summary>
+    /// <summary>A stem is never cut below this many characters ("use" stays "use"), and a term whose stem is shorter
+    /// is credited only as the whole word it is.</summary>
     private const int MinStemLength = 3;
 
     private static readonly char[] WordSeparators =
         [' ', '\t', '\n', '\r', '?', '!', ',', '.', ';', ':', '(', ')', '"', '\'', '-', '/'];
 
     /// <summary>Whether a question contains a term as a whole word, so "sale" does not score against
-    /// "wholesale". A term that is itself multi-word (a short noun phrase from the expansion) is matched as a
-    /// substring, since its own boundaries already make it specific.</summary>
+    /// "wholesale". A term that is itself multi-word (a short noun phrase from the expansion) is matched the same way,
+    /// on the boundaries of the whole phrase, so "net revenue" does not score against "cabinet revenue".</summary>
     private static bool ContainsWord(string question, string term)
     {
-        if (term.Contains(' ', StringComparison.Ordinal))
+        if (term.Length == 0)
         {
-            return question.Contains(term, StringComparison.OrdinalIgnoreCase);
+            return false;
         }
 
         var index = 0;

@@ -296,6 +296,122 @@ public sealed class ConfirmQuestionApiTests
         }
     }
 
+    /// <summary>
+    /// The hash an example is deduplicated by folds case and spacing, string literals included, so a correction that
+    /// changed only a literal's case reaches the same row: what is kept is the text the person just confirmed. Blank
+    /// object keys are no keys and never replace the stored ones, and an outcome is read with its surrounding space
+    /// trimmed, as the endpoint has always meant to.
+    /// </summary>
+    [SkippableFact]
+    public async Task AReaffirmation_KeepsTheTextJustConfirmed_AndBlankKeysChangeNothing()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var table = "Orders_" + suffix;
+        var objectKey = $"${{env:SQLFLOW_REAFFIRM_{suffix}}}|dw|dbo|{table}".ToLowerInvariant();
+        var question = $"How many open orders ({suffix})?";
+        var first = $"SELECT COUNT(*) FROM dbo.{table} WHERE Status = 'OPEN'";
+        var corrected = $"SELECT COUNT(*) FROM dbo.{table} WHERE Status = 'Open'";
+        var hash = SemanticExampleHash.Compute(question, first);
+        Assert.Equal(hash, SemanticExampleHash.Compute(question, corrected));
+
+        await using var factory = Enabled(cs);
+        using var client = factory.CreateClient();
+        var token = await IssueOperateTokenAsync(client);
+        await using var db = CatalogDatabase.Create(cs);
+        try
+        {
+            var now = DateTime.UtcNow;
+            db.Objects.Add(new CatalogObject
+            {
+                Key = objectKey, ServerRef = objectKey.Split('|')[0], Database = "dw", Schema = "dbo", Name = table,
+                Kind = "Table", FirstSeenUtc = now, LastSeenUtc = now,
+            });
+            db.ObjectColumns.Add(new CatalogObjectColumn
+            {
+                ObjectKey = objectKey, Ordinal = 1, Name = "Status", DataType = "varchar(10)", Nullable = false, Tier = "Observed",
+            });
+            db.ColumnPolicies.Add(new CatalogColumnPolicy { ObjectKey = objectKey, ColumnName = "Status", IsAllowed = true, UpdatedUtc = now });
+            await db.SaveChangesAsync();
+
+            using (var response = await ConfirmAsync(client, token, new ConfirmQuestionRequest(
+                question, first, " Accepted ", ["k|one"])))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+
+            using (var response = await ConfirmAsync(client, token, new ConfirmQuestionRequest(
+                question, corrected, QuestionConfirmationOutcome.Corrected, [" ", ""])))
+            {
+                response.EnsureSuccessStatusCode();
+            }
+
+            var stored = await db.SemanticExamples.AsNoTracking().SingleAsync(e => e.ContentHash == hash);
+            Assert.Equal(corrected, stored.Sql);
+            Assert.Equal("k|one", stored.ObjectKeys);
+        }
+        finally
+        {
+            await db.SemanticExamples.Where(e => e.ContentHash == hash).ExecuteDeleteAsync();
+            await db.ColumnPolicies.Where(p => p.ObjectKey == objectKey).ExecuteDeleteAsync();
+            await db.ObjectColumns.Where(c => c.ObjectKey == objectKey).ExecuteDeleteAsync();
+            await db.Objects.Where(o => o.Key == objectKey).ExecuteDeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// Auto-run applies the known-reference gate prepare and confirm apply to the datasource an example carries: one
+    /// whose declaring pipeline was retired since it was confirmed (or whose row was edited outside the endpoint) is
+    /// refused before anything is enqueued.
+    /// </summary>
+    [SkippableFact]
+    public async Task AutoRun_RefusesAStoredDatasourceNoActivePipelineDeclares()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var retired = "${env:SQLFLOW_AUTORUN_RETIRED_" + suffix + "}";
+        var question = $"How many retired things ({suffix})?";
+        const string Sql = "SELECT 1 AS One";
+        var hash = SemanticExampleHash.Compute(question, Sql);
+
+        await using var factory = Enabled(cs)
+            .WithSetting("ControlPlane:DataOps:Enabled", "true")
+            .WithSetting("ControlPlane:PowerAI:Retrieval:AutoRun:Enabled", "true");
+        using var client = factory.CreateClient();
+        var token = await IssueOperateTokenAsync(client);
+        await using var db = CatalogDatabase.Create(cs);
+        try
+        {
+            var example = new CatalogSemanticExample
+            {
+                Question = question, Sql = Sql, ObjectKeys = string.Empty, Provenance = SemanticExampleProvenance.UserConfirmed,
+                ConfirmedUtc = DateTime.UtcNow, ContentHash = hash, SourceRef = retired,
+            };
+            db.SemanticExamples.Add(example);
+            await db.SaveChangesAsync();
+
+            using var request = new HttpRequestMessage(
+                HttpMethod.Post, new Uri($"/api/v1/powerai/questions/{example.Id}/auto-run", UriKind.Relative))
+            {
+                Content = JsonContent.Create(new { }),
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            using var response = await client.SendAsync(request);
+
+            Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+            Assert.Contains("No active pipeline", await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+            Assert.False(await db.ComputeTasks.AnyAsync(t => t.SourceRef == retired));
+        }
+        finally
+        {
+            await db.SemanticExamples.Where(e => e.ContentHash == hash).ExecuteDeleteAsync();
+        }
+    }
+
     /// <summary>A host with retrieval turned on, which is what makes the example store writable at all. Synonym
     /// expansion is switched off: this file tests the write path and its storage semantics, not the LLM
     /// expansion (covered by <see cref="QuestionSearchTests"/>), and turning it on would require an Anthropic
