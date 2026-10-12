@@ -137,8 +137,7 @@ impl SqlFlowMcp {
 //    neighbouring tool would otherwise be picked. `START HERE` marks the entry point of a family and
 //    belongs to exactly one tool (asserted).
 // 2. Safety, for a constraint whose breach causes real harm: an approval that must precede execution, a
-//    surface that bypasses the column allow-list, a call that must not be made on the model's own
-//    judgement.
+//    call that must not be made on the model's own judgement.
 //
 // Everything else is lowercase prose. A contrast between two tools ("columns sees only synced objects,
 // flowColumns sees pipeline-only columns") is carried by the sentence, not by shouting one word of it.
@@ -574,8 +573,8 @@ struct SearchSurfaceSpec {
 }
 
 /// Resolves a `search` surface: the ETL-side ones, which carry no warehouse schema. Kept separate from
-/// [`schema_surface_spec`] because the split is a privacy boundary, not a category. The chat surfaces are
-/// given these and denied those, and a name-level allowlist can only express that as two tools.
+/// [`schema_surface_spec`], so the ETL side and the warehouse schema stay two tools a host can offer apart: a
+/// name-level allowlist can only express that as two tools.
 fn search_surface_spec(surface: &str) -> Option<SearchSurfaceSpec> {
     let (path, query_param, takes_days) = match surface {
         "flows" => ("/api/v1/search/flows", "q", false),
@@ -586,9 +585,8 @@ fn search_surface_spec(surface: &str) -> Option<SearchSurfaceSpec> {
     Some(SearchSurfaceSpec { path, query_param, takes_days })
 }
 
-/// Resolves a `search_schema` surface: the four that read the warehouse schema itself. These see every
-/// catalogued table and column regardless of the semantic layer's column allow-list, which is why they are
-/// a separate tool that the chat surfaces exclude.
+/// Resolves a `search_schema` surface: the four that read the warehouse schema itself, every catalogued table
+/// and column, whatever the approved AI contexts open.
 fn schema_surface_spec(surface: &str) -> Option<SearchSurfaceSpec> {
     let (path, query_param) = match surface {
         "objects" => ("/api/v1/search/objects", "name"),
@@ -1054,7 +1052,7 @@ const QUERY_INTRO: &str = "Here's the query I ran:";
 
 /// The closing line inviting a person to save a fresh answer. Only a run_query result carries it: an auto-run
 /// replayed an answer someone already saved, so offering to save it again would ask for a decision already made.
-const SAVE_OFFER: &str = "If this is right, reply *save* and I'll remember it for next time.";
+const SAVE_OFFER: &str = "If this is right, reply *!save* and I'll remember it for next time.";
 
 /// Attaches the answer layout to a query result that actually produced rows: `sqlBlock` is the SQL that ran,
 /// already fenced, so the model copies a finished element instead of deciding how to render it. Both the
@@ -2027,7 +2025,7 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Browse the catalog as a folder tree (the semantic layer): with no arguments it lists \
+        description = "Browse the catalog as a folder tree: with no arguments it lists \
             every (server, database, schema) grouping with object counts; add serverRef and/or database to \
             narrow; add schema to get that schema's object-kind groups (Tables/Views/Procedures/...) with \
             counts; add kind to list the objects in that group, paged. This is the database branch; use \
@@ -2307,12 +2305,10 @@ and fix every finding first."
             straight: columns sees only what the schema sync has imported, while flowColumns needs no sync and so sees \
             columns that exist only inside a pipeline, so a column missing from one is routinely present in the other. On a \
             flowColumns hit, `matchedIn` says whether the flow computes the value (Expression), emits it under that name \
-            (Column), or reads it from the raw data (Source). How the allow-list applies here differs BY SURFACE: columns \
-            serves only columns an admin has allow-listed (a column with no policy row is as invisible as a denied one), \
-            while objects, definitions, and flowColumns are unfiltered, and definitions returns raw DDL and module bodies, \
-            which name every column a table has. So this tool is kept off the chat surfaces as a whole. To write SQL for \
-            someone, use search_semantic_layer and describe_semantic_table, which serve the governed schema with its \
-            business context. Follow a hit with describe_object(key), or a flowColumns hit with \
+            (Column), or reads it from the raw data (Source). Every surface serves every catalogued table and column, \
+            whatever the approved AI contexts open: schema is not sensitive. A business question's query reads only what \
+            those contexts open, so to write one use search_semantic_layer and describe_semantic_table, which serve them \
+            with their business context. Follow a hit with describe_object(key), or a flowColumns hit with \
             pipeline_definition(pipelineId)."
     )]
     async fn search_schema(&self, Parameters(i): Parameters<SearchInput>) -> String {
@@ -4053,18 +4049,17 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   can amend the wording; the question is stored as typed and is what later questions match against, so a
   typo is theirs to fix, not yours to correct silently, and amending it leaves the query untouched. A
   message with NO leading `!` is never routed to find_similar_questions, no matter how much it reads
-  like a question the warehouse could answer: treat it as a normal schema/lookup question and work it
-  through the semantic layer and the rest of this list instead.
-- Writing SQL, or any question about which tables and columns exist and what they mean: use the SEMANTIC
-  LAYER, the governed schema made of the AI contexts an admin approved, holding only the tables and columns
-  those contexts open, with their
+  like a question the warehouse could answer: treat it as a normal question about the estate and work it
+  through the catalog readers and the rest of this list instead.
+- Writing SQL for a business question (a `!` message): use the SEMANTIC LAYER, the governed schema made of the
+  AI contexts an admin approved, holding only the tables and columns those contexts open, with their
   business descriptions, synonyms, curated keys and joins, measures, and example queries. get_semantic_layer
   first (its general instructions apply to every query you write), then search_semantic_layer with a name or
   a business term, then describe_semantic_table(key) for the columns, key, joins, and measures of one table.
-  A query may read only the allowed columns describe_semantic_table lists: anything else is refused when it
-  runs. The raw catalog readers below (describe_object, search_objects/_columns/_definitions, get_table_key,
-  get_table_joins) see every catalogued column whatever the approved contexts open; where a client exposes them,
-  use them for lineage and code questions, never to find columns to query.
+  A query may read only the columns describe_semantic_table lists: anything else is refused when it runs. The
+  catalog readers below (describe_object, search_schema, get_table_key, get_table_joins) see every catalogued table
+  and column whatever the approved contexts open, since schema is not sensitive: use them for every other question
+  about the schema, lineage, and code, never to find columns for a business question's query.
 - \"Where does <name> live / where is <X> computed / what is <X>?\": call search_all FIRST. It fans one term
   across all seven surfaces at once and answers with each surface's full count plus a nextSteps plan naming
   the tool that pages it and the tool that turns a hit into an answer; work that plan rather than guessing a
@@ -4512,8 +4507,8 @@ mod tests {
 
             if let Some(paged) = paged {
                 assert_eq!(paged, surface, "the plan pages the wrong surface for {surface}");
-                // The split is a privacy boundary, not a category: the schema surfaces must be served by
-                // search_schema, which the chat surfaces exclude, and never leak onto the ETL-side `search`.
+                // The schema surfaces must be served by search_schema and never leak onto the ETL-side `search`,
+                // so a host offering one of the two tools does not get the other's surfaces with it.
                 let expected =
                     if schema_surface_spec(paged).is_some() { "search_schema" } else { "search" };
                 assert_eq!(name, expected, "{paged} is paged by the wrong tool");

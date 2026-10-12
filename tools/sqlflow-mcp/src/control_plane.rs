@@ -23,8 +23,9 @@ tokio::task_local! {
 
     /// The client surface the inbound HTTP request declared through the MCP URL's query
     /// (`?surface=assistant`), scoped by the HTTP dispatch beside `HTTP_BEARER`. While present it is
-    /// sent to the control plane as `SURFACE_HEADER`, which then serves only the semantic layer. It
-    /// narrows what is shown and never widens it, so honouring the query is safe without authentication.
+    /// sent to the control plane as `SURFACE_HEADER`, which then holds a data-operations task the assistant
+    /// enqueues to the column guards. It narrows and never widens, so honouring the query is safe without
+    /// authentication.
     pub static HTTP_SURFACE: String;
 }
 

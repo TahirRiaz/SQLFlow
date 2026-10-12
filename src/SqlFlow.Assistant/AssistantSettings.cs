@@ -46,9 +46,9 @@ public sealed class AssistantSettings
 
     public McpOptions Mcp { get; set; } = new();
 
-    /// <summary>The MCP tools this surface offers the model: the deployment's configured list, or the surface's
-    /// default when it configured none.</summary>
-    public IReadOnlyList<string> AllowedTools => Mcp.EffectiveTools(Surface);
+    /// <summary>The MCP tools a message of <paramref name="kind"/> is answered with on this surface: the deployment's
+    /// configured list, or the default when it configured none (<see cref="McpOptions.EffectiveTools"/>).</summary>
+    public IReadOnlyList<string> ToolsFor(AssistantQuestionKind kind) => Mcp.EffectiveTools(Surface, kind);
 
     public FoundryOptions Foundry { get; set; } = new();
     public OpenAIOptions OpenAI { get; set; } = new();
@@ -144,13 +144,14 @@ public sealed class McpOptions
     public string ServerUrl { get; set; } = "";
 
     /// <summary>The query parameter marking an MCP session as the assistant surface. The MCP server reads it and
-    /// tags its control-plane calls, which then serve only the semantic layer (<c>AssistantScope</c> in the control
-    /// plane). Mirrored by <c>request_surface</c> in the MCP server's <c>server.rs</c>.</summary>
+    /// tags its control-plane calls, so a data-operations task the assistant enqueues is held to the column guards
+    /// (<c>AssistantScope</c> in the control plane). Mirrored by <c>request_surface</c> in the MCP server's
+    /// <c>server.rs</c>.</summary>
     public const string AssistantSurfaceQuery = "surface=assistant";
 
     /// <summary><see cref="ServerUrl"/> with <see cref="AssistantSurfaceQuery"/> added (once, keeping any existing
     /// query): the address every assistant gateway gives its MCP connector, so no provider can reach the MCP server
-    /// without the assistant narrowing.</summary>
+    /// without the assistant marker.</summary>
     public Uri AssistantServerUri
     {
         get
@@ -170,23 +171,25 @@ public sealed class McpOptions
     public string ServerLabel { get; set; } = "sqlflow";
 
     /// <summary>
-    /// The read surface every host gets: catalog, lineage, runs, search, schedules, insights, docs. Nothing
-    /// here touches a datasource, so it is safe on any surface however public.
+    /// What an estate question reads on every surface: the catalog and its schema (every table and column, with
+    /// definitions and keys), lineage, runs, search, schedules, subscribers, insights and the docs. Schema is not
+    /// sensitive, and nothing here reads a row, so it is safe on any surface however public.
     /// </summary>
-    private static readonly string[] SharedReadTools =
+    public static IReadOnlyList<string> EstateReadTools { get; } =
     [
         "search_docs", "get_doc", "get_doc_by_yaml_path", "get_doc_by_cli_command", "related_docs", "list_docs",
         "validate_flow", "list_flow_keys", "describe_flow_key",
         "check_connectivity", "get_control_plane_url",
         "list_repos", "get_repo", "list_pipelines", "list_flow_batches", "get_pipeline", "pipeline_definition",
-        "pipeline_file_stats",
+        "pipeline_file_stats", "pipeline_columns",
         "list_runs", "get_run", "run_statements", "run_assertions", "run_files", "run_health_metrics",
-        // The schema, as the semantic layer serves it: only allow-listed tables and columns, with their business
-        // context. These are the assistant's ONLY schema readers; the raw ones are in ExcludedTools.
-        "get_semantic_layer", "search_semantic_layer", "list_semantic_tables", "describe_semantic_table",
+        // The catalog's schema, whole: every table and column, view and procedure bodies, keys and joins.
+        "list_schemas", "catalog_tree", "describe_object", "get_table_key", "get_table_joins",
+        "search_all", "search_schema",
+        "lineage_objects", "lineage_object_detail", "lineage_object_columns",
         "describe_object_refresh", "object_lineage", "list_file_sources", "file_provenance",
         "lineage_edges", "lineage_waves", "lineage_dependencies",
-        "list_subscribers", "describe_subscriber", "describe_subscriber_report", "find_similar_questions",
+        "list_subscribers", "describe_subscriber", "describe_subscriber_report",
         "search",
         "list_schedules", "get_schedule", "get_schedule_plan", "list_nodes", "list_repo_sources", "summary",
         "insights_flows", "insights_attention", "insights_recommendations", "insights_steps",
@@ -194,50 +197,51 @@ public sealed class McpOptions
     ];
 
     /// <summary>
-    /// The GUI's surface: everything shared, plus the tools that reach a datasource. The GUI is a signed-in,
-    /// per-user surface where a token delegated from the caller authorises every call, so the data-model tools and the
-    /// data-operations surface belong here.
+    /// The GUI's estate questions: everything an estate question reads, plus the data-operations checks. The GUI is a
+    /// signed-in, per-user surface where a token delegated from the caller authorises every call, so an engineer's
+    /// diagnostics over live rows belong here. They read rows, so the control plane holds each to the column guards,
+    /// as it holds a business question's query.
     /// </summary>
-    public static readonly IReadOnlyList<string> GuiDefaultTools =
+    public static IReadOnlyList<string> GuiDefaultTools { get; } =
     [
-        .. SharedReadTools,
-        // The data-operations surface. Read-only, and behind ControlPlane:DataOps:Enabled, which is the switch
-        // that actually governs them. What identifies a row and how tables join come from
-        // describe_semantic_table, which serves both restricted to allow-listed columns.
+        .. EstateReadTools,
+        // Read-only, and behind ControlPlane:DataOps:Enabled, which is the switch that actually governs them.
         "dataops_capabilities", "check_duplicate_keys", "compare_baseline",
-        // Running a business question. prepare_query executes nothing, and run_query only redeems a single-use
-        // token minted by a prepare whose exact SQL was shown to a person.
+    ];
+
+    /// <summary>
+    /// Slack's estate questions: everything an estate question reads. Slack is a SHARED channel with one bot identity
+    /// rather than a signed-in per-user session, so the engineer's checks over live rows stay on the GUI.
+    /// </summary>
+    public static IReadOnlyList<string> SlackDefaultTools { get; } = EstateReadTools;
+
+    /// <summary>
+    /// A business question's tools, on every surface: the semantic layer (the approved AI contexts) as its only
+    /// schema, the stored questions, and answering end to end: running a query a person approved, running a trusted
+    /// saved answer, and saving an answer a person said is right.
+    ///
+    /// A query is only ever a single read-only SELECT over the columns the approved contexts open (the read-only and
+    /// column guards run on prepare, run, confirm and auto-run), and a prepared plan is single-use, which is what makes
+    /// these safe on Slack too, where anyone in a thread can approve a query and every query and saved answer is
+    /// attributed to the bot token's owner.
+    /// </summary>
+    public static IReadOnlyList<string> BusinessDefaultTools { get; } =
+    [
+        "get_semantic_layer", "search_semantic_layer", "list_semantic_tables", "describe_semantic_table",
+        "find_similar_questions",
+        // prepare_query executes nothing, and run_query only redeems a single-use token minted by a prepare whose
+        // exact SQL was shown to a person.
         "prepare_query", "run_query",
-        // Running a TRUSTED retrieval match with no fresh approval: its exact SQL was confirmed by a person when
-        // it was stored, and it runs under the deployment's own row/timeout caps behind its own AutoRun switch.
+        // Running a TRUSTED match with no fresh approval: its exact SQL was confirmed by a person when it was stored,
+        // and it runs under the deployment's own row and timeout caps behind its own AutoRun switch.
         "auto_run_trusted_match",
-        // Recording a person's verdict on an answer into the PowerAI example store, which the instructions tell
-        // the assistant to do once someone has actually judged it. Behind the operate scope the caller's own
-        // bearer carries; it runs nothing.
+        // Recording a person's verdict on an answer into the stored questions. It runs nothing.
         "confirm_question",
     ];
 
     /// <summary>
-    /// Slack's surface: the shared read tools, plus answering a business question end to end: running a query a
-    /// person approved in the thread, running a trusted saved answer, and saving an answer a person said is right.
-    ///
-    /// Slack is a SHARED channel with one bot identity rather than a signed-in per-user session, so anyone in a
-    /// thread can approve a query and every query and saved answer is attributed to the bot token's owner. What
-    /// makes that acceptable holds whoever approves: a query is only ever a single read-only SELECT over
-    /// allow-listed columns (ReadOnlyQueryGuard and ColumnPolicyGuard run on prepare, run, confirm, and auto-run),
-    /// a prepared plan is single-use, and saved answers are curated by admins on the AI knowledge page. The
-    /// rest of the data-operations surface (the duplicate-key and baseline checks) stays GUI-only, since those are an
-    /// engineer's diagnostics rather than a business answer, and nothing that starts work is allowed anywhere.
-    /// </summary>
-    public static readonly IReadOnlyList<string> SlackDefaultTools =
-    [
-        .. SharedReadTools,
-        "prepare_query", "run_query", "auto_run_trusted_match", "confirm_question",
-    ];
-
-    /// <summary>
-    /// The MCP tools a deployment configured for its assistant (<c>Mcp:AllowedTools</c>), or empty when it configured
-    /// none, in which case the surface's own default applies (<see cref="EffectiveTools"/>).
+    /// The MCP tools a deployment configured for estate questions (<c>Mcp:AllowedTools</c>), or empty when it
+    /// configured none, in which case the surface's own default applies (<see cref="EffectiveTools"/>).
     ///
     /// The default deliberately does NOT live in this property. The configuration binder adds configured items to a
     /// list that already holds values rather than replacing it, so a pre-filled default here turned a deployment's
@@ -245,26 +249,34 @@ public sealed class McpOptions
     /// </summary>
     public List<string> AllowedTools { get; set; } = [];
 
+    /// <summary>The MCP tools a deployment configured for business questions (<c>Mcp:BusinessTools</c>), or empty when
+    /// it configured none, in which case <see cref="BusinessDefaultTools"/> applies. Empty by default for the same
+    /// reason as <see cref="AllowedTools"/>.</summary>
+    public List<string> BusinessTools { get; set; } = [];
+
     /// <summary>
-    /// The tools a surface actually offers the model: the configured list when there is one, otherwise the surface's
-    /// default (<see cref="SlackDefaultTools"/> or <see cref="GuiDefaultTools"/>). Never empty, so no gateway can offer
-    /// every tool the MCP server ships by omission.
+    /// The tools a message is answered with: for a business question the configured business list or
+    /// <see cref="BusinessDefaultTools"/>, for any other question the configured list or the surface's default
+    /// (<see cref="SlackDefaultTools"/> or <see cref="GuiDefaultTools"/>). Never empty, so no gateway can offer every
+    /// tool the MCP server ships by omission.
     ///
-    /// A tool absent from this list does not look restricted to the model, it looks ABSENT: the assistant reports the
-    /// product cannot do the thing, which is worse than refusing, because it is wrong. That is why
-    /// <see cref="ExcludedTools"/> exists beside the defaults and why a test asserts the two together cover every tool
-    /// the MCP server ships.
+    /// The two sets are what makes the business-question command hold by construction: a business question has no
+    /// schema but the semantic layer to find, and an estate question has no query to run, whatever either is told.
+    /// A tool absent from a set does not look restricted to the model, it looks ABSENT: the assistant reports the
+    /// product cannot do the thing. That is why <see cref="ExcludedTools"/> exists beside the defaults and why a test
+    /// asserts that together they cover every tool the MCP server ships.
     /// </summary>
-    public IReadOnlyList<string> EffectiveTools(AssistantSurface surface)
-        => AllowedTools.Count > 0
-            ? AllowedTools
-            : surface == AssistantSurface.Slack ? SlackDefaultTools : GuiDefaultTools;
+    public IReadOnlyList<string> EffectiveTools(AssistantSurface surface, AssistantQuestionKind kind)
+        => kind == AssistantQuestionKind.Business
+            ? BusinessTools.Count > 0 ? BusinessTools : BusinessDefaultTools
+            : AllowedTools.Count > 0 ? AllowedTools : surface == AssistantSurface.Slack ? SlackDefaultTools : GuiDefaultTools;
 
     /// <summary>
     /// The tools deliberately kept from the assistant, listed rather than merely absent so the omission is a
-    /// decision on the record. Everything here either starts work, authors code, or is inert over HTTP.
+    /// decision on the record. Everything here either starts work, authors code, reads rows outside a business
+    /// question, or is inert over HTTP.
     /// </summary>
-    public static readonly IReadOnlyList<string> ExcludedTools =
+    public static IReadOnlyList<string> ExcludedTools { get; } =
     [
         // Start or stop work in the estate.
         "trigger_run", "cancel_run",
@@ -279,16 +291,8 @@ public sealed class McpOptions
         "scaffold_ingestion_flow",
         // Session and transport plumbing, inert or meaningless over HTTP with a forwarded bearer.
         "login", "logout", "check_auth_status", "set_access_token", "set_control_plane_url",
-        // The raw schema readers, kept off chat so the allow-listed schema is the only schema an assistant is
-        // given. Not every one of them is unfiltered: the column search serves allow-listed columns only, and
-        // describe_object's column list is filtered the same way. They are excluded as a group because the rest
-        // of what they carry is not, and cannot be - an object or definition search returns table names, CREATE
-        // TABLE text, and module bodies naming every column a table has, and detect_unique_key profiles live
-        // rows. They stay available to other MCP clients, and their data stays on the GUI's own Catalog pages,
-        // which is the surface a signed-in engineer browses the catalog from.
-        "list_schemas", "catalog_tree", "lineage_objects", "lineage_object_detail", "lineage_object_columns",
-        "describe_object", "search_all", "search_schema", "pipeline_columns", "get_table_key",
-        "get_table_joins", "detect_unique_key",
+        // Profiles a table's live rows to find its key: data, not schema, and no part of a business question.
+        "detect_unique_key",
         // Git history and schema-diff readers reachable through the GUI, kept off the chat surface to bound
         // the tool count the model has to choose between.
         "database_schema_changes", "database_schema_history_databases", "database_object_ddl",

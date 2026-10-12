@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using SqlFlow.Assistant;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Background;
 using SqlFlow.ControlPlane.Configuration;
@@ -522,31 +523,24 @@ public static class QuestionExampleEndpoints
     /// refused with a stated reason rather than truncated into a different question.</summary>
     internal const int MaxQuestionLength = 1000;
 
-    /// <summary>The chat command that routes a message down the business-question path: a message that begins with it
-    /// ("!what is our revenue") is answered from the approved AI contexts.</summary>
-    internal const char BusinessQuestionCommand = '!';
-
-    /// <summary>The word that may follow the command ("!cwd what is our revenue"), the command's earlier spelling.</summary>
-    internal const string BusinessQuestionWord = "cwd";
-
     /// <summary>
-    /// A question as it is stored: trimmed, and without the leading <see cref="BusinessQuestionCommand"/> (one or more of
-    /// it, then <see cref="BusinessQuestionWord"/> when that word follows on its own). The GUI's confirmation row sends
-    /// the message exactly as it was typed, while an assistant strips the command before searching, so without this the
-    /// same question saved from two surfaces would be two questions, and the command would count as a matched term in
-    /// every later search.
+    /// A question as it is stored: trimmed, and without the leading business-question command
+    /// (<see cref="AssistantQuestions.Command"/>, one or more of it, then <see cref="AssistantQuestions.CommandWord"/> when
+    /// that word follows on its own). The GUI's confirmation row sends the message exactly as it was typed, while an
+    /// assistant strips the command before searching, so without this the same question saved from two surfaces would be
+    /// two questions, and the command would count as a matched term in every later search.
     /// </summary>
     internal static string NormalizeQuestion(string? question)
     {
         var trimmed = question?.Trim() ?? string.Empty;
-        if (trimmed.Length == 0 || trimmed[0] != BusinessQuestionCommand)
+        if (AssistantQuestions.KindOf(trimmed) != AssistantQuestionKind.Business)
         {
             return trimmed;
         }
 
-        var rest = trimmed.TrimStart(BusinessQuestionCommand).TrimStart();
-        var word = BusinessQuestionWord.Length;
-        if (rest.StartsWith(BusinessQuestionWord, StringComparison.OrdinalIgnoreCase)
+        var rest = trimmed.TrimStart(AssistantQuestions.Command).TrimStart();
+        var word = AssistantQuestions.CommandWord.Length;
+        if (rest.StartsWith(AssistantQuestions.CommandWord, StringComparison.OrdinalIgnoreCase)
             && (rest.Length == word || char.IsWhiteSpace(rest[word])))
         {
             rest = rest[word..].TrimStart();

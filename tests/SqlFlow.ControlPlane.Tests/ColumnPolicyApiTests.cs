@@ -9,18 +9,19 @@ using Xunit;
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The "AI shouldn't be able to read everything" surface end to end, under the default-deny allow-list: nothing is
-/// open until an admin approves an AI context naming a table, and then every column of it is open but those its file
-/// denies. Before that a column is closed to schema search, the object dossier and column list, and the DataOps prepare
-/// step (including through a <c>SELECT *</c> that would otherwise smuggle it through unnamed). A file that stops
-/// denying a column changes nothing until it is approved again, and a file that denies one closes it at the next sync,
-/// with no approval. Every seeded row is removed in a finally so repeated runs stay isolated.
+/// The "AI shouldn't be able to read everything" surface end to end, under the default-deny allow-list: no column's
+/// data is open until an admin approves an AI context naming its table, and then every column of it is open but those
+/// its file denies. Until then the DataOps prepare step refuses a query reading it (including through a <c>SELECT *</c>
+/// that would otherwise smuggle it through unnamed). Schema is not sensitive, so schema search, the object's column
+/// list and its dossier show every column all along. A file that stops denying a column changes nothing until it is
+/// approved again, and a file that denies one closes it at the next sync, with no approval. Every seeded row is
+/// removed in a finally so repeated runs stay isolated.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class ColumnPolicyApiTests
 {
     [SkippableFact]
-    public async Task UnallowedColumn_IsHiddenFromSchemaSurfaces_AndRefusesQueriesThatWouldReadIt()
+    public async Task AColumnNoApprovedContextOpens_IsListedByEverySchemaSurface_ButRefusesQueriesThatWouldReadIt()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -70,11 +71,11 @@ public sealed class ColumnPolicyApiTests
             using var client = factory.CreateClient();
             var adminToken = await IssueTokenAsync(client, ["read", "operate", "admin"]);
 
-            // 1. Before any policy row exists, BOTH columns are new/unreviewed, so both default to denied:
-            //    invisible to search, and any query touching either is refused.
+            // 1. Before any context is approved, both columns are closed: any query touching either is refused, while
+            //    schema search finds both, since schema is not sensitive.
             var beforeColumns = await GetJsonAsync<PagedResult<ColumnHitDto>>(
                 client, adminToken, $"/api/v1/search/columns?name={Uri.EscapeDataString("Ssn")}");
-            Assert.DoesNotContain(beforeColumns.Items, c => c.ObjectKey == objectKey);
+            Assert.Contains(beforeColumns.Items, c => c.ObjectKey == objectKey && c.ColumnName == "Ssn");
 
             using var beforeRefusal = await PostAsync(client, adminToken, "/api/v1/dataops/queries/prepare",
                 new PrepareQueryRequest($"SELECT Name FROM dbo.{tableName}", serverRef, Database: "dw"));
@@ -106,24 +107,19 @@ public sealed class ColumnPolicyApiTests
             Assert.Contains(overview.Items, c => c.ObjectKey == objectKey && c.ColumnName == "Ssn");
             Assert.DoesNotContain(overview.Items, c => c.ObjectKey == objectKey && c.ColumnName == "Name");
 
-            // 5. Name is now visible to schema search, Ssn still is not...
-            var afterColumns = await GetJsonAsync<PagedResult<ColumnHitDto>>(
-                client, adminToken, $"/api/v1/search/columns?name={Uri.EscapeDataString("Name")}");
-            Assert.Contains(afterColumns.Items, c => c.ObjectKey == objectKey && c.ColumnName == "Name");
-            var stillHiddenSsn = await GetJsonAsync<PagedResult<ColumnHitDto>>(
+            // 5. The schema surfaces list both columns whatever is open: schema search, and the object's paged column
+            //    list and dossier.
+            var ssnHits = await GetJsonAsync<PagedResult<ColumnHitDto>>(
                 client, adminToken, $"/api/v1/search/columns?name={Uri.EscapeDataString("Ssn")}");
-            Assert.DoesNotContain(stillHiddenSsn.Items, c => c.ObjectKey == objectKey);
+            Assert.Contains(ssnHits.Items, c => c.ObjectKey == objectKey && c.ColumnName == "Ssn");
 
-            // ...and the object's paged column list and dossier carry Name but not Ssn.
             var pagedColumns = await GetJsonAsync<PagedResult<ObjectColumnDto>>(
                 client, adminToken, $"/api/v1/lineage/objects/columns?key={Uri.EscapeDataString(objectKey)}");
-            Assert.Contains(pagedColumns.Items, c => c.Name == "Name");
-            Assert.DoesNotContain(pagedColumns.Items, c => c.Name == "Ssn");
+            Assert.Equal(["Ssn", "Name"], pagedColumns.Items.Select(c => c.Name));
 
             var dossier = await GetJsonAsync<ObjectDossierDto>(
                 client, adminToken, $"/api/v1/lineage/objects/dossier?key={Uri.EscapeDataString(objectKey)}");
-            Assert.Contains(dossier.Columns, c => c.Name == "Name");
-            Assert.DoesNotContain(dossier.Columns, c => c.Name == "Ssn");
+            Assert.Equal(["Ssn", "Name"], dossier.Columns.Select(c => c.Name));
 
             // 6. A query naming the still-unallowed column directly is refused at prepare...
             using var directRefusal = await PostAsync(client, adminToken, "/api/v1/dataops/queries/prepare",

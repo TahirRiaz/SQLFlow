@@ -404,9 +404,8 @@ public static class DatasourceEndpoints
             return Problem(ex.Message, StatusCodes.Status400BadRequest, "Invalid compute task");
         }
 
-        // The assistant surface reads only the semantic layer: a task it enqueues must read nothing an ad-hoc query
-        // from it could not, so it passes the same read-only and column allow-list guards. A person's own request is
-        // not narrowed here, matching every other surface where the header is the only thing that narrows.
+        // A task reads live rows, so one the assistant enqueues must read nothing an ad-hoc query from it could not:
+        // it passes the same read-only and column allow-list guards. A person's own request is not narrowed here.
         if (AssistantScope.IsAssistant(http))
         {
             try

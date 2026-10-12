@@ -1641,8 +1641,8 @@ export interface ColumnPolicyState {
 }
 
 // ---- Semantic layer ---------------------------------------------------------------------------------------------
-// The allow-listed schema with its business context: what the AI assistant's schema tools serve, as the approved AI
-// contexts define it. The AI context page reads coverage and per-object state; the read side (overview) is what an
+// What the approved AI contexts open, with its business context: the schema a business question (a chat message
+// starting with "!") is given. The AI context page reads coverage and per-object state; the read side (overview) is what an
 // assistant sees.
 
 /** One (database, schema) of objects with catalogued columns, and how many are in the layer. */

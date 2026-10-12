@@ -538,8 +538,6 @@ public static class ControlPlaneHost
         // The authenticated read surface: repos/pipelines, runs, lineage, cross-repo search, and schedules. Its safe methods
         // are open to an assistant run's delegated token (the MCP tools read from here); its few writes are not.
         v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Read).AllowAssistantRead()
-            // On the assistant surface, withhold any text naming a column outside the semantic layer (AssistantScope).
-            .AddEndpointFilter<RouteGroupBuilder, AssistantRedactionFilter>()
             .MapCatalogEndpoints()
             .MapRepoTreeEndpoints()
             .MapGitHistoryEndpoints()
@@ -548,7 +546,7 @@ public static class ControlPlaneHost
             .MapActivityEndpoints()
             .MapLineageEndpoints()
             .MapSearchEndpoints()
-            // The semantic layer: the allow-listed schema, with its business context, as an assistant reads it.
+            // The semantic layer: what the approved AI contexts open, with its business context, as an assistant reads it.
             .MapSemanticLayerEndpoints()
             .MapScheduleReadEndpoints()
             .MapNodeEndpoints()
@@ -574,7 +572,6 @@ public static class ControlPlaneHost
         // The operate surface: triggering/cancelling a run and managing schedules are privileged operations, so they live
         // under the "operate" scope rather than the read group.
         v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Operate)
-            .AddEndpointFilter<RouteGroupBuilder, AssistantRedactionFilter>()
             .MapCatalogWriteEndpoints()
             .MapRunTriggerEndpoints()
             .MapDatasourceComputeEndpoints()

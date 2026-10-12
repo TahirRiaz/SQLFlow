@@ -17,7 +17,8 @@ namespace SqlFlow.Assistant;
 /// name, and the credential differ (Azure token via managed identity for Foundry, a static API
 /// key for OpenAI). Each question is one streamed <c>POST .../responses</c> carrying the model,
 /// the assistant instructions, the MCP tool (the deployed SQLFlow MCP server, with the run's
-/// bearer as its Authorization header and the tool allowlist), and either the new turn plus a
+/// bearer as its Authorization header and the tool set of the question's kind,
+/// <see cref="AssistantQuestions.KindOf"/>), and either the new turn plus a
 /// <c>previous_response_id</c> that chains the conversation server-side, or - when that link is
 /// lost (host restart, server-side expiry) - the transcript replayed as the input. On Foundry the
 /// Responses API supersedes the persistent-agents API for MCP tools: current model deployments
@@ -42,7 +43,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
     private readonly AssistantSettings _settings;
     private readonly ILogger<ResponsesApiGateway> _logger;
     private readonly Uri _endpoint;
-    private readonly string _instructions;
+    private readonly AssistantRouter _router;
 
     /// <summary>Conversation key to the id of the last Responses API response in that conversation, so a
     /// follow-up chains server-side via previous_response_id. Bounded; an evicted key is rebuilt from the
@@ -79,7 +80,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
                 throw new InvalidOperationException(
                     $"ResponsesApiGateway serves AzureFoundry and OpenAI, not {settings.Provider}.");
         }
-        _instructions = AssistantInstructions.Build(settings);
+        _router = new AssistantRouter(settings);
         // Responses stream for the whole agent run, so no per-request client timeout: the run
         // ceiling is enforced with a linked CancellationTokenSource per call.
         _http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
@@ -119,6 +120,10 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
         runCts.CancelAfter(TimeSpan.FromSeconds(_settings.RunTimeoutSeconds));
         var token = runCts.Token;
 
+        // The question's kind decides the run's tools and instructions, per message, so a conversation can mix the two:
+        // the tools are per request, and a chained response does not carry the previous request's tools over.
+        var route = _router.For(request.Question);
+
         // A cached previous-response id chains the conversation server-side: send only the new turn.
         // The 404/400 that reveals a lost link arrives before any streamed byte, so falling back to a
         // transcript rebuild never rewinds a stream the consumer already saw.
@@ -128,7 +133,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
             try
             {
                 response = await SendAsync(
-                    BuildRequestBody(previousId, [new ConversationTurn(false, request.Question)], request.ImageDataUris, request.McpBearer),
+                    BuildRequestBody(previousId, [new ConversationTurn(false, request.Question)], request.ImageDataUris, request.McpBearer, route),
                     previousId, token).ConfigureAwait(false);
             }
             catch (ResponseLinkLostException)
@@ -145,7 +150,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
             seeded.AddRange(request.PriorTurns.TakeLast(_settings.MaxReplayMessages));
             seeded.Add(new ConversationTurn(false, request.Question));
             response = await SendAsync(
-                BuildRequestBody(null, seeded, request.ImageDataUris, request.McpBearer),
+                BuildRequestBody(null, seeded, request.ImageDataUris, request.McpBearer, route),
                 previousResponseId: null, token).ConfigureAwait(false);
         }
 
@@ -392,7 +397,8 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
         string? previousResponseId,
         IReadOnlyList<ConversationTurn> turns,
         IReadOnlyList<string> imageDataUris,
-        string mcpBearer)
+        string mcpBearer,
+        AssistantRoute route)
     {
         var input = new JsonArray();
         for (var i = 0; i < turns.Count; i++)
@@ -449,9 +455,9 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
                 ["Authorization"] = "Bearer " + mcpBearer,
             },
         };
-        // Always sent: the surface's list is never empty, so the model never sees every tool the MCP server ships.
+        // Always sent: the message's tool set is never empty, so the model never sees every tool the MCP server ships.
         var allowed = new JsonArray();
-        foreach (var tool in _settings.AllowedTools)
+        foreach (var tool in route.Tools)
         {
             allowed.Add(tool);
         }
@@ -460,7 +466,7 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
         var body = new JsonObject
         {
             ["model"] = _model,
-            ["instructions"] = _instructions,
+            ["instructions"] = route.Instructions,
             ["input"] = input,
             ["tools"] = new JsonArray { mcpTool },
             ["stream"] = true,

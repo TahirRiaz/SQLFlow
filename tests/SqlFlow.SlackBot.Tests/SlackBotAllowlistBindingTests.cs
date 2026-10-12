@@ -42,23 +42,32 @@ public sealed class SlackBotAllowlistBindingTests
         var options = Bind(new Dictionary<string, string?>());
 
         Assert.Empty(options.Mcp.AllowedTools);
-        Assert.Equal(McpOptions.SlackDefaultTools, options.ToAssistantSettings().AllowedTools);
+        Assert.Empty(options.Mcp.BusinessTools);
+        Assert.Equal(McpOptions.SlackDefaultTools, options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Estate));
+        Assert.Equal(McpOptions.BusinessDefaultTools, options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Business));
     }
 
     [Fact]
-    public void TheSlackList_AnswersBusinessQuestions_ButNeverStartsWork()
+    public void Slack_AnswersBusinessQuestionsWithTheBusinessSet_AndNeverStartsWork()
     {
-        var tools = Bind(new Dictionary<string, string?>()).ToAssistantSettings().AllowedTools;
+        var settings = Bind(new Dictionary<string, string?>()).ToAssistantSettings();
+        var business = settings.ToolsFor(AssistantQuestionKind.Business);
+        var estate = settings.ToolsFor(AssistantQuestionKind.Estate);
 
-        Assert.Contains("find_similar_questions", tools);
-        Assert.Contains("prepare_query", tools);
-        Assert.Contains("run_query", tools);
-        Assert.Contains("auto_run_trusted_match", tools);
-        Assert.Contains("confirm_question", tools);
-        Assert.DoesNotContain("trigger_run", tools);
-        Assert.DoesNotContain("cancel_run", tools);
-        Assert.DoesNotContain("propose_pipelines", tools);
-        Assert.DoesNotContain("check_duplicate_keys", tools);
+        Assert.Contains("find_similar_questions", business);
+        Assert.Contains("prepare_query", business);
+        Assert.Contains("run_query", business);
+        Assert.Contains("auto_run_trusted_match", business);
+        Assert.Contains("confirm_question", business);
+        Assert.DoesNotContain("run_query", estate);
+        Assert.DoesNotContain("find_similar_questions", estate);
+        foreach (var tools in new[] { business, estate })
+        {
+            Assert.DoesNotContain("trigger_run", tools);
+            Assert.DoesNotContain("cancel_run", tools);
+            Assert.DoesNotContain("propose_pipelines", tools);
+            Assert.DoesNotContain("check_duplicate_keys", tools);
+        }
     }
 
     [Fact]
@@ -70,6 +79,6 @@ public sealed class SlackBotAllowlistBindingTests
             ["SlackBot:Mcp:AllowedTools:1"] = "list_runs",
         });
 
-        Assert.Equal(["summary", "list_runs"], options.ToAssistantSettings().AllowedTools);
+        Assert.Equal(["summary", "list_runs"], options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Estate));
     }
 }

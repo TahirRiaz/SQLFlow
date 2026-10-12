@@ -9,10 +9,11 @@ namespace SqlFlow.Assistant;
 /// <summary>
 /// The bridge to the Anthropic Claude API, via the Messages API's MCP connector: each question is
 /// one (or, after a <c>pause_turn</c>, a few chained) streamed <c>POST /v1/messages</c> calls
-/// carrying the model, the shared assistant instructions as the system prompt, and the SQLFlow MCP
-/// server as an <c>mcp_servers</c> entry whose tools Claude calls server-side. The run's bearer
-/// (<see cref="AssistantRequest.McpBearer"/>) rides as the connector's authorization token, and the tool allowlist is enforced through the
-/// <c>mcp_toolset</c> configuration. Anthropic keeps no server-side conversation state, so every
+/// carrying the model, the assistant instructions as the system prompt, and the SQLFlow MCP server as an
+/// <c>mcp_servers</c> entry whose tools Claude calls server-side. The run's bearer
+/// (<see cref="AssistantRequest.McpBearer"/>) rides as the connector's authorization token, and the tool set of the
+/// question's kind (<see cref="AssistantQuestions.KindOf"/>), with the instructions that go with it, is enforced
+/// through the <c>mcp_toolset</c> configuration. Anthropic keeps no server-side conversation state, so every
 /// call sends the transcript (already capped by MaxReplayMessages); the host's record stays the
 /// single durable transcript, which also means a host restart loses nothing.
 /// </summary>
@@ -28,14 +29,14 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
     private readonly AnthropicClient _client;
     private readonly AssistantSettings _settings;
     private readonly ILogger<AnthropicGateway> _logger;
-    private readonly string _instructions;
+    private readonly AssistantRouter _router;
 
     public AnthropicGateway(AssistantSettings settings, ILogger<AnthropicGateway> logger)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _settings = settings;
         _logger = logger;
-        _instructions = AssistantInstructions.Build(settings);
+        _router = new AssistantRouter(settings);
         _client = new AnthropicClient
         {
             ApiKey = settings.Anthropic.ApiKey,
@@ -80,6 +81,8 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
         var token = runCts.Token;
 
         var messages = BuildMessages(request.PriorTurns, request.Question, request.ImageDataUris);
+        // The question's kind decides the run's tools and instructions; a resume after pause_turn keeps them.
+        var route = _router.For(request.Question);
         var answer = new StringBuilder();
 
         for (var resumes = 0; ; resumes++)
@@ -93,7 +96,7 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
             var openToolCalls = new Dictionary<long, string>();
 
             await foreach (var raw in _client.Beta.Messages.CreateStreaming(
-                BuildParams(messages, request.McpBearer), cancellationToken: token).ConfigureAwait(false))
+                BuildParams(messages, request.McpBearer, route), cancellationToken: token).ConfigureAwait(false))
             {
                 collected.Add(raw);
                 if (raw.TryPickContentBlockDelta(out var deltaEvent)
@@ -179,15 +182,15 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
-    private MessageCreateParams BuildParams(List<BetaMessageParam> messages, string mcpBearer)
+    private MessageCreateParams BuildParams(List<BetaMessageParam> messages, string mcpBearer, AssistantRoute route)
     {
         // Allowlist mode, always: everything off by default, each permitted tool enabled explicitly, mirroring the
-        // surface the other providers get via allowed_tools. The surface's list is never empty.
+        // tools the other providers get via allowed_tools. The message's tool set is never empty.
         var mcpToolset = new BetaMcpToolset
         {
             McpServerName = _settings.Mcp.ServerLabel,
             DefaultConfig = new BetaMcpToolDefaultConfig { Enabled = false },
-            Configs = _settings.AllowedTools.Distinct(StringComparer.Ordinal).ToDictionary(
+            Configs = route.Tools.ToDictionary(
                 tool => tool,
                 _ => new BetaMcpToolConfig { Enabled = true },
                 StringComparer.Ordinal),
@@ -197,7 +200,7 @@ public sealed class AnthropicGateway : IAssistantGateway, IDisposable
         {
             Model = _settings.Anthropic.Model,
             MaxTokens = _settings.Anthropic.MaxTokens,
-            System = _instructions,
+            System = route.Instructions,
             Betas = [McpBeta],
             Thinking = new BetaThinkingConfigAdaptive(),
             McpServers =

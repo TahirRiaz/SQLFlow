@@ -53,11 +53,6 @@ public sealed class LineageSchemaApiTests
                 db.ObjectColumns.Add(new CatalogObjectColumn { ObjectKey = ordersKey, Ordinal = 1, Name = "Id", DataType = "int", Nullable = false, Tier = "Observed" });
                 db.ObjectColumns.Add(new CatalogObjectColumn { ObjectKey = ordersKey, Ordinal = 2, Name = "Amount", DataType = "decimal(18,2)", Nullable = true, Tier = "Observed" });
 
-                // The column policy is default-deny: the dossier carries the generating script, which names every
-                // column, only when every column of the object is allow-listed, so an admin has allowed both.
-                db.ColumnPolicies.Add(new CatalogColumnPolicy { ObjectKey = ordersKey, ColumnName = "Id", IsAllowed = true, UpdatedUtc = now });
-                db.ColumnPolicies.Add(new CatalogColumnPolicy { ObjectKey = ordersKey, ColumnName = "Amount", IsAllowed = true, UpdatedUtc = now });
-
                 // A repo with one edge onto the seeded object, and one onto an object the registry does not
                 // know, so the edge list's registry join is proven for both the hit and the miss.
                 db.Repos.Add(new CatalogRepo { Id = repoId, Name = "lineage_edges_" + suffix, FirstSeenUtc = now, LastSyncUtc = now });
@@ -107,7 +102,8 @@ public sealed class LineageSchemaApiTests
             Assert.Equal(2, dboObjects.Total);
             Assert.All(dboObjects.Items, o => Assert.Equal("dbo", o.Schema));
 
-            // The dossier returns the object's generating script and its column dictionary in one payload.
+            // The dossier returns the object's generating script and its column dictionary in one payload, whatever the
+            // column allow-list says: schema is not sensitive, and no column of this object is open to a query.
             var dossier = await GetJsonAsync<ObjectDossierDto>(
                 client, token, $"/api/v1/lineage/objects/dossier?key={Uri.EscapeDataString(ordersKey)}");
             Assert.Equal(ordersKey, dossier.Object.Key);
@@ -144,7 +140,6 @@ public sealed class LineageSchemaApiTests
         finally
         {
             await using var db = CatalogDatabase.Create(cs);
-            await db.ColumnPolicies.Where(p => p.ObjectKey.StartsWith(serverRef)).ExecuteDeleteAsync();
             await db.ObjectColumns.Where(c => c.ObjectKey.StartsWith(serverRef)).ExecuteDeleteAsync();
             await db.ObjectRelationships.Where(r => r.ToObjectKey.StartsWith(serverRef)).ExecuteDeleteAsync();
             await db.Objects.Where(o => o.ServerRef == serverRef).ExecuteDeleteAsync();

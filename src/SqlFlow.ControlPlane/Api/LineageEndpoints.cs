@@ -794,65 +794,7 @@ public static class LineageEndpoints
             return NotFound("object", key);
         }
 
-        return TypedResults.Ok(await RedactScriptIfIncompleteAsync(db, dto, ct).ConfigureAwait(false));
-    }
-
-    /// <summary>Whether every column the catalog knows for <paramref name="objectKey"/> is on the column
-    /// allow-list - the same completeness bar <c>ColumnPolicyGuard</c> holds a <c>SELECT *</c> to. An object
-    /// with no catalogued columns at all (most procedures) is vacuously fully allowed: there is nothing for
-    /// this rule to withhold.</summary>
-    private static async Task<bool> IsFullyAllowedAsync(CatalogDbContext db, string objectKey, CancellationToken ct)
-    {
-        var columnNames = await db.ObjectColumns.AsNoTracking()
-            .Where(c => c.ObjectKey == objectKey)
-            .Select(c => c.Name)
-            .ToListAsync(ct).ConfigureAwait(false);
-        if (columnNames.Count == 0)
-        {
-            return true;
-        }
-
-        var allowedCount = await db.ColumnPolicies.AsNoTracking()
-            .CountAsync(p => p.ObjectKey == objectKey && p.IsAllowed && columnNames.Contains(p.ColumnName), ct)
-            .ConfigureAwait(false);
-        return allowedCount == columnNames.Count;
-    }
-
-    /// <summary>What a redacted <c>Definition</c>/<c>Script</c> reads as, so a caller sees WHY the code is
-    /// missing rather than an unexplained null.</summary>
-    private const string ScriptHiddenNote =
-        "Hidden: not every column of this object is on the PowerAI column allow-list, and the object's own " +
-        "code can name a restricted column anywhere in its text, not only in a structured column list.";
-
-    /// <summary>
-    /// Closes the gap the column allow-list otherwise leaves open: <see cref="ColumnPolicyGuard"/> and the
-    /// paged column list both hide a denied column's NAME from an AI assistant, but the object's raw
-    /// <c>Definition</c>/<c>Script</c> (a view/procedure body, or a table's generated CREATE TABLE) names
-    /// every column verbatim regardless of policy, so a denied column's name (and type) was reachable through
-    /// this field even though the structured column list correctly hid it. Since a definition's body can
-    /// reference a restricted column anywhere - a WHERE clause, a join, a computed expression - redacting just
-    /// the offending identifier out of otherwise-arbitrary SQL text is not safe to do automatically, so this
-    /// withholds the whole script rather than partially editing it, exactly like <c>ColumnPolicyGuard</c>
-    /// refuses a whole <c>SELECT *</c> rather than guessing which columns the caller meant.
-    /// </summary>
-    private static async Task<ObjectDetailDto> RedactScriptIfIncompleteAsync(
-        CatalogDbContext db, ObjectDetailDto detail, CancellationToken ct)
-    {
-        if (detail.Definition is null && detail.Script is null)
-        {
-            return detail;
-        }
-
-        if (await IsFullyAllowedAsync(db, detail.Key, ct).ConfigureAwait(false))
-        {
-            return detail;
-        }
-
-        return detail with
-        {
-            Definition = detail.Definition is null ? null : ScriptHiddenNote,
-            Script = detail.Script is null ? null : ScriptHiddenNote,
-        };
+        return TypedResults.Ok(dto);
     }
 
     /// <summary>
@@ -884,19 +826,11 @@ public static class LineageEndpoints
             var obj = await db.Objects.AsNoTracking().Where(o => o.Key == objectKey)
                 .Select(o => new { o.Key, o.Kind, o.Name, o.Definition, o.Script, o.ScriptTier })
                 .FirstOrDefaultAsync(ct).ConfigureAwait(false);
-            if (obj is null)
-            {
-                return null;
-            }
-
-            var body = obj.Definition ?? obj.Script;
-            if (body is not null && !await IsFullyAllowedAsync(db, obj.Key, ct).ConfigureAwait(false))
-            {
-                body = ScriptHiddenNote;
-            }
-
-            return new NodeScriptDto(
-                obj.Key, obj.Kind, "sql", body, obj.Definition is not null ? "Module" : obj.ScriptTier, obj.Name);
+            return obj is null
+                ? null
+                : new NodeScriptDto(
+                    obj.Key, obj.Kind, "sql", obj.Definition ?? obj.Script,
+                    obj.Definition is not null ? "Module" : obj.ScriptTier, obj.Name);
         }
 
         var direct = await ObjectScriptAsync(key).ConfigureAwait(false);
@@ -951,14 +885,10 @@ public static class LineageEndpoints
 
         var (p, size) = PageRequest.Normalize(page, pageSize);
         // A wide table's column list can be large, so it is paged; ordered by the captured ordinal, then name as a
-        // stable secondary key so a page boundary is deterministic. Only a column an admin has explicitly
-        // allow-listed (CatalogColumnPolicy) appears here: this same list is what the MCP server hands an AI
-        // assistant to reason about the table, so a column with no policy row - never reviewed - is just as
-        // hidden from search/describe as one explicitly denied, keeping the assistant from ever learning the
-        // column exists, not merely from reading it.
+        // stable secondary key so a page boundary is deterministic. Schema is not sensitive: every column is listed,
+        // whatever the column allow-list says, which governs only the data a query may read (ColumnPolicyGuard).
         var ordered = db.ObjectColumns.AsNoTracking()
-            .Where(c => c.ObjectKey == key
-                && db.ColumnPolicies.Any(pol => pol.IsAllowed && pol.ObjectKey == c.ObjectKey && pol.ColumnName == c.Name))
+            .Where(c => c.ObjectKey == key)
             .OrderBy(c => c.Ordinal).ThenBy(c => c.Name);
         var total = await ordered.LongCountAsync(ct).ConfigureAwait(false);
         var columns = await ordered
@@ -1145,14 +1075,9 @@ public static class LineageEndpoints
             return NotFound("object", key);
         }
 
-        detail = await RedactScriptIfIncompleteAsync(db, detail, ct).ConfigureAwait(false);
-
-        // A column with no allow-list entry (CatalogColumnPolicy) is left out of the dossier for the same reason
-        // it is left out of the paged column list: this payload is what an AI assistant reasons about the
-        // object from.
+        // Every column and the object's own code, as the paged column list serves them: schema is not sensitive.
         var columns = await db.ObjectColumns.AsNoTracking()
-            .Where(c => c.ObjectKey == key
-                && db.ColumnPolicies.Any(pol => pol.IsAllowed && pol.ObjectKey == c.ObjectKey && pol.ColumnName == c.Name))
+            .Where(c => c.ObjectKey == key)
             .OrderBy(c => c.Ordinal).ThenBy(c => c.Name)
             .Take(MaxDossierRows)
             .Select(c => new ObjectColumnDto(c.Ordinal, c.Name, c.DataType, c.Nullable, c.Tier))

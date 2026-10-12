@@ -125,8 +125,8 @@ public class SlackBotOptionsTests
         options.Validate();
 
         Assert.Equal("https://legacy.example.com/mcp", options.Mcp.ServerUrl);
-        var tools = options.ToAssistantSettings().AllowedTools;
-        Assert.Contains("describe_semantic_table", tools);
+        var tools = options.ToAssistantSettings().ToolsFor(AssistantQuestionKind.Estate);
+        Assert.Contains("describe_object", tools);
         Assert.DoesNotContain("trigger_run", tools);
     }
 

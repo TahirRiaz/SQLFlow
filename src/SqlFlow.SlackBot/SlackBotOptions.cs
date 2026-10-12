@@ -108,7 +108,7 @@ public sealed class SlackBotOptions
     private void NormalizeLegacyMcpSettings()
     {
         // Slack's narrower tool set (McpOptions.SlackDefaultTools) needs no step here: an unconfigured list resolves to
-        // the surface's default wherever it is read (AssistantSettings.AllowedTools, with Surface = Slack).
+        // the surface's default wherever it is read (AssistantSettings.ToolsFor, with Surface = Slack).
         if (!string.IsNullOrWhiteSpace(Mcp.ServerUrl))
         {
             return;

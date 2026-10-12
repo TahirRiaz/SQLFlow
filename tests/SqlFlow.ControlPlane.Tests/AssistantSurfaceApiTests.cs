@@ -9,15 +9,15 @@ using Xunit;
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The assistant surface end to end: a request carrying the surface header is shown no text naming a column outside
-/// the semantic layer (here a flow's YAML, through the same filter every read endpoint shares) and may not enqueue a
-/// data-operations task reading one, while the same requests without the header are served exactly as before.
+/// The assistant surface end to end: schema is not sensitive, so a request carrying the surface header is shown the
+/// same text as anyone (here a flow's YAML naming a column no AI context opens), while a data-operations task it
+/// enqueues reads live rows and may not read such a column. The same requests without the header are not narrowed.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class AssistantSurfaceApiTests
 {
     [SkippableFact]
-    public async Task TheAssistantSurface_SeesNoTextOrTaskOutsideTheLayer_AndPeopleAreUnaffected()
+    public async Task TheAssistantSurface_SeesTheSchemaWhole_ButEnqueuesNoTaskReadingAColumnOutsideTheLayer()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -75,15 +75,17 @@ public sealed class AssistantSurfaceApiTests
             await AiContextTestKit.ApproveAsync(client, token, context);
             var scriptUri = $"/api/v1/lineage/script?key={Uri.EscapeDataString(flowName)}";
 
-            // 1. A person reads the flow's YAML whole; the assistant surface gets it withheld, with the flow still named.
+            // 1. A person and the assistant surface alike read the flow's YAML whole, the denied column named in it.
             var asPerson = await GetJsonAsync<NodeScriptDto>(client, token, scriptUri, assistant: false);
             Assert.Contains(secret, asPerson.Script, StringComparison.Ordinal);
-
-            var asAssistantJson = await GetStringAsync(client, token, scriptUri, assistant: true);
-            Assert.DoesNotContain(secret, asAssistantJson, StringComparison.OrdinalIgnoreCase);
             var asAssistant = await GetJsonAsync<NodeScriptDto>(client, token, scriptUri, assistant: true);
-            Assert.Equal(AssistantScope.WithheldText, asAssistant.Script);
+            Assert.Equal(asPerson.Script, asAssistant.Script);
             Assert.Equal(flowName, asAssistant.Name);
+
+            // So does the object's column list: every column is listed, the denied one too.
+            var columns = await GetStringAsync(
+                client, token, $"/api/v1/lineage/objects/columns?key={Uri.EscapeDataString(objectKey)}", assistant: true);
+            Assert.Contains(secret, columns, StringComparison.Ordinal);
 
             // 2. The assistant may not check duplicates over a column outside the layer, nor without naming the key...
             using (var denied = await PostTaskAsync(client, token, assistant: true, objectName: tableName, serverRef, [secret]))
@@ -107,14 +109,15 @@ public sealed class AssistantSurfaceApiTests
                 Assert.Equal(HttpStatusCode.Accepted, person.StatusCode);
             }
 
-            // 3. Once the file stops denying the column and an admin approves that, the assistant surface reads the YAML
-            //    whole too.
+            // 3. Once the file stops denying the column and an admin approves that, the assistant may check it too.
             contexts.Write("people.ai-context.yaml", ContextFile());
             await contexts.SyncAsync();
             await AiContextTestKit.ApproveAsync(client, token, context);
 
-            var afterAllow = await GetJsonAsync<NodeScriptDto>(client, token, scriptUri, assistant: true);
-            Assert.Contains(secret, afterAllow.Script, StringComparison.Ordinal);
+            using (var nowOpen = await PostTaskAsync(client, token, assistant: true, objectName: tableName, serverRef, [secret]))
+            {
+                Assert.Equal(HttpStatusCode.Accepted, nowOpen.StatusCode);
+            }
         }
         finally
         {
