@@ -93,7 +93,7 @@ configured); every MCP request still requires a bearer token the control plane a
     let cp = server.control_plane();
 
     let mcp_service = StreamableHttpService::new(
-        move || Ok(server.clone()),
+        move || Ok(server.for_session()),
         LocalSessionManager::default().into(),
         config,
     );

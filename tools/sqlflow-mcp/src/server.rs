@@ -25,6 +25,7 @@ use serde_json::{json, Value};
 use crate::control_plane::{ControlPlane, PollOutcome, WhoAmI};
 use crate::docs::DocsIndex;
 use crate::links::GuiLinks;
+use crate::modes::{self, Mode};
 use crate::module::{McpContext, ModuleSet, TASK_TEXT_LIMIT};
 use sqlflow_lang::census::Census;
 
@@ -46,7 +47,19 @@ pub struct SqlFlowMcp {
     /// What the host's modules add to dispatch and to the instructions; empty for SQLFlow's own server.
     modules: Arc<ModuleSet>,
     tool_router: ToolRouter<Self>,
+    /// The mode this session switched to with end_data_mode (`crate::modes`), which from then on is what every listing
+    /// and call of the session follows; while unset, the mode the request's MCP address names, or none, and a session
+    /// in no mode lists every tool. One cell per session: an HTTP session gets its own from `for_session`.
+    mode: Arc<std::sync::Mutex<Option<Mode>>>,
+    /// Whether the host has data mode at all: it does while find_similar_questions, where a data question starts, is
+    /// offered. Without it nothing is filtered by mode and end_data_mode is not listed.
+    has_data_mode: bool,
 }
+
+/// The tools that sign in, keep a token, or point the server at another control plane: a stdio session's own. Over
+/// HTTP every call carries the caller's bearer and the operator fixes the control plane, so they are not listed there.
+const STDIO_SESSION_TOOLS: &[&str] =
+    &["login", "check_auth_status", "set_access_token", "logout", "set_control_plane_url"];
 
 impl SqlFlowMcp {
     /// A stdio-mode server: credentials are managed locally (device flow / pasted
@@ -79,6 +92,15 @@ impl SqlFlowMcp {
         for name in modules.withheld() {
             tool_router.disable_route(name.clone());
         }
+        if http_mode {
+            for name in STDIO_SESSION_TOOLS {
+                tool_router.disable_route(*name);
+            }
+        }
+        let has_data_mode = !modules.withholds("find_similar_questions");
+        if !has_data_mode {
+            tool_router.disable_route(modes::END_DATA_MODE);
+        }
         SqlFlowMcp {
             docs,
             ctx: McpContext::new(cp.clone(), links.clone(), http_mode),
@@ -87,7 +109,40 @@ impl SqlFlowMcp {
             http_mode,
             modules,
             tool_router,
+            mode: Arc::new(std::sync::Mutex::new(None)),
+            has_data_mode,
         }
+    }
+
+    /// The end of the performance bullet and the operate line, naming only the tools this host offers.
+    fn operate_section(&self) -> String {
+        let health = if self.modules.withholds("analyze_warehouse_health") { "" } else { WAREHOUSE_HEALTH };
+        let operate: Vec<&str> =
+            OPERATE_TOOLS.iter().copied().filter(|tool| !self.modules.withholds(tool)).collect();
+        let line = if operate.is_empty() {
+            String::new()
+        } else {
+            format!("\n- Operate (privileged): {}.", operate.join(", "))
+        };
+        format!("{health}{SUGGESTED_SQL}{line}")
+    }
+
+    /// The same server for a new HTTP session, with a mode of its own, so a switch in one session never moves another.
+    pub fn for_session(&self) -> Self {
+        let mut session = self.clone();
+        session.mode = Arc::new(std::sync::Mutex::new(None));
+        session
+    }
+
+    /// The mode a request of this session is answered in: the one end_data_mode set, else the one the request's MCP
+    /// address names (`mode=data`, `mode=estate`), else none, and a session in no mode lists every tool. A host without
+    /// data mode has no modes at all.
+    fn mode_of(&self, parts: Option<&http::request::Parts>) -> Option<Mode> {
+        if !self.has_data_mode {
+            return None;
+        }
+        let set = *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+        set.or_else(|| parts.and_then(|parts| modes::requested(parts.uri.query())))
     }
 
     /// The generated router with [`GROUNDING_RULE`] appended to every tool description. The description is
@@ -188,11 +243,6 @@ mod grounding_tests {
 }
 
 /// Replies for tools that do not apply when serving over HTTP.
-const HTTP_MODE_AUTH_NOTE: &str = "Not applicable over HTTP: this server authenticates every \
-request with the Authorization bearer supplied by the connecting client, so there is no \
-server-side sign-in to start, poll, store, or clear.";
-const HTTP_MODE_URL_NOTE: &str = "Not applicable over HTTP: the control-plane URL is fixed by \
-the server operator (SQLFLOW_CONTROL_PLANE_URL) and cannot be changed by a client.";
 const HTTP_MODE_DISCOVER_NOTE: &str = "discover_source is disabled over HTTP because it reads \
 sample files on the server host, not on yours. Run sqlflow-mcp locally over stdio to use it.";
 const HTTP_MODE_SCAFFOLD_NOTE: &str = "scaffold_ingestion_flow is disabled over HTTP because it \
@@ -462,7 +512,8 @@ pub struct SimilarQuestionsInput {
     /// right after it) stripped. It need not be about business: an operational or data-quality question asked
     /// with `!` belongs here too. Pass the
     /// rest exactly as they typed it: the match is on meaning, so rewording it into schema terms first
-    /// throws away the signal this searches on.
+    /// throws away the signal this searches on. For a later message that carries such a question on ("and by
+    /// region?"), pass the question it amounts to in their words, written out in full from the conversation.
     pub question: String,
     /// The business vocabulary to search for, expanded by YOU from the question: its own meaningful words
     /// first, then the synonyms and closely related business terms a dashboard might have used for the
@@ -1073,7 +1124,7 @@ const QUERY_INTRO: &str = "Here's the query I ran:";
 
 /// The closing line inviting a person to save a fresh answer. Only a run_query result carries it: an auto-run
 /// replayed an answer someone already saved, so offering to save it again would ask for a decision already made.
-const SAVE_OFFER: &str = "If this is right, reply *!save* and I'll remember it for next time.";
+const SAVE_OFFER: &str = "If this is right, reply *save* and I'll remember it for next time.";
 
 /// Attaches the answer layout to a query result that actually produced rows: `sqlBlock` is the SQL that ran,
 /// already fenced, so the model copies a finished element instead of deciding how to render it. Both the
@@ -1513,6 +1564,32 @@ and fix every finding first."
         }
     }
 
+    // ---- Modes ------------------------------------------------------------
+
+    #[tool(
+        description = "End data mode: call it, before writing anything, when the person's message begins with `!exit` \
+            or a follow-up turns to the estate (a flow, a run, lineage, a schedule, the docs, how a table is loaded or \
+            where it comes from). This session then lists the estate's tools; a client that opened it for one message \
+            asks the question again with them, so write nothing more."
+    )]
+    async fn end_data_mode(
+        &self,
+        peer: rmcp::Peer<rmcp::RoleServer>,
+        Parameters(_): Parameters<EmptyInput>,
+    ) -> String {
+        *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Mode::Estate);
+        // A client that keeps the session lists the estate's tools at once; one that opened it for one message starts
+        // the next in estate mode. Either way the switch stands: a client that missed the notice reads the list again.
+        let notified = match peer.notify_tool_list_changed().await {
+            Ok(()) => true,
+            Err(e) => {
+                tracing::warn!("could not tell the client its tools changed after leaving data mode: {e}");
+                false
+            }
+        };
+        json_str(&json!({ "mode": Mode::Estate.name(), "toolsChangedSent": notified }))
+    }
+
     // ---- Control-plane setup & auth --------------------------------------
 
     #[tool(description = "Report the configured control-plane URL and whether the server is authenticated.")]
@@ -1531,9 +1608,6 @@ and fix every finding first."
 
     #[tool(description = "Set (and persist) the control-plane base URL.")]
     async fn set_control_plane_url(&self, Parameters(input): Parameters<UrlInput>) -> String {
-        if self.http_mode {
-            return HTTP_MODE_URL_NOTE.to_string();
-        }
         self.cp.set_base_url(&input.url);
         format!("Control-plane URL set to {}", self.cp.base_url())
     }
@@ -1547,9 +1621,6 @@ and fix every finding first."
         description = "Begin device-flow sign-in. Returns a URL and user code to approve in a browser; then call check_auth_status to complete."
     )]
     async fn login(&self, Parameters(_): Parameters<EmptyInput>) -> String {
-        if self.http_mode {
-            return HTTP_MODE_AUTH_NOTE.to_string();
-        }
         match self.cp.start_device_auth().await {
             Ok(auth) => {
                 let complete = auth
@@ -1574,9 +1645,6 @@ and fix every finding first."
             call login again."
     )]
     async fn check_auth_status(&self, Parameters(input): Parameters<CheckAuthInput>) -> String {
-        if self.http_mode {
-            return HTTP_MODE_AUTH_NOTE.to_string();
-        }
         let code = input.device_code.or_else(|| self.cp.pending_device_code());
         let Some(code) = code else {
             return match self.cp.whoami().await {
@@ -1636,9 +1704,6 @@ and fix every finding first."
 
     #[tool(description = "Store a bearer access token directly (alternative to device-flow login).")]
     async fn set_access_token(&self, Parameters(input): Parameters<TokenInput>) -> String {
-        if self.http_mode {
-            return HTTP_MODE_AUTH_NOTE.to_string();
-        }
         // A pasted token is dated from its own exp claim and renews exactly when it is an interactive session (it
         // carries auth_time); a personal access token keeps the lifetime its owner gave it.
         let cache = crate::config::TokenCache::from_bearer(
@@ -1658,9 +1723,6 @@ and fix every finding first."
 
     #[tool(description = "Forget the stored access token.")]
     async fn logout(&self, Parameters(_): Parameters<EmptyInput>) -> String {
-        if self.http_mode {
-            return HTTP_MODE_AUTH_NOTE.to_string();
-        }
         self.cp.clear_token();
         "Signed out.".to_string()
     }
@@ -1865,8 +1927,8 @@ and fix every finding first."
     // ---- Semantic layer (the approved AI contexts) --------------------------
 
     #[tool(
-        description = "START HERE to write SQL for someone, unless the person's message begins with `!`, which \
-            activates find_similar_questions instead and is that tool's alone to answer: the governed \
+        description = "START HERE to write SQL for someone, unless the person's message begins with `!` or carries \
+            on a question that did, which activates find_similar_questions instead and is that tool's alone to answer: the governed \
             schema a query may read. Answers which tables exist, what \
             their columns mean, and what may be queried at all. The semantic layer is the governed schema, made of the AI \
             contexts an admin approved: only the tables and columns those contexts open exist in it, each with its business \
@@ -2416,7 +2478,9 @@ and fix every finding first."
             \"what is our revenue by region\" or names things that sound like table or column names: without the `!` \
             prefix, route it through search_semantic_layer/describe_semantic_table like any other question instead. A \
             full question is not an identifier to a schema search's index; it is what this tool matches, once `!` has \
-            activated it. \
+            activated it. A later message in the same conversation that carries a `!` question on (\"and by region?\", \
+            another year) belongs here as well, without the `!`: pass the question it amounts to, written out in full \
+            from the conversation, never the reply's words alone. \
             Say nothing to the person before or between the tool calls on this path: no preamble, no restating the question, \
             no announcing what you are about to look up or that you are building a query, and no commentary on what came \
             back (whether a match is trusted, its score, who confirmed it, saved answers, reports, or tool names). All of \
@@ -3683,6 +3747,25 @@ pub struct ProposeFileInput {
 
 // --- Server handler --------------------------------------------------------
 
+/// The answer to a call of a tool the session's mode does not list: what the model has to do instead, so a client
+/// holding another mode's list (one that does not refresh it) is told rather than failing blind.
+fn wrong_mode(tool: &str, mode: Option<Mode>) -> String {
+    match mode {
+        None => format!(
+            "{tool} is for a session opened in data mode; this one lists every tool, so there is no mode to end: \
+             answer the question with the tools it needs."
+        ),
+        Some(Mode::Data) => format!(
+            "{tool} answers questions about the estate, and this session is in data mode. Call {} first, then {tool}.",
+            modes::END_DATA_MODE
+        ),
+        Some(Mode::Estate) => format!(
+            "{tool} answers a question from warehouse data, and this session is in estate mode: only a message \
+             beginning with `!` or `!cwd` starts data mode, so say that asking again starting with `!` answers it."
+        ),
+    }
+}
+
 /// The bearer on an inbound HTTP request's `Authorization` header, when present and
 /// well-formed (`Bearer <non-empty token>`, scheme case-insensitive per RFC 6750).
 pub(crate) fn bearer_token(headers: &http::HeaderMap) -> Option<String> {
@@ -3894,6 +3977,13 @@ impl ServerHandler for SqlFlowMcp {
         let parts = context.extensions.get::<http::request::Parts>();
         let bearer = parts.and_then(|parts| bearer_token(&parts.headers));
         let surface = parts.and_then(|parts| request_surface(parts.uri.query()));
+        let mode = self.mode_of(parts);
+        if self.has_data_mode && self.get_tool(&request.name).is_some() && !modes::lists(mode, &request.name) {
+            return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(wrong_mode(
+                &request.name,
+                mode,
+            ))]));
+        }
         let call = self.dispatch(request, context);
         match (bearer, surface) {
             (Some(token), Some(surface)) => {
@@ -3906,14 +3996,18 @@ impl ServerHandler for SqlFlowMcp {
         }
     }
 
-    /// Every tool a client can call: this server's own, then each module's in registration order.
+    /// Every tool the session's mode lists: this server's own, then each module's in registration order.
     async fn list_tools(
         &self,
         _request: Option<rmcp::model::PaginatedRequestParams>,
-        _context: rmcp::service::RequestContext<rmcp::RoleServer>,
+        context: rmcp::service::RequestContext<rmcp::RoleServer>,
     ) -> Result<rmcp::model::ListToolsResult, rmcp::ErrorData> {
         let mut tools = self.tool_router.list_all();
         tools.extend(self.modules.list().iter().cloned());
+        if self.has_data_mode {
+            let mode = self.mode_of(context.extensions.get::<http::request::Parts>());
+            tools.retain(|tool| modes::lists(mode, &tool.name));
+        }
         Ok(rmcp::model::ListToolsResult {
             tools,
             meta: None,
@@ -3934,20 +4028,21 @@ impl ServerHandler for SqlFlowMcp {
         let discovery =
             if self.http_mode || self.modules.withholds("discover_source") { "" } else { DISCOVERY_STDIO };
         let introduction = self.modules.introduction().unwrap_or(INTRODUCTION);
-        let opening = if self.modules.withholds("find_similar_questions") {
-            format!("{introduction} ")
+        let opening = if self.has_data_mode {
+            format!("{introduction}\n\n{MODES}\n\n")
         } else {
-            format!("{introduction}\n\n{ROUTING_COMMAND}\n\n")
+            format!("{introduction} ")
         };
+        let operate = self.operate_section();
         let modules = self.modules.instructions();
         let withheld = self.modules.withheld_note();
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().enable_tool_list_changed().build())
             .with_server_info(rmcp::model::Implementation::new(
                 self.cp.identity().name().to_string(),
                 self.cp.identity().version().to_string(),
             ))
             .with_instructions(format!(
-                "{opening}{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{modules}{withheld}"
+                "{opening}{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{operate}\n\n{CLOSING}{modules}{withheld}"
             ))
     }
 }
@@ -3971,17 +4066,33 @@ impl SqlFlowMcp {
 /// How SQLFlow's own server introduces itself; a host may replace it (`McpHost::introduced_as`).
 const INTRODUCTION: &str = "SQLFlow MCP server.";
 
-/// The rule that follows the introduction while find_similar_questions is offered: a question beginning with `!` goes
-/// to it before anything else. A host that leaves the tool out does not get the rule, so it is never told to call a tool
-/// it lacks.
-const ROUTING_COMMAND: &str = "\
-ROUTING, BEFORE ANYTHING ELSE: a message beginning with `!` is a question to be answered from warehouse
-data (`!cwd` is the same command). Strip the `!` (and a `cwd` right after it) and call find_similar_questions FIRST, before any schema lookup,
-any semantic-layer search, and any word to the person. It returns SQL that already answers the question,
-confirmed by a human; a `trusted` match with an `exampleId` is then run with auto_run_trusted_match. Do
-not compose SQL by hand until that path has come up empty. A message WITHOUT the leading `!` never goes
-to find_similar_questions, however much it reads like a question the warehouse could answer. The fuller
-rule, including how to lay out the answer, is in the online section below.";
+/// The modes and the commands that move between them, first in the instructions while the host has data mode (it
+/// offers find_similar_questions). A host without it does not get the block, so it is never told to call a tool it
+/// lacks. Every client reads the same block: the GUI chat and the Slack bot read the server's instructions too.
+const MODES: &str = "\
+MODES AND ROUTING, BEFORE ANYTHING ELSE: a conversation is in one of two modes. Estate mode, the default, answers
+questions about the estate (flows, runs, lineage, schedules, the catalog, the docs) and reads no rows. Data mode
+answers questions from warehouse data through the semantic layer, the stored questions and the query tools.
+- A message beginning with `!` or `!cwd` starts data mode with a question to answer from warehouse data: strip the
+  command and call find_similar_questions FIRST, before any schema lookup, any semantic-layer search, and any word
+  to the person. It returns SQL that already answers the question,
+  confirmed by a human; a `trusted` match with an `exampleId` is then run with auto_run_trusted_match. Do not
+  compose SQL by hand until that path has come up empty.
+- Data mode lasts for the conversation's follow-ups, and they need no `!`: \"and by region?\", another year or a
+  corrected filter is the question again, passed to find_similar_questions as the question it amounts to, written
+  out in full from the conversation, never the reply's few words; \"run it\" or \"save\" acts on the query or the
+  answer just given.
+- A message beginning with `!exit` returns to estate mode: answer the rest of the message, if any, as a question
+  about the estate; with nothing after the command, say in one line that you are back to questions about the estate.
+- When someone forgets `!exit` and a follow-up in data mode turns to the estate (a flow, a run, lineage, a schedule,
+  the docs, how a table is loaded or where it comes from), it is a question about the estate again.
+- Only `!` or `!cwd` starts data mode. In estate mode a message without it is a question about the estate however
+  much it reads like one the warehouse could answer: answer what the metadata can say, and say that asking it again
+  starting with `!` answers it from the data.
+- A client that opens a session for each message names the conversation's mode, and the session then lists only
+  that mode's tools. A data-mode session lists end_data_mode: for `!exit`, or a follow-up that turns to the estate,
+  call it before writing anything and write nothing more, since the client asks again with the estate's tools.
+The fuller rule, including how to lay out the answer, is in the online section below.";
 
 const INSTRUCTIONS_OFFLINE: &str = "\
 Two tiers of tools:
@@ -4071,11 +4182,18 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   result; wait for the person to say, after seeing it, that it is right, needs a fix, or should be
   saved. When you do call it, first say in one line what you will save as the question, quoting it, so they
   can amend the wording; the question is stored as typed and is what later questions match against, so a
-  typo is theirs to fix, not yours to correct silently, and amending it leaves the query untouched. A
-  message with NO leading `!` is never routed to find_similar_questions, no matter how much it reads
-  like a question the warehouse could answer: treat it as a normal question about the estate and work it
-  through the catalog readers and the rest of this list instead.
-- Writing SQL for a business question (a `!` message): use the SEMANTIC LAYER, the governed schema made of the
+  typo is theirs to fix, not yours to correct silently, and amending it leaves the query untouched.
+  In data mode a follow-up needs no `!`. One that changes or narrows the question (\"and by region?\", \"only for
+  2024\", a corrected filter) is that question again: call find_similar_questions with the question it amounts to,
+  written out in full from the conversation, never with the reply's few words. One that approves a query you
+  offered (\"run it\", \"yes\") runs it: when the plan is no longer available (it expired, or the conversation's
+  earlier tool results are gone), call prepare_query again with exactly the SQL they approved and run it straight
+  away, since they already agreed to that statement. One that judges an answer (\"save\", \"that's right\", a
+  fix) is what confirm_question waits for. When a person says an answer is wrong, nothing is saved: offer to fix
+  the query instead. In estate mode a message with NO leading `!` is never routed to find_similar_questions, no
+  matter how much it reads like a question the warehouse could answer: work it through the catalog readers and
+  the rest of this list instead.
+- Writing SQL for a business question (data mode): use the SEMANTIC LAYER, the governed schema made of the
   AI contexts an admin approved, holding only the tables and columns those contexts open, with their
   business descriptions, synonyms, curated keys and joins, measures, and example queries. get_semantic_layer
   first (its general instructions apply to every query you write), then search_semantic_layer with a name or
@@ -4128,24 +4246,60 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   (filter by type or search by name/owner) finds the report; describe_subscriber(key) lists every object its
   queries read and the SQL itself. The reverse (\"who consumes this table\") is in describe_semantic_table's
   `consumers` (and describe_object's `subscribers` where a client exposes it). Then answer \"and how are those tables populated\" per table with describe_object_refresh.
+  The warehouse outranks the reporting layer: a bare term is far more often a table, a column or the code computing
+  one than a report's name, so lead with the warehouse surfaces and answer from a subscriber only when the question
+  is about a thing a person views, or the warehouse found nothing. A subscriber's `notes` say what is stale or
+  superseded, and one beginning \"Incomplete dataset\" makes its object list a floor rather than the whole truth.
 - \"What is the computation formula for <column>?\": three places compute values, check in this order:
   search_flow_columns (an expression in a flow's transform), the owning view/procedure body via
   describe_object or search_definitions, and search_statements (SQL the engine composed at run time).
 - \"It looks like data is missing\": never conclude from metadata silence. Locate the table (search_all),
   walk to its producers (describe_object_refresh), read their recent runs (list_runs, run_files) and compare
   the newest delivery against the flow's own norm (pipeline_file_stats: median, spread, recent window).
-  insights_attention lists flows already failing, silent, or delivering zero rows.
+  insights_attention lists flows already failing, silent, or delivering zero rows. A run can succeed and still
+  under-deliver: conclude with the cause and its numbers (the source run failed, ran with no files, has not run
+  since the data was due, or delivered far below its norm), and hand the person ready-to-run T-SQL against the real
+  objects to check it themselves (a row count and the latest load date), fully qualified, with the columns
+  describe_object lists and never SELECT *, each query in its own code block.
+- \"Which tables stopped receiving data / is this table still loaded / did the volume drop?\":
+  detect_stream_anomalies reads every stream's insert, update and delete history (no per-table setup), leaves out
+  backfills, and judges a scheduled stream against its cron. Trust a finding two detectors agree on; treat a single
+  detector as a lead. For \"why is <flow> flagged\", pass flowName and answer from the `detail` of every detector
+  that fired, quoting its numbers, and say which stayed quiet. A lone volume detector on a stream that still loads
+  on every expected day, or a finding a few percent of the stream's level, is noise: say so.
+- Authoring `.flow.yaml`: follow the canonical design path. Ground it in the docs first (search_docs for
+  \"canonical authoring\", then describe_flow_key or get_doc_by_yaml_path for every key you write), mirror a
+  sibling flow (search with surface \"flows\", then pipeline_definition), and declare intent rather than mechanism:
+  incremental loading is the `incremental` block, an upsert is `load.keyColumns`, and `source.filter` takes static
+  predicates only. Never hand-write watermark SQL or invent tokens such as `@sf_...`: nothing expands them, so they
+  reach the database as written. Run validate_flow on every YAML before showing it, and fix what it reports.
+- A message may carry images (a screenshot of an error, a flow YAML): read them, then answer with the tools as
+  usual, looking up the run, table or flow they name rather than answering from the picture alone.
+- A tool that answers that this caller may not do something (403, \"not available to an assistant run\") is the
+  control plane's decision about the caller: say so in one line and link the GUI page where a person can do it (a
+  run's page to cancel it, the schedules page to trigger one). Never try another way round it.
+- Keep answers tight: lead with the finding, then only the detail the reader needs.
 - Performance and optimization: insights_recommendations is the one-call briefing (run-history advisories
   merged with warehouse DMV findings, each with ready-to-review SQL); insights_flows ranks flows by
   processing time with trends; insights_attention lists what is failing/degrading/silent; insights_steps
-  drills a slow flow to its hot steps and their SQL. When the warehouse dimension is missing or stale, run
-  analyze_warehouse_health (missingIndexes / statisticsHealth / indexUsage / topQueries) and re-read.
-  Suggested SQL from these tools is for human review, never for unreviewed execution.
-- Operate (privileged): trigger_run, cancel_run, analyze_warehouse_health.
-
-SQLFlow authors T-SQL against SQL Server and orchestrates it with `.flow.yaml` documents. It is a
-distinct product from DeltaForge; use these tools and the embedded corpus as the source of truth."
+  drills a slow flow to its hot steps and their SQL."
 );
+
+/// The sentence that sends a stale warehouse dimension to analyze_warehouse_health, said only while the host offers it.
+const WAREHOUSE_HEALTH: &str = " When the warehouse dimension is missing or stale, run
+  analyze_warehouse_health (missingIndexes / statisticsHealth / indexUsage / topQueries) and re-read.";
+
+/// What closes the performance bullet whatever the host offers.
+const SUGGESTED_SQL: &str = "
+  Suggested SQL from these tools is for human review, never for unreviewed execution.";
+
+/// The privileged tools the operate line names, each only while the host offers it.
+const OPERATE_TOOLS: &[&str] = &["trigger_run", "cancel_run", "analyze_warehouse_health"];
+
+/// The instructions' last paragraph, before the host's modules.
+const CLOSING: &str = "\
+SQLFlow authors T-SQL against SQL Server and orchestrates it with `.flow.yaml` documents. It is a
+distinct product from DeltaForge; use these tools and the embedded corpus as the source of truth.";
 
 #[cfg(test)]
 mod tests {
@@ -4393,6 +4547,40 @@ mod tests {
     fn the_response_rule_is_built_from_the_shared_silent_rule() {
         assert!(RETRIEVAL_RULE.starts_with(SILENT_RETRIEVAL_RULE));
         assert!(INSTRUCTIONS_ONLINE_TAIL.contains(SILENT_RETRIEVAL_RULE));
+    }
+
+    /// The rules every client follows, the GUI chat and the Slack bot included: they read these instructions as their
+    /// system prompt and add only how their surface renders, so a rule dropped here is gone everywhere.
+    #[test]
+    fn the_instructions_carry_the_rules_every_client_follows() {
+        // Read as prose: the text wraps wherever its lines end, so runs of white space count as one.
+        let flat = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+        let (modes, online) = (flat(MODES), flat(INSTRUCTIONS_ONLINE_TAIL));
+        // The modes and their commands.
+        for rule in [
+            "Only `!` or `!cwd` starts data mode",
+            "Data mode lasts for the conversation's follow-ups, and they need no `!`",
+            "never the reply's few words",
+            "A message beginning with `!exit` returns to estate mode",
+            "When someone forgets `!exit`",
+            "A data-mode session lists end_data_mode",
+        ] {
+            assert!(modes.contains(rule), "the modes block lost: {rule}");
+        }
+        // Grounding, executed SQL, load modes, refusals: what the control plane's own text used to say.
+        for rule in [
+            "Every fact you state must be a value a tool returned",
+            "Executed SQL comes only from run_statements",
+            "State the load mode from `loadProfile.readMode`",
+            "The warehouse outranks the reporting layer",
+            "detect_stream_anomalies",
+            "Run validate_flow on every YAML before showing it",
+            "A message may carry images",
+            "403",
+            "call prepare_query again with exactly the SQL they approved",
+        ] {
+            assert!(online.contains(rule), "the online rules lost: {rule}");
+        }
     }
 
     #[test]

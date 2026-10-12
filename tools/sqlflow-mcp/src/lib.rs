@@ -17,12 +17,14 @@ pub mod docs;
 pub mod host;
 pub mod http_server;
 pub mod links;
+pub mod modes;
 pub mod module;
 pub mod server;
 
 pub use docs::{DocMeta, DocPage};
 pub use host::{run, McpHost};
 pub use links::{encode, GuiLinks, LinkRule};
+pub use modes::Mode;
 pub use module::{McpContext, McpModule};
 pub use server::{done, json_str, EmptyInput};
 

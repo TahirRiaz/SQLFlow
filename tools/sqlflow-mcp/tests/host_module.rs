@@ -21,6 +21,7 @@ use sqlflow_mcp::config::{StateStore, TokenCache};
 use sqlflow_mcp::control_plane::ControlPlane;
 use sqlflow_mcp::rmcp::handler::server::wrapper::Parameters;
 use sqlflow_mcp::rmcp::{self, schemars, tool, tool_router, ServiceExt};
+use sqlflow_mcp::modes::{self, Mode};
 use sqlflow_mcp::server::SqlFlowMcp;
 use sqlflow_mcp::{encode, http_server, json_str, DocMeta, DocPage, EmptyInput, McpContext, McpHost, McpModule};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -344,12 +345,16 @@ async fn a_module_is_served_beside_sqlflows_own_tools_over_http() {
         "{instructions}"
     );
 
-    // Both sets of tools are listed, and SQLFlow's are all still there.
+    // Both sets of tools are listed: a session naming no mode lists every tool but the way out of data mode. Over HTTP
+    // the tools that sign in or move the server are not among them, since every call carries its own bearer.
     let names = tool_names(&session.request("tools/list", json!({})).await);
-    for tool in ["list_probes", "run_probe", "list_repos", "search_docs", "validate_flow", "trigger_run"] {
+    for tool in ["list_probes", "run_probe", "list_repos", "search_docs", "validate_flow", "trigger_run", "run_query"] {
         assert!(names.contains(&tool.to_string()), "{tool} is not listed: {names:?}");
     }
-    assert_eq!(names.len(), SqlFlowMcp::tool_names().len() + 2);
+    for tool in SIGN_IN_TOOLS.iter().chain(&[modes::END_DATA_MODE]) {
+        assert!(!names.contains(&tool.to_string()), "{tool} is listed: {names:?}");
+    }
+    assert_eq!(names.len(), listed_over_http(None, &[]).len() + 2);
     assert_eq!(names.iter().filter(|n| n.as_str() == "list_probes").count(), 1);
 
     // The module's tool runs as the caller, and its row carries the module's link on the host's GUI.
@@ -498,7 +503,7 @@ async fn a_tool_the_host_leaves_out_is_neither_listed_nor_callable() {
     let names = tool_names(&session.request("tools/list", json!({})).await);
     assert!(!names.contains(&"run_query".to_string()) && !names.contains(&"prepare_query".to_string()), "{names:?}");
     // Everything else of SQLFlow's, and the module's own, is still there.
-    assert_eq!(names.len(), SqlFlowMcp::tool_names().len() - 2 + 2);
+    assert_eq!(names.len(), listed_over_http(None, &["run_query", "prepare_query"]).len() + 2);
     assert!(names.contains(&"list_repos".to_string()) && names.contains(&"list_probes".to_string()));
 
     let called = session
@@ -513,10 +518,67 @@ async fn a_tool_the_host_leaves_out_is_neither_listed_nor_callable() {
     assert!(instructions.contains("prepare_query, run_query"), "{instructions}");
 }
 
+/// The tools that sign in, keep a token or point the server elsewhere: a stdio session's own, not listed over HTTP.
+const SIGN_IN_TOOLS: &[&str] = &["login", "check_auth_status", "set_access_token", "logout", "set_control_plane_url"];
+
+/// SQLFlow's tools an HTTP session in `mode` lists, the host leaving out `withheld`.
+fn listed_over_http(mode: Option<Mode>, withheld: &[&str]) -> Vec<String> {
+    let mut names: Vec<String> = SqlFlowMcp::tool_names()
+        .into_iter()
+        .filter(|name| modes::lists(mode, name))
+        .filter(|name| !SIGN_IN_TOOLS.contains(&name.as_str()) && !withheld.contains(&name.as_str()))
+        .collect();
+    names.sort();
+    names
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_http_session_lists_the_tools_of_the_mode_its_address_names_and_keeps_its_own() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, None), "", true)
+        .expect("the probe host composes");
+    let (url, _stop) = start_http(server).await;
+
+    // A client that opens a session per message (a model provider's connector) names the conversation's mode.
+    let (mut data, _) = HttpSession::open(&format!("{url}?surface=assistant&mode=data"), "caller-a").await;
+    let mut listed = tool_names(&data.request("tools/list", json!({})).await);
+    listed.sort();
+    assert_eq!(listed, listed_over_http(Some(Mode::Data), &[]), "a data-mode session lists its own tools and the shared ones");
+    assert!(listed.contains(&"end_data_mode".to_string()) && !listed.contains(&"list_probes".to_string()), "{listed:?}");
+
+    // An estate tool is answered with the switch to make, not run.
+    let refused = data.request("tools/call", json!({ "name": "list_repos", "arguments": {} })).await;
+    assert_eq!(refused["result"]["isError"], json!(true), "{refused}");
+    let text = refused["result"]["content"][0]["text"].as_str().unwrap_or_default();
+    assert!(text.contains("data mode") && text.contains("end_data_mode"), "{text}");
+
+    // An estate-mode session lists the estate's tools and the module's, and none that only data mode needs.
+    let (mut estate_session, _) = HttpSession::open(&format!("{url}?surface=assistant&mode=estate"), "caller-b").await;
+    let mut listed = tool_names(&estate_session.request("tools/list", json!({})).await);
+    listed.retain(|name| name != "list_probes" && name != "run_probe");
+    listed.sort();
+    assert_eq!(listed, listed_over_http(Some(Mode::Estate), &[]));
+    let refused = estate_session.request("tools/call", json!({ "name": "run_query", "arguments": { "planId": "p-1" } })).await;
+    let text = refused["result"]["content"][0]["text"].as_str().unwrap_or_default();
+    assert!(refused["result"]["isError"] == json!(true) && text.contains("starting with `!`"), "{refused}");
+
+    // end_data_mode switches the data session to the estate's tools, and leaves every other session where it was.
+    let ended = data.request("tools/call", json!({ "name": "end_data_mode", "arguments": {} })).await;
+    let answer: Value = serde_json::from_str(ended["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
+    assert_eq!(answer["mode"], json!("estate"));
+    let after = tool_names(&data.request("tools/list", json!({})).await);
+    assert!(after.contains(&"list_probes".to_string()) && !after.contains(&"run_query".to_string()), "{after:?}");
+    let (mut fresh, _) = HttpSession::open(&format!("{url}?mode=data"), "caller-c").await;
+    assert!(tool_names(&fresh.request("tools/list", json!({})).await).contains(&"run_query".to_string()));
+}
+
 // ---- The server over stdio --------------------------------------------------------------------------
 
 /// A client's end of a stdio session: one JSON-RPC message per line, each way.
 struct LineSession {
+    /// The methods of the notifications the server sent, in order, read while waiting for answers.
+    notifications: Vec<String>,
     reader: BufReader<tokio::io::ReadHalf<tokio::io::DuplexStream>>,
     writer: tokio::io::WriteHalf<tokio::io::DuplexStream>,
     next_id: u64,
@@ -541,11 +603,23 @@ impl LineSession {
                     if message["id"] == json!(id) {
                         return message;
                     }
+                    if message.get("id").is_none() {
+                        if let Some(notification) = message["method"].as_str() {
+                            self.notifications.push(notification.to_string());
+                        }
+                    }
                 }
             }
         })
         .await;
         answer.unwrap_or_else(|_| panic!("no answer to {method} within 30s"))
+    }
+
+    /// A tool's text answer, and whether the server marked it an error.
+    async fn call(&mut self, name: &str, arguments: Value) -> (String, bool) {
+        let called = self.request("tools/call", json!({ "name": name, "arguments": arguments })).await;
+        let text = called["result"]["content"][0]["text"].as_str().unwrap_or_default().to_string();
+        (text, called["result"]["isError"] == json!(true))
     }
 }
 
@@ -558,7 +632,8 @@ async fn open_stdio(server: SqlFlowMcp) -> (LineSession, Value) {
         let _ = running.waiting().await;
     });
     let (client_read, client_write) = tokio::io::split(client_end);
-    let mut session = LineSession { reader: BufReader::new(client_read), writer: client_write, next_id: 0 };
+    let mut session =
+        LineSession { reader: BufReader::new(client_read), writer: client_write, next_id: 0, notifications: Vec::new() };
 
     let initialized = session
         .request(
@@ -583,8 +658,9 @@ async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
     let (mut session, initialized) = open_stdio(server).await;
 
     let instructions = initialized["result"]["instructions"].as_str().expect("instructions");
-    // SQLFlow's introduction, then the `!` routing rule, since find_similar_questions is offered.
-    assert!(instructions.starts_with("SQLFlow MCP server.\n\nROUTING, BEFORE ANYTHING ELSE"), "{instructions}");
+    // SQLFlow's introduction, then the modes and the `!` commands, since find_similar_questions is offered.
+    assert!(instructions.starts_with("SQLFlow MCP server.\n\nMODES AND ROUTING, BEFORE ANYTHING ELSE"), "{instructions}");
+    assert!(instructions.contains("`!exit`") && instructions.contains("end_data_mode"), "{instructions}");
     assert!(instructions.contains("\n\nTwo tiers of tools:"), "{instructions}");
     assert!(instructions.contains("login (device flow)"), "the stdio setup text: {instructions}");
     assert!(instructions.contains("discover_source"), "{instructions}");
@@ -602,6 +678,31 @@ async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn a_stdio_session_names_no_mode_and_lists_every_tool() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes");
+    let (mut session, initialized) = open_stdio(server).await;
+
+    // A stdio client keeps one session for a whole chat and may not refresh its tools mid-answer, so it is offered
+    // everything and keeps the mode from the instructions; a list change is still announced as a capability.
+    assert_eq!(initialized["result"]["capabilities"]["tools"]["listChanged"], json!(true), "{initialized}");
+    let names = tool_names(&session.request("tools/list", json!({})).await);
+    for tool in ["find_similar_questions", "run_query", "list_runs", "list_probes", "login"] {
+        assert!(names.contains(&tool.to_string()), "{tool}: {names:?}");
+    }
+    assert!(!names.contains(&"end_data_mode".to_string()), "{names:?}");
+    let (answer, is_error) = session.call("list_probes", json!({})).await;
+    assert!(!is_error, "{answer}");
+
+    // A tool the session does not list is not answered either: there is no data mode here to end.
+    let (refused, is_error) = session.call("end_data_mode", json!({})).await;
+    assert!(is_error && refused.contains("no mode to end"), "{refused}");
+    assert!(tool_names(&session.request("tools/list", json!({})).await).contains(&"list_runs".to_string()));
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn a_host_introduces_its_product_and_does_not_recommend_a_tool_it_leaves_out() {
     let estate = start_control_plane().await;
     let server = probe_host()
@@ -609,7 +710,12 @@ async fn a_host_introduces_its_product_and_does_not_recommend_a_tool_it_leaves_o
         .without_tools(["discover_source", "find_similar_questions"])
         .server(control_plane(&estate, Some("stored-sign-in")), "", false)
         .expect("the probe host composes");
-    let (_session, initialized) = open_stdio(server).await;
+    let (mut session, initialized) = open_stdio(server).await;
+
+    // Without find_similar_questions there is no data mode: nothing is filtered by mode, and no way out of it is listed.
+    let names = tool_names(&session.request("tools/list", json!({})).await);
+    assert!(!names.contains(&"end_data_mode".to_string()), "{names:?}");
+    assert!(names.contains(&"run_query".to_string()) && names.contains(&"list_runs".to_string()), "{names:?}");
 
     // The host's line opens the instructions in place of SQLFlow's, and SQLFlow's tiers follow it.
     let instructions = initialized["result"]["instructions"].as_str().expect("instructions");

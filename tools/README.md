@@ -82,15 +82,25 @@ claude mcp add sqlflow --env SQLFLOW_CONTROL_PLANE_URL=http://localhost:8080 -- 
 
 Then, from the assistant, run the `login` tool (device flow) or
 `set_access_token`. The device flow is served by the control plane at
-`POST /api/v1/auth/device` and approved in a browser at `/device`.
+`POST /api/v1/auth/device` and approved in a browser at `/device`. Over HTTP
+(`sqlflow-mcp http`) every call carries its caller's bearer, so those sign-in
+tools are not listed there.
+
+The server's instructions are the assistant's one set of rules: the GUI chat
+and the Slack bot read them from the server's `initialize` answer and add only
+how their surface renders an answer, and an editor's assistant reads the same
+text. A conversation is in estate mode or data mode (`src/modes.rs`): a message
+starting with `!` (or `!cwd`) puts it in data mode until `!exit`, so follow-ups
+need no command. A client that opens a session per message names the mode on
+the address (`?mode=data`, `?mode=estate`) and the session lists only that
+mode's tools; a session that names none lists every tool.
 
 To write SQL, start from the semantic layer: `get_semantic_layer` (the layer's
 instructions, where its tables live, and its measures), `search_semantic_layer`
 (tables, columns, and measures by name or business synonym), and
 `describe_semantic_table` (one table's allowed columns, key, joins, measures,
 example queries, and consumers). They serve only the tables and columns on the
-column allow-list, and they are the only schema tools the GUI and Slack
-assistants are given.
+column allow-list, and they are the only schema tools a data-mode session lists.
 
 For lineage and code questions, browse with `list_schemas` (every server/database/
 schema and its object count) and `lineage_objects` (filter by database, schema,
