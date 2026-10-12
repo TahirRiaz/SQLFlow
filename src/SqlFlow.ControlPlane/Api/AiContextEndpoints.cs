@@ -387,12 +387,12 @@ public static class AiContextEndpoints
                 "added", $"table {t.Display}", $"{t.Columns.Count} column(s), {t.Measures.Count} measure(s), {t.Joins.Count} join(s)")));
             if (current.Examples.Count > 0)
             {
-                changes.Add(new AiContextChangeDto("added", "examples", $"{current.Examples.Count} question(s)"));
+                changes.Add(new AiContextChangeDto("added", "example questions", $"{current.Examples.Count} question(s)"));
             }
 
             if (current.Instructions is not null)
             {
-                changes.Add(new AiContextChangeDto("added", "instructions", null));
+                changes.Add(new AiContextChangeDto("added", "the context's instructions", null));
             }
 
             return changes;
@@ -400,10 +400,10 @@ public static class AiContextEndpoints
 
         if (!string.Equals(approved.Description, current.Description, StringComparison.Ordinal))
         {
-            changes.Add(new AiContextChangeDto("changed", "description", null));
+            changes.Add(new AiContextChangeDto("changed", "the context's description", null));
         }
 
-        Compare(changes, "instructions", approved.Instructions, current.Instructions);
+        Compare(changes, "the context's instructions", approved.Instructions, current.Instructions);
 
         var before = approved.Tables.ToDictionary(t => t.ObjectKey, StringComparer.Ordinal);
         var after = current.Tables.ToDictionary(t => t.ObjectKey, StringComparer.Ordinal);

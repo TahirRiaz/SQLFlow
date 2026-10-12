@@ -115,13 +115,25 @@ function WorkbenchFrame() {
                 onLayoutChanged={verticalLayout.onLayoutChanged}
               >
                 <ResizablePanel id="editor-content" minSize="20">
-                  <main className="h-full overflow-y-auto bg-background">
-                    <div className="mx-auto max-w-[1600px] p-4 md:p-6">
-                      <SideBarRoomContext.Provider value={room}>
-                        <Outlet />
-                      </SideBarRoomContext.Provider>
-                    </div>
-                  </main>
+                  <div className="relative h-full">
+                    <main className="h-full overflow-y-auto bg-background">
+                      <div className="mx-auto max-w-[1600px] p-4 md:p-6">
+                        <SideBarRoomContext.Provider value={room}>
+                          <Outlet />
+                        </SideBarRoomContext.Provider>
+                      </div>
+                    </main>
+                    {/* While a panel is open, the page fades into a shade along its bottom edge, so the panel below reads
+                        as raised over the page rather than as more of it. Drawn over the content, which a shadow on the
+                        scrolling element would be painted under. */}
+                    {panelContent !== null && (
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-foreground/10 to-transparent dark:from-black/45"
+                        data-testid="bottom-panel-shade"
+                      />
+                    )}
+                  </div>
                 </ResizablePanel>
                 {panelContent !== null && (
                   <>

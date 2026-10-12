@@ -231,7 +231,11 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
 - **Editor**: the routed page inside a scroll container with the measure cap. Pages never add their own
   outer padding.
 - **Bottom panel** (resizable 15-70%, closable): live surfaces opened by features through `usePanel()`
-  (e.g. a run's streaming trace). Header: uppercase 11px title + close. One content at a time. What it
+  (e.g. a run's streaming trace). Header: a 36px `card` bar under a 2px `primary` top edge (the accent the
+  active tab wears), uppercase 11px title in `foreground` + close; while it is open, the page above fades into a
+  shade along its bottom edge, so the panel reads as a surface of its own rather than one more grid header of the
+  page. A detail shown there leads with a sticky header carrying its actions, then bordered cards. One content at
+  a time. What it
   shows belongs to the page that opened it, so going to another page from a menu (side bar, its search,
   command palette, account menu) closes it through `useMenuNavigate()`; choosing the page already shown
   keeps it.

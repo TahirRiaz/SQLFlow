@@ -13,19 +13,19 @@ export function PanelHost() {
 
   return (
     <section className="flex h-full flex-col bg-panel" aria-label={content.title} data-testid="bottom-panel">
-      {/* The window titlebar: a distinct accent surface with a primary accent strip, so the panel reads as its own
-          surface rather than blending into the page/editor behind it. */}
-      <header className="flex h-8 shrink-0 items-center justify-between border-b border-border bg-accent px-3 shadow-sm">
-        <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-accent-foreground">
-          <span aria-hidden className="h-3 w-0.5 rounded-full bg-primary" />
-          {content.title}
-        </span>
+      {/* The panel's titlebar: a card surface under a 2px edge in the interaction blue, as the active tab wears one, so it
+          reads as a surface of its own and never as one more grid header of the page above it. */}
+      <header
+        className="relative flex h-9 shrink-0 items-center justify-between border-b border-border bg-card px-3 before:absolute before:inset-x-0 before:top-0 before:h-0.5 before:bg-primary"
+        data-testid="bottom-panel-header"
+      >
+        <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-foreground">{content.title}</span>
         <button
           onClick={close}
           aria-label="Close panel"
-          className="rounded-sm p-1 text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+          className="rounded-sm p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
-          <X className="size-3.5" />
+          <X className="size-4" />
         </button>
       </header>
       {/* Keyed by what it shows, so other content opens at its top rather than where the last one was scrolled to. */}
