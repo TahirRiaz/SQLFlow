@@ -224,11 +224,11 @@ the object's paged column list (`GET /api/v1/lineage/objects/columns`), the obje
 statements serve every column to anyone, the chat assistants included. What a column that is not allowed cannot be
 is read:
 
-- **A business question's schema**: a chat message that starts with `!` is answered with the semantic layer tools
-  (`get_semantic_layer`, `search_semantic_layer`, `list_semantic_tables`, `describe_semantic_table`) as its only schema
-  readers, and they serve nothing outside the allow-list, not even inside a key, join, measure, or example query; see
-  [Semantic layer](semantic-layer.md#mcp-tools). Any other message is answered from the whole catalog and runs no
-  query.
+- **A business question's schema**: a chat conversation in data mode (one a message starting with `!` put there) is
+  answered with the semantic layer tools (`get_semantic_layer`, `search_semantic_layer`, `list_semantic_tables`,
+  `describe_semantic_table`) as its only schema readers, and they serve nothing outside the allow-list, not even inside
+  a key, join, measure, or example query; see [Semantic layer](semantic-layer.md#mcp-tools). A conversation in estate
+  mode is answered from the whole catalog and runs no query.
 - **Execution**: `ColumnPolicyGuard.EnsureAllowedAsync` checks every SELECT that reaches `prepare_query`,
   `confirm_question`, or `auto_run_trusted_match` against the allow-list, and refuses one that would read a
   column not on it - refuses it even unnamed, if a `SELECT *` (bare or table-qualified) would expose it. This
@@ -425,8 +425,10 @@ to know that a general-purpose aggregate happens to contain the answer:
 wide answer's worth of context. `describe_object` still returns the whole dossier when a model genuinely
 wants everything at once.
 
-The GUI and Slack chat assistants give `get_table_key`, `get_table_joins`, and `describe_object` to a question about
-the estate, and `detect_unique_key` to none. A business question (a message starting with `!`) composes SQL from
+The GUI and Slack chat assistants give `get_table_key`, `get_table_joins`, and `describe_object` to a conversation in
+estate mode. `detect_unique_key` reads live rows, so although an assistant run's session lists it, the control plane
+refuses the task it would enqueue: an assistant run may queue only duplicate-key checks and baseline comparisons over
+one semantic layer table. A business question (data mode) composes SQL from
 `describe_semantic_table` instead, which serves the same key and the same discovered joins (through the same
 relationship folding), restricted to the columns the approved AI contexts open; see
 [Semantic layer](semantic-layer.md#mcp-tools).

@@ -26,6 +26,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/Contracts.cs
   - src/SqlFlow.ControlPlane/Security/TokenIssuer.cs
   - src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs
+  - src/SqlFlow.ControlPlane/Api/AssistantScope.cs
   - src/SqlFlow.ControlPlane/Security/DeviceCodeStore.cs
   - src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/MeEndpoints.cs
@@ -94,11 +95,11 @@ The GUI chat assistant's model runs at a third party (Azure AI Foundry, OpenAI, 
 - no `auth_time`, so `/auth/renew` refuses it
 - an expiry of `ControlPlane:Assistant:RunTimeoutSeconds` plus 60 seconds
 
-Because `read`, `operate`, and `author` all resolve to "authenticated", cutting scopes alone would fence nothing, so the fence is an explicit, default-deny middleware. `AssistantDelegationMiddleware`, registered right after authorization, refuses a delegated token with 403 (`Not available to an assistant run`) on every endpoint that has not opted in with `AllowAssistantRead()` or `AllowAssistantWrite()` metadata. A new endpoint is therefore closed to the assistant until someone decides otherwise.
+Because `read`, `operate`, and `author` all resolve to "authenticated", cutting scopes alone would fence nothing, so the fence is an explicit, default-deny middleware. `AssistantDelegationMiddleware`, registered right after authorization, refuses an assistant run with 403 (`Not available to an assistant run`) on every endpoint that has not opted in with `AllowAssistantRead()` or `AllowAssistantWrite()` metadata. A request is an assistant run when it carries a delegated token, or when the MCP server marked it as the assistant's (`X-SqlFlow-Surface: assistant`, which the server adds to every call of a session opened with `?surface=assistant`), whatever credential it carries: that is how the Slack bot's personal access token is held to the same surface, and the model cannot drop the marker, since the address is the gateway's. The MCP server lists every tool to every client, so this fence, not a tool list, is what stops an assistant run from starting work. A new endpoint is therefore closed to the assistant until someone decides otherwise.
 
 - **The read surface** (catalog, runs, lineage, search, schedules, nodes, datasources, insights, dispatch) opts in for safe methods only (GET, HEAD, OPTIONS), so its few writes (repository sync and delete, node pool scaling and restarts) stay closed.
 - **The self-service surface** (`/me/tokens`, notification subscriptions, maintenance, chat conversations) does not opt in, apart from `GET /me`, which the MCP server uses to verify a bearer.
-- **The only writes open to it** are the ones the assistant's read-only tools make: `POST /datasources/tasks` (every compute operation only reads, and `runQuery` cannot be queued there) and `POST /dataops/queries/prepare` and `/dataops/queries/{planId}/run` (a plan is redeemed only after a person saw its SQL).
+- **The only writes open to it** are the ones the assistant's read-only tools make: `POST /datasources/tasks` (every compute operation only reads, and `runQuery` cannot be queued there), `POST /dataops/queries/prepare` and `/dataops/queries/{planId}/run` (a plan is redeemed only after a person saw its SQL), `POST /powerai/questions/{id}/auto-run` (it replays SQL a person already confirmed, checked again against the read-only and column guards) and `POST /powerai/questions/confirm` (it stores the verdict a person gave on an answer and runs nothing).
 
 So a model host holding the token can read what the user may read for one run and nothing else: it cannot renew the token, mint a personal access token, approve a device sign-in, read the user's conversations, trigger or cancel runs, change schedules or repo sources, propose pipelines, or administer users. The MCP server additionally verifies every inbound bearer with `GET /me` before any tool runs.
 
@@ -159,7 +160,7 @@ Entra single sign-on turns on automatically once `ControlPlane:AzureAd:AllowedTe
 `AllowedTenantIds` is a list, not a single value, so an estate can trust users from more than one Entra tenant at once (for example, the app registration's own home tenant plus a customer organization's corporate tenant). Two things have to agree for a foreign tenant to actually work:
 
 - **The app registration itself must be multi-tenant** (`signInAudience: AzureADMultipleOrgs`). With more than one allowed tenant, MSAL authenticates the SPA against the shared `organizations` authority (`ResolveAuthority()`, src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs), which accepts a sign-in attempt from any Entra work/school tenant; a single-tenant app registration rejects a foreign account at Microsoft's own login page (`AADSTS650059`) before a token is ever issued, regardless of what the control plane is configured to allow.
-- **Each additional tenant's own admin must consent to the app once.** Consent is what creates that tenant's own local enterprise-application object; without it, Entra refuses to issue a token for that tenant at all. If the deployment also enforces app-role assignment (see below), that tenant's admin then assigns the role to their own users or groups, entirely within their own directory — this deployment's credentials never reach into a foreign tenant.
+- **Each additional tenant's own admin must consent to the app once.** Consent is what creates that tenant's own local enterprise-application object; without it, Entra refuses to issue a token for that tenant at all. If the deployment also enforces app-role assignment (see below), that tenant's admin then assigns the role to their own users or groups, entirely within their own directory: this deployment's credentials never reach into a foreign tenant.
 
 The control plane's `AllowedTenantIds` is the actual trust boundary on the backend: a multi-tenant app registration will let *any* consenting tenant obtain a token, but `EntraTokenValidator` only accepts one whose `tid` claim is in this list, so unnamed tenants are rejected token by token even after they've consented to the app.
 
@@ -167,7 +168,7 @@ The control plane's `AllowedTenantIds` is the actual trust boundary on the backe
 
 `deploy/bicep/main.bicep` automates this: `provisionEntraApp` (default on) creates the app registration via `entra-app.bicep`, always trusting the deployment's own subscription tenant; `azureAdAdditionalAllowedTenantIds` names further tenants, which automatically flips the registration to multi-tenant and is surfaced back as the `entraForeignTenantReminder` output (the manual consent-then-assign step each named tenant's admin still has to do by hand).
 
-`EntraTokenValidator` (src/SqlFlow.ControlPlane/Security/EntraTokenValidator.cs) reads the token's own `tid` claim first (unvalidated) to pick which allowed tenant to validate against — rejecting outright, before any metadata fetch, if `tid` is not in `AllowedTenantIds` — then pins validation to that tenant specifically:
+`EntraTokenValidator` (src/SqlFlow.ControlPlane/Security/EntraTokenValidator.cs) reads the token's own `tid` claim first (unvalidated) to pick which allowed tenant to validate against (rejecting outright, before any metadata fetch, if `tid` is not in `AllowedTenantIds`), then pins validation to that tenant specifically:
 
 - **Issuer**: that tenant's own issuer, taken from its OIDC metadata at `{TenantAuthority(tid)}/.well-known/openid-configuration`, so a token asserting any other tenant (even an allowed one, if it lied about `tid`) fails signature/issuer validation against the metadata actually fetched
 - **Audience**: `ControlPlane:AzureAd:ClientId`

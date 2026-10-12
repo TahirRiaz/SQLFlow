@@ -122,6 +122,23 @@ the tool result shows the terms actually sent.
   `!`. The question is answered from the catalog (`search_all`, `describe_object`), which lists every
   column, and the answer says to ask again starting with `!` for the figures.
 
+### T11a: a follow-up stays in data mode without the `!`
+- Prompt: `!what are reseller sales by region?`, then in the same conversation `and only for Europe?`
+- Pass: the second message is answered in data mode (the run's MCP address carries `mode=data`): it calls
+  `find_similar_questions` with the question written out ("reseller sales by region for Europe", not "and only for
+  Europe?"), and its query reads only allow-listed columns.
+
+### T11b: `!exit` returns to estate mode
+- Prompt: after T11a, `!exit which flow loads the sales table?`
+- Pass: the run's MCP address carries `mode=estate`, and the question is answered from the catalog
+  (`describe_object_refresh`), with no query tool listed.
+
+### T11c: a forgotten `!exit` is ended by the assistant
+- Prompt: after T11a, `where does that table get its data from?`
+- Pass: the data-mode run calls `end_data_mode`, the chat drops its first attempt (a `restart` event), and the answer
+  comes from `object_lineage` in estate mode. The conversation's newest command is still the `!`, so the next message
+  without a command starts in data mode again; `!exit` is what keeps it in estate mode.
+
 ## E. Question retrieval (`!`)
 
 Every case here must show `find_similar_questions` called with `expanded_terms`: the question's own

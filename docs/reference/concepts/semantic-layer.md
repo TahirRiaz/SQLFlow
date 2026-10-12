@@ -168,28 +168,32 @@ as if it were approved, and a table, measure name, or join another context serve
 | `list_semantic_tables` | `GET /api/v1/semantic-layer/tables` |
 | `describe_semantic_table` | `GET /api/v1/semantic-layer/tables/describe` |
 
-The GUI chat and Slack assistants answer each message with one of two tool sets, picked by its first character
-(`AssistantQuestions.KindOf`, asked once per run by `AssistantRouter`, which both gateways use), each with
-instructions that name only its own tools:
+A conversation is in one of two modes, which the MCP server defines (`tools/sqlflow-mcp/src/modes.rs`) and its
+instructions explain to every client. A message starting with `!` (or `!cwd`) puts it in data mode, where it stays, so
+a follow-up needs no `!`; `!exit` returns it to estate mode, and the assistant ends data mode itself when a follow-up
+turns to the estate. A client that opens an MCP session per message (the GUI chat and the Slack bot, through the model
+provider) names the conversation's mode on the address (`?surface=assistant&mode=data`), and the session lists only
+that mode's tools:
 
-| Message | Tool set | What it gets |
-| --- | --- | --- |
-| Starts with `!` (a business question) | `McpOptions.BusinessDefaultTools` (override with `Mcp:BusinessTools`) | The four semantic layer tools above, `find_similar_questions`, and the query tools: `prepare_query`, `run_query`, `auto_run_trusted_match`, `confirm_question`. Nothing else, so the layer is the only schema it can find |
-| Anything else (a question about the estate) | `McpOptions.GuiDefaultTools` or `McpOptions.SlackDefaultTools` (override with `Mcp:AllowedTools`) | The estate readers (`McpOptions.EstateReadTools`): docs, flows, runs, lineage, schedules, subscribers, insights, search, and the whole schema (`list_schemas`, `catalog_tree`, `describe_object`, `search_all`, `search_schema`, `pipeline_columns`, `get_table_key`, `get_table_joins`, the `lineage_object*` readers). The GUI adds the data-operations checks. No semantic layer tool and no query tool |
+| Mode | What its session lists |
+| --- | --- |
+| Data | The four semantic layer tools above, `describe_subscriber_report`, `find_similar_questions`, and the query tools: `prepare_query`, `run_query`, `auto_run_trusted_match`, `confirm_question`. Nothing else, so the layer is the only schema a data question finds |
+| Estate (the default) | Every other tool: docs, flows, runs, lineage, schedules, subscribers, insights, search, the whole schema (`list_schemas`, `catalog_tree`, `describe_object`, `search_all`, `search_schema`, `pipeline_columns`, `get_table_key`, `get_table_joins`, the `lineage_object*` readers), any tools a product adds, and the semantic layer readers; no query tool |
 
-So "`!` uses the semantic layer" holds by construction rather than by instruction: a business question has no other
-schema to find, and an estate question has no query to run. A reply in a business exchange starts with `!` too
-("`!run`", "`!save`" in Slack); in the GUI, running and saving are buttons under the answer. `McpOptions.ExcludedTools`
-lists what neither set gets: the tools that start work or author code, `detect_unique_key` (it profiles live rows),
-session plumbing, and the git history readers.
+A session that names no mode (an editor's assistant over stdio, such as VS Code or Claude Code) lists every tool, and
+the model keeps the mode from the instructions. What a query reads does not depend on the mode: every query is checked
+against the columns the approved contexts open, on prepare and on run. What an assistant run may do beyond reading is
+the control plane's fence ([assistant run tokens](authentication-and-identity.md#assistant-run-tokens)), not a tool
+list: `Mcp:AllowedTools` exists only for a deployment that wants fewer tools.
 
 ## The assistant surface
 
-Both chat gateways give their MCP connector `McpOptions.AssistantServerUri`: `Mcp:ServerUrl` with `surface=assistant`
-added to its query. The MCP server reads the query (`request_surface`) and sends `X-SqlFlow-Surface: assistant` on
-every control-plane call of that session (`control_plane.rs`). The caller's bearer still decides what it may do; the
-header only narrows, and the model cannot set or remove it. It narrows data, never schema: every read endpoint
-serves the assistant the same text it serves a person.
+Both chat gateways give their MCP connector `McpOptions.AssistantServerUri(mode)`: `Mcp:ServerUrl` with
+`surface=assistant` and the conversation's `mode` added to its query. The MCP server reads the query
+(`request_surface`, `modes::requested`), lists the mode's tools, and sends `X-SqlFlow-Surface: assistant` on every
+control-plane call of that session (`control_plane.rs`). The caller's bearer still decides what it may do; the header
+only narrows, and the model cannot set or remove it. It holds the call to the routes opened to assistant runs, and it
+narrows data, never schema: every read endpoint serves the assistant the same text it serves a person.
 
 `POST /api/v1/datasources/tasks` from a marked request reads live rows, so it is checked as the SELECT it would read,
 through `ReadOnlyQueryGuard` and `ColumnPolicyGuard` (`ColumnPolicyGuard.ComposeTaskSelect`), and refused with 400

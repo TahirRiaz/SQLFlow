@@ -53,8 +53,9 @@ and [AI contexts are files an admin approves](ai-contexts-are-files-an-admin-app
 those contexts avoid what named contexts were rejected for below. What this page says about what the layer serves
 still holds; where it describes the GUI editor, it is history. Its sections on the chat losing the raw schema tools and
 on withholding text that names a column are history too: schema is no longer withheld, and a business question (a
-message starting with `!`) gets its own tool set, as
-[The assistant has a tool set per kind of question](assistant-tool-sets-by-question.md) records.
+message starting with `!`) is answered in data mode, as
+[The MCP server is the assistant's one definition](the-mcp-server-is-the-assistants-one-definition.md) records.
+The marker chosen below now also holds a marked call to the routes opened to assistant runs, which narrows further.
 
 ## One layer, defined by the allow-list
 

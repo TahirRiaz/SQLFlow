@@ -630,6 +630,7 @@
         "src/SqlFlow.ControlPlane/Api/Contracts.cs",
         "src/SqlFlow.ControlPlane/Security/TokenIssuer.cs",
         "src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs",
+        "src/SqlFlow.ControlPlane/Api/AssistantScope.cs",
         "src/SqlFlow.ControlPlane/Security/DeviceCodeStore.cs",
         "src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/MeEndpoints.cs",
@@ -2835,7 +2836,10 @@
         "run query",
         "dataops",
         "chart",
-        "saved answers"
+        "saved answers",
+        "data mode",
+        "estate mode",
+        "!exit"
       ],
       "related": [
         "guide-slack-assistant",
@@ -2867,6 +2871,11 @@
         "src/SqlFlow.ControlPlane/Api/DatasourceInference.cs",
         "src/SqlFlow.Assistant/AssistantInstructions.cs",
         "src/SqlFlow.Assistant/AssistantSettings.cs",
+        "src/SqlFlow.Assistant/AssistantQuestions.cs",
+        "src/SqlFlow.Assistant/AssistantRouter.cs",
+        "src/SqlFlow.Assistant/AssistantRuns.cs",
+        "src/SqlFlow.Assistant/McpServerInstructions.cs",
+        "tools/sqlflow-mcp/src/modes.rs",
         "src/SqlFlow.ControlPlane/Api/QueryEndpoints.cs",
         "deploy/bicep/control-plane.bicep",
         "deploy/bicep/ai-foundry.bicep"
@@ -3680,7 +3689,8 @@
       ],
       "related": [
         "wiki-semantic-layer-is-the-allow-list",
-        "wiki-ai-contexts-are-files-an-admin-approves"
+        "wiki-ai-contexts-are-files-an-admin-approves",
+        "wiki-the-mcp-server-is-the-assistants-one-definition"
       ],
       "sourceRefs": [
         "src/SqlFlow.Assistant/AssistantQuestions.cs",
@@ -3690,7 +3700,7 @@
         "src/SqlFlow.ControlPlane/Api/AssistantScope.cs",
         "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
         "src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs",
-        "tests/SqlFlow.Core.Tests/AssistantToolAllowlistTests.cs"
+        "tests/SqlFlow.Core.Tests/AssistantModesTests.cs"
       ]
     },
     {
@@ -4538,6 +4548,41 @@
         "src/SqlFlow.Core/Engine/TypeInferencer.cs",
         "src/SqlFlow.Core/Engine/InferenceService.cs",
         "src/SqlFlow.SqlServer/SqlServerColumnProfiler.cs"
+      ]
+    },
+    {
+      "id": "wiki-the-mcp-server-is-the-assistants-one-definition",
+      "corpus": "wiki",
+      "path": "decisions/the-mcp-server-is-the-assistants-one-definition.md",
+      "title": "The MCP server is the assistant's one definition",
+      "type": "decision",
+      "summary": "Why the assistant's rules live in the MCP server alone, why a conversation has data and estate modes, and why a fence bounds an assistant run.",
+      "keywords": [
+        "mcp server",
+        "instructions",
+        "one definition",
+        "data mode",
+        "estate mode",
+        "!exit",
+        "follow-up",
+        "tools/list_changed",
+        "assistant fence",
+        "X-SqlFlow-Surface"
+      ],
+      "related": [
+        "wiki-assistant-tool-sets-by-question",
+        "wiki-semantic-layer-is-the-allow-list"
+      ],
+      "sourceRefs": [
+        "tools/sqlflow-mcp/src/modes.rs",
+        "tools/sqlflow-mcp/src/server.rs",
+        "src/SqlFlow.Assistant/McpServerInstructions.cs",
+        "src/SqlFlow.Assistant/AssistantQuestions.cs",
+        "src/SqlFlow.Assistant/AssistantRouter.cs",
+        "src/SqlFlow.Assistant/AssistantRuns.cs",
+        "src/SqlFlow.Assistant/AssistantInstructions.cs",
+        "src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs",
+        "src/SqlFlow.ControlPlane/Api/AssistantScope.cs"
       ]
     },
     {

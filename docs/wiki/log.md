@@ -366,3 +366,14 @@ list and the dossier, leaving the column allow-list to govern data alone, and wh
 carry the command (`!run`, `!save`). Marked the superseded sections of
 [the semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md). The surfaces are documented in
 `concept-semantic-layer`, `concept-data-operations`, `guide-chat-assistant`, and `guide-slack-assistant`.
+
+## [2026-10-12] ingest | The MCP server is the assistant's one definition
+
+Recorded in [The MCP server is the assistant's one definition](decisions/the-mcp-server-is-the-assistants-one-definition.md)
+the human's call that there is one version of the assistant's rules, in the MCP server, read by the GUI chat, the
+Slack bot and any editor's assistant alike: the control plane's instructions, router and tool lists are gone, the
+server gained data mode and estate mode (`!`, `!cwd`, `!exit`, and the assistant ending data mode itself), and the
+assistant fence now holds every call the MCP server marks as the assistant's, which is what keeps the Slack bot's
+personal access token from starting work. Marked [The assistant has a tool set per kind of question](decisions/assistant-tool-sets-by-question.md)
+as history. The surfaces are documented in `guide-chat-assistant`, `guide-slack-assistant`, `concept-semantic-layer`,
+`concept-data-operations`, and `concept-authentication-and-identity`.

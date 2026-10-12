@@ -21,7 +21,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/AssistantScope.cs
   - src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs
   - src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs
-  - tests/SqlFlow.Core.Tests/AssistantToolAllowlistTests.cs
+  - tests/SqlFlow.Core.Tests/AssistantModesTests.cs
 referenceRefs:
   - concept-semantic-layer
   - concept-data-operations
@@ -30,10 +30,17 @@ referenceRefs:
 related:
   - wiki-semantic-layer-is-the-allow-list
   - wiki-ai-contexts-are-files-an-admin-approves
+  - wiki-the-mcp-server-is-the-assistants-one-definition
 updated: 2026-10-12
 ---
 
 # The assistant has a tool set per kind of question
+
+Later the same day the per-message tool sets, their lists in the control plane, and the control plane's own
+instructions became history: the MCP server is now the assistant's one definition, a conversation stays in data mode
+from its `!` message until `!exit`, and a fence rather than a tool list bounds what an assistant run may do.
+[The MCP server is the assistant's one definition](the-mcp-server-is-the-assistants-one-definition.md) records why. What
+this page says about schema not being sensitive still holds.
 
 The chat assistants answer each message with one of two tool sets, picked by its first character: a message that
 starts with `!` is a business question and gets the semantic layer, the stored questions, and the query tools; any

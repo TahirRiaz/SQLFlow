@@ -91,8 +91,11 @@ to narrow a search to one kind of page.
   layer moved from GUI editing into files that only propose, why an admin approves an exact version, why a file
   denies columns instead of listing them, and why removals apply at once while additions wait.
 - [The assistant has a tool set per kind of question](decisions/assistant-tool-sets-by-question.md) - why a message
-  starting with ! gets the semantic layer and the query tools and any other gets the whole catalog, and why schema
-  stopped being withheld.
+  starting with ! got the semantic layer and the query tools and any other the whole catalog (since replaced by the
+  record below), and why schema stopped being withheld.
+- [The MCP server is the assistant's one definition](decisions/the-mcp-server-is-the-assistants-one-definition.md) -
+  why the assistant's rules and tool lists live in the MCP server alone, why a conversation has a data mode and an
+  estate mode with `!`, `!cwd` and `!exit`, and why a fence, not a tool list, bounds an assistant run.
 - [A Power BI report travels as its specification](decisions/powerbi-report-specifications.md) - why the
   extractor stayed put while its output moved into committed files and the semantic layer, why uploads are read by
   an isolated service, and the silent model loss on control plane syncs that forced it.
