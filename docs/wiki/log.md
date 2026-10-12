@@ -386,3 +386,12 @@ server's mode: the command's word is now `!data` (`!cwd` is gone), `start_data_m
 switch and report a session's mode, and the GUI chat and the Slack bot store the mode each answer ended in, so a switch
 the assistant made holds for the next message. The surfaces are documented in `guide-chat-assistant`,
 `guide-slack-assistant` and `concept-semantic-layer`.
+
+## [2026-10-12] ingest | Modes registered per editor, instructions per mode, and what a data question is sent
+
+Updated [The MCP server is the assistant's one definition](decisions/the-mcp-server-is-the-assistants-one-definition.md)
+from a `!` question that took ten steps in GitHub Copilot, and the human's request that the server load only relevant
+tools and send saved answers only when they match: an editor registers the server per mode (`--mode`), a registered
+session stays in its mode, every session is given its mode's instructions with the grounding rule stated once, saved
+answers are cut by their coverage of the question, and the semantic layer the question needs comes with them when none
+is trusted. The surfaces are documented in `concept-semantic-layer`, `guide-chat-assistant` and the tools README.

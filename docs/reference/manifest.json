@@ -4563,7 +4563,7 @@
       "path": "decisions/the-mcp-server-is-the-assistants-one-definition.md",
       "title": "The MCP server is the assistant's one definition",
       "type": "decision",
-      "summary": "Why the assistant's rules live in the MCP server alone, why a conversation has data and estate modes, and why a fence bounds an assistant run.",
+      "summary": "Why the assistant's rules live in the MCP server alone, its two modes, an editor's registration per mode, and the fence on a run.",
       "keywords": [
         "mcp server",
         "instructions",
@@ -4576,6 +4576,11 @@
         "start_data_mode",
         "follow-up",
         "tools/list_changed",
+        "registered mode",
+        "--mode",
+        "instructions per mode",
+        "grounding",
+        "saved answer coverage",
         "assistant fence",
         "X-SqlFlow-Surface"
       ],
@@ -4586,6 +4591,9 @@
       "sourceRefs": [
         "tools/sqlflow-mcp/src/modes.rs",
         "tools/sqlflow-mcp/src/server.rs",
+        "tools/sqlflow-mcp/src/host.rs",
+        "src/SqlFlow.ControlPlane/Background/QuestionSearch.cs",
+        "src/SqlFlow.ControlPlane/Api/SemanticLayer.Grounding.cs",
         "src/SqlFlow.Assistant/McpServerInstructions.cs",
         "src/SqlFlow.Assistant/AssistantQuestions.cs",
         "src/SqlFlow.Assistant/AssistantRouter.cs",

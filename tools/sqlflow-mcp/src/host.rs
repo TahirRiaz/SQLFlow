@@ -32,6 +32,7 @@ use crate::docs::DocsIndex;
 use crate::http_server;
 use crate::links::{GuiLinks, LinkRule};
 use crate::module::{is_module_name, McpContext, McpModule, ModuleSet};
+use crate::modes::Mode;
 use crate::server::SqlFlowMcp;
 
 /// The name SQLFlow's own server runs under.
@@ -267,7 +268,9 @@ impl Composition {
 }
 
 /// Runs the server a host describes, reading the program's arguments: `--version`, `install
-/// [client]`, `http [--bind <addr>] [--allowed-hosts <h1,h2>]`, or nothing for stdio.
+/// [client] [--mode data|estate]`, `http [--bind <addr>] [--allowed-hosts <h1,h2>]`, or, for stdio, nothing or
+/// `--mode data|estate` (`SQLFLOW_MCP_MODE` when the flag is absent), which registers the server in one mode for an
+/// editor (`crate::modes`).
 ///
 /// Logging goes to stderr so it never corrupts the stdio protocol channel.
 pub async fn run(host: McpHost) -> anyhow::Result<()> {
@@ -279,7 +282,8 @@ pub async fn run(host: McpHost) -> anyhow::Result<()> {
             return Ok(());
         }
         Some("install") => {
-            print_install(&host, args.get(2).map(String::as_str));
+            let (client, mode) = parse_install_options(&host.name, &args[2..])?;
+            print_install(&host, client.as_deref(), mode);
             return Ok(());
         }
         _ => {}
@@ -294,6 +298,15 @@ pub async fn run(host: McpHost) -> anyhow::Result<()> {
         .init();
 
     let http_mode = args.get(1).map(String::as_str) == Some("http");
+    // Read before anything starts, so a mistyped mode stops the program with its usage rather than serving every tool.
+    let registered = if http_mode {
+        if std::env::var("SQLFLOW_MCP_MODE").is_ok_and(|value| !value.trim().is_empty()) {
+            tracing::warn!("SQLFLOW_MCP_MODE is ignored over HTTP: each session names its mode on the MCP address");
+        }
+        None
+    } else {
+        parse_stdio_options(&host.name, &args[1..], std::env::var("SQLFLOW_MCP_MODE").ok())?
+    };
     // Over HTTP the server holds no credential of its own: every call runs as the bearer on the inbound request.
     let cp = Arc::new(ControlPlane::from_env(&identity, !http_mode));
     let gui_base = std::env::var("SQLFLOW_GUI_URL").unwrap_or_default();
@@ -324,6 +337,13 @@ pub async fn run(host: McpHost) -> anyhow::Result<()> {
 
     let composed_cp = composed.cp.clone();
     let server = composed.into_server(http_mode);
+    let server = match registered {
+        Some(mode) => {
+            tracing::info!("registered in {} mode: its sessions list that mode's tools and stay in it", mode.name());
+            server.registered_in(mode)?
+        }
+        None => server,
+    };
 
     if http_mode {
         let opts = parse_http_options(&host.name, &args[2..])?;
@@ -336,6 +356,57 @@ pub async fn run(host: McpHost) -> anyhow::Result<()> {
     let service = server.serve(stdio()).await?;
     service.waiting().await?;
     Ok(())
+}
+
+/// Options for `<server>` over stdio: `--mode data` or `--mode estate` registers it in one mode for an editor, the
+/// flag winning over `env_mode` (`SQLFLOW_MCP_MODE`). Neither, or a blank variable, leaves its sessions in no mode,
+/// listing every tool. Any other argument is refused with the usage, so a typo never starts a server that ignores it.
+fn parse_stdio_options(program: &str, args: &[String], env_mode: Option<String>) -> anyhow::Result<Option<Mode>> {
+    let mut flag: Option<String> = None;
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--mode" => {
+                anyhow::ensure!(flag.is_none(), "--mode is given twice for `{program}`; name one mode");
+                flag = Some(iter.next().context("--mode requires a mode: --mode data or --mode estate")?.clone());
+            }
+            other => anyhow::bail!(
+                "unknown argument '{other}' for `{program}`; expected nothing or --mode data|estate for stdio, \
+                 http [--bind <addr>] [--allowed-hosts <h1,h2>], install [client] [--mode data|estate], or --version"
+            ),
+        }
+    }
+    let (name, from) = match (flag, env_mode.filter(|value| !value.trim().is_empty())) {
+        (Some(name), _) => (name, "--mode"),
+        (None, Some(name)) => (name, "SQLFLOW_MCP_MODE"),
+        (None, None) => return Ok(None),
+    };
+    Mode::named(name.trim())
+        .map(Some)
+        .with_context(|| format!("{from} '{name}' is not a mode; expected data or estate"))
+}
+
+/// Options for `<server> install`: the client to print a registration for (`claude`, `codex`, `cursor`, `vscode`, or
+/// none for the generic JSON) and the mode to register it in, if any.
+fn parse_install_options(program: &str, args: &[String]) -> anyhow::Result<(Option<String>, Option<Mode>)> {
+    let mut client: Option<String> = None;
+    let mut mode: Option<Mode> = None;
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--mode" => {
+                let name = iter.next().context("--mode requires a mode: --mode data or --mode estate")?;
+                mode = Some(
+                    Mode::named(name).with_context(|| format!("--mode '{name}' is not a mode; expected data or estate"))?,
+                );
+            }
+            other if !other.starts_with('-') && client.is_none() => client = Some(other.to_string()),
+            other => anyhow::bail!(
+                "unknown argument '{other}' for `{program} install`; expected [claude|codex|cursor|vscode] [--mode data|estate]"
+            ),
+        }
+    }
+    Ok((client, mode))
 }
 
 /// Options for `<server> http`: flags win over their environment fallbacks
@@ -383,25 +454,42 @@ fn parse_http_options(program: &str, args: &[String]) -> anyhow::Result<http_ser
     Ok(http_server::HttpServerOptions { bind, allowed_hosts })
 }
 
-fn print_install(host: &McpHost, client: Option<&str>) {
+fn print_install(host: &McpHost, client: Option<&str>, mode: Option<Mode>) {
     let exe = std::env::current_exe()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|_| host.name.clone());
-    match install_text(&host.registration, &exe, client) {
+    match install_text(&host.registration, &exe, client, mode) {
         Ok(text) => println!("{text}"),
         Err(message) => eprintln!("{message}"),
     }
 }
 
-/// The ready-to-paste registration of the server for one MCP client.
-fn install_text(registration: &str, exe: &str, client: Option<&str>) -> Result<String, String> {
+/// The ready-to-paste registration of the server for one MCP client. A registration in a mode is named after it
+/// (`<registration>-data`), so an editor holds one per mode side by side and a chat turns on the one it needs.
+fn install_text(registration: &str, exe: &str, client: Option<&str>, mode: Option<Mode>) -> Result<String, String> {
+    let name = match mode {
+        Some(mode) => format!("{registration}-{}", mode.name()),
+        None => registration.to_string(),
+    };
     match client {
-        Some("claude") => Ok(format!("claude mcp add {registration} -- {exe}")),
-        Some("codex") => Ok(format!("[mcp_servers.{registration}]\ncommand = \"{exe}\"")),
-        Some("cursor") | Some("vscode") | None => Ok(format!(
-            "{{\n  \"mcpServers\": {{\n    \"{registration}\": {{\n      \"command\": \"{}\",\n      \"env\": {{ \"SQLFLOW_CONTROL_PLANE_URL\": \"http://localhost:8080\" }}\n    }}\n  }}\n}}",
-            exe.replace('\\', "\\\\")
-        )),
+        Some("claude") => Ok(match mode {
+            Some(mode) => format!("claude mcp add {name} -- {exe} --mode {}", mode.name()),
+            None => format!("claude mcp add {name} -- {exe}"),
+        }),
+        Some("codex") => Ok(match mode {
+            Some(mode) => format!("[mcp_servers.{name}]\ncommand = \"{exe}\"\nargs = [\"--mode\", \"{}\"]", mode.name()),
+            None => format!("[mcp_servers.{name}]\ncommand = \"{exe}\""),
+        }),
+        Some("cursor") | Some("vscode") | None => {
+            let args = match mode {
+                Some(mode) => format!("\n      \"args\": [\"--mode\", \"{}\"],", mode.name()),
+                None => String::new(),
+            };
+            Ok(format!(
+                "{{\n  \"mcpServers\": {{\n    \"{name}\": {{\n      \"command\": \"{}\",{args}\n      \"env\": {{ \"SQLFLOW_CONTROL_PLANE_URL\": \"http://localhost:8080\" }}\n    }}\n  }}\n}}",
+                exe.replace('\\', "\\\\")
+            ))
+        }
         Some(other) => Err(format!("Unknown client '{other}'. Try: claude, cursor, codex, vscode.")),
     }
 }
@@ -620,22 +708,88 @@ mod tests {
     #[test]
     fn install_registers_the_host_under_its_registration() {
         assert_eq!(
-            install_text("probe", "/opt/probe-mcp", Some("claude")).unwrap(),
+            install_text("probe", "/opt/probe-mcp", Some("claude"), None).unwrap(),
             "claude mcp add probe -- /opt/probe-mcp"
         );
         assert_eq!(
-            install_text("probe", "/opt/probe-mcp", Some("codex")).unwrap(),
+            install_text("probe", "/opt/probe-mcp", Some("codex"), None).unwrap(),
             "[mcp_servers.probe]\ncommand = \"/opt/probe-mcp\""
         );
-        let json = install_text("probe", "C:\\tools\\probe-mcp.exe", None).unwrap();
+        let json = install_text("probe", "C:\\tools\\probe-mcp.exe", None, None).unwrap();
         assert!(json.contains("\"probe\": {"), "{json}");
         assert!(json.contains("C:\\\\tools\\\\probe-mcp.exe"), "{json}");
-        assert!(install_text("probe", "x", Some("emacs")).unwrap_err().contains("Unknown client 'emacs'"));
+        assert!(!json.contains("\"args\""), "{json}");
+        assert!(install_text("probe", "x", Some("emacs"), None).unwrap_err().contains("Unknown client 'emacs'"));
 
         // SQLFlow's own registration is the one its users already have.
         assert_eq!(
-            install_text(SQLFLOW_REGISTRATION, "sqlflow-mcp", Some("claude")).unwrap(),
+            install_text(SQLFLOW_REGISTRATION, "sqlflow-mcp", Some("claude"), None).unwrap(),
             "claude mcp add sqlflow -- sqlflow-mcp"
         );
+    }
+
+    /// A registration in a mode is named after the mode and passes it, so an editor holds one per mode side by side.
+    #[test]
+    fn install_in_a_mode_names_the_registration_after_it_and_passes_the_mode() {
+        assert_eq!(
+            install_text("probe", "/opt/probe-mcp", Some("claude"), Some(Mode::Data)).unwrap(),
+            "claude mcp add probe-data -- /opt/probe-mcp --mode data"
+        );
+        assert_eq!(
+            install_text("probe", "/opt/probe-mcp", Some("codex"), Some(Mode::Estate)).unwrap(),
+            "[mcp_servers.probe-estate]\ncommand = \"/opt/probe-mcp\"\nargs = [\"--mode\", \"estate\"]"
+        );
+        let json = install_text("probe", "/opt/probe-mcp", Some("vscode"), Some(Mode::Data)).unwrap();
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("the registration is JSON");
+        assert_eq!(parsed["mcpServers"]["probe-data"]["args"], json!(["--mode", "data"]), "{json}");
+        assert_eq!(parsed["mcpServers"]["probe-data"]["command"], json!("/opt/probe-mcp"), "{json}");
+    }
+
+    fn strings(args: &[&str]) -> Vec<String> {
+        args.iter().map(|arg| arg.to_string()).collect()
+    }
+
+    #[test]
+    fn a_stdio_server_is_registered_in_the_mode_its_flag_or_variable_names() {
+        assert_eq!(parse_stdio_options("probe-mcp", &[], None).unwrap(), None);
+        assert_eq!(parse_stdio_options("probe-mcp", &[], Some("  ".into())).unwrap(), None);
+        assert_eq!(parse_stdio_options("probe-mcp", &strings(&["--mode", "data"]), None).unwrap(), Some(Mode::Data));
+        assert_eq!(parse_stdio_options("probe-mcp", &[], Some("estate".into())).unwrap(), Some(Mode::Estate));
+        // The flag wins over the variable.
+        assert_eq!(
+            parse_stdio_options("probe-mcp", &strings(&["--mode", "estate"]), Some("data".into())).unwrap(),
+            Some(Mode::Estate)
+        );
+    }
+
+    #[test]
+    fn a_stdio_server_refuses_what_it_cannot_read_naming_where_it_came_from() {
+        let typo = parse_stdio_options("probe-mcp", &strings(&["--mode", "datum"]), None).unwrap_err().to_string();
+        assert!(typo.contains("--mode 'datum'") && typo.contains("data or estate"), "{typo}");
+        let variable = parse_stdio_options("probe-mcp", &[], Some("Data".into())).unwrap_err().to_string();
+        assert!(variable.contains("SQLFLOW_MCP_MODE 'Data'"), "{variable}");
+        let missing = parse_stdio_options("probe-mcp", &strings(&["--mode"]), None).unwrap_err().to_string();
+        assert!(missing.contains("--mode requires a mode"), "{missing}");
+        let twice = parse_stdio_options("probe-mcp", &strings(&["--mode", "data", "--mode", "estate"]), None)
+            .unwrap_err()
+            .to_string();
+        assert!(twice.contains("given twice"), "{twice}");
+        let unknown = parse_stdio_options("probe-mcp", &strings(&["--verbose"]), None).unwrap_err().to_string();
+        assert!(unknown.contains("unknown argument '--verbose' for `probe-mcp`"), "{unknown}");
+    }
+
+    #[test]
+    fn install_reads_its_client_and_mode_in_either_order() {
+        assert_eq!(parse_install_options("probe-mcp", &[]).unwrap(), (None, None));
+        assert_eq!(
+            parse_install_options("probe-mcp", &strings(&["claude", "--mode", "data"])).unwrap(),
+            (Some("claude".to_string()), Some(Mode::Data))
+        );
+        assert_eq!(
+            parse_install_options("probe-mcp", &strings(&["--mode", "estate", "vscode"])).unwrap(),
+            (Some("vscode".to_string()), Some(Mode::Estate))
+        );
+        assert!(parse_install_options("probe-mcp", &strings(&["claude", "codex"])).is_err());
+        assert!(parse_install_options("probe-mcp", &strings(&["--mode", "both"])).is_err());
     }
 }

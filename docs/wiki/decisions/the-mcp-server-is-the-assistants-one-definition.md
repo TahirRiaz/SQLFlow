@@ -2,7 +2,7 @@
 id: wiki-the-mcp-server-is-the-assistants-one-definition
 title: "The MCP server is the assistant's one definition"
 type: decision
-summary: "Why the assistant's rules live in the MCP server alone, why a conversation has data and estate modes, and why a fence bounds an assistant run."
+summary: "Why the assistant's rules live in the MCP server alone, its two modes, an editor's registration per mode, and the fence on a run."
 keywords:
   - mcp server
   - instructions
@@ -15,11 +15,19 @@ keywords:
   - start_data_mode
   - follow-up
   - tools/list_changed
+  - registered mode
+  - "--mode"
+  - instructions per mode
+  - grounding
+  - saved answer coverage
   - assistant fence
   - X-SqlFlow-Surface
 sourceRefs:
   - tools/sqlflow-mcp/src/modes.rs
   - tools/sqlflow-mcp/src/server.rs
+  - tools/sqlflow-mcp/src/host.rs
+  - src/SqlFlow.ControlPlane/Background/QuestionSearch.cs
+  - src/SqlFlow.ControlPlane/Api/SemanticLayer.Grounding.cs
   - src/SqlFlow.Assistant/McpServerInstructions.cs
   - src/SqlFlow.Assistant/AssistantQuestions.cs
   - src/SqlFlow.Assistant/AssistantRouter.cs
@@ -114,6 +122,55 @@ only when it touches the `!`, since "data" also starts ordinary questions ("! da
   mode at most once; a second switch is recorded for the next message rather than acted on.
 - **Rejected: the MCP server keeping the mode across sessions.** The server would need a conversation identity the
   model provider's connector does not send, and the host already keeps the transcript, so the mode lives beside it.
+
+## An editor registers per mode, and each mode has its own instructions
+
+A `!` question asked through GitHub Copilot in VS Code took ten steps and sixteen seconds to end at a query offered for
+approval. The editor's session listed every tool, 108 of them with about 146,000 characters of descriptions, beside
+26,000 characters of instructions; with that many, Copilot held the tools back and the model spent steps finding the
+one the `!` names. The human's words: "the idea was to make the mcp server load only relevant tools. Maybe our mcp
+server is bloated and we need to create multiple modes to reduce the context size and confusion."
+
+The server never sees a message, only the calls a model makes, so it cannot pick tools per question; it picks them
+when a session opens. A per-message client already names the mode on the address. An editor names nothing, and the
+reason it lists everything still holds: it does not refresh a changed list in time.
+
+- **A registration names its mode.** `--mode data` or `--mode estate` (or `SQLFLOW_MCP_MODE`) registers a stdio server
+  in one mode. Its session lists that mode's tools and the sign-in tools, which a stdio session needs whatever its
+  mode, and is told what its registration means. An editor holds one registration per mode it uses and a chat turns on
+  the one it needs; `install --mode data` prints one named after the mode. A data-mode registration lists about a
+  dozen tools.
+- **A registered session stays in its mode.** A switch would leave a client that does not refresh its list holding
+  the other mode's tools, which the server would then refuse. So the switch tools are not listed, a switch called
+  anyway answers that nothing changed, and a call of the other mode's tool names the registration that answers it.
+- **Instructions follow the mode.** A session is given its mode's instructions at `initialize`, naming only what it
+  lists: data mode gets the modes, the data rules and the rules every answer follows, a small part of the whole; estate
+  mode gets everything but the data rules; a session of every tool gets both. The control plane reads each mode's at
+  the address its runs open in. Instructions naming tools a session lacks are what the earlier record says make a model
+  claim the product cannot do something.
+- **The grounding rule is stated once.** It was appended to every tool description because the model providers'
+  connectors did not pass the instructions on; since the control plane gives the instructions as the system prompt,
+  the hundred copies were a hundred repeats on every turn, and the rule now sits in every session's instructions once.
+- **Rejected: more command-driven modes.** Splitting estate mode by area (runs, lineage, delivery) would add commands to
+  remember, and estate questions cross areas: a failed delivery run is runs, delivery and lineage at once, and a wrong
+  pick leaves the model without the tool it needs.
+
+## What a data question is sent
+
+The same run showed the data path's own waste: the saved answers came back with their full SQL however little of them
+was asked, and with none trusted the model searched the layer and described a table, whose ten examples were sent
+whether or not any was close. The human: "why send queries for questions that do not match. We should only send queries
+for questions that have a higher match."
+
+- **A saved answer is sent only when the question covers enough of it.** Its coverage is the share of the saved
+  question's own words the question or its synonyms carry, leaving out phrasing words and values; below
+  `SavedAnswers:MinCoverage`, half by default, it is not sent at all. A word count alone could not tell "how many
+  wellbores per country, basin and field" from "how many wellbores": both share the word that scores. The same floor
+  cuts a described table's examples.
+- **The layer comes with the answer.** When no saved answer is trusted, the assistant writes the query, so the answer
+  carries the tables it needs, their open columns, keys, joins, measures and close examples, and each context's
+  instructions, as `grounding`: the whole layer when it is small, else the tables the question's words mention most.
+  The search and the description that used to follow are needed only for a table the grounding does not hold.
 
 ## The fence bounds a run, not a tool list
 

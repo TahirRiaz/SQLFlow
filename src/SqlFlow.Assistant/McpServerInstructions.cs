@@ -11,8 +11,10 @@ namespace SqlFlow.Assistant;
 /// question is, how a conversation's mode works, which tool answers which question, and how a business answer is laid
 /// out. The model providers' MCP connectors forward the server's tools but not its instructions, so a gateway reads them
 /// from the server's <c>initialize</c> answer and gives them to the model as the system prompt, with only what its
-/// surface renders added (<see cref="AssistantInstructions"/>). Read once and kept for <see cref="CacheFor"/>, so a
-/// redeployed server is read again soon without a round trip on every question.
+/// surface renders added (<see cref="AssistantInstructions"/>). The server gives a session the instructions of the mode
+/// its address names, describing only the tools that mode lists, so they are read at the same address a run's session
+/// opens in that mode, and each mode's are kept for <see cref="CacheFor"/>, so a redeployed server is read again soon
+/// without a round trip on every question.
 /// </summary>
 public sealed class McpServerInstructions : IDisposable
 {
@@ -30,7 +32,8 @@ public sealed class McpServerInstructions : IDisposable
     private readonly TimeProvider _clock;
     private readonly HttpClient _http;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private (string Text, DateTimeOffset ReadAt)? _cached;
+    private readonly Lock _cacheLock = new();
+    private readonly Dictionary<AssistantMode, (string Text, DateTimeOffset ReadAt)> _cached = [];
 
     public McpServerInstructions(AssistantSettings settings, ILogger<McpServerInstructions> logger)
         : this(settings, logger, TimeProvider.System, new HttpClientHandler())
@@ -53,14 +56,15 @@ public sealed class McpServerInstructions : IDisposable
     }
 
     /// <summary>
-    /// The server's instructions, read with <paramref name="bearer"/> (the run's own credential, which the MCP server
-    /// checks before it answers anything) when the last read is older than <see cref="CacheFor"/>. Concurrent questions
-    /// share one read. A server that cannot be read fails the question: its tools would be unreachable too.
+    /// The server's instructions for a session in <paramref name="mode"/>, read with <paramref name="bearer"/> (the run's
+    /// own credential, which the MCP server checks before it answers anything) when that mode's last read is older than
+    /// <see cref="CacheFor"/>. Concurrent questions share one read. A server that cannot be read fails the question: its
+    /// tools would be unreachable too.
     /// </summary>
-    public async Task<string> GetAsync(string bearer, CancellationToken ct)
+    public async Task<string> GetAsync(AssistantMode mode, string bearer, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(bearer);
-        if (Fresh() is { } cached)
+        if (Fresh(mode) is { } cached)
         {
             return cached;
         }
@@ -68,12 +72,15 @@ public sealed class McpServerInstructions : IDisposable
         await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            if (Fresh() is { } readMeanwhile)
+            if (Fresh(mode) is { } readMeanwhile)
             {
                 return readMeanwhile;
             }
-            var text = await ReadAsync(bearer, ct).ConfigureAwait(false);
-            _cached = (text, _clock.GetUtcNow());
+            var text = await ReadAsync(mode, bearer, ct).ConfigureAwait(false);
+            lock (_cacheLock)
+            {
+                _cached[mode] = (text, _clock.GetUtcNow());
+            }
             return text;
         }
         finally
@@ -82,14 +89,25 @@ public sealed class McpServerInstructions : IDisposable
         }
     }
 
-    private string? Fresh()
-        => _cached is { } cached && _clock.GetUtcNow() - cached.ReadAt < CacheFor ? cached.Text : null;
-
-    /// <summary>One <c>initialize</c> exchange: the instructions out of its answer, then the session it opened closed.</summary>
-    private async Task<string> ReadAsync(string bearer, CancellationToken ct)
+    /// <summary>The instructions read for <paramref name="mode"/>, while that read is younger than <see cref="CacheFor"/>.
+    /// Looked up under the lock every write takes, outside the read gate, so a fresh entry costs no wait; a stale or
+    /// missing one sends the caller to the gated read.</summary>
+    private string? Fresh(AssistantMode mode)
     {
-        // The address names no mode: the instructions are one text for every mode.
-        var address = _settings.Mcp.AssistantServerUri(mode: null);
+        lock (_cacheLock)
+        {
+            return _cached.TryGetValue(mode, out var cached) && _clock.GetUtcNow() - cached.ReadAt < CacheFor
+                ? cached.Text
+                : null;
+        }
+    }
+
+    /// <summary>One <c>initialize</c> exchange in <paramref name="mode"/>: the instructions out of its answer, then the
+    /// session it opened closed.</summary>
+    private async Task<string> ReadAsync(AssistantMode mode, string bearer, CancellationToken ct)
+    {
+        // The address a run's own session opens in this mode, so the instructions describe the tools that session lists.
+        var address = _settings.Mcp.AssistantServerUri(mode);
         var initialize = new JsonObject
         {
             ["jsonrpc"] = "2.0",

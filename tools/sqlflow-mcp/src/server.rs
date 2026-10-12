@@ -55,6 +55,39 @@ pub struct SqlFlowMcp {
     /// Whether the host has data mode at all: it does while find_similar_questions, where a data question starts, is
     /// offered. Without it nothing is filtered by mode and the mode tools are not listed.
     has_data_mode: bool,
+    /// The mode an editor registered this stdio server in (`--mode`), which every session of it lists and stays in;
+    /// none for a server started without one, and always none over HTTP, where the address names the mode.
+    registered: Option<Mode>,
+}
+
+/// Which tools a session lists, and so which instructions it is given.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Listing {
+    /// Every tool: a session that names no mode, or a host without data mode.
+    Every,
+    /// One mode's tools, in a session its client opened in a mode, which a switch moves to the other mode's.
+    Mode(Mode),
+    /// One mode's tools and the setup tools, in a session of a server registered in that mode, which stays in it.
+    Registered(Mode),
+}
+
+impl Listing {
+    /// Whether a session of this listing lists `tool`.
+    fn lists(self, tool: &str) -> bool {
+        match self {
+            Listing::Every => true,
+            Listing::Mode(mode) => modes::lists(Some(mode), tool),
+            Listing::Registered(mode) => modes::lists_registered(mode, tool),
+        }
+    }
+
+    /// The mode the listing is of, when it is of one.
+    fn mode(self) -> Option<Mode> {
+        match self {
+            Listing::Every => None,
+            Listing::Mode(mode) | Listing::Registered(mode) => Some(mode),
+        }
+    }
 }
 
 /// The tools that sign in, keep a token, or point the server at another control plane: a stdio session's own. Over
@@ -89,7 +122,7 @@ impl SqlFlowMcp {
         http_mode: bool,
     ) -> Self {
         // A tool the host leaves out is neither listed nor callable: a call of it is answered as an unknown tool.
-        let mut tool_router = Self::grounded_router();
+        let mut tool_router = Self::tool_router();
         for name in modules.withheld() {
             tool_router.disable_route(name.clone());
         }
@@ -114,7 +147,25 @@ impl SqlFlowMcp {
             tool_router,
             mode: Arc::new(std::sync::Mutex::new(None)),
             has_data_mode,
+            registered: None,
         }
+    }
+
+    /// The same server registered in `mode` for an editor (`--mode`): its session lists that mode's tools and the setup
+    /// tools, gets that mode's instructions, and stays in the mode (`crate::modes`). Refused over HTTP, where a session's
+    /// address names its mode, and for a host without data mode, which has no modes.
+    pub fn registered_in(mut self, mode: Mode) -> anyhow::Result<Self> {
+        anyhow::ensure!(
+            !self.http_mode,
+            "an HTTP session names its mode on the MCP address (`?mode={}`), not on the command line",
+            mode.name()
+        );
+        anyhow::ensure!(
+            self.has_data_mode,
+            "this server does not offer find_similar_questions, so it has no data mode and no mode to register in"
+        );
+        self.registered = Some(mode);
+        Ok(self)
     }
 
     /// The end of the performance bullet and the operate line, naming only the tools this host offers.
@@ -151,21 +202,37 @@ impl SqlFlowMcp {
         *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// The conversation's mode as this session knows it: the one a switch set, else the one the address named, else
-    /// estate mode, the default.
+    /// The conversation's mode as this session knows it: the one its registration fixes, else the one a switch set,
+    /// else the one the address named, else estate mode, the default.
     fn current_mode(&self, parts: Option<&http::request::Parts>) -> Mode {
-        self.switched_mode().or_else(|| self.named_mode(parts)).unwrap_or(Mode::Estate)
+        self.registered
+            .or_else(|| self.switched_mode())
+            .or_else(|| self.named_mode(parts))
+            .unwrap_or(Mode::Estate)
     }
 
-    /// The mode whose tools the session lists: a session opened in a named mode lists that mode's, as a switch moves
-    /// it; one opened in none lists every tool, since its client may not refresh its list.
-    fn listing_mode(&self, parts: Option<&http::request::Parts>) -> Option<Mode> {
-        self.named_mode(parts).map(|_| self.current_mode(parts))
+    /// Which tools the session lists: a registered session its mode's, a session opened in a named mode that mode's,
+    /// as a switch moves it, and one opened in none every tool, since its client may not refresh its list.
+    fn listing(&self, parts: Option<&http::request::Parts>) -> Listing {
+        if let Some(mode) = self.registered {
+            return Listing::Registered(mode);
+        }
+        match self.named_mode(parts) {
+            Some(_) => Listing::Mode(self.current_mode(parts)),
+            None => Listing::Every,
+        }
     }
 
     /// Switches the conversation to `mode` and tells the client its tools changed, so one that refreshes lists the new
-    /// mode's tools at once.
+    /// mode's tools at once. A registered session stays in its mode, and says which registration answers the other.
     async fn switch_to(&self, mode: Mode, peer: rmcp::Peer<rmcp::RoleServer>) -> String {
+        if let Some(registered) = self.registered {
+            return json_str(&json!({
+                "mode": registered.name(),
+                "switched": false,
+                "note": registered_elsewhere(registered),
+            }));
+        }
         *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(mode);
         let notified = match peer.notify_tool_list_changed().await {
             Ok(()) => true,
@@ -174,21 +241,7 @@ impl SqlFlowMcp {
                 false
             }
         };
-        json_str(&json!({ "mode": mode.name(), "toolsChangedSent": notified }))
-    }
-
-    /// The generated router with [`GROUNDING_RULE`] appended to every tool description. The description is
-    /// the one text every consumer of this server sees: the built-in chatbot and the Slack bot reach the tools
-    /// through their provider's MCP connector, which forwards descriptions but not the server's
-    /// `instructions`, and an external client may ignore `instructions` too. Appending the rule here, once,
-    /// makes it hold on every surface without 85 hand-copies that would drift.
-    fn grounded_router() -> ToolRouter<Self> {
-        let mut router = Self::tool_router();
-        for route in router.map.values_mut() {
-            let description = route.attr.description.take().unwrap_or_default();
-            route.attr.description = Some(format!("{description}\n\n{GROUNDING_RULE}").into());
-        }
-        router
+        json_str(&json!({ "mode": mode.name(), "switched": true, "toolsChangedSent": notified }))
     }
 
     /// The names of the tools this server defines itself, which a host module's tools may not take.
@@ -229,47 +282,38 @@ impl SqlFlowMcp {
 // Everything else is lowercase prose. A contrast between two tools ("columns sees only synced objects,
 // flowColumns sees pipeline-only columns") is carried by the sentence, not by shouting one word of it.
 // Acronyms (SQL, YAML, DDL) are not emphasis and do not count against the budget.
-/// The rule appended to every tool description: the model may state only what the tool returned. A missing
-/// fact is reported as missing, never filled in from what a flow or a run of that kind usually looks like.
-const GROUNDING_RULE: &str = "Grounding: state only values this result contains. A null or an empty list is \
-the answer (nothing declared, never happened), not a gap to fill. If a fact is not in the result, say so and \
-name the tool that holds it. Never invent rows, counts, SQL, or watermarks.";
+/// The rule every answer follows: the model may state only what a tool returned. A missing fact is reported as
+/// missing, never filled in from what a flow or a run of that kind usually looks like. It is stated once, in every
+/// session's instructions, which every client reads (the GUI chat and the Slack bot as their system prompt), rather
+/// than at the end of each of a hundred tool descriptions, where a session paid for it a hundred times on every turn.
+const GROUNDING_RULE: &str = "- Grounding: state only values a tool's result contains. A null or an empty list is the
+  answer (nothing declared, never happened), not a gap to fill. If a fact is in no result, say so and name the tool
+  that holds it; never fill a gap with what a flow or a run of that kind usually does, and never invent rows,
+  counts, SQL, or watermarks.";
 
 #[cfg(test)]
 mod grounding_tests {
     use super::*;
 
-    /// Reads the router off a CONSTRUCTED server, not `grounded_router()` directly: `list_tools` serves
-    /// `self.tool_router`, and a `#[tool_handler]` left on its default would serve the generated router
-    /// instead, shipping ungrounded descriptions while a test calling `grounded_router()` still passed.
+    /// The rule is stated once per session, in its instructions, whatever the session lists; no description repeats
+    /// it. Read off a CONSTRUCTED server through ServerHandler, which serves `self.tool_router` (the router with the
+    /// host's withheld routes disabled), so the check is of what a client is actually given.
     #[test]
-    fn every_tool_description_ends_with_the_grounding_rule() {
+    fn the_grounding_rule_is_in_every_sessions_instructions_and_in_no_description() {
         let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(&crate::control_plane::ClientIdentity::default(), true)));
+        for listing in [Listing::Every, Listing::Mode(Mode::Data), Listing::Mode(Mode::Estate)] {
+            let instructions = server.instructions_for(listing);
+            assert_eq!(instructions.matches(GROUNDING_RULE).count(), 1, "{listing:?}: {instructions}");
+        }
 
-        // Through ServerHandler::get_tool, which the #[tool_handler] macro generates from the SAME router
-        // expression as list_tools. Reading server.tool_router directly would pass even with the macro left on
-        // its default, which serves the ungrounded generated router: that is the bug this guards.
-        let served = ServerHandler::get_tool(&server, "find_similar_questions")
-            .expect("find_similar_questions is served");
-        assert!(
-            served.description.as_deref().unwrap_or("").ends_with(GROUNDING_RULE),
-            "the SERVED description lacks the grounding rule; is #[tool_handler] missing `router = self.tool_router`?"
-        );
-
+        let served = ServerHandler::get_tool(&server, "find_similar_questions").expect("find_similar_questions is served");
+        assert!(!served.description.as_deref().unwrap_or("").contains("Grounding: state only"));
         let tools = server.tool_router.list_all();
         assert!(tools.len() > 50, "expected the full tool set, got {}", tools.len());
         for tool in tools {
             let description = tool.description.as_deref().unwrap_or("");
-            assert!(
-                description.ends_with(GROUNDING_RULE),
-                "tool '{}' lacks the grounding rule: {description}",
-                tool.name
-            );
-            assert!(
-                description.len() > GROUNDING_RULE.len() + 10,
-                "tool '{}' has no description of its own",
-                tool.name
-            );
+            assert!(!description.contains("Grounding: state only"), "tool '{}' repeats the grounding rule", tool.name);
+            assert!(description.len() > 10, "tool '{}' has no description of its own", tool.name);
         }
     }
 }
@@ -1072,8 +1116,8 @@ name them). `keyOrigin` Curated means an admin stated the key. On a join, `sourc
 admin, so prefer it; Discovered = inferred from the codebase's own joins, ranked by `occurrences`; \
 `isRangeJoin` marks an interval join that must never be treated as a key match. Reuse a measure's \
 `expression` verbatim, and mirror an example question's SQL shape for a similar question, with the person's \
-values in place of the example's own. `examples` are the ones closest to the `question` you passed, else the \
-newest. `reportModels` \
+values in place of the example's own. `examples` are the ones close to the `question` you passed, possibly \
+none, else the newest. `reportModels` \
 holds the Power BI models built on this table: their `measures` and `calculatedColumns` carry DAX \
 `expression`s, and DAX is not SQL, so mirror the logic rather than pasting it; a `relationships` entry with \
 `isActive` false applies only where a measure invokes USERELATIONSHIP. `consumers` answers who uses this \
@@ -1118,13 +1162,38 @@ fn attach_guide(value: &mut Value, guide: &'static str) {
     }
 }
 
-/// Attaches the silent-retrieval rule to a find_similar_questions response; an error payload is left alone.
+/// How to read a find_similar_questions payload: what each field of a match means and what to do with it, and the
+/// grounding that comes when no match is trusted. Carried on the response rather than in the description, which every
+/// session reads on every turn, while this is needed once, with the payload in hand.
+const RETRIEVAL_GUIDE: &str = "Reading this: `matches` are the saved answers close to the question (a dashboard's \
+question or an answer a person confirmed), best first. One is sent only when the question covers enough of its own \
+words, so an empty list means none is close, not that the question cannot be answered. `score` counts the distinct \
+searched words a match carries and is the only trustworthy confidence signal here: never put your own in its place. \
+`trusted` says the match cleared this deployment's threshold or is the same question, and names the same values; a \
+trusted match needs no checking against the schema. A match whose `differingValues` is not empty answers the same \
+kind of question for other values (another year, code, name or place): use its SQL as the pattern with the person's \
+values in place of its own, and offer it as a query you wrote. `provenance` user-confirmed (with `confirmedBy`) is a \
+stronger precedent than powerbi at the same score. `sourceRef` names the datasource the SQL runs against; never ask \
+the person for one while it is present. A dashboard match's `sql` is the visual's query translated over the source \
+tables and runs as it is; when it could not be translated, `sql` is empty, `translationProblem` says why and \
+`reportSql` shows the report's own query, so the match is only a lead. `searchedTerms` and `matchedTerms` are for \
+your judgement, never to recite. `grounding`, present when no match is trusted, holds the semantic layer the question \
+is answered from: `layerTableCount` (how many tables the layer holds), `contexts` (each serving context's \
+`instructions`, which apply to every query over its tables), and `tables`, each with its open `columns` (a query may \
+read no other, and SELECT * is refused), `keyColumns`, `joins` with a ready `on` clause, `measures` to reuse \
+verbatim, `examples` close to the question (the matches above are not repeated), and the Power BI `reportModels` \
+built on it, whose DAX is mirrored, never pasted. Write the query from it and offer it through prepare_query; \
+search_semantic_layer and describe_semantic_table are for a table it does not hold.";
+
+/// Attaches the silent-retrieval rule and the reading guide to a find_similar_questions response; an error payload is
+/// left alone.
 fn attach_retrieval_rule(value: &mut Value) {
     if value.get("matches").is_none() {
         return;
     }
     if let Some(map) = value.as_object_mut() {
         map.insert("responseRule".into(), json!(RETRIEVAL_RULE));
+        map.insert("readingThis".into(), json!(RETRIEVAL_GUIDE));
     }
 }
 
@@ -1614,6 +1683,14 @@ and fix every finding first."
         Parameters(_): Parameters<EmptyInput>,
     ) -> String {
         let parts = context.extensions.get::<http::request::Parts>();
+        if let Some(registered) = self.registered {
+            return json_str(&json!({
+                "mode": registered.name(),
+                "setBy": format!("this server's registration (`--mode {}`)", registered.name()),
+                "listsEveryTool": false,
+                "commands": registered_elsewhere(registered),
+            }));
+        }
         let set_by = if self.switched_mode().is_some() {
             "a switch in this session (start_data_mode or end_data_mode)"
         } else if self.named_mode(parts).is_some() {
@@ -1624,7 +1701,7 @@ and fix every finding first."
         json_str(&json!({
             "mode": self.current_mode(parts).name(),
             "setBy": set_by,
-            "listsEveryTool": self.listing_mode(parts).is_none(),
+            "listsEveryTool": self.listing(parts) == Listing::Every,
             "commands": "`!data` (or a bare `!`) starts data mode and `!exit` ends it; start_data_mode and end_data_mode \
                 switch when the person asks in words.",
         }))
@@ -2053,7 +2130,8 @@ and fix every finding first."
             built on it, the reports that consume it, and the layer's general instructions. This is the last call before \
             composing a query: search_semantic_layer or list_semantic_tables finds the table, this serves everything you \
             write the SQL from. The response explains its own fields in `readingThis`. Takes the `key` from either, and \
-            the person's `question`, which makes the examples served the ones closest to it. A 404 means the table is not \
+            the person's `question`, which makes the examples served the ones close to it (none when none is). A table \
+            find_similar_questions' `grounding` already holds needs no description. A 404 means the table is not \
             in the semantic layer, so it cannot be queried: say so rather than composing SQL against it."
     )]
     async fn describe_semantic_table(&self, Parameters(i): Parameters<DescribeSemanticTableInput>) -> String {
@@ -2532,72 +2610,29 @@ and fix every finding first."
     }
 
     #[tool(
-        // The first sentence is SILENT_RETRIEVAL_RULE, kept verbatim in sync by the
-        // `tool_description_leads_with_the_silent_rule` test below: rmcp's #[tool] attribute takes only a
-        // literal, so this one site cannot compose the macro and is asserted instead.
+        // The description carries SILENT_RETRIEVAL_RULE verbatim, kept in sync by the
+        // `tool_description_leads_with_the_command_trigger_and_carries_the_silent_rule` test below: rmcp's #[tool]
+        // attribute takes only a literal, so this one site cannot compose the macro and is asserted instead.
         description = "THE `!` COMMAND ROUTES HERE. Call this, before any schema or semantic-layer lookup, whenever the \
-            user's message begins with `!`, the explicit command `!<question>` - e.g. \"!what is our revenue by region\", \
-            \"! how many rows landed last night\" (`!data <question>` is the same command). The leading `!` is what marks a message as a question to be \
-            answered from warehouse data, whatever it is about: a reported figure, an operational count, a data-quality \
-            check. Who is asking and whether the subject sounds commercial or technical make no difference; needing SQL \
-            over the warehouse to answer is the whole criterion. Strip the `!` (and a `data` right after it) and pass the \
-            remainder as `question`. \
-            Do not guess from phrasing alone that a message not beginning with `!` belongs here, even one that reads like \
-            \"what is our revenue by region\" or names things that sound like table or column names: without the `!` \
-            prefix, route it through search_semantic_layer/describe_semantic_table like any other question instead. A \
-            full question is not an identifier to a schema search's index; it is what this tool matches, once `!` has \
-            activated it. A later message in the same conversation that carries a `!` question on (\"and by region?\", \
-            another year) belongs here as well, without the `!`: pass the question it amounts to, written out in full \
-            from the conversation, never the reply's words alone. \
-            Say nothing to the person before or between the tool calls on this path: no preamble, no restating the question, \
-            no announcing what you are about to look up or that you are building a query, and no commentary on what came \
-            back (whether a match is trusted, its score, who confirmed it, saved answers, reports, or tool names). All of \
-            that is yours to act on, never to narrate: to a business reader it reads as the assistant explaining its own \
-            plumbing, and calling a match untrusted or low-scoring reads as the assistant being unreliable. Work silently \
-            until you have the answer or a query to offer, then reply once. \
-            Finds the questions this estate's dashboards or a person already answered that mean the same thing as the \
-            one just typed. Wording need not match, because you \
-            expand the question first: pass `expanded_terms` with the question's own meaningful words plus the business \
-            synonyms and related terms a dashboard could have used for the same thing, in their common grammatical forms \
-            (\"what drives our turnover\" -> turnover, revenue, sales, income, drive, driver, ...), so it can find \"revenue \
-            by product category\". Always pass them: without them the server searches the typed words alone unless its own \
-            expansion is configured. Each match carries the SQL that already answers it, the warehouse objects that SQL \
-            reads, and a `score`: a close match is a query a real report already runs in production, so adapting it beats \
-            composing one from the schema, and beats searching the schema for the words in the question. `score` (how many \
-            distinct searched words the question matched, several forms of one word counting once) is the ONLY trustworthy \
-            confidence signal here, and `trusted` reports whether it cleared this deployment's threshold or is the same \
-            question as the one typed (the same meaningful words), and names the same values. A match whose \
-            `differingValues` is not empty is never trusted: it answers the same kind of question for other values (another \
-            year, code, name or place), so use its SQL as the pattern, put the person's values in place of its own, and offer \
-            that as a query you wrote. Do not substitute your own confidence for it: a query you \
-            wrote from a 1-term match can read exactly as convincingly as one from a 4-term match and still be wrong. \
-            `searchedTerms` shows what was actually looked for (the question expanded into business vocabulary) and \
-            `matchedTerms` which of those each hit, for your own judgement; do not recite them to the person, who wants the \
-            answer, not how it was found. A TRUSTED match needs no further checking against the schema: do not call \
-            describe_semantic_table, search_semantic_layer, or any other lookup to confirm the table it reads is real before \
-            offering it. That verification is what being trusted already means, and re-deriving it defeats the reason this \
-            store exists, which is to reuse a checked answer instead of re-checking one. Only an untrusted match (or none at \
-            all) is a lead rather than an answer; just ask whether to run the query. Only then fall back to \
-            search_semantic_layer/describe_semantic_table to compose or verify something yourself. A trusted confirmed match \
-            runs with auto_run_trusted_match; anything else goes through prepare_query/run_query. Each match also carries a \
-            `provenance`: \"powerbi\" means a dashboard asks this question, \"user-confirmed\" means a person accepted or \
-            corrected this exact answer before (and `confirmedBy` names them), which is the stronger precedent of the two at \
-            the same score. `sourceRef` names the datasource that match's sql runs against: the one it was confirmed with, \
-            or else the one worked out from the tables it reads. It is null only when those tables do not point at exactly \
-            one datasource; never ask the person which datasource to use while it is present. A match that is `trusted` and \
-            carries an `exampleId` should be run immediately with auto_run_trusted_match, without asking the person, \
-            skipping the prepare_query/run_query approval round trip entirely, because this exact SQL was already confirmed \
-            by a person when it was stored; a trusted match without an `exampleId` (a dashboard question) still needs \
-            prepare_query/run_query. A dashboard match's `sql` is the report visual translated into T-SQL over the source \
-            tables, so it runs as it is; `reportSql` is the visual's own query against the report's model and never runs. A \
-            dashboard match that carries a `translationProblem` (and an empty `sql`) could not be translated: treat it as a \
-            lead only, telling you which question a report answers and which fields it uses, and compose the query yourself \
-            from the semantic layer. When a person, after seeing the result, explicitly tells you your answer was right, or \
-            tells you how to fix it, record that with confirm_question so the next similar question finds it; agreeing to \
-            run a query is not that. An empty `matches` means nothing stored matched those terms (or no questions are stored \
-            yet), not that the question is unanswerable: fall back to search_semantic_layer/describe_semantic_table without \
-            announcing it. When a person tells you an answer was wrong, nothing is saved, so do not call confirm_question \
-            for it: offer to fix the query instead. Only correct, verified answers become precedent here."
+            user's message begins with `!` (`!data <question>` is the same command), and in data mode for every \
+            follow-up that carries the question on, passing the question it amounts to written out in full from \
+            the conversation, never the reply's words alone. Strip the command and pass the remainder as \
+            `question`, with `expanded_terms`: the question's own meaningful words plus the business synonyms \
+            and related terms a dashboard could have used for the same thing, in their common grammatical forms \
+            (\"what drives our turnover\" -> turnover, revenue, sales, income, drive, driver). Outside data mode \
+            a message without the leading `!` is never routed here, however it reads. Say nothing to the person \
+            before or between the tool calls on this path: no preamble, no restating the question, no announcing \
+            what you are about to look up or that you are building a query, and no commentary on what came back \
+            (whether a match is trusted, its score, who confirmed it, saved answers, reports, or tool names). \
+            All of that is yours to act on, never to narrate: to a business reader it reads as the assistant \
+            explaining its own plumbing, and calling a match untrusted or low-scoring reads as the assistant \
+            being unreliable. Work silently until you have the answer or a query to offer, then reply once. \
+            Returns the saved answers close to the question, each with the SQL that answers it: a `trusted` \
+            match carrying an `exampleId` runs at once with auto_run_trusted_match, without asking. When no \
+            match is trusted, `grounding` holds the semantic layer the question is answered from (its tables \
+            with their open columns, keys, joins, measures and close examples, and each context's instructions): \
+            write the query from it and offer it through prepare_query, searching the layer only for a table it \
+            does not hold. The result's `readingThis` explains every field."
     )]
     async fn find_similar_questions(&self, Parameters(i): Parameters<SimilarQuestionsInput>) -> String {
         let q = similar_questions_query(i);
@@ -2614,28 +2649,17 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Record what a person decided about an answer you gave, so the estate learns from it: the question, the SQL, and \
-            whether they accepted it, corrected it, or rejected it. APPROVING A RUN IS NEVER CONFIRMATION: \"yes\", \"go \
-            ahead\", \"run it\" in reply to a prepared query only lets it run, and says nothing about whether the result is \
-            right. Storing an example is a separate decision with lasting effect (every later similar question reuses it, \
-            and a trusted one auto-runs with no approval), so call this ONLY when the person, after seeing the result, \
-            explicitly says the answer is correct, tells you how to fix it, or asks you to save it. Never call it in the \
-            same turn you present a result, and never on a run approval alone. Tell them in one line what you will save \
-            as the question, quoting it, and let them amend the wording before you call this: the question is stored as \
-            typed and is what every later question is matched against, so fixing a typo or an offhand phrasing is the \
-            person's call, never a tidy-up you make silently. An amended question never changes the query: pass the sql \
-            they judged, unchanged, with whatever wording they settled on. This is the other half of \
-            find_similar_questions, and it is what makes retrieval improve with use rather than staying frozen at whatever \
-            the dashboards happened to ask. Call it after a person has actually told you the answer was right (or told you \
-            what to fix), never on your own judgement that a query looks correct: the whole value of the store is that a \
-            human checked every row in it, and one self-confirmed guess in there becomes precedent that grounds later \
-            answers. On outcome=\"corrected\" pass the corrected sql, not what you first proposed. On outcome=\"rejected\" \
-            nothing is stored: a refuted query is not knowledge, so it never becomes an example a later answer is adapted \
-            from. Pass `confidence` as the `score` of the find_similar_questions match you built on, when you built on one; \
-            omit it when you composed the query from the schema. The sql must be a single read-only SELECT and is parsed and \
-            refused otherwise, and confirming the same question and query twice refreshes the one example rather than \
-            storing a duplicate. Storing an example does not run anything: execution still goes through \
-            prepare_query/run_query and their human gate, unchanged."
+        description = "Record what a person decided about an answer you gave, so the next similar question finds it: the \
+            question, the SQL, and whether they accepted, corrected or rejected it. Call it ONLY when the \
+            person, after seeing the result, says the answer is right, tells you how to fix it, or asks you to \
+            save it. Approving a run (\"yes\", \"go ahead\", \"run it\") is never that, and never call it in the \
+            turn you present a result: a stored answer is precedent every later similar question reuses, and a \
+            trusted one runs with no approval. First say in one line what you will save as the question, quoting \
+            it, and let them amend the wording: it is stored as typed, and an amended wording never changes the \
+            query. On outcome=\"corrected\" pass the corrected sql; outcome=\"rejected\" stores nothing. Pass \
+            `confidence` as the `score` of the find_similar_questions match you built on, and omit it for a \
+            query composed from the schema. The sql must be a single read-only SELECT; confirming the same \
+            question and query twice refreshes the one example. Nothing runs here."
     )]
     async fn confirm_question(&self, Parameters(i): Parameters<ConfirmQuestionInput>) -> String {
         let mut body = json!({ "question": i.question, "sql": i.sql, "outcome": i.outcome });
@@ -2660,23 +2684,16 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Run a TRUSTED find_similar_questions match's SQL immediately, capped small, with no separate approval step - the \
-            whole point being that this exact SQL was already shown to and confirmed by a person when it was stored, so \
-            re-asking for the same confirmation on every later match adds friction without adding safety. Use it ONLY on a \
-            match whose `trusted` is true and that carries an `exampleId` (a match without one came from a dashboard, not a \
-            confirmed example, and goes through prepare_query/run_query instead). Do not ask the person for a datasource: \
-            the one stored with the example is used, or else the one worked out from the tables its SQL reads, and a 409 \
-            means neither exists. The response carries a `taskId` identifying the stored result. The row cap and timeout are \
-            fixed by the deployment, not by you: read `maxRows`/`timeoutSeconds` back from the response rather than assuming \
-            defaults. Read `ran` first: true means `result` holds the answer and you can present it: state the answer once, \
-            in plain language, without preamble about the match, then always show the SQL: the response's `sqlIntro` line, \
-            then its `sqlBlock` copied exactly as its own fenced code block, following `answerFormat`; never inline it in a \
-            sentence and never leave it out, even for a one-line count. False means the query did not finish inside the \
-            budget (or failed against the live source): do not retry auto-run for the same example, and do not tell the user \
-            it ran - instead call prepare_query with the `sql` and `sourceRef` this response still carries, so a person \
-            approves it the normal way. This surface needs the same 'operate' scope and ControlPlane:AiContext:Enabled switch \
-            prepare_query does; ControlPlane:AiContext:AutoRun:Enabled can turn it off, and a 501 here means it is off in \
-            this deployment."
+        description = "Run a TRUSTED find_similar_questions match at once: one whose `trusted` is true and that carries an \
+            `exampleId`, capped small and with no approval step, since a person confirmed this exact SQL when it \
+            was stored. A match without an `exampleId` (a dashboard's) goes through prepare_query and run_query \
+            instead. Never ask for a datasource: the one stored with the example is used, or else the one its \
+            tables point at. Read `ran` first. True: `result` holds the answer; state it once, in plain \
+            language, then the response's `sqlIntro` line and its `sqlBlock` as its own fenced code block, \
+            following `answerFormat`, even for a one-line count. False: it did not finish in the budget or \
+            failed against the source; do not retry it and do not say it ran, but call prepare_query with the \
+            `sql` and `sourceRef` the response carries. `maxRows` and `timeoutSeconds` are the deployment's. A \
+            501 means auto-run is off in this deployment, a 409 that no datasource exists for the example."
     )]
     async fn auto_run_trusted_match(&self, Parameters(i): Parameters<AutoRunQuestionInput>) -> String {
         done(
@@ -2957,33 +2974,28 @@ and fix every finding first."
     }
 
     #[tool(
-        description = "Step 1 of running a business query: validate a SELECT and get back the exact statement plus a one-time token. \
-            NOTHING RUNS HERE and no data is touched. The statement is parsed and refused unless it is a single read-only \
-            SELECT, so anything that writes, calls a procedure, or reaches another server is rejected with the reason. After \
-            calling this you MUST show the returned `sql` to the user verbatim and get their agreement BEFORE calling \
-            run_query with the planId. Do not paraphrase it, do not summarise it, and do not redeem the token on your own \
-            initiative: preparing is not permission to run. Phrase the ask as the response's `approvalFormat` says: a line \
-            saying there is no saved answer yet (or that a report already answers it), what the query will show, the SQL, \
-            and \"Want me to run it?\", never a word about trust, scores, or matches, and never a request to judge the data \
-            source. Compose the SQL from the semantic layer (describe_semantic_table for the columns, key and joins of each \
-            table); never guess a join or a column name. A 403 saying queries are not enabled means AI context is off in \
-            this deployment (ControlPlane:AiContext:Enabled): say so, since a person has to turn it on."
+        description = "Step 1 of running a query: validate a single read-only SELECT and get back the exact statement and a \
+            one-time plan token. NOTHING RUNS HERE. A statement that writes, calls a procedure, reaches another \
+            server, or reads a column the semantic layer does not open is refused with the reason. Then show the \
+            returned `sql` to the person verbatim, as the response's `approvalFormat` says, and redeem the token \
+            with run_query only after they agree: preparing is not permission to run. Never mention trust, \
+            scores or matches, and never ask them to judge the data source. Write the SQL from the semantic \
+            layer (find_similar_questions' `grounding`, or describe_semantic_table for a table it does not \
+            hold); never guess a join or a column name. A 403 saying queries are not enabled means AI context is \
+            off in this deployment (ControlPlane:AiContext:Enabled): say so, since a person has to turn it on."
     )]
     async fn prepare_query(&self, Parameters(i): Parameters<PrepareQueryInput>) -> String {
         done(self.run_prepare_query(i).await)
     }
 
     #[tool(
-        description = "Step 2 of running a business query: redeem an approved plan token and return the rows. Call this ONLY after \
-            prepare_query returned a statement, you showed that statement to the user, and the user agreed to it. The token \
-            is single-use: redeeming it twice fails, and running the same query again means preparing it again so each \
-            execution is separately approved. Read `truncated` in the result before describing the answer. A truncated \
-            result is a PAGE, not the whole answer, and summing or counting one gives a confidently wrong total: say it was \
-            truncated, or re-prepare with a higher maxRows or an aggregate that answers the question directly. Whenever you \
-            present the rows, always include the SQL that ran: the result's `sqlIntro` line, then its `sqlBlock` copied \
-            exactly as its own fenced code block, following `answerFormat`, even though you already showed the statement \
-            before running it. The person's approval to run is approval to RUN, not a judgement that the answer is right: \
-            never call confirm_question because they agreed to run it."
+        description = "Step 2 of running a query: redeem a plan token from prepare_query and return the rows. Call it ONLY \
+            after you showed the prepared statement to the person and they agreed to it. The token is \
+            single-use, so running the same query again means preparing it again. Read `truncated` first: a \
+            truncated result is a page, and summing or counting it gives a confidently wrong total, so say it \
+            was truncated or re-prepare with an aggregate that answers the question. Present the rows with the \
+            result's `sqlIntro` line and its `sqlBlock` as its own fenced code block, following `answerFormat`. \
+            Agreeing to run is not judging the answer: never call confirm_question for it."
     )]
     async fn run_query(&self, Parameters(i): Parameters<RunQueryInput>) -> String {
         done(self.run_prepared_query(i).await)
@@ -3819,9 +3831,34 @@ pub struct ProposeFileInput {
 
 // --- Server handler --------------------------------------------------------
 
-/// The answer to a call of a tool the session's mode does not list: what the model has to do instead, so a client
+/// The answer to a call of a tool the session's listing leaves out: what the model has to do instead, so a client
 /// holding another mode's list (one that does not refresh it) is told rather than failing blind.
-fn wrong_mode(tool: &str, mode: Mode) -> String {
+fn wrong_mode(tool: &str, listing: Listing) -> String {
+    match listing {
+        Listing::Registered(mode) => format!("{tool} is not offered here. {}", registered_elsewhere(mode)),
+        Listing::Every => format!("{tool} is not offered by this session."),
+        Listing::Mode(mode) => switch_first(tool, mode),
+    }
+}
+
+/// What a session registered in `mode` says when asked for the other mode's question: it stays in its mode, and the
+/// other kind of question is asked with the editor's other registration of this server.
+fn registered_elsewhere(mode: Mode) -> &'static str {
+    match mode {
+        Mode::Data => {
+            "This server is registered in data mode and stays in it. A question about the estate (flows, runs, lineage, \
+             schedules, the catalog, the docs) is asked with this server's estate registration, which the person turns \
+             on among their editor's tools."
+        }
+        Mode::Estate => {
+            "This server is registered in estate mode and stays in it. A question answered from warehouse data is asked \
+             with this server's data registration, which the person turns on among their editor's tools."
+        }
+    }
+}
+
+/// What to do before calling `tool` in a session whose conversation is in `mode`, the other mode's.
+fn switch_first(tool: &str, mode: Mode) -> String {
     match mode {
         Mode::Data => format!(
             "{tool} answers questions about the estate, and this conversation is in data mode. Call {} first, then {tool}.",
@@ -4041,8 +4078,8 @@ mod start_here_tests {
 }
 
 // `router = self.tool_router` on purpose: the macro otherwise generates `list_tools`/`get_tool` against
-// `Self::tool_router()`, the freshly generated router, so the GROUNDING_RULE that `grounded_router` appends
-// would be applied to a router no client ever reads. The field is the grounded one built in `with_mode`.
+// `Self::tool_router()`, the freshly generated router, which still holds the routes the host leaves out and the
+// stdio-only ones an HTTP session disables. The field is the router `composed` built with those disabled.
 #[tool_handler(router = self.tool_router)]
 impl ServerHandler for SqlFlowMcp {
     /// Hand-written dispatch (the #[tool_handler] macro only generates `call_tool`
@@ -4059,16 +4096,15 @@ impl ServerHandler for SqlFlowMcp {
         let parts = context.extensions.get::<http::request::Parts>();
         let bearer = parts.and_then(|parts| bearer_token(&parts.headers));
         let surface = parts.and_then(|parts| request_surface(parts.uri.query()));
-        if let Some(mode) = self.listing_mode(parts) {
-            if !modes::is_mode_tool(&request.name)
-                && self.get_tool(&request.name).is_some()
-                && !modes::lists(Some(mode), &request.name)
-            {
-                return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(wrong_mode(
-                    &request.name,
-                    mode,
-                ))]));
-            }
+        let listing = self.listing(parts);
+        if !modes::is_mode_tool(&request.name)
+            && self.get_tool(&request.name).is_some()
+            && !listing.lists(&request.name)
+        {
+            return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(wrong_mode(
+                &request.name,
+                listing,
+            ))]));
         }
         let call = self.dispatch(request, context);
         match (bearer, surface) {
@@ -4090,8 +4126,8 @@ impl ServerHandler for SqlFlowMcp {
     ) -> Result<rmcp::model::ListToolsResult, rmcp::ErrorData> {
         let mut tools = self.tool_router.list_all();
         tools.extend(self.modules.list().iter().cloned());
-        let mode = self.listing_mode(context.extensions.get::<http::request::Parts>());
-        tools.retain(|tool| modes::lists(mode, &tool.name));
+        let listing = self.listing(context.extensions.get::<http::request::Parts>());
+        tools.retain(|tool| listing.lists(&tool.name));
         Ok(rmcp::model::ListToolsResult {
             tools,
             meta: None,
@@ -4107,31 +4143,67 @@ impl ServerHandler for SqlFlowMcp {
     }
 
     fn get_info(&self) -> ServerInfo {
-        let online_setup = if self.http_mode { ONLINE_SETUP_HTTP } else { ONLINE_SETUP_STDIO };
-        // The paragraph about source discovery is about one tool; a host that leaves it out does not recommend it.
-        let discovery =
-            if self.http_mode || self.modules.withholds("discover_source") { "" } else { DISCOVERY_STDIO };
-        let introduction = self.modules.introduction().unwrap_or(INTRODUCTION);
-        let opening = if self.has_data_mode {
-            format!("{introduction}\n\n{MODES}\n\n")
-        } else {
-            format!("{introduction} ")
-        };
-        let operate = self.operate_section();
-        let modules = self.modules.instructions();
-        let withheld = self.modules.withheld_note();
+        self.info_for(self.listing(None))
+    }
+
+    /// The answer to `initialize`, given for the session's listing: over HTTP the mode its address names, over stdio the
+    /// mode the server was registered in, so the instructions a client reads describe the tools its session lists.
+    async fn initialize(
+        &self,
+        request: rmcp::model::InitializeRequestParams,
+        context: rmcp::service::RequestContext<rmcp::RoleServer>,
+    ) -> Result<rmcp::model::InitializeResult, rmcp::ErrorData> {
+        let listing = self.listing(context.extensions.get::<http::request::Parts>());
+        context.peer.set_peer_info(request);
+        Ok(self.info_for(listing))
+    }
+}
+
+impl SqlFlowMcp {
+    /// The server's answer to `initialize` for a session of `listing`.
+    fn info_for(&self, listing: Listing) -> ServerInfo {
         ServerInfo::new(ServerCapabilities::builder().enable_tools().enable_tool_list_changed().build())
             .with_server_info(rmcp::model::Implementation::new(
                 self.cp.identity().name().to_string(),
                 self.cp.identity().version().to_string(),
             ))
-            .with_instructions(format!(
-                "{opening}{INSTRUCTIONS_OFFLINE}{discovery}\n{online_setup}{INSTRUCTIONS_ONLINE_TAIL}{operate}\n\n{CLOSING}{modules}{withheld}"
-            ))
+            .with_instructions(self.instructions_for(listing))
     }
-}
 
-impl SqlFlowMcp {
+    /// The instructions a session of `listing` is given, naming only what it lists. A session of every tool gets the
+    /// whole text. A data-mode session gets the modes, the rules for a question answered from data, and the rules every
+    /// answer follows: no estate tool, no module's section (a module's tools answer questions about the estate), and
+    /// over HTTP no setup, which the caller's bearer already did. An estate-mode session gets everything but the data
+    /// rules. A registered session opens with what its registration means in place of the modes and the commands.
+    fn instructions_for(&self, listing: Listing) -> String {
+        let introduction = self.modules.introduction().unwrap_or(INTRODUCTION);
+        let withheld = self.modules.withheld_note();
+        if listing.mode() == Some(Mode::Data) {
+            let (opening, setup) = match listing {
+                Listing::Registered(_) => (REGISTERED_DATA, ONLINE_SETUP_STDIO),
+                _ => (MODES, ""),
+            };
+            return format!(
+                "{introduction}\n\n{opening}\n\n{setup}{DATA_HEADING}{DATA_QUESTIONS}{GROUNDING_RULE}\n{ANSWER_RULES}\n\n{CLOSING}{withheld}"
+            );
+        }
+
+        let setup = if self.http_mode { ONLINE_SETUP_HTTP } else { ONLINE_SETUP_STDIO };
+        // The paragraph about source discovery is about one tool; a host that leaves it out does not recommend it.
+        let discovery =
+            if self.http_mode || self.modules.withholds("discover_source") { "" } else { DISCOVERY_STDIO };
+        let opening = match listing {
+            Listing::Registered(_) => format!("{introduction}\n\n{REGISTERED_ESTATE}\n\n"),
+            _ if self.has_data_mode => format!("{introduction}\n\n{MODES}\n\n"),
+            _ => format!("{introduction} "),
+        };
+        let data = if listing == Listing::Every { DATA_QUESTIONS } else { "" };
+        let operate = self.operate_section();
+        let modules = self.modules.instructions();
+        format!(
+            "{opening}{INSTRUCTIONS_OFFLINE}{discovery}\n{setup}{ESTATE_READ}{data}{ESTATE_GUIDE}{operate}\n{GROUNDING_RULE}\n{ANSWER_RULES}\n\n{CLOSING}{modules}{withheld}"
+        )
+    }
     /// One tool call: a host module's tool goes to the module that added it, everything else to this
     /// server's own router (which answers an unknown name with "tool not found").
     async fn dispatch(
@@ -4151,8 +4223,9 @@ impl SqlFlowMcp {
 const INTRODUCTION: &str = "SQLFlow MCP server.";
 
 /// The modes and the commands that move between them, first in the instructions while the host has data mode (it
-/// offers find_similar_questions). A host without it does not get the block, so it is never told to call a tool it
-/// lacks. Every client reads the same block: the GUI chat and the Slack bot read the server's instructions too.
+/// offers find_similar_questions) and the session can switch. A host without it does not get the block, so it is never
+/// told to call a tool it lacks. Every client reads the same block: the GUI chat and the Slack bot read the server's
+/// instructions too.
 const MODES: &str = "\
 MODES AND ROUTING, BEFORE ANYTHING ELSE: a conversation is in one of two modes. Estate mode, the default, answers
 questions about the estate (flows, runs, lineage, schedules, the catalog, the docs) and reads no rows. Data mode
@@ -4178,9 +4251,26 @@ says which mode the conversation is in.
   question about the estate however much it reads like one the warehouse could answer: answer what the metadata can
   say, and say that starting the question with `!` answers it from the data.
 - A client that opens a session for each message names the conversation's mode, and the session then lists only
-  that mode's tools; after start_data_mode or end_data_mode in such a session, write nothing more, since the client
-  asks the question again in the other mode.
-The fuller rule, including how to lay out the answer, is in the online section below.";
+  that mode's tools and is given only that mode's rules; after start_data_mode or end_data_mode in such a session,
+  write nothing more, since the client asks the question again in the other mode.";
+
+/// What a session of a server registered in data mode (`--mode data`) is told in place of the modes: it stays in data
+/// mode, and a question about the estate belongs to the editor's other registration of the server.
+const REGISTERED_DATA: &str = "\
+DATA MODE, BEFORE ANYTHING ELSE: this server is registered in data mode for this editor, and stays in it. Every
+message is a question answered from warehouse data, with or without a leading `!data` or `!`, and a follow-up
+(\"and by region?\", \"run it\", \"save\") carries the question on. It has no tools for questions about the estate
+(flows, runs, lineage, schedules, the catalog, the docs): asked one, say in one line that it is asked with this
+server's estate registration, which the person turns on among their editor's tools, and stop.";
+
+/// What a session of a server registered in estate mode (`--mode estate`) is told in place of the modes: it stays in
+/// estate mode, and a question answered from data belongs to the editor's other registration of the server.
+const REGISTERED_ESTATE: &str = "\
+ESTATE MODE, BEFORE ANYTHING ELSE: this server is registered in estate mode for this editor, and stays in it: questions
+about the estate (flows, runs, lineage, schedules, the catalog, the docs), answered from metadata. It reads no rows.
+Asked for a figure from the data, a message starting with `!data` or `!` among them, answer what the metadata can
+say and say in one line that the figure is asked with this server's data registration, which the person turns on
+among their editor's tools.";
 
 const INSTRUCTIONS_OFFLINE: &str = "\
 Two tiers of tools:
@@ -4215,8 +4305,8 @@ ONLINE (needs the control plane):
   authority enforced server-side. There is no login step; check_connectivity probes reachability.
 ";
 
-const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
-    "\
+/// The estate's readers and the links every online result carries.
+const ESTATE_READ: &str = "\
 - Read: list_repos, list_pipelines, get_pipeline, pipeline_definition, pipeline_columns,
   pipeline_file_stats, list_runs,
   get_run, run_statements/assertions/files/health_metrics, lineage_objects/_detail/_columns/_edges/
@@ -4234,6 +4324,15 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   row that came back without links. A result about something the CALL named rather than about its rows (a
   flow's columns, an object's columns, a repo's edges, one file's provenance, the insights boards, summary)
   carries the subject's links on the envelope beside `items`, so those answers have a destination too.
+";
+
+/// What opens the data rules in a data-mode session, where they are not one bullet among the estate's.
+const DATA_HEADING: &str = "ANSWERING A QUESTION FROM WAREHOUSE DATA:\n";
+
+/// How a question is answered from warehouse data: the `!` command, saved answers, the grounding that comes with
+/// them, the query tools and saving an answer. A data-mode session and a session of every tool are given it.
+const DATA_QUESTIONS: &str = concat!(
+    "\
 - The command `!<question>`, a message beginning with `!` (e.g. \"!what is our revenue by region?\", \"! how many
   rows landed last night\"; `!data <question>` is the same command): this leading `!`, not phrasing, is what
   activates the path for a question answered from
@@ -4254,8 +4353,8 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   copied exactly as its own fenced code block (the result's `answerFormat` spells this out), so the person can check it, rerun
   it, or confirm it. Never put it inline in a sentence, paraphrase it, or omit it, however obvious the
   query looks. The same goes for every answer backed by run_query.
-  Only fall through to search_semantic_layer/describe_semantic_table when nothing
-  matches, or every match is untrusted and you need to understand the schema to write a fresh query.
+  When no match is trusted, the same result's `grounding` holds the semantic layer the question is answered
+  from: write the query from it, adapting a close match where there is one.
   Never ask them to judge the data source. When a query needs their
   approval, open with \"I don't have a saved answer for this question yet, so I've put together a query that
   should answer it.\" (or, for a question a report already answers, that a report already answers it), say
@@ -4279,18 +4378,26 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   away, since they already agreed to that statement. One that judges an answer (\"save\", \"that's right\", a
   fix) is what confirm_question waits for. When a person says an answer is wrong, nothing is saved: offer to fix
   the query instead. In estate mode a message with NO leading `!` is never routed to find_similar_questions, no
-  matter how much it reads like a question the warehouse could answer: work it through the catalog readers and
-  the rest of this list instead.
+  matter how much it reads like a question the warehouse could answer.
 - Writing SQL for a business question (data mode): use the SEMANTIC LAYER, the governed schema made of the
   AI contexts an admin approved, holding only the tables and columns those contexts open, with their
-  business descriptions, synonyms, curated keys and joins, measures, and example queries. get_semantic_layer
-  first (its general instructions apply to every query you write), then search_semantic_layer with a name or
-  a business term, then describe_semantic_table(key, question) for the columns, key, joins, and measures of one
-  table, with the example queries closest to the person's question.
-  A query may read only the columns describe_semantic_table lists: anything else is refused when it runs. The
-  catalog readers below (describe_object, search_schema, get_table_key, get_table_joins) see every catalogued table
-  and column whatever the approved contexts open, since schema is not sensitive: use them for every other question
-  about the schema, lineage, and code, never to find columns for a business question's query.
+  business descriptions, synonyms, curated keys and joins, measures, and example queries. Whenever no saved
+  answer is trusted, find_similar_questions serves the part of it the question needs as `grounding`: the tables
+  (the whole layer when it is small, else the ones the question's words mention most; `layerTableCount` says how
+  many the layer holds), their open columns, keys, joins, measures and the examples close to the question, and the
+  instructions of each context serving them, which apply to every query you write over its tables. Search the layer
+  only for a table the grounding does not hold: search_semantic_layer with a name or a business term, then
+  describe_semantic_table(key, question). A query may read only the open columns: anything else is refused when it
+  runs. The catalog's own readers see every catalogued column whatever the contexts open, since schema is not
+  sensitive; they answer questions about the schema, lineage and code, never which columns a business question's
+  query may read.
+"
+);
+
+/// How the estate is answered: which tool answers which kind of question about flows, runs, tables, reports and
+/// performance. A session of every tool and an estate-mode session are given it; it ends with the performance
+/// bullet, which the host's operate line continues.
+const ESTATE_GUIDE: &str = "\
 - \"Where does <name> live / where is <X> computed / what is <X>?\": call search_all FIRST. It fans one term
   across all seven surfaces at once and answers with each surface's full count plus a nextSteps plan naming
   the tool that pages it and the tool that turns a hit into an answer; work that plan rather than guessing a
@@ -4315,7 +4422,8 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   you answer open schema questions without a pre-known object key.
 - Ask about an object (text-to-query): describe_object returns one object's identity, columns, generating
   script, module body, and lineage edges in one call: start here to reason about, or author SQL against, a
-  specific table or view.
+  specific table or view. The catalog readers (describe_object, search_schema, get_table_key, get_table_joins)
+  see every catalogued table and column whatever the approved AI contexts open, since schema is not sensitive.
 - \"When does <table> update / how is it populated / is it full or incremental / did its last load work?\":
   describe_object_refresh(key) answers all four at once: the writing flows, each with its `loadProfile`
   (`readMode`, `summary`, `keyColumns`, `watermarkColumns`, `replacesTargetEachRun`), its `lastRun` and
@@ -4323,9 +4431,7 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   load mode from `loadProfile.readMode`, never from the YAML or the key. When the latest run failed, say so
   and give `lastSuccessfulRun` as the last time the table was loaded. For a view it names the modules the
   content derives from instead; read them with describe_object.
-- Every fact you state must be a value a tool returned. If no tool returned it, say so and name the tool
-  that would; never fill a gap with what a flow of that kind usually does. Executed SQL comes only from
-  run_statements; never reconstruct it from a flow settings.
+- Executed SQL comes only from run_statements; never reconstruct it from a flow's settings.
 - \"Where does <table>'s data come from / what feeds it / what depends on it?\": object_lineage(key) walks
   the graph transitively, upstream to the true origin (the source system's table, file, or API endpoint) and
   downstream to every dependent, each step naming the flow that carries the hop. Use it whenever the answer
@@ -4361,17 +4467,19 @@ const INSTRUCTIONS_ONLINE_TAIL: &str = concat!(
   incremental loading is the `incremental` block, an upsert is `load.keyColumns`, and `source.filter` takes static
   predicates only. Never hand-write watermark SQL or invent tokens such as `@sf_...`: nothing expands them, so they
   reach the database as written. Run validate_flow on every YAML before showing it, and fix what it reports.
+- Performance and optimization: insights_recommendations is the one-call briefing (run-history advisories
+  merged with warehouse DMV findings, each with ready-to-review SQL); insights_flows ranks flows by
+  processing time with trends; insights_attention lists what is failing/degrading/silent; insights_steps
+  drills a slow flow to its hot steps and their SQL.";
+
+/// The rules every answer follows in every mode, after the grounding rule.
+const ANSWER_RULES: &str = "\
 - A message may carry images (a screenshot of an error, a flow YAML): read them, then answer with the tools as
   usual, looking up the run, table or flow they name rather than answering from the picture alone.
 - A tool that answers that this caller may not do something (403, \"not available to an assistant run\") is the
   control plane's decision about the caller: say so in one line and link the GUI page where a person can do it (a
   run's page to cancel it, the schedules page to trigger one). Never try another way round it.
-- Keep answers tight: lead with the finding, then only the detail the reader needs.
-- Performance and optimization: insights_recommendations is the one-call briefing (run-history advisories
-  merged with warehouse DMV findings, each with ready-to-review SQL); insights_flows ranks flows by
-  processing time with trends; insights_attention lists what is failing/degrading/silent; insights_steps
-  drills a slow flow to its hot steps and their SQL."
-);
+- Keep answers tight: lead with the finding, then only the detail the reader needs.";
 
 /// The sentence that sends a stale warehouse dimension to analyze_warehouse_health, said only while the host offers it.
 const WAREHOUSE_HEALTH: &str = " When the warehouse dimension is missing or stale, run
@@ -4593,6 +4701,8 @@ mod tests {
         let mut found = json!({ "matches": [], "question": "how much have customers spent?" });
         attach_retrieval_rule(&mut found);
         assert_eq!(found["responseRule"], json!(RETRIEVAL_RULE));
+        assert_eq!(found["readingThis"], json!(RETRIEVAL_GUIDE));
+        assert!(RETRIEVAL_GUIDE.contains("`grounding`") && RETRIEVAL_GUIDE.contains("`differingValues`"));
 
         let mut error = json!("Error: the control plane is unreachable");
         attach_retrieval_rule(&mut error);
@@ -4635,7 +4745,58 @@ mod tests {
     #[test]
     fn the_response_rule_is_built_from_the_shared_silent_rule() {
         assert!(RETRIEVAL_RULE.starts_with(SILENT_RETRIEVAL_RULE));
-        assert!(INSTRUCTIONS_ONLINE_TAIL.contains(SILENT_RETRIEVAL_RULE));
+        assert!(DATA_QUESTIONS.contains(SILENT_RETRIEVAL_RULE));
+    }
+
+    /// A server over stdio (`http = false`) or HTTP, with no host module.
+    fn bare_server(http: bool) -> SqlFlowMcp {
+        let cp = Arc::new(ControlPlane::new(&crate::control_plane::ClientIdentity::default(), "http://127.0.0.1:9", None, false));
+        if http { SqlFlowMcp::new_http(Arc::new(DocsIndex::load()), cp) } else { SqlFlowMcp::new(Arc::new(DocsIndex::load()), cp) }
+    }
+
+    /// A session is told only about what it lists. A data-mode session's rules are the modes, the data rules and the
+    /// rules every answer follows; an estate-mode session's are everything but the data rules; a session of every tool
+    /// gets both. The data-mode text is what an assistant reads before every data question, so it stays a small part of
+    /// the whole.
+    #[test]
+    fn each_mode_is_told_only_about_its_own_tools() {
+        let flat = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+        let server = bare_server(true);
+        let every = server.instructions_for(Listing::Every);
+        let data = server.instructions_for(Listing::Mode(Mode::Data));
+        let estate = server.instructions_for(Listing::Mode(Mode::Estate));
+
+        for text in [&every, &data, &estate] {
+            assert!(text.contains("MODES AND ROUTING, BEFORE ANYTHING ELSE"), "{text}");
+            assert!(text.contains(GROUNDING_RULE) && text.contains(ANSWER_RULES), "{text}");
+        }
+        assert!(every.contains(DATA_QUESTIONS) && every.contains(ESTATE_GUIDE), "{every}");
+        assert!(data.contains(DATA_QUESTIONS) && data.contains(DATA_HEADING), "{data}");
+        for estate_only in [ESTATE_GUIDE, ESTATE_READ, INSTRUCTIONS_OFFLINE, ONLINE_SETUP_HTTP] {
+            assert!(!data.contains(estate_only), "data mode is told about the estate: {estate_only}");
+            assert!(estate.contains(estate_only), "estate mode lost: {estate_only}");
+        }
+        assert!(!estate.contains(DATA_QUESTIONS) && !flat(&estate).contains("call confirm_question"), "{estate}");
+        assert!(data.len() * 2 < every.len(), "data mode is told {} of {} characters", data.len(), every.len());
+    }
+
+    /// A server registered in a mode for an editor opens with what that means in place of the switchable modes, is told
+    /// how to sign in (it holds its own sign-in), and is pointed at its other registration for the other kind of question.
+    #[test]
+    fn a_registered_server_is_told_its_registration_in_place_of_the_switches() {
+        let server = bare_server(false);
+        let data = server.instructions_for(Listing::Registered(Mode::Data));
+        assert!(data.contains(REGISTERED_DATA) && !data.contains("MODES AND ROUTING"), "{data}");
+        assert!(data.contains(ONLINE_SETUP_STDIO) && data.contains(DATA_QUESTIONS), "{data}");
+        assert!(!data.contains(ESTATE_GUIDE), "{data}");
+
+        let estate = server.instructions_for(Listing::Registered(Mode::Estate));
+        assert!(estate.contains(REGISTERED_ESTATE) && !estate.contains("MODES AND ROUTING"), "{estate}");
+        assert!(estate.contains(ESTATE_GUIDE) && !estate.contains(DATA_QUESTIONS), "{estate}");
+
+        let registered = bare_server(false).registered_in(Mode::Data).expect("a stdio server registers in a mode");
+        assert_eq!(registered.listing(None), Listing::Registered(Mode::Data));
+        assert!(bare_server(true).registered_in(Mode::Data).is_err(), "an HTTP session names its mode on its address");
     }
 
     /// The rules every client follows, the GUI chat and the Slack bot included: they read these instructions as their
@@ -4644,7 +4805,7 @@ mod tests {
     fn the_instructions_carry_the_rules_every_client_follows() {
         // Read as prose: the text wraps wherever its lines end, so runs of white space count as one.
         let flat = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
-        let (modes, online) = (flat(MODES), flat(INSTRUCTIONS_ONLINE_TAIL));
+        let (modes, online) = (flat(MODES), flat(&bare_server(true).instructions_for(Listing::Every)));
         // The modes and their commands.
         for rule in [
             "Only `!data`, a bare `!`, or the person asking for data mode starts it",
@@ -4660,7 +4821,8 @@ mod tests {
         }
         // Grounding, executed SQL, load modes, refusals: what the control plane's own text used to say.
         for rule in [
-            "Every fact you state must be a value a tool returned",
+            "Grounding: state only values a tool's result contains",
+            "never fill a gap with what a flow or a run of that kind usually does",
             "Executed SQL comes only from run_statements",
             "State the load mode from `loadProfile.readMode`",
             "The warehouse outranks the reporting layer",

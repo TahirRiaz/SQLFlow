@@ -14,6 +14,11 @@
 //! the other mode's tools, and its client asks the question again there. A session that names no mode (a stdio client
 //! such as VS Code or Claude Code, which keeps one session across chats and does not reliably refresh its tools
 //! mid-session) lists every tool; a switch there records the mode, which `get_mode` reports.
+//!
+//! An editor that wants a small list registers the server in one mode (`--mode data` or `--mode estate`, or
+//! `SQLFLOW_MCP_MODE`), once per mode it uses, and turns on the registration a chat needs. A registered session stays in
+//! its mode, since a client that does not refresh its tools would otherwise hold the other mode's list: it lists that
+//! mode's tools and the setup tools (it signs in on its own), never a switch.
 
 /// The mode a conversation answers in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -25,11 +30,28 @@ pub enum Mode {
 }
 
 impl Mode {
-    /// The mode's name, as the MCP address's `mode` query parameter and the mode tools' answers spell it.
+    /// The mode's name, as the MCP address's `mode` query parameter, `--mode` and the mode tools' answers spell it.
     pub fn name(self) -> &'static str {
         match self {
             Mode::Estate => "estate",
             Mode::Data => "data",
+        }
+    }
+
+    /// The mode `name` spells (`data` or `estate`, as [`name`](Self::name) writes them), if it is one.
+    pub fn named(name: &str) -> Option<Mode> {
+        match name {
+            "data" => Some(Mode::Data),
+            "estate" => Some(Mode::Estate),
+            _ => None,
+        }
+    }
+
+    /// The other mode.
+    pub fn other(self) -> Mode {
+        match self {
+            Mode::Estate => Mode::Data,
+            Mode::Data => Mode::Estate,
         }
     }
 }
@@ -64,6 +86,18 @@ pub const SHARED: &[&str] = &[
     GET_MODE,
 ];
 
+/// The tools that point a session at the control plane and sign it in. A stdio session holds its own sign-in, so it
+/// needs them whatever its mode; over HTTP the ones that sign in are not offered at all.
+pub const SETUP: &[&str] = &[
+    "get_control_plane_url",
+    "set_control_plane_url",
+    "check_connectivity",
+    "login",
+    "check_auth_status",
+    "set_access_token",
+    "logout",
+];
+
 /// Whether a session listing `mode`'s tools lists `tool`; `None` is a session that names no mode, which lists every
 /// tool. Estate mode lists every tool but the ones only data mode needs, the way into data mode included; data mode
 /// lists only its own and the shared ones, so a host module's tools, which answer questions about the estate, belong to
@@ -74,6 +108,12 @@ pub fn lists(mode: Option<Mode>, tool: &str) -> bool {
         Some(Mode::Estate) => !DATA_ONLY.contains(&tool),
         Some(Mode::Data) => DATA_ONLY.contains(&tool) || SHARED.contains(&tool),
     }
+}
+
+/// Whether a session registered in `mode` lists `tool`: that mode's tools and the setup tools, and no switch, since the
+/// session stays in the mode it was registered in.
+pub fn lists_registered(mode: Mode, tool: &str) -> bool {
+    switches_to(tool).is_none() && (lists(Some(mode), tool) || SETUP.contains(&tool))
 }
 
 /// The mode a switch tool moves a conversation to, when `tool` is one.
@@ -159,5 +199,33 @@ mod tests {
     fn a_mode_is_named_as_the_query_spells_it() {
         assert_eq!(requested(Some(&format!("mode={}", Mode::Data.name()))), Some(Mode::Data));
         assert_eq!(requested(Some(&format!("mode={}", Mode::Estate.name()))), Some(Mode::Estate));
+    }
+
+    #[test]
+    fn a_registration_names_its_mode_as_the_address_does() {
+        for mode in [Mode::Data, Mode::Estate] {
+            assert_eq!(Mode::named(mode.name()), Some(mode));
+            assert_eq!(mode.other().other(), mode);
+            assert_ne!(mode.other(), mode);
+        }
+        for name in ["", "Data", "ESTATE", "business", " data", "data "] {
+            assert_eq!(Mode::named(name), None, "{name:?}");
+        }
+    }
+
+    #[test]
+    fn a_registered_session_lists_its_modes_tools_and_setup_and_never_a_switch() {
+        for tool in DATA_ONLY.iter().chain(SHARED).chain(SETUP).filter(|tool| switches_to(tool).is_none()) {
+            assert!(lists_registered(Mode::Data, tool), "{tool}");
+        }
+        for tool in [START_DATA_MODE, END_DATA_MODE, "list_runs", "describe_object", "delivery_find_records"] {
+            assert!(!lists_registered(Mode::Data, tool), "{tool}");
+        }
+        for tool in ["list_runs", "describe_object", "trigger_run", "delivery_find_records", GET_MODE, "login"] {
+            assert!(lists_registered(Mode::Estate, tool), "{tool}");
+        }
+        for tool in [START_DATA_MODE, END_DATA_MODE, "find_similar_questions", "run_query"] {
+            assert!(!lists_registered(Mode::Estate, tool), "{tool}");
+        }
     }
 }

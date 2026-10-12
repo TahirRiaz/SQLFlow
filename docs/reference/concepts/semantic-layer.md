@@ -244,7 +244,12 @@ the address (`?surface=assistant&mode=data`), and the session lists only that mo
 
 A session that names no mode (an editor's assistant over stdio, such as VS Code or Claude Code) lists every tool, the
 mode tools included, and the model keeps the mode from the instructions; the switch tools record it for the session,
-so `get_mode` reports it. What a query reads does not depend on the mode: every query is checked
+so `get_mode` reports it. An editor can instead register the server in one mode (`--mode data` or `--mode estate`, or
+`SQLFLOW_MCP_MODE`), once per mode it uses: such a session lists that mode's tools and the sign-in tools, and stays in
+its mode, since its client may not refresh a changed list, so the switch tools are not listed and a call of the other
+mode's tool names the registration that answers it. Every session is given its mode's instructions at `initialize`:
+a data-mode session the modes, the rules for a question answered from data and the rules every answer follows, and
+an estate-mode session everything but the data rules; a registered session opens with what its registration means. What a query reads does not depend on the mode: every query is checked
 against the columns the approved contexts open, on prepare and on run. What an assistant run may do beyond reading is
 the control plane's fence ([assistant run tokens](authentication-and-identity.md#assistant-run-tokens)), not a tool
 list: `Mcp:AllowedTools` exists only for a deployment that wants fewer tools.

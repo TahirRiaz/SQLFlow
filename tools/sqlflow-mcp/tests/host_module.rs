@@ -589,6 +589,38 @@ async fn an_http_session_lists_the_tools_of_the_mode_its_address_names_and_keeps
     assert!(tool_names(&fresh.request("tools/list", json!({})).await).contains(&"run_query".to_string()));
 }
 
+/// A session opened in a mode is given that mode's instructions at `initialize`, naming only what it lists: a data-mode
+/// session the modes, the data rules and the rules every answer follows, without the estate's guide, the setup its
+/// bearer already did, or a module's section; an estate-mode session everything but the data rules.
+#[tokio::test(flavor = "multi_thread")]
+async fn an_http_session_is_given_the_instructions_of_the_mode_its_address_names() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, None), "", true)
+        .expect("the probe host composes");
+    let (url, _stop) = start_http(server).await;
+
+    let (_, data) = HttpSession::open(&format!("{url}?surface=assistant&mode=data"), "caller-a").await;
+    let data = data["result"]["instructions"].as_str().expect("instructions").to_string();
+    assert!(data.starts_with("SQLFlow MCP server.\n\nMODES AND ROUTING, BEFORE ANYTHING ELSE"), "{data}");
+    assert!(data.contains("ANSWERING A QUESTION FROM WAREHOUSE DATA") && data.contains("`grounding`"), "{data}");
+    assert!(data.contains("Grounding: state only values a tool's result contains"), "{data}");
+    for estate_text in ["Two tiers of tools", "search_all FIRST", "ONLINE (needs the control plane)", "run_probe runs one"] {
+        assert!(!data.contains(estate_text), "a data-mode session is told: {estate_text}");
+    }
+
+    let (_, estate_answer) = HttpSession::open(&format!("{url}?surface=assistant&mode=estate"), "caller-b").await;
+    let estate_text = estate_answer["result"]["instructions"].as_str().expect("instructions").to_string();
+    assert!(estate_text.contains("search_all FIRST") && estate_text.ends_with("run_probe runs one and waits for it."), "{estate_text}");
+    assert!(!estate_text.contains("ANSWERING A QUESTION FROM WAREHOUSE DATA"), "{estate_text}");
+    assert!(!estate_text.contains("Writing SQL for a business question"), "{estate_text}");
+
+    let (_, every) = HttpSession::open(&url, "caller-c").await;
+    let every = every["result"]["instructions"].as_str().expect("instructions").to_string();
+    assert!(every.contains("Writing SQL for a business question") && every.contains("search_all FIRST"), "{every}");
+    assert!(data.len() * 2 < every.len(), "data mode is given {} of {} characters", data.len(), every.len());
+}
+
 // ---- The server over stdio --------------------------------------------------------------------------
 
 /// A client's end of a stdio session: one JSON-RPC message per line, each way.
@@ -729,6 +761,92 @@ async fn a_stdio_session_names_no_mode_and_lists_every_tool() {
 
     let (ended, _) = session.call("end_data_mode", json!({})).await;
     assert_eq!(serde_json::from_str::<Value>(&ended).expect("json")["mode"], json!("estate"));
+}
+
+/// A stdio server registered in data mode for an editor (`--mode data`) lists data mode's tools and the setup tools
+/// it signs in with, never a switch: its client may not refresh its list, so it stays in its mode, and says which
+/// registration answers a question about the estate. Its instructions open with what the registration means.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stdio_server_registered_in_data_mode_lists_its_tools_and_stays_in_it() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes")
+        .registered_in(Mode::Data)
+        .expect("a stdio server registers in a mode");
+    let (mut session, initialized) = open_stdio(server).await;
+
+    let instructions = initialized["result"]["instructions"].as_str().expect("instructions");
+    assert!(instructions.starts_with("SQLFlow MCP server.\n\nDATA MODE, BEFORE ANYTHING ELSE"), "{instructions}");
+    assert!(instructions.contains("login (device flow)") && instructions.contains("`grounding`"), "{instructions}");
+    assert!(!instructions.contains("MODES AND ROUTING") && !instructions.contains("run_probe"), "{instructions}");
+
+    let mut listed = tool_names(&session.request("tools/list", json!({})).await);
+    listed.sort();
+    let mut expected: Vec<String> = SqlFlowMcp::tool_names()
+        .into_iter()
+        .filter(|name| modes::lists_registered(Mode::Data, name))
+        .collect();
+    expected.sort();
+    assert_eq!(listed, expected);
+    for tool in ["find_similar_questions", "prepare_query", "describe_semantic_table", "get_mode", "login", "check_auth_status"] {
+        assert!(listed.contains(&tool.to_string()), "{tool}: {listed:?}");
+    }
+    for tool in ["start_data_mode", "end_data_mode", "list_runs", "list_probes"] {
+        assert!(!listed.contains(&tool.to_string()), "{tool}: {listed:?}");
+    }
+
+    // An estate tool is refused with the registration that answers it; a switch is answered but does not switch.
+    let (refused, is_error) = session.call("list_runs", json!({})).await;
+    assert!(is_error && refused.contains("registered in data mode") && refused.contains("estate registration"), "{refused}");
+    let (ended, is_error) = session.call("end_data_mode", json!({})).await;
+    let ended: Value = serde_json::from_str(&ended).expect("json");
+    assert!(!is_error && ended["switched"] == json!(false) && ended["mode"] == json!("data"), "{ended}");
+    let (mode, _) = session.call("get_mode", json!({})).await;
+    let mode: Value = serde_json::from_str(&mode).expect("json");
+    assert_eq!(mode["mode"], json!("data"), "{mode}");
+    assert_eq!(mode["listsEveryTool"], json!(false), "{mode}");
+    assert!(mode["setBy"].as_str().unwrap_or_default().contains("--mode data"), "{mode}");
+    assert!(!session.notifications.contains(&"notifications/tools/list_changed".to_string()), "{:?}", session.notifications);
+}
+
+/// Registered in estate mode, the server lists the estate's tools and a module's, and none that only data mode needs.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_stdio_server_registered_in_estate_mode_reads_no_rows() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes")
+        .registered_in(Mode::Estate)
+        .expect("a stdio server registers in a mode");
+    let (mut session, initialized) = open_stdio(server).await;
+
+    let instructions = initialized["result"]["instructions"].as_str().expect("instructions");
+    assert!(instructions.starts_with("SQLFlow MCP server.\n\nESTATE MODE, BEFORE ANYTHING ELSE"), "{instructions}");
+    assert!(instructions.ends_with("run_probe runs one and waits for it."), "{instructions}");
+    let listed = tool_names(&session.request("tools/list", json!({})).await);
+    for tool in ["list_runs", "list_probes", "login", "get_mode", "describe_semantic_table"] {
+        assert!(listed.contains(&tool.to_string()), "{tool}: {listed:?}");
+    }
+    for tool in ["find_similar_questions", "run_query", "start_data_mode", "end_data_mode"] {
+        assert!(!listed.contains(&tool.to_string()), "{tool}: {listed:?}");
+    }
+    let (refused, is_error) = session.call("run_query", json!({ "planId": "p-1" })).await;
+    assert!(is_error && refused.contains("data registration"), "{refused}");
+}
+
+/// A host that offers no data mode has no mode to register in.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_host_without_data_mode_refuses_a_registration_in_one() {
+    let estate = start_control_plane().await;
+    let refused = probe_host()
+        .without_tools(["find_similar_questions"])
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes")
+        .registered_in(Mode::Data)
+        .map(|_| ())
+        .expect_err("no data mode, no registration in one");
+    assert!(refused.to_string().contains("no data mode"), "{refused}");
 }
 
 #[tokio::test(flavor = "multi_thread")]

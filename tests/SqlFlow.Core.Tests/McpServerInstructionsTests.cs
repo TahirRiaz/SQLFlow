@@ -6,9 +6,10 @@ using Xunit;
 namespace SqlFlow.Tests;
 
 /// <summary>
-/// The MCP server's instructions as a gateway reads them: from the server's own initialize answer, whichever way the
-/// server frames it, with the run's bearer, kept a few minutes, and the session the read opened closed again. A server
-/// that cannot be read fails the question with a reason that names the server and never the credential.
+/// The MCP server's instructions as a gateway reads them: from the server's own initialize answer in the run's mode,
+/// whichever way the server frames it, with the run's bearer, each mode's kept a few minutes, and the session the read
+/// opened closed again. A server that cannot be read fails the question with a reason that names the server and never
+/// the credential.
 /// </summary>
 public sealed class McpServerInstructionsTests
 {
@@ -20,12 +21,12 @@ public sealed class McpServerInstructionsTests
         var server = new McpServerStub(_ => McpServerStub.Json(Answer));
         using var instructions = Reader(server, new ManualClock());
 
-        Assert.Equal("SERVER RULES.", await instructions.GetAsync("delegated-token", default));
+        Assert.Equal("SERVER RULES.", await instructions.GetAsync(AssistantMode.Data, "delegated-token", default));
 
         var (method, uri, authorization, _, body) = Assert.Single(server.Received);
         Assert.Equal(HttpMethod.Post, method);
-        // One text for every mode, so the read names none.
-        Assert.Equal("https://mcp.example/mcp?surface=assistant", uri.AbsoluteUri);
+        // The address a data-mode run's session opens at, so the server answers with data mode's instructions.
+        Assert.Equal("https://mcp.example/mcp?surface=assistant&mode=data", uri.AbsoluteUri);
         Assert.Equal("Bearer delegated-token", authorization);
         Assert.Contains("\"method\":\"initialize\"", body, StringComparison.Ordinal);
     }
@@ -41,7 +42,7 @@ public sealed class McpServerInstructionsTests
                 session: "session-7"));
         using var instructions = Reader(server, new ManualClock());
 
-        Assert.Equal("SERVER RULES.", await instructions.GetAsync("delegated-token", default));
+        Assert.Equal("SERVER RULES.", await instructions.GetAsync(AssistantMode.Estate, "delegated-token", default));
 
         Assert.Equal(2, server.Received.Count);
         var closed = server.Received[1];
@@ -62,12 +63,36 @@ public sealed class McpServerInstructionsTests
         var clock = new ManualClock();
         using var instructions = Reader(server, clock);
 
-        Assert.Equal("SERVER RULES 1.", await instructions.GetAsync("a", default));
+        Assert.Equal("SERVER RULES 1.", await instructions.GetAsync(AssistantMode.Estate, "a", default));
         clock.Advance(McpServerInstructions.CacheFor - TimeSpan.FromSeconds(1));
-        Assert.Equal("SERVER RULES 1.", await instructions.GetAsync("b", default));
+        Assert.Equal("SERVER RULES 1.", await instructions.GetAsync(AssistantMode.Estate, "b", default));
         clock.Advance(TimeSpan.FromSeconds(2));
-        Assert.Equal("SERVER RULES 2.", await instructions.GetAsync("c", default));
+        Assert.Equal("SERVER RULES 2.", await instructions.GetAsync(AssistantMode.Estate, "c", default));
         Assert.Equal(2, reads);
+    }
+
+    /// <summary>
+    /// Each mode's instructions are their own: read at that mode's address, and kept apart, so a data question is
+    /// never answered with the estate's rules or the other way round, and each mode is read once per
+    /// <see cref="McpServerInstructions.CacheFor"/>.
+    /// </summary>
+    [Fact]
+    public async Task EachModesInstructions_AreReadAtItsAddress_AndKeptApart()
+    {
+        var server = new McpServerStub(request => McpServerStub.Json(Answer.Replace(
+            "SERVER RULES.",
+            request.RequestUri!.Query.Contains("mode=data", StringComparison.Ordinal) ? "DATA RULES." : "ESTATE RULES.",
+            StringComparison.Ordinal)));
+        using var instructions = Reader(server, new ManualClock());
+
+        Assert.Equal("DATA RULES.", await instructions.GetAsync(AssistantMode.Data, "a", default));
+        Assert.Equal("ESTATE RULES.", await instructions.GetAsync(AssistantMode.Estate, "b", default));
+        Assert.Equal("DATA RULES.", await instructions.GetAsync(AssistantMode.Data, "c", default));
+        Assert.Equal("ESTATE RULES.", await instructions.GetAsync(AssistantMode.Estate, "d", default));
+
+        Assert.Equal(
+            ["https://mcp.example/mcp?surface=assistant&mode=data", "https://mcp.example/mcp?surface=assistant&mode=estate"],
+            server.Received.Select(r => r.Uri.AbsoluteUri));
     }
 
     [Fact]
@@ -76,7 +101,8 @@ public sealed class McpServerInstructionsTests
         var server = new McpServerStub(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized));
         using var instructions = Reader(server, new ManualClock());
 
-        var refused = await Assert.ThrowsAsync<InvalidOperationException>(() => instructions.GetAsync("secret-token", default));
+        var refused = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => instructions.GetAsync(AssistantMode.Estate, "secret-token", default));
 
         Assert.Contains("https://mcp.example/mcp", refused.Message, StringComparison.Ordinal);
         Assert.Contains("401", refused.Message, StringComparison.Ordinal);
@@ -93,7 +119,7 @@ public sealed class McpServerInstructionsTests
         var server = new McpServerStub(_ => McpServerStub.Json(body));
         using var instructions = Reader(server, new ManualClock());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => instructions.GetAsync("bearer", default));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => instructions.GetAsync(AssistantMode.Data, "bearer", default));
     }
 
     private static McpServerInstructions Reader(McpServerStub server, TimeProvider clock)

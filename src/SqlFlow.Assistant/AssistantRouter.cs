@@ -40,7 +40,7 @@ public sealed class AssistantRouter
     /// <summary>The route of a run in <paramref name="mode"/>, read with <paramref name="bearer"/>.</summary>
     public async Task<AssistantRoute> InAsync(AssistantMode mode, string bearer, CancellationToken ct)
     {
-        var server = await _instructions.GetAsync(bearer, ct).ConfigureAwait(false);
+        var server = await _instructions.GetAsync(mode, bearer, ct).ConfigureAwait(false);
         return new AssistantRoute(
             mode, _tools, AssistantInstructions.Compose(server, _settings), _settings.Mcp.AssistantServerUri(mode));
     }

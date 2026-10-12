@@ -96,9 +96,29 @@ Code runs it as a shell command), the person asks in words and the model calls
 `start_data_mode` or `end_data_mode`; `get_mode` says which mode a session is
 in and how it got there. A client that opens a session per message names the mode on
 the address (`?mode=data`, `?mode=estate`) and the session lists only that
-mode's tools; a session that names none lists every tool.
+mode's tools; a session that names none lists every tool. A session is given the
+instructions of its mode at `initialize`, naming only what it lists: a data-mode
+session gets the modes, the rules for a question answered from data and the rules
+every answer follows, a small part of the whole; an estate-mode session everything
+but the data rules. The rule that every stated fact is a value a tool returned is
+stated once there, not in each tool's description.
 
-To write SQL, start from the semantic layer: `get_semantic_layer` (the layer's
+An editor's assistant keeps one session and may not refresh its tools, so it
+lists every tool unless the server is registered in a mode: `sqlflow-mcp --mode
+data` (or `--mode estate`, or `SQLFLOW_MCP_MODE`) lists that mode's tools and the
+sign-in tools, gives that mode's instructions, and stays in the mode: the switch
+tools are not listed, and a call of the other mode's tool says which registration
+answers it. Register the server once per mode
+(`sqlflow-mcp install claude --mode data` prints `claude mcp add sqlflow-data --
+<path> --mode data`) and turn on the one a chat needs; a data-mode registration
+lists about a dozen tools. An unknown argument or mode stops the server with its
+usage.
+
+To write SQL, start from `find_similar_questions`: when no saved answer is
+trusted, its answer's `grounding` carries the semantic layer the question needs
+(the tables, their allowed columns, keys, joins, measures, the examples close to
+the question, and each context's instructions). The layer's own tools find a
+table the grounding does not hold: `get_semantic_layer` (the layer's
 instructions, where its tables live, and its measures), `search_semantic_layer`
 (tables, columns, and measures by name or business synonym), and
 `describe_semantic_table` (one table's allowed columns, key, joins, measures,
