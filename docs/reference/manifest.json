@@ -123,7 +123,10 @@
         "completions",
         "powerbi",
         "pbix",
-        "report specification"
+        "report specification",
+        "ai-context",
+        "approve",
+        "revoke"
       ],
       "cliCommand": "control-plane",
       "related": [
@@ -137,6 +140,7 @@
         "src/SqlFlow.Cli/Remote/RemoteVerbs.cs",
         "src/SqlFlow.Cli/Remote/RemoteVerbs.Estate.cs",
         "src/SqlFlow.Cli/Remote/RemoteVerbs.PowerBi.cs",
+        "src/SqlFlow.Cli/Remote/RemoteVerbs.AiContext.cs",
         "src/SqlFlow.Lineage/Collection/ReportSpecs.cs",
         "src/SqlFlow.Cli/Remote/ControlPlaneClient.cs"
       ]
@@ -1448,6 +1452,8 @@
         "src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs",
         "src/SqlFlow.Catalog/CatalogEntities.cs",
         "src/SqlFlow.Assistant/AssistantSettings.cs",
+        "src/SqlFlow.Assistant/AssistantQuestions.cs",
+        "src/SqlFlow.Assistant/AssistantRouter.cs",
         "src/SqlFlow.Assistant/AssistantInstructions.cs",
         "tools/sqlflow-mcp/src/server.rs",
         "gui/src/features/semantic-layer/SemanticLayerPage.tsx",
@@ -3655,6 +3661,39 @@
       ]
     },
     {
+      "id": "wiki-assistant-tool-sets-by-question",
+      "corpus": "wiki",
+      "path": "decisions/assistant-tool-sets-by-question.md",
+      "title": "The assistant has a tool set per kind of question",
+      "type": "decision",
+      "summary": "Why a message starting with ! gets the semantic layer and the query tools and any other message gets the whole catalog, and why schema stopped being withheld.",
+      "keywords": [
+        "tool set",
+        "business question",
+        "!",
+        "estate question",
+        "schema is not sensitive",
+        "redaction",
+        "assistant surface",
+        "allowed_tools",
+        "AssistantRouter"
+      ],
+      "related": [
+        "wiki-semantic-layer-is-the-allow-list",
+        "wiki-ai-contexts-are-files-an-admin-approves"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Assistant/AssistantQuestions.cs",
+        "src/SqlFlow.Assistant/AssistantRouter.cs",
+        "src/SqlFlow.Assistant/AssistantSettings.cs",
+        "src/SqlFlow.Assistant/AssistantInstructions.cs",
+        "src/SqlFlow.ControlPlane/Api/AssistantScope.cs",
+        "src/SqlFlow.ControlPlane/Api/LineageEndpoints.cs",
+        "src/SqlFlow.ControlPlane/Api/SearchEndpoints.cs",
+        "tests/SqlFlow.Core.Tests/AssistantToolAllowlistTests.cs"
+      ]
+    },
+    {
       "id": "wiki-census-drift",
       "corpus": "wiki",
       "path": "maps/census-drift.md",
@@ -4455,7 +4494,8 @@
       "related": [
         "wiki-design-doc-drift",
         "wiki-powerbi-model-entity-resolution",
-        "wiki-ai-contexts-are-files-an-admin-approves"
+        "wiki-ai-contexts-are-files-an-admin-approves",
+        "wiki-assistant-tool-sets-by-question"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Api/SemanticLayer.cs",

@@ -218,16 +218,17 @@ API reads the result:
 The GUI shows it on the AI context page (`/semantic-layer`, Admin; the old `/column-policies` link redirects
 there).
 
-A column that is not allowed disappears from every surface that could otherwise teach an assistant it exists or
-let it read it:
+The allow-list governs data, not schema. Schema is not sensitive: schema search (`SearchEndpoints.ColumnsQuery`),
+the object's paged column list (`GET /api/v1/lineage/objects/columns`), the object dossier
+(`GET /api/v1/lineage/objects/dossier`, behind `describe_object`), view and procedure bodies, flow YAML, and executed
+statements serve every column to anyone, the chat assistants included. What a column that is not allowed cannot be
+is read:
 
-- **Schema discovery**: the chat assistants' only schema readers are the semantic layer tools
-  (`get_semantic_layer`, `search_semantic_layer`, `list_semantic_tables`, `describe_semantic_table`), which serve
-  nothing outside the allow-list, not even inside a key, join, measure, or example query; see
-  [Semantic layer](semantic-layer.md). The raw readers stay filtered too: `search_schema`'s `columns` surface
-  (`SearchEndpoints.ColumnsQuery`), the object's paged column list (`GET /api/v1/lineage/objects/columns`), and the
-  object dossier's column list (`GET /api/v1/lineage/objects/dossier`, behind `describe_object`) show only columns
-  with an `IsAllowed` row.
+- **A business question's schema**: a chat message that starts with `!` is answered with the semantic layer tools
+  (`get_semantic_layer`, `search_semantic_layer`, `list_semantic_tables`, `describe_semantic_table`) as its only schema
+  readers, and they serve nothing outside the allow-list, not even inside a key, join, measure, or example query; see
+  [Semantic layer](semantic-layer.md#mcp-tools). Any other message is answered from the whole catalog and runs no
+  query.
 - **Execution**: `ColumnPolicyGuard.EnsureAllowedAsync` checks every SELECT that reaches `prepare_query`,
   `confirm_question`, or `auto_run_trusted_match` against the allow-list, and refuses one that would read a
   column not on it - refuses it even unnamed, if a `SELECT *` (bare or table-qualified) would expose it. This
@@ -403,9 +404,9 @@ the builder, so a name carrying its own bracket is refused rather than escaped.
 - `compare_baseline` - inventory, schema, or data comparison
 
 The semantic layer tools (`describe_semantic_table` above all) never surface a column outside the allow-list, in
-any field, so composing SQL from what they return cannot name one by accident. They are the chat assistants'
-schema surface; `search_schema`'s `columns` surface and `describe_object`'s column list are filtered the same way for other MCP
-clients.
+any field, so composing SQL from what they return cannot name one by accident. They are a business question's only
+schema surface; the catalog readers (`search_schema`, `describe_object`) list every column, for questions about the
+estate.
 
 ## Composing SQL against these tables
 
@@ -424,10 +425,11 @@ to know that a general-purpose aggregate happens to contain the answer:
 wide answer's worth of context. `describe_object` still returns the whole dossier when a model genuinely
 wants everything at once.
 
-These three tools, and `describe_object`, are not given to the GUI or Slack chat assistants. Those assistants
-compose SQL from `describe_semantic_table`, which serves the same key and the same discovered joins (through
-the same relationship folding), restricted to allow-listed columns and joined by admin-declared relationships;
-see [Semantic layer](semantic-layer.md). The tables below still describe the tools for other MCP clients.
+The GUI and Slack chat assistants give `get_table_key`, `get_table_joins`, and `describe_object` to a question about
+the estate, and `detect_unique_key` to none. A business question (a message starting with `!`) composes SQL from
+`describe_semantic_table` instead, which serves the same key and the same discovered joins (through the same
+relationship folding), restricted to the columns the approved AI contexts open; see
+[Semantic layer](semantic-layer.md#mcp-tools).
 
 The join graph is the part worth understanding. SQLFlow does not rely on declared foreign keys, because a
 warehouse rarely has them. `TSqlLineageExtractor` reads the AND-connected column equalities out of every view

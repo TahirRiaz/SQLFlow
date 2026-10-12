@@ -64,9 +64,9 @@ a change feed that forgets is not a history. They are removed only when their re
 ## Column access policy
 
 `ColumnPolicy` (`CatalogColumnPolicy`) is a default-deny allow-list over individual columns: only a column with
-an `IsAllowed` row is visible on any AI-facing surface (schema search, the object column list, the object
-dossier) or readable through the ad-hoc query guard - a column with no row at all is exactly as blocked as one
-explicitly denied. The same default-deny rule reaches one level up, to the table: a query naming an object the
+an `IsAllowed` row is readable through the ad-hoc query guard, and it is what a business question's schema (the
+semantic layer) is made of - a column with no row at all is exactly as blocked as one explicitly denied. It governs
+data, not schema: schema search, the object column list, and the object dossier list every column. The same default-deny rule reaches one level up, to the table: a query naming an object the
 catalog has no `Object` record for at all (a synonym, or anything else the harvester does not track) has no
 allow-list to check, so it is refused outright rather than passed through unchecked. It is deliberately its own
 table, not a flag on `ObjectColumn`: a `--connect` sync deletes and re-inserts an object's entire `ObjectColumn`

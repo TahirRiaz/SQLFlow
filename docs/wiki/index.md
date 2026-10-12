@@ -90,6 +90,9 @@ to narrow a search to one kind of page.
 - [AI contexts are files an admin approves](decisions/ai-contexts-are-files-an-admin-approves.md) - why the
   layer moved from GUI editing into files that only propose, why an admin approves an exact version, why a file
   denies columns instead of listing them, and why removals apply at once while additions wait.
+- [The assistant has a tool set per kind of question](decisions/assistant-tool-sets-by-question.md) - why a message
+  starting with ! gets the semantic layer and the query tools and any other gets the whole catalog, and why schema
+  stopped being withheld.
 - [A Power BI report travels as its specification](decisions/powerbi-report-specifications.md) - why the
   extractor stayed put while its output moved into committed files and the semantic layer, why uploads are read by
   an isolated service, and the silent model loss on control plane syncs that forced it.

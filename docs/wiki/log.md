@@ -355,3 +355,14 @@ warehouse columns closed, narrowing (removals at once, additions on approval), t
 and question generation moving into the subscriber library. Linked it from
 [the semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md), whose GUI editor sections are
 now history. The surfaces are documented in `flow-ai-context`, `concept-semantic-layer`, and `flow-subscribers`.
+
+## [2026-10-12] ingest | The assistant has a tool set per kind of question
+
+Recorded in [The assistant has a tool set per kind of question](decisions/assistant-tool-sets-by-question.md) why each
+chat message now gets the tool set of its kind, picked by its first character: a `!` message the semantic layer, the
+stored questions and the query tools; any other message the whole catalog and no query. Also why the human's call that
+schema is not sensitive removed the redaction filter and the column filtering of schema search, the object column
+list and the dossier, leaving the column allow-list to govern data alone, and why Slack replies in a business exchange
+carry the command (`!run`, `!save`). Marked the superseded sections of
+[the semantic layer allow-list decision](decisions/semantic-layer-is-the-allow-list.md). The surfaces are documented in
+`concept-semantic-layer`, `concept-data-operations`, `guide-chat-assistant`, and `guide-slack-assistant`.

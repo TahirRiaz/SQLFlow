@@ -46,6 +46,8 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/QuestionExampleEndpoints.cs
   - src/SqlFlow.Catalog/CatalogEntities.cs
   - src/SqlFlow.Assistant/AssistantSettings.cs
+  - src/SqlFlow.Assistant/AssistantQuestions.cs
+  - src/SqlFlow.Assistant/AssistantRouter.cs
   - src/SqlFlow.Assistant/AssistantInstructions.cs
   - tools/sqlflow-mcp/src/server.rs
   - gui/src/features/semantic-layer/SemanticLayerPage.tsx
@@ -65,7 +67,12 @@ A file only proposes; nothing in it is used until an admin approves that exact v
 - Its **open columns** are every column the approved version resolved for it but the ones the file denies. Only open
   columns are ever served, and nothing served names any other column: not a key, a join, a measure, or an example query.
 - A question reaches the layer when the chat message starts with **`!`** (the business-question command; `!cwd` is the
-  same command). Other messages are ordinary questions about the estate.
+  same command). Such a message is answered with the business tool set, whose only schema is the layer; any other
+  message is a question about the estate, answered with the estate tool set, which sees every table and column and
+  runs no query (see [MCP tools](#mcp-tools)).
+- The layer governs data, not schema. Schema is not sensitive: every schema surface (search, an object's column list
+  and dossier, flow YAML, executed statements) serves every column to anyone, the assistant included. What the layer
+  limits is what a query reads.
 
 Approving a context, revoking it, and every sync that narrows it go through one writer (`AiContextMaterializer`),
 which writes the serving tables below with each row marked by its context (`AiContext`). It writes by difference, so a
@@ -156,47 +163,40 @@ as if it were approved, and a table, measure name, or join another context serve
 | `list_semantic_tables` | `GET /api/v1/semantic-layer/tables` |
 | `describe_semantic_table` | `GET /api/v1/semantic-layer/tables/describe` |
 
-On the GUI chat and Slack assistants these are the **only** schema tools (`McpOptions.GuiDefaultTools`,
-`McpOptions.SlackDefaultTools`). The raw schema readers, which see every catalogued column regardless of the layer
-(`list_schemas`, `catalog_tree`, `lineage_objects`, `lineage_object_detail`, `lineage_object_columns`,
-`describe_object`, `search_all`, `search_schema` (its `objects`, `columns`, `definitions`, and `flowColumns` surfaces),
-`pipeline_columns`, `get_table_key`, `get_table_joins`, `detect_unique_key`), are in `McpOptions.ExcludedTools`.
-They remain available to other MCP clients, and the GUI's Catalog pages are unchanged.
+The GUI chat and Slack assistants answer each message with one of two tool sets, picked by its first character
+(`AssistantQuestions.KindOf`, asked once per run by `AssistantRouter`, which both gateways use), each with
+instructions that name only its own tools:
+
+| Message | Tool set | What it gets |
+| --- | --- | --- |
+| Starts with `!` (a business question) | `McpOptions.BusinessDefaultTools` (override with `Mcp:BusinessTools`) | The four semantic layer tools above, `find_similar_questions`, and the query tools: `prepare_query`, `run_query`, `auto_run_trusted_match`, `confirm_question`. Nothing else, so the layer is the only schema it can find |
+| Anything else (a question about the estate) | `McpOptions.GuiDefaultTools` or `McpOptions.SlackDefaultTools` (override with `Mcp:AllowedTools`) | The estate readers (`McpOptions.EstateReadTools`): docs, flows, runs, lineage, schedules, subscribers, insights, search, and the whole schema (`list_schemas`, `catalog_tree`, `describe_object`, `search_all`, `search_schema`, `pipeline_columns`, `get_table_key`, `get_table_joins`, the `lineage_object*` readers). The GUI adds the data-operations checks. No semantic layer tool and no query tool |
+
+So "`!` uses the semantic layer" holds by construction rather than by instruction: a business question has no other
+schema to find, and an estate question has no query to run. A reply in a business exchange starts with `!` too
+("`!run`", "`!save`" in Slack); in the GUI, running and saving are buttons under the answer. `McpOptions.ExcludedTools`
+lists what neither set gets: the tools that start work or author code, `detect_unique_key` (it profiles live rows),
+session plumbing, and the git history readers.
 
 ## The assistant surface
 
-The tool allowlist decides which tools the chat assistants have; the assistant surface decides what the remaining
-tools show them. Operational tools such as `run_statements`, `search` (its `statements` and `flows` surfaces),
-`pipeline_definition`, and `find_similar_questions` return free text (SQL, flow YAML, stored example queries) that
-can name any column, so the open columns are applied to that text too:
+Both chat gateways give their MCP connector `McpOptions.AssistantServerUri`: `Mcp:ServerUrl` with `surface=assistant`
+added to its query. The MCP server reads the query (`request_surface`) and sends `X-SqlFlow-Surface: assistant` on
+every control-plane call of that session (`control_plane.rs`). The caller's bearer still decides what it may do; the
+header only narrows, and the model cannot set or remove it. It narrows data, never schema: every read endpoint
+serves the assistant the same text it serves a person.
 
-- **Marking.** Both chat gateways give their MCP connector `McpOptions.AssistantServerUri`: `Mcp:ServerUrl` with
-  `surface=assistant` added to its query. The MCP server reads the query (`request_surface`) and sends
-  `X-SqlFlow-Surface: assistant` on every control-plane call of that session (`control_plane.rs`). The caller's
-  bearer still decides what it may do; the header only narrows what it is shown, and the model cannot set or remove
-  it. A request without the header, from a person or another MCP client, is served exactly as before.
-- **Text.** `AssistantRedactionFilter`, on the read and operate endpoint groups, re-serializes a successful JSON
-  result for a marked request and withholds every string that contains a column name outside the layer when that
-  column's table is named in the same string or in a string of the same or an enclosing JSON object or array. A
-  withheld string reads `[withheld: names a column outside the semantic layer]`; a problem result's `detail` is
-  withheld the same way. Results that are not a 200 JSON value (streams, files, 201 and 202 responses) pass through
-  unchanged. Matching is by identifier token (bare words, `[bracketed]` and `"quoted"` names), case-insensitive,
-  and errs toward withholding: a column name that is open on one table but closed on another is withheld when
-  the closing table is named nearby.
-- **Tasks.** `POST /api/v1/datasources/tasks` from a marked request checks the task as the SELECT it would read,
-  through `ReadOnlyQueryGuard` and `ColumnPolicyGuard` (`ColumnPolicyGuard.ComposeTaskSelect`), and refuses it with
-  400 `Refused by the column allow-list` otherwise:
+`POST /api/v1/datasources/tasks` from a marked request reads live rows, so it is checked as the SELECT it would read,
+through `ReadOnlyQueryGuard` and `ColumnPolicyGuard` (`ColumnPolicyGuard.ComposeTaskSelect`), and refused with 400
+`Refused by the column allow-list` otherwise:
 
-  | Task | Checked as |
-  | --- | --- |
-  | `duplicateKeys` | `SELECT <columns> FROM <schema>.<object>`; the key columns must be named |
-  | `compareBaseline`, `inventory` mode | Refused: it lists every object of a schema |
-  | `compareBaseline`, `schema` mode | `SELECT * FROM <schema>.<object>` |
-  | `compareBaseline`, `data` mode | `SELECT <keyExpressions>, <compareColumns, or *> FROM <schema>.<object> WHERE <where>` |
-  | Any other operation | Refused: no assistant tool enqueues one |
-
-Object names are not withheld: operational tools still name tables outside the layer (a run's target, a lineage
-step), but never their columns.
+| Task | Checked as |
+| --- | --- |
+| `duplicateKeys` | `SELECT <columns> FROM <schema>.<object>`; the key columns must be named |
+| `compareBaseline`, `inventory` mode | Refused: it lists every object of a schema |
+| `compareBaseline`, `schema` mode | `SELECT * FROM <schema>.<object>` |
+| `compareBaseline`, `data` mode | `SELECT <keyExpressions>, <compareColumns, or *> FROM <schema>.<object> WHERE <where>` |
+| Any other operation | Refused: no assistant tool enqueues one |
 
 ## GUI
 

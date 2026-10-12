@@ -36,6 +36,7 @@ related:
   - wiki-design-doc-drift
   - wiki-powerbi-model-entity-resolution
   - wiki-ai-contexts-are-files-an-admin-approves
+  - wiki-assistant-tool-sets-by-question
 updated: 2026-10-12
 ---
 
@@ -50,7 +51,10 @@ shape.
 The layer is no longer edited in the GUI: since 2026-10-12 it is written from AI context files an admin approves,
 and [AI contexts are files an admin approves](ai-contexts-are-files-an-admin-approves.md) records why, including how
 those contexts avoid what named contexts were rejected for below. What this page says about what the layer serves
-still holds; where it describes the GUI editor, it is history.
+still holds; where it describes the GUI editor, it is history. Its sections on the chat losing the raw schema tools and
+on withholding text that names a column are history too: schema is no longer withheld, and a business question (a
+message starting with `!`) gets its own tool set, as
+[The assistant has a tool set per kind of question](assistant-tool-sets-by-question.md) records.
 
 ## One layer, defined by the allow-list
 

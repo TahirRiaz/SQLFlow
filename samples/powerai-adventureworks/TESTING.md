@@ -84,7 +84,7 @@ the tool result shows the terms actually sent.
 
 ### T06: the report's reads land on real warehouse tables
 - Prompt: `which dashboards read AdventureWorks dbo.FactResellerSales?`
-- Expect: `object_lineage` or `describe_semantic_table` (its `consumers`).
+- Expect: `object_lineage` or `describe_object` (its `subscribers`).
 - Pass: `AdventureWorks_Sales` is a consumer. The object is the `Table` node
   `${env:sqlflow_adventureworks_db}|adventureworks|dbo|factresellersales`, not a name-only `Sales` node.
 
@@ -94,8 +94,8 @@ the tool result shows the terms actually sent.
   as unresolved. It must not invent a warehouse object for it.
 
 ### T08: the Power BI model is served on its warehouse table
-- Prompt: `how does the AdventureWorks report model join FactResellerSales to the other tables?`
-- Expect: `describe_semantic_table` for FactResellerSales.
+- Prompt: `!how does the AdventureWorks report model join FactResellerSales to the other tables?`
+- Expect: `describe_semantic_table` for FactResellerSales (a report's model is served on the semantic layer only).
 - Pass: `reportModels` carries model table `Sales` with its relationships to DimDate (OrderDateKey active,
   DueDateKey and ShipDateKey inactive), DimProduct, DimReseller and DimSalesTerritory, each with M:1
   cardinality.
@@ -103,24 +103,24 @@ the tool result shows the terms actually sent.
   column the report renamed from the warehouse's `SalesAmount`, and a renamed column counts as not
   allowed. The AI context page (GUI, `/semantic-layer`, Tables tab) shows it with that reason.
 
-## D. Semantic layer as the only schema
+## D. The semantic layer, a business question's schema
 
 ### T09: the layer overview
-- Prompt: `what tables can the assistant query?`
-- Expect: `get_semantic_layer` first.
-- Pass: 15 tables, `AdventureWorks.dbo` 6 and `sqlflowcatalogtests.demo` 9. No other tool is used to
-  list schema.
+- Prompt: `which tables can a business question use?`
+- Expect: `get_semantic_layer`.
+- Pass: 15 tables, `AdventureWorks.dbo` 6 and `sqlflowcatalogtests.demo` 9.
 
-### T10: a table outside the allow-list is invisible
-- Prompt: `list the employees in AdventureWorks DimEmployee`
+### T10: a table outside the approved contexts cannot be queried
+- Prompt: `!list the employees in AdventureWorks DimEmployee`
 - Pass: the assistant finds no `DimEmployee` in the semantic layer and says it cannot query it. If it
   tries `prepare_query` anyway, the control plane refuses with
   "Column 'dbo.DimEmployee.FirstName' is not on the allow-list and cannot be read here."
 
 ### T11: an unprefixed business question does NOT hit retrieval
 - Prompt: `what are reseller sales by region?`
-- Pass: `search_semantic_layer` / `describe_semantic_table` are used. `find_similar_questions` is NOT
-  called, because the message does not start with `!`.
+- Pass: `find_similar_questions` is NOT called and no query runs, because the message does not start with
+  `!`. The question is answered from the catalog (`search_all`, `describe_object`), which lists every
+  column, and the answer says to ask again starting with `!` for the figures.
 
 ## E. Question retrieval (`!`)
 
@@ -207,8 +207,8 @@ the tool description, not of the search.
 
 ### T30: registered objects carry their scripts and keys, and nothing else from the database
 - Prompt: `show me what the catalog knows about AdventureWorks dbo.FactResellerSales and dbo.vDMPrep`
-- Expect: `describe_semantic_table` for FactResellerSales (allowed); `vDMPrep` is not in the semantic layer, so
-  the assistant says it cannot describe it.
+- Expect: `describe_object` for both: schema is not sensitive, so the catalog describes `vDMPrep` too,
+  although it is in no AI context.
 - Pass: FactResellerSales has key `SalesOrderNumber, SalesOrderLineNumber` and its columns. The catalog (GUI
   Catalog page, or `SELECT Kind, KeyColumns, Script, Definition FROM catalog.[Object]`) holds a
   `CREATE TABLE [dbo].[FactResellerSales]` script for the table and the stored definition for the view
