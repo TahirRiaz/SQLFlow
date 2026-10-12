@@ -20,49 +20,11 @@ import { ComboBoxField } from "../../components/ComboBoxField";
 import { isApiError } from "../../api/client";
 import { datasourceApi, questionExampleApi } from "../../api/endpoints";
 import type { ConfirmQuestionRequest, ConfirmedQuestion, Datasource, QuestionConfirmationOutcome } from "../../api/types";
+import { MAX_QUESTION_LENGTH, extractSqlBlocks, firstLine, messageText, normalizeQuestion, shortLabel } from "./answerSql";
 
 // Monaco is a large chunk the chat route does not otherwise pull in, and correcting a query is the
 // rare path; it loads when someone actually opens the editor, not when a thread renders.
 const CodeView = lazy(() => import("../../components/CodeView").then((m) => ({ default: m.CodeView })));
-
-/** The longest question the store accepts, matching the column and the endpoint's own limit, so an
- * over-long question is caught before a round trip rather than coming back a 400. */
-const MAX_QUESTION_LENGTH = 1000;
-
-/** A fenced block the answer marked as SQL. Only `sql`-tagged fences count: an untagged fence is as
- * likely to be YAML, a path, or a table of results, and storing one of those as a confirmed example
- * would poison the store with something no future question should ever be answered with. */
-const SQL_FENCE = /```sql\r?\n([\s\S]*?)```/gi;
-
-function extractSqlBlocks(text: string): string[] {
-  const blocks: string[] = [];
-  for (const match of text.matchAll(SQL_FENCE)) {
-    const sql = match[1].trim();
-    if (sql.length > 0) {
-      blocks.push(sql);
-    }
-  }
-  return blocks;
-}
-
-/** The first non-blank line of a query, which is what tells one block apart from another in a picker. */
-function firstLine(sql: string): string {
-  return sql.split("\n").find((candidate) => candidate.trim().length > 0)?.trim() ?? sql;
-}
-
-/** The same line, cut short enough that several fit on one row; the full text rides on the title. */
-function shortLabel(sql: string): string {
-  const line = firstLine(sql);
-  return line.length > 32 ? `${line.slice(0, 32)}...` : line;
-}
-
-/** Flattens a thread message's parts down to its text, which is what the SQL fences live in. */
-function messageText(content: readonly { type: string }[]): string {
-  return content
-    .filter((part): part is { type: "text"; text: string } => part.type === "text")
-    .map((part) => part.text)
-    .join("\n");
-}
 
 /** Which panel the row has open; "idle" is the three buttons, and a decision closes the row for good. */
 type Stage = "idle" | "accepting" | "correcting";
@@ -107,7 +69,7 @@ export function AnswerConfirmation({ enabled }: { enabled: boolean }) {
     const index = messages.findIndex((message) => message.id === messageId);
     for (let i = index - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
-        return messageText(messages[i].content).trim();
+        return normalizeQuestion(messageText(messages[i].content));
       }
     }
     return "";
@@ -134,7 +96,7 @@ export function AnswerConfirmation({ enabled }: { enabled: boolean }) {
 
   const sql = editedSql ?? sqlBlocks[selectedBlock] ?? "";
   const question = editedQuestion ?? askedQuestion;
-  const trimmedQuestion = question.trim();
+  const trimmedQuestion = normalizeQuestion(question);
   const tooLong = trimmedQuestion.length > MAX_QUESTION_LENGTH;
   const ready = status !== "running" && askedQuestion.length > 0 && sqlBlocks.length > 0;
 

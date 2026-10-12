@@ -69,3 +69,19 @@ jobs:
         env:
           SQLFLOW_PBIX_EXTRACT: ${{ github.workspace }}/tools/pbix-extract/build/pbix-extract
         run: dotnet test --no-build -c Release --verbosity normal
+
+  # The chat's answer reading, result charting and report naming are plain GUI modules with suites of their
+  # own, run by Node's test runner on the sources as they are, so the job installs nothing.
+  gui-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Unit test the GUI
+        working-directory: gui
+        run: npm run test:unit

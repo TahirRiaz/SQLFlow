@@ -12,28 +12,7 @@ import { semanticLayerApi } from "../../api/endpoints";
 import type { ExtractedSemanticReport } from "../../api/types";
 import { formatBytes } from "../../lib/time";
 import { announceStored, describeReport, errorText, refreshSemanticLayer, SEMANTIC_ROOT } from "./shared";
-
-const MAX_REPORT_FILE_LENGTH = 260;
-
-/** Why a report name cannot key the report's rows, or null. Mirrors the server's own rule, which has the last word. */
-function reportFileProblem(value: string): string | null {
-  if (value.trim() === "") {
-    return "A report name is required.";
-  }
-  if (value !== value.trim()) {
-    return "The name may not start or end with a space.";
-  }
-  if (value.length > MAX_REPORT_FILE_LENGTH) {
-    return `The name is longer than ${MAX_REPORT_FILE_LENGTH} characters.`;
-  }
-  if (/[#\\\u0000-\u001f]/.test(value)) {
-    return "The name may not contain '#' or a backslash.";
-  }
-  if (value.startsWith("/") || value.split("/").some((part) => part === "" || part === "." || part === "..")) {
-    return "The name must be a relative path with no empty, '.' or '..' parts.";
-  }
-  return null;
-}
+import { reportFileProblem } from "./reportFile";
 
 const isSpecFile = (name: string) => /\.ya?ml$/i.test(name);
 

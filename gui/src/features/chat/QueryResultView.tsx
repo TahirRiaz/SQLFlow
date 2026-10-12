@@ -16,39 +16,13 @@ import { EmptyState } from "@/components/EmptyState";
 import { KpiCard } from "@/components/KpiCard";
 import { useThemeMode } from "@/theme/ThemeModeContext";
 import type { QueryResultColumn } from "../../api/types";
+import {
+  barData, classify, columnKey, columnLabel, linePoints, planChart, scaleSpread,
+} from "./queryResultPlan";
 
 interface QueryResultViewProps {
   columns: QueryResultColumn[];
   rows: (string | null)[][];
-}
-
-type ColumnKind = "numeric" | "date" | "text";
-
-/** Type-name allowlists, matched after stripping a length/precision suffix ("decimal(10,2)" -> "decimal") so
- * the same check works across the provider families DataOps reaches (SQL Server, MySQL, PostgreSQL, Oracle). */
-const NUMERIC_TYPES = new Set([
-  "int", "bigint", "smallint", "tinyint", "bit", "decimal", "numeric", "float", "real", "money", "smallmoney",
-  "double", "double precision", "integer", "serial", "bigserial", "smallserial", "number", "binary_float",
-  "binary_double",
-]);
-const DATE_TYPES = new Set([
-  "date", "datetime", "datetime2", "datetimeoffset", "smalldatetime", "time", "timestamp",
-  "timestamp with time zone", "timestamp without time zone",
-]);
-
-function classify(dataType: string): ColumnKind {
-  const bare = dataType.replace(/\(.*\)/, "").trim().toLowerCase();
-  if (NUMERIC_TYPES.has(bare)) return "numeric";
-  if (DATE_TYPES.has(bare)) return "date";
-  return "text";
-}
-
-/** A row value coerced to a finite number, or null when it is missing or not numeric text. Chart series skip
- * a null point rather than plotting a false zero. */
-function toNumber(value: string | null): number | null {
-  if (value === null || value.trim() === "") return null;
-  const n = Number(value);
-  return Number.isFinite(n) ? n : null;
 }
 
 /** The categorical bar chart caps how many rows it plots (matching the app's own "top 10" convention in
@@ -109,42 +83,16 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
 
   const kinds = useMemo(() => columns.map((c) => classify(c.dataType)), [columns]);
 
-  const plan = useMemo(() => {
-    if (rows.length === 0) {
-      return { form: "empty" as const };
-    }
-
-    const numericIdx = kinds.flatMap((k, i) => (k === "numeric" ? [i] : []));
-    const dateIdx = kinds.flatMap((k, i) => (k === "date" ? [i] : []));
-    const textIdx = kinds.flatMap((k, i) => (k === "text" ? [i] : []));
-
-    // A single row is a headline, not a trend: one or a few numbers deserve stat tiles, per the dataviz
-    // skill's "the answer is sometimes not a chart" guidance.
-    if (rows.length === 1 && numericIdx.length >= 1 && numericIdx.length <= 4) {
-      return { form: "stat" as const, numericIdx };
-    }
-
-    // Exactly one date/time column plus 1-4 numeric columns, multiple rows: change over time.
-    if (dateIdx.length === 1 && numericIdx.length >= 1 && numericIdx.length <= 4 && rows.length > 1) {
-      return { form: "line" as const, dateIdx: dateIdx[0], numericIdx };
-    }
-
-    // Exactly one text/categorical column plus exactly one numeric column: magnitude by category.
-    if (textIdx.length === 1 && numericIdx.length === 1 && rows.length > 1) {
-      return { form: "bar" as const, textIdx: textIdx[0], numericIdx: numericIdx[0] };
-    }
-
-    return { form: "table" as const };
-  }, [rows, kinds]);
+  const plan = useMemo(() => planChart(kinds, rows.length), [rows.length, kinds]);
 
   // DataTable keys rows by a value derived from the row itself; a query result has no natural key, so each
   // row is tagged with its own position once, up front.
   const indexedRows = useMemo(() => rows.map((row, index) => ({ row, index })), [rows]);
 
   const tableColumns = useMemo<Column<{ row: (string | null)[]; index: number }>[]>(
-    () => columns.map((c, i) => ({
-      id: c.name,
-      header: c.name,
+    () => columns.map((_, i) => ({
+      id: columnKey(i),
+      header: columnLabel(columns, i),
       render: ({ row }) => (
         <span className={row[i] === null ? "text-muted-foreground italic" : "font-mono text-xs"}>
           {formatValue(row[i])}
@@ -172,7 +120,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
     return (
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="query-result-stat">
         {plan.numericIdx.map((i) => (
-          <KpiCard key={columns[i].name} label={columns[i].name} value={formatStatValue(rows[0][i])} />
+          <KpiCard key={columnKey(i)} label={columnLabel(columns, i)} value={formatStatValue(rows[0][i])} />
         ))}
       </div>
     );
@@ -207,10 +155,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
 
   if (plan.form === "bar") {
     const { textIdx, numericIdx } = plan;
-    const data = rows.slice(0, MAX_CHART_CATEGORIES).map((row) => ({
-      category: row[textIdx] ?? "(null)",
-      value: toNumber(row[numericIdx]) ?? 0,
-    }));
+    const data = barData(rows, textIdx, numericIdx, MAX_CHART_CATEGORIES);
     const truncated = rows.length > MAX_CHART_CATEGORIES;
     return (
       <div className="flex flex-col gap-2">
@@ -246,7 +191,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
                 tickLine={false}
               />
               <Tooltip cursor={{ fill: ink.cursor }} content={<ResultTooltip />} />
-              <Bar dataKey="value" name={columns[numericIdx].name} fill={ink.series[0]} radius={[0, 4, 4, 0]} maxBarSize={20} isAnimationActive={false} />
+              <Bar dataKey="value" name={columnLabel(columns, numericIdx)} fill={ink.series[0]} radius={[0, 4, 4, 0]} maxBarSize={20} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -257,32 +202,23 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
 
   // plan.form === "line"
   const { dateIdx, numericIdx } = plan;
-  const sorted = [...rows].sort((a, b) => (a[dateIdx] ?? "").localeCompare(b[dateIdx] ?? ""));
-  const data = sorted.map((row) => {
-    // Truncated to the date portion: a `date`/`smalldatetime` column round-trips through the query
-    // result as a full ISO timestamp (".../...T00:00:00.0000000"), which is unreadable as an axis
-    // tick or a tooltip label for a series that never carries a time-of-day component.
-    const point: Record<string, string | number | null> = { date: (row[dateIdx] ?? "").slice(0, 10) };
-    numericIdx.forEach((i) => { point[columns[i].name] = toNumber(row[i]); });
-    return point;
-  });
+  // Labelled as short as the series allows: a date alone when every value falls on midnight (a `date` round-trips
+  // as a full ISO timestamp), a time of day when any value carries one.
+  const data = linePoints(rows, dateIdx, columns[dateIdx].dataType, numericIdx);
 
   // One axis, never two: dataviz's #1 rule. When two series' magnitudes are far apart (a revenue
   // total next to an order count, say), sharing an axis does not compromise readability, it destroys
   // it - the smaller series flattens to the axis floor. The skill's prescribed fix for "two measures
   // of different scale" is small multiples, not a second y-axis, so a wide spread splits into one
   // chart per series instead of one shared overlay.
-  const seriesMax = numericIdx.map((i) => Math.max(0, ...data.map((p) => Math.abs(Number(p[columns[i].name]) || 0))));
-  const positiveMax = seriesMax.filter((m) => m > 0);
-  const scaleSpread = positiveMax.length > 1 ? Math.max(...positiveMax) / Math.min(...positiveMax) : 1;
-  const asSmallMultiples = numericIdx.length > 1 && scaleSpread > 5;
+  const asSmallMultiples = numericIdx.length > 1 && scaleSpread(data, numericIdx.map(columnKey)) > 5;
 
   const renderOneLine = (seriesIdx: number, colorIndex: number, height: number, showAxisLabel: boolean) => (
-    <Card key={columns[seriesIdx].name} className="gap-0 rounded-lg p-3" style={{ height }}>
+    <Card key={columnKey(seriesIdx)} className="gap-0 rounded-lg p-3" style={{ height }}>
       {showAxisLabel && (
         <div className="mb-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="size-2.5 rounded-sm" style={{ background: ink.series[colorIndex] }} aria-hidden />
-          {columns[seriesIdx].name}
+          {columnLabel(columns, seriesIdx)}
         </div>
       )}
       <ResponsiveContainer width="100%" height="100%">
@@ -292,8 +228,8 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
           <YAxis stroke={ink.axis} tick={{ fontSize: 11 }} width={52} tickFormatter={(value: number) => numberFormatter.format(value)} />
           <Tooltip content={<ResultTooltip />} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
           <Line
-            dataKey={columns[seriesIdx].name}
-            name={columns[seriesIdx].name}
+            dataKey={columnKey(seriesIdx)}
+            name={columnLabel(columns, seriesIdx)}
             stroke={ink.series[colorIndex]}
             strokeWidth={2}
             dot={data.length <= 30}
@@ -323,9 +259,9 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
           ? (
             <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
               {numericIdx.map((i, seriesIndex) => (
-                <span key={columns[i].name} className="inline-flex items-center gap-1.5">
+                <span key={columnKey(i)} className="inline-flex items-center gap-1.5">
                   <span className="size-2.5 rounded-sm" style={{ background: ink.series[seriesIndex] }} aria-hidden />
-                  {columns[i].name}
+                  {columnLabel(columns, i)}
                 </span>
               ))}
             </div>
@@ -342,9 +278,9 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
             <Tooltip content={<ResultTooltip />} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
             {numericIdx.map((i, seriesIndex) => (
               <Line
-                key={columns[i].name}
-                dataKey={columns[i].name}
-                name={columns[i].name}
+                key={columnKey(i)}
+                dataKey={columnKey(i)}
+                name={columnLabel(columns, i)}
                 stroke={ink.series[seriesIndex]}
                 strokeWidth={2}
                 dot={data.length <= 30}

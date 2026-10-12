@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "composite": true,
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "skipLibCheck": true,
+    "outDir": ".tsbuild/unit",
+    "emitDeclarationOnly": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "types": ["node"]
+  },
+  "include": [
+    "unit/**/*.ts",
+    "src/features/chat/answerSql.ts",
+    "src/features/chat/queryResultPlan.ts",
+    "src/features/semantic-layer/reportFile.ts"
+  ]
+}
