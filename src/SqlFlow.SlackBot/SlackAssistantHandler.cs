@@ -41,8 +41,15 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
     /// Authorization header because every such URL requires it (the files:read scope).</summary>
     private readonly HttpClient _http;
 
-    [GeneratedRegex("<@[A-Z0-9]+>")]
+    /// <summary>A user mention as Slack writes it in a message's text: <c>&lt;@U123&gt;</c>, or with the name it was
+    /// written under, <c>&lt;@U123|sqlflow&gt;</c>.</summary>
+    [GeneratedRegex(@"<@[A-Z0-9]+(?:\|[^>]*)?>")]
     private static partial Regex MentionRegex();
+
+    /// <summary>A message's text as the assistant reads it: without the mentions in it (the bot's, which a channel
+    /// question opens with, among them), trimmed. A command then leads the text, so <c>&lt;@bot&gt; !data ...</c> is
+    /// read as the data command it is.</summary>
+    internal static string WithoutMentions(string? text) => MentionRegex().Replace(text ?? string.Empty, string.Empty).Trim();
 
     public SlackAssistantHandler(
         ISlackApiClient slack,
@@ -127,7 +134,7 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
         {
             await AcknowledgeAsync(channel, ts).ConfigureAwait(false);
 
-            var question = MentionRegex().Replace(text ?? "", "").Trim();
+            var question = WithoutMentions(text);
             var images = await DownloadImagesAsync(files).ConfigureAwait(false);
             if (question.Length == 0 && images.Count == 0)
             {
@@ -160,7 +167,7 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
                 McpBearer = _options.SqlFlow.AccessToken,
             }, timeout.Token).ConfigureAwait(false);
 
-            // The reply carries the mode the answer ended in, so the thread's next question starts from it.
+            // The reply carries the mode the answer was given in, so the thread's next question starts from it.
             await PostAsync(channel, threadTs, SlackMrkdwn.FromMarkdown(answer.Text), SlackAssistantMode.For(answer.Mode))
                 .ConfigureAwait(false);
         }
@@ -208,7 +215,7 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
     /// conversation after a restart. A top-level mention is answered on its own (no thread, so no prior
     /// turns): the bot only takes surrounding context from a thread it is invoked inside, never from the
     /// broader channel. A follow-up in a thread fetches that thread's replies, the durable transcript,
-    /// with their metadata, which holds the mode each of the bot's answers ended in.
+    /// with their metadata, which holds the mode each of the bot's answers was given in.
     /// </summary>
     private async Task<IReadOnlyList<ConversationTurn>> PriorTurnsAsync(string channel, string ts, string threadTs)
     {
@@ -239,7 +246,7 @@ public sealed partial class SlackAssistantHandler : IEventHandler<AppMention>, I
                 var fromAssistant = m is BotMessage || m.User == self;
                 return new ConversationTurn(
                     fromAssistant,
-                    MentionRegex().Replace(m.Text, "").Trim(),
+                    WithoutMentions(m.Text),
                     fromAssistant ? SlackAssistantMode.Of(m.Metadata) : null);
             })
             .Where(t => t.Text.Length > 0)

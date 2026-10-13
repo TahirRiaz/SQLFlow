@@ -528,31 +528,18 @@ public static class QuestionExampleEndpoints
     internal const int MaxQuestionLength = 1000;
 
     /// <summary>
-    /// A question as it is stored: trimmed, and without the leading business-question command
-    /// (<see cref="AssistantQuestions.Command"/>, one or more of it, then <see cref="AssistantQuestions.CommandWord"/> when
-    /// that word follows it directly and ends there). The GUI's confirmation row sends the message exactly as it was
-    /// typed, while an assistant strips the command before searching, so without this the same question saved from two
-    /// surfaces would be two questions, and the command would count as a matched term in every later search. The word
-    /// must touch the <c>!</c> because it is an ordinary word too: "! data quality by region" is a bare command and a
-    /// question about data quality.
+    /// A question as it is stored: trimmed, and without the leading data command (<see cref="AssistantQuestions.Read"/>:
+    /// one or more <c>!</c>, then <see cref="AssistantQuestions.CommandWord"/> when it touches them and ends there). The
+    /// GUI's confirmation row sends the message exactly as it was typed, while an assistant strips the command before
+    /// searching, so without this the same question saved from two surfaces would be two questions, and the command would
+    /// count as a matched term in every later search. The word must touch the <c>!</c> because it is an ordinary word too:
+    /// "! data quality by region" is a bare command and a question about data quality. A message whose command returns to
+    /// estate mode is no question for the data, and is kept as it was typed.
     /// </summary>
     internal static string NormalizeQuestion(string? question)
     {
         var trimmed = question?.Trim() ?? string.Empty;
-        if (AssistantQuestions.CommandOf(trimmed) != AssistantMode.Data)
-        {
-            return trimmed;
-        }
-
-        var rest = trimmed.TrimStart(AssistantQuestions.Command);
-        var word = AssistantQuestions.CommandWord.Length;
-        if (rest.StartsWith(AssistantQuestions.CommandWord, StringComparison.OrdinalIgnoreCase)
-            && (rest.Length == word || char.IsWhiteSpace(rest[word])))
-        {
-            rest = rest[word..];
-        }
-
-        return rest.TrimStart();
+        return AssistantQuestions.Read(trimmed) is { Mode: AssistantMode.Data } command ? command.Question : trimmed;
     }
 
     /// <summary>Why a trimmed question cannot be stored, or null when it can. Shared by confirming an example and

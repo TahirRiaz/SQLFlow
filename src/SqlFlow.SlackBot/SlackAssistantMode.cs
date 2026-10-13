@@ -5,7 +5,7 @@ using SqlFlow.Assistant;
 namespace SqlFlow.SlackBot;
 
 /// <summary>
-/// The mode an answer ended in, carried on the bot's reply as Slack message metadata, so a thread is its own record of
+/// The mode an answer was given in, carried on the bot's reply as Slack message metadata, so a thread is its own record of
 /// the mode: the next question in it starts from the mode the last answer was in, the same as in the GUI chat, where
 /// the control plane stores it with the message. Metadata is not shown in the thread and holds only the mode's name.
 /// </summary>

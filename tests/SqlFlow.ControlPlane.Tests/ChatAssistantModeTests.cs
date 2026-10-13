@@ -13,16 +13,16 @@ using Xunit;
 namespace SqlFlow.ControlPlane.Tests;
 
 /// <summary>
-/// The GUI chat remembers the mode each answer ended in: the control plane stores it with the answer, and the next
-/// question's earlier turns carry it, so a conversation the assistant switched (the person asked in words, or a
-/// follow-up turned to the estate) starts its next message in the mode the switch left it in. A stopped or failed
-/// answer keeps the mode its run last restarted in.
+/// The GUI chat answers each question in the mode the person's commands give, read before the run, and stores that mode
+/// with the answer, so the next question's earlier turns carry it. Asking in words never moves the conversation, nor does
+/// anything a run reports: a provider claiming another mode (a model that called a switch) changes nothing stored, and a
+/// stopped or failed answer keeps the mode its question was asked in.
 /// </summary>
 [Trait("Category", "Integration")]
 public sealed class ChatAssistantModeTests
 {
     [SkippableFact]
-    public async Task TheModeAnAnswerEndedIn_IsStored_AndStartsTheNextQuestion()
+    public async Task EachAnswer_IsStoredInTheModeThePersonsCommandsGive_AndStartsTheNextQuestion()
     {
         var cs = CatalogTestDb.Require();
         await CatalogDatabase.MigrateAsync(cs);
@@ -47,33 +47,42 @@ public sealed class ChatAssistantModeTests
 
         try
         {
-            // The person asks for data mode in words; the run switches and the answer ends in data mode.
+            // Asking for data mode in words is no command: the question is answered in estate mode, whatever the
+            // provider reports.
             gateway.Next(
-                new AssistantEvent.ToolCall(AssistantRuns.StartDataModeTool, AssistantToolCallStatus.Started),
-                new AssistantEvent.Restarted(AssistantMode.Data),
-                new AssistantEvent.TextDelta("Data mode is on."),
-                new AssistantEvent.Completed("Data mode is on.") { Mode = AssistantMode.Data });
+                new AssistantEvent.ToolCall("start_data_mode", AssistantToolCallStatus.Started),
+                new AssistantEvent.ToolCall("start_data_mode", AssistantToolCallStatus.Failed),
+                new AssistantEvent.TextDelta("Start the message with !data."),
+                new AssistantEvent.Completed("Start the message with !data.") { Mode = AssistantMode.Data });
             var first = await AskAsync(client, token, null, "switch to data mode please");
             Assert.Contains("event: done", first.Body, StringComparison.Ordinal);
+            Assert.DoesNotContain("event: restart", first.Body, StringComparison.Ordinal);
 
-            // The follow-up carries no command, and starts in data mode all the same.
+            // The person's command moves it, and a follow-up without one stays.
             gateway.Next(
                 new AssistantEvent.TextDelta("1,204."),
                 new AssistantEvent.Completed("1,204.") { Mode = AssistantMode.Data });
-            await AskAsync(client, token, first.ConversationId, "how many customers do we have?");
+            await AskAsync(client, token, first.ConversationId, "!data how many customers do we have?");
+            gateway.Next(
+                new AssistantEvent.TextDelta("North 640, South 564."),
+                new AssistantEvent.Completed("North 640, South 564.") { Mode = AssistantMode.Estate });
+            await AskAsync(client, token, first.ConversationId, "and by region?");
             var asked = gateway.Requests[^1];
-            Assert.Equal(
-                [new ConversationTurn(false, "switch to data mode please"), new ConversationTurn(true, "Data mode is on.", AssistantMode.Data)],
-                asked.PriorTurns);
             Assert.Equal(AssistantMode.Data, AssistantQuestions.ModeOf(asked.Question, asked.PriorTurns));
 
-            // An answer that fails part way, after its run restarted in estate mode, keeps that mode with its text.
+            // A follow-up that turns to the estate is still asked in data mode, and an answer that fails part way keeps
+            // that mode with its text.
             gateway.Next(
-                new AssistantEvent.ToolCall(AssistantRuns.EndDataModeTool, AssistantToolCallStatus.Started),
-                new AssistantEvent.Restarted(AssistantMode.Estate),
-                new AssistantEvent.TextDelta("The customers flow loads"));
+                new AssistantEvent.ToolCall("end_data_mode", AssistantToolCallStatus.Started),
+                new AssistantEvent.TextDelta("Send !exit to ask about"));
             var failed = await AskAsync(client, token, first.ConversationId, "which flow loads that table?");
             Assert.Contains("event: error", failed.Body, StringComparison.Ordinal);
+
+            // `!exit` returns, and the next follow-up starts in estate mode.
+            gateway.Next(
+                new AssistantEvent.TextDelta("The customers flow loads it."),
+                new AssistantEvent.Completed("The customers flow loads it.") { Mode = AssistantMode.Data });
+            await AskAsync(client, token, first.ConversationId, "!exit which flow loads the customers table?");
 
             var stored = await db.ChatMessages.AsNoTracking()
                 .Where(m => m.ConversationId == first.ConversationId)
@@ -83,6 +92,10 @@ public sealed class ChatAssistantModeTests
             Assert.Equal(
                 [
                     (ChatMessageRoles.User, (string?)null),
+                    (ChatMessageRoles.Assistant, "estate"),
+                    (ChatMessageRoles.User, null),
+                    (ChatMessageRoles.Assistant, "data"),
+                    (ChatMessageRoles.User, null),
                     (ChatMessageRoles.Assistant, "data"),
                     (ChatMessageRoles.User, null),
                     (ChatMessageRoles.Assistant, "data"),
@@ -90,14 +103,15 @@ public sealed class ChatAssistantModeTests
                     (ChatMessageRoles.Assistant, "estate"),
                 ],
                 stored.Select(m => (m.Role, m.AssistantMode)));
-            Assert.Equal("The customers flow loads", stored[^1].Text);
+            Assert.Equal("Send !exit to ask about", stored[7].Text);
 
             gateway.Next(
                 new AssistantEvent.TextDelta("Nightly."),
-                new AssistantEvent.Completed("Nightly.") { Mode = AssistantMode.Estate });
+                new AssistantEvent.Completed("Nightly.") { Mode = AssistantMode.Data });
             await AskAsync(client, token, first.ConversationId, "and when does it run?");
             asked = gateway.Requests[^1];
             Assert.Equal(AssistantMode.Estate, AssistantQuestions.ModeOf(asked.Question, asked.PriorTurns));
+            Assert.Equal(new ConversationTurn(true, "The customers flow loads it.", AssistantMode.Estate), asked.PriorTurns[^1]);
         }
         finally
         {

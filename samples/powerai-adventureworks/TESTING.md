@@ -133,18 +133,27 @@ the tool result shows the terms actually sent.
 - Pass: the run's MCP address carries `mode=estate`, and the question is answered from the catalog
   (`describe_object_refresh`), with no query tool listed.
 
-### T11c: a forgotten `!exit` is ended by the assistant
+### T11c: a follow-up that turns to the estate stays in data mode
 - Prompt: after T11a, `where does that table get its data from?`
-- Pass: the data-mode run calls `end_data_mode`, the chat drops its first attempt (a `restart` event), and the answer
-  comes from `object_lineage` in estate mode. The answer is stored in estate mode, so the next message without a
-  command starts in estate mode too.
+- Pass: the run's MCP address carries `mode=data`, no estate tool is listed or run, and the answer says in one line
+  that `!exit` returns to questions about the estate. The answer is stored in data mode, so the next message without a
+  command stays in data mode too.
 
-### T11d: switching in words, and asking the mode
+### T11d: asking in words is no command, and asking the mode
 - Prompt: in a new conversation, `switch to data mode`, then `what are reseller sales by region?`, then
   `which mode are you in?`
-- Pass: the first run calls `start_data_mode` and is asked again in data mode (a `restart` event); the second message,
-  with no command, runs with `mode=data` on its MCP address; the third is answered from `get_mode`, which says data
-  mode, named by the client.
+- Pass: all three run with `mode=estate` on their MCP address and no query tool listed; the first two answers say that
+  starting the message with `!data` answers it from the data, and the third is answered from `get_mode`, which says
+  estate mode, set by the client.
+
+### T11e: an editor's session that names no mode switches on the person's command alone
+- Setup: register the server with no `--mode` in an editor whose chat passes a leading `!` through (VS Code).
+- Prompt: `!data what are reseller sales by region?`, then `which flow loads that table?`, then
+  `!exit which flow loads that table?`
+- Pass: the first message's first call is `start_data_mode` with the message as typed, answered with `"switched":
+  true` and the question after the command, which `find_similar_questions` is then called with; on the second, any
+  estate tool the model tries is refused with the `!exit` it needs and the answer says so; the third calls
+  `end_data_mode` with the message first, then answers from the catalog.
 
 ## E. Question retrieval (`!`)
 

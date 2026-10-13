@@ -48,9 +48,10 @@ pub struct SqlFlowMcp {
     /// What the host's modules add to dispatch and to the instructions; empty for SQLFlow's own server.
     modules: Arc<ModuleSet>,
     tool_router: ToolRouter<Self>,
-    /// The mode a switch tool set in this session (`crate::modes`), which from then on is the conversation's mode as
-    /// get_mode reports it and, in a session opened in a named mode, the mode whose tools it lists. One cell per
-    /// session: an HTTP session gets its own from `for_session`.
+    /// The mode the person's last command set in a session that names no mode, relayed by the model with
+    /// start_data_mode or end_data_mode and read by the server from the person's message (`crate::modes`): from then on
+    /// the session's mode, the one it answers calls in. One cell per session: an HTTP session gets its own from
+    /// `for_session`.
     mode: Arc<std::sync::Mutex<Option<Mode>>>,
     /// Whether the host has data mode at all: it does while find_similar_questions, where a data question starts, is
     /// offered. Without it nothing is filtered by mode and the mode tools are not listed.
@@ -63,10 +64,11 @@ pub struct SqlFlowMcp {
 /// Which tools a session lists, and so which instructions it is given.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Listing {
-    /// Every tool: a session that names no mode, or a host without data mode.
+    /// Every tool: a session that names no mode, which the person's commands switch (answering calls only in the mode
+    /// it is in), or any session of a host without data mode.
     Every,
-    /// One mode's tools, in a session its client opened in a mode, which a switch moves to the other mode's.
-    Mode(Mode),
+    /// One mode's tools and no switch, in a session its client opened in that mode from the person's command.
+    Named(Mode),
     /// One mode's tools and the setup tools, in a session of a server registered in that mode, which stays in it.
     Registered(Mode),
 }
@@ -76,7 +78,7 @@ impl Listing {
     fn lists(self, tool: &str) -> bool {
         match self {
             Listing::Every => true,
-            Listing::Mode(mode) => modes::lists(Some(mode), tool),
+            Listing::Named(mode) => modes::named_lists(mode, tool),
             Listing::Registered(mode) => modes::lists_registered(mode, tool),
         }
     }
@@ -85,7 +87,7 @@ impl Listing {
     fn mode(self) -> Option<Mode> {
         match self {
             Listing::Every => None,
-            Listing::Mode(mode) | Listing::Registered(mode) => Some(mode),
+            Listing::Named(mode) | Listing::Registered(mode) => Some(mode),
         }
     }
 }
@@ -197,51 +199,80 @@ impl SqlFlowMcp {
         parts.and_then(|parts| modes::requested(parts.uri.query()))
     }
 
-    /// The mode a switch set in this session, if one did.
+    /// The mode the person's last command set in this session, if one did.
     fn switched_mode(&self) -> Option<Mode> {
         *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
     }
 
-    /// The conversation's mode as this session knows it: the one its registration fixes, else the one a switch set,
-    /// else the one the address named, else estate mode, the default.
+    /// The session's mode: the one its registration fixes, else the one its client named, else the one the person's
+    /// last command set, else estate mode, the default.
     fn current_mode(&self, parts: Option<&http::request::Parts>) -> Mode {
         self.registered
-            .or_else(|| self.switched_mode())
             .or_else(|| self.named_mode(parts))
+            .or_else(|| self.switched_mode())
             .unwrap_or(Mode::Estate)
     }
 
     /// Which tools the session lists: a registered session its mode's, a session opened in a named mode that mode's,
-    /// as a switch moves it, and one opened in none every tool, since its client may not refresh its list.
+    /// and one opened in none every tool, since its client may not refresh its list after a switch.
     fn listing(&self, parts: Option<&http::request::Parts>) -> Listing {
         if let Some(mode) = self.registered {
             return Listing::Registered(mode);
         }
         match self.named_mode(parts) {
-            Some(_) => Listing::Mode(self.current_mode(parts)),
+            Some(mode) => Listing::Named(mode),
             None => Listing::Every,
         }
     }
 
-    /// Switches the conversation to `mode` and tells the client its tools changed, so one that refreshes lists the new
-    /// mode's tools at once. A registered session stays in its mode, and says which registration answers the other.
-    async fn switch_to(&self, mode: Mode, peer: rmcp::Peer<rmcp::RoleServer>) -> String {
-        if let Some(registered) = self.registered {
-            return json_str(&json!({
-                "mode": registered.name(),
-                "switched": false,
-                "note": registered_elsewhere(registered),
-            }));
+    /// Whether the session answers a call of `tool` now. A session in a fixed mode answers the tools it lists and the
+    /// mode tools; a session that switches answers the tools of the mode it is in, whatever it lists, so data and estate
+    /// questions never mix in it; a host without data mode answers every tool it offers.
+    fn answers(&self, listing: Listing, tool: &str) -> bool {
+        match listing {
+            Listing::Every if !self.has_data_mode => true,
+            Listing::Every => modes::answers_in(self.switched_mode().unwrap_or(Mode::Estate), tool),
+            Listing::Named(_) | Listing::Registered(_) => modes::is_mode_tool(tool) || listing.lists(tool),
         }
-        *self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(mode);
-        let notified = match peer.notify_tool_list_changed().await {
-            Ok(()) => true,
-            Err(e) => {
-                tracing::warn!("could not tell the client its tools changed after switching to {} mode: {e}", mode.name());
-                false
-            }
+    }
+
+    /// Moves the session to `target` when the person's `message` carries the command for it (`modes::command_of`),
+    /// and answers with the mode and the question after the command. A session in a fixed mode stays in it: asked for
+    /// the mode it is in, it says so; asked for the other, it refuses with what answers it. A message without the
+    /// command, or with the other mode's, is refused and switches nothing, so the mode follows only the person.
+    fn switch_to(&self, target: Mode, message: &str, parts: Option<&http::request::Parts>) -> Result<String, String> {
+        let fixed = match self.listing(parts) {
+            Listing::Registered(mode) => Some((mode, registered_elsewhere(mode))),
+            Listing::Named(mode) => Some((mode, named_elsewhere(mode))),
+            Listing::Every => None,
         };
-        json_str(&json!({ "mode": mode.name(), "switched": true, "toolsChangedSent": notified }))
+        if let Some((mode, note)) = fixed {
+            return if mode == target {
+                Ok(json_str(&json!({ "mode": mode.name(), "switched": false, "note": note })))
+            } else {
+                Err(note.to_string())
+            };
+        }
+
+        let Some(command) = modes::command_of(message) else {
+            return Err(not_a_command(target));
+        };
+        if command.mode != target {
+            return Err(format!(
+                "Not switched: the person's message asks for {} mode. Call {} with it instead.",
+                command.mode.name(),
+                switch_tool(command.mode)
+            ));
+        }
+        let was = {
+            let mut cell = self.mode.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
+            cell.replace(target).unwrap_or(Mode::Estate)
+        };
+        Ok(json_str(&json!({
+            "mode": target.name(),
+            "switched": was != target,
+            "question": command.question,
+        })))
     }
 
     /// The names of the tools this server defines itself, which a host module's tools may not take.
@@ -301,7 +332,13 @@ mod grounding_tests {
     #[test]
     fn the_grounding_rule_is_in_every_sessions_instructions_and_in_no_description() {
         let server = SqlFlowMcp::new(Arc::new(DocsIndex::load()), Arc::new(ControlPlane::from_env(&crate::control_plane::ClientIdentity::default(), true)));
-        for listing in [Listing::Every, Listing::Mode(Mode::Data), Listing::Mode(Mode::Estate)] {
+        for listing in [
+            Listing::Every,
+            Listing::Named(Mode::Data),
+            Listing::Named(Mode::Estate),
+            Listing::Registered(Mode::Data),
+            Listing::Registered(Mode::Estate),
+        ] {
             let instructions = server.instructions_for(listing);
             assert_eq!(instructions.matches(GROUNDING_RULE).count(), 1, "{listing:?}: {instructions}");
         }
@@ -903,6 +940,14 @@ pub struct DetectUniqueKeyInput {
     pub trust_declared_keys: Option<bool>,
     /// Route the task to a worker pool that can reach the source (optional).
     pub pool: Option<String>,
+}
+
+/// What start_data_mode and end_data_mode are given: the person's message, from which the server reads the command.
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct SwitchModeInput {
+    /// The person's message exactly as they typed it, from its first character, the command included (`!data which
+    /// customers bought a bike`, `!exit`). Never a message you wrote: the mode follows only the person's command.
+    pub message: String,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -1674,8 +1719,8 @@ and fix every finding first."
     #[tool(
         description = "Which mode this conversation is in: data mode, answering questions from warehouse data through the \
             semantic layer, saved answers and the query tools, or estate mode, questions about flows, runs, lineage, the \
-            catalog and the docs. Call it when the person asks which mode they are in. The answer says how the mode was \
-            set and whether this session lists every tool."
+            catalog and the docs. Call it when the person asks which mode they are in. The answer says what set the mode \
+            and whether this session lists every tool."
     )]
     async fn get_mode(
         &self,
@@ -1683,56 +1728,59 @@ and fix every finding first."
         Parameters(_): Parameters<EmptyInput>,
     ) -> String {
         let parts = context.extensions.get::<http::request::Parts>();
-        if let Some(registered) = self.registered {
-            return json_str(&json!({
-                "mode": registered.name(),
-                "setBy": format!("this server's registration (`--mode {}`)", registered.name()),
-                "listsEveryTool": false,
-                "commands": registered_elsewhere(registered),
-            }));
-        }
-        let set_by = if self.switched_mode().is_some() {
-            "a switch in this session (start_data_mode or end_data_mode)"
-        } else if self.named_mode(parts).is_some() {
-            "the client, which opened this session in it"
-        } else {
-            "nothing yet: estate mode is the default"
+        let listing = self.listing(parts);
+        let (set_by, commands) = match listing {
+            Listing::Registered(mode) => {
+                (format!("this server's registration (`--mode {}`)", mode.name()), registered_elsewhere(mode).to_string())
+            }
+            Listing::Named(mode) => (
+                "the client, which read the person's command and opened this session in it".to_string(),
+                named_elsewhere(mode).to_string(),
+            ),
+            Listing::Every => (
+                if self.switched_mode().is_some() {
+                    "the person's last command, relayed with start_data_mode or end_data_mode".to_string()
+                } else {
+                    "nothing yet: estate mode is the default".to_string()
+                },
+                SWITCHED_COMMANDS.to_string(),
+            ),
         };
         json_str(&json!({
             "mode": self.current_mode(parts).name(),
             "setBy": set_by,
-            "listsEveryTool": self.listing(parts) == Listing::Every,
-            "commands": "`!data` (or a bare `!`) starts data mode and `!exit` ends it; start_data_mode and end_data_mode \
-                switch when the person asks in words.",
+            "switches": listing == Listing::Every,
+            "listsEveryTool": listing == Listing::Every,
+            "commands": commands,
         }))
     }
 
     #[tool(
-        description = "Start data mode: answering questions from warehouse data. Call it when the person asks for it, by \
-            `!data` or a bare `!` or in words (\"switch to data mode\"), which is how they ask where a leading `!` does \
-            not reach you: Claude Code runs a `!` message as a shell command. A question's wording never starts it on its \
-            own. In a session opened in estate mode for one message, write nothing more: the client asks again in data mode."
+        description = "Start data mode: answering questions from warehouse data. Call it FIRST, before any other tool, \
+            when the person's message begins with `!data` or a bare `!`, passing their message exactly as they typed it. \
+            The server reads the command there and switches only on it; the answer's `question` is the question after the \
+            command. Never call it for a question's wording, for a request in words, or with a message you wrote."
     )]
     async fn start_data_mode(
         &self,
-        peer: rmcp::Peer<rmcp::RoleServer>,
-        Parameters(_): Parameters<EmptyInput>,
-    ) -> String {
-        self.switch_to(Mode::Data, peer).await
+        context: rmcp::service::RequestContext<rmcp::RoleServer>,
+        Parameters(input): Parameters<SwitchModeInput>,
+    ) -> Result<String, String> {
+        self.switch_to(Mode::Data, &input.message, context.extensions.get::<http::request::Parts>())
     }
 
     #[tool(
-        description = "End data mode and return to questions about the estate. Call it, before writing anything, when the \
-            person's message begins with `!exit` or asks in words to leave data mode, or when a follow-up turns to the \
-            estate (a flow, a run, lineage, a schedule, the docs, how a table is loaded or where it comes from). In a \
-            session opened in data mode for one message, write nothing more: the client asks again in estate mode."
+        description = "End data mode and return to questions about the estate. Call it FIRST, before any other tool, when \
+            the person's message begins with `!exit` or `!estate`, passing their message exactly as they typed it. The \
+            server reads the command there and switches only on it; the answer's `question` is what follows the command. \
+            Never call it because a follow-up turns to the estate, for a request in words, or with a message you wrote."
     )]
     async fn end_data_mode(
         &self,
-        peer: rmcp::Peer<rmcp::RoleServer>,
-        Parameters(_): Parameters<EmptyInput>,
-    ) -> String {
-        self.switch_to(Mode::Estate, peer).await
+        context: rmcp::service::RequestContext<rmcp::RoleServer>,
+        Parameters(input): Parameters<SwitchModeInput>,
+    ) -> Result<String, String> {
+        self.switch_to(Mode::Estate, &input.message, context.extensions.get::<http::request::Parts>())
     }
 
     // ---- Control-plane setup & auth --------------------------------------
@@ -3831,13 +3879,38 @@ pub struct ProposeFileInput {
 
 // --- Server handler --------------------------------------------------------
 
-/// The answer to a call of a tool the session's listing leaves out: what the model has to do instead, so a client
-/// holding another mode's list (one that does not refresh it) is told rather than failing blind.
-fn wrong_mode(tool: &str, listing: Listing) -> String {
+/// The answer to a call of a tool the session does not answer in its mode: what the model has to do instead, so a
+/// client holding another mode's list (or a session listing every tool) is told rather than failing blind.
+fn refused(tool: &str, listing: Listing, mode: Mode) -> String {
     match listing {
         Listing::Registered(mode) => format!("{tool} is not offered here. {}", registered_elsewhere(mode)),
-        Listing::Every => format!("{tool} is not offered by this session."),
-        Listing::Mode(mode) => switch_first(tool, mode),
+        Listing::Named(mode) => match mode {
+            Mode::Data => format!(
+                "{tool} answers questions about the estate, and this conversation is in data mode, which the person's \
+                 command set: data and estate questions are not answered in one mode. Tell them in one line that \
+                 `!exit` returns to questions about the estate, and answer nothing about the estate here."
+            ),
+            Mode::Estate => format!(
+                "{tool} answers a question from warehouse data, and this conversation is in estate mode: only the \
+                 person's `!data` (or a bare `!`) starts data mode. Answer what the metadata can say, and tell them in \
+                 one line that starting the message with `!data` answers it from the data."
+            ),
+        },
+        Listing::Every => match mode {
+            Mode::Data => format!(
+                "{tool} answers questions about the estate, and this session is in data mode. When the person's \
+                 message begins with `!exit` or `!estate`, call {} with that message first, then {tool}. Otherwise do \
+                 not call it: tell them in one line that `!exit` returns to questions about the estate.",
+                modes::END_DATA_MODE
+            ),
+            Mode::Estate => format!(
+                "{tool} answers a question from warehouse data, and this session is in estate mode. When the person's \
+                 message begins with `!data` or `!`, call {} with that message first, then {tool}. Otherwise do not \
+                 call it: answer what the metadata can say, and tell them in one line that starting the message with \
+                 `!data` answers it from the data.",
+                modes::START_DATA_MODE
+            ),
+        },
     }
 }
 
@@ -3857,18 +3930,44 @@ fn registered_elsewhere(mode: Mode) -> &'static str {
     }
 }
 
-/// What to do before calling `tool` in a session whose conversation is in `mode`, the other mode's.
-fn switch_first(tool: &str, mode: Mode) -> String {
+/// What a session its client opened in `mode` says when asked to switch: the client set the mode from the person's
+/// command for this message, and the person's next command is what moves it.
+fn named_elsewhere(mode: Mode) -> &'static str {
     match mode {
-        Mode::Data => format!(
-            "{tool} answers questions about the estate, and this conversation is in data mode. Call {} first, then {tool}.",
-            modes::END_DATA_MODE
-        ),
-        Mode::Estate => format!(
-            "{tool} answers a question from warehouse data, and this conversation is in estate mode: `!data`, a bare `!`, \
-             or the person asking for data mode in words starts it ({}), never the question's wording alone.",
-            modes::START_DATA_MODE
-        ),
+        Mode::Data => {
+            "This conversation is in data mode, which the client set from the person's command for this message. \
+             `!exit` (or `!estate`) at the start of their next message returns to questions about the estate."
+        }
+        Mode::Estate => {
+            "This conversation is in estate mode, which the client set for this message. `!data` (or a bare `!`) at \
+             the start of the person's next message answers it from the data."
+        }
+    }
+}
+
+/// The commands a session that switches moves on, as get_mode states them.
+const SWITCHED_COMMANDS: &str = "`!data` or a bare `!` starts data mode and `!exit` or `!estate` ends it. Pass the \
+    person's message to start_data_mode or end_data_mode, which switch only on the command it begins with.";
+
+/// The tool that moves a session to `mode`.
+fn switch_tool(mode: Mode) -> &'static str {
+    match mode {
+        Mode::Data => modes::START_DATA_MODE,
+        Mode::Estate => modes::END_DATA_MODE,
+    }
+}
+
+/// Why a switch to `target` was refused when the person's message carries no command at all.
+fn not_a_command(target: Mode) -> String {
+    match target {
+        Mode::Data => "Not switched: the person's message does not begin with `!data` or `!`, and only that command \
+            starts data mode. Answer it in estate mode: what the metadata can say, and one line saying that starting the \
+            message with `!data` answers it from the data."
+            .to_string(),
+        Mode::Estate => "Not switched: the person's message does not begin with `!exit` or `!estate`, and only that \
+            command ends data mode. Answer it in data mode; if it is a question about the estate, say in one line that \
+            `!exit` returns to those questions."
+            .to_string(),
     }
 }
 
@@ -4097,13 +4196,11 @@ impl ServerHandler for SqlFlowMcp {
         let bearer = parts.and_then(|parts| bearer_token(&parts.headers));
         let surface = parts.and_then(|parts| request_surface(parts.uri.query()));
         let listing = self.listing(parts);
-        if !modes::is_mode_tool(&request.name)
-            && self.get_tool(&request.name).is_some()
-            && !listing.lists(&request.name)
-        {
-            return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(wrong_mode(
+        if self.get_tool(&request.name).is_some() && !self.answers(listing, &request.name) {
+            return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(refused(
                 &request.name,
                 listing,
+                self.current_mode(parts),
             ))]));
         }
         let call = self.dispatch(request, context);
@@ -4162,7 +4259,7 @@ impl ServerHandler for SqlFlowMcp {
 impl SqlFlowMcp {
     /// The server's answer to `initialize` for a session of `listing`.
     fn info_for(&self, listing: Listing) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().enable_tool_list_changed().build())
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_server_info(rmcp::model::Implementation::new(
                 self.cp.identity().name().to_string(),
                 self.cp.identity().version().to_string(),
@@ -4171,17 +4268,18 @@ impl SqlFlowMcp {
     }
 
     /// The instructions a session of `listing` is given, naming only what it lists. A session of every tool gets the
-    /// whole text. A data-mode session gets the modes, the rules for a question answered from data, and the rules every
-    /// answer follows: no estate tool, no module's section (a module's tools answer questions about the estate), and
-    /// over HTTP no setup, which the caller's bearer already did. An estate-mode session gets everything but the data
-    /// rules. A registered session opens with what its registration means in place of the modes and the commands.
+    /// whole text, opening with the modes and how the person's commands switch them. A data-mode session gets what its
+    /// mode means, the rules for a question answered from data, and the rules every answer follows: no estate tool, no
+    /// module's section (a module's tools answer questions about the estate), and over HTTP no setup, which the caller's
+    /// bearer already did. An estate-mode session gets everything but the data rules. A session in a fixed mode opens
+    /// with what fixed it (its client or its registration) in place of the switches, which it does not offer.
     fn instructions_for(&self, listing: Listing) -> String {
         let introduction = self.modules.introduction().unwrap_or(INTRODUCTION);
         let withheld = self.modules.withheld_note();
         if listing.mode() == Some(Mode::Data) {
             let (opening, setup) = match listing {
                 Listing::Registered(_) => (REGISTERED_DATA, ONLINE_SETUP_STDIO),
-                _ => (MODES, ""),
+                _ => (NAMED_DATA, ""),
             };
             return format!(
                 "{introduction}\n\n{opening}\n\n{setup}{DATA_HEADING}{DATA_QUESTIONS}{GROUNDING_RULE}\n{ANSWER_RULES}\n\n{CLOSING}{withheld}"
@@ -4194,8 +4292,9 @@ impl SqlFlowMcp {
             if self.http_mode || self.modules.withholds("discover_source") { "" } else { DISCOVERY_STDIO };
         let opening = match listing {
             Listing::Registered(_) => format!("{introduction}\n\n{REGISTERED_ESTATE}\n\n"),
-            _ if self.has_data_mode => format!("{introduction}\n\n{MODES}\n\n"),
-            _ => format!("{introduction} "),
+            Listing::Named(_) => format!("{introduction}\n\n{NAMED_ESTATE}\n\n"),
+            Listing::Every if self.has_data_mode => format!("{introduction}\n\n{MODES}\n\n"),
+            Listing::Every => format!("{introduction} "),
         };
         let data = if listing == Listing::Every { DATA_QUESTIONS } else { "" };
         let operate = self.operate_section();
@@ -4222,43 +4321,58 @@ impl SqlFlowMcp {
 /// How SQLFlow's own server introduces itself; a host may replace it (`McpHost::introduced_as`).
 const INTRODUCTION: &str = "SQLFlow MCP server.";
 
-/// The modes and the commands that move between them, first in the instructions while the host has data mode (it
-/// offers find_similar_questions) and the session can switch. A host without it does not get the block, so it is never
-/// told to call a tool it lacks. Every client reads the same block: the GUI chat and the Slack bot read the server's
-/// instructions too.
+/// The modes and the commands that move between them, first in the instructions of a session that switches (one that
+/// names no mode) while the host has data mode (it offers find_similar_questions). A host without it does not get the
+/// block, so it is never told to call a tool it lacks. A session in a fixed mode gets what fixed it instead
+/// (`NAMED_DATA`, `NAMED_ESTATE`, `REGISTERED_DATA`, `REGISTERED_ESTATE`), since it offers no switch.
 const MODES: &str = "\
-MODES AND ROUTING, BEFORE ANYTHING ELSE: a conversation is in one of two modes. Estate mode, the default, answers
-questions about the estate (flows, runs, lineage, schedules, the catalog, the docs) and reads no rows. Data mode
-answers questions from warehouse data through the semantic layer, the stored questions and the query tools. get_mode
-says which mode the conversation is in.
-- A message beginning with `!data` or a bare `!` starts data mode with a question to answer from warehouse data:
-  strip the command and call find_similar_questions FIRST, before any schema lookup, any semantic-layer search, and
-  any word to the person. It returns SQL that already answers the question,
-  confirmed by a human; a `trusted` match with an `exampleId` is then run with auto_run_trusted_match. Do not
-  compose SQL by hand until that path has come up empty.
-- Data mode lasts for the conversation's follow-ups, and they need no `!`: \"and by region?\", another year or a
-  corrected filter is the question again, passed to find_similar_questions as the question it amounts to, written
-  out in full from the conversation, never the reply's few words; \"run it\" or \"save\" acts on the query or the
-  answer just given.
-- A message beginning with `!exit` returns to estate mode: answer the rest of the message, if any, as a question
-  about the estate; with nothing after the command, say in one line that you are back to questions about the estate.
-- When someone forgets `!exit` and a follow-up in data mode turns to the estate (a flow, a run, lineage, a schedule,
-  the docs, how a table is loaded or where it comes from), it is a question about the estate again.
-- Where a leading `!` does not reach you (Claude Code runs it as a shell command), the person switches in words
-  (\"switch to data mode\", \"back to estate mode\"): call start_data_mode or end_data_mode. Call them too when a
-  command or a follow-up moves the conversation, so get_mode stays right.
-- Only `!data`, a bare `!`, or the person asking for data mode starts it. In estate mode a message without it is a
-  question about the estate however much it reads like one the warehouse could answer: answer what the metadata can
-  say, and say that starting the question with `!` answers it from the data.
-- A client that opens a session for each message names the conversation's mode, and the session then lists only
-  that mode's tools and is given only that mode's rules; after start_data_mode or end_data_mode in such a session,
-  write nothing more, since the client asks the question again in the other mode.";
+MODES AND ROUTING, BEFORE ANYTHING ELSE: this session is in one of two modes, and only the person's command moves it.
+Estate mode, the default, answers questions about the estate (flows, runs, lineage, schedules, the catalog, the docs)
+from metadata and reads no rows. Data mode answers questions from warehouse data through the semantic layer, the saved
+answers and the query tools, reading only the columns the approved AI contexts open. The server answers a call only in
+the mode the session is in: a tool of the other mode is refused, never run, so data and estate questions are not mixed.
+get_mode says which mode the session is in.
+- A message beginning with `!data` or a bare `!`: call start_data_mode FIRST, before any other tool and any word to
+  the person, passing their message exactly as they typed it. The server reads the command there; its answer's
+  `question` is the question after the command: call find_similar_questions with it. With no question after the
+  command, say in one line that data mode is on.
+- A message beginning with `!exit` or `!estate`: call end_data_mode FIRST with their message, then answer its
+  `question` as a question about the estate, or, with none, say in one line that you are back to questions about the
+  estate.
+- Any other message stays in the session's mode. In data mode a follow-up needs no `!`: \"and by region?\", another
+  year or a corrected filter is the question again, passed to find_similar_questions as the question it amounts to,
+  written out in full from the conversation, never the reply's few words; \"run it\" or \"save\" acts on the query or
+  the answer just given. A question of the other kind is not answered across modes: in data mode, say in one line that
+  `!exit` returns to questions about the estate; in estate mode, answer what the metadata can say and say in one line
+  that starting the message with `!data` answers it from the data, however much it reads like a question for the data.
+- Call start_data_mode and end_data_mode only for such a message, with only the person's own message, never one you
+  wrote: the server switches only on the command it reads there. Words (\"switch to data mode\") never switch: tell
+  the person the command instead. A refused call's answer says what to do instead; follow it.";
+
+/// What a session its client opened in data mode (`mode=data`) is told in place of the modes: the person's command set
+/// the mode for this message, and nothing in the session moves it.
+const NAMED_DATA: &str = "\
+DATA MODE, BEFORE ANYTHING ELSE: the person's command put this conversation in data mode, and it stays there until
+they send `!exit`. Every message is a question answered from warehouse data, with or without a leading `!data` or `!`
+(strip it), and a follow-up (\"and by region?\", \"run it\", \"save\") carries the question on. This session has no
+tools for questions about the estate (flows, runs, lineage, schedules, the catalog, the docs) and does not mix them in:
+asked one, say in one line that `!exit` returns to questions about the estate, and stop.";
+
+/// What a session its client opened in estate mode (`mode=estate`) is told in place of the modes.
+const NAMED_ESTATE: &str = "\
+ESTATE MODE, BEFORE ANYTHING ELSE: this conversation is in estate mode: questions about the estate (flows, runs,
+lineage, schedules, the catalog, the docs), answered from metadata, reading no rows. A message beginning with `!exit`
+or `!estate` is answered after the command, or, with nothing after it, with one line saying you are back to questions
+about the estate. Only the person's `!data` (or a bare `!`) starts data mode: a question for figures from the data
+without it is answered with what the metadata can say and one line saying that starting the message with `!data`
+answers it from the data.";
 
 /// What a session of a server registered in data mode (`--mode data`) is told in place of the modes: it stays in data
 /// mode, and a question about the estate belongs to the editor's other registration of the server.
 const REGISTERED_DATA: &str = "\
-DATA MODE, BEFORE ANYTHING ELSE: this server is registered in data mode for this editor, and stays in it. Every
-message is a question answered from warehouse data, with or without a leading `!data` or `!`, and a follow-up
+DATA MODE, BEFORE ANYTHING ELSE: this server is registered in data mode for this editor, and stays in it: `!exit` and
+`!estate` do not move it. Every message is a question answered from warehouse data, with or without a leading `!data`
+or `!`, and a follow-up
 (\"and by region?\", \"run it\", \"save\") carries the question on. It has no tools for questions about the estate
 (flows, runs, lineage, schedules, the catalog, the docs): asked one, say in one line that it is asked with this
 server's estate registration, which the person turns on among their editor's tools, and stop.";
@@ -4754,21 +4868,29 @@ mod tests {
         if http { SqlFlowMcp::new_http(Arc::new(DocsIndex::load()), cp) } else { SqlFlowMcp::new(Arc::new(DocsIndex::load()), cp) }
     }
 
-    /// A session is told only about what it lists. A data-mode session's rules are the modes, the data rules and the
-    /// rules every answer follows; an estate-mode session's are everything but the data rules; a session of every tool
-    /// gets both. The data-mode text is what an assistant reads before every data question, so it stays a small part of
-    /// the whole.
+    /// A session is told only about what it lists. A data-mode session's rules are what its mode means, the data rules
+    /// and the rules every answer follows; an estate-mode session's are everything but the data rules; a session of
+    /// every tool gets both and the switches. The data-mode text is what an assistant reads before every data question,
+    /// so it stays a small part of the whole.
     #[test]
     fn each_mode_is_told_only_about_its_own_tools() {
         let flat = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
         let server = bare_server(true);
         let every = server.instructions_for(Listing::Every);
-        let data = server.instructions_for(Listing::Mode(Mode::Data));
-        let estate = server.instructions_for(Listing::Mode(Mode::Estate));
+        let data = server.instructions_for(Listing::Named(Mode::Data));
+        let estate = server.instructions_for(Listing::Named(Mode::Estate));
 
+        assert!(every.contains(MODES) && !every.contains(NAMED_DATA) && !every.contains(NAMED_ESTATE), "{every}");
+        assert!(data.contains(NAMED_DATA) && !data.contains("MODES AND ROUTING"), "{data}");
+        assert!(estate.contains(NAMED_ESTATE) && !estate.contains("MODES AND ROUTING"), "{estate}");
         for text in [&every, &data, &estate] {
-            assert!(text.contains("MODES AND ROUTING, BEFORE ANYTHING ELSE"), "{text}");
             assert!(text.contains(GROUNDING_RULE) && text.contains(ANSWER_RULES), "{text}");
+        }
+        // A session in a fixed mode offers no switch, so its rules never name one.
+        for text in [&data, &estate] {
+            for switch in [modes::START_DATA_MODE, modes::END_DATA_MODE] {
+                assert!(!text.contains(switch), "a fixed-mode session is told about {switch}: {text}");
+            }
         }
         assert!(every.contains(DATA_QUESTIONS) && every.contains(ESTATE_GUIDE), "{every}");
         assert!(data.contains(DATA_QUESTIONS) && data.contains(DATA_HEADING), "{data}");
@@ -4806,19 +4928,27 @@ mod tests {
         // Read as prose: the text wraps wherever its lines end, so runs of white space count as one.
         let flat = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
         let (modes, online) = (flat(MODES), flat(&bare_server(true).instructions_for(Listing::Every)));
-        // The modes and their commands.
+        // The modes, their commands, and that only the person's command moves them.
         for rule in [
-            "Only `!data`, a bare `!`, or the person asking for data mode starts it",
-            "get_mode says which mode the conversation is in",
-            "call start_data_mode or end_data_mode",
-            "Data mode lasts for the conversation's follow-ups, and they need no `!`",
+            "only the person's command moves it",
+            "get_mode says which mode the session is in",
+            "a tool of the other mode is refused, never run",
+            "A message beginning with `!data` or a bare `!`: call start_data_mode FIRST",
+            "passing their message exactly as they typed it",
+            "A message beginning with `!exit` or `!estate`: call end_data_mode FIRST with their message",
+            "In data mode a follow-up needs no `!`",
             "never the reply's few words",
-            "A message beginning with `!exit` returns to estate mode",
-            "When someone forgets `!exit`",
-            "after start_data_mode or end_data_mode in such a session, write nothing more",
+            "A question of the other kind is not answered across modes",
+            "never one you wrote",
+            "Words (\"switch to data mode\") never switch",
         ] {
             assert!(modes.contains(rule), "the modes block lost: {rule}");
         }
+        // The fixed modes say what fixed them and how the person moves on.
+        let (named_data, named_estate) = (flat(NAMED_DATA), flat(NAMED_ESTATE));
+        assert!(named_data.contains("it stays there until they send `!exit`"), "{named_data}");
+        assert!(named_data.contains("does not mix them in"), "{named_data}");
+        assert!(named_estate.contains("Only the person's `!data` (or a bare `!`) starts data mode"), "{named_estate}");
         // Grounding, executed SQL, load modes, refusals: what the control plane's own text used to say.
         for rule in [
             "Grounding: state only values a tool's result contains",
@@ -4834,6 +4964,26 @@ mod tests {
         ] {
             assert!(online.contains(rule), "the online rules lost: {rule}");
         }
+    }
+
+    /// A refused call says what to do instead, in the session's own terms: a switching session names the switch and the
+    /// command it needs, a session in a fixed mode names only the command (it has no switch), a registered one its other
+    /// registration.
+    #[test]
+    fn a_refused_call_says_what_to_do_instead_in_the_sessions_own_terms() {
+        let switched_data = refused("list_runs", Listing::Every, Mode::Data);
+        assert!(switched_data.contains("end_data_mode") && switched_data.contains("`!exit`"), "{switched_data}");
+        let switched_estate = refused("run_query", Listing::Every, Mode::Estate);
+        assert!(switched_estate.contains("start_data_mode") && switched_estate.contains("`!data`"), "{switched_estate}");
+
+        for (tool, mode, command) in [("list_runs", Mode::Data, "`!exit`"), ("run_query", Mode::Estate, "`!data`")] {
+            let named = refused(tool, Listing::Named(mode), mode);
+            assert!(named.contains(command), "{named}");
+            assert!(!named.contains("start_data_mode") && !named.contains("end_data_mode"), "{named}");
+            let registered = refused(tool, Listing::Registered(mode), mode);
+            assert!(registered.contains("registration"), "{registered}");
+        }
+        assert!(not_a_command(Mode::Data).starts_with("Not switched") && not_a_command(Mode::Estate).starts_with("Not switched"));
     }
 
     #[test]

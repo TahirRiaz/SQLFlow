@@ -1,0 +1,375 @@
+{
+  "about": "The commands a person moves a conversation between modes with, read from a message's first characters. One table for every reader: the MCP server's (src/modes.rs, command_of), the control plane's (SqlFlow.Assistant AssistantQuestions) and the GUI's (answerSql.ts). `mode` is the mode the message's command sets, or null for a message without a command; `question` is the text after the command, or null. Leading white space (Unicode White_Space) and the invisible characters U+180E, U+200B, U+200C, U+200D, U+2060 and U+FEFF are skipped; one or more `!` start the command. `data` directly after the `!` is the data command's word, and `exit` or `estate`, directly or after white space, end data mode; a word counts in any case of its ASCII letters only when the message ends after it or white space, an invisible character or one of . , : ; ! ? follows it, so `!exit-interview`, `!database` and `! data quality` are questions for the data. Anything else after the `!` is the question of a bare `!`, which is data mode.",
+  "cases": [
+    {
+      "message": "!data which suppliers ship to norway",
+      "mode": "data",
+      "question": "which suppliers ship to norway"
+    },
+    {
+      "message": "!which suppliers ship to norway",
+      "mode": "data",
+      "question": "which suppliers ship to norway"
+    },
+    {
+      "message": "! how many customers bought a bike",
+      "mode": "data",
+      "question": "how many customers bought a bike"
+    },
+    {
+      "message": "   !  how many customers",
+      "mode": "data",
+      "question": "how many customers"
+    },
+    {
+      "message": "!data",
+      "mode": "data",
+      "question": ""
+    },
+    {
+      "message": "!",
+      "mode": "data",
+      "question": ""
+    },
+    {
+      "message": "!   ",
+      "mode": "data",
+      "question": ""
+    },
+    {
+      "message": "!DATA total orders",
+      "mode": "data",
+      "question": "total orders"
+    },
+    {
+      "message": "!Data: total orders",
+      "mode": "data",
+      "question": "total orders"
+    },
+    {
+      "message": "!data, total orders",
+      "mode": "data",
+      "question": "total orders"
+    },
+    {
+      "message": "!data. ",
+      "mode": "data",
+      "question": ""
+    },
+    {
+      "message": "! data   which regions",
+      "mode": "data",
+      "question": "data   which regions"
+    },
+    {
+      "message": "!data\nwhich regions\nhold open orders?",
+      "mode": "data",
+      "question": "which regions\nhold open orders?"
+    },
+    {
+      "message": "!\ndata\nwhich regions",
+      "mode": "data",
+      "question": "data\nwhich regions"
+    },
+    {
+      "message": "!database growth last month",
+      "mode": "data",
+      "question": "database growth last month"
+    },
+    {
+      "message": "!data-quality flags by region",
+      "mode": "data",
+      "question": "data-quality flags by region"
+    },
+    {
+      "message": "!datum points by store",
+      "mode": "data",
+      "question": "datum points by store"
+    },
+    {
+      "message": "!!",
+      "mode": "data",
+      "question": ""
+    },
+    {
+      "message": "!! urgent: orders per region?",
+      "mode": "data",
+      "question": "urgent: orders per region?"
+    },
+    {
+      "message": "!exit",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "!EXIT which flow loads the orders table?",
+      "mode": "estate",
+      "question": "which flow loads the orders table?"
+    },
+    {
+      "message": "! exit",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "  !Exit   ",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "!exit.",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "!exit!",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "!exit?",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "!exit: which runs failed",
+      "mode": "estate",
+      "question": "which runs failed"
+    },
+    {
+      "message": "!exit; which runs failed",
+      "mode": "estate",
+      "question": "which runs failed"
+    },
+    {
+      "message": "!exit, then which runs failed",
+      "mode": "estate",
+      "question": "then which runs failed"
+    },
+    {
+      "message": "!exit\nwhich runs failed",
+      "mode": "estate",
+      "question": "which runs failed"
+    },
+    {
+      "message": "!estate",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "!Estate which schedules fire tonight?",
+      "mode": "estate",
+      "question": "which schedules fire tonight?"
+    },
+    {
+      "message": "!exiting stock by warehouse",
+      "mode": "data",
+      "question": "exiting stock by warehouse"
+    },
+    {
+      "message": "!exits per region",
+      "mode": "data",
+      "question": "exits per region"
+    },
+    {
+      "message": "!exit-interview counts",
+      "mode": "data",
+      "question": "exit-interview counts"
+    },
+    {
+      "message": "!exit_code counts",
+      "mode": "data",
+      "question": "exit_code counts"
+    },
+    {
+      "message": "!exit/entry counts",
+      "mode": "data",
+      "question": "exit/entry counts"
+    },
+    {
+      "message": "!estates by region",
+      "mode": "data",
+      "question": "estates by region"
+    },
+    {
+      "message": "!ex\u0131t",
+      "mode": "data",
+      "question": "ex\u0131t"
+    },
+    {
+      "message": "!\uff45\uff58\uff49\uff54",
+      "mode": "data",
+      "question": "\uff45\uff58\uff49\uff54"
+    },
+    {
+      "message": "!exit\u00e9",
+      "mode": "data",
+      "question": "exit\u00e9"
+    },
+    {
+      "message": "!exit2 orders",
+      "mode": "data",
+      "question": "exit2 orders"
+    },
+    {
+      "message": "\ufeff!data orders per region",
+      "mode": "data",
+      "question": "orders per region"
+    },
+    {
+      "message": "\u200b!exit",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "\u200b \u2060\u200c\u200d\u180e!\ufeffdata\u200b orders",
+      "mode": "data",
+      "question": "orders"
+    },
+    {
+      "message": "\u3000!data orders",
+      "mode": "data",
+      "question": "orders"
+    },
+    {
+      "message": "\u00a0\u1680\u2002\u2028\u2029\u202f\u205f\u0085\t\r\n\u000b\f!exit",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "!data orders\u3000\u00a0",
+      "mode": "data",
+      "question": "orders"
+    },
+    {
+      "message": "!exit\u00a0which runs",
+      "mode": "estate",
+      "question": "which runs"
+    },
+    {
+      "message": "!!data what is our revenue",
+      "mode": "data",
+      "question": "what is our revenue"
+    },
+    {
+      "message": "!!what is our revenue",
+      "mode": "data",
+      "question": "what is our revenue"
+    },
+    {
+      "message": "!!!exit",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "! data quality by region",
+      "mode": "data",
+      "question": "data quality by region"
+    },
+    {
+      "message": "!data quality by region",
+      "mode": "data",
+      "question": "quality by region"
+    },
+    {
+      "message": "!data!",
+      "mode": "data",
+      "question": ""
+    },
+    {
+      "message": "!datax what",
+      "mode": "data",
+      "question": "datax what"
+    },
+    {
+      "message": "!cwd what is our revenue",
+      "mode": "data",
+      "question": "cwd what is our revenue"
+    },
+    {
+      "message": "! !data which regions",
+      "mode": "data",
+      "question": "!data which regions"
+    },
+    {
+      "message": "!\u200bdata which regions",
+      "mode": "data",
+      "question": "which regions"
+    },
+    {
+      "message": "\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a!exit",
+      "mode": "estate",
+      "question": ""
+    },
+    {
+      "message": "which suppliers ship to norway",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "why did the run fail!",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "data: which regions",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "exit",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "> !data which regions",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "`!data` which regions",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "\"!data which regions\"",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "\uff01data which regions",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "\u00a1data which regions",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "   ",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "\u200b\ufeff",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "what about !data",
+      "mode": null,
+      "question": null
+    },
+    {
+      "message": "what is 5! times 2",
+      "mode": null,
+      "question": null
+    }
+  ]
+}

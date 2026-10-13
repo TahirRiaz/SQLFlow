@@ -89,14 +89,17 @@ tools are not listed there.
 The server's instructions are the assistant's one set of rules: the GUI chat
 and the Slack bot read them from the server's `initialize` answer and add only
 how their surface renders an answer, and an editor's assistant reads the same
-text. A conversation is in estate mode or data mode (`src/modes.rs`): a message
-starting with `!data` or a bare `!` puts it in data mode until `!exit`, so
-follow-ups need no command. Where a leading `!` never reaches the model (Claude
-Code runs it as a shell command), the person asks in words and the model calls
-`start_data_mode` or `end_data_mode`; `get_mode` says which mode a session is
-in and how it got there. A client that opens a session per message names the mode on
-the address (`?mode=data`, `?mode=estate`) and the session lists only that
-mode's tools; a session that names none lists every tool. A session is given the
+text. A conversation is in estate mode or data mode (`src/modes.rs`), and only
+the person's command moves it: a message starting with `!data` or a bare `!` puts
+it in data mode until `!exit` (or `!estate`), so follow-ups need no command, and
+every session refuses a call of a tool its mode does not answer. A client that
+opens a session per message reads the command itself and names the mode on the
+address (`?mode=data`, `?mode=estate`): the session lists only that mode's tools
+and no switch. A session that names none lists every tool and starts in estate
+mode; its model passes the person's message to `start_data_mode` or
+`end_data_mode`, and the server switches only on the command it reads there.
+`get_mode` says which mode a session is in and what set it. The grammar of a
+command is one for every reader, held by `tests/assistant-commands.json`. A session is given the
 instructions of its mode at `initialize`, naming only what it lists: a data-mode
 session gets the modes, the rules for a question answered from data and the rules
 every answer follows, a small part of the whole; an estate-mode session everything
@@ -104,7 +107,8 @@ but the data rules. The rule that every stated fact is a value a tool returned i
 stated once there, not in each tool's description.
 
 An editor's assistant keeps one session and may not refresh its tools, so it
-lists every tool unless the server is registered in a mode: `sqlflow-mcp --mode
+lists every tool unless the server is registered in a mode (Claude Code's
+terminal runs a message starting with `!` as a shell command, so there it is): `sqlflow-mcp --mode
 data` (or `--mode estate`, or `SQLFLOW_MCP_MODE`) lists that mode's tools and the
 sign-in tools, gives that mode's instructions, and stays in the mode: the switch
 tools are not listed, and a call of the other mode's tool says which registration

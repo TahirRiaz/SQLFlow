@@ -2,9 +2,10 @@
 // question a confirmation stores.
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
-  MAX_QUESTION_LENGTH, extractSqlBlocks, firstLine, messageText, normalizeQuestion, shortLabel,
+  MAX_QUESTION_LENGTH, extractSqlBlocks, firstLine, messageText, normalizeQuestion, readCommand, shortLabel,
 } from "../src/features/chat/answerSql.ts";
 
 describe("extractSqlBlocks", () => {
@@ -90,6 +91,11 @@ describe("normalizeQuestion", () => {
     assert.equal(normalizeQuestion("! data quality by region"), "data quality by region");
   });
 
+  it("keeps a message whose command returns to the estate as it was typed", () => {
+    assert.equal(normalizeQuestion("!exit which flow loads the sales table?"), "!exit which flow loads the sales table?");
+    assert.equal(normalizeQuestion("! estate"), "! estate");
+  });
+
   it("leaves a question that does not start with the command as it is, trimmed", () => {
     assert.equal(normalizeQuestion("what about !data"), "what about !data");
     assert.equal(normalizeQuestion("  what is our revenue  "), "what is our revenue");
@@ -99,5 +105,55 @@ describe("normalizeQuestion", () => {
     const atLimit = "q".repeat(MAX_QUESTION_LENGTH);
     assert.equal(normalizeQuestion("!data " + atLimit).length, MAX_QUESTION_LENGTH);
     assert.equal(normalizeQuestion("!" + atLimit).length, MAX_QUESTION_LENGTH);
+  });
+});
+
+describe("readCommand", () => {
+  // One table holds every reader to one grammar: the MCP server's, the control plane's and this one.
+  const table = JSON.parse(
+    readFileSync(new URL("../../tools/sqlflow-mcp/tests/assistant-commands.json", import.meta.url), "utf8"),
+  ) as { cases: { message: string; mode: "data" | "estate" | null; question: string | null }[] };
+
+  it("reads every message in the shared table as the table says", () => {
+    assert.ok(table.cases.length >= 50, `the table covers the grammar, ${table.cases.length} cases`);
+    for (const entry of table.cases) {
+      const read = readCommand(entry.message);
+      assert.equal(read?.mode ?? null, entry.mode, JSON.stringify(entry.message));
+      assert.equal(read?.question ?? null, entry.question, JSON.stringify(entry.message));
+    }
+  });
+
+  it("skips only Unicode white space and the invisible characters before the command", () => {
+    const whiteSpace = [
+      0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+      0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000,
+    ];
+    const invisible = [0x180e, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff];
+    for (let code = 0; code <= 0xffff; code++) {
+      const read = readCommand(String.fromCharCode(code) + "!exit");
+      if (whiteSpace.includes(code) || invisible.includes(code) || code === 0x21) {
+        assert.deepEqual(read, { mode: "estate", question: "" }, `U+${code.toString(16)}`);
+      } else {
+        assert.equal(read, null, `U+${code.toString(16)}`);
+      }
+    }
+  });
+
+  it("ends a command word only at white space or sentence punctuation", () => {
+    const ends = new Set([0x180e, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff, ...".,:;!?"].map((c) => (typeof c === "number" ? c : c.charCodeAt(0))));
+    const whiteSpace = new Set([
+      0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+      0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000,
+    ]);
+    for (const [word, mode] of [["data", "data"], ["exit", "estate"], ["estate", "estate"]] as const) {
+      for (let code = 0; code <= 0xffff; code++) {
+        const c = String.fromCharCode(code);
+        const read = readCommand(`!${word}${c}x`);
+        const expected = whiteSpace.has(code) || ends.has(code)
+          ? { mode, question: "x" }
+          : { mode: "data", question: `${word}${c}x` };
+        assert.deepEqual(read, expected, JSON.stringify(`!${word}${c}x`));
+      }
+    }
   });
 });

@@ -395,3 +395,12 @@ tools and send saved answers only when they match: an editor registers the serve
 session stays in its mode, every session is given its mode's instructions with the grounding rule stated once, saved
 answers are cut by their coverage of the question, and the semantic layer the question needs comes with them when none
 is trusted. The surfaces are documented in `concept-semantic-layer`, `guide-chat-assistant` and the tools README.
+
+## [2026-10-13] ingest | Only the person's command moves a mode
+
+Updated [The MCP server is the assistant's one definition](decisions/the-mcp-server-is-the-assistants-one-definition.md)
+with the human's call for routing that cannot go wrong ("I need 100% reliability in the routing. Its okay to have a
+session dedicated mode."): only `!data`, a bare `!`, `!exit` and `!estate` move a conversation, read by one grammar the
+control plane, the MCP server and the GUI share; every session answers only its mode's tools; the assistant no longer
+switches in words or ends data mode itself, and the run that was asked again in the other mode is gone. The surfaces
+are documented in `guide-chat-assistant`, `guide-slack-assistant` and `concept-semantic-layer`.

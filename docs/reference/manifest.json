@@ -4563,7 +4563,7 @@
       "path": "decisions/the-mcp-server-is-the-assistants-one-definition.md",
       "title": "The MCP server is the assistant's one definition",
       "type": "decision",
-      "summary": "Why the assistant's rules live in the MCP server alone, its two modes, an editor's registration per mode, and the fence on a run.",
+      "summary": "Why the assistant's rules live in the MCP server alone, its two modes only the person's command moves, an editor's registration per mode, and a run's fence.",
       "keywords": [
         "mcp server",
         "instructions",
@@ -4571,7 +4571,10 @@
         "data mode",
         "estate mode",
         "!exit",
+        "!estate",
         "!data",
+        "command grammar",
+        "session mode",
         "get_mode",
         "start_data_mode",
         "follow-up",
@@ -4600,6 +4603,7 @@
         "src/SqlFlow.Assistant/AssistantRuns.cs",
         "src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs",
         "src/SqlFlow.SlackBot/SlackAssistantMode.cs",
+        "tools/sqlflow-mcp/tests/assistant-commands.json",
         "src/SqlFlow.Assistant/AssistantInstructions.cs",
         "src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs",
         "src/SqlFlow.ControlPlane/Api/AssistantScope.cs"

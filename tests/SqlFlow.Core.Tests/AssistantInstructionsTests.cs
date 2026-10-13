@@ -89,7 +89,7 @@ public sealed class AssistantInstructionsTests
             .Distinct(StringComparer.Ordinal)
             .ToList();
         Assert.True(names.Count > 40, $"Only found {names.Count} MCP tools; the parse is probably wrong.");
-        Assert.Contains(AssistantRuns.EndDataModeTool, names);
+        Assert.Contains("find_similar_questions", names);
         return names;
     }
 }

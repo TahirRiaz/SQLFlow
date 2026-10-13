@@ -102,9 +102,9 @@ public sealed class ResponsesApiGateway : IAssistantGateway, IDisposable
         return AssistantRuns.StreamAsync(_router, _settings, request, (route, token) => RunAsync(request, route, token), ct);
     }
 
-    /// <summary>One attempt at <paramref name="request"/> in <paramref name="route"/>. The tools are per request, so a
-    /// chained response never carries an earlier request's mode over; an attempt that is dropped never completes, so
-    /// it never becomes the link the next request chains from.</summary>
+    /// <summary>The run of <paramref name="request"/> in <paramref name="route"/>. The tools are per request, so a
+    /// chained response never carries an earlier request's mode over; a run that does not complete never becomes the
+    /// link the next request chains from.</summary>
     private async IAsyncEnumerable<AssistantEvent> RunAsync(
         AssistantRequest request,
         AssistantRoute route,

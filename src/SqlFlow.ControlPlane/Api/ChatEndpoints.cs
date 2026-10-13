@@ -376,10 +376,10 @@ public static class ChatEndpoints
         var toolCalls = new List<ChatToolCallDto>();
         var streamedText = new System.Text.StringBuilder();
         string? completedText = null;
-        // The mode the answer is in, saved with it so the next question starts there: the completed answer's own, or,
-        // for an answer stopped or failed part way, the mode its run last restarted in (none: the run never switched,
-        // so the conversation is still in the mode the earlier turns give).
-        AssistantMode? answerMode = null;
+        // The mode the answer is in, saved with it (a stopped or failed partial answer too) so the next question starts
+        // there: the conversation's, read from the person's commands before the run, the same the gateway opens the run's
+        // MCP session in. Nothing in the run moves it, so what a provider reports back is not consulted.
+        var answerMode = AssistantQuestions.ModeOf(question, priorTurns);
         try
         {
             var assistantRequest = new AssistantRequest
@@ -407,16 +407,8 @@ public static class ChatEndpoints
                             .ConfigureAwait(false);
                         break;
                     }
-                    case AssistantEvent.Restarted restarted:
-                        // The question is asked again in another mode: the first attempt's text is not the answer,
-                        // here or in the browser. The tool calls it made stay on record.
-                        streamedText.Clear();
-                        answerMode = restarted.Mode;
-                        await WriteSseAsync(response, "restart", "{}", ct).ConfigureAwait(false);
-                        break;
                     case AssistantEvent.Completed completed:
                         completedText = completed.Text;
-                        answerMode = completed.Mode;
                         break;
                 }
             }
@@ -551,7 +543,7 @@ public static class ChatEndpoints
 
     private static async Task<CatalogChatMessage> PersistAssistantMessageAsync(
         CatalogDbContext db, TimeProvider clock, CatalogChatConversation conversation, int userOrdinal,
-        string text, IReadOnlyList<ChatToolCallDto> toolCalls, AssistantMode? mode, CancellationToken ct)
+        string text, IReadOnlyList<ChatToolCallDto> toolCalls, AssistantMode mode, CancellationToken ct)
     {
         var nowUtc = clock.GetUtcNow().UtcDateTime;
         var message = new CatalogChatMessage
@@ -561,7 +553,7 @@ public static class ChatEndpoints
             Role = ChatMessageRoles.Assistant,
             Text = text,
             ToolCallsJson = toolCalls.Count > 0 ? JsonSerializer.Serialize(toolCalls) : null,
-            AssistantMode = mode is { } m ? FormatAssistantMode(m) : null,
+            AssistantMode = FormatAssistantMode(mode),
             CreatedUtc = nowUtc,
         };
         db.ChatMessages.Add(message);

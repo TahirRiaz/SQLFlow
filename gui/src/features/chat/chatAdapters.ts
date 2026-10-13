@@ -132,11 +132,6 @@ export function createChatModelAdapter(session: ChatSession): ChatModelAdapter {
             case "delta":
               text += (JSON.parse(frame.data) as ChatStreamDelta).text;
               break;
-            case "restart":
-              // The question is being asked again in another mode (a follow-up turned to the estate): what the
-              // first attempt wrote is not the answer. The tool calls it made stay listed.
-              text = "";
-              break;
             case "tool":
               upsertToolCall(toolCalls, JSON.parse(frame.data) as ChatToolCall);
               break;

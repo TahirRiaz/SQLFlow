@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Only the person's command moves the assistant between data mode and estate mode. `!data` or a bare `!` starts data
+  mode and `!exit` or `!estate` ends it; a question's wording, a request in words and a follow-up of the other kind no
+  longer move it, and the assistant no longer switches by itself. Every MCP session answers only the tools of its mode:
+  a session opened in a mode (`?mode=`) lists no switch, and one that names no mode lists every tool but refuses the
+  other mode's, switching only when `start_data_mode` or `end_data_mode` is given a message that begins with the
+  command (their new `message` argument). The GUI chat and the Slack bot read the mode before a run and store it with
+  the answer; a run is asked once, and the chat stream's `restart` event and `AssistantEvent.Restarted` are gone. One
+  grammar for the command, held by `tools/sqlflow-mcp/tests/assistant-commands.json` in the MCP server, the control
+  plane and the GUI, reads `!exit.` as the command and `!exit-interview` as a question; the Slack bot reads a command
+  after a `<@U123|name>` mention too, and a saved question is cleaned by the same grammar.
 - The MCP server lays out the SQL in its answers. Every `sql` field of a tool result, and every field whose name ends
   in `Sql` (`sourceSql`, `reportSql`, `suggestedSql`, `sampleSql`, `failedStatementSql`), comes a clause to a line with
   two spaces to an indent, and so does the fenced `sqlBlock` of a query answer; until now an editor's assistant or

@@ -228,28 +228,34 @@ The Power BI extractor's settings (`ControlPlane:AiContext:ReportExtraction:*`) 
 | `describe_semantic_table` | `GET /api/v1/semantic-layer/tables/describe` |
 
 A conversation is in one of two modes, which the MCP server defines (`tools/sqlflow-mcp/src/modes.rs`) and its
-instructions explain to every client. A message starting with `!data` or a bare `!` puts it in data mode, where it
-stays, so a follow-up needs no `!`; `!exit` returns it to estate mode, and the assistant ends data mode itself when a
-follow-up turns to the estate. Where a leading `!` never reaches the model (Claude Code runs a prompt starting with `!`
-as a shell command), the person asks in words ("switch to data mode") and the assistant calls `start_data_mode`, or
-`end_data_mode` to leave. `get_mode` answers which mode the session is in, how it got there (named by the client,
-switched by a tool, or the default), whether the session lists every tool, and the commands. A client that opens an
-MCP session per message (the GUI chat and the Slack bot, through the model provider) names the conversation's mode on
-the address (`?surface=assistant&mode=data`), and the session lists only that mode's tools:
+instructions explain to every client. Only the person's command moves it: a message starting with `!data` or a bare
+`!` puts it in data mode, where it stays, so a follow-up needs no `!`; `!exit` or `!estate` returns it to estate mode.
+A question's wording, a request in words, or a follow-up that turns to the other kind of question never moves it, and
+every session refuses, without running it, a call of a tool its mode does not answer. `get_mode` answers which mode
+the session is in, what set it (its registration, the client, the person's last command, or the default), whether the
+session switches and lists every tool, and the commands. A client that opens an MCP session per message (the GUI chat
+and the Slack bot, through the model provider) reads the person's command itself and names the conversation's mode on
+the address (`?surface=assistant&mode=data`); the session lists only that mode's tools, offers no switch, and stays in
+the mode:
 
 | Mode | What its session lists |
 | --- | --- |
-| Data | The four semantic layer tools above, `describe_subscriber_report`, `find_similar_questions`, the query tools (`prepare_query`, `run_query`, `auto_run_trusted_match`, `confirm_question`), `end_data_mode` and `get_mode`. Nothing else, so the layer is the only schema a data question finds |
-| Estate (the default) | Every other tool: docs, flows, runs, lineage, schedules, subscribers, insights, search, the whole schema (`list_schemas`, `catalog_tree`, `describe_object`, `search_all`, `search_schema`, `pipeline_columns`, `get_table_key`, `get_table_joins`, the `lineage_object*` readers), any tools a product adds, the semantic layer readers, `start_data_mode` and `get_mode`; no query tool |
+| Data | The four semantic layer tools above, `describe_subscriber_report`, `find_similar_questions`, the query tools (`prepare_query`, `run_query`, `auto_run_trusted_match`, `confirm_question`) and `get_mode`. Nothing else, so the layer is the only schema a data question finds |
+| Estate (the default) | Every other tool: docs, flows, runs, lineage, schedules, subscribers, insights, search, the whole schema (`list_schemas`, `catalog_tree`, `describe_object`, `search_all`, `search_schema`, `pipeline_columns`, `get_table_key`, `get_table_joins`, the `lineage_object*` readers), any tools a product adds, the semantic layer readers and `get_mode`; no query tool |
 
 A session that names no mode (an editor's assistant over stdio, such as VS Code or Claude Code) lists every tool, the
-mode tools included, and the model keeps the mode from the instructions; the switch tools record it for the session,
-so `get_mode` reports it. An editor can instead register the server in one mode (`--mode data` or `--mode estate`, or
-`SQLFLOW_MCP_MODE`), once per mode it uses: such a session lists that mode's tools and the sign-in tools, and stays in
-its mode, since its client may not refresh a changed list, so the switch tools are not listed and a call of the other
-mode's tool names the registration that answers it. Every session is given its mode's instructions at `initialize`:
-a data-mode session the modes, the rules for a question answered from data and the rules every answer follows, and
-an estate-mode session everything but the data rules; a registered session opens with what its registration means. What a query reads does not depend on the mode: every query is checked
+switch tools included, since its client keeps one session across chats and may not refresh a changed list, and starts
+in estate mode. Its model passes the person's message to `start_data_mode` or `end_data_mode` when it begins with a
+command; the server reads the command there and switches only on it (a message without one, or with the other mode's,
+is refused and switches nothing), and from then on answers only the tools of the session's mode, refusing the rest
+with the command that moves it. Its list never changes, so it announces no change. An editor can instead register the
+server in one mode (`--mode data` or `--mode estate`, or `SQLFLOW_MCP_MODE`), once per mode it uses: such a session
+lists that mode's tools and the sign-in tools and stays in its mode, so the switch tools are not listed and a call of
+the other mode's tool names the registration that answers it. Claude Code's terminal runs a prompt starting with `!`
+as a shell command, so there the server is registered per mode. Every session is given its mode's instructions at
+`initialize`: a session that switches the modes and how its commands are relayed, a data-mode session what its mode
+means, the rules for a question answered from data and the rules every answer follows, and an estate-mode session
+everything but the data rules; a registered session opens with what its registration means. What a query reads does not depend on the mode: every query is checked
 against the columns the approved contexts open, on prepare and on run. What an assistant run may do beyond reading is
 the control plane's fence ([assistant run tokens](authentication-and-identity.md#assistant-run-tokens)), not a tool
 list: `Mcp:AllowedTools` exists only for a deployment that wants fewer tools.

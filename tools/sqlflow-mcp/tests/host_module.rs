@@ -287,6 +287,13 @@ impl HttpSession {
         answer.unwrap_or_else(|_| panic!("no answer to {method} within 30s"))
     }
 
+    /// Calls a tool and returns the text of its result and whether the server marked it an error.
+    async fn call_checked(&mut self, tool: &str, arguments: Value) -> (String, bool) {
+        let answer = self.request("tools/call", json!({ "name": tool, "arguments": arguments })).await;
+        let text = answer["result"]["content"][0]["text"].as_str().unwrap_or_default().to_string();
+        (text, answer["result"]["isError"] == json!(true))
+    }
+
     /// Calls a tool and returns the text of its result.
     async fn call(&mut self, tool: &str, arguments: Value) -> String {
         let answer = self.request("tools/call", json!({ "name": tool, "arguments": arguments })).await;
@@ -521,70 +528,111 @@ async fn a_tool_the_host_leaves_out_is_neither_listed_nor_callable() {
     assert!(instructions.contains("prepare_query, run_query"), "{instructions}");
 }
 
+/// A session a test calls tools through, whichever transport carries it: a tool's text answer, and whether the server
+/// marked it an error.
+trait Caller {
+    async fn tool(&mut self, name: &str, arguments: Value) -> (String, bool);
+}
+
+impl Caller for HttpSession {
+    async fn tool(&mut self, name: &str, arguments: Value) -> (String, bool) {
+        self.call_checked(name, arguments).await
+    }
+}
+
+impl Caller for LineSession {
+    async fn tool(&mut self, name: &str, arguments: Value) -> (String, bool) {
+        self.call(name, arguments).await
+    }
+}
+
+/// Whether `text` is the server's refusal of a tool outside the session's mode, which it gives without running the tool.
+fn is_mode_refusal(text: &str) -> bool {
+    text.contains(" answers questions about the estate, and this ")
+        || text.contains(" answers a question from warehouse data, and this ")
+        || text.contains(" is not offered here. This server is registered in ")
+}
+
+/// The mode get_mode reports for `session`.
+async fn mode_of(session: &mut impl Caller) -> Value {
+    let (text, is_error) = session.tool("get_mode", json!({})).await;
+    assert!(!is_error, "get_mode is answered in every session: {text}");
+    serde_json::from_str(&text).expect("get_mode answers JSON")
+}
+
 /// The tools that sign in, keep a token or point the server elsewhere: a stdio session's own, not listed over HTTP.
 const SIGN_IN_TOOLS: &[&str] = &["login", "check_auth_status", "set_access_token", "logout", "set_control_plane_url"];
 
-/// SQLFlow's tools an HTTP session in `mode` lists, the host leaving out `withheld`.
+/// SQLFlow's tools an HTTP session lists, the host leaving out `withheld`: one its client opened in `mode`, or one that
+/// names none (every tool).
 fn listed_over_http(mode: Option<Mode>, withheld: &[&str]) -> Vec<String> {
     let mut names: Vec<String> = SqlFlowMcp::tool_names()
         .into_iter()
-        .filter(|name| modes::lists(mode, name))
+        .filter(|name| mode.is_none_or(|mode| modes::named_lists(mode, name)))
         .filter(|name| !SIGN_IN_TOOLS.contains(&name.as_str()) && !withheld.contains(&name.as_str()))
         .collect();
     names.sort();
     names
 }
 
+/// A client that opens a session per message (a model provider's connector) reads the person's command itself and names
+/// the conversation's mode on the address. The session lists that mode's tools and no switch, answers nothing of the
+/// other mode, and stays in its mode whatever the model calls; a session beside it keeps its own.
 #[tokio::test(flavor = "multi_thread")]
-async fn an_http_session_lists_the_tools_of_the_mode_its_address_names_and_keeps_its_own() {
+async fn an_http_session_named_in_a_mode_stays_in_it_and_offers_no_switch() {
     let estate = start_control_plane().await;
     let server = probe_host()
         .server(control_plane(&estate, None), "", true)
         .expect("the probe host composes");
     let (url, _stop) = start_http(server).await;
 
-    // A client that opens a session per message (a model provider's connector) names the conversation's mode.
     let (mut data, _) = HttpSession::open(&format!("{url}?surface=assistant&mode=data"), "caller-a").await;
     let mut listed = tool_names(&data.request("tools/list", json!({})).await);
     listed.sort();
     assert_eq!(listed, listed_over_http(Some(Mode::Data), &[]), "a data-mode session lists its own tools and the shared ones");
-    assert!(listed.contains(&"end_data_mode".to_string()) && !listed.contains(&"list_probes".to_string()), "{listed:?}");
-    assert!(!listed.contains(&"start_data_mode".to_string()), "{listed:?}");
+    for absent in ["start_data_mode", "end_data_mode", "list_probes", "list_repos"] {
+        assert!(!listed.contains(&absent.to_string()), "{absent}: {listed:?}");
+    }
 
-    // get_mode says so, and that the client opened the session in it.
-    let mode = data.request("tools/call", json!({ "name": "get_mode", "arguments": {} })).await;
-    let mode: Value = serde_json::from_str(mode["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
+    // get_mode says so, that the client set it, and that the session does not switch.
+    let mode = mode_of(&mut data).await;
     assert_eq!(mode["mode"], json!("data"), "{mode}");
-    assert_eq!(mode["listsEveryTool"], json!(false), "{mode}");
+    assert_eq!((mode["switches"].clone(), mode["listsEveryTool"].clone()), (json!(false), json!(false)), "{mode}");
     assert!(mode["setBy"].as_str().unwrap_or_default().contains("client"), "{mode}");
 
-    // An estate tool is answered with the switch to make, not run.
-    let refused = data.request("tools/call", json!({ "name": "list_repos", "arguments": {} })).await;
-    assert_eq!(refused["result"]["isError"], json!(true), "{refused}");
-    let text = refused["result"]["content"][0]["text"].as_str().unwrap_or_default();
-    assert!(text.contains("data mode") && text.contains("end_data_mode"), "{text}");
+    // An estate tool is refused with the command that returns to the estate, naming no switch the session lacks.
+    for tool in ["list_repos", "list_probes", "search_all"] {
+        let (refused, is_error) = data.call_checked(tool, json!({})).await;
+        assert!(is_error && is_mode_refusal(&refused) && refused.contains("`!exit`"), "{tool}: {refused}");
+        assert!(!refused.contains("end_data_mode"), "{refused}");
+    }
 
-    // An estate-mode session lists the estate's tools and the module's, and none that only data mode needs.
+    // A switch called anyway moves nothing: to the mode it is in, it says so; to the other, it refuses.
+    let (stay, is_error) = data.call_checked("start_data_mode", json!({ "message": "!data which regions" })).await;
+    let stay: Value = serde_json::from_str(&stay).expect("json");
+    assert!(!is_error && stay["switched"] == json!(false) && stay["mode"] == json!("data"), "{stay}");
+    let (leave, is_error) = data.call_checked("end_data_mode", json!({ "message": "!exit" })).await;
+    assert!(is_error && leave.contains("`!exit`") && leave.contains("next message"), "{leave}");
+    assert_eq!(mode_of(&mut data).await["mode"], json!("data"));
+    let (refused, is_error) = data.call_checked("list_repos", json!({})).await;
+    assert!(is_error && is_mode_refusal(&refused), "still data mode after a refused switch: {refused}");
+
+    // An estate-mode session lists the estate's tools and the module's, none that only data mode needs and no switch.
     let (mut estate_session, _) = HttpSession::open(&format!("{url}?surface=assistant&mode=estate"), "caller-b").await;
     let mut listed = tool_names(&estate_session.request("tools/list", json!({})).await);
     listed.retain(|name| name != "list_probes" && name != "run_probe");
     listed.sort();
     assert_eq!(listed, listed_over_http(Some(Mode::Estate), &[]));
-    let refused = estate_session.request("tools/call", json!({ "name": "run_query", "arguments": { "planId": "p-1" } })).await;
-    let text = refused["result"]["content"][0]["text"].as_str().unwrap_or_default();
-    assert!(refused["result"]["isError"] == json!(true) && text.contains("start_data_mode"), "{refused}");
-    assert!(tool_names(&estate_session.request("tools/list", json!({})).await).contains(&"start_data_mode".to_string()));
+    assert!(!listed.contains(&"start_data_mode".to_string()), "{listed:?}");
+    let (refused, is_error) = estate_session.call_checked("run_query", json!({ "planId": "p-1" })).await;
+    assert!(is_error && is_mode_refusal(&refused) && refused.contains("`!data`"), "{refused}");
+    assert!(!refused.contains("start_data_mode"), "{refused}");
+    let (start, is_error) = estate_session.call_checked("start_data_mode", json!({ "message": "!data which regions" })).await;
+    assert!(is_error && start.contains("`!data`"), "{start}");
+    assert_eq!(mode_of(&mut estate_session).await["mode"], json!("estate"));
 
-    // end_data_mode switches the data session to the estate's tools, and leaves every other session where it was.
-    let ended = data.request("tools/call", json!({ "name": "end_data_mode", "arguments": {} })).await;
-    let answer: Value = serde_json::from_str(ended["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
-    assert_eq!(answer["mode"], json!("estate"));
-    let after = tool_names(&data.request("tools/list", json!({})).await);
-    assert!(after.contains(&"list_probes".to_string()) && !after.contains(&"run_query".to_string()), "{after:?}");
-    let mode = data.request("tools/call", json!({ "name": "get_mode", "arguments": {} })).await;
-    let mode: Value = serde_json::from_str(mode["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
-    assert_eq!(mode["mode"], json!("estate"), "{mode}");
-    assert!(mode["setBy"].as_str().unwrap_or_default().contains("switch"), "{mode}");
+    // The data session is where it was, and a fresh one opens in the mode its address names.
+    assert_eq!(mode_of(&mut data).await["mode"], json!("data"));
     let (mut fresh, _) = HttpSession::open(&format!("{url}?mode=data"), "caller-c").await;
     assert!(tool_names(&fresh.request("tools/list", json!({})).await).contains(&"run_query".to_string()));
 }
@@ -602,7 +650,10 @@ async fn an_http_session_is_given_the_instructions_of_the_mode_its_address_names
 
     let (_, data) = HttpSession::open(&format!("{url}?surface=assistant&mode=data"), "caller-a").await;
     let data = data["result"]["instructions"].as_str().expect("instructions").to_string();
-    assert!(data.starts_with("SQLFlow MCP server.\n\nMODES AND ROUTING, BEFORE ANYTHING ELSE"), "{data}");
+    assert!(data.starts_with("SQLFlow MCP server.\n\nDATA MODE, BEFORE ANYTHING ELSE: the person's command"), "{data}");
+    for switch in ["start_data_mode", "end_data_mode", "MODES AND ROUTING"] {
+        assert!(!data.contains(switch), "a session its client named is told about {switch}");
+    }
     assert!(data.contains("ANSWERING A QUESTION FROM WAREHOUSE DATA") && data.contains("`grounding`"), "{data}");
     assert!(data.contains("Grounding: state only values a tool's result contains"), "{data}");
     for estate_text in ["Two tiers of tools", "search_all FIRST", "ONLINE (needs the control plane)", "run_probe runs one"] {
@@ -612,12 +663,17 @@ async fn an_http_session_is_given_the_instructions_of_the_mode_its_address_names
     let (_, estate_answer) = HttpSession::open(&format!("{url}?surface=assistant&mode=estate"), "caller-b").await;
     let estate_text = estate_answer["result"]["instructions"].as_str().expect("instructions").to_string();
     assert!(estate_text.contains("search_all FIRST") && estate_text.ends_with("run_probe runs one and waits for it."), "{estate_text}");
+    assert!(estate_text.starts_with("SQLFlow MCP server.\n\nESTATE MODE, BEFORE ANYTHING ELSE"), "{estate_text}");
+    for switch in ["start_data_mode", "end_data_mode", "MODES AND ROUTING"] {
+        assert!(!estate_text.contains(switch), "a session its client named is told about {switch}");
+    }
     assert!(!estate_text.contains("ANSWERING A QUESTION FROM WAREHOUSE DATA"), "{estate_text}");
     assert!(!estate_text.contains("Writing SQL for a business question"), "{estate_text}");
 
     let (_, every) = HttpSession::open(&url, "caller-c").await;
     let every = every["result"]["instructions"].as_str().expect("instructions").to_string();
     assert!(every.contains("Writing SQL for a business question") && every.contains("search_all FIRST"), "{every}");
+    assert!(every.starts_with("SQLFlow MCP server.\n\nMODES AND ROUTING, BEFORE ANYTHING ELSE"), "{every}");
     assert!(data.len() * 2 < every.len(), "data mode is given {} of {} characters", data.len(), every.len());
 }
 
@@ -725,42 +781,277 @@ async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
     assert_eq!(probes[0]["links"]["page"], json!("/probes/wells%20a"));
 }
 
+/// A stdio session that names no mode (an editor's single registration) lists every tool, since its client keeps one
+/// session across chats and may not refresh its list, and starts in estate mode. Only the person's command, relayed to
+/// a switch with their message, moves it; in each mode it answers only that mode's tools, and its list never changes.
 #[tokio::test(flavor = "multi_thread")]
-async fn a_stdio_session_names_no_mode_and_lists_every_tool() {
+async fn a_stdio_session_that_names_no_mode_switches_only_on_the_persons_command() {
     let estate = start_control_plane().await;
     let server = probe_host()
         .server(control_plane(&estate, Some("stored-sign-in")), "", false)
         .expect("the probe host composes");
     let (mut session, initialized) = open_stdio(server).await;
 
-    // A stdio client keeps one session across chats and does not reliably refresh its tools mid-session, so it is
-    // offered everything, the mode tools included; a list change is still announced as a capability.
-    assert_eq!(initialized["result"]["capabilities"]["tools"]["listChanged"], json!(true), "{initialized}");
+    // The list a session is given never changes, so no change is announced as a capability.
+    assert!(initialized["result"]["capabilities"]["tools"]["listChanged"].is_null(), "{initialized}");
     let names = tool_names(&session.request("tools/list", json!({})).await);
     for tool in ["find_similar_questions", "run_query", "list_runs", "list_probes", "login", "get_mode", "start_data_mode", "end_data_mode"] {
         assert!(names.contains(&tool.to_string()), "{tool}: {names:?}");
     }
 
-    // Estate mode until someone asks for data mode; then get_mode says data, and every tool is still listed and answered.
-    let (mode, _) = session.call("get_mode", json!({})).await;
-    let mode: Value = serde_json::from_str(&mode).expect("json");
+    let mode = mode_of(&mut session).await;
     assert_eq!(mode["mode"], json!("estate"), "{mode}");
-    assert_eq!(mode["listsEveryTool"], json!(true), "{mode}");
+    assert_eq!((mode["switches"].clone(), mode["listsEveryTool"].clone()), (json!(true), json!(true)), "{mode}");
     assert!(mode["setBy"].as_str().unwrap_or_default().contains("default"), "{mode}");
 
-    let (started, is_error) = session.call("start_data_mode", json!({})).await;
-    assert!(!is_error, "{started}");
-    assert!(session.notifications.contains(&"notifications/tools/list_changed".to_string()), "{:?}", session.notifications);
-    let (mode, _) = session.call("get_mode", json!({})).await;
-    let mode: Value = serde_json::from_str(&mode).expect("json");
-    assert_eq!(mode["mode"], json!("data"), "{mode}");
-    assert!(mode["setBy"].as_str().unwrap_or_default().contains("switch"), "{mode}");
-    let (answer, is_error) = session.call("list_probes", json!({})).await;
-    assert!(!is_error, "{answer}");
-    assert!(tool_names(&session.request("tools/list", json!({})).await).contains(&"list_runs".to_string()));
+    // In estate mode a data tool is refused, naming the switch and the command it needs.
+    let (refused, is_error) = session.call("find_similar_questions", json!({ "question": "which regions" })).await;
+    assert!(is_error && is_mode_refusal(&refused) && refused.contains("start_data_mode") && refused.contains("`!data`"), "{refused}");
 
-    let (ended, _) = session.call("end_data_mode", json!({})).await;
-    assert_eq!(serde_json::from_str::<Value>(&ended).expect("json")["mode"], json!("estate"));
+    // A message without the command, or with the other mode's, switches nothing.
+    for message in ["which suppliers ship to norway", "switch to data mode", "data: which regions", ""] {
+        let (answer, is_error) = session.call("start_data_mode", json!({ "message": message })).await;
+        assert!(is_error && answer.starts_with("Not switched"), "{message:?}: {answer}");
+    }
+    let (answer, is_error) = session.call("start_data_mode", json!({ "message": "!exit" })).await;
+    assert!(is_error && answer.contains("asks for estate mode") && answer.contains("end_data_mode"), "{answer}");
+    assert_eq!(mode_of(&mut session).await["mode"], json!("estate"));
+
+    // The person's `!data` moves it, and the answer carries the question after the command.
+    let (started, is_error) =
+        session.call("start_data_mode", json!({ "message": "!data which suppliers ship to norway" })).await;
+    let started: Value = serde_json::from_str(&started).expect("json");
+    assert!(!is_error, "{started}");
+    assert_eq!(started, json!({ "mode": "data", "switched": true, "question": "which suppliers ship to norway" }));
+    let mode = mode_of(&mut session).await;
+    assert_eq!(mode["mode"], json!("data"), "{mode}");
+    assert!(mode["setBy"].as_str().unwrap_or_default().contains("person's last command"), "{mode}");
+
+    // In data mode the estate's tools, a module's among them, are refused, and the data tools run.
+    for tool in ["list_probes", "list_runs", "search_all"] {
+        let (refused, is_error) = session.call(tool, json!({})).await;
+        assert!(is_error && is_mode_refusal(&refused) && refused.contains("end_data_mode") && refused.contains("`!exit`"), "{tool}: {refused}");
+    }
+    let (ran, is_error) = session.call("find_similar_questions", json!({ "question": "which regions" })).await;
+    assert!(!is_mode_refusal(&ran) && !is_error, "{ran}");
+
+    // `!data` again is no switch, and a follow-up is no exit.
+    let (again, is_error) = session.call("start_data_mode", json!({ "message": "!data and by region?" })).await;
+    assert!(!is_error && serde_json::from_str::<Value>(&again).expect("json")["switched"] == json!(false), "{again}");
+    let (answer, is_error) = session.call("end_data_mode", json!({ "message": "which flow loads that table?" })).await;
+    assert!(is_error && answer.starts_with("Not switched"), "{answer}");
+    assert_eq!(mode_of(&mut session).await["mode"], json!("data"));
+
+    // `!exit` returns, with the question after it, and the estate's tools run again.
+    let (ended, is_error) = session.call("end_data_mode", json!({ "message": "!exit which flows load it?" })).await;
+    assert!(!is_error, "{ended}");
+    assert_eq!(serde_json::from_str::<Value>(&ended).expect("json"), json!({ "mode": "estate", "switched": true, "question": "which flows load it?" }));
+    let (probes, is_error) = session.call("list_probes", json!({})).await;
+    assert!(!is_error && probes.contains("wells a"), "{probes}");
+    let (refused, is_error) = session.call("run_query", json!({ "planId": "p-1" })).await;
+    assert!(is_error && is_mode_refusal(&refused), "{refused}");
+
+    // The list stayed what it was, and nothing announced a change.
+    assert_eq!(tool_names(&session.request("tools/list", json!({})).await), names);
+    assert!(!session.notifications.iter().any(|n| n.contains("list_changed")), "{:?}", session.notifications);
+}
+
+/// Every message of the table both readers are held to, relayed to both switches in turn through a session that names no
+/// mode, over each transport: a switch happens exactly when the table says the message carries that mode's command, with
+/// the question the table gives, and the session answers tools in the mode it is then in.
+#[tokio::test(flavor = "multi_thread")]
+async fn every_message_in_the_shared_table_moves_a_switching_session_as_the_table_says() {
+    let estate = start_control_plane().await;
+    let stdio = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes");
+    let (mut line, _) = open_stdio(stdio).await;
+    let walked = walk_the_command_table(&mut line).await;
+
+    let http = probe_host().server(control_plane(&estate, None), "", true).expect("the probe host composes");
+    let (url, _stop) = start_http(http).await;
+    let (mut remote, _) = HttpSession::open(&url, "caller-a").await;
+    assert_eq!(walk_the_command_table(&mut remote).await, walked);
+    assert!(walked >= 50, "{walked} messages walked");
+}
+
+/// Relays each message of `tests/assistant-commands.json` to start_data_mode and end_data_mode, checking each answer, the
+/// mode after it and the gate against it; the number of messages walked.
+async fn walk_the_command_table(session: &mut impl Caller) -> usize {
+    let table: Value = serde_json::from_str(include_str!("assistant-commands.json")).expect("the table is JSON");
+    let cases = table["cases"].as_array().expect("the table has cases");
+    let mut mode = "estate";
+    for case in cases {
+        let message = case["message"].as_str().expect("a message");
+        for (tool, target) in [("start_data_mode", "data"), ("end_data_mode", "estate")] {
+            let (answer, is_error) = session.tool(tool, json!({ "message": message })).await;
+            if case["mode"] == json!(target) {
+                assert!(!is_error, "{tool} {message:?}: {answer}");
+                let answer: Value = serde_json::from_str(&answer).expect("a switch answers JSON");
+                assert_eq!(answer["mode"], json!(target), "{message:?}");
+                assert_eq!(answer["switched"], json!(mode != target), "{message:?}");
+                assert_eq!(answer["question"], case["question"], "{message:?}");
+                mode = target;
+            } else {
+                assert!(is_error && answer.starts_with("Not switched"), "{tool} {message:?}: {answer}");
+            }
+            assert_eq!(mode_of(session).await["mode"], json!(mode), "after {tool} {message:?}");
+        }
+        let (probes, is_error) = session.tool("list_probes", json!({})).await;
+        assert_eq!(is_error && is_mode_refusal(&probes), mode == "data", "list_probes in {mode} mode: {probes}");
+    }
+    cases.len()
+}
+
+/// Every tool a session that names no mode lists, in each mode: the server refuses each tool the mode does not answer,
+/// before it runs, and runs the ones it does. The refused set is the one `modes::answers_in` defines, so the gate and the
+/// rule cannot drift apart.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_switching_session_refuses_every_tool_of_the_other_mode() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes");
+    let (mut session, _) = open_stdio(server).await;
+    let catalogue = tool_names(&session.request("tools/list", json!({})).await);
+    assert!(catalogue.len() > 80, "{} tools", catalogue.len());
+
+    for (command, mode) in [("!exit", Mode::Estate), ("!data", Mode::Data)] {
+        let switch = if mode == Mode::Data { "start_data_mode" } else { "end_data_mode" };
+        let (answer, is_error) = session.call(switch, json!({ "message": command })).await;
+        assert!(!is_error, "{answer}");
+        let mut refused = 0;
+        for tool in catalogue.iter().filter(|tool| !modes::answers_in(mode, tool)) {
+            let (text, is_error) = session.call(tool, json!({})).await;
+            assert!(is_error && is_mode_refusal(&text), "{tool} in {} mode ran: {text}", mode.name());
+            refused += 1;
+        }
+        assert!(refused > 0, "{} mode refuses nothing", mode.name());
+        assert_eq!(mode_of(&mut session).await["mode"], json!(mode.name()), "refusals do not move the session");
+    }
+
+    // The tools each mode answers run: a sample that touches nothing outside the fake control plane.
+    for (tool, arguments) in [("describe_semantic_table", json!({ "key": "k" })), ("find_similar_questions", json!({ "question": "q" }))] {
+        let (text, _) = session.call(tool, arguments).await;
+        assert!(!is_mode_refusal(&text), "{tool}: {text}");
+    }
+    let (answer, _) = session.call("end_data_mode", json!({ "message": "!estate" })).await;
+    assert_eq!(serde_json::from_str::<Value>(&answer).expect("json")["switched"], json!(true), "{answer}");
+    for (tool, arguments) in [("list_probes", json!({})), ("list_repos", json!({})), ("describe_semantic_table", json!({ "key": "k" }))] {
+        let (text, _) = session.call(tool, arguments).await;
+        assert!(!is_mode_refusal(&text), "{tool}: {text}");
+    }
+}
+
+/// Every tool there is, called in a session its client named, over HTTP: anything outside the mode's list is refused
+/// before it runs, whatever the model's client had listed.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_named_session_refuses_every_tool_outside_its_mode() {
+    let estate = start_control_plane().await;
+    let server = probe_host().server(control_plane(&estate, None), "", true).expect("the probe host composes");
+    let (url, _stop) = start_http(server).await;
+    let (mut every, _) = HttpSession::open(&url, "caller-a").await;
+    let catalogue = tool_names(&every.request("tools/list", json!({})).await);
+
+    for mode in [Mode::Data, Mode::Estate] {
+        let (mut session, _) = HttpSession::open(&format!("{url}?surface=assistant&mode={}", mode.name()), "caller-b").await;
+        let listed = tool_names(&session.request("tools/list", json!({})).await);
+        let expected: Vec<String> = catalogue.iter().filter(|tool| modes::named_lists(mode, tool)).cloned().collect();
+        assert_eq!(listed, expected, "{} mode lists", mode.name());
+        let mut refused = 0;
+        for tool in catalogue.iter().filter(|tool| !modes::named_lists(mode, tool) && !modes::is_mode_tool(tool)) {
+            let (text, is_error) = session.call_checked(tool, json!({})).await;
+            assert!(is_error && is_mode_refusal(&text), "{tool} in {} mode: {text}", mode.name());
+            refused += 1;
+        }
+        assert!(refused > 0, "{} mode refuses nothing", mode.name());
+        assert_eq!(mode_of(&mut session).await["mode"], json!(mode.name()));
+    }
+}
+
+/// A switch the model calls with arguments that are not a person's message switches nothing: the call is refused, or
+/// answered as not switched, and the session stays where it was. A message of any size or content is read safely.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_switch_given_anything_but_a_command_switches_nothing() {
+    let estate = start_control_plane().await;
+    let server = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes");
+    let (mut session, _) = open_stdio(server).await;
+
+    for arguments in [json!({}), json!({ "message": 42 }), json!({ "message": null }), json!({ "message": ["!data"] }), json!({ "text": "!data" })] {
+        let answer = session.request("tools/call", json!({ "name": "start_data_mode", "arguments": arguments })).await;
+        let refused = answer.get("error").is_some() || answer["result"]["isError"] == json!(true);
+        assert!(refused, "{arguments}: {answer}");
+        assert_eq!(mode_of(&mut session).await["mode"], json!("estate"), "{arguments}");
+    }
+    for message in ["\u{0}!data which regions", "\"!data\"", "> !data", "！data", "data", "  ", "\u{200B}"] {
+        let (answer, is_error) = session.call("start_data_mode", json!({ "message": message })).await;
+        assert!(is_error && answer.starts_with("Not switched"), "{message:?}: {answer}");
+    }
+    assert_eq!(mode_of(&mut session).await["mode"], json!("estate"));
+
+    // A long message is read whole: the question after the command comes back as it was.
+    let question = "which customers bought a bike ".repeat(8_000);
+    let (answer, is_error) = session.call("start_data_mode", json!({ "message": format!("!data {question}") })).await;
+    assert!(!is_error, "{}", &answer[..answer.len().min(200)]);
+    let answer: Value = serde_json::from_str(&answer).expect("json");
+    assert_eq!(answer["question"], json!(question.trim_end()));
+    // Unknown arguments beside the message are ignored; the message decides.
+    let (answer, is_error) = session.call("end_data_mode", json!({ "message": "!exit", "mode": "data" })).await;
+    assert!(!is_error && serde_json::from_str::<Value>(&answer).expect("json")["mode"] == json!("estate"), "{answer}");
+}
+
+/// Many sessions at once, over one HTTP server: named ones in each mode and switching ones moving back and forth, each
+/// calling a tool of each mode on every round. Every session answers in its own mode throughout; a switch in one never
+/// moves another.
+#[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+async fn concurrent_sessions_each_keep_their_own_mode() {
+    let estate = start_control_plane().await;
+    let server = probe_host().server(control_plane(&estate, None), "", true).expect("the probe host composes");
+    let (url, _stop) = start_http(server).await;
+
+    let mut sessions = tokio::task::JoinSet::new();
+    for index in 0..36_usize {
+        let url = url.clone();
+        sessions.spawn(async move {
+            let kind = index % 3;
+            let address = match kind {
+                0 => format!("{url}?surface=assistant&mode=data"),
+                1 => format!("{url}?surface=assistant&mode=estate"),
+                _ => url.clone(),
+            };
+            let (mut session, _) = HttpSession::open(&address, &format!("caller-{index}")).await;
+            for round in 0..10_usize {
+                let expected = match kind {
+                    0 => Mode::Data,
+                    1 => Mode::Estate,
+                    _ => {
+                        // A switching session moves on every round, offset by its index, so its neighbours disagree.
+                        let target = if (round + index) % 2 == 0 { Mode::Data } else { Mode::Estate };
+                        let (tool, command) =
+                            if target == Mode::Data { ("start_data_mode", "!data q") } else { ("end_data_mode", "!exit") };
+                        let (answer, is_error) = session.call_checked(tool, json!({ "message": command })).await;
+                        assert!(!is_error, "session {index} round {round}: {answer}");
+                        target
+                    }
+                };
+                assert_eq!(mode_of(&mut session).await["mode"], json!(expected.name()), "session {index} round {round}");
+                let (probes, is_error) = session.call_checked("list_repos", json!({})).await;
+                assert_eq!(is_error && is_mode_refusal(&probes), expected == Mode::Data, "session {index} round {round}: {probes}");
+                let (query, is_error) = session.call_checked("run_query", json!({ "planId": format!("p-{index}-{round}") })).await;
+                assert_eq!(is_error && is_mode_refusal(&query), expected == Mode::Estate, "session {index} round {round}: {query}");
+                tokio::task::yield_now().await;
+            }
+            index
+        });
+    }
+    let mut finished = 0;
+    while let Some(done) = sessions.join_next().await {
+        done.expect("a session ran to its end");
+        finished += 1;
+    }
+    assert_eq!(finished, 36);
 }
 
 /// A stdio server registered in data mode for an editor (`--mode data`) lists data mode's tools and the setup tools
@@ -796,18 +1087,19 @@ async fn a_stdio_server_registered_in_data_mode_lists_its_tools_and_stays_in_it(
         assert!(!listed.contains(&tool.to_string()), "{tool}: {listed:?}");
     }
 
-    // An estate tool is refused with the registration that answers it; a switch is answered but does not switch.
+    // An estate tool is refused with the registration that answers it; a switch is answered but never made.
     let (refused, is_error) = session.call("list_runs", json!({})).await;
     assert!(is_error && refused.contains("registered in data mode") && refused.contains("estate registration"), "{refused}");
-    let (ended, is_error) = session.call("end_data_mode", json!({})).await;
-    let ended: Value = serde_json::from_str(&ended).expect("json");
-    assert!(!is_error && ended["switched"] == json!(false) && ended["mode"] == json!("data"), "{ended}");
-    let (mode, _) = session.call("get_mode", json!({})).await;
-    let mode: Value = serde_json::from_str(&mode).expect("json");
+    let (stay, is_error) = session.call("start_data_mode", json!({ "message": "!data which regions" })).await;
+    let stay: Value = serde_json::from_str(&stay).expect("json");
+    assert!(!is_error && stay["switched"] == json!(false) && stay["mode"] == json!("data"), "{stay}");
+    let (ended, is_error) = session.call("end_data_mode", json!({ "message": "!exit" })).await;
+    assert!(is_error && ended.contains("estate registration"), "{ended}");
+    let mode = mode_of(&mut session).await;
     assert_eq!(mode["mode"], json!("data"), "{mode}");
-    assert_eq!(mode["listsEveryTool"], json!(false), "{mode}");
+    assert_eq!((mode["switches"].clone(), mode["listsEveryTool"].clone()), (json!(false), json!(false)), "{mode}");
     assert!(mode["setBy"].as_str().unwrap_or_default().contains("--mode data"), "{mode}");
-    assert!(!session.notifications.contains(&"notifications/tools/list_changed".to_string()), "{:?}", session.notifications);
+    assert!(session.notifications.is_empty(), "{:?}", session.notifications);
 }
 
 /// Registered in estate mode, the server lists the estate's tools and a module's, and none that only data mode needs.
@@ -833,6 +1125,12 @@ async fn a_stdio_server_registered_in_estate_mode_reads_no_rows() {
     }
     let (refused, is_error) = session.call("run_query", json!({ "planId": "p-1" })).await;
     assert!(is_error && refused.contains("data registration"), "{refused}");
+    let (start, is_error) = session.call("start_data_mode", json!({ "message": "!data which regions" })).await;
+    assert!(is_error && start.contains("data registration"), "{start}");
+    assert_eq!(mode_of(&mut session).await["mode"], json!("estate"));
+    for switch in ["start_data_mode", "end_data_mode", "MODES AND ROUTING"] {
+        assert!(!instructions.contains(switch), "a registered session is told about {switch}");
+    }
 }
 
 /// A host that offers no data mode has no mode to register in.
@@ -863,6 +1161,12 @@ async fn a_host_introduces_its_product_and_does_not_recommend_a_tool_it_leaves_o
     let names = tool_names(&session.request("tools/list", json!({})).await);
     assert!(!names.contains(&"end_data_mode".to_string()), "{names:?}");
     assert!(names.contains(&"run_query".to_string()) && names.contains(&"list_runs".to_string()), "{names:?}");
+    for (tool, arguments) in [("run_query", json!({ "planId": "p-1" })), ("list_probes", json!({}))] {
+        let (text, _) = session.call(tool, arguments).await;
+        assert!(!is_mode_refusal(&text), "a host without modes refused {tool}: {text}");
+    }
+    let refused = session.request("tools/call", json!({ "name": "get_mode", "arguments": {} })).await;
+    assert!(refused["error"]["message"].as_str().unwrap_or_default().contains("tool not found"), "{refused}");
 
     // The host's line opens the instructions in place of SQLFlow's, and SQLFlow's tiers follow it.
     let instructions = initialized["result"]["instructions"].as_str().expect("instructions");

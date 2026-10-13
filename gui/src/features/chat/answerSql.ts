@@ -14,6 +14,105 @@ export const BUSINESS_QUESTION_COMMAND = "!";
 /** The word that may follow the command, touching it ("!data what is our revenue"). */
 export const BUSINESS_QUESTION_WORD = "data";
 
+/** The words that, after the command, return a conversation to questions about the estate ("!exit", "! estate"). */
+export const EXIT_WORDS: readonly string[] = ["exit", "estate"];
+
+/** Unicode's White_Space, the white space every reader of a command skips (JavaScript's own \s differs: it holds
+ * U+FEFF and not U+0085). */
+const WHITE_SPACE = new Set([
+  0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x20, 0x85, 0xa0, 0x1680, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006,
+  0x2007, 0x2008, 0x2009, 0x200a, 0x2028, 0x2029, 0x202f, 0x205f, 0x3000,
+]);
+
+/** Characters that show nothing and that a message may carry before its command or after it, skipped as white space is. */
+const INVISIBLE = new Set([0x180e, 0x200b, 0x200c, 0x200d, 0x2060, 0xfeff]);
+
+/** What may follow a command word besides white space and the end: sentence punctuation. */
+const WORD_ENDS = new Set([".", ",", ":", ";", "!", "?"].map((c) => c.charCodeAt(0)));
+
+/** The mode a command sets, as the MCP server and the control plane name it. */
+export type CommandMode = "data" | "estate";
+
+/** What a person's message asks of the conversation: the mode its command sets, and the text after the command. */
+export interface Command {
+  mode: CommandMode;
+  question: string;
+}
+
+const isSkippable = (code: number) => WHITE_SPACE.has(code) || INVISIBLE.has(code);
+
+function skip(text: string, at: number, passes: (code: number) => boolean): number {
+  while (at < text.length && passes(text.charCodeAt(at))) {
+    at++;
+  }
+  return at;
+}
+
+/** Where `word` ends when `text` has it at `at` as a word of its own (its ASCII letters in any case, then the end, white
+ * space, an invisible character or sentence punctuation); null otherwise. */
+function afterWord(text: string, at: number, word: string): number | null {
+  if (text.length - at < word.length) {
+    return null;
+  }
+  for (let i = 0; i < word.length; i++) {
+    const code = text.charCodeAt(at + i);
+    if (code > 0x7f || String.fromCharCode(code).toLowerCase() !== word[i]) {
+      return null;
+    }
+  }
+  const end = at + word.length;
+  if (end === text.length) {
+    return end;
+  }
+  const next = text.charCodeAt(end);
+  return isSkippable(next) || WORD_ENDS.has(next) ? end : null;
+}
+
+function trimEnd(text: string, at: number): string {
+  let end = text.length;
+  while (end > at && isSkippable(text.charCodeAt(end - 1))) {
+    end--;
+  }
+  return text.slice(at, end);
+}
+
+/** The question after a command word that ends at `at`: its separator and trailing white space off. */
+function questionAfter(text: string, at: number): string {
+  return trimEnd(text, skip(text, at, (code) => isSkippable(code) || WORD_ENDS.has(code)));
+}
+
+/**
+ * The command `message` carries, when it starts with one, by the grammar every reader shares (the MCP server's
+ * `command_of`, the control plane's `AssistantQuestions.Read`, held together by
+ * tools/sqlflow-mcp/tests/assistant-commands.json). White space and the invisible characters are skipped, then one or
+ * more `!` start the command; `data` directly after them is the data command's word, and otherwise `exit` or `estate`,
+ * after any white space, return to estate mode. Anything else after the `!` is the question of a bare `!`, which is data
+ * mode. Null for a message that does not start with the command.
+ */
+export function readCommand(message: string | null | undefined): Command | null {
+  if (message == null) {
+    return null;
+  }
+  const bang = BUSINESS_QUESTION_COMMAND.charCodeAt(0);
+  let at = skip(message, 0, isSkippable);
+  if (at >= message.length || message.charCodeAt(at) !== bang) {
+    return null;
+  }
+  at = skip(message, at + 1, (code) => code === bang || INVISIBLE.has(code));
+  const afterData = afterWord(message, at, BUSINESS_QUESTION_WORD);
+  if (afterData !== null) {
+    return { mode: "data", question: questionAfter(message, afterData) };
+  }
+  at = skip(message, at, isSkippable);
+  for (const word of EXIT_WORDS) {
+    const afterExit = afterWord(message, at, word);
+    if (afterExit !== null) {
+      return { mode: "estate", question: questionAfter(message, afterExit) };
+    }
+  }
+  return { mode: "data", question: trimEnd(message, at) };
+}
+
 const OPENING_FENCE = /^( {0,3})(`{3,}|~{3,})(.*)$/;
 const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
 
@@ -93,23 +192,11 @@ export function messageText(content: readonly { type: string; text?: string }[])
     .join("\n");
 }
 
-/** A question as the store keeps it: trimmed, and without the leading command (one or more of it, then the command's
- * word when that follows it directly and ends there; "! data quality" keeps its first word, since "data" is a word). */
+/** A question as the store keeps it: trimmed, and without the leading data command (`readCommand`: one or more `!`,
+ * then the command's word when it touches them and ends there; "! data quality" keeps its first word, since "data" is a
+ * word). A message whose command returns to the estate is no question for the data, and is kept as typed. */
 export function normalizeQuestion(question: string): string {
   const trimmed = question.trim();
-  if (!trimmed.startsWith(BUSINESS_QUESTION_COMMAND)) {
-    return trimmed;
-  }
-
-  let rest = trimmed;
-  while (rest.startsWith(BUSINESS_QUESTION_COMMAND)) {
-    rest = rest.slice(BUSINESS_QUESTION_COMMAND.length);
-  }
-
-  const word = BUSINESS_QUESTION_WORD.length;
-  if (rest.slice(0, word).toLowerCase() === BUSINESS_QUESTION_WORD && (rest.length === word || /\s/.test(rest[word]))) {
-    rest = rest.slice(word);
-  }
-
-  return rest.trimStart();
+  const command = readCommand(trimmed);
+  return command?.mode === "data" ? command.question : trimmed;
 }

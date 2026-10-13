@@ -102,7 +102,12 @@ public sealed class AssistantSurfaceTests
             AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tools", "sqlflow-mcp", "src", "modes.rs"));
         Assert.Contains($"(\"{McpOptions.ModeQueryName}\", \"data\") => Some(Mode::Data)", source, StringComparison.Ordinal);
         Assert.Contains($"(\"{McpOptions.ModeQueryName}\", \"estate\") => Some(Mode::Estate)", source, StringComparison.Ordinal);
-        Assert.Contains($"pub const END_DATA_MODE: &str = \"{AssistantRuns.EndDataModeTool}\";", source, StringComparison.Ordinal);
+        // Both read the person's commands by one grammar (the shared table holds them to it); the words are spelled here.
+        Assert.Contains($"pub const COMMAND: char = '{AssistantQuestions.Command}';", source, StringComparison.Ordinal);
+        Assert.Contains($"const DATA_WORD: &str = \"{AssistantQuestions.CommandWord}\";", source, StringComparison.Ordinal);
+        Assert.Contains(
+            $"const EXIT_WORDS: &[&str] = &[\"{AssistantQuestions.ExitWord}\", \"{AssistantQuestions.EstateWord}\"];",
+            source, StringComparison.Ordinal);
     }
 
     [Fact]
