@@ -33,7 +33,7 @@ public sealed class CliArguments
         "--remote-url", "--local-path", "--credential-ref", "--credential-user",
         "--ref", "--sample", "--max-columns", "--max-candidates", "--active", "--enabled",
         "--search", "--relation", "--tier", "--server", "--operation", "--last", "--set", "--payload",
-        "--branch", "--default-type", "--drain-seconds",
+        "--branch", "--default-type", "--drain-seconds", "--node-name",
         // The powerbi verbs.
         "--subscriber", "--report-file",
         // The ai-context verbs.

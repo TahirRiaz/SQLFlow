@@ -22,6 +22,8 @@ keywords:
   - SIGTERM
   - termination grace period
   - scale-in
+  - node name
+  - managed workers
 cliCommand: worker
 related:
   - concept-control-plane
@@ -55,7 +57,7 @@ sourceRefs:
 ## Synopsis
 
 ```bash
-sqlflow worker --url <control-plane> [--token <ref>] [--pool a,b] [--poll-seconds N] [--drain-seconds N] [-v]
+sqlflow worker --url <control-plane> [--token <ref>] [--pool a,b] [--poll-seconds N] [--drain-seconds N] [--node-name <name>] [-v]
 ```
 
 ## Description
@@ -72,7 +74,7 @@ The command runs until it receives a stop signal (SIGINT from Ctrl+C, or the SIG
 
 ## Arguments
 
-The worker verb takes no positional argument. `worker` is in the parser's no-file verb list (src/SqlFlow.Cli/Program.cs), so a bare `sqlflow worker` (with `SQLFLOW_URL` and `SQLFLOW_TOKEN` in the environment) starts the loop directly. `--url`, `--token`, `--pool`, `--poll-seconds` and `--drain-seconds` are value-taking options and can be placed anywhere on the command line.
+The worker verb takes no positional argument. `worker` is in the parser's no-file verb list (src/SqlFlow.Cli/Program.cs), so a bare `sqlflow worker` (with `SQLFLOW_URL` and `SQLFLOW_TOKEN` in the environment) starts the loop directly. `--url`, `--token`, `--pool`, `--poll-seconds`, `--drain-seconds` and `--node-name` are value-taking options and can be placed anywhere on the command line.
 
 ## Options
 
@@ -83,6 +85,7 @@ The worker verb takes no positional argument. `worker` is in the parser's no-fil
 | `--pool a,b` | comma-separated list | empty | The pools this node serves. The node always takes untargeted runs; with `--pool` it additionally takes runs routed to any of the listed pools. Entries are trimmed and empty entries are dropped. |
 | `--poll-seconds N` | integer | `30` | How long each poll asks the dispatcher to hold it when nothing is available, clamped to 1..60 (the protocol's maximum wait). Also the node's heartbeat cadence while it is saturated. |
 | `--drain-seconds N` | integer | `540` | How long a stopping node keeps executing the runs it already holds before severing them, with a floor of 0. Keep it BELOW the orchestrator's termination grace period, or the platform's kill lands mid-drain and severs the work anyway. `0` severs at once. |
+| `--node-name <name>` | 1 to 128 ASCII letters, digits, `.`, `-`, `_`, starting with a letter or digit | `SQLFLOW_NODE_NAME`, then the machine name | The name the node polls under: the identity its leases, its fleet registry row and its rate-limit window are keyed on. A control plane that starts its own workers (managed workers, [guide-deployment](../guides/deployment.md)) names each one so it recognises the worker when it first polls. Any other name prints `ERROR  A node name ...` with the reason and exits 1. |
 | `-v`, `--verbose` | flag | off | Sets the console minimum log level to Debug (default is Information). |
 
 ## Behavior
@@ -199,6 +202,7 @@ Why this matters: a severed run reports no outcome at all, so it is recovered on
 | --- | --- | --- |
 | `SQLFLOW_URL` | the default `--url` | The control plane base URL. |
 | `SQLFLOW_TOKEN` | the default `--token` | The node's personal access token (`node` scope), or a `${env:...}`/`${keyvault:...}` reference to it. |
+| `SQLFLOW_NODE_NAME` | the default `--node-name` | The name the node polls under; the machine name when unset. |
 | `SQLFLOW_GIT_TOKEN` | `GitMaterializer` | Token for private git remotes when materializing pinned commits whose repo source names no credential reference (optional). |
 | `SQLFLOW_GIT_USERNAME` | `GitMaterializer` | Username paired with the token (optional; defaults to `x-access-token`). |
 | `SQLFLOW_WORKER_POOL` | deploy/docker/worker-entrypoint.sh (container image only) | Translated to `--pool`; keeps pool config in the environment. |

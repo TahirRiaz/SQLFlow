@@ -160,6 +160,9 @@ public static class ControlPlaneHost
             sp.GetRequiredService<TimeProvider>(),
             sp.GetRequiredService<ILogger<Dispatcher>>()));
         builder.Services.AddHostedService<DispatchService>();
+        // ---- Managed workers (off by default): the dispatch owner starts and stops this estate's workers through the
+        // launcher a module registers, instead of an external autoscaler reading the scale target.
+        ManagedWorkersService.Register(builder.Services, options.ManagedWorkers, options.Dispatch);
         builder.Services.AddSingleton<IRunDispatcher, InProcessRunDispatcher>();
         builder.Services.AddSingleton<RepoSyncWaiter>();
         builder.Services.AddSingleton<RepoSyncSignal>();
@@ -520,6 +523,9 @@ public static class ControlPlaneHost
         // After authorization, so the principal is resolved: refuses an assistant run's delegated token on every endpoint not
         // explicitly opened to it (default-deny; see AssistantDelegation).
         app.UseMiddleware<AssistantDelegationMiddleware>();
+        // Likewise refuses a credential the control plane issued to a worker it started on every route but the node
+        // protocol (see NodeCredential).
+        app.UseMiddleware<NodeCredentialMiddleware>();
 
         // Liveness has no dependencies; readiness probes the catalog database. Probes are exempt from the rate limiter
         // so a shared egress IP's traffic can never throttle a liveness/readiness check into a false negative.

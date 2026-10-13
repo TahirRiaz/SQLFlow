@@ -26,6 +26,7 @@ sourceRefs:
   - src/SqlFlow.ControlPlane/Api/Contracts.cs
   - src/SqlFlow.ControlPlane/Security/TokenIssuer.cs
   - src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs
+  - src/SqlFlow.ControlPlane/Security/NodeCredential.cs
   - src/SqlFlow.ControlPlane/Api/AssistantScope.cs
   - src/SqlFlow.ControlPlane/Security/DeviceCodeStore.cs
   - src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs
@@ -114,6 +115,10 @@ Roles are catalog rows mapping a name to a scope string. `BootstrapProvisioningS
 Because `BootstrapProvisioningService` seeds roles without overwriting existing rows, a catalog first provisioned before `author` existed keeps its old scope string; grant `author` to the `operator` / `admin` roles there (a role scope edit) to enable pull-request authoring.
 
 When a session is issued, the user's role row is loaded and its scopes become the token's `scope` claim. If the role row no longer exists, sign-in fails closed with 403 `Role is not provisioned`; a user whose role was deleted never receives a fallback grant.
+
+## Worker credentials the control plane issues
+
+A launcher that starts managed workers on the control plane's own machine (managed workers, [guide-deployment](../guides/deployment.md)) gives each worker a credential from `TokenIssuer.IssueNodeCredential` instead of a personal access token: the `node` scope only, no role, no user, no `auth_time` (so it can never be renewed), valid for the worker's lifetime plus its drain window, marked `token_use: node`, and bound to the worker's name (`node_name`). Because every signed-in principal may read and operate the product, `NodeCredentialMiddleware` (src/SqlFlow.ControlPlane/Security/NodeCredential.cs), registered right after the assistant fence, refuses such a credential with 403 (`Not available to a worker's credential`) on every route outside the node protocol (`/api/v1/node`) and when its `X-SqlFlow-Node` header names another node, and the node protocol's endpoint filter refuses it when a request body names another node. It travels only in the started worker's environment, never on a command line, in a log line or in a launch request a platform stores; a worker on another machine takes its node token from its platform's secret store.
 
 ## Local login
 

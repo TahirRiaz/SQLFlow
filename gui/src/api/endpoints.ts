@@ -12,7 +12,7 @@ import type {
   FlowInsights, Recommendations, StepInsights,
   DiscoverRepoRequest, FileHit, FlowDependency, FlowColumnHit, FlowHit, StatementHit,
   FilePipelineMatch, FlowKindDescriptor, ProposalCreated, ProposeFilesRequest,
-  LineageEdge, LineageObject, LineageObjectColumn, LineageObjectDetail, LineageProject, LineageSchema, MyNotificationOptions, Node, NodePurgeResult, NodeScript,
+  LineageEdge, LineageObject, LineageObjectColumn, LineageObjectDetail, LineageProject, LineageSchema, ManagedWorkers, MyNotificationOptions, Node, NodePurgeResult, NodeScript,
   ObjectDossier, PipelineBatch, SchemaKindCount, FileNode, FileFlows, DatasetNode,
   ProjectGraph,
   GenerateNotificationDigestRequest, NotificationDelivery, NotificationDigest, NotificationDigestSummary,
@@ -355,6 +355,8 @@ export const nodeApi = {
   delete: (name: string) => del<void>(`/api/v1/nodes/${encodeURIComponent(name)}`),
   /** Drop every offline node from the fleet registry at once; returns how many entries were removed. */
   purgeOffline: () => del<NodePurgeResult>("/api/v1/nodes/offline"),
+  /** Managed workers: whether the control plane starts its own workers, and the fleet's state and recent actions. */
+  managed: () => get<ManagedWorkers>("/api/v1/nodes/managed"),
 };
 
 // ---- Dispatch -----------------------------------------------------------------------------------------------------------------

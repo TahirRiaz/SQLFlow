@@ -39,6 +39,8 @@ public static class NodeProtocolEndpoints
     public static RouteGroupBuilder MapNodeProtocolEndpoints(this RouteGroupBuilder group)
     {
         ArgumentNullException.ThrowIfNull(group);
+        // A credential the control plane issued to a worker it started speaks for that one node only.
+        group.AddEndpointFilter(SqlFlow.ControlPlane.Security.NodeCredential.BindingFilter);
         group.MapPost("/poll", PollAsync).WithTags("Node").WithName("NodePoll");
         group.MapGet("/flow-versions/{contentHash}", FlowVersionAsync).WithTags("Node").WithName("NodeFlowVersion");
         group.MapPost("/runs/{runId:guid}/context", RunContextAsync).WithTags("Node").WithName("NodeRunContext");

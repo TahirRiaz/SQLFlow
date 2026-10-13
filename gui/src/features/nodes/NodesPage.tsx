@@ -7,6 +7,7 @@ import { PagedTable, type Column } from "../../components/PagedTable";
 import { RelativeTime } from "../../components/RelativeTime";
 import { OnlineBadge } from "../../components/StatusBadge";
 import { DispatchPanel } from "./DispatchPanel";
+import { ManagedWorkersPanel } from "./ManagedWorkersPanel";
 import { NodeRestartButton } from "./NodeRestartButton";
 import { NodeDeleteButton } from "./NodeDeleteButton";
 import { PurgeOfflineNodesButton } from "./PurgeOfflineNodesButton";
@@ -52,7 +53,8 @@ const columns: Column<Node>[] = [
 /** The worker fleet: which nodes exist, which are heartbeating, and what they run, plus per-pool compute controls
  *  (always-on floor, manual scale, spawn), the dispatcher's own view of the queue (every queued run with the gate
  *  holding it back, every lease with its node), a per-node restart, and a purge of the offline entries the fleet
- *  accumulates as pods come and go. */
+ *  accumulates as pods come and go. With managed workers on, it also shows the workers the control plane started and
+ *  what it did recently. */
 export default function NodesPage() {
   return (
     <Page data-testid="page-nodes">
@@ -63,6 +65,8 @@ export default function NodesPage() {
       />
 
       <WorkerPoolsPanel />
+
+      <ManagedWorkersPanel />
 
       <DispatchPanel />
 

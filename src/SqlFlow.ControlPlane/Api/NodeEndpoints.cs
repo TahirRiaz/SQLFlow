@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
 using SqlFlow.Catalog;
 using SqlFlow.Dispatch;
+using SqlFlow.Dispatch.ManagedWorkers;
 using SqlFlow.Node;
 
 namespace SqlFlow.ControlPlane.Api;
@@ -22,11 +23,17 @@ public sealed record NodeDto(
 /// once, the eligible part), how many of its nodes are busy, what one node executes at once, and the resulting
 /// replica target the autoscaler holds, which is exactly what the scale-target endpoint answers the scaler with.
 /// <see cref="Pool"/> is the empty string for the default (untargeted) pool. <see cref="ManualActive"/> is whether
-/// the manual override applies at read time (its window is open).</summary>
+/// the manual override applies at read time (its window is open). With managed workers on, <see cref="ManagedBy"/> names
+/// the launcher that starts the pool's workers (null for a pool that is not managed), and <see cref="Managed"/> is the
+/// pool as the managed fleet's last tick saw it (null on a replica that does not own dispatch, or before the first tick).</summary>
 public sealed record WorkerPoolDto(
     string Pool, int MinReplicas, int ManualReplicas, DateTime? ManualUntilUtc, bool ManualActive,
     int QueuedRuns, int ReplicaTarget, int OnlineNodes, DateTime? UpdatedUtc, string? UpdatedBy,
-    int EligibleQueuedRuns, int BusyNodes, int RunSlotsPerNode);
+    int EligibleQueuedRuns, int BusyNodes, int RunSlotsPerNode, string? ManagedBy = null, ManagedPoolStatus? Managed = null);
+
+/// <summary>Managed workers as this control plane sees them: whether the feature is on, and the fleet's state (null when
+/// it is off).</summary>
+public sealed record ManagedWorkersDto(bool Enabled, ManagedFleetStatus? Status);
 
 /// <summary>The outcome of purging the fleet registry's offline nodes: how many dead entries were removed.</summary>
 public sealed record NodePurgeResult(int Removed);
@@ -45,9 +52,11 @@ public sealed record WorkerPoolScaleRequest(
 /// state and resolved replica target. Controls (<c>operate</c> scope): <c>PUT /api/v1/nodes/pools/scale</c> sets a
 /// pool's always-on floor and manual override, <c>POST /api/v1/nodes/{name}/restart</c> asks a node to restart, and
 /// <c>DELETE /api/v1/nodes/{name}</c> / <c>DELETE /api/v1/nodes/offline</c> drop one dead entry or every offline one.
-/// The control plane never calls the orchestrator: both controls only write catalog rows, which the worker (restart,
-/// relayed by the dispatcher) and the autoscaler (scale, read back through the control plane's own scale-target
-/// endpoint) observe, so influencing compute needs no infrastructure credentials.
+/// Without managed workers the control plane never calls the orchestrator: both controls only write catalog rows, which
+/// the worker (restart, relayed by the dispatcher) and the autoscaler (scale, read back through the control plane's own
+/// scale-target endpoint) observe, so influencing compute needs no infrastructure credentials. With managed workers on,
+/// the managed fleet reads the same rows as each pool's floor and starts the workers itself;
+/// <c>GET /api/v1/nodes/managed</c> shows its state and recent actions.
 /// </summary>
 public static class NodeEndpoints
 {
@@ -66,6 +75,7 @@ public static class NodeEndpoints
         ArgumentNullException.ThrowIfNull(group);
         group.MapGet("/nodes", ListNodesAsync).WithTags("Nodes").WithName("ListNodes");
         group.MapGet("/nodes/pools", ListPoolsAsync).WithTags("Nodes").WithName("ListWorkerPools");
+        group.MapGet("/nodes/managed", GetManagedWorkers).WithTags("Nodes").WithName("GetManagedWorkers");
         return group;
     }
 
@@ -99,9 +109,17 @@ public static class NodeEndpoints
         return TypedResults.Ok(new PagedResult<NodeDto>(items, p, size, total));
     }
 
-    private static async Task<Ok<IReadOnlyList<WorkerPoolDto>>> ListPoolsAsync(
-        CatalogDbContext db, TimeProvider clock, CancellationToken ct)
+    /// <summary>The managed fleet's state and recent actions; <c>enabled: false</c> when managed workers are off.</summary>
+    private static Ok<ManagedWorkersDto> GetManagedWorkers(HttpContext http)
     {
+        var fleet = http.RequestServices.GetService(typeof(ManagedFleet)) as ManagedFleet;
+        return TypedResults.Ok(new ManagedWorkersDto(fleet is not null, fleet?.Status()));
+    }
+
+    private static async Task<Ok<IReadOnlyList<WorkerPoolDto>>> ListPoolsAsync(
+        CatalogDbContext db, TimeProvider clock, HttpContext http, CancellationToken ct)
+    {
+        var fleet = http.RequestServices.GetService(typeof(ManagedFleet)) as ManagedFleet;
         var now = clock.GetUtcNow().UtcDateTime;
 
         // The pools worth showing: the default pool (always), every pool with a desired row, and every pool that has
@@ -125,11 +143,17 @@ public static class NodeEndpoints
             keys.Add(WorkerPoolStore.PoolKey(pool));
         }
 
+        // Every managed pool is shown, so one that has had no runs yet still shows its workers.
+        foreach (var pool in fleet?.Settings.Pools ?? [])
+        {
+            keys.Add(pool.Pool);
+        }
+
         var byPool = desired.ToDictionary(d => d.Pool, StringComparer.Ordinal);
         var result = new List<WorkerPoolDto>(keys.Count);
         foreach (var key in keys)
         {
-            result.Add(await DescribePoolAsync(db, key, byPool.GetValueOrDefault(key), now, ct).ConfigureAwait(false));
+            result.Add(await DescribePoolAsync(db, key, byPool.GetValueOrDefault(key), fleet, now, ct).ConfigureAwait(false));
         }
 
         return TypedResults.Ok<IReadOnlyList<WorkerPoolDto>>(result);
@@ -139,10 +163,11 @@ public static class NodeEndpoints
     /// answered with (the same resolution the scale-target endpoint performs), so what an operator sees is what
     /// the platform is asked for.</summary>
     private static async Task<WorkerPoolDto> DescribePoolAsync(
-        CatalogDbContext db, string key, CatalogWorkerPoolDesired? row, DateTime now, CancellationToken ct)
+        CatalogDbContext db, string key, CatalogWorkerPoolDesired? row, ManagedFleet? fleet, DateTime now, CancellationToken ct)
     {
         var queued = await WorkerPoolStore.CountQueuedAsync(db, key, ct).ConfigureAwait(false);
         var target = await ScaleTargetStore.ResolveAsync(db, key, RunWorker.DefaultMaxConcurrentRuns, now, ct).ConfigureAwait(false);
+        var managed = fleet?.Settings.PoolOf(key) is null ? null : fleet;
         return new WorkerPoolDto(
             key,
             row?.MinReplicas ?? 0,
@@ -156,11 +181,13 @@ public static class NodeEndpoints
             row?.UpdatedBy,
             target.EligibleQueuedRuns,
             target.BusyNodes,
-            target.RunSlotsPerNode);
+            target.RunSlotsPerNode,
+            managed?.LauncherName,
+            managed?.Status().Pools.FirstOrDefault(p => string.Equals(p.Pool, key, StringComparison.Ordinal)));
     }
 
     private static async Task<Results<Ok<WorkerPoolDto>, ProblemHttpResult>> ScalePoolAsync(
-        WorkerPoolScaleRequest request, CatalogDbContext db, TimeProvider clock, ClaimsPrincipal user,
+        WorkerPoolScaleRequest request, CatalogDbContext db, TimeProvider clock, ClaimsPrincipal user, HttpContext http,
         CancellationToken ct)
     {
         if (request.MinReplicas is < 0 or > MaxReplicas || request.ManualReplicas is < 0 or > MaxReplicas)
@@ -202,7 +229,8 @@ public static class NodeEndpoints
             .ConfigureAwait(false);
 
         var saved = await WorkerPoolStore.GetDesiredAsync(db, key, ct).ConfigureAwait(false);
-        return TypedResults.Ok(await DescribePoolAsync(db, key, saved, now, ct).ConfigureAwait(false));
+        var fleet = http.RequestServices.GetService(typeof(ManagedFleet)) as ManagedFleet;
+        return TypedResults.Ok(await DescribePoolAsync(db, key, saved, fleet, now, ct).ConfigureAwait(false));
     }
 
     private static async Task<Results<Ok, ProblemHttpResult>> RestartNodeAsync(

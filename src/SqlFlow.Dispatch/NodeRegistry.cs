@@ -8,6 +8,10 @@ namespace SqlFlow.Dispatch;
 /// flush interval per node that polled, so a large fleet costs the catalog a few dozen updates a minute instead of
 /// one per heartbeat. Restart requests travel the other way: an operator stamps the ledger row, the flush reads it
 /// back, and the node hears it on its next poll.
+/// <para>A node can also be drained: it gets no new work, and the first poll that shows it holding nothing tells it to
+/// exit, through the same flag a restart uses, so a node finishes every run it was handed before it leaves. Draining
+/// lives only in memory and only the managed fleet sets it; with nothing drained, a poll answers exactly as it would
+/// without this.</para>
 /// </summary>
 public sealed class NodeRegistry
 {
@@ -31,6 +35,15 @@ public sealed class NodeRegistry
                 state = new NodeState(request.Node, nowUtc);
                 _nodes[request.Node] = state;
             }
+            else if (state.StartedUtc != request.StartedUtc)
+            {
+                // A new incarnation under the same name: what was asked of the previous one (a drain, an exit) and
+                // how long it sat idle do not carry over.
+                state.DrainRequestedUtc = null;
+                state.ExitSignalledUtc = null;
+                state.LastExitSignalUtc = null;
+                state.IdleSinceUtc = null;
+            }
 
             state.Version = request.Version;
             state.PoolKeys = poolKeys;
@@ -42,7 +55,89 @@ public sealed class NodeRegistry
             state.BusyTasks = request.HoldingTasks.Count;
             state.StartedUtc = request.StartedUtc;
             state.LastSeenUtc = nowUtc;
+            if (state.BusyRuns > 0 || state.BusyTasks > 0)
+            {
+                state.IdleSinceUtc = null;
+            }
+            else
+            {
+                state.IdleSinceUtc ??= nowUtc;
+            }
+
             state.Dirty = true;
+        }
+    }
+
+    /// <summary>Records that a poll just handed the node <paramref name="runs"/> runs and <paramref name="tasks"/> tasks,
+    /// so until its next poll it is not idle and has that many fewer free slots. What it holds (the busy counts the
+    /// fleet view is flushed with) still comes from its own polls only.</summary>
+    public void MarkHandedOut(string node, int runs, int tasks)
+    {
+        lock (_gate)
+        {
+            if (_nodes.TryGetValue(node, out var state))
+            {
+                state.IdleSinceUtc = null;
+                state.FreeRunSlots = Math.Max(0, state.FreeRunSlots - runs);
+                state.FreeTaskSlots = Math.Max(0, state.FreeTaskSlots - tasks);
+            }
+        }
+    }
+
+    /// <summary>Drains a node: from now on it gets no new work, and once a poll shows it holding nothing, the answer
+    /// tells it to exit. Returns false when the registry has not heard from the node (there is nothing to drain yet) and
+    /// true otherwise, including when it was already draining (the first request's time is kept).</summary>
+    public bool Drain(string node, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        lock (_gate)
+        {
+            if (!_nodes.TryGetValue(node, out var state))
+            {
+                return false;
+            }
+
+            state.DrainRequestedUtc ??= nowUtc;
+            return true;
+        }
+    }
+
+    /// <summary>Whether the node is draining (it gets no new work).</summary>
+    public bool IsDraining(string node)
+    {
+        lock (_gate)
+        {
+            return _nodes.TryGetValue(node, out var state) && state.DrainRequestedUtc is not null;
+        }
+    }
+
+    /// <summary>Whether a poll answer should tell the node to exit now: it is draining and the poll shows it holding
+    /// nothing (counting anything handed out on this same poll as held). The first signal is recorded. A node that keeps
+    /// polling after being told is told again only once <paramref name="resignalAfter"/> has passed since the last
+    /// time, so a node that does not honour the flag parks like any idle node instead of spinning on immediate
+    /// answers; the managed fleet stops such a node through its launcher.</summary>
+    public bool TryTakeExitSignal(string node, bool holdsNothing, DateTime nowUtc, TimeSpan resignalAfter)
+    {
+        if (!holdsNothing)
+        {
+            return false;
+        }
+
+        lock (_gate)
+        {
+            if (!_nodes.TryGetValue(node, out var state) || state.DrainRequestedUtc is null)
+            {
+                return false;
+            }
+
+            if (state.LastExitSignalUtc is { } last && nowUtc - last < resignalAfter)
+            {
+                return false;
+            }
+
+            state.ExitSignalledUtc ??= nowUtc;
+            state.LastExitSignalUtc = nowUtc;
+            return true;
         }
     }
 
@@ -121,7 +216,8 @@ public sealed class NodeRegistry
     }
 
     /// <summary>How many online nodes serve a pool, and how many free run slots they reported between them. An
-    /// untargeted run (the empty pool key) can go to any online node, so every node serves that key.</summary>
+    /// untargeted run (the empty pool key) can go to any online node, so every node serves that key. A draining node
+    /// takes no new work, so it serves no pool.</summary>
     public (int OnlineNodes, int FreeRunSlots) Capacity(string poolKey, DateTime nowUtc)
     {
         ArgumentNullException.ThrowIfNull(poolKey);
@@ -132,7 +228,7 @@ public sealed class NodeRegistry
             var slots = 0;
             foreach (var state in _nodes.Values)
             {
-                if (state.LastSeenUtc < onlineSince || !state.Serves(poolKey))
+                if (state.LastSeenUtc < onlineSince || !state.Serves(poolKey) || state.DrainRequestedUtc is not null)
                 {
                     continue;
                 }
@@ -156,7 +252,8 @@ public sealed class NodeRegistry
                 .ThenBy(n => n.Name, StringComparer.Ordinal)
                 .Select(n => new NodeView(
                     n.Name, n.Version, n.PoolKeys, n.RunSlots, n.FreeRunSlots, n.TaskSlots, n.FreeTaskSlots,
-                    n.FirstSeenUtc, n.LastSeenUtc, n.StartedUtc, n.RestartRequestedUtc, n.LastSeenUtc >= onlineSince))
+                    n.FirstSeenUtc, n.LastSeenUtc, n.StartedUtc, n.RestartRequestedUtc, n.LastSeenUtc >= onlineSince,
+                    n.BusyRuns, n.BusyTasks, n.IdleSinceUtc, n.DrainRequestedUtc, n.ExitSignalledUtc))
                 .ToList();
         }
     }
@@ -197,6 +294,18 @@ public sealed class NodeRegistry
         public DateTime LastSeenUtc { get; set; }
 
         public DateTime? RestartRequestedUtc { get; set; }
+
+        /// <summary>When the node last stopped holding anything; null while it holds work.</summary>
+        public DateTime? IdleSinceUtc { get; set; }
+
+        /// <summary>When the node was drained; null while it takes work.</summary>
+        public DateTime? DrainRequestedUtc { get; set; }
+
+        /// <summary>When a poll answer first told the draining node to exit.</summary>
+        public DateTime? ExitSignalledUtc { get; set; }
+
+        /// <summary>When a poll answer last told the draining node to exit.</summary>
+        public DateTime? LastExitSignalUtc { get; set; }
 
         public bool Dirty { get; set; }
 

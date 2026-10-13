@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Zap } from "lucide-react";
+import { Loader2, TriangleAlert, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -26,9 +26,10 @@ const headClass = "h-8 whitespace-nowrap px-3 text-xs font-medium text-muted-for
 const cellClass = "whitespace-nowrap px-3 py-1.5 text-[13px]";
 
 /** Per-pool desired-compute controls: the always-on floor, a bounded manual scale-up, and a one-click spawn, all of
- *  which the control plane applies by writing a catalog row that its own scale-target endpoint folds into the
- *  replica target the autoscaler reads (no orchestrator calls). The target shown is exactly what the scaler is
- *  answered with, and the columns beside it are the terms it was built from. */
+ *  which the control plane applies by writing a catalog row. Without managed workers its own scale-target endpoint
+ *  folds that row into the replica target the autoscaler reads (no orchestrator calls), and the target shown is exactly
+ *  what the scaler is answered with. With managed workers on, the control plane starts and stops each managed pool's
+ *  workers itself, and the row shows the pool as the managed fleet's last tick saw it. */
 export function WorkerPoolsPanel() {
   const { hasScope } = useAuth();
   const canOperate = hasScope("operate");
@@ -37,16 +38,26 @@ export function WorkerPoolsPanel() {
     queryFn: () => nodeApi.listPools(),
     refetchInterval: 5000,
   });
+  const launcher = (query.data ?? []).find((pool) => pool.managedBy !== null)?.managedBy ?? null;
 
   return (
     <Card className="gap-0 overflow-hidden rounded-lg p-0" data-testid="worker-pools-panel">
       <div className="flex flex-col gap-1 p-4 pb-3">
         <h2 className="text-base font-medium">Worker pools</h2>
-        <p className="text-[13px] text-muted-foreground">
-          The autoscaler runs each pool at the greatest of its demand (the queued runs a node could take right now,
-          divided by what one worker executes at once, plus the workers already busy), an always-on floor, and any
-          active manual override. Keep a worker warm, scale a pool up for a window, or spawn one when the pool is at zero.
-        </p>
+        {launcher === null ? (
+          <p className="text-[13px] text-muted-foreground">
+            The autoscaler runs each pool at the greatest of its demand (the queued runs a node could take right now,
+            divided by what one worker executes at once, plus the workers already busy), an always-on floor, and any
+            active manual override. Keep a worker warm, scale a pool up for a window, or spawn one when the pool is at zero.
+          </p>
+        ) : (
+          <p className="text-[13px] text-muted-foreground" data-testid="worker-pools-managed">
+            The control plane starts and stops these workers itself, through the <span className="font-mono">{launcher}</span>{" "}
+            launcher. Each managed pool always keeps its minimum running and starts more for queued runs no free slot
+            covers; an idle extra worker leaves after a few minutes, and only once it holds nothing. Spawn raises a pool
+            for a window.
+          </p>
+        )}
       </div>
 
       {query.isLoading ? (
@@ -70,7 +81,6 @@ export function WorkerPoolsPanel() {
             <TableRow className="hover:bg-transparent">
               <TableHead className={headClass}>Pool</TableHead>
               <TableHead className={cn(headClass, "text-right")}>Queued</TableHead>
-              <TableHead className={cn(headClass, "text-right")}>Eligible</TableHead>
               <TableHead className={cn(headClass, "text-right")}>Busy</TableHead>
               <TableHead className={cn(headClass, "text-right")}>Target</TableHead>
               <TableHead className={cn(headClass, "text-right")}>Workers</TableHead>
@@ -80,7 +90,7 @@ export function WorkerPoolsPanel() {
           </TableHeader>
           <TableBody>
             {(query.data ?? []).map((pool) => (
-              <WorkerPoolRow key={pool.pool} pool={pool} canOperate={canOperate} />
+              <WorkerPoolRow key={pool.pool} pool={pool} canOperate={canOperate} managedMode={launcher !== null} />
             ))}
           </TableBody>
         </Table>
@@ -89,11 +99,17 @@ export function WorkerPoolsPanel() {
   );
 }
 
-function WorkerPoolRow({ pool, canOperate }: { pool: WorkerPool; canOperate: boolean }) {
+function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; canOperate: boolean; managedMode: boolean }) {
   const queryClient = useQueryClient();
   const [spawnOpen, setSpawnOpen] = useState(false);
   const suffix = pool.pool || "default";
-  const startingUp = pool.onlineNodes < pool.replicaTarget;
+  const managed = pool.managedBy === null ? null : pool.managed;
+  const unmanagedInManagedMode = managedMode && pool.managedBy === null;
+  const target = managed?.target ?? pool.replicaTarget;
+  const working = managed === null ? pool.onlineNodes : managed.ready + managed.due;
+  const startingUp = unmanagedInManagedMode
+    ? false
+    : managed === null ? pool.onlineNodes < pool.replicaTarget : managed.starting > 0;
 
   const scale = useMutation({
     mutationFn: (request: WorkerPoolScaleRequest) => nodeApi.scalePool(request),
@@ -110,31 +126,43 @@ function WorkerPoolRow({ pool, canOperate }: { pool: WorkerPool; canOperate: boo
   return (
     <TableRow data-testid={`worker-pool-row-${suffix}`}>
       <TableCell className={cellClass}>
-        <div className="flex flex-col">
+        {pool.updatedUtc !== null ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="font-mono text-[12px] font-medium">{poolLabel(pool.pool)}</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              Floor last changed <RelativeTime value={pool.updatedUtc} />
+              {pool.updatedBy !== null ? ` by ${pool.updatedBy}` : ""}.
+            </TooltipContent>
+          </Tooltip>
+        ) : (
           <span className="font-mono text-[12px] font-medium">{poolLabel(pool.pool)}</span>
-          {pool.updatedUtc !== null && (
-            <span className="text-xs text-muted-foreground">
-              updated <RelativeTime value={pool.updatedUtc} />{pool.updatedBy !== null ? ` by ${pool.updatedBy}` : ""}
-            </span>
-          )}
-        </div>
+        )}
       </TableCell>
-      <TableCell className={cn(cellClass, "text-right font-mono tabular-nums")}>{pool.queuedRuns}</TableCell>
-      <TableCell className={cn(cellClass, "text-right font-mono tabular-nums")}>
+      <TableCell className={cn(cellClass, "text-right")}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span>{pool.eligibleQueuedRuns}</span>
+            <span className="flex flex-col items-end">
+              <span className="font-mono tabular-nums">{pool.queuedRuns}</span>
+              {pool.eligibleQueuedRuns !== pool.queuedRuns && (
+                <span className="text-xs text-muted-foreground" data-testid={`worker-pool-eligible-${suffix}`}>
+                  {pool.eligibleQueuedRuns} eligible
+                </span>
+              )}
+            </span>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
-            Queued runs no gate holds back: a run behind a busy pipeline, a lower wave or a full group cap asks for
-            no worker. One worker here executes {pool.runSlotsPerNode} at once.
+            {pool.eligibleQueuedRuns} of the {pool.queuedRuns} queued runs are eligible: no gate holds them back. A run
+            behind a busy pipeline, a lower wave or a full group cap asks for no worker. One worker here executes{" "}
+            {pool.runSlotsPerNode} at once.
           </TooltipContent>
         </Tooltip>
       </TableCell>
       <TableCell className={cn(cellClass, "text-right font-mono tabular-nums")}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <span>{pool.busyNodes}</span>
+            <span>{managed?.busy ?? pool.busyNodes}</span>
           </TooltipTrigger>
           <TooltipContent className="max-w-xs">
             Online workers holding at least one run; each keeps its replica until it is idle.
@@ -142,22 +170,77 @@ function WorkerPoolRow({ pool, canOperate }: { pool: WorkerPool; canOperate: boo
         </Tooltip>
       </TableCell>
       <TableCell className={cn(cellClass, "text-right font-mono font-medium tabular-nums")}>
-        {pool.replicaTarget}
+        {unmanagedInManagedMode ? <span className="text-muted-foreground">-</span> : target}
       </TableCell>
       <TableCell className={cn(cellClass, "text-right")}>
         <span className={cn("font-mono font-medium tabular-nums", startingUp && "text-warning")}>
-          {pool.onlineNodes} / {pool.replicaTarget}
+          {unmanagedInManagedMode ? working : `${working} / ${target}`}
         </span>
         {startingUp && (
           <span className="flex items-center justify-end gap-1 text-xs text-warning">
             <Loader2 className="size-3.5 animate-spin" />
-            starting...
+            {managed === null ? "starting..." : `${managed.starting} starting`}
           </span>
         )}
+        {managed !== null && managed.due > 0 && (
+          <span className="block text-right text-xs text-muted-foreground">{managed.due} replacing</span>
+        )}
+        {managed !== null && managed.draining > 0 && (
+          <span className="block text-right text-xs text-muted-foreground">{managed.draining} leaving</span>
+        )}
+        {managed !== null && managed.silent > 0 && (
+          <span className="block text-right text-xs text-warning">{managed.silent} silent</span>
+        )}
       </TableCell>
-      <TableCell className={cellClass}>
+      <TableCell className={cn(cellClass, "min-w-[6rem] max-w-[11rem] whitespace-normal")}>
         <div className="flex flex-wrap items-center gap-1">
-          {pool.minReplicas > 0 && (
+          {pool.managedBy !== null && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" data-testid={`worker-pool-managed-${suffix}`}>
+                  managed
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                The control plane starts this pool's workers through the {pool.managedBy} launcher and always keeps at
+                least {managed !== null ? managed.minWorkers : "its minimum"} running
+                {managed !== null ? `, up to ${managed.maxWorkers} for queued runs` : ""}. The always-on floor and Spawn
+                raise the minimum, up to the maximum.
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {managed !== null && managed.lastError !== null && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span
+                  className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                  data-testid={`worker-pool-start-failing-${suffix}`}
+                >
+                  <TriangleAlert className="size-3.5 text-warning" aria-hidden />
+                  failing
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                {managed.consecutiveFailures} failed start(s) in a row: {managed.lastError}
+                {managed.blockedUntilUtc !== null && (
+                  <>
+                    {" "}Next try <RelativeTime value={managed.blockedUntilUtc} />.
+                  </>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {unmanagedInManagedMode && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-muted-foreground">not managed</Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                No worker is started for this pool. List it under ControlPlane:ManagedWorkers:Pools to manage it.
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {pool.managedBy === null && !unmanagedInManagedMode && pool.minReplicas > 0 && (
             <Badge variant="outline" className="border-success/40 text-success">
               always-on {pool.minReplicas}
             </Badge>
@@ -174,59 +257,63 @@ function WorkerPoolRow({ pool, canOperate }: { pool: WorkerPool; canOperate: boo
               </TooltipContent>
             </Tooltip>
           )}
-          {pool.minReplicas === 0 && !pool.manualActive && <Badge variant="outline">autoscale</Badge>}
+          {!managedMode && pool.minReplicas === 0 && !pool.manualActive && <Badge variant="outline">autoscale</Badge>}
         </div>
       </TableCell>
       {canOperate && (
         <TableCell className={cellClass}>
-          <div className="flex flex-wrap items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Label className="h-8 gap-1.5 whitespace-nowrap text-xs font-normal">
-                  <Switch
+          {!unmanagedInManagedMode && (
+            <div className="flex flex-wrap items-center gap-2">
+              {pool.managedBy === null && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Label className="h-8 gap-1.5 whitespace-nowrap text-xs font-normal">
+                      <Switch
+                        size="sm"
+                        checked={pool.minReplicas > 0}
+                        disabled={scale.isPending}
+                        onCheckedChange={(checked) =>
+                          scale.mutate({ pool: pool.pool, minReplicas: checked ? 1 : 0 })}
+                        data-testid={`worker-pool-alwayson-${suffix}`}
+                      />
+                      Always on
+                    </Label>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    Keep at least one worker running in this pool at all times, so a job never waits for one to start.
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
                     size="sm"
-                    checked={pool.minReplicas > 0}
                     disabled={scale.isPending}
-                    onCheckedChange={(checked) =>
-                      scale.mutate({ pool: pool.pool, minReplicas: checked ? 1 : 0 })}
-                    data-testid={`worker-pool-alwayson-${suffix}`}
-                  />
-                  Always on
-                </Label>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                Keep at least one worker running in this pool at all times, so a job never waits for one to start.
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
+                    onClick={() => setSpawnOpen(true)}
+                    data-testid={`worker-pool-spawn-${suffix}`}
+                  >
+                    <Zap />
+                    Spawn
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  Start workers now for a set time, even with nothing queued.
+                </TooltipContent>
+              </Tooltip>
+              {pool.manualActive && (
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   disabled={scale.isPending}
-                  onClick={() => setSpawnOpen(true)}
-                  data-testid={`worker-pool-spawn-${suffix}`}
+                  onClick={() => scale.mutate({ pool: pool.pool, manualReplicas: 0 })}
+                  data-testid={`worker-pool-stop-${suffix}`}
                 >
-                  <Zap />
-                  Spawn
+                  Stop ({pool.manualReplicas})
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                Start workers now for a set time, even with nothing queued.
-              </TooltipContent>
-            </Tooltip>
-            {pool.manualActive && (
-              <Button
-                variant="ghost"
-                size="sm"
-                disabled={scale.isPending}
-                onClick={() => scale.mutate({ pool: pool.pool, manualReplicas: 0 })}
-                data-testid={`worker-pool-stop-${suffix}`}
-              >
-                Stop ({pool.manualReplicas})
-              </Button>
-            )}
-          </div>
+              )}
+            </div>
+          )}
           <SpawnWorkersDialog pool={pool} open={spawnOpen} onClose={() => setSpawnOpen(false)} />
         </TableCell>
       )}

@@ -34,6 +34,10 @@ public sealed class ControlPlaneOptions
     /// <c>ControlPlane:Dispatch</c>.</summary>
     public SqlFlow.Dispatch.DispatchOptions Dispatch { get; set; } = new();
 
+    /// <summary>Managed workers: the control plane starts and stops its own workers through a launcher. Bound from
+    /// <c>ControlPlane:ManagedWorkers</c>; off by default.</summary>
+    public ManagedWorkersOptions ManagedWorkers { get; set; } = new();
+
     public ManagedSyncOptions ManagedSync { get; set; } = new();
 
     public NotificationOptions Notifications { get; set; } = new();
@@ -116,6 +120,7 @@ public sealed class ControlPlaneOptions
             throw new InvalidOperationException("ControlPlane:" + ex.Message, ex);
         }
 
+        ManagedWorkers.Validate();
         ManagedSync.Validate();
         AzureAd.Validate();
         Bootstrap.Validate();

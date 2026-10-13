@@ -818,6 +818,86 @@ export interface WorkerPool {
   busyNodes: number;
   /** What one worker of the pool executes at once, as the workers report it. */
   runSlotsPerNode: number;
+  /** With managed workers on, the launcher that starts this pool's workers; null for a pool that is not managed. */
+  managedBy: string | null;
+  /** The pool as the managed fleet's last tick saw it; null when it is not managed, or on a replica that does not own
+   *  dispatch. */
+  managed: ManagedPoolStatus | null;
+}
+
+// ---- Managed workers --------------------------------------------------------------------------------------------------
+
+/** One managed pool as the fleet's last tick left it. */
+export interface ManagedPoolStatus {
+  pool: string;
+  /** The pool's minimum: the configured one, raised by the always-on floor and an active manual override. */
+  minWorkers: number;
+  maxWorkers: number;
+  /** The workers the pool wants that take work. */
+  target: number;
+  starting: number;
+  ready: number;
+  /** Workers being replaced (too old, or from before this control plane started); they take work until replaced. */
+  due: number;
+  /** Workers taking no new work, leaving once they hold nothing. */
+  draining: number;
+  busy: number;
+  eligibleRuns: number;
+  /** Eligible runs no free slot covers: what new workers are started for. */
+  unservedRuns: number;
+  runSlotsPerWorker: number;
+  /** Until when the pool's starts are held back after failed starts. */
+  blockedUntilUtc: string | null;
+  consecutiveFailures: number;
+  lastError: string | null;
+  /** Workers that polled before but not within the last minute: they take no work and do not count toward the minimum. */
+  silent: number;
+}
+
+export type ManagedWorkerActionKind = "start" | "start-failed" | "drain" | "stop" | "stop-failed" | "ended";
+
+/** One thing the managed fleet did, and why. */
+export interface ManagedWorkerAction {
+  timestampUtc: string;
+  kind: ManagedWorkerActionKind;
+  /** The pool; null for a worker whose pool is not managed any more. */
+  pool: string | null;
+  worker: string | null;
+  message: string;
+}
+
+export type ManagedWorkerPhase = "Starting" | "Ready" | "Due" | "Draining" | "Silent" | "Lost" | "Ended" | "Leftover";
+
+/** One managed worker as the fleet's last tick saw it. */
+export interface ManagedWorkerView {
+  name: string;
+  pool: string | null;
+  phase: ManagedWorkerPhase;
+  launchedUtc: string | null;
+  online: boolean;
+  busyRuns: number;
+  idleSinceUtc: string | null;
+}
+
+/** The managed fleet: whether this replica is the one that ticks (the dispatch owner), the launcher, when it last ticked
+ *  and last heard from the launcher, every managed pool and worker, and the recent actions, newest first. */
+export interface ManagedFleetStatus {
+  active: boolean;
+  launcher: string;
+  takeoverUtc: string | null;
+  lastTickUtc: string | null;
+  lastListUtc: string | null;
+  listCurrent: boolean;
+  listError: string | null;
+  pools: ManagedPoolStatus[];
+  workers: ManagedWorkerView[];
+  actions: ManagedWorkerAction[];
+}
+
+/** Managed workers as this control plane sees them; `status` is null when the feature is off. */
+export interface ManagedWorkers {
+  enabled: boolean;
+  status: ManagedFleetStatus | null;
 }
 
 // ---- Dispatch ---------------------------------------------------------------------------------------------------------
@@ -897,6 +977,15 @@ export interface DispatchNodeView {
   startedUtc: string;
   restartRequestedUtc: string | null;
   online: boolean;
+  /** Runs and compute tasks the node held at its last poll. */
+  busyRuns: number;
+  busyTasks: number;
+  /** When the node last stopped holding anything; null while it holds work. */
+  idleSinceUtc: string | null;
+  /** Set while the node is draining: it gets no new work and is told to exit once it holds nothing. */
+  drainRequestedUtc: string | null;
+  /** When a poll answer first told the draining node to exit. */
+  exitSignalledUtc: string | null;
 }
 
 /** The dispatcher as it sees itself: ownership, the last housekeeping passes, and the whole queue with every gate

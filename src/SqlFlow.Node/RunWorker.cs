@@ -99,7 +99,7 @@ public sealed partial class RunWorker : IDisposable
     private readonly DocumentExecutor _executor;
     private readonly TimeProvider _clock;
     private readonly ILogger<RunWorker> _logger;
-    private readonly string _node = Environment.MachineName;
+    private readonly string _node;
     private readonly string? _version = typeof(RunWorker).Assembly.GetName().Version?.ToString();
     private readonly GitMaterializer _materializer = new();
 
@@ -131,9 +131,11 @@ public sealed partial class RunWorker : IDisposable
     // frees.
     private readonly SemaphoreSlim _slotFreed = new(0, 1);
 
+    /// <summary>Creates the node runtime. <paramref name="identity"/> is the name the node polls under; without one
+    /// (the control plane's own node, a test) it is this machine's name.</summary>
     public RunWorker(
         IServiceProvider services, INodeTransport transport, DocumentExecutor executor, TimeProvider clock,
-        ILogger<RunWorker> logger)
+        ILogger<RunWorker> logger, NodeIdentity? identity = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(transport);
@@ -145,10 +147,11 @@ public sealed partial class RunWorker : IDisposable
         _executor = executor;
         _clock = clock;
         _logger = logger;
+        _node = (identity ?? NodeIdentity.Machine()).Name;
     }
 
-    /// <summary>This node's identity (its machine name), stamped on every run it is handed so its work is
-    /// attributable and recoverable.</summary>
+    /// <summary>This node's identity (the name it was given, else its machine name), stamped on every run it is handed
+    /// so its work is attributable and recoverable.</summary>
     public string NodeName => _node;
 
     /// <summary>
@@ -1285,7 +1288,7 @@ public sealed partial class RunWorker : IDisposable
     [LoggerMessage(Level = LogLevel.Warning, Message = "Run {RunId}: outcome report dropped by the fence (attempt {Attempt}): the run was requeued out from under this node while it executed, so the successor execution's outcome is authoritative. This node's polls went unanswered for the whole lease; check for control-plane connectivity gaps or a paused container.")]
     private partial void LogStaleClaim(Guid runId, int attempt);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Restart requested by an operator; draining in-flight work and exiting so the orchestrator recreates this node.")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "The control plane asked this node to stop (an operator restart, or a managed worker leaving); draining in-flight work and exiting.")]
     private partial void LogRestartRequested();
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Compute task {TaskId} starting: {Operation} against {SourceRef}.")]

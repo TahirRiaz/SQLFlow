@@ -335,7 +335,7 @@ public sealed class DispatchStateTests
         Assert.False(wait.IsCompleted); // a pool the node does not serve
 
         state.AddQueuedRun(Make.Run(At(1), pool: "etl"));
-        Assert.True(await wait);
+        Assert.Equal(PollWake.Work, await wait);
         Assert.Equal(0, state.WaiterCount);
     }
 
@@ -348,18 +348,18 @@ public sealed class DispatchStateTests
         var third = state.WaitAsync("n3", [], true, TimeSpan.FromSeconds(10), CancellationToken.None);
 
         state.AddQueuedRun(Make.Run(At(0)));
-        Assert.True(await first);
+        Assert.Equal(PollWake.Work, await first);
         await Task.Delay(50);
         Assert.False(second.IsCompleted);
         Assert.False(third.IsCompleted);
 
         // A completion may free any number of gated runs: everyone wanting work is woken.
         state.AddQueuedRun(Make.Run(At(1)));
-        Assert.True(await second);
+        Assert.Equal(PollWake.Work, await second);
         var pick = Assert.Single(state.ReserveRuns("n2", [], 1));
         state.ConfirmRunLease(pick.RunId, "n2", 1, At(2), At(92));
         state.RemoveRun(pick.RunId);
-        Assert.True(await third);
+        Assert.Equal(PollWake.Work, await third);
     }
 
     [Fact]
@@ -377,15 +377,15 @@ public sealed class DispatchStateTests
         Assert.False(wait.IsCompleted);
 
         state.MarkRunCancel(run.RunId);
-        Assert.True(await wait);
+        Assert.Equal(PollWake.Signal, await wait);
     }
 
     [Fact]
     public async Task WaitAsync_TimesOut_AndHonorsCancellation()
     {
         var state = new DispatchState();
-        Assert.False(await state.WaitAsync("n1", [], true, TimeSpan.FromMilliseconds(50), CancellationToken.None));
-        Assert.False(await state.WaitAsync("n1", [], true, TimeSpan.Zero, CancellationToken.None));
+        Assert.Equal(PollWake.TimedOut, await state.WaitAsync("n1", [], true, TimeSpan.FromMilliseconds(50), CancellationToken.None));
+        Assert.Equal(PollWake.TimedOut, await state.WaitAsync("n1", [], true, TimeSpan.Zero, CancellationToken.None));
 
         using var cts = new CancellationTokenSource();
         var wait = state.WaitAsync("n1", [], true, TimeSpan.FromSeconds(10), cts.Token);
@@ -404,7 +404,7 @@ public sealed class DispatchStateTests
 
         state.Clear();
 
-        Assert.True(await wait);
+        Assert.Equal(PollWake.Signal, await wait);
         Assert.Empty(state.ReserveRuns("n1", [], 10));
         Assert.Empty(state.ReserveTasks("n1", [], 10));
     }

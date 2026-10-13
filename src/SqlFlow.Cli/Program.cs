@@ -701,6 +701,19 @@ internal static class Program
         // The pools this node serves (comma-separated). Empty means it takes only untargeted runs.
         var pools = (GetOption(args, "--pool") ?? string.Empty)
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // The name this node polls under: --node-name, then SQLFLOW_NODE_NAME, else the machine name. A launcher that
+        // starts its own workers names each one so it recognises the worker when it first polls.
+        NodeIdentity identity;
+        try
+        {
+            identity = NodeIdentity.Resolve(
+                GetOption(args, "--node-name") ?? Environment.GetEnvironmentVariable(NodeIdentity.EnvironmentVariable));
+        }
+        catch (ArgumentException ex)
+        {
+            Console.Error.WriteLine($"ERROR  {ex.Message}");
+            return 1;
+        }
 
         // A dedicated host for the node: the shared engine (so a worker run is byte-for-byte a CLI run), the HTTP
         // transport to the dispatcher (which is also where the run's definition, its lineage context and its live
@@ -724,7 +737,8 @@ internal static class Program
         services.AddSqlFlowEngine();
         services.AddSingleton(sp => new DocumentExecutor(sp, Console.Error.WriteLine));
         services.AddSingleton(TimeProvider.System);
-        services.AddSingleton<INodeTransport>(_ => new HttpNodeTransport(controlPlane, token));
+        services.AddSingleton(identity);
+        services.AddSingleton<INodeTransport>(_ => new HttpNodeTransport(controlPlane, token, nodeName: identity.Name));
         services.AddSingleton<RunWorker>();
         services.AddSingleton(modules.Branding);
         // A node opens no catalog connection, so a module database it uses needs a connection reference of its own.
@@ -2446,7 +2460,7 @@ internal static class Program
                                                  module database.
                                                  --db defaults to ${env:SQLFLOW_CATALOG_DB}.
               sqlflow worker   --url <control-plane> [--token <ref>] [--pool a,b]
-                               [--poll-seconds N] [--drain-seconds N]
+                               [--poll-seconds N] [--drain-seconds N] [--node-name <name>]
                                                  Run as a self-hosted compute node: poll the control plane's
                                                  dispatcher for work over HTTP (the node protocol, authenticated
                                                  with a personal access token carrying the 'node' scope: --token or
@@ -2463,7 +2477,9 @@ internal static class Program
                                                  orchestrator's termination grace period). --pool sets the pools this
                                                  node serves (it always takes untargeted runs; with --pool it also
                                                  takes runs routed to those pools). --poll-seconds (default 30) is how
-                                                 long each poll waits for work before returning empty.
+                                                 long each poll waits for work before returning empty. --node-name
+                                                 (or SQLFLOW_NODE_NAME) is the name the node polls under, by default
+                                                 the machine name: letters, digits, '.', '-' and '_', at most 128.
               sqlflow runs cancel <runId> [--db <conn-ref>]
                                                  Cancel a run. With a control plane configured (--url/SQLFLOW_URL)
                                                  this goes through the API; with --db, or with no control plane

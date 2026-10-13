@@ -29,6 +29,7 @@ public sealed partial class Dispatcher : IDisposable
     private readonly HashSet<Guid> _suspectRuns = [];
     private readonly HashSet<Guid> _suspectTasks = [];
     private volatile bool _active;
+    private long _ownershipEpoch;
     private string? _owner;
     private DateTime? _activatedUtc;
     private DateTime? _lastReconcileUtc;
@@ -59,6 +60,15 @@ public sealed partial class Dispatcher : IDisposable
 
     /// <summary>Whether this dispatcher holds ownership and serves nodes.</summary>
     public bool IsActive => _active;
+
+    /// <summary>When this dispatcher last took ownership, while it holds it; null while passive. The fleet registry starts
+    /// empty at that moment, so anything judged on node polls counts from here at the earliest.</summary>
+    public DateTime? ActivatedUtc => _active ? _activatedUtc : null;
+
+    /// <summary>A number that changes every time this dispatcher takes or gives up ownership. Whatever acts on a picture of
+    /// the fleet (the managed fleet's tick) reads it before taking the picture and again before each action, and stops
+    /// when it changed: the registry it read may have been cleared or rebuilt in between.</summary>
+    public long OwnershipEpoch => Interlocked.Read(ref _ownershipEpoch);
 
     /// <summary>The timing knobs in force.</summary>
     public DispatchOptions Options => _options;
@@ -109,6 +119,7 @@ public sealed partial class Dispatcher : IDisposable
         _lastTaskExpiryUtc = now;
         _lastNodePruneUtc = now;
         _active = true;
+        Interlocked.Increment(ref _ownershipEpoch);
         LogActivated(owner, snapshot.QueuedRuns.Count, snapshot.RunningRuns.Count, snapshot.QueuedTasks.Count, snapshot.RunningTasks.Count);
     }
 
@@ -122,6 +133,7 @@ public sealed partial class Dispatcher : IDisposable
         }
 
         _active = false;
+        Interlocked.Increment(ref _ownershipEpoch);
         Queue.Clear();
         Nodes.Clear();
         LogDeactivated(_owner ?? "(none)");
@@ -187,11 +199,27 @@ public sealed partial class Dispatcher : IDisposable
         }
     }
 
+    /// <summary>Drains a node: it gets no new work from now on, and once it holds nothing its next poll answer tells it
+    /// to exit. Its parked poll is woken so an idle node hears it at once. Returns false when this dispatcher is not
+    /// active or has not heard from the node.</summary>
+    public bool DrainNode(string node)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(node);
+        if (!_active || !Nodes.Drain(node, _clock.GetUtcNow().UtcDateTime))
+        {
+            return false;
+        }
+
+        Queue.WakeNode(node);
+        return true;
+    }
+
     // --------------------------------------------------------------------------------------------- polling -------
 
     /// <summary>Serves a node's poll: registers the heartbeat, renews the node's leases (reporting the ones it lost),
     /// collects pending cancels and a restart request, hands out as much eligible work as the node has room for, and
-    /// otherwise parks the call until something changes or the wait elapses.</summary>
+    /// otherwise parks the call until something changes or the wait elapses. A draining node is handed nothing, and
+    /// the first poll that shows it holding nothing is answered with the exit flag (see <see cref="NodeRegistry.Drain"/>).</summary>
     public async Task<NodePollResponse> PollAsync(NodePollRequest request, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -208,9 +236,9 @@ public sealed partial class Dispatcher : IDisposable
             .ToList();
         var freeRunSlots = Math.Max(0, request.FreeRunSlots);
         var freeTaskSlots = Math.Max(0, request.FreeTaskSlots);
-        var wantsWork = freeRunSlots > 0 || freeTaskSlots > 0;
         var waitSeconds = Math.Clamp(request.WaitSeconds, 0, _options.LongPollSeconds);
         var deadline = _clock.GetUtcNow() + TimeSpan.FromSeconds(waitSeconds);
+        var holdsWork = request.HoldingRuns.Count > 0 || request.HoldingTasks.Count > 0;
 
         while (true)
         {
@@ -219,13 +247,30 @@ public sealed partial class Dispatcher : IDisposable
             var leaseExpires = now + _options.Lease;
             Nodes.Touch(request, poolKeys, now);
 
+            // Read on every pass: a drain can arrive while this poll is parked, and the wake that follows must find the
+            // node handed nothing from then on.
+            var draining = Nodes.IsDraining(request.Node);
+            var runSlots = draining ? 0 : freeRunSlots;
+            var taskSlots = draining ? 0 : freeTaskSlots;
+
             var revokedRuns = Queue.RenewRunLeases(request.Node, request.HoldingRuns, leaseExpires);
             var revokedTasks = Queue.RenewTaskLeases(request.Node, request.HoldingTasks, leaseExpires);
             var cancelRuns = Queue.CancelRequestedRunsHeldBy(request.Node);
             var cancelTasks = Queue.CancelRequestedTasksHeldBy(request.Node);
-            var tasks = await HandOutTasksAsync(request.Node, poolKeys, freeTaskSlots, ct).ConfigureAwait(false);
-            var runs = await HandOutRunsAsync(request.Node, poolKeys, freeRunSlots, ct).ConfigureAwait(false);
-            var restart = Nodes.IsRestartPending(request.Node, request.StartedUtc);
+            var tasks = await HandOutTasksAsync(request.Node, poolKeys, taskSlots, ct).ConfigureAwait(false);
+            var runs = await HandOutRunsAsync(request.Node, poolKeys, runSlots, ct).ConfigureAwait(false);
+            if (runs.Count > 0 || tasks.Count > 0)
+            {
+                Nodes.MarkHandedOut(request.Node, runs.Count, tasks.Count);
+            }
+
+            // A node is told to exit only while it holds nothing, counting what this very poll handed it, so a run handed
+            // out in the instant before a drain is finished first. Re-told at most once per long poll if it keeps polling.
+            var holdsNothing = !holdsWork && runs.Count == 0 && tasks.Count == 0;
+            // Both are read every time, so a draining node's first exit signal is recorded even while an operator's
+            // restart is pending too (the managed fleet stops a node that ignores it, counting from that moment).
+            var exitSignal = Nodes.TryTakeExitSignal(request.Node, holdsNothing, now, _options.LongPoll);
+            var restart = Nodes.IsRestartPending(request.Node, request.StartedUtc) || exitSignal;
 
             var response = new NodePollResponse(
                 runs, tasks, cancelRuns, cancelTasks, revokedRuns, revokedTasks, restart, _options.LeaseSeconds);
@@ -241,8 +286,17 @@ public sealed partial class Dispatcher : IDisposable
             }
 
             // Park until work this node could take appears, a signal for it arrives, or the wait elapses; then
-            // re-evaluate from the top, which also renews the leases again.
-            await Queue.WaitAsync(request.Node, poolKeys, wantsWork, remaining, ct).ConfigureAwait(false);
+            // re-evaluate from the top, which also renews the leases again. A draining node wants no work, so only a
+            // signal (a cancel, a wake) ends its wait early.
+            var wantedWork = runSlots > 0 || taskSlots > 0;
+            var wake = await Queue.WaitAsync(request.Node, poolKeys, wantedWork, remaining, ct).ConfigureAwait(false);
+            if (wake == PollWake.Work && Nodes.IsDraining(request.Node))
+            {
+                // Parked as wanting work just before a drain arrived, and woken for work rather than by the drain itself:
+                // the wake chose this poll over one that can take the work, so hand it on. Only ever happens to a
+                // draining node.
+                Queue.PassOnWorkWake(poolKeys);
+            }
         }
     }
 

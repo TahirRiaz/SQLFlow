@@ -13,6 +13,9 @@ keywords:
   - images
   - worker pools
   - ingress
+  - managed workers
+  - launcher
+  - drain
 related:
   - concept-control-plane
   - cli-worker
@@ -35,6 +38,11 @@ sourceRefs:
   - deploy/bicep/main.bicep
   - deploy/adf/SqlFlowTriggerFlow.pipeline.json
   - src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs
+  - src/SqlFlow.ControlPlane/Configuration/ManagedWorkersOptions.cs
+  - src/SqlFlow.ControlPlane/Dispatch/ManagedWorkersService.cs
+  - src/SqlFlow.Dispatch/ManagedWorkers/IWorkerLauncher.cs
+  - src/SqlFlow.Dispatch/ManagedWorkers/FleetPlanner.cs
+  - src/SqlFlow.Dispatch/ManagedWorkers/ManagedFleet.cs
   - src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs
   - src/SqlFlow.Cli/Program.cs
   - docs/adf-dropin.md
@@ -245,6 +253,24 @@ The template sets `terminationGracePeriodSeconds: 600` so an in-flight run can f
 ### Placement
 
 Workers must run where they can reach the data their pool's flows touch; that is the point of pools. A cloud cluster's workers serve cloud-reachable sources. An on-prem pool means workers running on-prem (compose, systemd, or a local cluster) pointed at the same catalog database and registered under that pool name.
+
+## Managed workers: the control plane starts its own workers
+
+Everything above scales workers from outside: an autoscaler reads the replica target and resizes a Deployment, and it removes replicas blindly, which is why the grace period must outlast the drain. Some platforms offer no autoscaler that can read the target, or no way to raise the grace period. On those, the control plane can manage the fleet itself: `ControlPlane:ManagedWorkers:Enabled=true` and a `Launcher` a host module registers (an `IWorkerLauncher`, src/SqlFlow.Dispatch/ManagedWorkers/IWorkerLauncher.cs: list the workers it started, start one under a given name and pool, stop one, say how long the platform lets a worker run, and name the deployment's build when the platform does). SQLFlow itself registers no launcher; a host that offers managed workers registers one per platform it supports, and a host started with a launcher name nobody registered refuses to start, naming the ones it has. With the switch off no fleet service runs and no node is ever drained, so every poll answers as before; only the dispatcher's diagnostic view differs (a node's free slots drop at hand-out rather than at its next poll, and five more node fields).
+
+While it is on, the replica that owns dispatch compares every managed pool with what it needs every `TickSeconds` (src/SqlFlow.Dispatch/ManagedWorkers/FleetPlanner.cs, ManagedFleet.cs). It reads the dispatcher's ownership epoch before and after it reads the fleet registry, and again before every action, so a tick that lost ownership while it ran acts on nothing.
+
+- **A minimum, always.** The default pool (`MinWorkers`, `MaxWorkers`) and every pool listed under `Pools:<name>` keep at least their minimum of fresh workers (polled within the long poll plus 15 seconds); it is at least 1, and the fleet controls' always-on floor and manual override raise it up to the maximum. A worker that stops polling takes no work; for two minutes after its last poll it still counts toward the minimum and its free slots toward the queued runs, so a blip starts nothing, and then its replacement starts.
+- **Starts for what no free slot covers.** Eligible queued runs (the dispatcher's own gates) beyond the free slots of the workers that take the pool's work and the slots of those still starting ask for new workers, up to `MaxWorkers` and `MaxLaunchesPerTick` per tick. Failed starts back the pool off (10 seconds doubling to 5 minutes) and it keeps trying; a start the platform never lists (in three lists and a minute), a worker that never polls, and one that ends before its first poll or within ten minutes of it, unasked, count as failed starts, each worker once. Only a worker started after the pool's last failure that keeps polling for ten minutes clears the back-off.
+- **Hearing nobody is not a dead fleet.** When no node at all has polled for longer than a long poll, the silence is the control plane's or the network's: nothing starts for demand and no worker that has polled is stopped for silence, so the fleet never replaces itself over a blip; minimums are still restored. A gap between two ticks longer than a tick plus a long poll (the process stood still, or its clock jumped) restarts every silence, start and idle timer, as a takeover does.
+- **Idle surplus leaves, and only when it holds nothing.** A worker idle for `IdleMinutes` with nothing eligible queued for its pool is drained: the dispatcher hands it nothing more, and the first poll that shows it holding nothing answers with the restart flag every worker already honours. Draining never takes a pool below its minimum, and a run handed out in the same instant is finished first. No platform ever scales a worker away under a run, so the grace period stops mattering.
+- **Replacement before removal.** A worker older than `MaxLifetimeHours`, or (with `ReplaceWorkersOnStart`) started by another build of the control plane, is replaced: its replacement starts first, each busy one gets its own under load, and the old ones drain as the new ones arrive. Each worker's name carries the build that started it (a hash of the deployment's build when the launcher names one, such as the commit a platform deployed every component from, else of the control plane's `SqlFlow*.dll`; a build that cannot be read is logged as a warning, since redeploys then cannot be told from restarts), so a redeploy moves every worker onto the new build while a failover between replicas of one build keeps them all. A worker nearing the platform's time limit drains whatever the minimum, halfway between its lifetime and the limit, so it finishes its runs before the platform ends it; this means its replacement never came, so it is logged as a warning.
+- **Stops only what cannot leave, after draining it.** A worker that never polls within `StartTimeoutMinutes`, falls silent that long, keeps polling `ExitTimeoutMinutes` after it was told to leave, or keeps polling after the platform reported it ended, is drained and then stopped through the launcher; its leases lapse and the dispatcher requeues what it held. Each tick starts workers before it stops any, and gives each its own budget of a launcher call's timeout; what one does not reach waits for the next tick.
+- **Nothing depends on memory a restart loses.** After a takeover the launcher's list and the workers' polls rebuild the picture, and no worker is judged silent or idle on time from before it. While the launcher cannot be asked, the fleet stops nothing and only restores minimums, and gives up on a start it cannot confirm once it has had the whole start timeout.
+
+Each managed worker polls under a name the fleet gives it, `{NamePrefix}-{pool}-{build}{random}`, never one a worker already has (`sqlflow worker --node-name`, `SQLFLOW_NODE_NAME`); a worker that polls under such a name but is not the launcher's is replaced and then drained, and one whose pool is no longer managed is drained. A launcher that starts workers on the control plane's own machine can give each a credential from `TokenIssuer.IssueNodeCredential`: the `node` scope only, bound to that worker's name, and refused on every route but the node protocol and under any other node's name. A worker elsewhere takes its node token from its platform's secret store. While workers are replaced, a pool runs its new workers beside the old ones finishing their runs, so its platform quota should allow up to twice `MaxWorkers`.
+
+`GET /api/v1/nodes/managed` returns the fleet as the last tick left it (each pool, each worker and its state, the last 200 actions with their reasons), and the Nodes page shows it under Worker pools. An external autoscaler must not scale the same workers at the same time.
 
 ## Azure Container Apps: the full estate with Bicep
 

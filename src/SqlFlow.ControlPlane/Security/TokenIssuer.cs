@@ -58,6 +58,25 @@ public sealed class TokenIssuer
     }
 
     /// <summary>
+    /// Issues the credential a worker the control plane starts on its own machine presents to the node protocol: the
+    /// <c>node</c> scope only, no role, no user, no <c>auth_time</c> (so it can never be renewed), marked as a worker's
+    /// credential and bound to <paramref name="nodeName"/>, so it is refused everywhere but the node protocol and under
+    /// any other node's name (<see cref="NodeCredential"/>), valid for <paramref name="lifetime"/>. It never leaves the
+    /// process that starts the worker except in that worker's environment; a worker on another machine gets its node token
+    /// from its platform's secret store instead.
+    /// </summary>
+    public TokenResult IssueNodeCredential(string nodeName, TimeSpan lifetime, DateTime nowUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeName);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(lifetime, TimeSpan.Zero);
+        var claims = SubjectClaims(
+            NodeCredential.SubjectPrefix + nodeName, [SqlFlow.Dispatch.Protocol.NodeProtocol.Scope], role: null, userId: null);
+        claims.Add(new Claim(NodeCredential.ClaimType, NodeCredential.ClaimValue));
+        claims.Add(new Claim(NodeCredential.NodeClaimType, nodeName));
+        return Sign(claims, nowUtc, nowUtc.Add(lifetime));
+    }
+
+    /// <summary>
     /// Issues the token one AI assistant run presents to the MCP server (see <see cref="AssistantDelegation"/>): the
     /// same subject, role and catalog id as <paramref name="caller"/>, the caller's scopes minus administration and
     /// fleet traffic, the <c>token_use=assistant</c> marker the control plane fences, no <c>auth_time</c> so it can

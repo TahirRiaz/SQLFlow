@@ -533,7 +533,9 @@
         "drain",
         "SIGTERM",
         "termination grace period",
-        "scale-in"
+        "scale-in",
+        "node name",
+        "managed workers"
       ],
       "cliCommand": "worker",
       "related": [
@@ -630,6 +632,7 @@
         "src/SqlFlow.ControlPlane/Api/Contracts.cs",
         "src/SqlFlow.ControlPlane/Security/TokenIssuer.cs",
         "src/SqlFlow.ControlPlane/Security/AssistantDelegation.cs",
+        "src/SqlFlow.ControlPlane/Security/NodeCredential.cs",
         "src/SqlFlow.ControlPlane/Api/AssistantScope.cs",
         "src/SqlFlow.ControlPlane/Security/DeviceCodeStore.cs",
         "src/SqlFlow.ControlPlane/Api/ChatEndpoints.cs",
@@ -2904,7 +2907,10 @@
         "web activities",
         "images",
         "worker pools",
-        "ingress"
+        "ingress",
+        "managed workers",
+        "launcher",
+        "drain"
       ],
       "related": [
         "concept-control-plane",
@@ -2929,6 +2935,11 @@
         "deploy/bicep/main.bicep",
         "deploy/adf/SqlFlowTriggerFlow.pipeline.json",
         "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
+        "src/SqlFlow.ControlPlane/Configuration/ManagedWorkersOptions.cs",
+        "src/SqlFlow.ControlPlane/Dispatch/ManagedWorkersService.cs",
+        "src/SqlFlow.Dispatch/ManagedWorkers/IWorkerLauncher.cs",
+        "src/SqlFlow.Dispatch/ManagedWorkers/FleetPlanner.cs",
+        "src/SqlFlow.Dispatch/ManagedWorkers/ManagedFleet.cs",
         "src/SqlFlow.ControlPlane/Api/RunTriggerEndpoints.cs",
         "src/SqlFlow.Cli/Program.cs",
         "docs/adf-dropin.md"

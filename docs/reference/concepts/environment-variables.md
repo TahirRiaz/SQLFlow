@@ -54,6 +54,7 @@ All conventional names are strictly UPPERCASE because environment variables are 
 | `SQLFLOW_WORKER_POLL_SECONDS` | `Dockerfile.worker` entrypoint only | How long each poll waits for work; translated to `--poll-seconds`. |
 | `SQLFLOW_URL` | `worker` and every control-plane verb | The control plane base URL (`--url`). A worker polls it for work. |
 | `SQLFLOW_TOKEN` | `worker` and every control-plane verb | The bearer credential (`--token`); a worker's must carry the `node` scope. |
+| `SQLFLOW_NODE_NAME` | `worker` | The name the node polls under (`--node-name`); the machine name when unset. A launcher that starts its own workers sets it. |
 
 ### SQLFLOW_CONN_&lt;NAME&gt;: the bare-alias convention
 

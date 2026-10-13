@@ -752,15 +752,15 @@ public sealed class DispatchState
 
     /// <summary>Parks a node's poll until work it could take appears (when <paramref name="wantsWork"/>), or a signal
     /// for the node arrives (a cancel, a revoked lease, a restart request), or <paramref name="timeout"/> elapses.
-    /// Returns true when woken by a signal, false on timeout; a cancelled <paramref name="ct"/> propagates.</summary>
-    public async Task<bool> WaitAsync(
+    /// Returns what ended the wait; a cancelled <paramref name="ct"/> propagates.</summary>
+    public async Task<PollWake> WaitAsync(
         string node, IReadOnlyList<string> poolKeys, bool wantsWork, TimeSpan timeout, CancellationToken ct)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(node);
         ArgumentNullException.ThrowIfNull(poolKeys);
         if (timeout <= TimeSpan.Zero)
         {
-            return false;
+            return PollWake.TimedOut;
         }
 
         var waiter = new Waiter(node, poolKeys, wantsWork);
@@ -771,18 +771,33 @@ public sealed class DispatchState
 
         try
         {
-            await waiter.Signal.Task.WaitAsync(timeout, ct).ConfigureAwait(false);
-            return true;
+            return await waiter.Signal.Task.WaitAsync(timeout, ct).ConfigureAwait(false);
         }
         catch (TimeoutException)
         {
-            return false;
+            return PollWake.TimedOut;
         }
         finally
         {
             lock (_gate)
             {
                 _waiters.Remove(waiter);
+            }
+        }
+    }
+
+    /// <summary>Hands on a work wake that reached a poll which can no longer take work (its node started draining while
+    /// it was parked): wakes one other waiter that wants work for each of <paramref name="poolKeys"/> and for untargeted
+    /// work, so the run that caused the wake is not left waiting for some later poll.</summary>
+    public void PassOnWorkWake(IReadOnlyList<string> poolKeys)
+    {
+        ArgumentNullException.ThrowIfNull(poolKeys);
+        lock (_gate)
+        {
+            WakeWorkLocked(string.Empty, 1);
+            foreach (var key in poolKeys)
+            {
+                WakeWorkLocked(key, 1);
             }
         }
     }
@@ -794,7 +809,7 @@ public sealed class DispatchState
         {
             foreach (var waiter in _waiters)
             {
-                waiter.Signal.TrySetResult(true);
+                waiter.Signal.TrySetResult(PollWake.Signal);
             }
 
             _waiters.Clear();
@@ -826,7 +841,7 @@ public sealed class DispatchState
             _queuedTasksByPool.Clear();
             foreach (var waiter in _waiters)
             {
-                waiter.Signal.TrySetResult(true);
+                waiter.Signal.TrySetResult(PollWake.Signal);
             }
 
             _waiters.Clear();
@@ -1209,7 +1224,7 @@ public sealed class DispatchState
             var waiter = _waiters[i];
             if (waiter.WantsWork && (poolKey.Length == 0 || waiter.PoolKeys.Contains(poolKey, StringComparer.Ordinal)))
             {
-                waiter.Signal.TrySetResult(true);
+                waiter.Signal.TrySetResult(PollWake.Work);
                 _waiters.RemoveAt(i);
                 woken++;
             }
@@ -1226,7 +1241,7 @@ public sealed class DispatchState
         {
             if (string.Equals(_waiters[i].Node, node, StringComparison.Ordinal))
             {
-                _waiters[i].Signal.TrySetResult(true);
+                _waiters[i].Signal.TrySetResult(PollWake.Signal);
                 _waiters.RemoveAt(i);
             }
             else
@@ -1333,8 +1348,21 @@ public sealed class DispatchState
 
         public bool WantsWork { get; } = wantsWork;
 
-        public TaskCompletionSource<bool> Signal { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource<PollWake> Signal { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
     }
+}
+
+/// <summary>What ended a parked poll's wait (<see cref="DispatchState.WaitAsync"/>).</summary>
+public enum PollWake
+{
+    /// <summary>The wait elapsed.</summary>
+    TimedOut,
+
+    /// <summary>A signal for the node (a cancel, a revoked lease, a restart or drain request), or the dispatcher clearing.</summary>
+    Signal,
+
+    /// <summary>Work the poll could take was queued.</summary>
+    Work,
 }
 
 /// <summary>The per-pool queue counts and every entry, as <see cref="DispatchState.Snapshot"/> reports them.</summary>
