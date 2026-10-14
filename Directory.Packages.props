@@ -36,7 +36,7 @@
     <!-- Generic API acquisition (SqlFlow.Acquire): the non-HTTP transports. SSH.NET for SFTP, the AWS S3 SDK for
          S3 object download, and Azure.Data.Tables for Azure Storage Table queries. HTTP uses the BCL HttpClient. -->
     <PackageVersion Include="SSH.NET" Version="2026.0.0" />
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.2" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.3" />
     <PackageVersion Include="Azure.Data.Tables" Version="12.13.0" />
     <PackageVersion Include="YamlDotNet" Version="18.1.0" />
     <!-- Source control (SqlFlow.SourceControl): SMO scripts the database objects with full fidelity; LibGit2Sharp
