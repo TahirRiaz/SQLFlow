@@ -116,7 +116,7 @@ public sealed class ComputeTaskExecutor
 
         // The task resolves its references with the values the control plane supplied, ahead of this node's environment,
         // for its whole execution: a built-in operation's connection and a module operation's alike.
-        using var supplied = SuppliedReferences.Supply(payload.References ?? System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
+        using var supplied = payload.References is { Count: > 0 } references ? SuppliedReferences.Supply(references) : null;
 
         // A module's operation owns its budget and its connections: it runs under the task's token only, and its result
         // is held to the same size bound as a built-in one.

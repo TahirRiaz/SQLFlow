@@ -125,8 +125,8 @@ public sealed class DocumentExecutor : IDocumentRunner
         // The run resolves its references with the values the control plane supplied, ahead of this process's environment,
         // for its whole execution, whatever its kind (an embedded health check included): one scope here rather than one
         // resolver per runner, so a file flow's target, an ingestion flow's connections and a module kind's endpoints all
-        // read the same values.
-        using var supplied = SuppliedReferences.Supply(options.Parameters.References);
+        // read the same values. A run given nothing opens none, and resolves and reports exactly as before.
+        using var supplied = options.Parameters.References.Count > 0 ? SuppliedReferences.Supply(options.Parameters.References) : null;
 
         // Unlike the advisory backfill parameters (which flow kinds without a window surface as a run-log
         // notice), assertionsOnly changes WHAT the run does: honoring it on a kind without assertions would

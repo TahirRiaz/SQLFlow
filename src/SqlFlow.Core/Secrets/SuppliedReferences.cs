@@ -66,18 +66,16 @@ public static partial class SuppliedReferences
 
     /// <summary>
     /// Opens a scope resolving with <paramref name="values"/> over the current scope's, until the returned handle is
-    /// disposed. Nothing is opened for no values, so a run given nothing resolves exactly as it did before there was
-    /// anything to give. The values are validated first (<see cref="Validate"/>).
+    /// disposed. The values are validated first (<see cref="Validate"/>). A scope opened with no values answers nothing
+    /// and resolves every reference as the enclosing scope or the process environment does, but it still reports where
+    /// each reference takes its value (<see cref="ReportTo"/>): that is how a run given nothing says its values came from
+    /// the node. A caller that wants a run given nothing to behave and report exactly as before there was anything to
+    /// give opens no scope at all.
     /// </summary>
     /// <exception cref="SqlFlowException">The values break a rule <see cref="Validate"/> names.</exception>
     public static IDisposable Supply(IReadOnlyDictionary<string, string> values)
     {
         ArgumentNullException.ThrowIfNull(values);
-        if (values.Count == 0)
-        {
-            return NoScope.Instance;
-        }
-
         Validate(values, "the supplied references");
         var outer = Ambient.Value;
         var merged = new Dictionary<string, string>(outer?.Values ?? Empty, StringComparer.Ordinal);
@@ -368,15 +366,6 @@ public static partial class SuppliedReferences
         }
     }
 
-    /// <summary>The handle of a scope that was never opened, because there was nothing to supply.</summary>
-    private sealed class NoScope : IDisposable
-    {
-        public static readonly NoScope Instance = new();
-
-        public void Dispose()
-        {
-        }
-    }
 }
 
 /// <summary>

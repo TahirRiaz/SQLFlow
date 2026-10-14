@@ -96,12 +96,29 @@ public sealed class SuppliedReferencesTests
     }
 
     [Fact]
-    public void SupplyingNothing_OpensNoScope()
+    public async Task AScopeOfNoValues_AnswersNothing_ButStillSaysWhereEachValueCameFrom()
     {
-        using var scope = SuppliedReferences.Supply(new Dictionary<string, string>());
+        var reports = new List<SuppliedReferenceUse>();
 
-        Assert.Empty(SuppliedReferences.Current);
-        Assert.Equal("env:URL", Resolver().Resolve("${env:URL}"));
+        await Task.Run(() =>
+        {
+            SuppliedReferences.ReportTo(reports.Add);
+            using (SuppliedReferences.Supply(Values(("URL", "outer-url"))))
+            {
+                using var empty = SuppliedReferences.Supply(new Dictionary<string, string>());
+                Assert.Equal("outer-url env:TAG", Resolver().Resolve("${env:URL} ${env:TAG}"));
+            }
+
+            using (SuppliedReferences.Supply(new Dictionary<string, string>()))
+            {
+                Assert.Empty(SuppliedReferences.Current);
+                Assert.Equal("env:PORT", Resolver().Resolve("${env:PORT}"));
+            }
+        });
+
+        Assert.Equal(
+            [new SuppliedReferenceUse("URL", true), new SuppliedReferenceUse("TAG", false), new SuppliedReferenceUse("PORT", false)],
+            reports);
     }
 
     [Fact]

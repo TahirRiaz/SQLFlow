@@ -131,7 +131,7 @@ The executing node opens a scope with those values for the whole run (`SuppliedR
 
 The managed sync and the API's inline sync open the same scope with the repository's values, so the connected lineage tier opens exactly the servers the runs read.
 
-A run's trace says where each reference it resolves takes its value, once per name and at most 100 names, by name and never by value (stage `run.reference`):
+A run's trace says where each reference it resolves inside a scope takes its value, once per name and at most 100 names, by name and never by value (stage `run.reference`). A run given nothing opens no scope and its trace is as it always was; a module that wants its runs to say where every value came from, the node included, opens a scope of its own, which may hold no values at all:
 
 ```text
 Reference WAREHOUSE_DB takes its value from the configuration the control plane supplied with this run.
