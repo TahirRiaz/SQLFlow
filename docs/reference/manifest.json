@@ -757,6 +757,9 @@
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
+        "src/SqlFlow.ControlPlane/Background/BootstrapSteps.cs",
+        "src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs",
+        "src/SqlFlow.ControlPlane/Api/BootstrapEndpoints.cs",
         "src/SqlFlow.ControlPlane/Program.cs",
         "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
         "src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs",

@@ -1942,6 +1942,12 @@ public class CatalogRepoSource
 
     public int SyncIntervalSeconds { get; set; } = 300;
 
+    /// <summary>The control-plane setting that names this source (<c>ControlPlane:Bootstrap:Repositories:&lt;name&gt;</c>), or null
+    /// for a source registered through the API. The control plane writes a configured source at every start, and the API
+    /// refuses to change or remove it, naming this setting instead. A source the configuration stops naming is released
+    /// (this goes null) and kept, an ordinary source from then on; nothing is deleted.</summary>
+    public string? ConfiguredBy { get; set; }
+
     /// <summary>When the source is next due to sync (UTC); the sync loop claims it by advancing this atomically.</summary>
     public DateTime? NextSyncUtc { get; set; }
 
@@ -2378,6 +2384,12 @@ public class CatalogAccessToken
 
     /// <summary>When the token was revoked; null while active. Revocation is the delete, so history stays.</summary>
     public DateTime? RevokedUtc { get; set; }
+
+    /// <summary>The control-plane setting this token is the credential of (<c>ControlPlane:Bootstrap:NodeTokenReference</c>), or
+    /// null for a token someone minted. The control plane keeps exactly one configured token active, revokes it when the
+    /// configured secret changes or stops being configured, and the API refuses to revoke it, naming this setting, since the
+    /// next start would only issue it again.</summary>
+    public string? ConfiguredBy { get; set; }
 }
 
 /// <summary>

@@ -129,6 +129,12 @@ public static class MeEndpoints
             return NoUserAccount();
         }
 
+        if (await AccessTokenStore.ConfiguredByAsync(catalog, userId, id, ct).ConfigureAwait(false) is { } setting)
+        {
+            return TypedResults.Problem(statusCode: StatusCodes.Status409Conflict, title: "Set by configuration",
+                detail: $"This token is the node credential the control plane's configuration sets ({setting}). Rotate the secret it names, or remove the setting, and the control plane revokes this token when it next starts.");
+        }
+
         var revoked = await AccessTokenStore.RevokeAsync(catalog, userId, id, clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
         return revoked
@@ -154,5 +160,5 @@ public static class MeEndpoints
     private static AccessTokenDto ToDto(CatalogAccessToken token) => new(
         token.Id, token.Name, token.Prefix,
         token.Scopes.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
-        token.CreatedUtc, token.ExpiresUtc, token.LastUsedUtc, token.RevokedUtc);
+        token.CreatedUtc, token.ExpiresUtc, token.LastUsedUtc, token.RevokedUtc, token.ConfiguredBy);
 }

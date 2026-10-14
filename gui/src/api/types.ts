@@ -1045,6 +1045,11 @@ export interface RepoSource {
   syncStartedUtc: string | null;
   /** Whether a sync is in progress: a sync-now not yet answered, or an attempt running. */
   syncPending: boolean;
+  /**
+   * The control-plane setting that names this source (ControlPlane:Bootstrap:Repositories:<name>); null for a source
+   * registered here. A configured source is written at every start and cannot be edited or removed here.
+   */
+  configuredBy?: string | null;
 }
 
 export interface RegisterRepoSourceRequest {
@@ -2181,6 +2186,11 @@ export interface AccessToken {
   lastUsedUtc: string | null;
   /** Non-null once the token is revoked. */
   revokedUtc: string | null;
+  /**
+   * The control-plane setting whose node credential this token is (ControlPlane:Bootstrap:NodeTokenReference); null for
+   * a token someone minted. A configured token is rotated with its secret and cannot be revoked here.
+   */
+  configuredBy?: string | null;
 }
 
 export interface CreateAccessTokenRequest {

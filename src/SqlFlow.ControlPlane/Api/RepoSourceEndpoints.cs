@@ -25,7 +25,7 @@ public sealed record RepoSourceDto(
     DateTime? NextSyncUtc, DateTime? LastSyncUtc, string? LastSyncedSha, string? LastError,
     string? CredentialReference, string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths,
     DateTime CreatedUtc, DateTime UpdatedUtc,
-    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false);
+    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false, string? ConfiguredBy = null);
 
 /// <summary>The body to register (or update) a tracked repo source: exactly one of <see cref="RemoteUrl"/> (a git
 /// remote the managed sync clones and pulls) and <see cref="LocalPath"/> (a directory the control-plane host reads
@@ -119,6 +119,11 @@ public static class RepoSourceEndpoints
             return TypedResults.Problem(
                 detail: $"The control-plane host cannot see localPath '{request.LocalPath}'. A local-path source only works when the control plane runs on the machine that holds the directory.",
                 statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+        }
+
+        if (await RepoSourceStore.ConfiguredByNameAsync(db, request.Name, ct).ConfigureAwait(false) is { } setting)
+        {
+            return SetByConfiguration(request.Name.Trim(), setting);
         }
 
         var credentialReference = string.IsNullOrWhiteSpace(request.CredentialReference)
@@ -233,12 +238,26 @@ public static class RepoSourceEndpoints
     private static async Task<Results<Ok, ProblemHttpResult>> DeleteSourceAsync(
         Guid id, CatalogDbContext db, CancellationToken ct)
     {
+        if (await RepoSourceStore.ConfiguredByAsync(db, id, ct).ConfigureAwait(false) is { } setting)
+        {
+            return SetByConfiguration(id.ToString("D"), setting);
+        }
+
         var removed = await RepoSourceStore.DeleteAsync(db, id, ct).ConfigureAwait(false);
         return removed
             ? TypedResults.Ok()
             : TypedResults.Problem(
                 detail: $"No repo source '{id}'.", statusCode: StatusCodes.Status404NotFound, title: "Not found");
     }
+
+    /// <summary>
+    /// The refusal of a change to a source the control plane's configuration sets: the next start would set it back, so the
+    /// answer names the setting to change instead.
+    /// </summary>
+    internal static ProblemHttpResult SetByConfiguration(string source, string setting)
+        => TypedResults.Problem(
+            detail: $"Repo source '{source}' is set by the control plane's configuration ({setting}); change it there, and the control plane writes it when it next starts.",
+            statusCode: StatusCodes.Status409Conflict, title: "Set by configuration");
 
     private static async Task<Results<Ok<List<DiscoveredFlowDto>>, ProblemHttpResult>> DiscoverRepoAsync(
         DiscoverRepoRequest request, ISecretResolver resolver, SqlFlow.Yaml.YamlDocumentLoader documents, CancellationToken ct)
@@ -298,5 +317,5 @@ public static class RepoSourceEndpoints
         s.CredentialReference, s.CredentialUsername,
         RepoSourceStore.ParseExcludedPaths(s.ExcludedFlowPaths).OrderBy(p => p, StringComparer.Ordinal).ToArray(),
         s.CreatedUtc, s.UpdatedUtc,
-        s.SyncRequestedUtc, s.SyncStartedUtc, syncWaiter.IsPending(s));
+        s.SyncRequestedUtc, s.SyncStartedUtc, syncWaiter.IsPending(s), s.ConfiguredBy);
 }

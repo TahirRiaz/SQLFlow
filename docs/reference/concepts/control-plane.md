@@ -19,6 +19,9 @@ related:
   - guide-deployment
 sourceRefs:
   - src/SqlFlow.ControlPlane/Background/RunReferences.cs
+  - src/SqlFlow.ControlPlane/Background/BootstrapSteps.cs
+  - src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs
+  - src/SqlFlow.ControlPlane/Api/BootstrapEndpoints.cs
   - src/SqlFlow.ControlPlane/Program.cs
   - src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs
   - src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs
@@ -188,7 +191,9 @@ All settings bind from the `ControlPlane` configuration section (environment var
 | `Bootstrap:ApplyMigrations` | `true` | `false` logs pending migrations as a warning instead of applying them |
 | `Bootstrap:AllowCreate` | `false` | When `false` (the default), startup only migrates an EXISTING catalog: a missing database or a populated non-catalog database is refused loudly and startup stops without retrying, so a wrong or mistyped connection never provisions against the wrong (possibly production) server. `true` lets startup CREATE the catalog database and initialise its schema into an empty one, for first-time provisioning or ephemeral/test databases |
 | `Bootstrap:AdminUsername` / `Bootstrap:AdminPasswordReference` | unset | Must be set together; the password is a secret reference, never a literal |
-| `Bootstrap:DemoRepo` | unset | `Name` and `RemoteUrl` required when configured; `Branch` default `main`; `SyncIntervalSeconds` default `300` |
+| `Bootstrap:Repositories:<name>` | none | The repo sources the deployment syncs, written at every start and locked against the API (below): `RemoteUrl` or `LocalPath` (exactly one), `Branch` (`main`), `SyncIntervalSeconds` (`300`), `CredentialReference` (a `${...}` reference to a private remote's token, never the token), `CredentialUsername`, `ExcludedFlowPaths` |
+| `Bootstrap:DemoRepo` | unset | One repo source written the same way under its own key: `Name` and `RemoteUrl` required when configured; `Branch` default `main`; `SyncIntervalSeconds` default `300` |
+| `Bootstrap:NodeTokenReference` | unset | A `${...}` reference to the node credential the deployment's workers present (`SQLFLOW_TOKEN`): `sqlf_` and at least 32 random characters, kept in the deployment's vault. Needs `AdminUsername`, the token's owner |
 | `Cors:AllowedOrigins` | `[]` | Empty means same-origin only |
 | `RateLimit:PermitPerWindow` / `RateLimit:WindowSeconds` | `120` / `60` | Both must be positive |
 | `RateLimit:NodePermitPerWindow` | `6000` | The per-node window for the node protocol, keyed by the token subject plus the node name each call carries; must be positive |
@@ -214,18 +219,26 @@ All settings bind from the `ControlPlane` configuration section (environment var
 | `DataOps:Comparison:DefaultLinkedServer` | unset | Used when a comparison names none; must be one of `LinkedServers` or startup fails |
 | `DataOps:Comparison:Databases` | `[]` | Optional narrowing to named databases on those servers. Empty permits any database the linked server's own login can reach, which is the usual case because the linked server is the boundary |
 
-## First-run bootstrap
+## The start-up pass
 
-`BootstrapProvisioningService` (src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs) runs in the background and retries with backoff (5s, 10s, 20s, 40s, then every 60s) until the catalog is reachable, so the start order of app and database never matters; the readiness probe reports the catalog being unavailable in the meantime.
+`BootstrapProvisioningService` (src/SqlFlow.ControlPlane/Background/BootstrapProvisioningService.cs) brings a deployment to a usable state from its configuration alone, at every start, in one ordered pass of named steps. A step that fails is retried with backoff (5s, 10s, 20s, 40s, then every 60s) from that step, so the start order of app, database and vault never matters; the steps before it are not applied again in the same pass. Every step is idempotent and never overwrites operator state.
 
-Before provisioning anything, the service applies the `Bootstrap:AllowCreate` guard (default `false`). Unless it is `true`, a missing database or a populated non-catalog database is a deterministic configuration mistake that retrying cannot fix, so the service logs a critical error and stops (readiness stays red) rather than conjuring a database or injecting catalog tables into the wrong server. Only `AllowCreate = true` creates the catalog database and initialises its schema into an empty one.
+Before provisioning anything, the `catalog` step applies the `Bootstrap:AllowCreate` guard (default `false`). Unless it is `true`, a missing database or a populated non-catalog database is a deterministic configuration mistake that retrying cannot fix, so the step is refused, a critical error is logged and the pass stops (readiness stays red) rather than conjuring a database or injecting catalog tables into the wrong server. Only `AllowCreate = true` creates the catalog database and initialises its schema into an empty one.
 
-Order of operations, all idempotent:
+| Step | What it does |
+| --- | --- |
+| `catalog` | Applies pending EF catalog migrations when `Bootstrap:ApplyMigrations` is true (the default). With it false, pending migrations are logged as a warning: "Apply them out of band; parts of the API may fail until then." |
+| `module-databases` | Migrates and verifies every module database a host registers; one missing, behind or ahead of the build refuses the step and stops the host. |
+| `roles` | Seeds the built-in roles: `admin` (scopes `read operate admin author node`), `operator` (`read operate author`), `viewer` (`read`). A scope an operator added to a built-in role survives re-seeding, and a scope the definition gained later (such as `node`) is appended to an existing row (`EnsureRoleAsync`). |
+| `admin` | Creates the initial admin from `Bootstrap:AdminUsername` and `Bootstrap:AdminPasswordReference` (resolved through the secret resolver) when the user is absent. An existing admin's password is never reset. A reference that resolves to nothing, or to a password shorter than the minimum, fails the step (and so readiness), and the next attempt picks up a secret put right. |
+| `repositories` | Writes the repo sources `Bootstrap:Repositories` and `Bootstrap:DemoRepo` name (`RepoSourceStore.ApplyConfiguredAsync`): registers each one the catalog does not hold (due at once), brings each one it holds in line and enables it, records the setting that names it (`ConfiguredBy`), and releases each source an earlier configuration named and this one does not, keeping it as an ordinary source. It wakes the managed sync when it registered or changed one. |
+| `node-credential` | Reads the token `Bootstrap:NodeTokenReference` names, at every start, and makes it the one active node-scope token of the initial admin (`AccessTokenStore.EnsureConfiguredAsync`), revoking the one it replaced when the secret changed; with none named, revokes the one an earlier configuration set. A deployment's workers present the same secret, so they connect with no token minted by hand. |
+| `worker-pool` | Seeds the default pool with an always-on floor of one worker when the pool has no desired state yet. |
+| a module's steps | What a host module needs from the configuration (`IBootstrapStep`), in the order the modules registered them. |
 
-1. Apply pending EF catalog migrations when `Bootstrap:ApplyMigrations` is true (the default). With it false, pending migrations are logged as a warning: "Apply them out of band; parts of the API may fail until then."
-2. Seed the built-in roles: `admin` (scopes `read operate admin author node`), `operator` (`read operate author`), `viewer` (`read`). Seeding ensures existence and guarantees the code-defined scopes are present: a scope an operator added to a built-in role survives re-seeding, and a scope the definition gained later (such as `node`) is appended to an existing row, so an older catalog never needs it granted by hand (`EnsureRoleAsync`).
-3. Create the initial admin from `Bootstrap:AdminUsername` and `Bootstrap:AdminPasswordReference` (resolved through the secret resolver) when the user is absent. An existing admin's password is never reset. An empty or too-short resolved password logs an error and skips creation rather than provisioning a weak credential.
-4. Register the optional demo repo source (`Bootstrap:DemoRepo`) as an upsert, so configuration stays the desired state across restarts.
+The readiness check `bootstrap` (`BootstrapReadiness`) stays unhealthy until every step is done and names the step it waits for, or the one that failed. `GET /api/v1/bootstrap` (read) answers each step as it last stood: its name, state (`pending`, `running`, `done`, `failed`, `refused`), what it did, the error it last failed with (secret-redacted), how many attempts it took and when it last changed. When the pass completes, the log says `Bootstrap provisioning completed.`
+
+What the configuration sets is locked against the API, because the next start would set it back: re-registering or deleting a configured repo source (`POST /repos/sources`, `DELETE /repos/sources/{id}`) and revoking the configured node token (`DELETE /me/tokens/{id}`) answer 409 "Set by configuration", naming the setting to change instead. The repo source listing and the token listing carry `configuredBy`, and the GUI marks such a row configured and offers no edit, delete or revoke on it.
 
 ## Managed git-to-catalog sync (repo sources)
 

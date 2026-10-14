@@ -178,6 +178,17 @@ export default function ReposPage() {
           {row.source !== undefined && row.repo === undefined && (
             <Badge variant="outline" className="border-warning/50 text-warning">pending first sync</Badge>
           )}
+          {row.source?.configuredBy && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" data-testid="source-configured">configured</Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Named in the control plane&apos;s configuration, <span className="font-mono">{row.source.configuredBy}</span>.
+                Change it there; the control plane writes it when it next starts.
+              </TooltipContent>
+            </Tooltip>
+          )}
         </span>
       ),
     },
@@ -222,7 +233,9 @@ export default function ReposPage() {
       align: "right",
       render: (row) => (
         <span className="inline-flex items-center justify-end gap-1">
-          {/* Edit a git source in place, or (for a manual repo with no source) attach one so it becomes managed. */}
+          {/* Edit a git source in place, or (for a manual repo with no source) attach one so it becomes managed. A source
+              the configuration names is changed there, so it offers neither an edit nor a delete. */}
+          {!row.source?.configuredBy && (
           <Button
             variant="ghost"
             size="xs"
@@ -239,6 +252,7 @@ export default function ReposPage() {
             <Pencil />
             Edit
           </Button>
+          )}
           {row.source !== undefined && (
             <Button
               variant="ghost"
@@ -259,6 +273,7 @@ export default function ReposPage() {
               {row.source.syncPending || (syncNow.isPending && syncNow.variables === row.source.id) ? "Syncing" : "Sync now"}
             </Button>
           )}
+          {!row.source?.configuredBy && (
           <Button
             variant="ghost"
             size="xs"
@@ -272,6 +287,7 @@ export default function ReposPage() {
             <Trash2 />
             Delete
           </Button>
+          )}
           {row.repo !== undefined && <ChevronRight className="size-4 text-muted-foreground" />}
         </span>
       ),

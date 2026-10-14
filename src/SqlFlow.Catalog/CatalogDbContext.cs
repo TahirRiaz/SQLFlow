@@ -831,6 +831,8 @@ public sealed class CatalogDbContext : DbContext
             entity.Property(s => s.CredentialUsername).HasMaxLength(256);
             // A JSON array of excluded flow paths: unbounded (a large estate can exclude many files).
             entity.Property(s => s.ExcludedFlowPaths);
+            // The configuration key that sets the source, as an operator reads it in an error.
+            entity.Property(s => s.ConfiguredBy).HasMaxLength(200);
             entity.HasIndex(s => s.Name).IsUnique();
             // The sync loop scans for enabled sources whose next sync is due.
             entity.HasIndex(s => s.NextSyncUtc);
@@ -1026,6 +1028,7 @@ public sealed class CatalogDbContext : DbContext
             // Authentication looks a presented token up by its hash: unique (a hash collision would be a distinct
             // secret) and the seek index for every authenticated PAT request.
             entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.Property(t => t.ConfiguredBy).HasMaxLength(200);
             // The owner's token list (self-service management) seeks by user.
             entity.HasIndex(t => t.UserId);
         });

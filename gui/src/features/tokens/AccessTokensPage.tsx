@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { isApiError } from "../../api/client";
 import { tokenApi } from "../../api/endpoints";
 import type { AccessToken, CreatedAccessToken } from "../../api/types";
@@ -349,7 +350,21 @@ export default function AccessTokensPage() {
               return (
                 <TableRow key={token.id} data-testid="token-row">
                   <TableCell className="whitespace-nowrap px-3 py-1.5 text-[13px] font-medium">
-                    {token.name}
+                    <span className="inline-flex items-center gap-2">
+                      {token.name}
+                      {token.configuredBy && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" data-testid="token-configured">configured</Badge>
+                          </TooltipTrigger>
+                          <TooltipContent className="max-w-xs">
+                            The node credential the control plane&apos;s configuration names,{" "}
+                            <span className="font-mono">{token.configuredBy}</span>. Rotate the secret it names, or remove the
+                            setting, and the control plane replaces or revokes this token when it next starts.
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </span>
                   </TableCell>
                   <TableCell className="whitespace-nowrap px-3 py-1.5">
                     <code className="font-mono text-[12px]">{token.prefix}...</code>
@@ -374,16 +389,18 @@ export default function AccessTokensPage() {
                     <RelativeTime value={token.createdUtc} />
                   </TableCell>
                   <TableCell className="whitespace-nowrap px-3 py-1.5 text-right">
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      className="text-destructive hover:text-destructive"
-                      disabled={state === "revoked"}
-                      onClick={() => setRevokeTarget(token)}
-                      data-testid="token-revoke"
-                    >
-                      Revoke
-                    </Button>
+                    {!token.configuredBy && (
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="text-destructive hover:text-destructive"
+                        disabled={state === "revoked"}
+                        onClick={() => setRevokeTarget(token)}
+                        data-testid="token-revoke"
+                      >
+                        Revoke
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               );

@@ -97,16 +97,99 @@ public static class AccessTokenStore
 
     /// <summary>Revokes a token, but only one the caller owns and only if it is still active. Returns true when a row
     /// was revoked; false when no active token with that id belongs to the user (already revoked, unknown, or another
-    /// user's, all indistinguishable to the caller by design). Idempotent: a second revoke is a no-op false.</summary>
+    /// user's, all indistinguishable to the caller by design). Idempotent: a second revoke is a no-op false. A token the
+    /// control plane's configuration sets is never revoked here (see <see cref="ConfiguredByAsync"/>).</summary>
     public static async Task<bool> RevokeAsync(
         CatalogDbContext catalog, Guid userId, Guid tokenId, DateTime nowUtc, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
         var affected = await catalog.AccessTokens
-            .Where(t => t.Id == tokenId && t.UserId == userId && t.RevokedUtc == null)
+            .Where(t => t.Id == tokenId && t.UserId == userId && t.RevokedUtc == null && t.ConfiguredBy == null)
             .ExecuteUpdateAsync(t => t.SetProperty(x => x.RevokedUtc, nowUtc), ct)
             .ConfigureAwait(false);
         return affected > 0;
+    }
+
+    /// <summary>The configuration key that sets the user's active token <paramref name="tokenId"/>, or null for a token someone minted.</summary>
+    public static Task<string?> ConfiguredByAsync(CatalogDbContext catalog, Guid userId, Guid tokenId, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        return catalog.AccessTokens.AsNoTracking()
+            .Where(t => t.Id == tokenId && t.UserId == userId && t.RevokedUtc == null)
+            .Select(t => t.ConfiguredBy)
+            .FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>
+    /// Makes the token whose secret hashes to <paramref name="tokenHash"/> the one active credential that
+    /// <paramref name="setting"/> sets, owned by <paramref name="ownerId"/> with <paramref name="scopes"/>, in one
+    /// transaction: issues it when the catalog does not hold it, takes it back into service when it was revoked (the
+    /// configuration names it again), and revokes every other token the setting set before (a rotated secret). Answers
+    /// what it did, in a few words; doing it again changes nothing.
+    /// </summary>
+    public static Task<string> EnsureConfiguredAsync(
+        CatalogDbContext catalog, string setting, Guid ownerId, string name, string tokenHash, string prefix, string scopes,
+        DateTime nowUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(setting);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tokenHash);
+        ArgumentException.ThrowIfNullOrWhiteSpace(prefix);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scopes);
+        return CatalogTransaction.InSerializableAsync(catalog, async () =>
+        {
+            var revoked = await catalog.AccessTokens
+                .Where(t => t.ConfiguredBy == setting && t.TokenHash != tokenHash && t.RevokedUtc == null)
+                .ExecuteUpdateAsync(t => t.SetProperty(x => x.RevokedUtc, nowUtc), ct)
+                .ConfigureAwait(false);
+
+            var token = await catalog.AccessTokens.AsTracking().FirstOrDefaultAsync(t => t.TokenHash == tokenHash, ct).ConfigureAwait(false);
+            string outcome;
+            if (token is null)
+            {
+                catalog.AccessTokens.Add(new CatalogAccessToken
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = ownerId,
+                    Name = name,
+                    TokenHash = tokenHash,
+                    Prefix = prefix,
+                    Scopes = scopes,
+                    CreatedUtc = nowUtc,
+                    ConfiguredBy = setting,
+                });
+                outcome = "issued";
+            }
+            else if (token.RevokedUtc is not null || token.ConfiguredBy != setting || token.UserId != ownerId
+                     || token.Scopes != scopes || token.ExpiresUtc is not null)
+            {
+                token.RevokedUtc = null;
+                token.ExpiresUtc = null;
+                token.ConfiguredBy = setting;
+                token.UserId = ownerId;
+                token.Scopes = scopes;
+                token.Name = name;
+                outcome = "taken back into service";
+            }
+            else
+            {
+                outcome = "unchanged";
+            }
+
+            await catalog.SaveChangesAsync(ct).ConfigureAwait(false);
+            return revoked > 0 ? $"{outcome}; {revoked} earlier one(s) revoked" : outcome;
+        }, ct);
+    }
+
+    /// <summary>Revokes every active token <paramref name="setting"/> set, once the configuration no longer names one. Answers how many.</summary>
+    public static Task<int> RevokeConfiguredAsync(CatalogDbContext catalog, string setting, DateTime nowUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(setting);
+        return catalog.AccessTokens
+            .Where(t => t.ConfiguredBy == setting && t.RevokedUtc == null)
+            .ExecuteUpdateAsync(t => t.SetProperty(x => x.RevokedUtc, nowUtc), ct);
     }
 
     private static string[] Split(string scopes)

@@ -144,6 +144,8 @@ public static class ControlPlaneHost
 
         // ---- Bootstrap provisioning: migrations, built-in roles, the initial admin, and the optional demo repo source.
         // Retries in the background until the catalog is reachable, so start order (app before database) never matters.
+        // The start-up pass, step by step: what readiness and GET /api/v1/bootstrap report.
+        builder.Services.AddSingleton<BootstrapProgress>();
         builder.Services.AddHostedService<BootstrapProvisioningService>();
 
         // ---- Dispatch: the run queue lives in this process. The dispatcher holds every queued and executing run and
@@ -426,7 +428,8 @@ public static class ControlPlaneHost
         builder.Services.AddResponseCompression();
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<CatalogDbContext>("catalog")
-            .AddCheck<ModuleDatabaseVerification>("module-databases");
+            .AddCheck<ModuleDatabaseVerification>("module-databases")
+            .AddCheck<BootstrapReadiness>("bootstrap");
 
         builder.Services.AddRateLimiter(rate =>
         {
@@ -574,6 +577,7 @@ public static class ControlPlaneHost
         // /me whoami opts back in), so a model host holding that token can never mint a credential or read the user's chats.
         v1.MapGroup(string.Empty).RequireAuthorization(ControlPlanePolicies.Read)
             .MapMeEndpoints()
+            .MapBootstrapEndpoints()
             .MapNotificationEndpoints()
             .MapMaintenanceEndpoints()
             // The GUI chat assistant: per-user conversations, streamed answers, each run under its own delegated token.

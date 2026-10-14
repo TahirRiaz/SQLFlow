@@ -12,6 +12,31 @@ public enum RepoSourceMutation
 }
 
 /// <summary>
+/// A repo source the control plane's configuration names, as the control plane writes it at start: exactly one of
+/// <see cref="RemoteUrl"/> and <see cref="LocalPath"/>, the branch, the sync interval, a git credential as a reference
+/// (never a token), and the flow files to leave out. <see cref="Setting"/> is the configuration key that names it, which
+/// the API names when it refuses to change the source.
+/// </summary>
+public sealed record ConfiguredRepository(
+    string Name, string? RemoteUrl, string? LocalPath, string Branch, int SyncIntervalSeconds, string? CredentialReference,
+    string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths, string Setting);
+
+/// <summary>What writing the configured sources changed: the sources added, the ones updated, the ones released.</summary>
+public sealed record ConfiguredRepositoriesApplied(IReadOnlyList<string> Registered, IReadOnlyList<string> Updated, IReadOnlyList<string> Released)
+{
+    /// <summary>A one-line account of the change, as a bootstrap step reports it.</summary>
+    public string Describe()
+        => Registered.Count == 0 && Updated.Count == 0 && Released.Count == 0
+            ? "unchanged"
+            : string.Join("; ", new[]
+            {
+                Registered.Count == 0 ? null : "registered " + string.Join(", ", Registered),
+                Updated.Count == 0 ? null : "updated " + string.Join(", ", Updated),
+                Released.Count == 0 ? null : "released " + string.Join(", ", Released),
+            }.Where(p => p is not null));
+}
+
+/// <summary>
 /// Persistence for the managed-sync source registry: register/refresh a tracked git repo, find the sources due to
 /// sync, claim one atomically (so several control-plane nodes never sync the same source at once), and record each
 /// sync's outcome. Stateless like the other catalog stores; the git pull + the actual catalog sync are the control
@@ -167,6 +192,118 @@ public static class RepoSourceStore
             await catalog.RepoSources.Where(s => s.Id == id).ExecuteDeleteAsync(ct).ConfigureAwait(false);
             return true;
         }, ct);
+    }
+
+    /// <summary>
+    /// Writes the sources the control plane's configuration names, in one transaction: registers each one the catalog does
+    /// not hold (due to sync at once), brings each one it holds in line with the configuration and marks it as set by it
+    /// (an existing source keeps its sync schedule and history), and releases each source marked as configured that the
+    /// configuration no longer names, keeping it as an ordinary source. Writing the same configuration again changes
+    /// nothing. A configured source is always enabled: a deployment that names a repository wants it synced.
+    /// </summary>
+    public static Task<ConfiguredRepositoriesApplied> ApplyConfiguredAsync(
+        CatalogDbContext catalog, IReadOnlyList<ConfiguredRepository> configured, DateTime nowUtc, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(configured);
+        return CatalogTransaction.InSerializableAsync(catalog, async () =>
+        {
+            var registered = new List<string>();
+            var updated = new List<string>();
+            var released = new List<string>();
+            var named = new HashSet<Guid>();
+            foreach (var repository in configured)
+            {
+                var id = FlowIdentity.FromName($"reposource/{repository.Name}");
+                named.Add(id);
+                var remote = string.IsNullOrWhiteSpace(repository.RemoteUrl) ? null : repository.RemoteUrl.Trim();
+                var local = string.IsNullOrWhiteSpace(repository.LocalPath) ? null : Path.GetFullPath(repository.LocalPath.Trim());
+                var branch = string.IsNullOrWhiteSpace(repository.Branch) ? "main" : repository.Branch.Trim();
+                var interval = Math.Max(1, repository.SyncIntervalSeconds);
+                var reference = string.IsNullOrWhiteSpace(repository.CredentialReference) ? null : repository.CredentialReference.Trim();
+                var username = string.IsNullOrWhiteSpace(repository.CredentialUsername) ? null : repository.CredentialUsername.Trim();
+                var excluded = SerializeExcludedPaths(repository.ExcludedFlowPaths);
+                var existing = await catalog.RepoSources.AsTracking().FirstOrDefaultAsync(s => s.Id == id, ct).ConfigureAwait(false);
+                if (existing is null)
+                {
+                    catalog.RepoSources.Add(new CatalogRepoSource
+                    {
+                        Id = id,
+                        Name = repository.Name,
+                        RemoteUrl = remote,
+                        LocalPath = local,
+                        Branch = branch,
+                        Enabled = true,
+                        SyncIntervalSeconds = interval,
+                        CredentialReference = reference,
+                        CredentialUsername = username,
+                        ExcludedFlowPaths = excluded,
+                        ConfiguredBy = repository.Setting,
+                        NextSyncUtc = nowUtc,
+                        CreatedUtc = nowUtc,
+                        UpdatedUtc = nowUtc,
+                    });
+                    registered.Add(repository.Name);
+                    continue;
+                }
+
+                var changed = existing.RemoteUrl != remote || existing.LocalPath != local || existing.Branch != branch
+                    || !existing.Enabled || existing.SyncIntervalSeconds != interval || existing.CredentialReference != reference
+                    || existing.CredentialUsername != username || existing.ExcludedFlowPaths != excluded
+                    || existing.ConfiguredBy != repository.Setting || existing.Name != repository.Name;
+                if (!changed)
+                {
+                    continue;
+                }
+
+                existing.Name = repository.Name;
+                existing.RemoteUrl = remote;
+                existing.LocalPath = local;
+                existing.Branch = branch;
+                existing.SyncIntervalSeconds = interval;
+                existing.CredentialReference = reference;
+                existing.CredentialUsername = username;
+                existing.ExcludedFlowPaths = excluded;
+                existing.ConfiguredBy = repository.Setting;
+                existing.UpdatedUtc = nowUtc;
+                if (!existing.Enabled || existing.NextSyncUtc is null)
+                {
+                    existing.Enabled = true;
+                    existing.NextSyncUtc = nowUtc;
+                }
+
+                updated.Add(repository.Name);
+            }
+
+            var stale = await catalog.RepoSources.AsTracking()
+                .Where(s => s.ConfiguredBy != null)
+                .ToListAsync(ct).ConfigureAwait(false);
+            foreach (var source in stale.Where(s => !named.Contains(s.Id)))
+            {
+                source.ConfiguredBy = null;
+                source.UpdatedUtc = nowUtc;
+                released.Add(source.Name);
+            }
+
+            await catalog.SaveChangesAsync(ct).ConfigureAwait(false);
+            return new ConfiguredRepositoriesApplied(registered, updated, released);
+        }, ct);
+    }
+
+    /// <summary>The configuration key that sets the source <paramref name="id"/>, or null for a source the API registered (or no source).</summary>
+    public static Task<string?> ConfiguredByAsync(CatalogDbContext catalog, Guid id, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        return catalog.RepoSources.AsNoTracking().Where(s => s.Id == id).Select(s => s.ConfiguredBy).FirstOrDefaultAsync(ct);
+    }
+
+    /// <summary>The configuration key that sets the source named <paramref name="name"/>, or null for a source the API registered (or no source).</summary>
+    public static Task<string?> ConfiguredByNameAsync(CatalogDbContext catalog, string name, CancellationToken ct = default)
+    {
+        ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        var trimmed = name.Trim();
+        return catalog.RepoSources.AsNoTracking().Where(s => s.Name == trimmed).Select(s => s.ConfiguredBy).FirstOrDefaultAsync(ct);
     }
 
     /// <summary>The enabled sources whose next sync has arrived, oldest-due first.</summary>

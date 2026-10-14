@@ -305,13 +305,25 @@ public sealed class AzureAdOptions
 }
 
 /// <summary>
-/// First-run provisioning. On startup the control plane (retrying until the catalog database is reachable)
-/// applies pending catalog migrations, seeds the built-in roles, creates the initial admin user when configured
-/// and absent, and registers the optional demo repo source. Everything is idempotent: a restart converges to the
-/// same state and never overwrites operator changes (an existing admin's password is not reset).
+/// What the control plane sets up at every start, in one ordered pass (retrying until the catalog database is
+/// reachable): pending catalog migrations, the module databases, the built-in roles, the initial admin user when
+/// configured and absent, the repo sources the configuration names, the node credential it names, and the default
+/// worker pool's floor, then whatever steps the host's modules add. Everything is idempotent: a restart converges to the
+/// same state and never overwrites operator changes (an existing admin's password is not reset), and what the
+/// configuration sets is locked against edits through the API and released, never deleted, when the configuration stops
+/// naming it.
 /// </summary>
 public sealed class BootstrapOptions
 {
+    /// <summary>The configuration key of the repo source named <paramref name="name"/> under <see cref="Repositories"/>.</summary>
+    public static string RepositoryKey(string name) => $"ControlPlane:Bootstrap:Repositories:{name}";
+
+    /// <summary>The configuration key of <see cref="DemoRepo"/>.</summary>
+    public const string DemoRepoKey = "ControlPlane:Bootstrap:DemoRepo";
+
+    /// <summary>The configuration key of <see cref="NodeTokenReference"/>.</summary>
+    public const string NodeTokenKey = "ControlPlane:Bootstrap:NodeTokenReference";
+
     /// <summary>Whether startup applies pending EF catalog migrations. Disable only when a DBA applies migration
     /// scripts out of band; pending migrations are then logged as a warning.</summary>
     public bool ApplyMigrations { get; set; } = true;
@@ -330,8 +342,113 @@ public sealed class BootstrapOptions
     /// resolved through the SqlFlow secret resolver. Never a literal in source control.</summary>
     public string? AdminPasswordReference { get; set; }
 
-    /// <summary>An optional repo source registered at bootstrap, so a fresh install has a synced estate to look at.</summary>
+    /// <summary>An optional repo source registered at bootstrap, so a fresh install has a synced estate to look at. It is
+    /// written exactly as an entry of <see cref="Repositories"/> is, under its own key.</summary>
     public DemoRepoOptions? DemoRepo { get; set; }
+
+    /// <summary>
+    /// The repo sources the deployment syncs, by name (<c>ControlPlane:Bootstrap:Repositories:&lt;name&gt;</c>): each a git
+    /// remote (with the token a private one needs, as a reference) or a directory the control plane reads live. The control
+    /// plane writes them at every start, the API refuses to change or remove them, and one the configuration stops naming
+    /// is kept as an ordinary source. Empty names none and leaves the registered sources as they are.
+    /// </summary>
+    public Dictionary<string, ConfiguredRepositoryOptions?> Repositories { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// A node credential the control plane accepts, as a secret reference (<c>${keyvault:vault/secret}</c> or
+    /// <c>${env:NAME}</c>) to the token the deployment's workers present as <c>SQLFLOW_TOKEN</c>: a token of SQLFlow's own
+    /// form (<c>sqlf_</c> and at least 32 characters) the deployment generates and keeps in its vault. At every start the
+    /// control plane makes it the one active node-scope token of the initial admin (<see cref="AdminUsername"/>), and
+    /// revokes the one it replaced when the secret changes, so a fresh deployment's workers connect with no token minted by
+    /// hand. Null issues none, and revokes the one an earlier configuration set.
+    /// </summary>
+    public string? NodeTokenReference { get; set; }
+
+    /// <summary>
+    /// The repo sources the configuration names, <see cref="DemoRepo"/> included, as the control plane writes them, checked:
+    /// every name once, exactly one of a remote and a local path, a positive interval, and a credential only as a reference.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">A source is not one the configuration may hold; the message names the setting.</exception>
+    public IReadOnlyList<SqlFlow.Catalog.ConfiguredRepository> ConfiguredRepositories()
+    {
+        var configured = new List<SqlFlow.Catalog.ConfiguredRepository>();
+        var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (DemoRepo is not null)
+        {
+            if (string.IsNullOrWhiteSpace(DemoRepo.Name) || string.IsNullOrWhiteSpace(DemoRepo.RemoteUrl))
+            {
+                throw new InvalidOperationException($"{DemoRepoKey} requires both Name and RemoteUrl when configured.");
+            }
+
+            if (DemoRepo.SyncIntervalSeconds < 1)
+            {
+                throw new InvalidOperationException($"{DemoRepoKey}:SyncIntervalSeconds must be positive.");
+            }
+
+            names.Add(DemoRepo.Name.Trim());
+            configured.Add(new SqlFlow.Catalog.ConfiguredRepository(
+                DemoRepo.Name.Trim(), DemoRepo.RemoteUrl.Trim(), null, DemoRepo.Branch, DemoRepo.SyncIntervalSeconds, null, null, [], DemoRepoKey));
+        }
+
+        foreach (var (name, options) in Repositories.OrderBy(r => r.Key, StringComparer.OrdinalIgnoreCase))
+        {
+            var key = RepositoryKey(name);
+            if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > MaxRepositoryNameLength || name.Any(char.IsControl))
+            {
+                throw new InvalidOperationException($"{key} names a repo source with a blank name, a control character, or more than {MaxRepositoryNameLength} characters.");
+            }
+
+            if (options is null)
+            {
+                throw new InvalidOperationException($"{key} sets nothing: give it a RemoteUrl (a git remote) or a LocalPath (a directory the control plane reads live).");
+            }
+
+            if (!names.Add(name.Trim()))
+            {
+                throw new InvalidOperationException($"{key} names a repo source another setting names too; every source is configured once.");
+            }
+
+            var hasRemote = !string.IsNullOrWhiteSpace(options.RemoteUrl);
+            var hasLocal = !string.IsNullOrWhiteSpace(options.LocalPath);
+            if (hasRemote == hasLocal)
+            {
+                throw new InvalidOperationException($"{key} needs exactly one of RemoteUrl (a git remote the managed sync clones and pulls) and LocalPath (a directory the control plane reads live, with no git step).");
+            }
+
+            if (hasRemote && !Uri.TryCreate(options.RemoteUrl!.Trim(), UriKind.Absolute, out _))
+            {
+                throw new InvalidOperationException($"{key}:RemoteUrl is not an absolute URL.");
+            }
+
+            if (options.SyncIntervalSeconds < 1)
+            {
+                throw new InvalidOperationException($"{key}:SyncIntervalSeconds must be positive.");
+            }
+
+            var reference = string.IsNullOrWhiteSpace(options.CredentialReference) ? null : options.CredentialReference.Trim();
+            if (reference is not null && !SqlFlow.Core.Secrets.SuppliedReferences.IsWholeReference(reference))
+            {
+                throw new InvalidOperationException(
+                    $"{key}:CredentialReference must be a secret reference such as ${{keyvault:<vault>/<secret>}} or ${{env:NAME}}, never the token itself.");
+            }
+
+            if (reference is not null && hasLocal)
+            {
+                throw new InvalidOperationException($"{key}:CredentialReference applies to a git remote; a LocalPath source reads the directory as it is.");
+            }
+
+            configured.Add(new SqlFlow.Catalog.ConfiguredRepository(
+                name.Trim(), hasRemote ? options.RemoteUrl!.Trim() : null, hasLocal ? options.LocalPath!.Trim() : null,
+                string.IsNullOrWhiteSpace(options.Branch) ? "main" : options.Branch.Trim(), options.SyncIntervalSeconds, reference,
+                string.IsNullOrWhiteSpace(options.CredentialUsername) ? null : options.CredentialUsername.Trim(),
+                options.ExcludedFlowPaths ?? [], key));
+        }
+
+        return configured;
+    }
+
+    /// <summary>The longest name a configured repo source may carry: the width of the catalog's column.</summary>
+    public const int MaxRepositoryNameLength = 256;
 
     public void Validate()
     {
@@ -343,20 +460,46 @@ public sealed class BootstrapOptions
                 "ControlPlane:Bootstrap:AdminUsername and ControlPlane:Bootstrap:AdminPasswordReference must be set together.");
         }
 
-        if (DemoRepo is not null)
+        _ = ConfiguredRepositories();
+
+        if (!string.IsNullOrWhiteSpace(NodeTokenReference))
         {
-            if (string.IsNullOrWhiteSpace(DemoRepo.Name) || string.IsNullOrWhiteSpace(DemoRepo.RemoteUrl))
+            if (!SqlFlow.Core.Secrets.SuppliedReferences.IsWholeReference(NodeTokenReference))
             {
                 throw new InvalidOperationException(
-                    "ControlPlane:Bootstrap:DemoRepo requires both Name and RemoteUrl when configured.");
+                    $"{NodeTokenKey} must be a secret reference such as ${{keyvault:<vault>/<secret>}} or ${{env:NAME}}, never the token itself.");
             }
 
-            if (DemoRepo.SyncIntervalSeconds < 1)
+            if (!hasUsername)
             {
-                throw new InvalidOperationException("ControlPlane:Bootstrap:DemoRepo:SyncIntervalSeconds must be positive.");
+                throw new InvalidOperationException(
+                    $"{NodeTokenKey} needs an owner for the token it names: set ControlPlane:Bootstrap:AdminUsername and AdminPasswordReference too.");
             }
         }
     }
+}
+
+/// <summary>One repo source of <see cref="BootstrapOptions.Repositories"/>: the same shape as an API registration.</summary>
+public sealed class ConfiguredRepositoryOptions
+{
+    /// <summary>The git remote the managed sync clones and pulls. Set this or <see cref="LocalPath"/>.</summary>
+    public string? RemoteUrl { get; set; }
+
+    /// <summary>A directory the control plane reads live, with no git step. Set this or <see cref="RemoteUrl"/>.</summary>
+    public string? LocalPath { get; set; }
+
+    public string Branch { get; set; } = "main";
+
+    public int SyncIntervalSeconds { get; set; } = 300;
+
+    /// <summary>The token a private remote needs, as a secret reference (<c>${keyvault:vault/secret}</c>), never the token.</summary>
+    public string? CredentialReference { get; set; }
+
+    /// <summary>The git username paired with the token, for a host that needs one (a Bitbucket app password); GitHub ignores it.</summary>
+    public string? CredentialUsername { get; set; }
+
+    /// <summary>The repo-relative flow files the sync leaves out.</summary>
+    public List<string>? ExcludedFlowPaths { get; set; }
 }
 
 /// <summary>The demo repo source bootstrap registers (same shape as an API registration).</summary>
