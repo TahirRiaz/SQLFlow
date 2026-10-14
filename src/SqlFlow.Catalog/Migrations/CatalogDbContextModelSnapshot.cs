@@ -1550,6 +1550,9 @@ namespace SqlFlow.Catalog.Migrations
                     b.Property<Guid>("PipelineId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("ReferencesJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid?>("RepoId")
                         .HasColumnType("uniqueidentifier");
 

@@ -153,6 +153,13 @@ public sealed partial class RepoSyncService : BackgroundService
         {
             await trace.InfoAsync("start", $"Sync started for '{source.Name}' (branch {source.Branch}).", ct).ConfigureAwait(false);
 
+            // The sync resolves its references (the repository's git credential, and every server the connected lineage
+            // tier opens) with the values the control plane supplies with this repository's runs, so lineage reaches
+            // exactly the databases the runs do.
+            var repoId = SqlFlow.Core.Identity.FlowIdentity.FromName(source.Name);
+            var references = await scope.ServiceProvider.GetRequiredService<RunReferences>().ForAsync(repoId, ct).ConfigureAwait(false);
+            using var supplied = SuppliedReferences.Supply(references);
+
             var resolver = scope.ServiceProvider.GetRequiredService<ISecretResolver>();
             var (workingDir, sha) = source.LocalPath is { Length: > 0 } localPath
                 ? await ReadLocalPathAsync(catalog, trace, source.Name, localPath, ct).ConfigureAwait(false)
@@ -195,7 +202,6 @@ public sealed partial class RepoSyncService : BackgroundService
             // The pre-sync snapshot of this repo's report visuals' content hashes, taken before SyncAsync deletes and
             // reinserts every subscriber report row: it is how the post-sync question step below tells an unchanged
             // visual from a new, changed, or moved one, since the sync itself preserves no row identity across passes.
-            var repoId = SqlFlow.Core.Identity.FlowIdentity.FromName(source.Name);
             var before = await RepoSyncFollowUp.BeforeAsync(catalog, repoId, ct).ConfigureAwait(false);
 
             var result = await new CatalogSync(

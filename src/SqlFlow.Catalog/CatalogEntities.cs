@@ -325,6 +325,12 @@ public class CatalogRun
     /// null. Recorded on the run so the history says exactly what was asked.</summary>
     public string? Payload { get; set; }
 
+    /// <summary>The values the control plane supplied for the run's <c>${env:NAME}</c> references
+    /// (<c>RunParameters.References</c>), as a JSON object ordered by name, or null for none. Held on the run so every
+    /// attempt of it, on whichever node, resolves with exactly what it was queued with; never a written-out credential,
+    /// which the run's validation refuses.</summary>
+    public string? ReferencesJson { get; set; }
+
     /// <summary>Who asked for the run: the caller's subject for a trigger through the API or a schedule's run-now, the
     /// schedule (<c>schedule:&lt;name&gt;</c>, see <see cref="SqlFlow.Core.Runs.RunActors"/>) for a fire of its own; null
     /// for a run recorded from its artifact and every run enqueued before either was recorded.</summary>

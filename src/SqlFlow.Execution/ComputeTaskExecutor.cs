@@ -9,6 +9,7 @@ using SqlFlow.Core.Connections;
 using SqlFlow.Core.Quality;
 using SqlFlow.Core.Query;
 using SqlFlow.Core.Profiling;
+using SqlFlow.Core.Secrets;
 using SqlFlow.SqlServer.Comparison;
 using SqlFlow.SqlServer.Health;
 using SqlFlow.SqlServer.Quality;
@@ -112,6 +113,10 @@ public sealed class ComputeTaskExecutor
     public async Task<string> ExecuteAsync(ComputeTaskPayload payload, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(payload);
+
+        // The task resolves its references with the values the control plane supplied, ahead of this node's environment,
+        // for its whole execution: a built-in operation's connection and a module operation's alike.
+        using var supplied = SuppliedReferences.Supply(payload.References ?? System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
 
         // A module's operation owns its budget and its connections: it runs under the task's token only, and its result
         // is held to the same size bound as a built-in one.

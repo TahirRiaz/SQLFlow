@@ -4,6 +4,7 @@ using SqlFlow.Core.Comparison;
 using SqlFlow.Core.Connections;
 using SqlFlow.Core.Quality;
 using SqlFlow.Core.Query;
+using SqlFlow.Core.Secrets;
 
 namespace SqlFlow.Core.Compute;
 
@@ -238,6 +239,12 @@ public sealed record ComputeTaskPayload
     /// <summary>The most <see cref="Arguments"/> one task carries.</summary>
     public const int MaxArguments = 32;
 
+    /// <summary>The values the control plane supplies for the task's <c>${env:NAME}</c> references
+    /// (<see cref="SuppliedReferences"/>), resolved ahead of the executing node's environment exactly as a run's are, so a
+    /// task reaches the same connections the estate's runs do. Null when nothing is supplied, so a task's queue row reads
+    /// back equal to the payload that wrote it.</summary>
+    public IReadOnlyDictionary<string, string>? References { get; init; }
+
     /// <summary>The longest argument name.</summary>
     public const int MaxArgumentNameLength = 64;
 
@@ -314,6 +321,11 @@ public sealed record ComputeTaskPayload
     /// </summary>
     public void Validate(IReadOnlyCollection<string>? registeredOperations)
     {
+        if (References is { Count: > 0 })
+        {
+            SuppliedReferences.Validate(References, "the task's references");
+        }
+
         if (registeredOperations is not null && registeredOperations.Contains(Operation, StringComparer.Ordinal))
         {
             ValidateRegistered();

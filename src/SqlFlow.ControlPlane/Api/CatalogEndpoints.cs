@@ -129,6 +129,11 @@ public static class CatalogEndpoints
             var repoId = SqlFlow.Core.Identity.FlowIdentity.FromName(repo.Name);
             var before = await Background.RepoSyncFollowUp.BeforeAsync(db, repoId, ct).ConfigureAwait(false);
 
+            // Lineage opens the servers the repository's flows reference with the values its runs are supplied with, as the
+            // managed sync does.
+            var references = await services.GetRequiredService<Background.RunReferences>().ForAsync(repoId, ct).ConfigureAwait(false);
+            using var supplied = SuppliedReferences.Supply(references);
+
             var result = await new CatalogSync(documents, syncExtensions).SyncAsync(
                 db, repo.RootPath, repo.Name, repo.RemoteUrl, clock.GetUtcNow().UtcDateTime,
                 includeDerived: true, secrets: secrets, ct: ct).ConfigureAwait(false);

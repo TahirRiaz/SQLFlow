@@ -12,6 +12,8 @@ keywords:
   - hygiene warnings
   - secretless
   - connection reference
+  - supplied references
+  - IRunReferenceSource
 related:
   - flow-connections
   - concept-environment-variables
@@ -29,6 +31,11 @@ sourceRefs:
   - src/SqlFlow.Core/Connections/InMemoryDataSourceStore.cs
   - src/SqlFlow.Core/Connections/SourceProviders.cs
   - src/SqlFlow.Core/Secrets/SecretResolver.cs
+  - src/SqlFlow.Core/Secrets/SuppliedReferences.cs
+  - src/SqlFlow.Core/Runs/RunParameters.cs
+  - src/SqlFlow.ControlPlane/Background/RunReferences.cs
+  - src/SqlFlow.ControlPlane/Background/RunDispatcher.cs
+  - src/SqlFlow.Execution/DocumentExecutor.cs
   - src/SqlFlow.Core/Secrets/EnvSecretProvider.cs
   - src/SqlFlow.Core/Secrets/SecretHygiene.cs
   - src/SqlFlow.Core/Secrets/LocalEnvFile.cs
@@ -111,6 +118,38 @@ The Key Vault locator must be `vault/secret`; anything else throws `Key Vault re
 
 The ambient Azure identity is chosen by `SQLFLOW_AZURE_AUTH` (src/SqlFlow.Azure/AzureAuth.cs): `serviceprincipal`/`sp`, `managedidentity`/`mi`/`msi`, `azurecli`/`cli`/`azlogin`, and anything else falls back to the default credential chain. Service-principal mode uses the standard `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_CLIENT_SECRET` family.
 
+## Values the control plane supplies with a run
+
+A deployment can keep the connections and settings its flows read in one place instead of on every node. A host module registers an `IRunReferenceSource` (src/SqlFlow.ControlPlane/Background/RunReferences.cs) with the control plane, and the dispatcher queues every run, every member of a run group and every compute task carrying the values that source holds for the run's repository (null for a task of no repository): `RunParameters.References` on a run, `references` in a compute task's payload. A caller that composed references of its own keeps them, and a fan-out member carries its root's. With no source registered nothing is attached, and every reference resolves on the node exactly as it always did.
+
+The executing node opens a scope with those values for the whole run (`SuppliedReferences.Supply`, src/SqlFlow.Core/Secrets/SuppliedReferences.cs): the document executor for a run of any kind, the compute task executor for a task. Inside the scope `SecretResolver` answers an `${env:NAME}` reference from the supplied values before the process environment:
+
+- Only `${env:NAME}` references are looked up. A `${keyvault:...}` reference in the flow is resolved by the node as written.
+- A supplied value may itself be a reference (`${keyvault:my-vault/dw-conn}`), expanded by the providers alone, so the control plane points a run at a secret without holding it and the node reads it with its own identity. Values do not chain: a supplied `${env:OTHER}` is read from the process environment even when `OTHER` is supplied too.
+- A value that is exactly its own reference (`NAME = ${env:NAME}`) hands the name back to the process environment.
+- Scopes nest: a module can lay a narrower set (one tenant's, say) over the values every run carries, the inner scope's values winning. The scope flows with the run's asynchronous call, so concurrent runs on one node each resolve with their own values.
+
+The managed sync and the API's inline sync open the same scope with the repository's values, so the connected lineage tier opens exactly the servers the runs read.
+
+A run's trace says where each reference it resolves takes its value, once per name and at most 100 names, by name and never by value (stage `run.reference`):
+
+```text
+Reference WAREHOUSE_DB takes its value from the configuration the control plane supplied with this run.
+Reference LANDING_URL takes its value from this node's environment.
+```
+
+The values are held to one set of rules (`SuppliedReferences.Validate`) wherever they enter, so a configuration that breaks one refuses the run with a message naming the value, and nothing is queued:
+
+| Rule | Bound |
+|---|---|
+| Count | at most 64 values per run |
+| Name | an environment variable name: a letter or `_`, then letters, digits and `_`, at most 64 characters |
+| Value | 1 to 1000 characters, no control characters |
+| A name ending in `SECRET`, `PASSWORD`, `TOKEN`, `APIKEY` or `API_KEY` | the value is one whole reference, never the credential |
+| A connection string | no `Password`, `Pwd`, `Secret`, `ClientSecret`, `AccessKey`, `SharedAccessKey` or `AccountKey` written out; each is a reference (`Password=${keyvault:kv/etl}`) or the string authenticates with an identity |
+
+A run records its values on the catalog row (`Run.ReferencesJson`, ordered by name), so every attempt of it, on whichever node, resolves with exactly what it was queued with.
+
 ## Resolution pipeline and the secretless policy
 
 `ConnectionResolver.ResolveAsync` produces one `ResolvedConnection` per reference:
@@ -186,6 +225,7 @@ Source-control documents (`flowType: scm`) go further than a warning: `repositor
 
 - **YAML**: the `connections:` block of relational documents (bare alias, string, or `provider`/`connection` map), the `target.connection` of file flows (a `${...}` reference or a literal only; a file flow has no alias form), and `repository.username`/`repository.secret` of scm documents.
 - **CLI**: `sqlflow db --db <ref>`, `sqlflow runs cancel --db <ref>`, and `sqlflow user reset-password --db <ref>` (default `${env:SQLFLOW_CATALOG_DB}`), `sqlflow healthcheck --source <ref>` and `sqlflow detect-unique-key --source <ref>` (default `${env:SQLFLOW_SOURCE}`), and `--provider` for the inline kind of a non-SQL-Server source.
+- **Control plane**: an `IRunReferenceSource` a host module registers supplies the values every run and compute task carries (see above).
 - **Environment**: `SQLFLOW_CONN_<NAME>` per bare alias, `SQLFLOW_AZURE_AUTH` (with `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_CLIENT_SECRET` for service-principal mode) for Key Vault access, and the git-ignored `.sqlflow/env` file for local values.
 
 ## Example

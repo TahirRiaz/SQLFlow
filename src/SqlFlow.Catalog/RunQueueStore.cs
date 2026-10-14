@@ -178,6 +178,7 @@ public static class RunQueueStore
                 Operation = parameters.Operation,
                 ValuesJson = RunParameters.ValuesToJson(parameters.Values),
                 Payload = parameters.Payload,
+                ReferencesJson = SuppliedReferences.ToJson(parameters.References),
                 RequestedBy = TrimToNull(request.RequestedBy),
                 TriggerSource = request.TriggerSource,
                 TriggerScheduleId = request.TriggerScheduleId,
@@ -303,6 +304,7 @@ public static class RunQueueStore
                     Operation = memberParameters.Operation,
                     ValuesJson = RunParameters.ValuesToJson(memberParameters.Values),
                     Payload = memberParameters.Payload,
+                    ReferencesJson = SuppliedReferences.ToJson(memberParameters.References),
                     RequestedBy = TrimToNull(request.RequestedBy),
                     TriggerSource = request.TriggerSource,
                     TriggerScheduleId = request.TriggerScheduleId,
@@ -553,6 +555,7 @@ public static class RunQueueStore
                     r.Operation,
                     r.ValuesJson,
                     r.Payload,
+                    r.ReferencesJson,
                     r.RequestedBy,
                     RepoName = repo != null ? repo.Name : null,
                     RepoRemoteUrl = repo != null ? repo.RemoteUrl : null,
@@ -582,6 +585,7 @@ public static class RunQueueStore
                 Operation = row.Operation,
                 Values = RunParameters.ValuesFromJson(row.ValuesJson),
                 Payload = row.Payload,
+                References = SuppliedReferences.FromJson(row.ReferencesJson),
             },
             row.CredentialReference, row.CredentialUsername, row.RequestedBy);
     }
@@ -947,6 +951,7 @@ public static class RunQueueStore
                 {
                     r.PipelineId, r.RepoId, r.FlowName, r.FlowKind, r.TargetPool, r.CommitSha, r.FlowVersionHash,
                     r.TriggerSource, r.TriggerScheduleId, r.RequestedBy, r.Status, r.ClaimedByNode, r.Attempt, r.FanOutRoot,
+                    r.ReferencesJson,
                 })
                 .FirstOrDefaultAsync(ct).ConfigureAwait(false);
             if (root is null || root.Status != RunStatuses.Running || root.ClaimedByNode != node || root.Attempt != attempt)
@@ -1036,6 +1041,9 @@ public static class RunQueueStore
                     Operation = parameters.Operation,
                     ValuesJson = RunParameters.ValuesToJson(parameters.Values),
                     Payload = parameters.Payload,
+                    // A member resolves every reference exactly as its root: it runs the same flow, in the same
+                    // repository, under what the root was queued with.
+                    ReferencesJson = root.ReferencesJson,
                     RequestedBy = root.RequestedBy,
                     TriggerSource = root.TriggerSource,
                     TriggerScheduleId = root.TriggerScheduleId,

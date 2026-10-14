@@ -1,6 +1,7 @@
 using SqlFlow.Core.Abstractions;
 using SqlFlow.Core.Ingestion;
 using SqlFlow.Core.Runs;
+using SqlFlow.Core.Secrets;
 
 namespace SqlFlow.Orchestration;
 
@@ -91,8 +92,18 @@ public sealed record DocumentExecutionOptions
             events.Publish(new SqlFlow.Core.Model.FlowEvent { RunId = RunId ?? Guid.Empty, FlowName = FlowName, Message = Origin, Stage = "run.origin" });
         }
 
+        // A run that carries supplied references says on its trace where each reference it resolves takes its value: the
+        // configuration the control plane supplied, or the node's own environment. Names only, once each, bounded.
+        SuppliedReferences.ReportTo(use => events.Publish(new SqlFlow.Core.Model.FlowEvent
+        {
+            RunId = RunId ?? Guid.Empty, FlowName = FlowName, Message = use.Describe(), Stage = ReferenceStage,
+        }));
+
         return events;
     }
+
+    /// <summary>The stage of the trace lines that say where a run's references take their values.</summary>
+    public const string ReferenceStage = "run.reference";
 
     /// <summary>Who asked for this run, so an executor can attribute what the run does: as the catalog recorded it for a
     /// node run (the caller's subject for a trigger, <c>schedule:&lt;name&gt;</c> for a schedule's fire), and the local

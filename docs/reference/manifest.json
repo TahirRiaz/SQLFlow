@@ -688,7 +688,9 @@
         "redaction",
         "hygiene warnings",
         "secretless",
-        "connection reference"
+        "connection reference",
+        "supplied references",
+        "IRunReferenceSource"
       ],
       "related": [
         "flow-connections",
@@ -708,6 +710,11 @@
         "src/SqlFlow.Core/Connections/InMemoryDataSourceStore.cs",
         "src/SqlFlow.Core/Connections/SourceProviders.cs",
         "src/SqlFlow.Core/Secrets/SecretResolver.cs",
+        "src/SqlFlow.Core/Secrets/SuppliedReferences.cs",
+        "src/SqlFlow.Core/Runs/RunParameters.cs",
+        "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
+        "src/SqlFlow.ControlPlane/Background/RunDispatcher.cs",
+        "src/SqlFlow.Execution/DocumentExecutor.cs",
         "src/SqlFlow.Core/Secrets/EnvSecretProvider.cs",
         "src/SqlFlow.Core/Secrets/SecretHygiene.cs",
         "src/SqlFlow.Core/Secrets/LocalEnvFile.cs",
@@ -749,6 +756,7 @@
         "guide-deployment"
       ],
       "sourceRefs": [
+        "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
         "src/SqlFlow.ControlPlane/Program.cs",
         "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
         "src/SqlFlow.ControlPlane/Infrastructure/CatalogConnectionProvider.cs",

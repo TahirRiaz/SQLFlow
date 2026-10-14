@@ -163,6 +163,8 @@ public static class ControlPlaneHost
         // ---- Managed workers (off by default): the dispatch owner starts and stops this estate's workers through the
         // launcher a module registers, instead of an external autoscaler reading the scale target.
         ManagedWorkersService.Register(builder.Services, options.ManagedWorkers, options.Dispatch);
+        // The values every run and node task is queued carrying for its references, from the sources the modules register.
+        builder.Services.AddSingleton<RunReferences>();
         builder.Services.AddSingleton<IRunDispatcher, InProcessRunDispatcher>();
         builder.Services.AddSingleton<RepoSyncWaiter>();
         builder.Services.AddSingleton<RepoSyncSignal>();

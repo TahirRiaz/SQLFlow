@@ -1,4 +1,6 @@
+using System.Text.Json.Nodes;
 using SqlFlow.Catalog;
+using SqlFlow.Core.Runs;
 using SqlFlow.Dispatch;
 
 namespace SqlFlow.ControlPlane.Background;
@@ -41,22 +43,42 @@ public interface IRunDispatcher
     Task<CancelOutcome> CancelComputeTaskAsync(CatalogDbContext catalog, Guid taskId, CancellationToken ct = default);
 }
 
-/// <summary>The one implementation: journals through the stores, then tells the local <see cref="Dispatcher"/>.</summary>
+/// <summary>
+/// The one implementation: journals through the stores, then tells the local <see cref="Dispatcher"/>. Every run, every
+/// member of a group and every compute task is queued carrying the values the control plane supplies for its references
+/// (<see cref="RunReferences"/>), unless its caller already composed them: this is the one place every way a run reaches
+/// the queue passes through (an endpoint, a schedule fire, a group, the CLI through the API), so a scheduled run and a
+/// run someone pressed a button for resolve the same values.
+/// </summary>
 public sealed class InProcessRunDispatcher : IRunDispatcher
 {
     private readonly Dispatcher _dispatcher;
     private readonly TimeProvider _clock;
+    private readonly RunReferences _references;
 
-    public InProcessRunDispatcher(Dispatcher dispatcher, TimeProvider clock)
+    public InProcessRunDispatcher(Dispatcher dispatcher, TimeProvider clock, RunReferences references)
     {
         ArgumentNullException.ThrowIfNull(dispatcher);
         ArgumentNullException.ThrowIfNull(clock);
+        ArgumentNullException.ThrowIfNull(references);
         _dispatcher = dispatcher;
         _clock = clock;
+        _references = references;
     }
 
     public async Task<Guid> EnqueueAsync(CatalogDbContext catalog, RunEnqueueRequest request, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        var parameters = request.Parameters ?? RunParameters.None;
+        if (parameters.References.Count == 0 && _references.HasSources)
+        {
+            var supplied = await _references.ForAsync(request.RepoId, ct).ConfigureAwait(false);
+            if (supplied.Count > 0)
+            {
+                request = request with { Parameters = parameters with { References = supplied } };
+            }
+        }
+
         var result = await RunQueueStore
             .EnqueueAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
@@ -67,6 +89,29 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
     public async Task<RunGroupEnqueueResult> EnqueueGroupAsync(
         CatalogDbContext catalog, RunGroupEnqueueRequest request, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if (_references.HasSources)
+        {
+            var supplied = await _references.ForAsync(request.RepoId, ct).ConfigureAwait(false);
+            if (supplied.Count > 0)
+            {
+                // Every member, one the caller gave parameters of its own or not, carries the repository's values; a member
+                // whose caller composed references keeps them.
+                var members = new Dictionary<string, RunParameters>(
+                    request.MemberParameters ?? new Dictionary<string, RunParameters>(StringComparer.Ordinal), StringComparer.Ordinal);
+                foreach (var member in request.Members)
+                {
+                    var own = members.GetValueOrDefault(member.FlowName) ?? RunParameters.None;
+                    if (own.References.Count == 0)
+                    {
+                        members[member.FlowName] = own with { References = supplied };
+                    }
+                }
+
+                request = request with { MemberParameters = members };
+            }
+        }
+
         var result = await RunQueueStore
             .EnqueueGroupAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
@@ -104,12 +149,64 @@ public sealed class InProcessRunDispatcher : IRunDispatcher
     public async Task<Guid> EnqueueComputeTaskAsync(
         CatalogDbContext catalog, ComputeTaskEnqueueRequest request, CancellationToken ct = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+        if (_references.HasSources)
+        {
+            request = request with { ArgumentsJson = await WithReferencesAsync(request.ArgumentsJson, ct).ConfigureAwait(false) };
+        }
+
         var result = await ComputeTaskStore
             .EnqueueAsync(catalog, request, _clock.GetUtcNow().UtcDateTime, ct)
             .ConfigureAwait(false);
         _dispatcher.NotifyTaskEnqueued(result.Placement);
         return result.TaskId;
     }
+
+    /// <summary>
+    /// A task's payload carrying the values supplied for work of no repository, unless it names references already. The
+    /// payload's own shape is the node's to validate; only its <c>references</c> member is read and written here.
+    /// </summary>
+    private async Task<string> WithReferencesAsync(string argumentsJson, CancellationToken ct)
+    {
+        JsonObject? payload;
+        try
+        {
+            payload = string.IsNullOrWhiteSpace(argumentsJson) ? null : JsonNode.Parse(argumentsJson) as JsonObject;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            payload = null;
+        }
+
+        if (payload is null)
+        {
+            // Not a JSON object: left for the store and the node to refuse with their own messages.
+            return argumentsJson;
+        }
+
+        if (payload.TryGetPropertyValue(ReferencesMember, out var present) && present is JsonObject { Count: > 0 })
+        {
+            return argumentsJson;
+        }
+
+        var supplied = await _references.ForAsync(null, ct).ConfigureAwait(false);
+        if (supplied.Count == 0)
+        {
+            return argumentsJson;
+        }
+
+        var references = new JsonObject();
+        foreach (var (name, value) in supplied.OrderBy(p => p.Key, StringComparer.Ordinal))
+        {
+            references[name] = value;
+        }
+
+        payload[ReferencesMember] = references;
+        return payload.ToJsonString();
+    }
+
+    /// <summary>The member of a compute task's payload that holds its supplied references (<see cref="Core.Compute.ComputeTaskPayload.References"/>).</summary>
+    private const string ReferencesMember = "references";
 
     public async Task<CancelOutcome> CancelComputeTaskAsync(
         CatalogDbContext catalog, Guid taskId, CancellationToken ct = default)

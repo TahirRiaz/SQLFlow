@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using SqlFlow.Core.Secrets;
 
 namespace SqlFlow.Core.Runs;
 
@@ -31,6 +32,10 @@ namespace SqlFlow.Core.Runs;
 /// registered kind (one a host module adds): which of the kind's operations the run performs, the flow's named
 /// parameter values, and a JSON object whose shape the kind owns. Their shape is validated here; whether the kind
 /// accepts them is decided by the kind itself at every trust boundary. Built-in kinds take none.</item>
+/// <item><see cref="References"/>: the values the control plane supplies for the run's <c>${env:NAME}</c> references
+/// (see <see cref="SuppliedReferences"/>), attached when the run is queued and resolved ahead of the executing node's
+/// environment. They say where the run's connections and settings point, not what the run does, so they are neither
+/// an override (<see cref="IsDefault"/>) nor a kind argument, and every kind takes them.</item>
 /// </list>
 /// </summary>
 public sealed partial record RunParameters
@@ -112,6 +117,12 @@ public sealed partial record RunParameters
     /// <summary>Kind-owned run arguments as the compact text of one JSON object, or null. Its shape belongs to the
     /// kind, which validates it at every trust boundary; built-in kinds take none.</summary>
     public string? Payload { get; init; }
+
+    /// <summary>The values the control plane supplies for the run's <c>${env:NAME}</c> references, name to value: each
+    /// an identifier, a URL, a connection string without a written-out credential, or a reference such as
+    /// <c>${keyvault:vault/secret}</c> the executing node resolves with its own identity. Empty when nothing is supplied,
+    /// and the run then resolves every reference from the node's environment, as every run did before anything was.</summary>
+    public IReadOnlyDictionary<string, string> References { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>True when the run carries any kind argument (<see cref="Operation"/>, <see cref="Values"/> or
     /// <see cref="Payload"/>), which only a flow of a registered kind accepts.</summary>
@@ -214,6 +225,7 @@ public sealed partial record RunParameters
         }
 
         ValidateKindArguments(Operation, Values, Payload);
+        SuppliedReferences.Validate(References, "the run's references");
     }
 
     /// <summary>
@@ -338,7 +350,7 @@ public sealed partial record RunParameters
     /// <summary>A one-line human description for run logs ("full load", "window 2023-01-01 .. 2023-02-01").</summary>
     public string Describe()
     {
-        if (IsDefault)
+        if (IsDefault && References.Count == 0)
         {
             return "none";
         }
@@ -389,6 +401,11 @@ public sealed partial record RunParameters
         if (Payload is not null)
         {
             parts.Add($"payload ({Payload.Length} chars)");
+        }
+
+        if (References.Count > 0)
+        {
+            parts.Add($"references {string.Join(", ", References.Keys.Order(StringComparer.Ordinal))}");
         }
 
         return string.Join(", ", parts);
