@@ -3,6 +3,7 @@ import { Outlet, useLocation } from "react-router-dom";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { RunDock } from "../features/runs/RunDock";
 import { RunDockProvider } from "../features/runs/RunDockContext";
+import { sideBarClosedOnFirstVisit } from "../modules/registry";
 import { groupForPath, type NavGroup } from "./nav";
 import { ActivityBar } from "./workbench/ActivityBar";
 import { CommandPalette } from "./workbench/CommandPalette";
@@ -10,6 +11,7 @@ import { PanelHost } from "./workbench/PanelHost";
 import { PanelProvider, usePanel } from "./workbench/PanelContext";
 import { SideBar } from "./workbench/SideBar";
 import { SideBarRoomContext, type SideBarRoom } from "./workbench/SideBarRoom";
+import { sideBarStartsOpen } from "./workbench/sideBarStart";
 import { StatusBar } from "./workbench/StatusBar";
 import { TabsBar } from "./workbench/TabsBar";
 import { TabsProvider } from "./workbench/TabsContext";
@@ -24,7 +26,9 @@ const SIDEBAR_KEY = "sqlflow.workbench.sidebar";
  */
 function WorkbenchFrame() {
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(() => window.localStorage.getItem(SIDEBAR_KEY) !== "closed");
+  const [sidebarOpen, setSidebarOpen] = useState(
+    () => sideBarStartsOpen(window.localStorage.getItem(SIDEBAR_KEY), sideBarClosedOnFirstVisit()),
+  );
   const [reveal, setReveal] = useState<{ id: string; nonce: number } | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const { content: panelContent } = usePanel();

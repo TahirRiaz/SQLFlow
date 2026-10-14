@@ -219,7 +219,9 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   longest-prefix rule over each entry's path and the paths it owns (a page reached from the entry rather
   than from the menu, such as a builder opened from its list, lights that entry); selected item gets
   `bg-sidebar-accent` plus a 2px accent inset. The mobile nav sheet renders the same search over the same
-  sections.
+  sections. Open or closed is the person's choice, kept in the browser (`sqlflow.workbench.sidebar`); before
+  they have made one, the side bar starts open, or closed when a module asks
+  (`GuiModule.sideBar.closedOnFirstVisit`), with the activity bar beside it to open it.
 - **Tab strip** (`h-[35px]`, `bg-tab-bar`): one tab per visited route; active tab wears `bg-tab-active`,
   a 1px top accent line, and its close button always visible; inactive tabs reveal close on hover.
   Middle-click closes. Tabs keep their label (max `w-52`, never squeezed to an icon), so a long strip

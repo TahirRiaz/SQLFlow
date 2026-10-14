@@ -237,6 +237,18 @@ export interface RequestHeaderContribution {
   value: () => string | null;
 }
 
+/**
+ * How a module asks the workbench's side bar to start. It applies only to a person who has never opened or closed the
+ * side bar in this browser: once they have, their choice stands, whatever a module asks.
+ */
+export interface SideBarContribution {
+  /**
+   * Starts the side bar closed on a first visit, with the activity bar beside it to open it, for a product whose pages
+   * want the width more than the menu; absent or false, it starts open, as SQLFlow ships.
+   */
+  closedOnFirstVisit?: boolean;
+}
+
 /** The headers SQLFlow sets on its calls itself, which no module may replace. */
 const RESERVED_HEADERS = new Set(["accept", "authorization", "content-type"]);
 
@@ -269,6 +281,8 @@ export interface GuiModule {
   titleBar?: readonly TitleBarContribution[];
   /** Headers the module adds to every authenticated call to the control plane. */
   requestHeaders?: readonly RequestHeaderContribution[];
+  /** How the workbench's side bar starts for a person new to it; at most one registered module may say. */
+  sideBar?: SideBarContribution;
 }
 
 interface Registered {
@@ -277,9 +291,12 @@ interface Registered {
   searchCategories: readonly SearchCategoryContribution[];
   dashboardTiles: readonly DashboardTileContribution[];
   titleBar: readonly TitleBarContribution[];
+  sideBarClosedOnFirstVisit: boolean;
 }
 
-const NONE: Registered = { routes: [], kinds: new Map(), searchCategories: [], dashboardTiles: [], titleBar: [] };
+const NONE: Registered = {
+  routes: [], kinds: new Map(), searchCategories: [], dashboardTiles: [], titleBar: [], sideBarClosedOnFirstVisit: false,
+};
 
 let registered: Registered | null = null;
 
@@ -315,6 +332,8 @@ export function registerModules(modules: readonly GuiModule[]): void {
   const searchCategories: SearchCategoryContribution[] = [];
   const dashboardTiles: DashboardTileContribution[] = [];
   const titleBar: TitleBarContribution[] = [];
+  let sideBarOwner: string | null = null;
+  let sideBarClosedOnFirstVisit = false;
 
   for (const module of modules) {
     if (module.id.trim() === "") {
@@ -395,6 +414,17 @@ export function registerModules(modules: readonly GuiModule[]): void {
       requestHeaders.push(header);
     }
 
+    if (module.sideBar?.closedOnFirstVisit !== undefined) {
+      if (sideBarOwner !== null) {
+        throw new Error(
+          `GUI module '${module.id}' says how the side bar starts on a first visit, which module '${sideBarOwner}' already says.`,
+        );
+      }
+
+      sideBarOwner = module.id;
+      sideBarClosedOnFirstVisit = module.sideBar.closedOnFirstVisit;
+    }
+
     for (const census of module.census ?? []) {
       const kind = census.flowType?.trim() ? `flowType '${census.flowType.trim()}'` : `documentType '${census.documentType?.trim() ?? ""}'`;
       claim(censusOwners, kind, module.id, "the key census for");
@@ -413,7 +443,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
   )));
 
   setModuleRequestHeaders(requestHeaders);
-  registered = { routes, kinds, searchCategories, dashboardTiles, titleBar };
+  registered = { routes, kinds, searchCategories, dashboardTiles, titleBar, sideBarClosedOnFirstVisit };
 }
 
 /** The pages the registered modules add in one frame: the workbench (the default) or a window of their own. */
@@ -444,4 +474,12 @@ export function moduleDashboardTiles(): readonly DashboardTileContribution[] {
 /** The title bar controls the registered modules add, in registration order. */
 export function moduleTitleBarItems(): readonly TitleBarContribution[] {
   return (registered ?? NONE).titleBar;
+}
+
+/**
+ * Whether the workbench's side bar starts closed for a person who has never opened or closed it in this browser: true
+ * only when a registered module asks for it, so SQLFlow's own build starts it open.
+ */
+export function sideBarClosedOnFirstVisit(): boolean {
+  return (registered ?? NONE).sideBarClosedOnFirstVisit;
 }
