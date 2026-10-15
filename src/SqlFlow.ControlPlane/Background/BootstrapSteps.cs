@@ -118,12 +118,16 @@ public sealed class BootstrapProgress
 }
 
 /// <summary>
-/// Whether the start-up pass has completed, as a readiness check: unhealthy until every step is done, naming the step it is
-/// on or the one that failed (the reason is served by <c>GET /api/v1/bootstrap</c> to a caller with read access, since a
-/// readiness probe answers anyone).
+/// Whether the start-up pass has completed, as a health check served at <c>/health/startup</c> (tagged <see cref="Tag"/>):
+/// unhealthy until every step is done, naming the step it is on or the one that failed. It is not part of readiness: a
+/// control plane with a failed step still serves the API, among it <c>GET /api/v1/bootstrap</c>, which answers the reason
+/// to a caller with read access (the health endpoint answers anyone, so it names the step only).
 /// </summary>
 public sealed class BootstrapReadiness : IHealthCheck
 {
+    /// <summary>The tag of the start-up check: served at <c>/health/startup</c>, and left out of <c>/health/ready</c>.</summary>
+    public const string Tag = "startup";
+
     private readonly BootstrapProgress _progress;
 
     public BootstrapReadiness(BootstrapProgress progress)

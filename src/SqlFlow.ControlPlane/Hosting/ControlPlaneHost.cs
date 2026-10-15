@@ -429,7 +429,9 @@ public static class ControlPlaneHost
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<CatalogDbContext>("catalog")
             .AddCheck<ModuleDatabaseVerification>("module-databases")
-            .AddCheck<BootstrapReadiness>("bootstrap");
+            // Reported at /health/startup and not by readiness: a control plane with a failed start-up step still serves
+            // the API (GET /api/v1/bootstrap) that says why, rather than being taken out of rotation.
+            .AddCheck<BootstrapReadiness>("bootstrap", tags: [BootstrapReadiness.Tag]);
 
         builder.Services.AddRateLimiter(rate =>
         {
@@ -535,7 +537,10 @@ public static class ControlPlaneHost
         // Liveness has no dependencies; readiness probes the catalog database. Probes are exempt from the rate limiter
         // so a shared egress IP's traffic can never throttle a liveness/readiness check into a false negative.
         app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false }).DisableRateLimiting();
-        app.MapHealthChecks("/health/ready").DisableRateLimiting();
+        app.MapHealthChecks("/health/ready", new HealthCheckOptions { Predicate = check => !check.Tags.Contains(BootstrapReadiness.Tag) })
+            .DisableRateLimiting();
+        app.MapHealthChecks("/health/startup", new HealthCheckOptions { Predicate = check => check.Tags.Contains(BootstrapReadiness.Tag) })
+            .DisableRateLimiting();
         app.MapOpenApi();
 
         // The device-authorization approval page (the verificationUri for the RFC 8628 grant). Served at the root so the

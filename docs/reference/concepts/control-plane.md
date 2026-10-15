@@ -142,7 +142,7 @@ Admin surface (policy `admin`): `GET/POST /users`, `POST /users/{id}/role` `/act
 
 ### Health probes and rate limiting
 
-- `GET /health/live` has no dependencies (its predicate excludes every check); `GET /health/ready` runs the catalog database check. Both are mapped with `DisableRateLimiting()`, so probe traffic behind a shared egress IP can never be throttled into a false negative.
+- `GET /health/live` has no dependencies (its predicate excludes every check); `GET /health/ready` runs the catalog database check, the module database verification and any check a module adds; `GET /health/startup` runs the start-up pass's check (see [the start-up pass](#the-start-up-pass)). All three are mapped with `DisableRateLimiting()`, so probe traffic behind a shared egress IP can never be throttled into a false negative.
 - A global fixed-window rate limiter partitions per authenticated subject (the `sub` claim) or, when anonymous, per client IP: default 120 permits per 60 second window, `QueueLimit = 0`, and HTTP 429 on rejection. The limiter runs after authentication so the partition can key on the subject.
 
 ### CORS and reverse-proxy awareness
@@ -236,7 +236,7 @@ Before provisioning anything, the `catalog` step applies the `Bootstrap:AllowCre
 | `worker-pool` | Seeds the default pool with an always-on floor of one worker when the pool has no desired state yet. |
 | a module's steps | What a host module needs from the configuration (`IBootstrapStep`), in the order the modules registered them. |
 
-The readiness check `bootstrap` (`BootstrapReadiness`) stays unhealthy until every step is done and names the step it waits for, or the one that failed. `GET /api/v1/bootstrap` (read) answers each step as it last stood: its name, state (`pending`, `running`, `done`, `failed`, `refused`), what it did, the error it last failed with (secret-redacted), how many attempts it took and when it last changed. When the pass completes, the log says `Bootstrap provisioning completed.`
+The health check `bootstrap` (`BootstrapReadiness`), served at `/health/startup`, stays unhealthy until every step is done and names the step it waits for, or the one that failed. It is not part of `/health/ready`: a control plane with a failed step still serves the API, so whoever deployed it can ask why. `GET /api/v1/bootstrap` (read) answers each step as it last stood: its name, state (`pending`, `running`, `done`, `failed`, `refused`), what it did, the error it last failed with (secret-redacted), how many attempts it took and when it last changed. When the pass completes, the log says `Bootstrap provisioning completed.`
 
 What the configuration sets is locked against the API, because the next start would set it back: re-registering or deleting a configured repo source (`POST /repos/sources`, `DELETE /repos/sources/{id}`) and revoking the configured node token (`DELETE /me/tokens/{id}`) answer 409 "Set by configuration", naming the setting to change instead. The repo source listing and the token listing carry `configuredBy`, and the GUI marks such a row configured and offers no edit, delete or revoke on it.
 

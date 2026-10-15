@@ -250,6 +250,11 @@ public sealed class BootstrapPassTests
             var adminToken = await IssueTokenAsync(client, ["read", "operate", "admin"]);
 
             var bootstrap = await WaitForBootstrapAsync(client, adminToken);
+            using (var startup = await client.GetAsync(new Uri("/health/startup", UriKind.Relative)))
+            {
+                Assert.Equal(HttpStatusCode.OK, startup.StatusCode);
+            }
+
             Assert.Equal(
                 ["catalog", "module-databases", "roles", "admin", "repositories", "node-credential", "worker-pool"],
                 bootstrap.Steps.Select(s => s.Name));
@@ -296,6 +301,62 @@ public sealed class BootstrapPassTests
             }
 
             Directory.Delete(flows, recursive: true);
+        }
+    }
+
+    [SkippableFact]
+    [Trait("Category", "Integration")]
+    public async Task AStepThatKeepsFailing_LeavesTheControlPlaneServing_AndSaysWhichStepAndWhy()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var suffix = Guid.NewGuid().ToString("N")[..8];
+        var admin = "bootstrap-fail-" + suffix;
+        var tokenVariable = "SQLFLOW_TEST_BAD_NODE_TOKEN_" + suffix.ToUpperInvariant();
+        Environment.SetEnvironmentVariable(tokenVariable, "not-a-node-token");
+        try
+        {
+            await using var factory = new ControlPlaneAppFactory()
+                .WithCatalog(cs)
+                .WithSetting("ControlPlane:Worker:Enabled", "false")
+                .WithSetting("ControlPlane:Bootstrap:AdminUsername", admin)
+                .WithSetting("ControlPlane:Bootstrap:AdminPasswordReference", "bootstrap-fail-password-1")
+                .WithSetting("ControlPlane:Bootstrap:NodeTokenReference", "${env:" + tokenVariable + "}");
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["read"]);
+
+            BootstrapStepDto? failed = null;
+            var deadline = DateTime.UtcNow.AddSeconds(60);
+            while (failed is null)
+            {
+                using var response = await SendAsync(client, token, HttpMethod.Get, "/api/v1/bootstrap", null);
+                var bootstrap = (await response.Content.ReadFromJsonAsync<BootstrapDto>())!;
+                failed = bootstrap.Steps.FirstOrDefault(s => s.Name == "node-credential" && s.State == BootstrapStepStates.Failed);
+                Assert.True(failed is not null || DateTime.UtcNow < deadline, "The node-credential step never failed.");
+                if (failed is null)
+                {
+                    await Task.Delay(250);
+                }
+            }
+
+            Assert.False(failed.Error is null || failed.Error.Contains("not-a-node-token", StringComparison.Ordinal));
+            Assert.Contains("is not a node token of SQLFlow's form", failed.Error, StringComparison.Ordinal);
+
+            using var startup = await client.GetAsync(new Uri("/health/startup", UriKind.Relative));
+            Assert.Equal(HttpStatusCode.ServiceUnavailable, startup.StatusCode);
+            using var ready = await client.GetAsync(new Uri("/health/ready", UriKind.Relative));
+            Assert.Equal(HttpStatusCode.OK, ready.StatusCode);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(tokenVariable, null);
+            await using var db = CatalogDatabase.Create(cs);
+            var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Username == admin);
+            if (user is not null)
+            {
+                await db.AccessTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync();
+                await db.Users.Where(u => u.Id == user.Id).ExecuteDeleteAsync();
+            }
         }
     }
 
