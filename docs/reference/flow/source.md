@@ -18,6 +18,7 @@ related:
   - concept-file-source-pipeline
   - concept-file-discovery-and-lifecycle
 sourceRefs:
+  - src/SqlFlow.Core/Engine/SourceLocations.cs
   - src/SqlFlow.Core/Model/FlowDefinition.cs
   - src/SqlFlow.Yaml/YamlFlowLoader.cs
   - src/SqlFlow.Execution/SqlFlowEngineServices.cs
@@ -78,6 +79,8 @@ No source reader is registered for source type '<type>'.
 ## source.location
 
 Optional in the model. A path to a single file, a folder (file readers consolidate every matching file in it), or a URI; the DuckDB reader also accepts a glob. Interpretation is entirely up to the reader.
+
+A location may name a reference: `location: ${env:LANDING_URL}/orders` reads from wherever `LANDING_URL` points when the flow runs or is planned, so a flow reads the storage its deployment configures and moves between deployments unchanged (src/SqlFlow.Core/Engine/SourceLocations.cs). It is resolved with the run's own resolver, and so with the values the control plane supplies with the run ([connections and secrets](../concepts/connections-and-secrets.md#values-the-control-plane-supplies-with-a-run)); the `srcPath` option is resolved the same way. A location that names a reference is not anchored to the flow file's folder, so it must resolve to an absolute path or a URI (`abfss://<container>@<account>.dfs.core.windows.net/...`, read with the node's Azure identity); one that resolves to a relative or empty location, or does not resolve, fails the run naming the location as written. Lineage keeps the location as written.
 
 For the file readers (csv, xls/xlsx, json, xml, parquet), `location` and the `srcPath` option are two spellings of the same input: the reader resolves the source path as `source.Location ?? options.srcPath` (see for example src/SqlFlow.Core/Model/PreIngestionCsv.cs). When `location` is set it wins; when both are absent file resolution fails (src/SqlFlow.Sources/FileSourceReaderBase.cs) with:
 

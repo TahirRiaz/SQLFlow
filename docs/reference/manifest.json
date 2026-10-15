@@ -2562,6 +2562,7 @@
         "concept-file-discovery-and-lifecycle"
       ],
       "sourceRefs": [
+        "src/SqlFlow.Core/Engine/SourceLocations.cs",
         "src/SqlFlow.Core/Model/FlowDefinition.cs",
         "src/SqlFlow.Yaml/YamlFlowLoader.cs",
         "src/SqlFlow.Execution/SqlFlowEngineServices.cs",

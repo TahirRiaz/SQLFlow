@@ -74,6 +74,7 @@ public sealed class FlowRunner
         ArgumentNullException.ThrowIfNull(flow);
         var context = new RunContext(Guid.CreateVersion7(), flow.FlowId, flow.Name, _events);
         using var scope = _logger.BeginScope("Flow {FlowName} ({RunId})", flow.Name, context.RunId);
+        flow = await SourceLocations.ResolveAsync(flow, _secrets, ct).ConfigureAwait(false);
         return await PlanCoreAsync(flow, context, ct).ConfigureAwait(false);
     }
 
@@ -181,6 +182,10 @@ public sealed class FlowRunner
         try
         {
             connectionString = await _secrets.ResolveAsync(flow.Target.Connection, ct).ConfigureAwait(false);
+
+            // A source location that names a reference reads the storage the run's values point at, resolved as the
+            // target's connection is.
+            flow = await SourceLocations.ResolveAsync(flow, _secrets, ct).ConfigureAwait(false);
 
             // Incremental: probe the target for the watermark and bound the source read to new files
             // only. Returns the original flow unchanged when there is no incremental spec or no watermark,
