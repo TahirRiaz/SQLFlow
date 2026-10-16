@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { BandCursor, chartBehaviour, chartLayers } from "@/lib/charts";
 import { isApiError } from "../../api/client";
 import { insightsApi } from "../../api/endpoints";
 import type { FlowInsight, Recommendation } from "../../api/types";
@@ -376,8 +377,7 @@ export default function InsightsPage() {
             />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              {/* Not a keyboard stop, as no chart in the product is: Recharts 3 turns its accessibility layer on by default. */}
-              <BarChart data={topByTime} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 8 }} accessibilityLayer={false}>
+              <BarChart {...chartBehaviour} data={topByTime} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 8 }}>
                 <CartesianGrid horizontal={false} stroke={chartColors.grid} />
                 <XAxis
                   type="number"
@@ -396,13 +396,14 @@ export default function InsightsPage() {
                   axisLine={{ stroke: chartColors.grid }}
                   tickLine={false}
                 />
-                <Tooltip cursor={{ fill: chartColors.cursor }} content={TimeShareTooltip} />
+                <Tooltip cursor={<BandCursor fill={chartColors.cursor} />} content={TimeShareTooltip} />
                 <Bar
                   dataKey="totalDurationSeconds"
                   name="Processing time"
                   fill={chartColors.series}
                   radius={[0, 4, 4, 0]}
                   maxBarSize={20}
+                  zIndex={chartLayers.bar}
                 />
               </BarChart>
             </ResponsiveContainer>

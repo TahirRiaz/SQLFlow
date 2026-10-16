@@ -17,6 +17,7 @@ import { CircleCheck, CircleSlash, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LineCursor, chartBehaviour, chartLayers } from "@/lib/charts";
 import { isApiError } from "../../api/client";
 import { dataStreamApi } from "../../api/endpoints";
 import type { StreamPoint, StreamSignal } from "../../api/types";
@@ -280,8 +281,7 @@ export function StreamDetailSheet({
                     </span>
                   </div>
                   <ResponsiveContainer width="100%" height={220}>
-                    {/* Not a keyboard stop, as no chart in the product is: Recharts 3 turns its accessibility layer on by default. */}
-                    <ComposedChart data={stream.series} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
+                    <ComposedChart {...chartBehaviour} data={stream.series} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                       <CartesianGrid stroke={ink.grid} strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="date"
@@ -296,11 +296,12 @@ export function StreamDetailSheet({
                         width={52}
                         tickFormatter={(value: number) => formatRows(value, true)}
                       />
-                      <Tooltip content={PointTooltip} cursor={{ fill: ink.cursor, fillOpacity: 0.35 }} />
+                      <Tooltip content={PointTooltip} cursor={<LineCursor fill={ink.cursor} fillOpacity={0.35} />} />
                       <Bar
                         dataKey="rowsWritten"
                         radius={[4, 4, 0, 0]}
                         isAnimationActive={false}
+                        zIndex={chartLayers.bar}
                         shape={(bar: BarShapeProps) => {
                           const point = bar.payload as StreamPoint;
                           return (
@@ -319,6 +320,7 @@ export function StreamDetailSheet({
                         strokeDasharray="4 3"
                         dot={false}
                         isAnimationActive={false}
+                        zIndex={chartLayers.line}
                       />
                     </ComposedChart>
                   </ResponsiveContainer>

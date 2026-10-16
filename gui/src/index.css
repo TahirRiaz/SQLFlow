@@ -328,3 +328,13 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
+
+/*
+  Recharts 3 draws each of a chart's paint layers as a <g tabindex="-1">: the keyboard never reaches one, but a click on a
+  mark focuses it, and the browser rings it, both then and after any later key press. A layer only ever holds focus a
+  click gave it, so it draws no ring, as before Recharts 3; every element keyboard focus can reach, a chart's own
+  surface included, keeps its ring.
+*/
+.recharts-wrapper g[class^="recharts-zIndex-layer_"]:focus {
+  outline: none;
+}

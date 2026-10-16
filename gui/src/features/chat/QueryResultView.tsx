@@ -14,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DataTable, type Column } from "@/components/DataTable";
 import { EmptyState } from "@/components/EmptyState";
 import { KpiCard } from "@/components/KpiCard";
+import { BandCursor, LineCursor, chartBehaviour, chartLayers } from "@/lib/charts";
 import { useThemeMode } from "@/theme/ThemeModeContext";
 import type { QueryResultColumn } from "../../api/types";
 import {
@@ -171,8 +172,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
         </div>
         <Card className="gap-0 rounded-lg p-3" style={{ height: Math.max(160, 40 + data.length * 32) }}>
           <ResponsiveContainer width="100%" height="100%">
-            {/* Not a keyboard stop, as no chart in the product is: Recharts 3 turns its accessibility layer on by default. */}
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 8 }} accessibilityLayer={false}>
+            <BarChart {...chartBehaviour} data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 8 }}>
               <CartesianGrid horizontal={false} stroke={ink.grid} />
               <XAxis
                 type="number"
@@ -191,8 +191,8 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
                 axisLine={{ stroke: ink.grid }}
                 tickLine={false}
               />
-              <Tooltip cursor={{ fill: ink.cursor }} content={ResultTooltip} />
-              <Bar dataKey="value" name={columnLabel(columns, numericIdx)} fill={ink.series[0]} radius={[0, 4, 4, 0]} maxBarSize={20} isAnimationActive={false} />
+              <Tooltip cursor={<BandCursor fill={ink.cursor} />} content={ResultTooltip} />
+              <Bar dataKey="value" name={columnLabel(columns, numericIdx)} fill={ink.series[0]} radius={[0, 4, 4, 0]} maxBarSize={20} isAnimationActive={false} zIndex={chartLayers.bar} />
             </BarChart>
           </ResponsiveContainer>
         </Card>
@@ -223,11 +223,11 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
         </div>
       )}
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
+        <LineChart {...chartBehaviour} data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid stroke={ink.grid} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="date" stroke={ink.axis} tick={{ fontSize: 11 }} minTickGap={24} />
           <YAxis stroke={ink.axis} tick={{ fontSize: 11 }} width={52} tickFormatter={(value: number) => numberFormatter.format(value)} />
-          <Tooltip content={ResultTooltip} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
+          <Tooltip content={ResultTooltip} cursor={<LineCursor stroke={ink.axis} strokeDasharray="3 3" />} />
           <Line
             dataKey={columnKey(seriesIdx)}
             name={columnLabel(columns, seriesIdx)}
@@ -236,6 +236,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
             dot={data.length <= 30}
             isAnimationActive={false}
             connectNulls
+            zIndex={chartLayers.line}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -272,11 +273,11 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
       </div>
       <Card className="gap-0 rounded-lg p-3" style={{ height: 220 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
+          <LineChart {...chartBehaviour} data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
             <CartesianGrid stroke={ink.grid} strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="date" stroke={ink.axis} tick={{ fontSize: 11 }} minTickGap={24} />
             <YAxis stroke={ink.axis} tick={{ fontSize: 11 }} width={52} tickFormatter={(value: number) => numberFormatter.format(value)} />
-            <Tooltip content={ResultTooltip} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
+            <Tooltip content={ResultTooltip} cursor={<LineCursor stroke={ink.axis} strokeDasharray="3 3" />} />
             {numericIdx.map((i, seriesIndex) => (
               <Line
                 key={columnKey(i)}
@@ -287,6 +288,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
                 dot={data.length <= 30}
                 isAnimationActive={false}
                 connectNulls
+                zIndex={chartLayers.line}
               />
             ))}
           </LineChart>

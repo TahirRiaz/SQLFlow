@@ -14,6 +14,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BandCursor, chartBehaviour, chartLayers } from "@/lib/charts";
 import { isApiError } from "../../api/client";
 import { summaryApi } from "../../api/endpoints";
 import { CorrelationError } from "../../components/CorrelationError";
@@ -181,8 +182,7 @@ export default function DashboardPage() {
             />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              {/* Not a keyboard stop, as no chart in the product is: Recharts 3 turns its accessibility layer on by default. */}
-              <BarChart data={runStates} margin={{ top: 8, right: 16, bottom: 0, left: 0 }} accessibilityLayer={false}>
+              <BarChart {...chartBehaviour} data={runStates} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
                 <CartesianGrid vertical={false} stroke={chartColors.grid} />
                 <XAxis
                   dataKey="state"
@@ -198,8 +198,8 @@ export default function DashboardPage() {
                   axisLine={{ stroke: chartColors.grid }}
                   tickLine={false}
                 />
-                <Tooltip cursor={{ fill: chartColors.cursor }} content={RunStateTooltip} />
-                <Bar dataKey="count" name="Runs" radius={[4, 4, 0, 0]} maxBarSize={48} shape={RunStateBar} />
+                <Tooltip cursor={<BandCursor fill={chartColors.cursor} />} content={RunStateTooltip} />
+                <Bar dataKey="count" name="Runs" radius={[4, 4, 0, 0]} maxBarSize={48} shape={RunStateBar} zIndex={chartLayers.bar} />
               </BarChart>
             </ResponsiveContainer>
           )}
