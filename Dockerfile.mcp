@@ -17,7 +17,9 @@
 # Build from the repository root:
 #   docker build -f Dockerfile.mcp -t sqlflow-mcp:latest .
 
-FROM rust:1.94-slim AS build
+# The build stage runs the Debian release the runtime stage runs (bookworm): a binary linked against a newer glibc
+# than the runtime's does not start, and rust:<version>-slim names the newest Debian, not bookworm.
+FROM rust:1.94-slim-bookworm AS build
 WORKDIR /src
 # sqlflow-lang's key census and the MCP build script embed docs/reference and docs/wiki at compile time
 # through repo-relative paths (tools/... -> ../../docs/...), so the build keeps the repo shape: tools/ beside
