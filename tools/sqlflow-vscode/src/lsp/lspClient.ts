@@ -36,20 +36,20 @@ function findLspBinary(context: vscode.ExtensionContext): string | null {
  */
 export async function startLspClient(
     context: vscode.ExtensionContext,
-    output: vscode.OutputChannel
+    output: vscode.LogOutputChannel
 ): Promise<boolean> {
     const binary = findLspBinary(context);
     if (!binary) {
-        output.appendLine('[lsp] sqlflow-lsp binary not found; language features disabled. Build with: cargo build -p sqlflow-lsp');
+        output.warn('[lsp] sqlflow-lsp binary not found; language features disabled. Build with: cargo build -p sqlflow-lsp');
         return false;
     }
-    output.appendLine(`[lsp] using ${binary}`);
+    output.info(`[lsp] using ${binary}`);
 
     if (process.platform !== 'win32') {
         try {
             fs.chmodSync(binary, 0o755);
         } catch (err) {
-            output.appendLine(`[lsp] could not set +x on ${binary}: ${err}`);
+            output.warn(`[lsp] could not set +x on ${binary}: ${err}`);
         }
     }
 
@@ -69,10 +69,10 @@ export async function startLspClient(
     try {
         await client.start();
         context.subscriptions.push(client);
-        output.appendLine('[lsp] language server started');
+        output.info('[lsp] language server started');
         return true;
     } catch (err) {
-        output.appendLine(`[lsp] failed to start: ${err}`);
+        output.error(`[lsp] failed to start: ${err}`);
         client = undefined;
         return false;
     }

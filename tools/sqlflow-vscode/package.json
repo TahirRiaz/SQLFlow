@@ -4,7 +4,7 @@
   "description": "Language support, catalog/run browsing, and AI tooling for SQLFlow .flow.yaml projects.",
   "version": "0.1.0",
   "publisher": "business-iq",
-  "engines": { "vscode": "^1.85.0" },
+  "engines": { "vscode": "^1.91.0" },
   "categories": ["Programming Languages", "Other"],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -141,12 +141,12 @@
     "package": "vsce package"
   },
   "dependencies": {
-    "vscode-languageclient": "^9.0.1"
+    "vscode-languageclient": "^10.1.2"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/vscode": "^1.85.0",
-    "esbuild": "^0.23.0",
-    "typescript": "^5.4.0"
+    "@types/node": "^26.6.5",
+    "@types/vscode": "^1.91.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
   }
 }

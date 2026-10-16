@@ -8,7 +8,9 @@ import { Docs } from './docs/docs';
 import { setupMcp } from './mcp/mcpSetup';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
-    const output = vscode.window.createOutputChannel('SQLFlow');
+    // A log channel, since the language client writes its log here too and vscode-languageclient 10 accepts nothing
+    // else.
+    const output = vscode.window.createOutputChannel('SQLFlow', { log: true });
     context.subscriptions.push(output);
 
     const session = new Session(context.secrets);
@@ -204,7 +206,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     register('sqlflow.setupMcp', () => setupMcp(context));
 
-    output.appendLine('SQLFlow extension activated.');
+    output.info('SQLFlow extension activated.');
 }
 
 export async function deactivate(): Promise<void> {
@@ -215,7 +217,7 @@ export async function deactivate(): Promise<void> {
 async function withAuth(
     session: Session,
     client: ControlPlaneClient,
-    output: vscode.OutputChannel,
+    output: vscode.LogOutputChannel,
     action: () => Promise<void>
 ): Promise<void> {
     try {
@@ -227,13 +229,13 @@ async function withAuth(
                 try {
                     await action();
                 } catch (retryErr) {
-                    output.appendLine(`[error] ${errText(retryErr)}`);
+                    output.error(errText(retryErr));
                     void vscode.window.showErrorMessage(`SQLFlow: ${errText(retryErr)}`);
                 }
             }
             return;
         }
-        output.appendLine(`[error] ${errText(err)}`);
+        output.error(errText(err));
         void vscode.window.showErrorMessage(`SQLFlow: ${errText(err)}`);
     }
 }
