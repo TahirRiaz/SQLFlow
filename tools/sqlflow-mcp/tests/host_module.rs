@@ -207,34 +207,47 @@ async fn start_http(server: SqlFlowMcp) -> (String, tokio::sync::oneshot::Sender
 }
 
 /// One MCP session over streamable HTTP, as a remote client holds it: every request carries the
-/// caller's bearer, and the session id the server issued at `initialize`.
+/// caller's bearer, the session id the server issued at `initialize`, and the protocol version it
+/// negotiated there when that version has the header.
 struct HttpSession {
     http: reqwest::Client,
     url: String,
     bearer: String,
     session: Option<String>,
+    protocol: Option<String>,
     next_id: u64,
 }
 
 impl HttpSession {
     async fn open(url: &str, bearer: &str) -> (HttpSession, Value) {
+        HttpSession::open_at(url, bearer, "2025-03-26").await
+    }
+
+    /// A session initialized naming `protocol`. From 2025-06-18 a client names the version it negotiated on every
+    /// request after `initialize` (`MCP-Protocol-Version`), so the session does too.
+    async fn open_at(url: &str, bearer: &str, protocol: &str) -> (HttpSession, Value) {
         let mut session = HttpSession {
             http: reqwest::Client::new(),
             url: url.to_string(),
             bearer: bearer.to_string(),
             session: None,
+            protocol: None,
             next_id: 0,
         };
         let initialized = session
             .request(
                 "initialize",
                 json!({
-                    "protocolVersion": "2025-03-26",
+                    "protocolVersion": protocol,
                     "capabilities": {},
                     "clientInfo": { "name": "host-module-test", "version": "0" },
                 }),
             )
             .await;
+        session.protocol = initialized["result"]["protocolVersion"]
+            .as_str()
+            .filter(|negotiated| *negotiated >= "2025-06-18")
+            .map(String::from);
         session.post(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).await;
         (session, initialized)
     }
@@ -248,6 +261,9 @@ impl HttpSession {
             .json(&message);
         if let Some(session) = &self.session {
             request = request.header("mcp-session-id", session);
+        }
+        if let Some(protocol) = &self.protocol {
+            request = request.header("mcp-protocol-version", protocol);
         }
         let response = request.send().await.expect("the server answers");
         assert!(
@@ -727,8 +743,8 @@ impl LineSession {
     }
 }
 
-/// Serves `server` over an in-memory stdio pair and initializes a session: the session, and the answer to `initialize`.
-async fn open_stdio(server: SqlFlowMcp) -> (LineSession, Value) {
+/// Serves `server` over an in-memory stdio pair: the client's end, before it has sent anything.
+fn serve_stdio(server: SqlFlowMcp) -> LineSession {
     let (client_end, server_end) = tokio::io::duplex(1 << 16);
     let (server_read, server_write) = tokio::io::split(server_end);
     tokio::spawn(async move {
@@ -736,20 +752,31 @@ async fn open_stdio(server: SqlFlowMcp) -> (LineSession, Value) {
         let _ = running.waiting().await;
     });
     let (client_read, client_write) = tokio::io::split(client_end);
-    let mut session =
-        LineSession { reader: BufReader::new(client_read), writer: client_write, next_id: 0, notifications: Vec::new() };
+    LineSession { reader: BufReader::new(client_read), writer: client_write, next_id: 0, notifications: Vec::new() }
+}
 
-    let initialized = session
-        .request(
-            "initialize",
-            json!({
-                "protocolVersion": "2025-03-26",
-                "capabilities": {},
-                "clientInfo": { "name": "host-module-test", "version": "0" },
-            }),
-        )
-        .await;
-    session.send(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).await;
+impl LineSession {
+    /// Initializes the session naming `protocol`: the answer to `initialize`.
+    async fn initialize(&mut self, protocol: &str) -> Value {
+        let initialized = self
+            .request(
+                "initialize",
+                json!({
+                    "protocolVersion": protocol,
+                    "capabilities": {},
+                    "clientInfo": { "name": "host-module-test", "version": "0" },
+                }),
+            )
+            .await;
+        self.send(json!({ "jsonrpc": "2.0", "method": "notifications/initialized" })).await;
+        initialized
+    }
+}
+
+/// Serves `server` over an in-memory stdio pair and initializes a session: the session, and the answer to `initialize`.
+async fn open_stdio(server: SqlFlowMcp) -> (LineSession, Value) {
+    let mut session = serve_stdio(server);
+    let initialized = session.initialize("2025-03-26").await;
     (session, initialized)
 }
 
@@ -779,6 +806,67 @@ async fn over_stdio_a_module_tool_uses_the_servers_own_sign_in() {
         serde_json::from_str(called["result"]["content"][0]["text"].as_str().expect("text")).expect("json");
     assert_eq!(probes[0]["seenAuthorization"], json!("Bearer stored-sign-in"));
     assert_eq!(probes[0]["links"]["page"], json!("/probes/wells%20a"));
+}
+
+/// The request metadata a client of a protocol version without `initialize` (2026-07-28 on) sends in place of a session.
+fn sessionless_meta() -> Value {
+    json!({
+        "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+        "io.modelcontextprotocol/clientInfo": { "name": "host-module-test", "version": "0" },
+        "io.modelcontextprotocol/clientCapabilities": {},
+    })
+}
+
+/// The protocol versions the server negotiates: each one that opens with `initialize`.
+const NEGOTIATED: [&str; 4] = ["2024-11-05", "2025-03-26", "2025-06-18", "2025-11-25"];
+
+/// A session is where the person's mode switch lives, so a client of a version that opens no session is not served
+/// without one: over either transport its request is refused naming the versions the server negotiates, and nothing
+/// runs. Naming the later version at `initialize` is answered with the newest that has the handshake, and the session it
+/// opens keeps the switch from one request to the next, as every session does.
+#[tokio::test(flavor = "multi_thread")]
+async fn a_client_that_opens_no_session_is_told_the_versions_it_can_initialize_with() {
+    let estate = start_control_plane().await;
+
+    let stdio = probe_host()
+        .server(control_plane(&estate, Some("stored-sign-in")), "", false)
+        .expect("the probe host composes");
+    let mut line = serve_stdio(stdio);
+    let refused = line.request("tools/list", json!({ "_meta": sessionless_meta() })).await;
+    assert_eq!(refused["error"]["data"]["requested"], json!("2026-07-28"), "{refused}");
+    assert_eq!(refused["error"]["data"]["supported"], json!(NEGOTIATED), "{refused}");
+    assert!(refused.get("result").is_none(), "{refused}");
+    // The connection is still open, waiting for `initialize`.
+    let initialized = line.initialize("2026-07-28").await;
+    assert_eq!(initialized["result"]["protocolVersion"], json!("2025-11-25"), "{initialized}");
+    let (started, is_error) = line.call("start_data_mode", json!({ "message": "!data which regions" })).await;
+    assert!(!is_error, "{started}");
+    assert_eq!(mode_of(&mut line).await["mode"], json!("data"));
+
+    let http = probe_host().server(control_plane(&estate, None), "", true).expect("the probe host composes");
+    let (url, _stop) = start_http(http).await;
+    let response = reqwest::Client::new()
+        .post(&url)
+        .bearer_auth("caller-a")
+        .header(http::header::ACCEPT, "application/json, text/event-stream")
+        .header("mcp-protocol-version", "2026-07-28")
+        .header("mcp-method", "tools/list")
+        .json(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": { "_meta": sessionless_meta() } }))
+        .send()
+        .await
+        .expect("the server answers");
+    assert_eq!(response.status(), reqwest::StatusCode::BAD_REQUEST);
+    assert!(response.headers().get("mcp-session-id").is_none(), "a refused request opens no session");
+    let text = response.text().await.expect("a readable body");
+    let refused = answered(&text, 1).unwrap_or_else(|| panic!("no JSON-RPC answer: {text}"));
+    assert_eq!(refused["error"]["data"]["supported"], json!(NEGOTIATED), "{refused}");
+    assert!(refused.get("result").is_none(), "{refused}");
+
+    let (mut remote, initialized) = HttpSession::open_at(&url, "caller-b", "2026-07-28").await;
+    assert_eq!(initialized["result"]["protocolVersion"], json!("2025-11-25"), "{initialized}");
+    let (started, is_error) = remote.call_checked("start_data_mode", json!({ "message": "!data which regions" })).await;
+    assert!(!is_error, "{started}");
+    assert_eq!(mode_of(&mut remote).await["mode"], json!("data"));
 }
 
 /// A stdio session that names no mode (an editor's single registration) lists every tool, since its client keeps one

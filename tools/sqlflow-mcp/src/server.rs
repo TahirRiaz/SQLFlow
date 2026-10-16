@@ -16,7 +16,7 @@ use std::sync::Arc;
 
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::{ServerCapabilities, ServerInfo};
+use rmcp::model::{ProtocolVersion, ServerCapabilities, ServerConfig};
 use rmcp::{schemars, tool, tool_handler, tool_router, ServerHandler};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -1125,10 +1125,9 @@ const ANSWER_FORMAT: &str = "If your own instructions already define how to lay 
 /// the server instructions can be truncated by a client long before the business-question section; and the
 /// `responseRule` in the payload always arrives, but only once a call has already been made. The rule therefore
 /// leads the `find_similar_questions` description, where it is read before the model composes anything at all.
-/// It is a macro rather than a `const` so the server instructions can splice it with `concat!`, which needs a
-/// literal. The one place that cannot use it is the `#[tool(description = ...)]` attribute on
-/// `find_similar_questions`: rmcp's macro rejects anything but a bare literal, so that description repeats the
-/// text and `tool_description_leads_with_the_silent_rule` fails the build if the two ever drift apart.
+/// It is a macro rather than a `const` so each carrier can splice it with `concat!`, which needs a literal: the
+/// server instructions, the `responseRule`, and the `#[tool(description = ...)]` attribute on
+/// `find_similar_questions`, whose test holds it to leading with the `!` trigger and carrying the rule whole.
 macro_rules! silent_retrieval_rule {
     () => {
         "Say nothing to the person before or between the tool calls on this path: no preamble, no restating the \
@@ -2658,29 +2657,26 @@ and fix every finding first."
     }
 
     #[tool(
-        // The description carries SILENT_RETRIEVAL_RULE verbatim, kept in sync by the
-        // `tool_description_leads_with_the_command_trigger_and_carries_the_silent_rule` test below: rmcp's #[tool]
-        // attribute takes only a literal, so this one site cannot compose the macro and is asserted instead.
-        description = "THE `!` COMMAND ROUTES HERE. Call this, before any schema or semantic-layer lookup, whenever the \
+        // The description composes silent_retrieval_rule!(), the one wording of the rule, after the routing that
+        // leads it; the `tool_description_leads_with_the_command_trigger_and_carries_the_silent_rule` test below
+        // holds it to leading with the trigger and carrying the rule whole.
+        description = concat!(
+            "THE `!` COMMAND ROUTES HERE. Call this, before any schema or semantic-layer lookup, whenever the \
             user's message begins with `!` (`!data <question>` is the same command), and in data mode for every \
             follow-up that carries the question on, passing the question it amounts to written out in full from \
             the conversation, never the reply's words alone. Strip the command and pass the remainder as \
             `question`, with `expanded_terms`: the question's own meaningful words plus the business synonyms \
             and related terms a dashboard could have used for the same thing, in their common grammatical forms \
             (\"what drives our turnover\" -> turnover, revenue, sales, income, drive, driver). Outside data mode \
-            a message without the leading `!` is never routed here, however it reads. Say nothing to the person \
-            before or between the tool calls on this path: no preamble, no restating the question, no announcing \
-            what you are about to look up or that you are building a query, and no commentary on what came back \
-            (whether a match is trusted, its score, who confirmed it, saved answers, reports, or tool names). \
-            All of that is yours to act on, never to narrate: to a business reader it reads as the assistant \
-            explaining its own plumbing, and calling a match untrusted or low-scoring reads as the assistant \
-            being unreliable. Work silently until you have the answer or a query to offer, then reply once. \
-            Returns the saved answers close to the question, each with the SQL that answers it: a `trusted` \
+            a message without the leading `!` is never routed here, however it reads. ",
+            silent_retrieval_rule!(),
+            " Returns the saved answers close to the question, each with the SQL that answers it: a `trusted` \
             match carrying an `exampleId` runs at once with auto_run_trusted_match, without asking. When no \
             match is trusted, `grounding` holds the semantic layer the question is answered from (its tables \
             with their open columns, keys, joins, measures and close examples, and each context's instructions): \
             write the query from it and offer it through prepare_query, searching the layer only for a table it \
             does not hold. The result's `readingThis` explains every field."
+        )
     )]
     async fn find_similar_questions(&self, Parameters(i): Parameters<SimilarQuestionsInput>) -> String {
         let q = similar_questions_query(i);
@@ -4191,17 +4187,18 @@ impl ServerHandler for SqlFlowMcp {
         &self,
         request: rmcp::model::CallToolRequestParams,
         context: rmcp::service::RequestContext<rmcp::RoleServer>,
-    ) -> Result<rmcp::model::CallToolResult, rmcp::ErrorData> {
+    ) -> Result<rmcp::model::CallToolResponse, rmcp::ErrorData> {
         let parts = context.extensions.get::<http::request::Parts>();
         let bearer = parts.and_then(|parts| bearer_token(&parts.headers));
         let surface = parts.and_then(|parts| request_surface(parts.uri.query()));
         let listing = self.listing(parts);
         if self.get_tool(&request.name).is_some() && !self.answers(listing, &request.name) {
-            return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::Content::text(refused(
+            return Ok(rmcp::model::CallToolResult::error(vec![rmcp::model::ContentBlock::text(refused(
                 &request.name,
                 listing,
                 self.current_mode(parts),
-            ))]));
+            ))])
+            .into());
         }
         let call = self.dispatch(request, context);
         match (bearer, surface) {
@@ -4225,11 +4222,7 @@ impl ServerHandler for SqlFlowMcp {
         tools.extend(self.modules.list().iter().cloned());
         let listing = self.listing(context.extensions.get::<http::request::Parts>());
         tools.retain(|tool| listing.lists(&tool.name));
-        Ok(rmcp::model::ListToolsResult {
-            tools,
-            meta: None,
-            next_cursor: None,
-        })
+        Ok(rmcp::model::ListToolsResult::with_all_items(tools))
     }
 
     fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
@@ -4239,8 +4232,18 @@ impl ServerHandler for SqlFlowMcp {
             .cloned()
     }
 
-    fn get_info(&self) -> ServerInfo {
+    fn get_info(&self) -> ServerConfig {
         self.info_for(self.listing(None))
+    }
+
+    /// The protocol versions the server negotiates: each one that opens with `initialize`, and none after them. A
+    /// session that names no mode keeps the mode the person's last command set, one cell per session (`for_session`),
+    /// and over HTTP a client of a later version holds no session: each of its requests is served by a server of its
+    /// own, which would forget the switch. Such a client is answered with the versions it can initialize with, and
+    /// initializing gives it the session every client has. Stdio negotiates the same versions, so a client meets one
+    /// server whichever transport carries it.
+    fn supported_protocol_versions(&self) -> std::borrow::Cow<'static, [ProtocolVersion]> {
+        std::borrow::Cow::Borrowed(ProtocolVersion::known_up_to(&ProtocolVersion::LATEST_WITH_INITIALIZE))
     }
 
     /// The answer to `initialize`, given for the session's listing: over HTTP the mode its address names, over stdio the
@@ -4257,9 +4260,11 @@ impl ServerHandler for SqlFlowMcp {
 }
 
 impl SqlFlowMcp {
-    /// The server's answer to `initialize` for a session of `listing`.
-    fn info_for(&self, listing: Listing) -> ServerInfo {
-        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+    /// The server's answer to `initialize` for a session of `listing`. It names the newest version that opens with
+    /// `initialize`, the one a client is answered with when it asks for a version the server does not negotiate.
+    fn info_for(&self, listing: Listing) -> ServerConfig {
+        ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
+            .with_protocol_version(ProtocolVersion::LATEST_WITH_INITIALIZE)
             .with_server_info(rmcp::model::Implementation::new(
                 self.cp.identity().name().to_string(),
                 self.cp.identity().version().to_string(),
@@ -4309,7 +4314,7 @@ impl SqlFlowMcp {
         &self,
         request: rmcp::model::CallToolRequestParams,
         context: rmcp::service::RequestContext<rmcp::RoleServer>,
-    ) -> Result<rmcp::model::CallToolResult, rmcp::ErrorData> {
+    ) -> Result<rmcp::model::CallToolResponse, rmcp::ErrorData> {
         if let Some(module) = self.modules.owner_of(&request.name) {
             return module.call(request, context).await;
         }
@@ -4847,8 +4852,8 @@ mod tests {
             &description[..description.len().min(240)]
         );
 
-        // rmcp's #[tool] attribute takes only a literal, so this description cannot compose
-        // silent_retrieval_rule!(). Asserting it appears verbatim keeps that one copy from drifting.
+        // The description composes silent_retrieval_rule!(); the rule has to come through whole, in the one wording
+        // every other carrier states.
         assert!(
             description.contains(SILENT_RETRIEVAL_RULE),
             "find_similar_questions must carry SILENT_RETRIEVAL_RULE verbatim"

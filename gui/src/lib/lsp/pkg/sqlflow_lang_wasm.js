@@ -43,7 +43,7 @@ export function hover(source, line, character) {
         var r1 = getDataViewMemory0().getInt32(retptr + 4 * 1, true);
         let v2;
         if (r0 !== 0) {
-            v2 = getStringFromWasm0(r0, r1).slice();
+            v2 = getStringFromWasm0(r0, r1);
             wasm.__wbindgen_export3(r0, r1 * 1, 1);
         }
         return v2;
@@ -134,7 +134,7 @@ export function version() {
 function __wbg_get_imports() {
     const import0 = {
         __proto__: null,
-        __wbg_Error_92b29b0548f8b746: function(arg0, arg1) {
+        __wbg_Error_30c8987f7c2ed4e2: function(arg0, arg1) {
             const ret = Error(getStringFromWasm0(arg0, arg1));
             return addHeapObject(ret);
         },
@@ -271,11 +271,15 @@ function __wbg_finalize_init(instance, module) {
 
 async function __wbg_load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
+        if (!module.ok) {
+            throw new Error(`failed to fetch Wasm: ${module.status} ${module.statusText} fetching '${module.url}'`);
+        }
+
         if (typeof WebAssembly.instantiateStreaming === 'function') {
             try {
                 return await WebAssembly.instantiateStreaming(module, imports);
             } catch (e) {
-                const validResponse = module.ok && expectedResponseType(module.type);
+                const validResponse = expectedResponseType(module.type);
 
                 if (validResponse && module.headers.get('Content-Type') !== 'application/wasm') {
                     console.warn("`WebAssembly.instantiateStreaming` failed because your server does not serve Wasm with `application/wasm` MIME type. Falling back to `WebAssembly.instantiate` which is slower. Original error:\n", e);

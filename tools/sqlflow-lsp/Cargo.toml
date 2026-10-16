@@ -11,7 +11,7 @@ path = "src/main.rs"
 
 [dependencies]
 sqlflow-lang = { path = "../sqlflow-lang" }
-tower-lsp = "0.20"
+tower-lsp = "0.20.0"
 tokio = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

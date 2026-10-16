@@ -17,26 +17,26 @@ path = "src/main.rs"
 
 [dependencies]
 sqlflow-lang = { path = "../sqlflow-lang" }
-rmcp = { version = "1.4", features = ["server", "transport-io", "transport-streamable-http-server", "macros", "schemars"] }
+rmcp = { version = "3.5.1", features = ["server", "transport-io", "transport-streamable-http-server", "macros", "schemars"] }
 tokio = { workspace = true, features = ["net", "signal"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-dirs = "5"
-chrono = { version = "0.4", features = ["serde"] }
-base64 = "0.22"
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls"] }
+dirs = "7.0.0"
+chrono = { version = "0.4.45", features = ["serde"] }
+base64 = "0.23.1"
 # Lays out the SQL a tool's answer carries (src/sql_format.rs); whitespace only, every token checked.
-sqlformat = "0.5"
+sqlformat = "0.5.0"
 # HTTP serving mode (`sqlflow-mcp http`): hyper hosts rmcp's streamable HTTP service.
 # These stay in lockstep with the hyper stack reqwest already pulls in.
-http = "1"
-hyper = { version = "1", features = ["server", "http1"] }
-hyper-util = { version = "0.1", features = ["tokio"] }
-http-body-util = "0.1"
-bytes = "1"
+http = "1.5.0"
+hyper = { version = "1.12.0", features = ["server", "http1"] }
+hyper-util = { version = "0.1.21", features = ["tokio"] }
+http-body-util = "0.1.5"
+bytes = "1.12.1"
 
 [build-dependencies]
 serde = { workspace = true }

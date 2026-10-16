@@ -20,12 +20,12 @@ repository = "https://github.com/TahirRiaz/SQLFlow"
 # the two release binaries these crates produce.
 
 [workspace.dependencies]
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tokio = { version = "1", features = ["macros", "rt-multi-thread", "io-std", "io-util", "sync", "time"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-anyhow = "1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+tokio = { version = "1.53.3", features = ["macros", "rt-multi-thread", "io-std", "io-util", "sync", "time"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+anyhow = "1.0.104"
 
 [profile.release]
 opt-level = 3

@@ -45,7 +45,7 @@ use std::sync::Arc;
 
 use rmcp::handler::server::router::tool::ToolRouter;
 use rmcp::handler::server::tool::ToolCallContext;
-use rmcp::model::{CallToolRequestParams, CallToolResult, Tool};
+use rmcp::model::{CallToolRequestParams, CallToolResponse, Tool};
 use rmcp::service::RequestContext;
 use rmcp::RoleServer;
 use serde_json::{Map, Value};
@@ -185,9 +185,10 @@ impl McpContext {
     }
 }
 
-/// The future a module's tool call resolves through.
+/// The future a module's tool call resolves through: the response a `#[tool_router]` router gives,
+/// which the server's dispatch hands back to the client as it is.
 pub type ToolFuture<'a> =
-    Pin<Box<dyn Future<Output = Result<CallToolResult, rmcp::ErrorData>> + Send + 'a>>;
+    Pin<Box<dyn Future<Output = Result<CallToolResponse, rmcp::ErrorData>> + Send + 'a>>;
 
 /// The tools of one module, behind the server's one dispatch.
 pub trait ModuleTools: Send + Sync {
