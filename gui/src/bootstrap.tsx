@@ -5,6 +5,8 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { isApiError } from "./api/client";
 import { AuthProvider } from "./auth/AuthContext";
+import { isEntraSignInResponse } from "./auth/entraSignIn";
+import { relayEntraSignInResponse } from "./auth/msal";
 import { Toaster } from "./components/ui/sonner";
 import { TooltipProvider } from "./components/ui/tooltip";
 import { loadRuntimeConfig } from "./config/runtime";
@@ -37,12 +39,19 @@ function createQueryClient(): QueryClient {
  * stylesheet (which imports this one) in their place.
  */
 export function renderApp(modules: readonly GuiModule[] = []): void {
-  registerModules(modules);
-
   const container = document.getElementById("root");
   if (container === null) {
     throw new Error("The page has no #root element to render the GUI into.");
   }
+
+  // Entra answers a sign-in by loading the GUI's origin in the sign-in popup. That load is MSAL's redirect bridge, not
+  // the workbench: it relays the answer to the window waiting on it before anything else starts or reads the URL.
+  if (isEntraSignInResponse(window.location.hash)) {
+    relayEntraSignInResponse(container);
+    return;
+  }
+
+  registerModules(modules);
 
   const queryClient = createQueryClient();
 

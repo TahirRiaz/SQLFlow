@@ -3,14 +3,15 @@ import { useNavigate } from "react-router-dom";
 import {
   Bar,
   CartesianGrid,
-  Cell,
   Line,
   ComposedChart,
+  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
+  type BarShapeProps,
+  type TooltipContentProps,
 } from "recharts";
 import { CircleCheck, CircleSlash, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,8 +28,8 @@ import { useChartInk, detectorLabels, detectorMethods, evidence, finding, format
 import { StreamStatusBadge } from "./StreamStatusBadge";
 
 /** The chart's hover readout: what arrived, what was expected, and (when flagged) why. */
-function PointTooltip({ active, payload }: TooltipProps<number, string>) {
-  if (active !== true || payload === undefined || payload.length === 0) {
+function PointTooltip({ active, payload }: TooltipContentProps) {
+  if (active !== true || payload.length === 0) {
     return null;
   }
 
@@ -279,7 +280,8 @@ export function StreamDetailSheet({
                     </span>
                   </div>
                   <ResponsiveContainer width="100%" height={220}>
-                    <ComposedChart data={stream.series} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                    {/* Not a keyboard stop, as no chart in the product is: Recharts 3 turns its accessibility layer on by default. */}
+                    <ComposedChart data={stream.series} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
                       <CartesianGrid stroke={ink.grid} strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="date"
@@ -294,16 +296,22 @@ export function StreamDetailSheet({
                         width={52}
                         tickFormatter={(value: number) => formatRows(value, true)}
                       />
-                      <Tooltip content={<PointTooltip />} cursor={{ fill: ink.cursor, fillOpacity: 0.35 }} />
-                      <Bar dataKey="rowsWritten" radius={[4, 4, 0, 0]} isAnimationActive={false}>
-                        {stream.series.map((point) => (
-                          <Cell
-                            key={point.date}
-                            fill={point.anomaly ? ink.flagged : ink.series}
-                            fillOpacity={point.immature ? 0.45 : 1}
-                          />
-                        ))}
-                      </Bar>
+                      <Tooltip content={PointTooltip} cursor={{ fill: ink.cursor, fillOpacity: 0.35 }} />
+                      <Bar
+                        dataKey="rowsWritten"
+                        radius={[4, 4, 0, 0]}
+                        isAnimationActive={false}
+                        shape={(bar: BarShapeProps) => {
+                          const point = bar.payload as StreamPoint;
+                          return (
+                            <Rectangle
+                              {...bar}
+                              fill={point.anomaly ? ink.flagged : ink.series}
+                              fillOpacity={point.immature ? 0.45 : 1}
+                            />
+                          );
+                        }}
+                      />
                       <Line
                         dataKey="expected"
                         stroke={ink.axis}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import Editor, { type Monaco } from "@monaco-editor/react";
+import Editor from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { Copy, WandSparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { prettyPrintSql } from "@/lib/sql";
 import { defineSqlflowTheme, sqlflowEditorTheme } from "@/lib/monacoTheme";
 import { useThemeMode } from "../theme/ThemeModeContext";
+import type { Monaco } from "../lib/monacoSetup";
 import "../lib/monacoSetup";
 import { markFlowModel, refreshDiagnostics, registerSqlflowYamlProviders } from "../lib/lsp/sqlflowLsp";
 

@@ -16,6 +16,7 @@
   },
   "include": [
     "unit/**/*.ts",
+    "src/auth/entraSignIn.ts",
     "src/features/chat/answerSql.ts",
     "src/features/chat/queryResultPlan.ts",
     "src/layout/workbench/sideBarStart.ts"

@@ -4,12 +4,13 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
+  Rectangle,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
+  type BarShapeProps,
+  type TooltipContentProps,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,9 +30,21 @@ import { useThemeMode } from "../../theme/ThemeModeContext";
 // row instead of a ragged flex wrap.
 const kpiGridClass = "grid grid-cols-[repeat(auto-fill,minmax(180px,1fr))] gap-4";
 
+/** One bar of the run-state distribution: a state, its run count, and the state's reserved status color. */
+interface RunStateDatum {
+  state: string;
+  count: number;
+  color: string;
+}
+
+/** A run state's bar, filled with that state's own color. */
+function RunStateBar(props: BarShapeProps) {
+  return <Rectangle {...props} fill={(props.payload as RunStateDatum).color} />;
+}
+
 /** The run-state distribution's hover readout, on the popover surface like every other floating layer. */
-function RunStateTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  if (active !== true || payload === undefined || payload.length === 0) {
+function RunStateTooltip({ active, payload, label }: TooltipContentProps) {
+  if (active !== true || payload.length === 0) {
     return null;
   }
 
@@ -100,7 +113,7 @@ export default function DashboardPage() {
   const allNodesOnline = dashboard.nodesTotal > 0 && dashboard.nodesOnline === dashboard.nodesTotal;
   // Each run state wears its reserved status color; the x-axis tick names the state, so color never
   // carries the identity alone.
-  const runStates = [
+  const runStates: RunStateDatum[] = [
     { state: "queued", count: dashboard.runs.queued, color: chartColors.queued },
     { state: "running", count: dashboard.runs.running, color: chartColors.running },
     { state: "succeeded", count: dashboard.runs.succeeded, color: chartColors.succeeded },
@@ -168,7 +181,8 @@ export default function DashboardPage() {
             />
           ) : (
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={runStates} margin={{ top: 8, right: 16, bottom: 0, left: 0 }}>
+              {/* Not a keyboard stop, as no chart in the product is: Recharts 3 turns its accessibility layer on by default. */}
+              <BarChart data={runStates} margin={{ top: 8, right: 16, bottom: 0, left: 0 }} accessibilityLayer={false}>
                 <CartesianGrid vertical={false} stroke={chartColors.grid} />
                 <XAxis
                   dataKey="state"
@@ -184,12 +198,8 @@ export default function DashboardPage() {
                   axisLine={{ stroke: chartColors.grid }}
                   tickLine={false}
                 />
-                <Tooltip cursor={{ fill: chartColors.cursor }} content={<RunStateTooltip />} />
-                <Bar dataKey="count" name="Runs" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                  {runStates.map((entry) => (
-                    <Cell key={entry.state} fill={entry.color} />
-                  ))}
-                </Bar>
+                <Tooltip cursor={{ fill: chartColors.cursor }} content={RunStateTooltip} />
+                <Bar dataKey="count" name="Runs" radius={[4, 4, 0, 0]} maxBarSize={48} shape={RunStateBar} />
               </BarChart>
             </ResponsiveContainer>
           )}

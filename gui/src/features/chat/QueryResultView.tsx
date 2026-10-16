@@ -7,7 +7,7 @@
 import { useMemo, useState } from "react";
 import {
   Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
-  type TooltipProps,
+  type TooltipContentProps,
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -45,8 +45,8 @@ function formatStatValue(value: string | null): string {
   return Number.isFinite(n) ? numberFormatter.format(n) : value;
 }
 
-function ResultTooltip({ active, payload, label }: TooltipProps<number, string>) {
-  if (active !== true || payload === undefined || payload.length === 0) {
+function ResultTooltip({ active, payload, label }: TooltipContentProps) {
+  if (active !== true || payload.length === 0) {
     return null;
   }
   return (
@@ -171,7 +171,8 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
         </div>
         <Card className="gap-0 rounded-lg p-3" style={{ height: Math.max(160, 40 + data.length * 32) }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 8 }}>
+            {/* Not a keyboard stop, as no chart in the product is: Recharts 3 turns its accessibility layer on by default. */}
+            <BarChart data={data} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 8 }} accessibilityLayer={false}>
               <CartesianGrid horizontal={false} stroke={ink.grid} />
               <XAxis
                 type="number"
@@ -190,7 +191,7 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
                 axisLine={{ stroke: ink.grid }}
                 tickLine={false}
               />
-              <Tooltip cursor={{ fill: ink.cursor }} content={<ResultTooltip />} />
+              <Tooltip cursor={{ fill: ink.cursor }} content={ResultTooltip} />
               <Bar dataKey="value" name={columnLabel(columns, numericIdx)} fill={ink.series[0]} radius={[0, 4, 4, 0]} maxBarSize={20} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
@@ -222,11 +223,11 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
         </div>
       )}
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+        <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
           <CartesianGrid stroke={ink.grid} strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="date" stroke={ink.axis} tick={{ fontSize: 11 }} minTickGap={24} />
           <YAxis stroke={ink.axis} tick={{ fontSize: 11 }} width={52} tickFormatter={(value: number) => numberFormatter.format(value)} />
-          <Tooltip content={<ResultTooltip />} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
+          <Tooltip content={ResultTooltip} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
           <Line
             dataKey={columnKey(seriesIdx)}
             name={columnLabel(columns, seriesIdx)}
@@ -271,11 +272,11 @@ export function QueryResultView({ columns, rows }: QueryResultViewProps) {
       </div>
       <Card className="gap-0 rounded-lg p-3" style={{ height: 220 }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }} accessibilityLayer={false}>
             <CartesianGrid stroke={ink.grid} strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="date" stroke={ink.axis} tick={{ fontSize: 11 }} minTickGap={24} />
             <YAxis stroke={ink.axis} tick={{ fontSize: 11 }} width={52} tickFormatter={(value: number) => numberFormatter.format(value)} />
-            <Tooltip content={<ResultTooltip />} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
+            <Tooltip content={ResultTooltip} cursor={{ stroke: ink.axis, strokeDasharray: "3 3" }} />
             {numericIdx.map((i, seriesIndex) => (
               <Line
                 key={columnKey(i)}

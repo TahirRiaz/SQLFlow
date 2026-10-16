@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import { DiffEditor, type Monaco } from "@monaco-editor/react";
+import { DiffEditor } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
 import { Columns2, Copy, Rows3 } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { defineSqlflowTheme, sqlflowEditorTheme } from "@/lib/monacoTheme";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { useThemeMode } from "../theme/ThemeModeContext";
+import type { Monaco } from "../lib/monacoSetup";
 import "../lib/monacoSetup";
 
 interface DiffViewProps {

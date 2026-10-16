@@ -2,7 +2,7 @@
 // before/after comparison (DiffView) share it, so a script reads identically whichever one is showing it. Colours
 // come from the workbench tokens in index.css, read live so the theme follows light/dark (DESIGN.md 7.6).
 
-import type { Monaco } from "@monaco-editor/react";
+import type { Monaco } from "./monacoSetup";
 
 /** The registered theme name. Both surfaces pass this to Monaco's `theme` prop. */
 export const sqlflowEditorTheme = "sqlflow";

@@ -13,7 +13,7 @@
 // (`registerCensus`); the files are handed to the engine when it starts, before
 // it analyses anything, so every document of those kinds gets the same hovers,
 // colouring and diagnostics.
-import type { Monaco } from "@monaco-editor/react";
+import type { Monaco } from "../monacoSetup";
 import type { editor, IRange } from "monaco-editor";
 
 // --- Engine positions (LSP form: zero-based line, UTF-16 character) ---------
