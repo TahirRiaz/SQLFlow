@@ -94,26 +94,30 @@ internal static class Program
         // The git-ignored .sqlflow/env file supplies local-development secrets for the ${env:...} references
         // and bare-alias conventions in flow documents; the process environment (CI, Kubernetes, the
         // scheduler) always wins. Searched from the flow document's directory upward, before anything
-        // resolves, for every command.
-        try
+        // resolves, for every command but a module verb that reads the file itself (one that sets it up or
+        // checks it, and has to reach a file this would refuse).
+        if (moduleVerb?.Verb.ReadsLocalEnvFile != true)
         {
-            // The positional may be a pipeline FILE (validate/run) or a flow FOLDER (lineage); the env file
-            // anchors to whichever directory that is.
-            var envAnchor = file.Length > 0 && File.Exists(file)
-                ? Path.GetDirectoryName(Path.GetFullPath(file)) ?? Directory.GetCurrentDirectory()
-                : file.Length > 0 && Directory.Exists(file)
-                    ? Path.GetFullPath(file)
-                    : Directory.GetCurrentDirectory();
-            var (appliedEnv, envFile) = LocalEnvFile.ApplyNearest(envAnchor);
-            if (envFile is not null && verbose)
+            try
             {
-                Console.Error.WriteLine($"env: applied {appliedEnv.Count} variable(s) from {envFile}");
+                // The positional may be a pipeline FILE (validate/run) or a flow FOLDER (lineage); the env file
+                // anchors to whichever directory that is.
+                var envAnchor = file.Length > 0 && File.Exists(file)
+                    ? Path.GetDirectoryName(Path.GetFullPath(file)) ?? Directory.GetCurrentDirectory()
+                    : file.Length > 0 && Directory.Exists(file)
+                        ? Path.GetFullPath(file)
+                        : Directory.GetCurrentDirectory();
+                var (appliedEnv, envFile) = LocalEnvFile.ApplyNearest(envAnchor);
+                if (envFile is not null && verbose)
+                {
+                    Console.Error.WriteLine($"env: applied {appliedEnv.Count} variable(s) from {envFile}");
+                }
             }
-        }
-        catch (SqlFlowException ex)
-        {
-            Console.Error.WriteLine($"ERROR  {SecretHygiene.RedactedMessage(ex)}");
-            return 1;
+            catch (SqlFlowException ex)
+            {
+                Console.Error.WriteLine($"ERROR  {SecretHygiene.RedactedMessage(ex)}");
+                return 1;
+            }
         }
 
         using var provider = BuildServiceProvider(verbose, json: args.Contains("--json"), modules, args);

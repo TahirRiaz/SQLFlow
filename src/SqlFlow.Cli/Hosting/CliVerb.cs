@@ -43,4 +43,11 @@ public sealed class CliVerb
 
     /// <summary>The verb's own plain flags (<c>--connect</c>), offered by shell completion.</summary>
     public IReadOnlyList<string> Flags { get; init; } = [];
+
+    /// <summary>
+    /// True for a verb that reads the local environment file itself, such as one that sets the file up or checks it: the CLI
+    /// does not apply <c>.sqlflow/env</c> before such a verb runs, so a file the CLI would refuse still reaches the verb, and
+    /// the verb sees the process environment as the shell gave it. False (the default) for every other verb.
+    /// </summary>
+    public bool ReadsLocalEnvFile { get; init; }
 }

@@ -222,6 +222,55 @@ public sealed class LocalEnvFileTests : IDisposable
     }
 
     [Fact]
+    public void Apply_AFileWithAMalformedLine_AppliesNothing()
+    {
+        // A half-loaded secrets file is a debugging trap: the lines before the bad one are not applied either.
+        var before = Var("BEFORE");
+        var path = WriteEnvFile(_root, $"{before}=set-first\njust-a-secret-pasted-raw\n");
+
+        Assert.Throws<SqlFlowException>(() => LocalEnvFile.Apply(path));
+
+        Assert.Null(Environment.GetEnvironmentVariable(before));
+    }
+
+    [Fact]
+    public void Read_ReportsEverySettingInOrder_AndEveryRefusedLine_WithoutApplyingOrEchoing()
+    {
+        var name = Var("READ");
+        var path = WriteEnvFile(_root, $"""
+            # a comment
+            {name}=first
+
+            {name}='second'
+            just-a-secret-pasted-raw
+            BAD NAME=value-of-a-bad-name
+            OTHER_{name}=" spaced "
+            """);
+
+        var content = LocalEnvFile.Read(path);
+
+        Assert.Equal(
+            [new LocalEnvFileEntry(name, "first", 2), new LocalEnvFileEntry(name, "second", 4), new LocalEnvFileEntry($"OTHER_{name}", " spaced ", 7)],
+            content.Entries);
+        Assert.Equal([5, 6], content.Problems.Select(p => p.Line));
+        Assert.All(content.Problems, p => Assert.DoesNotContain("pasted-raw", p.Message, StringComparison.Ordinal));
+        Assert.All(content.Problems, p => Assert.DoesNotContain("value-of-a-bad-name", p.Message, StringComparison.Ordinal));
+        Assert.Null(Environment.GetEnvironmentVariable(name));
+    }
+
+    [Fact]
+    public void FindNearest_WalksUp_AndIsNullWhenThereIsNone()
+    {
+        var nested = Path.Combine(_root, "flows", "orders");
+        Directory.CreateDirectory(nested);
+        Assert.Null(LocalEnvFile.FindNearest(nested));
+
+        var path = WriteEnvFile(_root, $"{Var("FOUND")}=x");
+
+        Assert.Equal(path, LocalEnvFile.FindNearest(nested));
+    }
+
+    [Fact]
     public void ApplyNearest_WalksUpToTheNearestFile()
     {
         var name = Var("NEAREST");

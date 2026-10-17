@@ -249,6 +249,51 @@ public sealed class CliModuleTests : IDisposable
         Assert.True(arguments.HasFlag("--json"));
     }
 
+    [Fact]
+    public async Task AVerbThatReadsTheEnvFileItself_RunsWhenTheFileIsMalformed_AndSeesNoneOfIt()
+    {
+        var name = "SQLFLOW_TEST_" + Guid.NewGuid().ToString("N")[..8].ToUpperInvariant();
+        Directory.CreateDirectory(Path.Combine(_anchor, ".sqlflow"));
+        await File.WriteAllTextAsync(Path.Combine(_anchor, ".sqlflow", "env"), $"{name}=from-the-file\nnot a setting\n");
+        string? seen = "not run";
+        var reader = new CliVerb("envcheck", ["sqlflow envcheck <dir>"], _ =>
+        {
+            seen = Environment.GetEnvironmentVariable(name);
+            return Task.FromResult(5);
+        })
+        { ReadsLocalEnvFile = true };
+
+        try
+        {
+            var exit = await CliHost.RunAsync(["envcheck", _anchor], new VerbModule("envtool", reader));
+
+            Assert.Equal(5, exit);
+            Assert.Null(seen);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(name, null);
+        }
+    }
+
+    [Fact]
+    public async Task AnyOtherVerb_IsRefusedWhenTheEnvFileIsMalformed_NamingTheLine()
+    {
+        Directory.CreateDirectory(Path.Combine(_anchor, ".sqlflow"));
+        await File.WriteAllTextAsync(Path.Combine(_anchor, ".sqlflow", "env"), "OK_NAME=x\nnot a setting\n");
+        var ran = false;
+        var plain = new CliVerb("plain", ["sqlflow plain <dir>"], _ =>
+        {
+            ran = true;
+            return Task.FromResult(0);
+        });
+
+        var said = await Refusal(async () => await CliHost.RunAsync(["plain", _anchor], new VerbModule("plaintool", plain)));
+
+        Assert.False(ran);
+        Assert.Contains("(2): expected KEY=VALUE", said, StringComparison.Ordinal);
+    }
+
     private static CliVerb Verb(string name) => new(name, [$"sqlflow {name}"], _ => Task.FromResult(0));
 
     /// <summary>What a probe verb saw. The command's provider is disposed when the command ends, so the module service is read while the verb runs.</summary>

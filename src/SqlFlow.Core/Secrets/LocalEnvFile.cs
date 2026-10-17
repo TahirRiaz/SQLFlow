@@ -23,6 +23,15 @@ public static class LocalEnvFile
     /// </summary>
     public static (IReadOnlyList<string> Applied, string? File) ApplyNearest(string startDirectory)
     {
+        var candidate = FindNearest(startDirectory);
+        return candidate is null ? ([], null) : (Apply(candidate), candidate);
+    }
+
+    /// <summary>
+    /// The nearest <c>.sqlflow/env</c> at <paramref name="startDirectory"/> or any parent, or null when there is none.
+    /// </summary>
+    public static string? FindNearest(string startDirectory)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(startDirectory);
 
         for (var directory = new DirectoryInfo(Path.GetFullPath(startDirectory)); directory is not null; directory = directory.Parent)
@@ -30,19 +39,53 @@ public static class LocalEnvFile
             var candidate = Path.Combine(directory.FullName, ".sqlflow", "env");
             if (File.Exists(candidate))
             {
-                return (Apply(candidate), candidate);
+                return candidate;
             }
         }
 
-        return ([], null);
+        return null;
     }
 
-    /// <summary>Applies one env file to the process environment; see <see cref="ApplyNearest"/>.</summary>
+    /// <summary>
+    /// Applies one env file to the process environment; see <see cref="ApplyNearest"/>. A file with a malformed line
+    /// applies nothing: the first such line is reported, by number, and no variable of the file is set.
+    /// </summary>
     public static IReadOnlyList<string> Apply(string path)
+    {
+        var content = Read(path);
+        if (content.Problems.Count > 0)
+        {
+            var first = content.Problems[0];
+            throw new SqlFlowException($"{path}({first.Line}): {first.Message}");
+        }
+
+        var applied = new List<string>();
+        foreach (var entry in content.Entries)
+        {
+            // The process environment wins: CI, Kubernetes, and the scheduler outrank a local file.
+            if (Environment.GetEnvironmentVariable(entry.Name) is null)
+            {
+                Environment.SetEnvironmentVariable(entry.Name, entry.Value);
+                applied.Add(entry.Name);
+            }
+        }
+
+        return applied;
+    }
+
+    /// <summary>
+    /// Reads one env file without applying it: every setting in file order (a name set twice appears twice), and every
+    /// line <see cref="Apply"/> refuses, each by number. A problem never carries the line's content: a malformed line in
+    /// a secrets file may BE the secret, pasted without its KEY=.
+    /// </summary>
+    /// <exception cref="IOException">The file cannot be read.</exception>
+    /// <exception cref="UnauthorizedAccessException">The file may not be read.</exception>
+    public static LocalEnvFileContent Read(string path)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
 
-        var applied = new List<string>();
+        var entries = new List<LocalEnvFileEntry>();
+        var problems = new List<LocalEnvFileProblem>();
         var lines = File.ReadAllLines(path);
         for (var i = 0; i < lines.Length; i++)
         {
@@ -55,16 +98,15 @@ public static class LocalEnvFile
             var separator = line.IndexOf('=', StringComparison.Ordinal);
             if (separator <= 0)
             {
-                // The line content is deliberately NOT echoed: a malformed line in a secrets file may BE the
-                // secret, pasted without its KEY=.
-                throw new SqlFlowException($"{path}({i + 1}): expected KEY=VALUE (or a # comment).");
+                problems.Add(new LocalEnvFileProblem(i + 1, "expected KEY=VALUE (or a # comment)."));
+                continue;
             }
 
             var name = line[..separator].Trim();
             if (name.Length == 0 || !name.All(c => char.IsAsciiLetterOrDigit(c) || c == '_'))
             {
-                throw new SqlFlowException(
-                    $"{path}({i + 1}): '{Truncate(name)}' is not a valid environment variable name (letters, digits, '_').");
+                problems.Add(new LocalEnvFileProblem(i + 1, $"'{Truncate(name)}' is not a valid environment variable name (letters, digits, '_')."));
+                continue;
             }
 
             var value = line[(separator + 1)..].Trim();
@@ -75,17 +117,28 @@ public static class LocalEnvFile
                 value = value[1..^1];
             }
 
-            // The process environment wins: CI, Kubernetes, and the scheduler outrank a local file.
-            if (Environment.GetEnvironmentVariable(name) is null)
-            {
-                Environment.SetEnvironmentVariable(name, value);
-                applied.Add(name);
-            }
+            entries.Add(new LocalEnvFileEntry(name, value, i + 1));
         }
 
-        return applied;
+        return new LocalEnvFileContent(entries, problems);
     }
 
     /// <summary>Name excerpts in errors stay short; values are never echoed anywhere.</summary>
     private static string Truncate(string name) => name.Length <= 40 ? name : name[..37] + "...";
 }
+
+/// <summary>One setting of an env file.</summary>
+/// <param name="Name">The variable's name.</param>
+/// <param name="Value">Its value, trimmed and without surrounding quotes.</param>
+/// <param name="Line">The line it is on, from 1.</param>
+public sealed record LocalEnvFileEntry(string Name, string Value, int Line);
+
+/// <summary>A line of an env file that <see cref="LocalEnvFile.Apply"/> refuses.</summary>
+/// <param name="Line">The line, from 1.</param>
+/// <param name="Message">What is wrong with it, never its content.</param>
+public sealed record LocalEnvFileProblem(int Line, string Message);
+
+/// <summary>What <see cref="LocalEnvFile.Read"/> found in an env file.</summary>
+/// <param name="Entries">Every setting, in file order.</param>
+/// <param name="Problems">Every line the file's loader refuses, in file order.</param>
+public sealed record LocalEnvFileContent(IReadOnlyList<LocalEnvFileEntry> Entries, IReadOnlyList<LocalEnvFileProblem> Problems);
