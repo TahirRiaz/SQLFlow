@@ -18,6 +18,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// framework JWKS validation), the admin-scoped user management API, and bootstrap provisioning of roles + the
 /// initial admin. No-database assertions run everywhere; the rest is gated on a reachable catalog database.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class IdentityApiTests : IClassFixture<ControlPlaneAppFactory>
 {
     private readonly ControlPlaneAppFactory _factory;

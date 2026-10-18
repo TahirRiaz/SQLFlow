@@ -19,6 +19,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// canonical form and only for a Power BI subscriber the repo declares; a raw report is never parsed by the control
 /// plane, only forwarded to the isolated extractor, whose answer is validated again before anyone sees it.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class SemanticReportApiTests
 {
     private const string Route = "/api/v1/powerai/semantic-layer/reports";

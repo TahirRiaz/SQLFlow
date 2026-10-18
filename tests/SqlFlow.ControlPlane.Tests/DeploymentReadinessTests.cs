@@ -12,6 +12,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// with fail-fast validation of the trust list) and the API-only replica mode (Worker:Enabled=false), where the
 /// HTTP tier answers but never claims runs, leaving compute to standalone workers scaled on queue depth.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class DeploymentReadinessTests
 {
     // ---- Proxy option validation (pure, no host) ----------------------------------------------------------------

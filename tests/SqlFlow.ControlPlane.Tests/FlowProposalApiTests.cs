@@ -13,6 +13,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// remote and is out of scope for the in-memory host; these cover the guards that run before any git or database
 /// work: the "author" scope requirement, and the request/file validation that rejects a bad proposal up front.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class FlowProposalApiTests
 {
     private static readonly Guid SourceId = Guid.Parse("11111111-1111-1111-1111-111111111111");

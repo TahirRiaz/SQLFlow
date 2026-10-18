@@ -17,6 +17,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// get -> pause -> resume -> delete lifecycle, and an end-to-end proof that the scheduler actually fires a due
 /// schedule by enqueuing a run for its pipeline. DB-backed tests seed and remove their own repo's rows.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ScheduleApiTests
 {
     [Fact]

@@ -22,6 +22,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// schedule refused when no member would take its operation. The kind is the test-only <c>ops</c> kind, registered in the
 /// host the way a module registers its own.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class RunKindArgumentsApiTests
 {
     private const string Node = "kind-args-node";

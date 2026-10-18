@@ -16,6 +16,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// loading run and several empty ones. The aggregation that decides it lives in an EF query whose translation
 /// only a real database proves. Removes its own rows; the assembly runs serially (see AssemblyInfo).
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class DataStreamApiTests
 {
     [Fact]

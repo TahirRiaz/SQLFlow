@@ -22,6 +22,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// rules and readiness run everywhere; migrating, reporting and verifying against SQL Server run against the DB-test database
 /// (each test in a schema of its own it drops) and skip without one.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ModuleDatabaseTests
 {
     private const string Placeholder = "Server=127.0.0.1,1;Database=unused;TrustServerCertificate=True;Connect Timeout=1;ConnectRetryCount=0";

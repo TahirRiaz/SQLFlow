@@ -14,6 +14,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// and any other failure as a <see cref="SqlFlowException"/> carrying the status. No database: the module's endpoints keep
 /// their items in memory.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class CliModuleControlPlaneClientTests
 {
     [Fact]

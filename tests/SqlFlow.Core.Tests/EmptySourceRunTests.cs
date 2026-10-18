@@ -11,6 +11,7 @@ namespace SqlFlow.Tests;
 /// with a warning that says why. The selection is decided before the target is touched, so these runs use the real
 /// runner against a connection that is never opened.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class EmptySourceRunTests : IDisposable
 {
     private const string UnopenedConnection = "Server=never-opened;Database=never-opened";

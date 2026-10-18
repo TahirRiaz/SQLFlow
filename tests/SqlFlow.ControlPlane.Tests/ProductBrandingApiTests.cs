@@ -10,6 +10,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// A branded host's OpenAPI document carries its product name and lockup, and the branding is a service modules can use;
 /// SQLFlow's own host keeps the document's framework title.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ProductBrandingApiTests
 {
     [Fact]

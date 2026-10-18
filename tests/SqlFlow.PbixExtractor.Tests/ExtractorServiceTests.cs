@@ -19,6 +19,7 @@ namespace SqlFlow.PbixExtractor.Tests;
 /// bounded and always removed afterwards, a report the tool refuses is a 422 carrying why, and a burst beyond the
 /// configured slots is turned away instead of queued without limit.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ExtractorServiceTests
 {
     private const string Key = "extractor-test-key-0123456789-abcdefghijklmnop";

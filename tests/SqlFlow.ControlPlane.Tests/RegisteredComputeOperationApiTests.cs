@@ -15,6 +15,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// module's operation can never be reached around the module's checks. Needs no database: the operation is refused at the
 /// payload validation, before any catalog read.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class RegisteredComputeOperationApiTests
 {
     [Fact]

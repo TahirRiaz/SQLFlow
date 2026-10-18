@@ -20,6 +20,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// are DB-backed and seed a repo + pipeline exactly like the read-API test, removing every seeded row in a finally.
 /// The contract is references-only: the request carries a repo id and a flow name, never a secret.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class RunTriggerApiTests
 {
     [Fact]

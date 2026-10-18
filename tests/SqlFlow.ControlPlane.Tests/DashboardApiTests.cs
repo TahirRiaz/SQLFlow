@@ -15,6 +15,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// queued run (which the untargeted control-plane worker never claims, so it stays queued) and asserts the rollup
 /// reflects them. Removes its own rows; the assembly runs serially (see AssemblyInfo).
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class DashboardApiTests
 {
     [Fact]

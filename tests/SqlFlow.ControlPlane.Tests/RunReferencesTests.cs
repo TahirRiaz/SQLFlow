@@ -23,6 +23,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// root; nothing attached when no source is registered; and a source supplying a written-out credential refusing the run
 /// instead of queuing it. The host's in-process worker is off, so the tests read the queued rows themselves.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class RunReferencesTests
 {
     private const string Node = "references-node";

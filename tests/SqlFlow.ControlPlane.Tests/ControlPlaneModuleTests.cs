@@ -18,6 +18,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// endpoints sit on the authenticated route groups under SQLFlow's own policies, and it can raise the request body limit.
 /// None of this needs a database: every endpoint the tests call answers before any catalog read.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ControlPlaneModuleTests
 {
     [Fact]

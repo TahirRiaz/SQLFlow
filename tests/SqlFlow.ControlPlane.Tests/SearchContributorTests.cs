@@ -20,6 +20,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// and the paged endpoint through the in-memory host. Nothing here needs a database: the contributors are test doubles
 /// and the paged endpoint reads no catalog table.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class SearchContributorTests
 {
     private const string CorrelationId = "corr-search-1";

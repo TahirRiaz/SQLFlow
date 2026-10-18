@@ -11,6 +11,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// SQL Server needed): the catalog context binds lazily, so auth, liveness, OpenAPI, and the unauthenticated 401
 /// boundary all resolve against the placeholder connection without ever opening it.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class AuthAndSurfaceTests : IClassFixture<ControlPlaneAppFactory>
 {
     private readonly ControlPlaneAppFactory _factory;

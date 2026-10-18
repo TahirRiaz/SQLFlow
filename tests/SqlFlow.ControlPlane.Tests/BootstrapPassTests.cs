@@ -17,6 +17,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// configuration stops naming them; and the node credential it names, made the one active node token and rotated with its
 /// secret, so a fresh deployment's workers connect with no token minted by hand.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class BootstrapPassTests
 {
     // ---- What the configuration may name ---------------------------------------------------------------------------

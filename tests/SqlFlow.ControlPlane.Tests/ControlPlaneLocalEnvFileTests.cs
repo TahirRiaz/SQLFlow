@@ -10,6 +10,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// in-process node resolves a flow's <c>${env:...}</c> references against this very process.
 /// </summary>
 [Collection("LocalEnvFile")]
+[Trait("Category", "Integration")]
 public sealed class ControlPlaneLocalEnvFileTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "sqlflow-cp-env-" + Guid.NewGuid().ToString("N"));

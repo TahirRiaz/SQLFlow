@@ -19,6 +19,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// gives a worker it starts on this machine accepted by the node protocol and nothing else. None of these needs a
 /// catalog: the host starts against an unreachable one, so dispatch never activates and the fleet stays passive.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ManagedWorkersTests
 {
     // ------------------------------------------------------------------------------------------------ settings -----

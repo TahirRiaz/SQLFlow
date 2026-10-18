@@ -15,6 +15,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// statements (steps), and the grouped EF queries whose translation only a real database proves. Removes its
 /// own rows; the assembly runs serially (see AssemblyInfo).
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class InsightsApiTests
 {
     [Fact]

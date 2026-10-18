@@ -15,6 +15,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// that the background sync service pulls a (local) git repo and projects its flow into the catalog. DB-backed
 /// tests seed/remove their own rows; the assembly runs serially (see AssemblyInfo).
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class RepoSourceTests
 {
     [Fact]

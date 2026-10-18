@@ -13,6 +13,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// grouping the GUI tabulates; the database-backed half covers the exactly-once window claim, the cursor that
 /// makes a scheduled digest lossless, and the on-demand digest that must never disturb it.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class NotificationDigestTests
 {
     private static readonly DateTime Now = new(2026, 7, 11, 12, 34, 0, DateTimeKind.Utc);

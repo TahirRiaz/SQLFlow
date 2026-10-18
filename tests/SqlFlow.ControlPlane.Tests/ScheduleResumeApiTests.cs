@@ -15,6 +15,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// none. A chained schedule is driven by its parents, so a resume that armed it at "now" let the clock scan claim an
 /// occurrence that ran nothing, stamp its last fire, and set off every schedule chained behind it.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ScheduleResumeApiTests
 {
     [SkippableFact]

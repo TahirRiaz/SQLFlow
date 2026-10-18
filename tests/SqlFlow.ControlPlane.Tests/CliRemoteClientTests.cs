@@ -20,6 +20,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// This file deliberately does not import SqlFlow.ControlPlane.Api: the CLI's own mirror records are the
 /// contract under test, so a server-side rename that breaks the CLI breaks here.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class CliRemoteClientTests
 {
     [Fact]

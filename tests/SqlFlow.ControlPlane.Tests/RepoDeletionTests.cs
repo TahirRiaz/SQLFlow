@@ -15,6 +15,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// endpoint enforces its route and reports the counts. DB-backed tests seed and remove their own rows; the assembly
 /// runs serially (see AssemblyInfo).
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class RepoDeletionTests
 {
     [SkippableFact]

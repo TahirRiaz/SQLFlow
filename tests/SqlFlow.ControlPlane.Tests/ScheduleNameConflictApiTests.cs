@@ -16,6 +16,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// are one step and a name taken in between is never a 500 from the unique index. Names compare as the index does,
 /// so a different spelling of a git schedule's name is refused too.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class ScheduleNameConflictApiTests
 {
     [SkippableFact]

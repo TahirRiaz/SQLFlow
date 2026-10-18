@@ -19,6 +19,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// device grant inheriting the approving session's <c>auth_time</c>, which is what lets the MCP server roll a device
 /// sign-in under the same absolute cap as the GUI.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class AssistantDelegationTests : IClassFixture<ControlPlaneAppFactory>
 {
     private const string SomeGuid = "3f1c1b0e-8a53-4c1e-9d5e-6f0b7a2c9e41";

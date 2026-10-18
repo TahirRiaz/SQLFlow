@@ -17,6 +17,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// cancellation, and the full happy path: trigger a listObjects task against the test catalog database itself
 /// and read the live table listing back through the task result. The contract is references-only throughout.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class DatasourceApiTests
 {
     [Fact]

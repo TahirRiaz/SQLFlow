@@ -15,6 +15,7 @@ namespace SqlFlow.Tests;
 /// was the axis and which was the value.
 /// </summary>
 [Collection(PbixExtractorEnvironment.Name)]
+[Trait("Category", "Integration")]
 public sealed class LineagePowerBiSubscriberTests : IDisposable
 {
     private static readonly DateTime Utc = new(2026, 9, 12, 0, 0, 0, DateTimeKind.Utc);

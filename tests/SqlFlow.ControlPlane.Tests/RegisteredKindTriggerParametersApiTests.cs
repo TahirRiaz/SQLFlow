@@ -20,6 +20,7 @@ namespace SqlFlow.ControlPlane.Tests;
 /// takes only a backfill window, and the window its anchor would take passes the anchor's kind first. The kind is the
 /// test-only <c>strict</c> kind, which applies none of the overrides.
 /// </summary>
+[Trait("Category", "Integration")]
 public sealed class RegisteredKindTriggerParametersApiTests
 {
     // The host's in-process worker is off: nothing here should run, and a hosted worker would claim what a refusal

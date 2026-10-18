@@ -13,6 +13,7 @@ namespace SqlFlow.Tests;
 /// <c>SQLFLOW_PBIX_EXTRACT</c> at nothing, and share a collection with every other test that depends on it.
 /// </summary>
 [Collection(PbixExtractorEnvironment.Name)]
+[Trait("Category", "Integration")]
 public sealed class LineageReportSpecTests : IDisposable
 {
     private static readonly DateTime Utc = new(2026, 9, 16, 0, 0, 0, DateTimeKind.Utc);
