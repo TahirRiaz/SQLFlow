@@ -87,9 +87,12 @@ public sealed class IngestionRunLogIntegrationTests
             var result = await runner.RunAsync(Flow(flowId, src, trg));
             Assert.True(result.Success, result.Error);
 
-            // No run-log row for this flow (the table may not even exist; the guard returns 0 either way).
+            // No run-log row for this flow. On a fresh database the table does not exist until a with-database run
+            // creates it, so the count is read only when it does: SQL Server compiles a statement whole, and a CASE
+            // whose subquery names a missing table fails with "Invalid object name" whatever OBJECT_ID says, while the
+            // branch of an IF that does not run is never compiled.
             Assert.Equal(0, await IntegrationDb.ScalarAsync<int?>(cs,
-                $"SELECT CASE WHEN OBJECT_ID('flw.SysLog','U') IS NULL THEN 0 ELSE (SELECT COUNT(*) FROM [flw].[SysLog] WHERE FlowID = {flowId}) END"));
+                $"IF OBJECT_ID('flw.SysLog','U') IS NULL SELECT 0 ELSE SELECT COUNT(*) FROM [flw].[SysLog] WHERE FlowID = {flowId}"));
         }
         finally
         {
