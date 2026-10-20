@@ -270,7 +270,7 @@ While it is on, the replica that owns dispatch compares every managed pool with 
 
 Each managed worker polls under a name the fleet gives it, `{NamePrefix}-{pool}-{build}{random}`, never one a worker already has (`sqlflow worker --node-name`, `SQLFLOW_NODE_NAME`); a worker that polls under such a name but is not the launcher's is replaced and then drained, and one whose pool is no longer managed is drained. A launcher that starts workers on the control plane's own machine can give each a credential from `TokenIssuer.IssueNodeCredential`: the `node` scope only, bound to that worker's name, and refused on every route but the node protocol and under any other node's name. A worker elsewhere takes its node token from its platform's secret store. While workers are replaced, a pool runs its new workers beside the old ones finishing their runs, so its platform quota should allow up to twice `MaxWorkers`.
 
-`GET /api/v1/nodes/managed` returns the fleet as the last tick left it (each pool, each worker and its state, the last 200 actions with their reasons), and the Nodes page shows it under Worker pools. An external autoscaler must not scale the same workers at the same time.
+`GET /api/v1/nodes/managed` returns the fleet as the last tick left it (each pool, each worker and its state, the last 200 actions with their reasons), and the Nodes page shows it on its Scaling tab (each pool and worker) and its Activity tab (the actions). An external autoscaler must not scale the same workers at the same time.
 
 ## Azure Container Apps: the full estate with Bicep
 

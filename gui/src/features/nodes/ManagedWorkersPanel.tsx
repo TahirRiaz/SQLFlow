@@ -1,11 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { Activity, CircleX, PauseCircle, TriangleAlert } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { nodeApi } from "../../api/endpoints";
 import type {
   ManagedFleetStatus,
   ManagedWorkerAction,
@@ -15,6 +13,7 @@ import type {
 } from "../../api/types";
 import { RelativeTime } from "../../components/RelativeTime";
 import { StatePill } from "../../components/StatusBadge";
+import { useManagedWorkers } from "./nodeQueries";
 
 const headClass = "h-8 whitespace-nowrap px-3 text-xs font-medium text-muted-foreground";
 const cellClass = "whitespace-nowrap px-3 py-1.5 text-[13px]";
@@ -44,15 +43,10 @@ const phaseHints: Record<ManagedWorkerPhase, string> = {
 };
 
 /** Managed workers: the control plane starts and stops its own workers through a launcher. Shows whether this replica
- *  is the one doing it, the launcher's health, every managed worker, and what the fleet did recently and why. Renders
- *  nothing when managed workers are off. */
+ *  is the one doing it, the launcher's health and every managed worker with its phase. What the fleet did and why is
+ *  the activity panel's. Renders nothing when managed workers are off. */
 export function ManagedWorkersPanel() {
-  const query = useQuery({
-    queryKey: ["nodes", "managed"],
-    queryFn: () => nodeApi.managed(),
-    refetchInterval: 5000,
-  });
-
+  const query = useManagedWorkers();
   const status = query.data?.status ?? null;
   if (query.data === undefined || !query.data.enabled || status === null) {
     return null;
@@ -60,14 +54,29 @@ export function ManagedWorkersPanel() {
 
   return (
     <Card className="gap-0 overflow-hidden rounded-lg p-0" data-testid="managed-workers-panel">
-      <div className="flex flex-col gap-1 p-4 pb-3">
-        <h2 className="text-base font-medium">Managed workers</h2>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-3 pb-2">
+        <h2 className="text-sm font-medium">Managed workers</h2>
         <Summary status={status} />
       </div>
-      <div className="flex flex-col gap-4 px-4 pb-4">
+      <div className="px-4 pb-4">
         <WorkersTable workers={status.workers} />
-        <ActionsTable actions={status.actions} />
       </div>
+    </Card>
+  );
+}
+
+/** What the managed fleet did recently and why: every start, drain and stop, newest first. Renders nothing when managed
+ *  workers are off. */
+export function ManagedActivityPanel() {
+  const query = useManagedWorkers();
+  const status = query.data?.status ?? null;
+  if (query.data === undefined || !query.data.enabled || status === null) {
+    return null;
+  }
+
+  return (
+    <Card className="gap-0 overflow-hidden rounded-lg p-4" data-testid="managed-activity-panel">
+      <ActionsTable actions={status.actions} />
     </Card>
   );
 }
@@ -108,7 +117,7 @@ function Summary({ status }: { status: ManagedFleetStatus }) {
 
 function WorkersTable({ workers }: { workers: ManagedWorkerView[] }) {
   return (
-    <Section title="Workers" count={workers.length}>
+    <div className="overflow-hidden rounded-md border">
       {workers.length === 0 ? (
         <p className="px-3 py-2 text-[13px] text-muted-foreground">No managed worker yet.</p>
       ) : (
@@ -158,7 +167,7 @@ function WorkersTable({ workers }: { workers: ManagedWorkerView[] }) {
           </Table>
         </div>
       )}
-    </Section>
+    </div>
   );
 }
 

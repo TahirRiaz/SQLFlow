@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Loader2, TriangleAlert, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,10 @@ import type { WorkerPool, WorkerPoolScaleRequest } from "../../api/types";
 import { useAuth } from "../../auth/AuthContext";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
+import { ExplainMark } from "../../components/ExplainTip";
 import { RelativeTime } from "../../components/RelativeTime";
+import { useWorkerPools } from "./nodeQueries";
+import { scalingModeExplanation, scalingModeOf } from "./scalingMode";
 import { SpawnWorkersDialog } from "./SpawnWorkersDialog";
 
 const poolLabel = (pool: string) => (pool.length === 0 ? "default (untargeted)" : pool);
@@ -35,42 +38,24 @@ const cellClass = "whitespace-nowrap px-3 py-1.5 text-[13px]";
 export function WorkerPoolsPanel() {
   const { hasScope } = useAuth();
   const canOperate = hasScope("operate");
-  const query = useQuery({
-    queryKey: ["nodes", "pools"],
-    queryFn: () => nodeApi.listPools(),
-    refetchInterval: 5000,
-  });
+  const query = useWorkerPools();
   const pools = query.data ?? [];
-  const launcher = pools.find((pool) => pool.managedBy !== null)?.managedBy ?? null;
-  const builtInNode = launcher === null ? pools.find((pool) => pool.builtInNode !== null)?.builtInNode ?? null : null;
+  const mode = scalingModeOf(pools);
+  const launcher = mode.kind === "managed" ? mode.launcher : null;
+  const builtInNode = mode.kind === "built-in" ? mode.node : null;
 
   return (
     <Card className="gap-0 overflow-hidden rounded-lg p-0" data-testid="worker-pools-panel">
-      <div className="flex flex-col gap-1 p-4 pb-3">
-        <h2 className="text-base font-medium">Worker pools</h2>
-        {launcher === null && builtInNode !== null ? (
-          <p className="text-[13px] text-muted-foreground" data-testid="worker-pools-built-in">
-            Managed workers are off, so this control plane starts no worker. It runs runs on its own node,{" "}
-            <span className="font-mono">{builtInNode.name}</span>, {builtInNode.runSlots} at a time, and answers each
-            pool&apos;s target to an autoscaler, if one reads it. Without one, Always on and Spawn are recorded and
-            nothing starts; turn on <span className="font-mono">ControlPlane:ManagedWorkers</span> to have the control
-            plane start and stop workers itself.
-          </p>
-        ) : launcher === null ? (
-          <p className="text-[13px] text-muted-foreground">
-            The autoscaler runs each pool at the greatest of its demand (the queued runs its workers would start right
-            now, divided by what one worker executes at once, plus the workers already busy), an always-on floor, and any
-            active manual override; the control plane only answers that target. Keep a worker warm, scale a pool up for a
-            window, or spawn one when the pool is at zero.
-          </p>
-        ) : (
-          <p className="text-[13px] text-muted-foreground" data-testid="worker-pools-managed">
-            The control plane starts and stops these workers itself, through the <span className="font-mono">{launcher}</span>{" "}
-            launcher. Each managed pool always keeps its minimum running and starts more for queued runs no free slot
-            covers; an idle extra worker leaves after a few minutes, and only once it holds nothing. Spawn raises a pool
-            for a window.
-          </p>
-        )}
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+        <h2 className="text-sm font-medium">Worker pools</h2>
+        <span className="text-xs text-muted-foreground" data-testid={`worker-pools-mode-${mode.kind}`}>
+          {mode.kind === "managed"
+            ? `started by the control plane through the ${mode.launcher} launcher`
+            : mode.kind === "built-in"
+              ? "nothing here starts workers"
+              : "held at their targets by an autoscaler"}
+        </span>
+        <ExplainMark title="How workers start" text={scalingModeExplanation(mode)} testId="worker-pools-explain" />
       </div>
 
       {query.isLoading ? (

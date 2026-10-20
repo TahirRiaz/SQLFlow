@@ -1,19 +1,20 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Activity, PauseCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { isApiError } from "../../api/client";
-import { dispatchApi } from "../../api/endpoints";
 import type { DispatchBlockReason, DispatchSnapshot, LeasedRunView, QueuedRunView } from "../../api/types";
 import { CorrelationError } from "../../components/CorrelationError";
 import { EmptyState } from "../../components/EmptyState";
+import { ExplainMark } from "../../components/ExplainTip";
 import { RelativeTime } from "../../components/RelativeTime";
 import { StatePill } from "../../components/StatusBadge";
+import { useDispatchSnapshot } from "./nodeQueries";
 
 const poolLabel = (pool: string) => (pool.length === 0 ? "default" : pool);
 
@@ -44,20 +45,18 @@ const blockLabels: Record<DispatchBlockReason, { label: string; hint: string }> 
  *  capacity online to take it, every queued run with the gate holding it back, and every lease with the node that
  *  holds it. Read-only, refreshed every few seconds; this is the diagnostic for "why is my run not starting". */
 export function DispatchPanel() {
-  const query = useQuery({
-    queryKey: ["dispatch", "snapshot"],
-    queryFn: () => dispatchApi.snapshot(),
-    refetchInterval: 5000,
-  });
+  const query = useDispatchSnapshot();
 
   return (
     <Card className="gap-0 overflow-hidden rounded-lg p-0" data-testid="dispatch-panel">
-      <div className="flex flex-col gap-1 p-4 pb-3">
-        <h2 className="text-base font-medium">Dispatcher</h2>
-        <p className="text-[13px] text-muted-foreground">
-          The control plane holds the run queue in memory and hands work to the nodes that poll for it. Every queued
-          run shows the gate holding it back, and every running one the node that holds its lease.
-        </p>
+      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+        <h2 className="text-sm font-medium">Dispatcher</h2>
+        {query.data !== undefined && <Ownership snapshot={query.data} />}
+        <ExplainMark
+          title="The dispatcher"
+          text="The control plane holds the run queue in memory and hands work to the nodes that poll for it. Every queued run shows the gate holding it back (a run of the same flow executing, a lower wave of its group, its group's cap, or no online node for its pool), and every running one the node that holds its lease."
+          testId="dispatch-explain"
+        />
       </div>
 
       {query.isLoading ? (
@@ -78,10 +77,13 @@ export function DispatchPanel() {
 }
 
 function DispatchBody({ snapshot }: { snapshot: DispatchSnapshot }) {
+  // The per-pool counts repeat the page's summary while there is one pool and no compute task, so they show only when
+  // they say something the summary does not.
+  const poolsSaySomething = snapshot.pools.length > 1
+    || snapshot.pools.some((pool) => pool.queuedTasks > 0 || pool.leasedTasks > 0);
+  const idle = snapshot.queuedRuns.length === 0 && snapshot.leasedRuns.length === 0;
   return (
     <div className="flex flex-col gap-4 px-4 pb-4">
-      <Ownership snapshot={snapshot} />
-
       {!snapshot.active ? (
         <EmptyState
           title="This replica does not own dispatch."
@@ -89,57 +91,51 @@ function DispatchBody({ snapshot }: { snapshot: DispatchSnapshot }) {
         />
       ) : (
         <>
-          <PoolsTable snapshot={snapshot} />
-          <QueuedRunsTable runs={snapshot.queuedRuns} />
+          {poolsSaySomething && <PoolsTable snapshot={snapshot} />}
+          {idle && (
+            <p className="text-[13px] text-muted-foreground" data-testid="dispatch-idle">
+              Nothing is queued or running.
+            </p>
+          )}
           <LeasedRunsTable runs={snapshot.leasedRuns} />
+          <QueuedRunsTable runs={snapshot.queuedRuns} />
         </>
       )}
     </div>
   );
 }
 
+/** Whether this replica owns dispatch, as one chip; who owns it, since when and its housekeeping are behind it. */
 function Ownership({ snapshot }: { snapshot: DispatchSnapshot }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground" data-testid="dispatch-ownership">
-      {snapshot.active
-        ? <StatePill tone="success" label="active" icon={Activity} testId="dispatch-state" />
-        : <StatePill tone="muted" label="passive" icon={PauseCircle} testId="dispatch-state" />}
-      {snapshot.owner !== null && (
-        <span>
-          owner <span className="font-mono text-foreground">{snapshot.owner}</span>
+    <HoverCard openDelay={250} closeDelay={150}>
+      <HoverCardTrigger asChild>
+        <span className="inline-flex cursor-default" data-testid="dispatch-ownership">
+          {snapshot.active
+            ? <StatePill tone="success" label="active" icon={Activity} testId="dispatch-state" />
+            : <StatePill tone="muted" label="passive" icon={PauseCircle} testId="dispatch-state" />}
         </span>
-      )}
-      {snapshot.activatedUtc !== null && (
-        <span>
-          since <RelativeTime value={snapshot.activatedUtc} />
-        </span>
-      )}
-      {snapshot.lastReconcileUtc !== null && (
-        <span>
-          reconciled <RelativeTime value={snapshot.lastReconcileUtc} />
-        </span>
-      )}
-      {snapshot.lastTickUtc !== null && (
-        <span>
-          housekeeping <RelativeTime value={snapshot.lastTickUtc} />
-        </span>
-      )}
-      <span>
-        <span className="font-mono tabular-nums text-foreground">{snapshot.waiters}</span> parked poll{snapshot.waiters === 1 ? "" : "s"}
-      </span>
-    </div>
+      </HoverCardTrigger>
+      <HoverCardContent align="start" className="w-auto max-w-md p-3" data-testid="dispatch-ownership-details">
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[12.5px]">
+          <dt className="text-muted-foreground">Owner</dt>
+          <dd className="break-all font-mono">{snapshot.owner ?? "-"}</dd>
+          <dt className="text-muted-foreground">Since</dt>
+          <dd>{snapshot.activatedUtc !== null ? <RelativeTime value={snapshot.activatedUtc} /> : "-"}</dd>
+          <dt className="text-muted-foreground">Reconciled</dt>
+          <dd>{snapshot.lastReconcileUtc !== null ? <RelativeTime value={snapshot.lastReconcileUtc} /> : "-"}</dd>
+          <dt className="text-muted-foreground">Housekeeping</dt>
+          <dd>{snapshot.lastTickUtc !== null ? <RelativeTime value={snapshot.lastTickUtc} /> : "-"}</dd>
+          <dt className="text-muted-foreground">Parked polls</dt>
+          <dd className="font-mono tabular-nums">{snapshot.waiters}</dd>
+        </dl>
+      </HoverCardContent>
+    </HoverCard>
   );
 }
 
+/** The backlog and capacity per pool, shown only when there is more than one pool or a compute task is in flight. */
 function PoolsTable({ snapshot }: { snapshot: DispatchSnapshot }) {
-  if (snapshot.pools.length === 0) {
-    return (
-      <p className="text-[13px] text-muted-foreground" data-testid="dispatch-pools-empty">
-        Nothing is queued or executing, and no node has polled since this dispatcher took over.
-      </p>
-    );
-  }
-
   return (
     <Section title="Pools" count={snapshot.pools.length}>
       <Table data-testid="dispatch-pools-table">
@@ -180,10 +176,24 @@ function QueuedRunsTable({ runs }: { runs: QueuedRunView[] }) {
   }
 
   const shown = runs.slice(0, MaxRows);
+  // How many wait behind each gate, in the order the gates are listed, so the reason the queue is not moving reads at a
+  // glance and the rows below are only needed for a particular run.
+  const byGate = (Object.keys(blockLabels) as DispatchBlockReason[])
+    .map((gate) => ({ gate, count: runs.filter((run) => run.blocked === gate).length }))
+    .filter((entry) => entry.count > 0);
   return (
-    <Section title="Queued runs" count={runs.length}>
+    <Section
+      title="Queued runs"
+      count={runs.length}
+      aside={
+        <span className="text-xs font-normal text-muted-foreground" data-testid="dispatch-queued-by-gate">
+          {byGate.map((entry) => `${entry.count} ${blockLabels[entry.gate].label}`).join(" · ")}
+        </span>
+      }
+    >
+      <div className="max-h-80 overflow-y-auto">
       <Table data-testid="dispatch-queued-table">
-        <TableHeader>
+        <TableHeader className="sticky top-0 bg-card">
           <TableRow className="hover:bg-transparent">
             <TableHead className={headClass}>Run</TableHead>
             <TableHead className={headClass}>Pool</TableHead>
@@ -217,6 +227,7 @@ function QueuedRunsTable({ runs }: { runs: QueuedRunView[] }) {
           ))}
         </TableBody>
       </Table>
+      </div>
       <Overflow total={runs.length} shown={shown.length} />
     </Section>
   );
@@ -270,11 +281,19 @@ function LeasedRunsTable({ runs }: { runs: LeasedRunView[] }) {
   );
 }
 
-function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
+function Section({ title, count, aside, children }: {
+  title: string;
+  count: number;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-2">
-      <h3 className="text-sm font-medium">
-        {title} <span className="font-mono text-xs tabular-nums text-muted-foreground">{count}</span>
+      <h3 className="flex items-baseline gap-3 text-sm font-medium">
+        <span>
+          {title} <span className="font-mono text-xs tabular-nums text-muted-foreground">{count}</span>
+        </span>
+        {aside}
       </h3>
       <div className="overflow-hidden rounded-md border">{children}</div>
     </div>
