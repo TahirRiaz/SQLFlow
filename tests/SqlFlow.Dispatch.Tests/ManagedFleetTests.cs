@@ -16,6 +16,35 @@ public sealed class ManagedFleetTests
 {
     private static readonly DateTime T0 = new(2026, 9, 11, 12, 0, 0, DateTimeKind.Utc);
 
+    /// <summary>The options the control plane's API writes JSON with.</summary>
+    private static readonly System.Text.Json.JsonSerializerOptions Web = new(System.Text.Json.JsonSerializerDefaults.Web);
+
+    [Fact]
+    public async Task TheStatus_NamesEachWorkersPhase_AsTheApiWritesIt()
+    {
+        // The Nodes page reads each worker's phase as its name ("Ready"); a number broke the whole page.
+        await using var sim = await Sim.StartAsync();
+        await sim.RunAsync(TimeSpan.FromMinutes(1));
+
+        using var json = System.Text.Json.JsonDocument.Parse(System.Text.Json.JsonSerializer.Serialize(sim.Fleet.Status(), Web));
+        var worker = Assert.Single(json.RootElement.GetProperty("workers").EnumerateArray());
+        Assert.Equal(System.Text.Json.JsonValueKind.String, worker.GetProperty("phase").ValueKind);
+        Assert.Equal("Ready", worker.GetProperty("phase").GetString());
+    }
+
+    [Fact]
+    public void EveryPhase_IsWrittenAndReadByName()
+    {
+        foreach (var phase in Enum.GetValues<FleetWorkerPhase>())
+        {
+            var view = new FleetWorkerView("worker-default-0123456789", null, phase, T0, true, 0, null);
+            var text = System.Text.Json.JsonSerializer.Serialize(view, Web);
+
+            Assert.Contains($"\"phase\":\"{phase}\"", text, StringComparison.Ordinal);
+            Assert.Equal(view, System.Text.Json.JsonSerializer.Deserialize<FleetWorkerView>(text, Web));
+        }
+    }
+
     [Fact]
     public async Task AFleetAtZero_StartsItsMinimum_AndHoldsIt()
     {

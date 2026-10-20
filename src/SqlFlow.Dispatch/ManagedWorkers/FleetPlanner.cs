@@ -34,7 +34,9 @@ public sealed record FleetSnapshot(
     public DateTime WatchedSinceUtc => ResumedUtc is { } resumed && resumed > TakeoverUtc ? resumed : TakeoverUtc;
 }
 
-/// <summary>Where a managed worker stands in a plan.</summary>
+/// <summary>Where a managed worker stands in a plan. Written by name wherever the fleet's status is serialized (the
+/// Nodes page reads <c>GET /api/v1/nodes/managed</c>), never as its number, which would change meaning with the order.</summary>
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter<FleetWorkerPhase>))]
 public enum FleetWorkerPhase
 {
     /// <summary>Started; has not polled yet (or not since this control plane took over).</summary>
