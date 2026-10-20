@@ -21,8 +21,20 @@ const poolLabel = (pool: string) => (pool.length === 0 ? "the default pool" : `p
 
 /** Starts workers on demand: pick how many and for how long. Defaults to one worker for 30 minutes (the common
  *  "spawn a worker now" case); a higher count is a temporary scale-up. After the window the pool returns to
- *  autoscaling on its own, so nothing stays warm by accident. */
-export function SpawnWorkersDialog({ pool, open, onClose }: { pool: WorkerPool; open: boolean; onClose: () => void }) {
+ *  autoscaling on its own, so nothing stays warm by accident. In built-in mode (managed workers off, the control plane
+ *  running runs on its own node) it says what it does there: it raises the target, which nothing the control plane can
+ *  see acts on. */
+export function SpawnWorkersDialog({
+  pool,
+  open,
+  onClose,
+  builtInMode,
+}: {
+  pool: WorkerPool;
+  open: boolean;
+  onClose: () => void;
+  builtInMode: boolean;
+}) {
   const queryClient = useQueryClient();
   const [count, setCount] = useState("1");
   const [minutes, setMinutes] = useState("30");
@@ -33,8 +45,11 @@ export function SpawnWorkersDialog({ pool, open, onClose }: { pool: WorkerPool; 
     mutationFn: (input: { count: number; minutes: number }) =>
       nodeApi.scalePool({ pool: pool.pool, manualReplicas: input.count, manualForMinutes: input.minutes }),
     onSuccess: (_result, input) => {
+      const workers = `${input.count} worker${input.count === 1 ? "" : "s"}`;
       toast.success(
-        `Starting ${input.count} worker${input.count === 1 ? "" : "s"} in ${poolLabel(pool.pool)} for ${input.minutes} min.`,
+        builtInMode
+          ? `Target of ${poolLabel(pool.pool)} raised to ${workers} for ${input.minutes} min; this control plane starts none.`
+          : `Starting ${workers} in ${poolLabel(pool.pool)} for ${input.minutes} min.`,
       );
       void queryClient.invalidateQueries({ queryKey: ["nodes", "pools"] });
       void queryClient.invalidateQueries({ queryKey: ["nodes", "list"] });
@@ -62,8 +77,18 @@ export function SpawnWorkersDialog({ pool, open, onClose }: { pool: WorkerPool; 
         <SheetHeader>
           <SheetTitle>Spawn workers</SheetTitle>
           <SheetDescription className="text-[13px]">
-            Start workers in {poolLabel(pool.pool)} now, even if nothing is queued. They run for the window you set,
-            then the pool goes back to autoscaling on its own.
+            {builtInMode ? (
+              <>
+                Raise the target of {poolLabel(pool.pool)} for the window you set, even if nothing is queued. Managed
+                workers are off and this control plane runs runs on its own node, so it starts no worker; only an
+                autoscaler reading the target would.
+              </>
+            ) : (
+              <>
+                Start workers in {poolLabel(pool.pool)} now, even if nothing is queued. They run for the window you set,
+                then the pool goes back to autoscaling on its own.
+              </>
+            )}
           </SheetDescription>
         </SheetHeader>
         <div className="grid grid-cols-2 gap-4 px-4">

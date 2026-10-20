@@ -29,7 +29,9 @@ const cellClass = "whitespace-nowrap px-3 py-1.5 text-[13px]";
  *  which the control plane applies by writing a catalog row. Without managed workers its own scale-target endpoint
  *  folds that row into the replica target the autoscaler reads (no orchestrator calls), and the target shown is exactly
  *  what the scaler is answered with. With managed workers on, the control plane starts and stops each managed pool's
- *  workers itself, and the row shows the pool as the managed fleet's last tick saw it. */
+ *  workers itself, and the row shows the pool as the managed fleet's last tick saw it. With neither, and the control
+ *  plane running runs on its own node, the panel says so: nothing it shows starts a worker unless an autoscaler reads
+ *  the target, which the control plane cannot see. */
 export function WorkerPoolsPanel() {
   const { hasScope } = useAuth();
   const canOperate = hasScope("operate");
@@ -38,17 +40,28 @@ export function WorkerPoolsPanel() {
     queryFn: () => nodeApi.listPools(),
     refetchInterval: 5000,
   });
-  const launcher = (query.data ?? []).find((pool) => pool.managedBy !== null)?.managedBy ?? null;
+  const pools = query.data ?? [];
+  const launcher = pools.find((pool) => pool.managedBy !== null)?.managedBy ?? null;
+  const builtInNode = launcher === null ? pools.find((pool) => pool.builtInNode !== null)?.builtInNode ?? null : null;
 
   return (
     <Card className="gap-0 overflow-hidden rounded-lg p-0" data-testid="worker-pools-panel">
       <div className="flex flex-col gap-1 p-4 pb-3">
         <h2 className="text-base font-medium">Worker pools</h2>
-        {launcher === null ? (
+        {launcher === null && builtInNode !== null ? (
+          <p className="text-[13px] text-muted-foreground" data-testid="worker-pools-built-in">
+            Managed workers are off, so this control plane starts no worker. It runs runs on its own node,{" "}
+            <span className="font-mono">{builtInNode.name}</span>, {builtInNode.runSlots} at a time, and answers each
+            pool&apos;s target to an autoscaler, if one reads it. Without one, Always on and Spawn are recorded and
+            nothing starts; turn on <span className="font-mono">ControlPlane:ManagedWorkers</span> to have the control
+            plane start and stop workers itself.
+          </p>
+        ) : launcher === null ? (
           <p className="text-[13px] text-muted-foreground">
-            The autoscaler runs each pool at the greatest of its demand (the queued runs a node could take right now,
-            divided by what one worker executes at once, plus the workers already busy), an always-on floor, and any
-            active manual override. Keep a worker warm, scale a pool up for a window, or spawn one when the pool is at zero.
+            The autoscaler runs each pool at the greatest of its demand (the queued runs its workers would start right
+            now, divided by what one worker executes at once, plus the workers already busy), an always-on floor, and any
+            active manual override; the control plane only answers that target. Keep a worker warm, scale a pool up for a
+            window, or spawn one when the pool is at zero.
           </p>
         ) : (
           <p className="text-[13px] text-muted-foreground" data-testid="worker-pools-managed">
@@ -70,7 +83,7 @@ export function WorkerPoolsPanel() {
             ? <CorrelationError error={query.error} />
             : <p className="text-[13px] text-destructive">{String(query.error)}</p>}
         </div>
-      ) : (query.data ?? []).length === 0 ? (
+      ) : pools.length === 0 ? (
         <EmptyState
           title="No worker pools yet."
           description="Pools appear here once a worker registers or a flow targets one."
@@ -89,8 +102,14 @@ export function WorkerPoolsPanel() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(query.data ?? []).map((pool) => (
-              <WorkerPoolRow key={pool.pool} pool={pool} canOperate={canOperate} managedMode={launcher !== null} />
+            {pools.map((pool) => (
+              <WorkerPoolRow
+                key={pool.pool}
+                pool={pool}
+                canOperate={canOperate}
+                managedMode={launcher !== null}
+                builtInMode={builtInNode !== null}
+              />
             ))}
           </TableBody>
         </Table>
@@ -99,7 +118,18 @@ export function WorkerPoolsPanel() {
   );
 }
 
-function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; canOperate: boolean; managedMode: boolean }) {
+function WorkerPoolRow({
+  pool,
+  canOperate,
+  managedMode,
+  builtInMode,
+}: {
+  pool: WorkerPool;
+  canOperate: boolean;
+  managedMode: boolean;
+  /** Managed workers are off and this control plane runs runs on its own node: nothing it can see starts a worker. */
+  builtInMode: boolean;
+}) {
   const queryClient = useQueryClient();
   const [spawnOpen, setSpawnOpen] = useState(false);
   const suffix = pool.pool || "default";
@@ -107,14 +137,15 @@ function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; ca
   const unmanagedInManagedMode = managedMode && pool.managedBy === null;
   const target = managed?.target ?? pool.replicaTarget;
   const working = managed === null ? pool.onlineNodes : managed.ready + managed.due;
-  const startingUp = unmanagedInManagedMode
+  const belowTarget = builtInMode && pool.onlineNodes < pool.replicaTarget;
+  const startingUp = unmanagedInManagedMode || builtInMode
     ? false
     : managed === null ? pool.onlineNodes < pool.replicaTarget : managed.starting > 0;
 
   const scale = useMutation({
     mutationFn: (request: WorkerPoolScaleRequest) => nodeApi.scalePool(request),
     onSuccess: (result, request) => {
-      toast.success(scaleMessage(request, result));
+      toast.success(scaleMessage(request, result, builtInMode));
       void queryClient.invalidateQueries({ queryKey: ["nodes", "pools"] });
       void queryClient.invalidateQueries({ queryKey: ["nodes", "list"] });
     },
@@ -182,6 +213,19 @@ function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; ca
             {managed === null ? "starting..." : `${managed.starting} starting`}
           </span>
         )}
+        {belowTarget && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="block text-right text-xs text-muted-foreground" data-testid={`worker-pool-below-target-${suffix}`}>
+                below target
+              </span>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs">
+              {pool.onlineNodes} of {pool.replicaTarget} workers are online. Managed workers are off, so this control plane
+              starts none; only an autoscaler reading the target would.
+            </TooltipContent>
+          </Tooltip>
+        )}
         {managed !== null && managed.due > 0 && (
           <span className="block text-right text-xs text-muted-foreground">{managed.due} replacing</span>
         )}
@@ -240,6 +284,20 @@ function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; ca
               </TooltipContent>
             </Tooltip>
           )}
+          {pool.builtInNode !== null && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" data-testid={`worker-pool-built-in-${suffix}`}>
+                  built-in node
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                This control plane runs the pool&apos;s runs on its own node, {pool.builtInNode.name},{" "}
+                {pool.builtInNode.runSlots} at a time. It counts among the online workers, and nothing starts or stops it
+                but the control plane.
+              </TooltipContent>
+            </Tooltip>
+          )}
           {pool.managedBy === null && !unmanagedInManagedMode && pool.minReplicas > 0 && (
             <Badge variant="outline" className="border-success/40 text-success">
               always-on {pool.minReplicas}
@@ -257,7 +315,9 @@ function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; ca
               </TooltipContent>
             </Tooltip>
           )}
-          {!managedMode && pool.minReplicas === 0 && !pool.manualActive && <Badge variant="outline">autoscale</Badge>}
+          {!managedMode && !builtInMode && pool.minReplicas === 0 && !pool.manualActive && (
+            <Badge variant="outline">autoscale</Badge>
+          )}
         </div>
       </TableCell>
       {canOperate && (
@@ -280,7 +340,9 @@ function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; ca
                     </Label>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    Keep at least one worker running in this pool at all times, so a job never waits for one to start.
+                    {builtInMode
+                      ? "Ask for at least one worker in this pool at all times. Managed workers are off, so this control plane starts none; only an autoscaler reading the target would."
+                      : "Keep at least one worker running in this pool at all times, so a job never waits for one to start."}
                   </TooltipContent>
                 </Tooltip>
               )}
@@ -298,7 +360,9 @@ function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; ca
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs">
-                  Start workers now for a set time, even with nothing queued.
+                  {builtInMode
+                    ? "Raise the pool's target for a set time, even with nothing queued. Managed workers are off, so this control plane starts no worker; only an autoscaler reading the target would."
+                    : "Start workers now for a set time, even with nothing queued."}
                 </TooltipContent>
               </Tooltip>
               {pool.manualActive && (
@@ -314,15 +378,32 @@ function WorkerPoolRow({ pool, canOperate, managedMode }: { pool: WorkerPool; ca
               )}
             </div>
           )}
-          <SpawnWorkersDialog pool={pool} open={spawnOpen} onClose={() => setSpawnOpen(false)} />
+          <SpawnWorkersDialog
+            pool={pool}
+            open={spawnOpen}
+            onClose={() => setSpawnOpen(false)}
+            builtInMode={builtInMode}
+          />
         </TableCell>
       )}
     </TableRow>
   );
 }
 
-function scaleMessage(request: WorkerPoolScaleRequest, pool: WorkerPool): string {
+function scaleMessage(request: WorkerPoolScaleRequest, pool: WorkerPool, builtInMode: boolean): string {
   const name = poolLabel(pool.pool);
+  if (builtInMode) {
+    // Nothing the control plane can see acts on the target, so the toast says what was recorded, not what will start.
+    if (request.minReplicas !== undefined && request.manualReplicas === undefined) {
+      return request.minReplicas > 0
+        ? `Always-on floor of ${request.minReplicas} recorded for ${name}; this control plane starts no worker for it.`
+        : `Always-on floor cleared for ${name}.`;
+    }
+    if (request.manualReplicas === 0) {
+      return `Manual override cleared for ${name}.`;
+    }
+    return `${name}'s target is ${pool.replicaTarget} until the override reverts; this control plane starts no worker for it.`;
+  }
   if (request.minReplicas !== undefined && request.manualReplicas === undefined) {
     return request.minReplicas > 0
       ? `Keeping at least ${request.minReplicas} worker warm in ${name}.`

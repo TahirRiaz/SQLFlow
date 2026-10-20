@@ -3,7 +3,9 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using SqlFlow.Catalog;
+using SqlFlow.ControlPlane.Configuration;
 using SqlFlow.Dispatch;
 using SqlFlow.Dispatch.ManagedWorkers;
 using SqlFlow.Node;
@@ -25,11 +27,18 @@ public sealed record NodeDto(
 /// <see cref="Pool"/> is the empty string for the default (untargeted) pool. <see cref="ManualActive"/> is whether
 /// the manual override applies at read time (its window is open). With managed workers on, <see cref="ManagedBy"/> names
 /// the launcher that starts the pool's workers (null for a pool that is not managed), and <see cref="Managed"/> is the
-/// pool as the managed fleet's last tick saw it (null on a replica that does not own dispatch, or before the first tick).</summary>
+/// pool as the managed fleet's last tick saw it (null on a replica that does not own dispatch, or before the first tick).
+/// <see cref="BuiltInNode"/> is this control plane's own node when it serves the pool (null on an API-only replica and
+/// for a pool the node does not serve), so a reader can tell the node it sees online from a worker anything started.</summary>
 public sealed record WorkerPoolDto(
     string Pool, int MinReplicas, int ManualReplicas, DateTime? ManualUntilUtc, bool ManualActive,
     int QueuedRuns, int ReplicaTarget, int OnlineNodes, DateTime? UpdatedUtc, string? UpdatedBy,
-    int EligibleQueuedRuns, int BusyNodes, int RunSlotsPerNode, string? ManagedBy = null, ManagedPoolStatus? Managed = null);
+    int EligibleQueuedRuns, int BusyNodes, int RunSlotsPerNode, string? ManagedBy = null, ManagedPoolStatus? Managed = null,
+    BuiltInNodeDto? BuiltInNode = null);
+
+/// <summary>The node a control plane runs in its own process (<c>ControlPlane:Worker</c>): the name it polls under and
+/// how many runs it executes at once. Nothing starts or stops it but the control plane itself.</summary>
+public sealed record BuiltInNodeDto(string Name, int RunSlots);
 
 /// <summary>Managed workers as this control plane sees them: whether the feature is on, and the fleet's state (null when
 /// it is off).</summary>
@@ -117,9 +126,11 @@ public static class NodeEndpoints
     }
 
     private static async Task<Ok<IReadOnlyList<WorkerPoolDto>>> ListPoolsAsync(
-        CatalogDbContext db, TimeProvider clock, HttpContext http, CancellationToken ct)
+        CatalogDbContext db, TimeProvider clock, HttpContext http, IOptions<ControlPlaneOptions> options, RunWorker node,
+        CancellationToken ct)
     {
         var fleet = http.RequestServices.GetService(typeof(ManagedFleet)) as ManagedFleet;
+        var worker = options.Value.Worker;
         var now = clock.GetUtcNow().UtcDateTime;
 
         // The pools worth showing: the default pool (always), every pool with a desired row, and every pool that has
@@ -143,27 +154,54 @@ public static class NodeEndpoints
             keys.Add(WorkerPoolStore.PoolKey(pool));
         }
 
-        // Every managed pool is shown, so one that has had no runs yet still shows its workers.
+        // Every managed pool is shown, so one that has had no runs yet still shows its workers, and so is every pool this
+        // control plane's own node serves.
         foreach (var pool in fleet?.Settings.Pools ?? [])
         {
             keys.Add(pool.Pool);
+        }
+
+        foreach (var pool in worker.Enabled ? worker.Pools : [])
+        {
+            keys.Add(WorkerPoolStore.PoolKey(pool));
         }
 
         var byPool = desired.ToDictionary(d => d.Pool, StringComparer.Ordinal);
         var result = new List<WorkerPoolDto>(keys.Count);
         foreach (var key in keys)
         {
-            result.Add(await DescribePoolAsync(db, key, byPool.GetValueOrDefault(key), fleet, now, ct).ConfigureAwait(false));
+            result.Add(await DescribePoolAsync(
+                db, key, byPool.GetValueOrDefault(key), fleet, BuiltInNodeOf(key, worker, node.NodeName), now, ct)
+                .ConfigureAwait(false));
         }
 
         return TypedResults.Ok<IReadOnlyList<WorkerPoolDto>>(result);
+    }
+
+    /// <summary>This control plane's own node, for a pool it serves: the default pool and every pool
+    /// <c>ControlPlane:Worker:Pools</c> names, as the node polls for them. Null on an API-only replica
+    /// (<c>Worker:Enabled=false</c>) and for every other pool.</summary>
+    internal static BuiltInNodeDto? BuiltInNodeOf(string poolKey, WorkerOptions worker, string nodeName)
+    {
+        ArgumentNullException.ThrowIfNull(poolKey);
+        ArgumentNullException.ThrowIfNull(worker);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nodeName);
+        if (!worker.Enabled)
+        {
+            return null;
+        }
+
+        var serves = poolKey.Length == 0
+            || worker.Pools.Any(pool => string.Equals(WorkerPoolStore.PoolKey(pool), poolKey, StringComparison.Ordinal));
+        return serves ? new BuiltInNodeDto(nodeName, worker.MaxConcurrentRuns) : null;
     }
 
     /// <summary>One pool's row for the fleet page: the raw backlog beside the very target the autoscaler is being
     /// answered with (the same resolution the scale-target endpoint performs), so what an operator sees is what
     /// the platform is asked for.</summary>
     private static async Task<WorkerPoolDto> DescribePoolAsync(
-        CatalogDbContext db, string key, CatalogWorkerPoolDesired? row, ManagedFleet? fleet, DateTime now, CancellationToken ct)
+        CatalogDbContext db, string key, CatalogWorkerPoolDesired? row, ManagedFleet? fleet, BuiltInNodeDto? builtInNode,
+        DateTime now, CancellationToken ct)
     {
         var queued = await WorkerPoolStore.CountQueuedAsync(db, key, ct).ConfigureAwait(false);
         var target = await ScaleTargetStore.ResolveAsync(db, key, RunWorker.DefaultMaxConcurrentRuns, now, ct).ConfigureAwait(false);
@@ -183,12 +221,13 @@ public static class NodeEndpoints
             target.BusyNodes,
             target.RunSlotsPerNode,
             managed?.LauncherName,
-            managed?.Status().Pools.FirstOrDefault(p => string.Equals(p.Pool, key, StringComparison.Ordinal)));
+            managed?.Status().Pools.FirstOrDefault(p => string.Equals(p.Pool, key, StringComparison.Ordinal)),
+            builtInNode);
     }
 
     private static async Task<Results<Ok<WorkerPoolDto>, ProblemHttpResult>> ScalePoolAsync(
         WorkerPoolScaleRequest request, CatalogDbContext db, TimeProvider clock, ClaimsPrincipal user, HttpContext http,
-        CancellationToken ct)
+        IOptions<ControlPlaneOptions> options, RunWorker node, CancellationToken ct)
     {
         if (request.MinReplicas is < 0 or > MaxReplicas || request.ManualReplicas is < 0 or > MaxReplicas)
         {
@@ -230,7 +269,8 @@ public static class NodeEndpoints
 
         var saved = await WorkerPoolStore.GetDesiredAsync(db, key, ct).ConfigureAwait(false);
         var fleet = http.RequestServices.GetService(typeof(ManagedFleet)) as ManagedFleet;
-        return TypedResults.Ok(await DescribePoolAsync(db, key, saved, fleet, now, ct).ConfigureAwait(false));
+        var builtInNode = BuiltInNodeOf(key, options.Value.Worker, node.NodeName);
+        return TypedResults.Ok(await DescribePoolAsync(db, key, saved, fleet, builtInNode, now, ct).ConfigureAwait(false));
     }
 
     private static async Task<Results<Ok, ProblemHttpResult>> RestartNodeAsync(

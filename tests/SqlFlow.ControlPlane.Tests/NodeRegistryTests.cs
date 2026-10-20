@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using SqlFlow.Catalog;
 using SqlFlow.ControlPlane.Api;
 using Xunit;
@@ -133,6 +134,33 @@ public sealed class NodeRegistryTests
         {
             await Cleanup(cs, onlineNode);
             await Cleanup(cs, offlineNode);
+        }
+    }
+
+    [SkippableFact]
+    public async Task ListPools_NamesTheBuiltInNode_AndAnApiOnlyReplicaNamesNone()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+
+        await using (var factory = new ControlPlaneAppFactory().WithCatalog(cs))
+        {
+            using var client = factory.CreateClient();
+            var token = await IssueTokenAsync(client, ["read"]);
+            var pools = await GetJsonAsync<List<WorkerPoolDto>>(client, token, "/api/v1/nodes/pools");
+            var node = factory.Services.GetRequiredService<SqlFlow.Node.RunWorker>().NodeName;
+
+            Assert.Equal(new BuiltInNodeDto(node, 4), pools.Single(p => p.Pool.Length == 0).BuiltInNode);
+        }
+
+        await using (var apiOnly = new ControlPlaneAppFactory().WithCatalog(cs).WithSetting("ControlPlane:Worker:Enabled", "false"))
+        {
+            using var client = apiOnly.CreateClient();
+            var token = await IssueTokenAsync(client, ["read"]);
+            var pools = await GetJsonAsync<List<WorkerPoolDto>>(client, token, "/api/v1/nodes/pools");
+
+            Assert.Contains(pools, p => p.Pool.Length == 0);
+            Assert.All(pools, p => Assert.Null(p.BuiltInNode));
         }
     }
 

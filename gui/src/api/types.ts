@@ -808,11 +808,12 @@ export interface WorkerPool {
   manualActive: boolean;
   queuedRuns: number;
   replicaTarget: number;
-  /** How many of this pool's workers are online right now; when below replicaTarget, the pool is spinning one up. */
+  /** How many of this pool's workers are online right now, this control plane's own node among them. */
   onlineNodes: number;
   updatedUtc: string | null;
   updatedBy: string | null;
-  /** The part of the backlog a node could take right now: queued runs no gate holds back. */
+  /** The part of the backlog the pool's workers would start right now with a slot for each: queued runs no gate holds
+   *  back once the pool's runs ahead of them have taken their places. */
   eligibleQueuedRuns: number;
   /** Online workers of the pool that hold at least one run. */
   busyNodes: number;
@@ -823,6 +824,16 @@ export interface WorkerPool {
   /** The pool as the managed fleet's last tick saw it; null when it is not managed, or on a replica that does not own
    *  dispatch. */
   managed: ManagedPoolStatus | null;
+  /** This control plane's own node, when it serves the pool (ControlPlane:Worker); null on an API-only replica and for
+   *  a pool the node does not serve. */
+  builtInNode: BuiltInNode | null;
+}
+
+/** The node a control plane runs in its own process: the name it polls under and how many runs it executes at once.
+ *  Nothing starts or stops it but the control plane itself. */
+export interface BuiltInNode {
+  name: string;
+  runSlots: number;
 }
 
 // ---- Managed workers --------------------------------------------------------------------------------------------------
