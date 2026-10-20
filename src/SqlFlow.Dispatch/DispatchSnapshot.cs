@@ -6,13 +6,15 @@ public static class DispatchBlockReasons
 {
     public const string Eligible = "";
 
-    /// <summary>Another run of the same pipeline is executing; this one waits its turn.</summary>
+    /// <summary>Another run of the same pipeline is executing, or is ahead of this one in the queue; this one waits its
+    /// turn.</summary>
     public const string PipelineBusy = "pipeline-busy";
 
     /// <summary>A lower wave of the run's group has not finished.</summary>
     public const string WaveGated = "wave-gated";
 
-    /// <summary>The run's group is executing as many members as its cap allows.</summary>
+    /// <summary>The run's group is executing as many members as its cap allows, counting the members ahead of this one in
+    /// the queue that start first.</summary>
     public const string GroupCap = "group-cap";
 
     /// <summary>No online node serves the run's pool.</summary>

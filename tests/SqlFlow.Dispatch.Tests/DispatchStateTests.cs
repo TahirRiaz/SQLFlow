@@ -484,11 +484,11 @@ public sealed class DispatchStateTests
             state.AddQueuedRun(run);
         }
 
-        // The pipeline is executing on some node: its queued run is gated. Wave 1 waits for wave 0; the cap only
-        // bites once a wave-0 member is executing, so both wave-0 members are eligible right now.
+        // The pipeline is executing on some node: its queued run is gated. Wave 1 waits for wave 0, and the cap of one
+        // has a single place, which the older wave-0 member takes: its sibling would find the group full.
         state.AddLeasedRun(Make.Run(At(0), pipeline: pipeline), "n9", T0, T0.AddMinutes(1));
 
-        Assert.Equal(3, state.CountEligibleQueuedRuns("etl"));
+        Assert.Equal(2, state.CountEligibleQueuedRuns("etl"));
         Assert.Equal(1, state.CountEligibleQueuedRuns(string.Empty));
         Assert.Equal(0, state.CountEligibleQueuedRuns("nobody"));
 
@@ -498,5 +498,200 @@ public sealed class DispatchStateTests
         Assert.Equal([free.RunId, wave0.RunId, untargeted.RunId], picks.Select(p => p.RunId));
         Assert.Equal(0, state.CountEligibleQueuedRuns("etl"));
         Assert.Equal(0, state.CountEligibleQueuedRuns(string.Empty));
+    }
+
+    [Fact]
+    public void CountEligibleQueuedRuns_AGroupUnderItsCap_AsksOnlyForThePlacesLeft()
+    {
+        // A schedule fire of eighteen wave-1 members and one wave-2 member, at most four at once: a fleet with a slot
+        // for every run would still start four, so four is the demand, and the snapshot says which four.
+        var state = new DispatchState();
+        var group = Guid.NewGuid();
+        var wave1 = Enumerable.Range(0, 18).Select(i => Make.Run(At(i), group: group, wave: 1, cap: 4)).ToList();
+        var wave2 = Make.Run(At(30), group: group, wave: 2, cap: 4);
+        foreach (var run in wave1.Append(wave2))
+        {
+            state.AddQueuedRun(run);
+        }
+
+        Assert.Equal(4, state.CountEligibleQueuedRuns(string.Empty));
+        var gates = state.Snapshot(_ => (1, 4)).QueuedRuns.ToDictionary(r => r.RunId, r => r.Blocked);
+        Assert.All(wave1.Take(4), r => Assert.Equal(DispatchBlockReasons.Eligible, gates[r.RunId]));
+        Assert.All(wave1.Skip(4), r => Assert.Equal(DispatchBlockReasons.GroupCap, gates[r.RunId]));
+        Assert.Equal(DispatchBlockReasons.WaveGated, gates[wave2.RunId]);
+
+        // One member starts: three places are left, and the next three in line are the ones that will take them.
+        var pick = Assert.Single(state.ReserveRuns("n1", [], 1));
+        Assert.Equal(wave1[0].RunId, pick.RunId);
+        Assert.Equal(3, state.CountEligibleQueuedRuns(string.Empty));
+        gates = state.Snapshot(_ => (1, 3)).QueuedRuns.ToDictionary(r => r.RunId, r => r.Blocked);
+        Assert.All(wave1.Skip(1).Take(3), r => Assert.Equal(DispatchBlockReasons.Eligible, gates[r.RunId]));
+        Assert.All(wave1.Skip(4), r => Assert.Equal(DispatchBlockReasons.GroupCap, gates[r.RunId]));
+
+        // The count is what a reservation hands out, however many slots ask.
+        Assert.Equal(3, state.ReserveRuns("n2", [], 10).Count);
+        Assert.Equal(0, state.CountEligibleQueuedRuns(string.Empty));
+    }
+
+    [Fact]
+    public void CountEligibleQueuedRuns_APipelineQueuedTwice_AsksForOneNode_ButAFanOutsMembersShareIt()
+    {
+        var state = new DispatchState();
+        var pipeline = Guid.NewGuid();
+        var first = Make.Run(At(0), pipeline: pipeline);
+        var second = Make.Run(At(1), pipeline: pipeline);
+        var fannedPipeline = Guid.NewGuid();
+        var root = Guid.NewGuid();
+        var memberA = Make.Run(At(2), pipeline: fannedPipeline) with { FanOutRoot = root };
+        var memberB = Make.Run(At(3), pipeline: fannedPipeline) with { FanOutRoot = root };
+        foreach (var run in new[] { first, second, memberA, memberB })
+        {
+            state.AddQueuedRun(run);
+        }
+
+        // Two families of one pipeline never run at once, so the second asks for nothing; one fan-out's members do.
+        Assert.Equal(3, state.CountEligibleQueuedRuns(string.Empty));
+        var gates = state.Snapshot(_ => (1, 4)).QueuedRuns.ToDictionary(r => r.RunId, r => r.Blocked);
+        Assert.Equal(DispatchBlockReasons.Eligible, gates[first.RunId]);
+        Assert.Equal(DispatchBlockReasons.PipelineBusy, gates[second.RunId]);
+        Assert.Equal(DispatchBlockReasons.Eligible, gates[memberA.RunId]);
+        Assert.Equal(DispatchBlockReasons.Eligible, gates[memberB.RunId]);
+        Assert.Equal([first.RunId, memberA.RunId, memberB.RunId], state.ReserveRuns("n1", [], 10).Select(p => p.RunId));
+    }
+
+    [Fact]
+    public void CountEligibleQueuedRuns_AGroupSpanningPools_LetsEachPoolAskForItsOwnMember()
+    {
+        // The cap has one place and each pool holds a member. Which pool's node takes it first is not known, so each
+        // pool asks for the worker that would start its own member; a member queued elsewhere never zeroes a pool.
+        var state = new DispatchState();
+        var group = Guid.NewGuid();
+        var pooled = Make.Run(At(0), pool: "etl", group: group, wave: 0, cap: 1);
+        var untargeted = Make.Run(At(1), group: group, wave: 0, cap: 1);
+        var pooledSibling = Make.Run(At(2), pool: "etl", group: group, wave: 0, cap: 1);
+        foreach (var run in new[] { pooled, untargeted, pooledSibling })
+        {
+            state.AddQueuedRun(run);
+        }
+
+        Assert.Equal(1, state.CountEligibleQueuedRuns("etl"));
+        Assert.Equal(1, state.CountEligibleQueuedRuns(string.Empty));
+
+        // A node of the untargeted pool takes its member: the place is gone for every pool.
+        Assert.Equal([untargeted.RunId], state.ReserveRuns("n1", [], 10).Select(p => p.RunId));
+        Assert.Equal(0, state.CountEligibleQueuedRuns("etl"));
+        Assert.Equal(0, state.CountEligibleQueuedRuns(string.Empty));
+    }
+
+    [Fact]
+    public void CountEligibleQueuedRuns_AnOlderRunInAPoolNothingServes_NeverStopsAnotherPoolScaling()
+    {
+        // Pipeline P is queued twice: first for a pool no node serves, then untargeted. A node of the untargeted pool
+        // would be handed the untargeted run at once, so that pool, held at zero by an autoscaler, must still ask for one.
+        var state = new DispatchState();
+        var pipeline = Guid.NewGuid();
+        var stranded = Make.Run(At(0), pipeline: pipeline, pool: "nobody");
+        var untargeted = Make.Run(At(1), pipeline: pipeline);
+        state.AddQueuedRun(stranded);
+        state.AddQueuedRun(untargeted);
+
+        Assert.Equal(1, state.CountEligibleQueuedRuns(string.Empty));
+        Assert.Equal(1, state.CountEligibleQueuedRuns("nobody"));
+        var gates = state.Snapshot(pool => pool.Length == 0 ? (1, 4) : (0, 0)).QueuedRuns.ToDictionary(r => r.RunId, r => r.Blocked);
+        Assert.Equal(DispatchBlockReasons.Eligible, gates[untargeted.RunId]);
+        Assert.Equal(DispatchBlockReasons.NoEligibleNode, gates[stranded.RunId]);
+        Assert.Equal([untargeted.RunId], state.ReserveRuns("n1", [], 10).Select(p => p.RunId));
+    }
+
+    [Fact]
+    public void CountEligibleQueuedRuns_AcrossEveryMix_StaysBetweenWhatANodeIsHandedAndWhatTheGatesAloneAllow()
+    {
+        // Mixes of pools, pipelines, fan-out families, waves and caps, some runs already executing, seeded so a failure
+        // replays. For every pool the count is never more than the gates alone let through (it only removes runs that
+        // would find their place taken), never less than a node serving the pool with a slot for every run is handed (so
+        // an autoscaler never waits on a worker a node could have used), exactly that for the untargeted pool, whose nodes
+        // see nothing else, and the same number the snapshot marks eligible.
+        var random = new Random(20261020);
+        string[] pools = [string.Empty, "etl", "gpu"];
+        for (var round = 0; round < 400; round++)
+        {
+            var state = new DispatchState();
+            var pipelines = Enumerable.Range(0, 4).Select(_ => Guid.NewGuid()).ToArray();
+            var families = Enumerable.Range(0, 3).Select(_ => Guid.NewGuid()).ToArray();
+            var groups = Enumerable.Range(0, 2).Select(_ => (Id: Guid.NewGuid(), Cap: random.Next(1, 4))).ToArray();
+            var runs = new List<DispatchRun>();
+            var size = random.Next(1, 16);
+            for (var i = 0; i < size; i++)
+            {
+                var group = random.Next(3) == 0 ? ((Guid Id, int Cap)?)null : groups[random.Next(groups.Length)];
+                var run = Make.Run(
+                    At(i), pipeline: pipelines[random.Next(pipelines.Length)], pool: pools[random.Next(pools.Length)],
+                    group: group?.Id, wave: random.Next(2), cap: group?.Cap);
+                runs.Add(random.Next(3) == 0 ? run with { FanOutRoot = families[random.Next(families.Length)] } : run);
+            }
+
+            foreach (var run in runs)
+            {
+                state.AddQueuedRun(run);
+            }
+
+            // Some are already executing, holding their pipelines and group places.
+            foreach (var reservation in state.ReserveRuns("busy", ["etl", "gpu"], random.Next(0, 3)))
+            {
+                Assert.True(state.ConfirmRunLease(reservation.RunId, "busy", reservation.ExpectedAttempt + 1, At(100), At(200)));
+            }
+
+            var snapshot = state.Snapshot(_ => (1, 4));
+            var held = snapshot.LeasedRuns.Select(l => runs.Single(r => r.RunId == l.RunId)).ToList();
+            var queued = snapshot.QueuedRuns.Select(q => runs.Single(r => r.RunId == q.RunId)).ToList();
+            foreach (var pool in pools)
+            {
+                var count = state.CountEligibleQueuedRuns(pool);
+                var mine = queued.Where(r => DispatchState.PoolKey(r.TargetPool) == pool).ToList();
+                var gatesAlone = mine.Count(r => PassesTheGatesAlone(r, held, queued));
+                var marked = snapshot.QueuedRuns.Count(q => q.Pool == pool && q.Blocked == DispatchBlockReasons.Eligible);
+
+                var probe = new DispatchState();
+                foreach (var run in held)
+                {
+                    probe.AddLeasedRun(run, "busy", At(100), At(200));
+                }
+
+                foreach (var run in queued)
+                {
+                    probe.AddQueuedRun(run);
+                }
+
+                var handedOut = probe.ReserveRuns("probe", pool.Length == 0 ? [] : [pool], 100)
+                    .Count(p => mine.Any(r => r.RunId == p.RunId));
+
+                var where = $"round {round}, pool '{pool}': counted {count}, gates alone {gatesAlone}, handed out {handedOut}, marked {marked}";
+                Assert.True(count <= gatesAlone, where);
+                Assert.True(count >= handedOut, where);
+                Assert.True(pool.Length > 0 || count == handedOut, where);
+                Assert.True(count == marked, where);
+            }
+        }
+    }
+
+    /// <summary>The gates as the dispatcher states them, run by run and against what executes only: no other run of the
+    /// pipeline's flow outside the run's own family is executing, every lower wave of its group is terminal, and fewer
+    /// members than its cap are executing.</summary>
+    private static bool PassesTheGatesAlone(DispatchRun run, IReadOnlyList<DispatchRun> held, IReadOnlyList<DispatchRun> queued)
+    {
+        static Guid Family(DispatchRun r) => r.FanOutRoot ?? r.RunId;
+        if (held.Any(h => h.PipelineId == run.PipelineId && Family(h) != Family(run)))
+        {
+            return false;
+        }
+
+        if (run.GroupId is not { } group)
+        {
+            return true;
+        }
+
+        var lowestPendingWave = held.Concat(queued).Where(r => r.GroupId == group).Min(r => r.GroupWave);
+        return lowestPendingWave == run.GroupWave
+            && (run.GroupMaxConcurrency is not { } cap || held.Count(h => h.GroupId == group) < cap);
     }
 }

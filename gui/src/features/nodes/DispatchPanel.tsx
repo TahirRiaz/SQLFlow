@@ -28,9 +28,15 @@ const MaxRows = 40;
 /** What the dispatcher says about a queued run, in the operator's words. */
 const blockLabels: Record<DispatchBlockReason, { label: string; hint: string }> = {
   "": { label: "eligible", hint: "Goes to the next node with a free slot that serves its pool." },
-  "pipeline-busy": { label: "pipeline busy", hint: "Another run of the same pipeline is executing; this one waits its turn." },
+  "pipeline-busy": {
+    label: "pipeline busy",
+    hint: "Another run of the same pipeline is executing, or is ahead of this one in the queue; this one waits its turn.",
+  },
   "wave-gated": { label: "wave gated", hint: "A lower wave of the run's group has not finished." },
-  "group-cap": { label: "group cap", hint: "The run's group is executing as many members as its cap allows." },
+  "group-cap": {
+    label: "group cap",
+    hint: "The run's group is executing as many members as its cap allows, counting the members ahead of this one in the queue.",
+  },
   "no-eligible-node": { label: "no node", hint: "No online node serves the run's pool." },
 };
 

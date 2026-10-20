@@ -860,13 +860,16 @@ public sealed class DispatchState
         }
     }
 
-    /// <summary>The whole queue with every gate and lease explained, plus per-pool counts. The caller supplies node
-    /// capacity per pool so a run whose pool no online node serves is reported as such.</summary>
+    /// <summary>The whole queue with every gate and lease explained, plus per-pool counts. A queued run's gate is the
+    /// one it meets in hand-out order (<see cref="AdmitQueuedLocked()"/>), so a run that only waits for the members ahead of
+    /// it to take its group's last places is reported at the cap. The caller supplies node capacity per pool so a run
+    /// whose pool no online node serves is reported as such.</summary>
     public QueueSnapshot Snapshot(Func<string, (int OnlineNodes, int FreeRunSlots)> capacityOf)
     {
         ArgumentNullException.ThrowIfNull(capacityOf);
         lock (_gate)
         {
+            var gates = AdmitQueuedLocked();
             var queuedRuns = new List<QueuedRunView>();
             var leasedRuns = new List<LeasedRunView>();
             var pools = new Dictionary<string, PoolCounts>(StringComparer.Ordinal);
@@ -876,10 +879,15 @@ public sealed class DispatchState
                 if (entry.State == EntryState.Queued)
                 {
                     counts.QueuedRuns++;
+                    var blocked = gates[entry.RunId];
+                    if (blocked == DispatchBlockReasons.Eligible && capacityOf(entry.PoolKey).OnlineNodes == 0)
+                    {
+                        blocked = DispatchBlockReasons.NoEligibleNode;
+                    }
+
                     queuedRuns.Add(new QueuedRunView(
                         entry.RunId, entry.PipelineId, entry.PoolKey, entry.GroupId, entry.GroupWave,
-                        entry.GroupMaxConcurrency, entry.EnqueuedUtc, entry.Attempt, entry.CancelRequested,
-                        BlockReasonLocked(entry, capacityOf)));
+                        entry.GroupMaxConcurrency, entry.EnqueuedUtc, entry.Attempt, entry.CancelRequested, blocked));
                 }
                 else
                 {
@@ -958,28 +966,27 @@ public sealed class DispatchState
         }
     }
 
-    /// <summary>How many queued runs of a pool a node could take right now: those no gate holds back (the pipeline
-    /// is idle, every lower wave of the group is terminal, the group is under its cap). This is the demand term of
-    /// an autoscaler's replica target, and it deliberately ignores whether any node is online: the absence of nodes
-    /// is exactly what the target exists to correct, while a run a gate blocks would occupy no node even if one
-    /// appeared.</summary>
+    /// <summary>How many queued runs of a pool would start right now if the pool's nodes had a free slot for every one of
+    /// them: those no gate holds back once the pool's runs ahead of them in hand-out order have taken their places
+    /// (<see cref="AdmitQueuedLocked(SortedSet{RunEntry}, Dictionary{Guid, string})"/>). A group under its cap counts no
+    /// more of the pool's members than the places it has left, and a pipeline only the first family that may hold it;
+    /// what executes anywhere counts against both, and what is queued for another pool against neither, so the count is
+    /// never below what the pool's nodes could start. This is the demand term of an autoscaler's replica target, and it
+    /// deliberately ignores whether any node is online: the absence of nodes is exactly what the target exists to
+    /// correct, while a run a gate blocks would occupy no node even if one appeared.</summary>
     public int CountEligibleQueuedRuns(string poolKey)
     {
         ArgumentNullException.ThrowIfNull(poolKey);
         lock (_gate)
         {
-            var eligible = 0;
-            foreach (var entry in _runs.Values)
+            if (!_queuedRunsByPool.TryGetValue(poolKey, out var queued) || queued.Count == 0)
             {
-                if (entry.State == EntryState.Queued
-                    && string.Equals(entry.PoolKey, poolKey, StringComparison.Ordinal)
-                    && IsEligibleLocked(entry))
-                {
-                    eligible++;
-                }
+                return 0;
             }
 
-            return eligible;
+            var gates = new Dictionary<Guid, string>(queued.Count);
+            AdmitQueuedLocked(queued, gates);
+            return gates.Values.Count(gate => gate == DispatchBlockReasons.Eligible);
         }
     }
 
@@ -990,32 +997,15 @@ public sealed class DispatchState
     private bool IsPipelineBusyForLocked(RunEntry entry)
         => _busyPipelines.TryGetValue(entry.PipelineId, out var occupancy) && occupancy.BlocksFamily(entry.Family);
 
-    private bool IsEligibleLocked(RunEntry entry)
+    private bool IsEligibleLocked(RunEntry entry) => GateLocked(entry, ahead: null) == DispatchBlockReasons.Eligible;
+
+    /// <summary>The gate holding a queued run back, or <see cref="DispatchBlockReasons.Eligible"/>: the run's pipeline
+    /// held by another execution family, a lower wave of its group not yet terminal, or its group at its cap. With
+    /// <paramref name="ahead"/>, the runs admitted before it in the same pass hold their pipelines and group places as
+    /// reservations would.</summary>
+    private string GateLocked(RunEntry entry, Admission? ahead)
     {
-        if (IsPipelineBusyForLocked(entry))
-        {
-            return false;
-        }
-
-        if (Group(entry) is { } group)
-        {
-            if (group.LowestPendingWave != entry.GroupWave)
-            {
-                return false;
-            }
-
-            if (group.MaxConcurrency is { } cap && group.Running >= cap)
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private string BlockReasonLocked(RunEntry entry, Func<string, (int OnlineNodes, int FreeRunSlots)> capacityOf)
-    {
-        if (IsPipelineBusyForLocked(entry))
+        if (IsPipelineBusyForLocked(entry) || (ahead is not null && ahead.HoldsPipelineAgainst(entry)))
         {
             return DispatchBlockReasons.PipelineBusy;
         }
@@ -1027,13 +1017,71 @@ public sealed class DispatchState
                 return DispatchBlockReasons.WaveGated;
             }
 
-            if (group.MaxConcurrency is { } cap && group.Running >= cap)
+            if (group.MaxConcurrency is { } cap && group.Running + (ahead?.PlacesTakenIn(entry) ?? 0) >= cap)
             {
                 return DispatchBlockReasons.GroupCap;
             }
         }
 
-        return capacityOf(entry.PoolKey).OnlineNodes == 0 ? DispatchBlockReasons.NoEligibleNode : DispatchBlockReasons.Eligible;
+        return DispatchBlockReasons.Eligible;
+    }
+
+    /// <summary>Every queued run's gate as a fleet with a free slot for each of them would meet it now (<see
+    /// cref="AdmitQueuedLocked(SortedSet{RunEntry}, Dictionary{Guid, string})"/>, pool by pool).</summary>
+    private Dictionary<Guid, string> AdmitQueuedLocked()
+    {
+        var gates = new Dictionary<Guid, string>();
+        foreach (var queued in _queuedRunsByPool.Values)
+        {
+            AdmitQueuedLocked(queued, gates);
+        }
+
+        return gates;
+    }
+
+    /// <summary>Writes into <paramref name="gates"/> the gate each of one pool's queued runs meets when the pool's nodes
+    /// have a free slot for every one of them: the runs are taken in hand-out order, and each one no gate holds back is
+    /// admitted, taking its pipeline and a place under its group's cap as <see cref="ReserveRuns"/> would. So a group under
+    /// its cap admits only as many of the pool's members as the cap still has places, and a pipeline only the runs of the
+    /// first family to reach it. Each pool is walked on its own: a run queued for another pool takes no place here, because
+    /// nothing says that pool has a node to start it, so a group or a pipeline spanning pools never stops this pool asking
+    /// for the worker that would start its run (an autoscaler holding the pool at zero would otherwise never scale it).</summary>
+    private void AdmitQueuedLocked(SortedSet<RunEntry> queued, Dictionary<Guid, string> gates)
+    {
+        var ahead = new Admission();
+        foreach (var entry in queued)
+        {
+            var gate = GateLocked(entry, ahead);
+            if (gate == DispatchBlockReasons.Eligible)
+            {
+                ahead.Admit(entry);
+            }
+
+            gates[entry.RunId] = gate;
+        }
+    }
+
+    /// <summary>The runs one admission pass has let through so far: the family holding each pipeline they took (a pass
+    /// admits one family per pipeline, the gate refusing the others) and how many places each group has given.</summary>
+    private sealed class Admission
+    {
+        private readonly Dictionary<Guid, Guid> _pipelines = [];
+        private readonly Dictionary<Guid, int> _groupPlaces = [];
+
+        public bool HoldsPipelineAgainst(RunEntry entry)
+            => _pipelines.TryGetValue(entry.PipelineId, out var family) && family != entry.Family;
+
+        public int PlacesTakenIn(RunEntry entry)
+            => entry.GroupId is { } group ? _groupPlaces.GetValueOrDefault(group) : 0;
+
+        public void Admit(RunEntry entry)
+        {
+            _pipelines.TryAdd(entry.PipelineId, entry.Family);
+            if (entry.GroupId is { } group)
+            {
+                _groupPlaces[group] = _groupPlaces.GetValueOrDefault(group) + 1;
+            }
+        }
     }
 
     private GroupState? Group(RunEntry entry)
