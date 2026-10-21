@@ -1,5 +1,4 @@
 using System.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace SqlFlow.Catalog;
 
@@ -10,23 +9,13 @@ namespace SqlFlow.Catalog;
 /// transaction outside an execution strategy, because a transient retry must replay the entire transaction, not
 /// half of it. The change tracker is reset before each attempt so a unit retried after a failed attempt never
 /// double-adds the entities the prior attempt left tracked; the supplied work must therefore rebuild its staged
-/// changes from source each call. When resiliency is off the strategy simply runs the work once.
+/// changes from source each call. When resiliency is off the strategy simply runs the work once. The connection
+/// leaves the unit at READ COMMITTED (<see cref="PooledIsolation"/>), so the catalog's next read on it is not
+/// serializable too.
 /// </summary>
 internal static class CatalogTransaction
 {
     public static Task<T> InSerializableAsync<T>(
         CatalogDbContext context, Func<Task<T>> work, CancellationToken ct)
-    {
-        var strategy = context.Database.CreateExecutionStrategy();
-        return strategy.ExecuteAsync(async () =>
-        {
-            context.ChangeTracker.Clear();
-            await using var transaction = await context.Database
-                .BeginTransactionAsync(IsolationLevel.Serializable, ct).ConfigureAwait(false);
-            var result = await work().ConfigureAwait(false);
-            await context.SaveChangesAsync(ct).ConfigureAwait(false);
-            await transaction.CommitAsync(ct).ConfigureAwait(false);
-            return result;
-        });
-    }
+        => PooledIsolation.InTransactionAsync(context, IsolationLevel.Serializable, work, ct);
 }
