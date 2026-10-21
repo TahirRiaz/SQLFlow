@@ -214,8 +214,13 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   long nav never scrolls it away; then all nav groups as collapsible sections (uppercase 11px headers),
   items 28px tall with 16px lucide icons, nav testids preserved (`nav-runs`, ...). A group whose entries
   are of more than one sort (a module's group) declares sections: each is labelled under the group's
-  header in 11px sentence case, muted, aligned with the entries' icons, and does not collapse on its own;
-  entries of no section come first, unlabelled. SQLFlow's own groups declare none. Selection follows the
+  header in 11px sentence case, muted, aligned with the entries' icons, with a 12px chevron after the
+  label, and collapses on its own like a group. Which groups and sections are collapsed is kept in the
+  browser (`sqlflow.workbench.sections`, a section as `group/section`), so folding a group and opening it
+  again shows its sections as they were left; before the browser keeps any, the menu starts expanded, or
+  every group and section collapsed when a module asks (`GuiModule.sideBar.menuCollapsedOnFirstVisit`).
+  Entries of no section come first, unlabelled and never folded. SQLFlow's own groups declare none.
+  Selection follows the
   longest-prefix rule over each entry's path and the paths it owns (a page reached from the entry rather
   than from the menu, such as a builder opened from its list, lights that entry); selected item gets
   `bg-sidebar-accent` plus a 2px accent inset. The mobile nav sheet renders the same search over the same

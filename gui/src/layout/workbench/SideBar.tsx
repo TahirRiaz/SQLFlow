@@ -4,24 +4,29 @@ import { ChevronDown } from "lucide-react";
 import { SearchInput } from "@/components/SearchInput";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../../auth/AuthContext";
-import { navGroups, navListing, selectedNavPath, type NavGroup, type NavItem } from "../nav";
+import { menuCollapsedOnFirstVisit } from "../../modules/registry";
+import { navGroups, navListing, selectedNavPath, type NavGroup, type NavItem, type NavSection } from "../nav";
+import { menuCollapsedAtStart } from "./sideBarStart";
 import { useMenuNavigate } from "./useMenuNavigate";
 
 const SECTIONS_KEY = "sqlflow.workbench.sections";
 
-function loadCollapsed(): ReadonlySet<string> {
-  try {
-    const raw = window.localStorage.getItem(SECTIONS_KEY);
-    if (raw === null) {
-      return new Set();
-    }
+/** A group's section is kept collapsed under the group's id and its own, apart from the group itself. */
+function sectionKey(group: NavGroup, section: NavSection): string {
+  return `${group.id}/${section.id}`;
+}
 
-    const parsed: unknown = JSON.parse(raw);
-    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+function loadCollapsed(): ReadonlySet<string> {
+  let stored: string | null;
+  try {
+    stored = window.localStorage.getItem(SECTIONS_KEY);
   } catch {
-    // A corrupt store just means every section starts expanded.
-    return new Set();
+    // A browser that keeps nothing for the page reads as a first visit.
+    stored = null;
   }
+
+  const all = navGroups.flatMap((group) => [group.id, ...(group.sections ?? []).map((section) => sectionKey(group, section))]);
+  return menuCollapsedAtStart(stored, menuCollapsedOnFirstVisit(), all);
 }
 
 interface SideBarSectionsProps {
@@ -32,8 +37,9 @@ interface SideBarSectionsProps {
 
 /**
  * The grouped navigation: every group as a collapsible section (so each nav item stays reachable
- * regardless of the active activity-bar group), a group's own sections labelled under its header, the
- * longest-prefix item highlighted. Shared between the desktop side bar and the mobile sheet.
+ * regardless of the active activity-bar group), a group's own sections labelled under its header and
+ * collapsible on their own, the longest-prefix item highlighted. Shared between the desktop side bar and
+ * the mobile sheet.
  */
 export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
   const { hasScope } = useAuth();
@@ -44,7 +50,11 @@ export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
   const selected = selectedNavPath(location.pathname);
 
   useEffect(() => {
-    window.localStorage.setItem(SECTIONS_KEY, JSON.stringify([...collapsed]));
+    try {
+      window.localStorage.setItem(SECTIONS_KEY, JSON.stringify([...collapsed]));
+    } catch {
+      // A browser that keeps nothing for the page folds the menu for this visit only.
+    }
   }, [collapsed]);
 
   // The activity bar revealed a group: expand it and bring it into view.
@@ -115,21 +125,37 @@ export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
           <ChevronDown className={cn("size-3.5 transition-transform duration-120", isCollapsed && "-rotate-90")} />
           {group.label}
         </button>
-        {!isCollapsed && navListing(group).map((part) => (
-          <div
-            key={part.section?.id ?? ""}
-            role={part.section === null ? undefined : "group"}
-            aria-label={part.section === null ? undefined : `${group.label}: ${part.section.label}`}
-            data-testid={part.section === null ? undefined : `sidebar-part-${group.id}-${part.section.id}`}
-          >
-            {part.section !== null && (
-              <div className="flex h-6 items-end px-3 pb-0.5 text-[11px] font-medium text-muted-foreground">
+        {!isCollapsed && navListing(group).map((part) => {
+          if (part.section === null) {
+            return <div key="">{part.items.map(renderItem)}</div>;
+          }
+
+          const key = sectionKey(group, part.section);
+          const isSectionCollapsed = collapsed.has(key);
+          return (
+            <div
+              key={part.section.id}
+              role="group"
+              aria-label={`${group.label}: ${part.section.label}`}
+              data-testid={`sidebar-part-${group.id}-${part.section.id}`}
+            >
+              <button
+                onClick={() => toggleSection(key)}
+                aria-expanded={!isSectionCollapsed}
+                className="group/section flex h-6 w-full items-end gap-1 px-3 pb-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+              >
                 <span className="truncate">{part.section.label}</span>
-              </div>
-            )}
-            {part.items.map(renderItem)}
-          </div>
-        ))}
+                <ChevronDown
+                  className={cn(
+                    "mb-0.5 size-3 shrink-0 opacity-60 transition-transform duration-120 group-hover/section:opacity-100",
+                    isSectionCollapsed && "-rotate-90",
+                  )}
+                />
+              </button>
+              {!isSectionCollapsed && part.items.map(renderItem)}
+            </div>
+          );
+        })}
       </section>
     );
   };

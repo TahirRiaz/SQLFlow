@@ -238,8 +238,9 @@ export interface RequestHeaderContribution {
 }
 
 /**
- * How a module asks the workbench's side bar to start. It applies only to a person who has never opened or closed the
- * side bar in this browser: once they have, their choice stands, whatever a module asks.
+ * How a module asks the workbench's side bar to start. Each applies only to a person new to it in this browser, who has
+ * never opened or closed the side bar, or never folded or unfolded its menu: once they have, their choice stands,
+ * whatever a module asks.
  */
 export interface SideBarContribution {
   /**
@@ -247,6 +248,11 @@ export interface SideBarContribution {
    * want the width more than the menu; absent or false, it starts open, as SQLFlow ships.
    */
   closedOnFirstVisit?: boolean;
+  /**
+   * Starts every group of the side bar's menu, and every section of a group, collapsed on a first visit, so the menu
+   * opens as its headers and the person unfolds what they use; absent or false, it starts expanded, as SQLFlow ships.
+   */
+  menuCollapsedOnFirstVisit?: boolean;
 }
 
 /** The headers SQLFlow sets on its calls itself, which no module may replace. */
@@ -292,10 +298,12 @@ interface Registered {
   dashboardTiles: readonly DashboardTileContribution[];
   titleBar: readonly TitleBarContribution[];
   sideBarClosedOnFirstVisit: boolean;
+  menuCollapsedOnFirstVisit: boolean;
 }
 
 const NONE: Registered = {
   routes: [], kinds: new Map(), searchCategories: [], dashboardTiles: [], titleBar: [], sideBarClosedOnFirstVisit: false,
+  menuCollapsedOnFirstVisit: false,
 };
 
 let registered: Registered | null = null;
@@ -334,6 +342,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
   const titleBar: TitleBarContribution[] = [];
   let sideBarOwner: string | null = null;
   let sideBarClosedOnFirstVisit = false;
+  let menuCollapsedOnFirstVisit = false;
 
   for (const module of modules) {
     if (module.id.trim() === "") {
@@ -414,7 +423,8 @@ export function registerModules(modules: readonly GuiModule[]): void {
       requestHeaders.push(header);
     }
 
-    if (module.sideBar?.closedOnFirstVisit !== undefined) {
+    if (module.sideBar !== undefined
+      && (module.sideBar.closedOnFirstVisit !== undefined || module.sideBar.menuCollapsedOnFirstVisit !== undefined)) {
       if (sideBarOwner !== null) {
         throw new Error(
           `GUI module '${module.id}' says how the side bar starts on a first visit, which module '${sideBarOwner}' already says.`,
@@ -422,7 +432,8 @@ export function registerModules(modules: readonly GuiModule[]): void {
       }
 
       sideBarOwner = module.id;
-      sideBarClosedOnFirstVisit = module.sideBar.closedOnFirstVisit;
+      sideBarClosedOnFirstVisit = module.sideBar.closedOnFirstVisit ?? false;
+      menuCollapsedOnFirstVisit = module.sideBar.menuCollapsedOnFirstVisit ?? false;
     }
 
     for (const census of module.census ?? []) {
@@ -443,7 +454,7 @@ export function registerModules(modules: readonly GuiModule[]): void {
   )));
 
   setModuleRequestHeaders(requestHeaders);
-  registered = { routes, kinds, searchCategories, dashboardTiles, titleBar, sideBarClosedOnFirstVisit };
+  registered = { routes, kinds, searchCategories, dashboardTiles, titleBar, sideBarClosedOnFirstVisit, menuCollapsedOnFirstVisit };
 }
 
 /** The pages the registered modules add in one frame: the workbench (the default) or a window of their own. */
@@ -482,4 +493,12 @@ export function moduleTitleBarItems(): readonly TitleBarContribution[] {
  */
 export function sideBarClosedOnFirstVisit(): boolean {
   return (registered ?? NONE).sideBarClosedOnFirstVisit;
+}
+
+/**
+ * Whether every group and section of the side bar's menu starts collapsed in a browser that keeps none of them yet: true
+ * only when a registered module asks for it, so SQLFlow's own build starts the menu expanded.
+ */
+export function menuCollapsedOnFirstVisit(): boolean {
+  return (registered ?? NONE).menuCollapsedOnFirstVisit;
 }

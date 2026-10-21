@@ -8,3 +8,27 @@
 export function sideBarStartsOpen(stored: string | null, closedOnFirstVisit: boolean): boolean {
   return stored === null ? !closedOnFirstVisit : stored !== "closed";
 }
+
+/**
+ * Which of the menu's groups and sections start collapsed: those the person left collapsed in this browser, or, before
+ * the browser keeps any (`stored` is null), none, or every one of `all` when a registered module asks for the menu
+ * collapsed (`GuiModule.sideBar`). `stored` is the JSON list of ids the side bar keeps; one it cannot read keeps none
+ * collapsed, as it always has, and an id it holds that the menu no longer has does no harm.
+ */
+export function menuCollapsedAtStart(
+  stored: string | null,
+  collapsedOnFirstVisit: boolean,
+  all: readonly string[],
+): ReadonlySet<string> {
+  if (stored === null) {
+    return new Set(collapsedOnFirstVisit ? all : []);
+  }
+
+  try {
+    const parsed: unknown = JSON.parse(stored);
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+  } catch {
+    // A corrupt store just means every group and section starts expanded.
+    return new Set();
+  }
+}
