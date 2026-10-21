@@ -24,6 +24,8 @@ docs/reference/
 ```
 
 85 pages total: 16 `cli-command`, 27 `flow-reference`, 6 `source-type`, 24 `concept`, 12 `guide`.
+A product that keeps a corpus of its own in this format may also use `table`: one page per table its
+database holds, as `source-type` is one page per source format.
 
 Every page carries YAML frontmatter: `id`, `title`, `type`, `summary`, `keywords`, `related`,
 `sourceRefs`, plus `yamlPath` (flow-reference / source-type pages) or `cliCommand`

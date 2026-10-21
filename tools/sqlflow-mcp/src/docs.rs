@@ -43,7 +43,7 @@ pub struct DocMeta {
 
 impl DocMeta {
     /// The metadata of a page a host module adds: its id (unique across the whole index), title,
-    /// type (one of the corpus's own: cli-command, flow-reference, source-type, concept, guide), the
+    /// type (one of the corpus's own: cli-command, flow-reference, source-type, concept, guide, table), the
     /// path it is shown under, its one-line summary, and the keywords a search matches it on.
     pub fn page(id: &str, title: &str, doc_type: &str, path: &str, summary: &str, keywords: &[&str]) -> DocMeta {
         DocMeta {

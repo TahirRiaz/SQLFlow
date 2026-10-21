@@ -3,7 +3,7 @@
 Two corpora feed one manifest, because one manifest is what the MCP server embeds and searches:
 
   reference  docs/reference/**   WHAT the surface does, verified against code (cli-command,
-                                 flow-reference, source-type, concept, guide).
+                                 flow-reference, source-type, concept, guide, table).
   wiki       docs/wiki/**        WHY it is that way and HOW the pieces fit, plus the production
                                  pattern catalog (narrative, decision, incident, map, pattern).
 
@@ -44,7 +44,9 @@ OUT_PATH = os.path.join(DOCS_ROOT, "manifest.json")
 # Ids of pages in other manifests (--known) that a page of this corpus may name in `related`.
 KNOWN_IDS = set()
 
-REFERENCE_TYPES = {"cli-command", "flow-reference", "source-type", "concept", "guide"}
+# `table` is one page per table a database holds, as `source-type` is one page per source format; a
+# product's corpus documents its own database with it.
+REFERENCE_TYPES = {"cli-command", "flow-reference", "source-type", "concept", "guide", "table"}
 WIKI_TYPES = {"narrative", "decision", "incident", "map", "pattern"}
 DOC_TYPES = REFERENCE_TYPES | WIKI_TYPES
 

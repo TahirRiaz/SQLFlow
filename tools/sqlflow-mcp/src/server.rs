@@ -370,7 +370,7 @@ pub struct SearchDocsInput {
     /// query with SQLFlow terms: "job/trigger" → schedule; "folder" → repo;
     /// "upsert" → ingestion load; "wave" → lineage execution plan.
     pub query: String,
-    /// Optional type filter: cli-command, flow-reference, source-type, concept, guide.
+    /// Optional type filter: cli-command, flow-reference, source-type, concept, guide, table.
     #[serde(rename = "type")]
     pub doc_type: Option<String>,
     /// Maximum results (default 15, max 50).
@@ -398,7 +398,7 @@ pub struct CliCommandInput {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListDocsInput {
-    /// Optional type filter: cli-command, flow-reference, source-type, concept, guide.
+    /// Optional type filter: cli-command, flow-reference, source-type, concept, guide, table.
     #[serde(rename = "type")]
     pub doc_type: Option<String>,
 }
