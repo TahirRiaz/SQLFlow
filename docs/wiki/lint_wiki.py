@@ -11,8 +11,19 @@ one of those files is renamed or deleted, the page's claims are suspect and this
 
 Usage: python docs/wiki/lint_wiki.py
 Exit code 0 when clean, 1 when any error is reported. Warnings alone do not fail the run.
+
+A product that extends SQLFlow and keeps a wiki of its own in the same format lints it with the same
+script, naming its wiki, the folder its sourceRefs and rawRefs are relative to, the manifest its pages
+are indexed in, and the prefix its ids carry in place of `wiki-`. Its pages may name SQLFlow's pages as
+well, so the manifests whose ids are known too are given with --known: a known manifest's reference
+pages may be named in `referenceRefs` and its wiki pages in `related`, and no page of the wiki may take
+an id a known manifest already holds:
+
+  python docs/wiki/lint_wiki.py --wiki <dir> --root <dir> --manifest <manifest.json>
+                                [--id-prefix <prefix>] [--known <manifest.json>]...
 """
 
+import argparse
 import datetime
 import glob
 import json
@@ -22,9 +33,22 @@ import sys
 
 import yaml
 
-WIKI_ROOT = os.path.dirname(os.path.abspath(__file__))
-REPO_ROOT = os.path.abspath(os.path.join(WIKI_ROOT, "..", ".."))
-REFERENCE_MANIFEST = os.path.join(REPO_ROOT, "docs", "reference", "manifest.json")
+SQLFLOW_WIKI_ROOT = os.path.dirname(os.path.abspath(__file__))
+SQLFLOW_REPO_ROOT = os.path.abspath(os.path.join(SQLFLOW_WIKI_ROOT, "..", ".."))
+SQLFLOW_REFERENCE_MANIFEST = os.path.join(SQLFLOW_REPO_ROOT, "docs", "reference", "manifest.json")
+
+# The wiki linted, the folder its sourceRefs and rawRefs resolve from, the manifest its referenceRefs are
+# checked against, and the prefix its ids carry. SQLFlow's own unless the command line names others (configure).
+WIKI_ROOT = SQLFLOW_WIKI_ROOT
+REPO_ROOT = SQLFLOW_REPO_ROOT
+REFERENCE_MANIFEST = SQLFLOW_REFERENCE_MANIFEST
+ID_PREFIX = "wiki-"
+# The manifests given with --known, and the ids they hold: every id, the ids of their reference pages (which
+# referenceRefs may name), and the ids of their wiki pages (which related may name).
+KNOWN_MANIFESTS = []
+KNOWN_IDS = {}
+KNOWN_REFERENCE_IDS = set()
+KNOWN_WIKI_IDS = set()
 
 PAGE_TYPES = {"narrative", "decision", "incident", "map", "pattern"}
 TYPE_DIRECTORIES = {
@@ -131,7 +155,16 @@ def load_reference_ids(report):
         return None
     with open(REFERENCE_MANIFEST, "r", encoding="utf-8") as handle:
         manifest = json.load(handle)
-    return set(doc["id"] for doc in manifest.get("docs", []) if "id" in doc)
+    ids = set(doc["id"] for doc in manifest.get("docs", []) if "id" in doc)
+    return ids | KNOWN_REFERENCE_IDS
+
+
+def reference_sources():
+    """The manifests a referenceRefs id may come from, as a message names them."""
+    names = rel(REFERENCE_MANIFEST)
+    if KNOWN_MANIFESTS:
+        names += " or the reference pages of " + ", ".join(rel(path) for path in KNOWN_MANIFESTS)
+    return names
 
 
 def check_frontmatter(path, data, report):
@@ -148,7 +181,7 @@ def check_frontmatter(path, data, report):
         )
 
     stem = os.path.splitext(os.path.basename(path))[0]
-    expected_id = "wiki-{0}".format(stem)
+    expected_id = "{0}{1}".format(ID_PREFIX, stem)
     if data.get("id") is not None and data.get("id") != expected_id:
         report.error(
             where,
@@ -231,7 +264,7 @@ def check_links(path, text, report):
 def check_index(pages, report):
     index_path = os.path.join(WIKI_ROOT, "index.md")
     if not os.path.exists(index_path):
-        report.error("docs/wiki/index.md", "the wiki has no index")
+        report.error(rel(index_path), "the wiki has no index")
         return
     with open(index_path, "r", encoding="utf-8") as handle:
         text = handle.read()
@@ -247,8 +280,8 @@ def check_index(pages, report):
         if page not in linked:
             report.error(
                 rel(page),
-                "page is not listed in docs/wiki/index.md; the index is the only navigational "
-                "surface, so an unlisted page is invisible to a query",
+                "page is not listed in {0}; the index is the only navigational "
+                "surface, so an unlisted page is invisible to a query".format(rel(index_path)),
             )
 
 
@@ -263,12 +296,12 @@ def check_cross_refs(entries, reference_ids, report):
             for ref in related:
                 if ref == data.get("id"):
                     report.error(where, "related lists the page's own id")
-                elif ref not in known:
+                elif ref in known:
+                    inbound[ref] += 1
+                elif ref not in KNOWN_WIKI_IDS:
                     report.error(
                         where, "related '{0}' is not the id of any wiki page".format(ref)
                     )
-                else:
-                    inbound[ref] += 1
         if reference_ids is None:
             continue
         refs = data.get("referenceRefs")
@@ -277,8 +310,7 @@ def check_cross_refs(entries, reference_ids, report):
                 if ref not in reference_ids:
                     report.error(
                         where,
-                        "referenceRefs '{0}' is not an id in "
-                        "docs/reference/manifest.json".format(ref),
+                        "referenceRefs '{0}' is not an id in {1}".format(ref, reference_sources()),
                     )
 
     for path, data, _ in entries:
@@ -294,7 +326,7 @@ def check_cross_refs(entries, reference_ids, report):
 def check_log(report):
     log_path = os.path.join(WIKI_ROOT, "log.md")
     if not os.path.exists(log_path):
-        report.error("docs/wiki/log.md", "the wiki has no log")
+        report.error(rel(log_path), "the wiki has no log")
         return
     with open(log_path, "r", encoding="utf-8") as handle:
         text = handle.read()
@@ -337,7 +369,80 @@ def check_log(report):
         report.warn(where, "the log has no entries")
 
 
-def main():
+def read_known_manifest(parser, path):
+    """The ids a --known manifest holds, as (every id, reference page ids, wiki page ids)."""
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            other = json.load(handle)
+    except (OSError, json.JSONDecodeError) as exc:
+        parser.error("--known {0} could not be read as a manifest: {1}".format(path, exc))
+    docs = other.get("docs") if isinstance(other, dict) else None
+    if not isinstance(docs, list):
+        parser.error("--known {0} has no 'docs' list".format(path))
+    every, reference, wiki = set(), set(), set()
+    for doc in docs:
+        if not isinstance(doc, dict) or not isinstance(doc.get("id"), str):
+            continue
+        every.add(doc["id"])
+        # An entry with no corpus field is a reference page, as build_manifest.py writes it.
+        (wiki if doc.get("corpus") == "wiki" else reference).add(doc["id"])
+    return every, reference, wiki
+
+
+def configure(argv):
+    """Points the run at the wiki, root, manifest and id prefix the command line names; SQLFlow's own without arguments."""
+    global WIKI_ROOT, REPO_ROOT, REFERENCE_MANIFEST, ID_PREFIX
+    global KNOWN_MANIFESTS, KNOWN_IDS, KNOWN_REFERENCE_IDS, KNOWN_WIKI_IDS
+    parser = argparse.ArgumentParser(description="Health-check a documentation wiki.")
+    parser.add_argument("--wiki", help="the wiki tree (default: this script's folder)")
+    parser.add_argument("--root", help="the folder sourceRefs and rawRefs are relative to (default: SQLFlow's "
+                                       "repository root; required when --wiki names another tree)")
+    parser.add_argument("--manifest", help="the manifest the wiki is indexed in, whose ids referenceRefs may name "
+                                           "(default: SQLFlow's docs/reference/manifest.json; required when --wiki "
+                                           "names another tree)")
+    parser.add_argument("--id-prefix", help="what every page id carries before its filename stem (default: wiki-)")
+    parser.add_argument("--known", action="append", default=[],
+                        help="another manifest whose reference pages referenceRefs may name and whose wiki pages "
+                             "related may name; repeatable")
+    args = parser.parse_args(argv)
+
+    wiki = os.path.abspath(args.wiki) if args.wiki else SQLFLOW_WIKI_ROOT
+    if not os.path.isdir(wiki):
+        parser.error("--wiki {0} is not a folder".format(wiki))
+    if wiki != SQLFLOW_WIKI_ROOT:
+        if not args.root:
+            parser.error("--root is required when --wiki names a tree other than SQLFlow's")
+        if not args.manifest:
+            parser.error("--manifest is required when --wiki names a tree other than SQLFlow's")
+    root = os.path.abspath(args.root) if args.root else SQLFLOW_REPO_ROOT
+    if not os.path.isdir(root):
+        parser.error("--root {0} is not a folder".format(root))
+    id_prefix = args.id_prefix if args.id_prefix is not None else "wiki-"
+    if not id_prefix.strip():
+        parser.error("--id-prefix must not be empty")
+
+    known_manifests, known_ids, known_reference, known_wiki = [], {}, set(), set()
+    for path in args.known:
+        every, reference, wiki_ids = read_known_manifest(parser, path)
+        absolute = os.path.abspath(path)
+        known_manifests.append(absolute)
+        for page_id in every:
+            known_ids.setdefault(page_id, absolute)
+        known_reference |= reference
+        known_wiki |= wiki_ids
+
+    WIKI_ROOT = wiki
+    REPO_ROOT = root
+    REFERENCE_MANIFEST = os.path.abspath(args.manifest) if args.manifest else SQLFLOW_REFERENCE_MANIFEST
+    ID_PREFIX = id_prefix
+    KNOWN_MANIFESTS = known_manifests
+    KNOWN_IDS = known_ids
+    KNOWN_REFERENCE_IDS = known_reference
+    KNOWN_WIKI_IDS = known_wiki
+
+
+def main(argv=None):
+    configure(sys.argv[1:] if argv is None else argv)
     report = Report()
     pages = find_pages()
     reference_ids = load_reference_ids(report)
@@ -363,6 +468,12 @@ def main():
             )
         else:
             seen[page_id] = rel(path)
+        if page_id in KNOWN_IDS:
+            report.error(
+                rel(path),
+                "id '{0}' is also an id in {1}; one MCP index holds both, so the id must be "
+                "unique across them".format(page_id, rel(KNOWN_IDS[page_id])),
+            )
 
     check_index(pages, report)
     check_cross_refs(entries, reference_ids, report)
