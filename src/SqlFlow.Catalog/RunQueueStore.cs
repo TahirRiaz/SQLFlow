@@ -648,15 +648,18 @@ public static class RunQueueStore
     /// <see cref="RunOutcomeStatus.StaleClaim"/>. Passing no fence (the artifact-sync path, which records finished
     /// CLI runs that were never handed out) applies unconditionally.</para>
     /// <para><paramref name="projectsResult"/> says, by flow kind, whether the artifact's result object is recorded on
-    /// the row (<see cref="CatalogRun.ResultJson"/>): true for the kinds a host registered. Null records none.</para></summary>
-    public static Task<RunOutcomeRecord> CompleteFromArtifactAsync(
+    /// the row (<see cref="CatalogRun.ResultJson"/>): true for the kinds a host registered. Null records none.</para>
+    /// <para>The completion's consequences (a failed group member's stranded dependents skipped, a fan-out root's
+    /// unfinished members ended) follow its commit, as they follow every other way a run ends
+    /// (<see cref="EndDependentsAsync"/>).</para></summary>
+    public static async Task<RunOutcomeRecord> CompleteFromArtifactAsync(
         CatalogDbContext catalog, Guid runId, string? artifactJson, DateTime nowUtc,
         string? claimedByNode = null, int? claimAttempt = null, Func<string, bool>? projectsResult = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(catalog);
 
-        return CatalogTransaction.InSerializableAsync(catalog, async () =>
+        var (status, succeeded) = await CatalogTransaction.InSerializableAsync(catalog, async () =>
         {
             // Load WITH tracking explicitly: this is a read-modify-write, and the control plane's context defaults
             // to NoTracking (it is mostly a read model), under which a loaded entity's mutations would be silently
@@ -671,14 +674,14 @@ public static class RunQueueStore
                 || existing.ClaimedByNode != claimedByNode
                 || existing.Attempt != claimAttempt))
             {
-                return new RunOutcomeRecord(RunOutcomeStatus.StaleClaim, []);
+                return (RunOutcomeStatus.StaleClaim, (bool?)null);
             }
 
             if (existing is null)
             {
                 // Nothing to record against and nothing to fail: an unfenced completion for an unknown run is only
                 // possible from a caller that did not enqueue, which the artifact sync handles on its own path.
-                return new RunOutcomeRecord(RunOutcomeStatus.ArtifactUnreadable, []);
+                return (RunOutcomeStatus.ArtifactUnreadable, (bool?)null);
             }
 
             var repoId = existing.RepoId ?? Guid.Empty;
@@ -741,11 +744,8 @@ public static class RunQueueStore
                                 await RepoSourceStore.TriggerForRepoAsync(catalog, repoName, nowUtc, ct).ConfigureAwait(false);
                             }
                         }
-                        // A failed group member strands its dependents: skip them in the same transaction so the
-                        // completion and its consequences commit together (a no-op for a standalone or succeeded run).
-                        // A fan-out root's unfinished members end with it whatever its outcome, in the same transaction.
-                        var ended = await EndDependentsAsync(catalog, runId, projected.Success, nowUtc, ct).ConfigureAwait(false);
-                        return new RunOutcomeRecord(RunOutcomeStatus.Recorded, ended);
+
+                        return (RunOutcomeStatus.Recorded, (bool?)projected.Success);
                     }
                 }
                 catch (JsonException ex)
@@ -761,10 +761,25 @@ public static class RunQueueStore
             existing.EndUtc = nowUtc;
             existing.WrittenUtc = nowUtc;
             existing.Error = $"the run executed but its result could not be recorded: {readError}.";
-            // An unrecordable run is still a failed group member: strand its dependents like any other failure.
-            var stranded = await EndDependentsAsync(catalog, runId, succeeded: false, nowUtc, ct).ConfigureAwait(false);
-            return new RunOutcomeRecord(RunOutcomeStatus.ArtifactUnreadable, stranded);
-        }, ct);
+            // An unrecordable run is still a failed group member: its dependents are stranded like any other failure's.
+            return (RunOutcomeStatus.ArtifactUnreadable, (bool?)false);
+        }, ct).ConfigureAwait(false);
+
+        if (succeeded is not { } outcome)
+        {
+            return new RunOutcomeRecord(status, []);
+        }
+
+        // The consequences run after the commit, as plain statements. Inside the serializable transaction a run with
+        // no fan-out held the one key range every root's member lookup seeks (none exist, so every root seeks the
+        // same gap), and a failed group member held shared locks on its siblings' rows until it committed, so
+        // concurrent completions deadlocked on each other. The run is recorded before they are read: a fan-out
+        // enqueue reads its root under its own serializable fence, so it either committed its members before this
+        // completion wrote the root, and they are ended here, or it finds the root ended and enqueues nothing. The
+        // dispatcher learns of the completion only from this call's answer, so no dependent is handed out between the
+        // commit and the skip.
+        var ended = await EndDependentsAsync(catalog, runId, outcome, nowUtc, ct).ConfigureAwait(false);
+        return new RunOutcomeRecord(status, ended);
     }
 
     /// <summary>Drives a run to <c>failed</c> with a reason when execution could not even produce an artifact (the
@@ -1107,10 +1122,11 @@ public static class RunQueueStore
         => catalog.Runs.AsNoTracking().AnyAsync(
             r => r.RunId == runId && r.Status == RunStatuses.Running && r.ClaimedByNode == node && r.Attempt == attempt, ct);
 
-    /// <summary>The consequences of a run reaching a terminal state, in the same unit of work: a group member that did
+    /// <summary>The consequences of a run reaching a terminal state, once that state is written: a group member that did
     /// not succeed skips its queued dependents, and a fan-out root ends its unfinished members (queued ones cancelled
-    /// outright, running ones asked to stop), since they exist only to serve it. Returns the runs that left the queue,
-    /// for the dispatcher's memory.</summary>
+    /// outright, running ones asked to stop), since they exist only to serve it. Every write is guarded on the state it
+    /// changes, so it needs no transaction of its own and never runs inside a serializable one. Returns the runs that
+    /// left the queue, for the dispatcher's memory.</summary>
     private static async Task<IReadOnlyList<Guid>> EndDependentsAsync(
         CatalogDbContext catalog, Guid endedRunId, bool succeeded, DateTime nowUtc, CancellationToken ct)
     {

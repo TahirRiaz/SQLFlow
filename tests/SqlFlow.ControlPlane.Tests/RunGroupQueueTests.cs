@@ -1,4 +1,7 @@
+using System.Collections.Concurrent;
+using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using SqlFlow.Catalog;
 using SqlFlow.Core.Identity;
 using SqlFlow.Core.Runs;
@@ -219,6 +222,65 @@ public sealed class RunGroupQueueTests
         }
     }
 
+    // A completion's consequences follow its commit. Inside its serializable transaction the group read held shared locks
+    // on every sibling's row, and the fan-out lookup a range lock on the gap its own members would occupy (the same gap
+    // for every root while none exist), so siblings completing together deadlocked on each other.
+    [SkippableFact]
+    public async Task FailedCompletion_SkipsDependents_AfterItsCommit()
+    {
+        var cs = CatalogTestDb.Require();
+        await CatalogDatabase.MigrateAsync(cs);
+        var (repoId, suffix) = NewRepo();
+
+        try
+        {
+            var recorder = new TransactionRecorder();
+            var options = new DbContextOptionsBuilder<CatalogDbContext>();
+            CatalogDatabase.Configure(options, cs);
+            options.AddInterceptors(recorder);
+            await using var db = new CatalogDbContext(options.Options);
+            string A = $"a_{suffix}", B = $"b_{suffix}";
+            await SeedDependencyAsync(db, repoId, A, B);
+            var result = await RunQueueStore.EnqueueGroupAsync(
+                db,
+                new RunGroupEnqueueRequest(repoId, RunGroupModes.Node, A, [new(A, "ing", 0, CatalogPipeline.DefaultBatch), new(B, "ing", 1, CatalogPipeline.DefaultBatch)]),
+                DateTime.UtcNow);
+            var (runA, runB) = (result.RunIds[0], result.RunIds[1]);
+            Assert.NotNull(await RunQueueStore.MarkHandedOutAsync(db, runA, 0, Node, DateTime.UtcNow));
+
+            recorder.Commands.Clear();
+            var artifact = $$"""
+                {
+                  "schemaVersion": 1,
+                  "flowKind": "ing",
+                  "flowName": "{{A}}",
+                  "runId": "{{runA}}",
+                  "success": false,
+                  "error": "boom",
+                  "writtenUtc": "2026-06-19T10:00:00Z",
+                  "result": { "rowsLoaded": 0, "durationSeconds": 1.0 }
+                }
+                """;
+            var outcome = await RunQueueStore.RecordOutcomeAsync(db, runA, Node, 1, RunOutcomeKind.Completed, null, artifact, DateTime.UtcNow);
+
+            Assert.Equal(RunOutcomeStatus.Recorded, outcome.Status);
+            Assert.Equal([runB], outcome.SkippedRunIds);
+            Assert.Equal(RunStatuses.Failed, (await Reload(db, runA)).Status);
+            Assert.Equal(RunStatuses.Skipped, (await Reload(db, runB)).Status);
+
+            var commands = recorder.Commands.ToArray();
+            Assert.Contains(commands, c => c.InTransaction && c.Sql.Contains("UPDATE [catalog].[Run] SET", StringComparison.Ordinal));
+            var consequences = commands.Where(c => c.Sql.Contains("[GroupId] = @", StringComparison.Ordinal) || c.Sql.Contains("[FanOutRoot] = @", StringComparison.Ordinal)).ToArray();
+            Assert.Contains(consequences, c => c.Sql.Contains("[GroupId] = @", StringComparison.Ordinal));
+            Assert.Contains(consequences, c => c.Sql.Contains("[FanOutRoot] = @", StringComparison.Ordinal));
+            Assert.All(consequences, c => Assert.False(c.InTransaction, c.Sql));
+        }
+        finally
+        {
+            await Cleanup(cs, repoId);
+        }
+    }
+
     [SkippableFact]
     public async Task CancelGroup_CancelsQueuedMembers_AndReportsUnknownGroup()
     {
@@ -427,6 +489,35 @@ public sealed class RunGroupQueueTests
         var run = await db.Runs.AsNoTracking().FirstOrDefaultAsync(r => r.RunId == runId);
         Assert.NotNull(run);
         return run;
+    }
+
+    /// <summary>Every command a context sends, with whether it ran inside a transaction.</summary>
+    private sealed class TransactionRecorder : DbCommandInterceptor
+    {
+        public ConcurrentQueue<(string Sql, bool InTransaction)> Commands { get; } = new();
+
+        public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result, CancellationToken cancellationToken = default)
+        {
+            Record(command);
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        public override ValueTask<InterceptionResult<int>> NonQueryExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken = default)
+        {
+            Record(command);
+            return base.NonQueryExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        public override ValueTask<InterceptionResult<object>> ScalarExecutingAsync(
+            DbCommand command, CommandEventData eventData, InterceptionResult<object> result, CancellationToken cancellationToken = default)
+        {
+            Record(command);
+            return base.ScalarExecutingAsync(command, eventData, result, cancellationToken);
+        }
+
+        private void Record(DbCommand command) => Commands.Enqueue((command.CommandText, command.Transaction is not null));
     }
 
     private static async Task Cleanup(string cs, Guid repoId, string? dir = null)
