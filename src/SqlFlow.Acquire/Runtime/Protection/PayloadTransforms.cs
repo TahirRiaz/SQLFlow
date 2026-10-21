@@ -21,7 +21,7 @@ internal static class PayloadTransforms
         {
             "full" => Param(p, "replacement", "[REDACTED]"),
             "partial" => Partial(value, ParamInt(p, "keepFirst", 0), ParamInt(p, "keepLast", 0), maskChar),
-            "email" => RedactEmail(value, maskChar),
+            "email" => RedactMailAddress(value, maskChar),
             "phone" => KeepLastDigits(value, 4, maskChar),
             "card" => KeepLastDigits(value, 4, maskChar),
             _ => throw new ArgumentException($"unknown redact mode '{mode}' (full|partial|email|phone|card)."),
@@ -174,7 +174,7 @@ internal static class PayloadTransforms
         return builder.ToString();
     }
 
-    private static string RedactEmail(string value, char maskChar)
+    private static string RedactMailAddress(string value, char maskChar)
     {
         var at = value.IndexOf('@', StringComparison.Ordinal);
         if (at <= 0)
