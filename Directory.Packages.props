@@ -11,6 +11,11 @@
          every passwordless "Authentication=Active Directory *" connection fails at open (never at build). Each
          project that references the driver references this too; SqlEntraAuthenticationProviderTests pins it. -->
     <PackageVersion Include="Microsoft.Data.SqlClient.Extensions.Azure" Version="7.1.1" />
+    <!-- Not referenced by any project: the driver asks for 9.0.18, Oracle's for 8.0.1 and MimeKit (under MailKit) for
+         10.0.0, each inside the denial of service advisories CVE-2026-84008 and CVE-2026-70162. Transitive pinning lifts
+         every project to the patched release of the highest line asked for, on the band the Microsoft.Extensions pins
+         keep. Drop it once those packages ask for a patched version themselves. -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
     <PackageVersion Include="Microsoft.SqlServer.TransactSql.ScriptDom" Version="180.140.0" />
     <PackageVersion Include="GenericParsing.Standard" Version="1.4.1" />
     <PackageVersion Include="ExcelDataReader" Version="3.9.0" />
