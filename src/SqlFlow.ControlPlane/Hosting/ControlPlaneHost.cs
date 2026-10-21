@@ -518,6 +518,8 @@ public static class ControlPlaneHost
 
         app.UseExceptionHandler();
         app.UseMiddleware<CorrelationIdMiddleware>();
+        // Inside the exception handler, so whatever a request throws once its client has gone reaches it as a cancellation.
+        app.UseMiddleware<ClientAbortMiddleware>();
         app.UseResponseCompression();
         if (hasCors)
         {

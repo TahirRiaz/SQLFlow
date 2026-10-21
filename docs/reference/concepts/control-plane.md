@@ -65,6 +65,7 @@ It exists so that a team has one place to observe the estate (repos, pipelines, 
 - Background services host bootstrap provisioning (`BootstrapProvisioningService`), the dispatcher (`DispatchService`), the in-process node (`RunExecutionWorker`, only when `Worker:Enabled` is true), the schedule scanner (`SchedulerService`), and the managed git sync (`RepoSyncService`).
 - The run queue lives in this process: the trigger endpoint journals a `queued` row through `IRunDispatcher` and tells the in-memory dispatcher, which hands work to nodes that poll for it and journals every placement with plain conditional updates (see "The dispatcher" below). Runs survive a restart (the dispatcher rebuilds from the journal) and are visible to the read API from the moment they are queued.
 - Every response passes through `CorrelationIdMiddleware`, and errors are surfaced as RFC problem details (`AddProblemDetails` plus a `GlobalExceptionHandler`).
+  A request whose client went away is not an error: whatever it throws from then on (a database provider can report its cancelled command as an error of its own, as SqlClient's "Operation cancelled by user" does) ends as a cancellation (`ClientAbortMiddleware`), logged at debug and answered 499.
 - OpenAPI is mapped at `/openapi/v1.json` via `MapOpenApi()`.
 
 ### Authentication and scopes
