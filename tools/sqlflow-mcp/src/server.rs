@@ -370,7 +370,8 @@ pub struct SearchDocsInput {
     /// query with SQLFlow terms: "job/trigger" → schedule; "folder" → repo;
     /// "upsert" → ingestion load; "wave" → lineage execution plan.
     pub query: String,
-    /// Optional type filter: cli-command, flow-reference, source-type, concept, guide, table.
+    /// Optional type filter: cli-command, flow-reference, source-type, concept, guide, table. Table
+    /// pages (a database table each) are searched only when this is table.
     #[serde(rename = "type")]
     pub doc_type: Option<String>,
     /// Maximum results (default 15, max 50).

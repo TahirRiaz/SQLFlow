@@ -101,6 +101,12 @@ pub struct Hit<'a> {
     pub score: u32,
 }
 
+/// The page types a search reaches only when its type filter names them. A `table` page documents one
+/// table of a product's database, and a product keeps dozens whose columns share the words of every
+/// task question, so an untyped search would rank them above the page that answers it. They are still
+/// listed, fetched and related like any page, and a search with `type: table` ranks them alone.
+pub const ON_REQUEST_TYPES: &[&str] = &["table"];
+
 /// The loaded corpus: metadata plus page bodies keyed by id.
 pub struct DocsIndex {
     pub product: String,
@@ -175,7 +181,8 @@ impl DocsIndex {
     }
 
     /// Rank docs against a free-text query. Title matches weigh most, then
-    /// keywords, then summary. Optional `type` filter narrows the corpus.
+    /// keywords, then summary. Optional `type` filter narrows the corpus; without one, the pages of
+    /// the types in [`ON_REQUEST_TYPES`] are left out.
     pub fn search(&self, query: &str, doc_type: Option<&str>, limit: usize) -> Vec<Hit<'_>> {
         let tokens: Vec<String> = query
             .to_lowercase()
@@ -186,7 +193,10 @@ impl DocsIndex {
         let mut hits: Vec<Hit> = self
             .docs
             .iter()
-            .filter(|d| doc_type.is_none_or(|t| d.doc_type.eq_ignore_ascii_case(t)))
+            .filter(|d| match doc_type {
+                Some(t) => d.doc_type.eq_ignore_ascii_case(t),
+                None => !ON_REQUEST_TYPES.iter().any(|o| d.doc_type.eq_ignore_ascii_case(o)),
+            })
             .filter_map(|d| {
                 let title = d.title.to_lowercase();
                 let summary = d.summary.to_lowercase();
@@ -319,5 +329,34 @@ mod tests {
         untitled.meta.title = " ".to_string();
         assert!(idx.add(vec![untitled]).unwrap_err().contains("no title"));
         assert_eq!(idx.len(), before);
+    }
+
+    #[test]
+    fn a_table_page_is_searched_only_when_the_search_asks_for_tables() {
+        let mut idx = DocsIndex::load();
+        let table = DocPage {
+            meta: DocMeta::page(
+                "probe-table-attempt",
+                "probe.Attempt: every probe attempt, its outcome and its error",
+                "table",
+                "tables/attempt.md",
+                "One row per probe attempt: the target probed, the outcome and the error.",
+                &["probe attempt", "probe table"],
+            ),
+            body: "# probe.Attempt",
+        };
+        idx.add(vec![table, page("probe-targets", "# Probe targets")]).expect("the pages are added");
+
+        let untyped: Vec<&str> = idx.search("probe attempt outcome", None, 50).iter().map(|h| h.meta.id.as_str()).collect();
+        assert!(untyped.contains(&"probe-targets"), "{untyped:?}");
+        assert!(!untyped.contains(&"probe-table-attempt"), "an untyped search left the table page in: {untyped:?}");
+
+        let tables = idx.search("probe attempt outcome", Some("table"), 5);
+        assert_eq!(tables.first().map(|h| h.meta.id.as_str()), Some("probe-table-attempt"));
+        assert!(tables.iter().all(|h| h.meta.doc_type == "table"));
+
+        // Still fetched, listed and related like any page.
+        assert_eq!(idx.body("probe-table-attempt"), Some("# probe.Attempt"));
+        assert!(idx.all().iter().any(|d| d.id == "probe-table-attempt"));
     }
 }
