@@ -273,6 +273,8 @@ public sealed class CopyEngine
                 await using var entryStream = entry.Open();
                 using var entryBuffer = new MemoryStream();
                 await entryStream.CopyToAsync(entryBuffer, ct).ConfigureAwait(false);
+                // The entry's name is the archive's to choose; every target endpoint refuses a path that leaves the
+                // target, so an entry named '../x' fails the run rather than writing beside the target.
                 var relative = prefix + (flow.Options.PreserveStructure ? entry.FullName : entry.Name);
                 var payload = entryBuffer.ToArray();
                 var hash = ContentHash.Md5(payload);

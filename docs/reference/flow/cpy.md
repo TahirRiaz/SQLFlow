@@ -116,6 +116,8 @@ Azure endpoints authenticate with the ambient managed identity / az login (`SQLF
 - **zip**: every matched file is read and bundled into a single `.zip` written to the target under `zipName`. Running a flow purely to produce an archive is a zip-only run.
 - **unzip**: each matched source archive (a `.zip`) is extracted; with `preserveStructure` its entries nest under a folder named for the archive so two archives never collide, flat by entry name otherwise.
 
+Every target keeps what a run writes under its own location. An archive names its entries itself, so an entry such as `../config.json` would land beside the target: a relative path that leaves the target, from an archive entry or from a source object whose key has a `..` segment, fails the run with `escapes the target root`. What the run wrote before it stays.
+
 ## Declared outputs (for lineage)
 
 A copy's target is its output, so by default lineage binds the single target folder to the downstream file ingestion that reads it (Azure storage URIs are matched by canonical identity, so the copy writing `abfss://…/detail` and a load reading `https://….dfs…/detail/` are one node). When one copy fans files into several folders that feed different ingestions (for example `preserveStructure` lands per-object subfolders), declare each output explicitly so each binds independently and every downstream consumer gets an edge from this copy:

@@ -309,10 +309,11 @@ public sealed class S3CopyEndpoint : ICopyEndpoint
             return new S3Location(bucket, prefix);
         }
 
-        /// <summary>The absolute object key for a path relative to the prefix (S3 as a target).</summary>
+        /// <summary>The absolute object key for a path relative to the prefix (S3 as a target), refusing a path with a
+        /// <c>..</c> segment (<see cref="CopyTargetPath"/>).</summary>
         public string KeyFor(string relativePath)
         {
-            var rel = relativePath.Replace('\\', '/').TrimStart('/');
+            var rel = CopyTargetPath.RequireContained(relativePath).Replace('\\', '/').TrimStart('/');
             return Prefix.Length == 0 ? rel : $"{Prefix}/{rel}";
         }
     }

@@ -295,6 +295,27 @@ public sealed class CopyEngineTests : IDisposable
     }
 
     [Fact]
+    public async Task Unzip_EntryLeavingTheTarget_FailsAndWritesNothingOutsideIt()
+    {
+        // An archive names its entries itself: '../../escaped.txt' under the archive's folder ('hostile/') resolves to
+        // the folder holding the target, beside it.
+        Directory.CreateDirectory(Path.Combine(_dir, "zips"));
+        using (var archive = ZipFile.Open(Path.Combine(_dir, "zips", "hostile.zip"), ZipArchiveMode.Create))
+        {
+            using (var writer = new StreamWriter(archive.CreateEntry("../../escaped.txt").Open()))
+            {
+                writer.Write("x");
+            }
+        }
+
+        var unzip = await Engine().RunAsync(Flow(CopyOperation.Unzip, "zips", "extracted", pattern: "*.zip"), Guid.NewGuid(), NullRunEventSink.Instance, default);
+
+        Assert.False(unzip.Success);
+        Assert.Contains("escapes the target root", unzip.Error, StringComparison.Ordinal);
+        Assert.False(File.Exists(Path.Combine(_dir, "escaped.txt")));
+    }
+
+    [Fact]
     public async Task Cancelled_Propagates_RatherThanReportingFailure()
     {
         Write("src/detail.json", "{\"o\":1}");

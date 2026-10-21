@@ -1,5 +1,6 @@
 using Amazon.S3.Model;
 using SqlFlow.Copy;
+using SqlFlow.Core;
 using SqlFlow.Core.Secrets;
 using Xunit;
 
@@ -8,7 +9,8 @@ namespace SqlFlow.Copy.Tests;
 /// <summary>
 /// Endpoint selection and the S3 endpoint's pure parsing/hashing. The selection tests lock in the fix for the bug
 /// where an <c>s3://</c> location was swallowed by the local endpoint (tried first) and read as a CWD-relative path:
-/// each scheme must resolve to exactly one endpoint, in the engine's registration order.
+/// each scheme must resolve to exactly one endpoint, in the engine's registration order. The object-store targets
+/// refuse a relative path with a <c>..</c> segment, as the local endpoint refuses one that leaves its root.
 /// </summary>
 public sealed class S3EndpointTests
 {
@@ -76,6 +78,40 @@ public sealed class S3EndpointTests
     {
         Assert.Equal("a/b/file.json", S3CopyEndpoint.S3Location.Parse("s3://bucket/a/b").KeyFor("file.json"));
         Assert.Equal("file.json", S3CopyEndpoint.S3Location.Parse("s3://bucket").KeyFor("/file.json"));
+    }
+
+    // A relative path can be an archive entry's own name; a '..' segment would name an object beside the target.
+    [Theory]
+    [InlineData("../file.json")]
+    [InlineData("bundle/../../file.json")]
+    [InlineData("bundle\\..\\..\\file.json")]
+    [InlineData("..")]
+    public void Object_store_targets_refuse_a_path_with_a_dot_dot_segment(string relativePath)
+    {
+        var refused = Assert.Throws<SqlFlowException>(() => CopyTargetPath.RequireContained(relativePath));
+        Assert.Contains("escapes the target root", refused.Message, StringComparison.Ordinal);
+        Assert.Throws<SqlFlowException>(() => S3CopyEndpoint.S3Location.Parse("s3://bucket/target").KeyFor(relativePath));
+    }
+
+    [Theory]
+    [InlineData("a/..b/c")]
+    [InlineData("a/b../c")]
+    [InlineData(".../file.json")]
+    [InlineData("./file.json")]
+    public void Object_store_targets_keep_a_name_that_only_holds_dots(string relativePath)
+        => Assert.Equal(relativePath, CopyTargetPath.RequireContained(relativePath));
+
+    [Fact]
+    public async Task Azure_blob_target_refuses_a_path_leaving_it_before_building_a_client()
+    {
+        // StubCredentials throws if a client were built, so the refusal must come from the name alone.
+        var endpoint = new AzureBlobCopyEndpoint(new StubCredentials(), new NoSecrets());
+        var target = new SqlFlow.Core.Copy.CopyEndpoint { Location = "abfss://fs@acct.dfs.core.windows.net/target" };
+
+        await Assert.ThrowsAsync<SqlFlowException>(() =>
+            endpoint.WriteAsync(target, "bundle/../../other/file.json", new byte[] { 1 }, overwrite: true, new byte[16], default));
+        await Assert.ThrowsAsync<SqlFlowException>(() =>
+            endpoint.TargetContentHashAsync(target, "../file.json", default));
     }
 
     [Fact]

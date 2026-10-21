@@ -136,18 +136,24 @@ public sealed class LocalCopyEndpoint : ICopyEndpoint
         return destination;
     }
 
-    /// <summary>Resolves the absolute target path under the endpoint root, refusing a relative path that escapes it.</summary>
+    /// <summary>Resolves the absolute target path under the endpoint root, refusing a relative path that escapes it.
+    /// A relative path can be an archive entry's own name, which the archive's author chooses, so the path returned is
+    /// only ever one the containment check passed (or the root itself), never the resolved path unchecked.</summary>
     private static string TargetPath(CopyEndpoint endpoint, string relativePath)
     {
         var root = Path.GetFullPath(LocalPath(endpoint.Location));
         var destination = Path.GetFullPath(Path.Combine(root, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-        if (!destination.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal)
-            && !string.Equals(destination, root, StringComparison.Ordinal))
+        if (destination.StartsWith(root.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
         {
-            throw new SqlFlowException($"Copy target path '{relativePath}' escapes the target root '{root}'.");
+            return destination;
         }
 
-        return destination;
+        if (string.Equals(destination, root, StringComparison.Ordinal))
+        {
+            return root;
+        }
+
+        throw new SqlFlowException($"Copy target path '{relativePath}' escapes the target root '{root}'.");
     }
 
     private static bool Matches(CopyEndpoint endpoint, string name, DateTimeOffset lastWrite, CopyModifiedWindow window)

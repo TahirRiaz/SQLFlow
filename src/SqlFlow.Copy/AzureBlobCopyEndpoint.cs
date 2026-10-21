@@ -140,8 +140,9 @@ public sealed class AzureBlobCopyEndpoint : ICopyEndpoint
     public async Task<byte[]?> TargetContentHashAsync(CopyEndpoint endpoint, string relativePath, CancellationToken ct)
     {
         var loc = AzureBlobLocation.Parse(endpoint.Location);
+        var blobName = BlobName(loc, relativePath);
         var container = await ContainerAsync(endpoint, loc, ct).ConfigureAwait(false);
-        var blob = container.GetBlobClient(BlobName(loc, relativePath));
+        var blob = container.GetBlobClient(blobName);
         try
         {
             var props = await blob.GetPropertiesAsync(cancellationToken: ct).ConfigureAwait(false);
@@ -161,8 +162,8 @@ public sealed class AzureBlobCopyEndpoint : ICopyEndpoint
         CopyEndpoint endpoint, string relativePath, ReadOnlyMemory<byte> content, bool overwrite, byte[] contentHash, CancellationToken ct)
     {
         var loc = AzureBlobLocation.Parse(endpoint.Location);
-        var container = await ContainerAsync(endpoint, loc, ct).ConfigureAwait(false);
         var blobName = BlobName(loc, relativePath);
+        var container = await ContainerAsync(endpoint, loc, ct).ConfigureAwait(false);
         var blob = container.GetBlobClient(blobName);
         try
         {
@@ -193,6 +194,7 @@ public sealed class AzureBlobCopyEndpoint : ICopyEndpoint
 
     private static string BlobName(AzureBlobLocation loc, string relativePath)
     {
+        CopyTargetPath.RequireContained(relativePath);
         var basePath = loc.BlobPath.TrimEnd('/');
         return (basePath.Length == 0 ? relativePath : $"{basePath}/{relativePath}").TrimStart('/');
     }
