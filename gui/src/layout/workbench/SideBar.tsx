@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useState, type FormEvent } from "react";
 import { useLocation } from "react-router-dom";
-import { ChevronDown } from "lucide-react";
 import { SearchInput } from "@/components/SearchInput";
+import { NodeLabel, TreeNode, TreeRoot, type TreeState } from "@/components/Tree";
 import { cn } from "@/lib/utils";
 import { useAuth } from "../../auth/AuthContext";
 import { menuCollapsedOnFirstVisit } from "../../modules/registry";
@@ -36,10 +36,10 @@ interface SideBarSectionsProps {
 }
 
 /**
- * The grouped navigation: every group as a collapsible section (so each nav item stays reachable
- * regardless of the active activity-bar group), a group's own sections labelled under its header and
- * collapsible on their own, the longest-prefix item highlighted. Shared between the desktop side bar and
- * the mobile sheet.
+ * The grouped navigation, as one tree on the workbench's tree primitives: every group a top-level branch
+ * (so each nav item stays reachable regardless of the active activity-bar group), a group's own sections
+ * branches under it that fold on their own, the entries its leaves, and the longest-prefix entry selected
+ * as the page shown. Shared between the desktop side bar and the mobile sheet.
  */
 export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
   const { hasScope } = useAuth();
@@ -75,10 +75,19 @@ export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
     document.getElementById(`sidebar-section-${reveal.id}`)?.scrollIntoView({ block: "nearest" });
   }, [reveal]);
 
-  const toggleSection = (id: string) => {
+  const groups = navGroups.filter((group) => group.requiresScope === undefined || hasScope(group.requiresScope));
+  // Only an entry's path is a page; a group's or a section's row folds and unfolds, and is never selected.
+  const pages = new Set(groups.flatMap((group) => navListing(group).flatMap((part) => part.items.map((item) => item.to))));
+  const branches = groups.flatMap((group) => [group.id, ...(group.sections ?? []).map((section) => sectionKey(group, section))]);
+
+  const setOpen = (id: string, open: boolean) => {
     setCollapsed((current) => {
+      if (current.has(id) !== open) {
+        return current;
+      }
+
       const next = new Set(current);
-      if (next.has(id)) {
+      if (open) {
         next.delete(id);
       } else {
         next.add(id);
@@ -88,84 +97,69 @@ export function SideBarSections({ reveal, onNavigate }: SideBarSectionsProps) {
     });
   };
 
-  const renderItem = (item: NavItem) => {
-    const isSelected = item.to === selected;
-    return (
-      <button
-        key={item.to}
-        data-testid={item.testId}
-        aria-current={isSelected ? "page" : undefined}
-        onClick={() => {
-          navigate(item.to);
-          onNavigate?.();
-        }}
-        className={cn(
-          "relative mx-1 flex h-7 w-[calc(100%-8px)] items-center gap-2 rounded-md px-2 text-[13px] transition-colors",
-          isSelected
-            ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-            : "text-sidebar-foreground hover:bg-sidebar-accent/60",
-        )}
-      >
-        {isSelected && <span className="absolute -left-1 h-4 w-0.5 rounded-r bg-primary" />}
-        <item.icon className={cn("size-4 shrink-0", isSelected ? "opacity-100" : "opacity-75")} />
-        <span className="truncate">{item.label}</span>
-      </button>
-    );
+  const tree: TreeState = {
+    expanded: new Set(branches.filter((id) => !collapsed.has(id))),
+    setOpen,
+    toggle: (id) => {
+      setCollapsed((current) => {
+        const next = new Set(current);
+        if (next.has(id)) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+
+        return next;
+      });
+    },
+    selectedId: selected,
+    select: (id) => {
+      if (pages.has(id)) {
+        navigate(id);
+        onNavigate?.();
+      }
+    },
+    navigation: true,
   };
 
-  const renderGroup = (group: NavGroup) => {
-    const isCollapsed = collapsed.has(group.id);
-    return (
-      <section key={group.id} id={`sidebar-section-${group.id}`}>
-        <button
-          onClick={() => toggleSection(group.id)}
-          aria-expanded={!isCollapsed}
-          className="flex h-8 w-full items-center gap-1 px-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground hover:text-foreground"
-        >
-          <ChevronDown className={cn("size-3.5 transition-transform duration-120", isCollapsed && "-rotate-90")} />
-          {group.label}
-        </button>
-        {!isCollapsed && navListing(group).map((part) => {
+  const renderItem = (item: NavItem) => (
+    <TreeNode
+      key={item.to}
+      id={item.to}
+      testId={item.testId}
+      label={<NodeLabel icon={<item.icon className="size-4" />} text={item.label} />}
+    />
+  );
+
+  // Each group and section sits in an element of its own, so the activity bar can bring a group into view and a
+  // suite can find what is under it; the tree's rows and groups inside are the primitives' own.
+  const renderGroup = (group: NavGroup) => (
+    <div key={group.id} id={`sidebar-section-${group.id}`}>
+      <TreeNode id={group.id} label={<span className="min-w-0 flex-1 truncate font-semibold">{group.label}</span>}>
+        {navListing(group).map((part) => {
           if (part.section === null) {
-            return <div key="">{part.items.map(renderItem)}</div>;
+            return <Fragment key="">{part.items.map(renderItem)}</Fragment>;
           }
 
-          const key = sectionKey(group, part.section);
-          const isSectionCollapsed = collapsed.has(key);
           return (
-            <div
-              key={part.section.id}
-              role="group"
-              aria-label={`${group.label}: ${part.section.label}`}
-              data-testid={`sidebar-part-${group.id}-${part.section.id}`}
-            >
-              <button
-                onClick={() => toggleSection(key)}
-                aria-expanded={!isSectionCollapsed}
-                className="group/section flex h-6 w-full items-end gap-1 px-3 pb-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+            <div key={part.section.id} data-testid={`sidebar-part-${group.id}-${part.section.id}`}>
+              <TreeNode
+                id={sectionKey(group, part.section)}
+                label={<span className="min-w-0 flex-1 truncate font-medium">{part.section.label}</span>}
               >
-                <span className="truncate">{part.section.label}</span>
-                <ChevronDown
-                  className={cn(
-                    "mb-0.5 size-3 shrink-0 opacity-60 transition-transform duration-120 group-hover/section:opacity-100",
-                    isSectionCollapsed && "-rotate-90",
-                  )}
-                />
-              </button>
-              {!isSectionCollapsed && part.items.map(renderItem)}
+                {part.items.map(renderItem)}
+              </TreeNode>
             </div>
           );
         })}
-      </section>
-    );
-  };
+      </TreeNode>
+    </div>
+  );
 
   return (
-    <>
-      {navGroups
-        .filter((group) => group.requiresScope === undefined || hasScope(group.requiresScope))
-        .map(renderGroup)}
-    </>
+    <TreeRoot label="Pages" state={tree} className="px-1">
+      {groups.map(renderGroup)}
+    </TreeRoot>
   );
 }
 

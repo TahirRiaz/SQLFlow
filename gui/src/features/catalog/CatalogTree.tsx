@@ -3,7 +3,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type FocusEvent,
   type ReactNode,
 } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -32,7 +31,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
-import { NodeLabel, TreeContext, TreeNode, type TreeState } from "@/components/Tree";
+import { NodeLabel, TreeNode, TreeRoot, type TreeState } from "@/components/Tree";
 import { lineageApi, repoApi } from "../../api/endpoints";
 import type {
   DatasetNode, FileNode, FileOriginKind, LineageObject, PagedResult, PipelineSummary, Repo, SchemaKindCount, Subscriber,
@@ -758,15 +757,6 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
     });
   }, []);
 
-  // When the container itself receives focus (Tab), hand it to the selected row, or the first row.
-  const onTreeFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) {
-      return;
-    }
-    const rows = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-tree-row]")];
-    (rows.find((row) => row.dataset.id === selectedId) ?? rows[0])?.focus();
-  };
-
   const skeletonError = [schemaKinds, fileTree, datasets, repos, pipelines, subscribers].find((query) => query.isError);
   if (skeletonError !== undefined) {
     return (
@@ -815,133 +805,131 @@ export function CatalogTree({ selectedId, onSelect, initialExpanded }: CatalogTr
       />
       {debouncedFilter.length >= 2 && <ObjectMatches filter={debouncedFilter} onSelect={onSelect} />}
 
-      <div role="tree" aria-label="Catalog tree" tabIndex={0} onFocus={onTreeFocus} className="outline-none">
-        <TreeContext.Provider value={treeState}>
-          {/* Databases */}
-          <TreeNode
-            id={encodeNodeId({ type: "databasesRoot" })}
-            label={<NodeLabel icon={<Database className="size-4" />} text="Databases" count={totalDbObjects} />}
-          >
-            {filteredDatabases.length === 0 && (
-              <TreeNode id="dbs#empty" disabled label={<NodeLabel text="No database objects in the catalog yet" />} />
-            )}
-            {filteredDatabases.map((database) => {
-              const databaseId = encodeNodeId({ type: "database", database: database.database });
-              return (
-                <TreeNode key={databaseId} id={databaseId}
-                  label={<NodeLabel icon={<Database className="size-4" />} text={database.database ?? UNRESOLVED_LABEL} count={database.objectCount} />}>
-                  {database.schemas.map((schema) => {
-                    const schemaId = encodeNodeId({ type: "schema", database: database.database, schema: schema.schema });
-                    return (
-                      <TreeNode key={schemaId} id={schemaId}
-                        label={<NodeLabel icon={<BookOpen className="size-4" />} text={schema.schema ?? UNRESOLVED_LABEL} count={schema.objectCount} />}>
-                        {schema.kinds.map((kindRow) => {
-                          const kindNode: CatalogNode = { type: "kind", database: database.database, schema: schema.schema, kind: kindRow.kind };
-                          const kindId = encodeNodeId(kindNode);
-                          const meta = metaForKind(kindRow.kind);
-                          return (
-                            <TreeNode key={kindId} id={kindId} label={<NodeLabel icon={meta.icon} text={meta.plural} count={kindRow.objectCount} />}>
-                              <PagedObjectLeaves
-                                parentId={kindId}
-                                queryKey={["catalog-objects", database.database, schema.schema, kindRow.kind]}
-                                fetchPage={(page) => lineageApi.objects({
-                                  database: database.database ?? undefined,
-                                  schema: schema.schema ?? undefined,
-                                  kind: kindRow.kind,
-                                  page,
-                                  pageSize: LEAF_PAGE_SIZE,
-                                })}
-                              />
-                            </TreeNode>
-                          );
-                        })}
-                      </TreeNode>
-                    );
-                  })}
-                </TreeNode>
-              );
-            })}
-          </TreeNode>
-
-          {/* Sources (file origins, grouped by provider: Azure / Amazon S3 / Google Cloud / SFTP / ... / Local) */}
-          <TreeNode
-            id={encodeNodeId({ type: "sourcesRoot" })}
-            label={<NodeLabel icon={<Cloud className="size-4" />} text="Sources" count={totalFiles} />}
-          >
-            {fileProviders.length === 0 && (
-              <TreeNode id="sources#empty" disabled label={<NodeLabel text="No file sources in the catalog yet" />} />
-            )}
-            {fileProviders.map((group) => <ProviderNode key={encodeNodeId({ type: "provider", provider: group.kind })} group={group} />)}
-          </TreeNode>
-
-          {/* Datasets (external systems the flows read and write: system > namespace > group > dataset) */}
-          {totalDatasets > 0 && (
-            <TreeNode
-              id={encodeNodeId({ type: "datasetsRoot" })}
-              label={<NodeLabel icon={<Boxes className="size-4" />} text="Datasets" count={totalDatasets} />}
-            >
-              {datasetSystems.length === 0 && (
-                <TreeNode id="sets#empty" disabled label={<NodeLabel text="No dataset matches the filter" />} />
-              )}
-              {datasetSystems.map((branch) => (
-                <DatasetSystemNode key={encodeNodeId({ type: "datasetSystem", system: branch.system })} branch={branch} />
-              ))}
-            </TreeNode>
+      <TreeRoot label="Catalog tree" state={treeState}>
+        {/* Databases */}
+        <TreeNode
+          id={encodeNodeId({ type: "databasesRoot" })}
+          label={<NodeLabel icon={<Database className="size-4" />} text="Databases" count={totalDbObjects} />}
+        >
+          {filteredDatabases.length === 0 && (
+            <TreeNode id="dbs#empty" disabled label={<NodeLabel text="No database objects in the catalog yet" />} />
           )}
+          {filteredDatabases.map((database) => {
+            const databaseId = encodeNodeId({ type: "database", database: database.database });
+            return (
+              <TreeNode key={databaseId} id={databaseId}
+                label={<NodeLabel icon={<Database className="size-4" />} text={database.database ?? UNRESOLVED_LABEL} count={database.objectCount} />}>
+                {database.schemas.map((schema) => {
+                  const schemaId = encodeNodeId({ type: "schema", database: database.database, schema: schema.schema });
+                  return (
+                    <TreeNode key={schemaId} id={schemaId}
+                      label={<NodeLabel icon={<BookOpen className="size-4" />} text={schema.schema ?? UNRESOLVED_LABEL} count={schema.objectCount} />}>
+                      {schema.kinds.map((kindRow) => {
+                        const kindNode: CatalogNode = { type: "kind", database: database.database, schema: schema.schema, kind: kindRow.kind };
+                        const kindId = encodeNodeId(kindNode);
+                        const meta = metaForKind(kindRow.kind);
+                        return (
+                          <TreeNode key={kindId} id={kindId} label={<NodeLabel icon={meta.icon} text={meta.plural} count={kindRow.objectCount} />}>
+                            <PagedObjectLeaves
+                              parentId={kindId}
+                              queryKey={["catalog-objects", database.database, schema.schema, kindRow.kind]}
+                              fetchPage={(page) => lineageApi.objects({
+                                database: database.database ?? undefined,
+                                schema: schema.schema ?? undefined,
+                                kind: kindRow.kind,
+                                page,
+                                pageSize: LEAF_PAGE_SIZE,
+                              })}
+                            />
+                          </TreeNode>
+                        );
+                      })}
+                    </TreeNode>
+                  );
+                })}
+              </TreeNode>
+            );
+          })}
+        </TreeNode>
 
-          {/* Flows (repo > repository folder > batch > flow) */}
-          <TreeNode
-            id={encodeNodeId({ type: "flowsRoot" })}
-            label={<NodeLabel icon={<Network className="size-4" />} text="Flows" count={totalFlows} />}
-          >
-            {flowsByRepo.size === 0 && (
-              <TreeNode id="flows#empty" disabled label={<NodeLabel text="No flows in the catalog yet" />} />
-            )}
-            {repoList.map((repo) => {
-              const root = flowsByRepo.get(repo.id);
-              if (root === undefined) {
-                return null;
-              }
-              const repoId = encodeNodeId({ type: "repo", repoId: repo.id });
-              return (
-                <TreeNode key={repoId} id={repoId}
-                  label={<NodeLabel icon={<FolderGit2 className="size-4" />} text={repo.name} count={root.count} />}>
-                  {renderFlowFolder(repo.id, "", root)}
-                </TreeNode>
-              );
-            })}
-          </TreeNode>
+        {/* Sources (file origins, grouped by provider: Azure / Amazon S3 / Google Cloud / SFTP / ... / Local) */}
+        <TreeNode
+          id={encodeNodeId({ type: "sourcesRoot" })}
+          label={<NodeLabel icon={<Cloud className="size-4" />} text="Sources" count={totalFiles} />}
+        >
+          {fileProviders.length === 0 && (
+            <TreeNode id="sources#empty" disabled label={<NodeLabel text="No file sources in the catalog yet" />} />
+          )}
+          {fileProviders.map((group) => <ProviderNode key={encodeNodeId({ type: "provider", provider: group.kind })} group={group} />)}
+        </TreeNode>
 
-          {/* Subscribers (the consumption estate: consuming tool > subscriber) */}
+        {/* Datasets (external systems the flows read and write: system > namespace > group > dataset) */}
+        {totalDatasets > 0 && (
           <TreeNode
-            id={encodeNodeId({ type: "subscribersRoot" })}
-            label={<NodeLabel icon={<MonitorPlay className="size-4" />} text="Subscribers" count={totalSubscribers} />}
+            id={encodeNodeId({ type: "datasetsRoot" })}
+            label={<NodeLabel icon={<Boxes className="size-4" />} text="Datasets" count={totalDatasets} />}
           >
-            {subscriberTypes.length === 0 && (
-              <TreeNode
-                id="subs#empty"
-                disabled
-                label={<NodeLabel text="No subscribers declared; add a subscribers.yaml to a repo" />}
-              />
+            {datasetSystems.length === 0 && (
+              <TreeNode id="sets#empty" disabled label={<NodeLabel text="No dataset matches the filter" />} />
             )}
-            {subscriberTypes.map((group) => {
-              const typeId = encodeNodeId({ type: "subscriberType", subscriberType: group.type });
-              return (
-                <TreeNode key={typeId} id={typeId}
-                  label={<NodeLabel icon={<MonitorPlay className="size-4" />} text={group.type} count={group.rows.length} />}>
-                  {group.rows.map((row) => (
-                    <TreeNode
-                      key={encodeNodeId({ type: "subscriber", key: row.key })}
-                      id={encodeNodeId({ type: "subscriber", key: row.key })}
-                      label={<NodeLabel icon={<MonitorPlay className="size-4" />} text={row.name} count={row.objectCount} />}
-                    />
-                  ))}
-                </TreeNode>
-              );
-            })}
+            {datasetSystems.map((branch) => (
+              <DatasetSystemNode key={encodeNodeId({ type: "datasetSystem", system: branch.system })} branch={branch} />
+            ))}
           </TreeNode>
-        </TreeContext.Provider>
-      </div>
+        )}
+
+        {/* Flows (repo > repository folder > batch > flow) */}
+        <TreeNode
+          id={encodeNodeId({ type: "flowsRoot" })}
+          label={<NodeLabel icon={<Network className="size-4" />} text="Flows" count={totalFlows} />}
+        >
+          {flowsByRepo.size === 0 && (
+            <TreeNode id="flows#empty" disabled label={<NodeLabel text="No flows in the catalog yet" />} />
+          )}
+          {repoList.map((repo) => {
+            const root = flowsByRepo.get(repo.id);
+            if (root === undefined) {
+              return null;
+            }
+            const repoId = encodeNodeId({ type: "repo", repoId: repo.id });
+            return (
+              <TreeNode key={repoId} id={repoId}
+                label={<NodeLabel icon={<FolderGit2 className="size-4" />} text={repo.name} count={root.count} />}>
+                {renderFlowFolder(repo.id, "", root)}
+              </TreeNode>
+            );
+          })}
+        </TreeNode>
+
+        {/* Subscribers (the consumption estate: consuming tool > subscriber) */}
+        <TreeNode
+          id={encodeNodeId({ type: "subscribersRoot" })}
+          label={<NodeLabel icon={<MonitorPlay className="size-4" />} text="Subscribers" count={totalSubscribers} />}
+        >
+          {subscriberTypes.length === 0 && (
+            <TreeNode
+              id="subs#empty"
+              disabled
+              label={<NodeLabel text="No subscribers declared; add a subscribers.yaml to a repo" />}
+            />
+          )}
+          {subscriberTypes.map((group) => {
+            const typeId = encodeNodeId({ type: "subscriberType", subscriberType: group.type });
+            return (
+              <TreeNode key={typeId} id={typeId}
+                label={<NodeLabel icon={<MonitorPlay className="size-4" />} text={group.type} count={group.rows.length} />}>
+                {group.rows.map((row) => (
+                  <TreeNode
+                    key={encodeNodeId({ type: "subscriber", key: row.key })}
+                    id={encodeNodeId({ type: "subscriber", key: row.key })}
+                    label={<NodeLabel icon={<MonitorPlay className="size-4" />} text={row.name} count={row.objectCount} />}
+                  />
+                ))}
+              </TreeNode>
+            );
+          })}
+        </TreeNode>
+      </TreeRoot>
     </div>
   );
 }

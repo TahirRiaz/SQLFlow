@@ -1,11 +1,11 @@
-import { useState, type FocusEvent } from "react";
+import { useState } from "react";
 import { ChevronDown, File, Folder, FolderOpen, Play } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { TreeContext, TreeNode, type TreeState } from "@/components/Tree";
+import { TreeNode, TreeRoot, type TreeState } from "@/components/Tree";
 import { cn } from "@/lib/utils";
 import type { PipelineSummary, RepoTreeEntry } from "../../api/types";
 import { FlowKindBadge } from "../../components/FlowKindBadge";
@@ -210,15 +210,6 @@ export function ProjectGroup({
     },
   };
 
-  // When the tree itself receives focus (Tab), hand it to the selected row, or the first one.
-  const onTreeFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) {
-      return;
-    }
-    const treeRows = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-tree-row]")];
-    (treeRows.find((row) => row.dataset.id === selectedId) ?? treeRows[0])?.focus();
-  };
-
   return (
     <Collapsible key={`${project}:${filtered ? "filtered" : "all"}`} defaultOpen={defaultOpen}>
       <Card className="gap-0 overflow-hidden rounded-lg p-0" data-testid="repo-project">
@@ -267,18 +258,9 @@ export function ProjectGroup({
           )}
         </div>
         <CollapsibleContent>
-          <div
-            role="tree"
-            aria-label={`${project} contents`}
-            tabIndex={0}
-            onFocus={onTreeFocus}
-            className="border-t py-1 outline-none"
-            data-testid="repo-project-tree"
-          >
-            <TreeContext.Provider value={treeState}>
-              <FolderRows node={tree} onOpen={onOpen} />
-            </TreeContext.Provider>
-          </div>
+          <TreeRoot label={`${project} contents`} state={treeState} className="border-t py-1" testId="repo-project-tree">
+            <FolderRows node={tree} onOpen={onOpen} />
+          </TreeRoot>
         </CollapsibleContent>
       </Card>
     </Collapsible>

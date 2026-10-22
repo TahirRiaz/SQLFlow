@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  type FocusEvent,
   type KeyboardEvent,
   type ReactNode,
 } from "react";
@@ -10,10 +11,11 @@ import { cn } from "@/lib/utils";
 
 /**
  * The workbench tree primitives, shared by every explorer-style view (the catalog tree, the schema-change
- * tree): a 28px row with depth indentation, a rotating expand chevron for branches, hover and selection
- * styling, and roving-focus keyboard navigation (ArrowUp/ArrowDown move, ArrowLeft/ArrowRight collapse and
- * expand, Enter selects). The tree itself owns no data: a consumer supplies the expansion state through
- * TreeContext and renders whatever branches it has.
+ * tree) and by the side bar's menu: a 28px row with depth indentation and a guide line under each ancestor,
+ * a rotating expand chevron for branches, hover and selection styling, and roving-focus keyboard navigation
+ * (ArrowUp/ArrowDown move, ArrowLeft/ArrowRight collapse and expand, Enter selects) inside one tab stop. The
+ * tree itself owns no data: a consumer supplies the expansion state to TreeRoot and renders whatever
+ * branches it has.
  */
 
 export interface TreeState {
@@ -23,6 +25,11 @@ export interface TreeState {
   setOpen: (id: string, open: boolean) => void;
   selectedId: string | null;
   select: (id: string) => void;
+  /**
+   * A navigation tree (a menu of pages): the selected row is the page shown, so it is announced as the
+   * current page (`aria-current="page"`) as well as selected.
+   */
+  navigation?: boolean;
 }
 
 export const TreeContext = createContext<TreeState | null>(null);
@@ -31,18 +38,61 @@ const DepthContext = createContext(0);
 export function useTreeState(): TreeState {
   const tree = useContext(TreeContext);
   if (tree === null) {
-    throw new Error("TreeNode rendered outside the catalog tree provider.");
+    throw new Error("TreeNode rendered outside a TreeRoot.");
   }
   return tree;
 }
 
 /** Pixels of indentation per tree depth level. */
 const TREE_INDENT = 14;
+/** Pixels from a row's edge to its depth-0 content (the chevron, or the space a leaf keeps for one). */
+const TREE_INSET = 8;
+/** Pixels from a level's indent to its guide line: under the middle of that level's 16px chevron. */
+const GUIDE_OFFSET = 7;
 
 /** The visible, keyboard-navigable rows of the tree containing `element`, in document order. */
 function navigableRows(element: HTMLElement): HTMLElement[] {
   const root = element.closest('[role="tree"]');
   return root === null ? [] : [...root.querySelectorAll<HTMLElement>("[data-tree-row]")];
+}
+
+export interface TreeRootProps {
+  /** The tree's accessible name. */
+  label: string;
+  /** The expansion and selection every row of the tree reads. */
+  state: TreeState;
+  children: ReactNode;
+  className?: string;
+  testId?: string;
+}
+
+/**
+ * A tree's root: one tab stop for the whole tree, and the state its rows read. Focus arriving from outside
+ * (Tab) moves to the selected row, or to the first one when the selected row is not shown; focus coming back
+ * from one of its own rows (Shift+Tab) stays on the root, so the next Shift+Tab leaves the tree rather than
+ * being sent back into it.
+ */
+export function TreeRoot({ label, state, children, className, testId }: TreeRootProps) {
+  const enterTree = (event: FocusEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.currentTarget.contains(event.relatedTarget)) {
+      return;
+    }
+    const rows = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-tree-row]")];
+    (rows.find((row) => row.dataset.id === state.selectedId) ?? rows[0])?.focus();
+  };
+
+  return (
+    <div
+      role="tree"
+      aria-label={label}
+      tabIndex={0}
+      onFocus={enterTree}
+      className={cn("outline-none", className)}
+      data-testid={testId}
+    >
+      <TreeContext.Provider value={state}>{children}</TreeContext.Provider>
+    </div>
+  );
 }
 
 export interface TreeNodeProps {
@@ -57,9 +107,11 @@ export interface TreeNodeProps {
 }
 
 /**
- * One tree row plus its (conditionally rendered) children: a 28px row with the depth indent, the rotating
- * expand chevron for branches, hover and selection styling per the workbench side bar, and roving-focus
- * keyboard navigation (ArrowUp/ArrowDown move, ArrowLeft/ArrowRight collapse/expand, Enter selects).
+ * One tree row plus its (conditionally rendered) children: a 28px row with the depth indent and a hairline
+ * guide under each ancestor's chevron (the guides of consecutive rows join, so a branch's extent reads at a
+ * glance), the rotating expand chevron for branches, hover and selection styling per the workbench side bar,
+ * and roving-focus keyboard navigation (ArrowUp/ArrowDown move, ArrowLeft/ArrowRight collapse/expand, Enter
+ * selects).
  */
 export function TreeNode({ id, label, children, disabled = false, testId }: TreeNodeProps) {
   const tree = useTreeState();
@@ -121,6 +173,7 @@ export function TreeNode({ id, label, children, disabled = false, testId }: Tree
         role="treeitem"
         aria-expanded={hasChildren ? isExpanded : undefined}
         aria-selected={selectable ? isSelected : undefined}
+        aria-current={tree.navigation === true && isSelected ? "page" : undefined}
         aria-disabled={disabled || undefined}
         tabIndex={disabled ? undefined : -1}
         data-testid={testId}
@@ -143,10 +196,18 @@ export function TreeNode({ id, label, children, disabled = false, testId }: Tree
           disabled ? "text-muted-foreground" : "cursor-pointer select-none",
           isSelected
             ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-            : !disabled && "hover:bg-accent/60",
+            : !disabled && "hover:bg-sidebar-accent/60",
         )}
-        style={{ paddingLeft: 8 + depth * TREE_INDENT }}
+        style={{ paddingLeft: TREE_INSET + depth * TREE_INDENT }}
       >
+        {Array.from({ length: depth }, (_, level) => (
+          <span
+            key={level}
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 w-px bg-border"
+            style={{ left: TREE_INSET + level * TREE_INDENT + GUIDE_OFFSET }}
+          />
+        ))}
         {isSelected && <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r bg-primary" />}
         {hasChildren
           ? (

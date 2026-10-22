@@ -12,7 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLocalStorageState, useUrlSeed } from "@/hooks/useLocalStorageState";
 import { DiffView } from "@/components/DiffView";
 import { cn } from "@/lib/utils";
-import { NodeLabel, TreeContext, TreeNode, type TreeState } from "@/components/Tree";
+import { NodeLabel, TreeNode, TreeRoot, type TreeState } from "@/components/Tree";
 import { isApiError } from "../../api/client";
 import { schemaChangeApi } from "../../api/endpoints";
 import type { SchemaChange, SchemaObjectCompare } from "../../api/types";
@@ -493,61 +493,59 @@ export default function SchemaChangesPage() {
             )
             : (
               <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-                <div role="tree" aria-label="Schema changes" className="rounded-lg border p-1 outline-none">
-                  <TreeContext.Provider value={treeState}>
-                    {tree.map((database) => (
-                      <TreeNode
-                        key={database.database}
-                        id={`db:${database.database}`}
-                        label={(
-                          <NodeLabel
-                            icon={<Database className="size-4" />}
-                            text={database.database}
-                            count={database.changeCount}
-                          />
-                        )}
-                      >
-                        {database.schemas.map((schema) => (
-                          <TreeNode
-                            key={schema.schema}
-                            id={`db:${database.database}/schema:${schema.schema}`}
-                            label={(
-                              <NodeLabel
-                                icon={<Folder className="size-4" />}
-                                text={schema.schema}
-                                count={schema.objects.length}
+                <TreeRoot label="Schema changes" state={treeState} className="rounded-lg border p-1">
+                  {tree.map((database) => (
+                    <TreeNode
+                      key={database.database}
+                      id={`db:${database.database}`}
+                      label={(
+                        <NodeLabel
+                          icon={<Database className="size-4" />}
+                          text={database.database}
+                          count={database.changeCount}
+                        />
+                      )}
+                    >
+                      {database.schemas.map((schema) => (
+                        <TreeNode
+                          key={schema.schema}
+                          id={`db:${database.database}/schema:${schema.schema}`}
+                          label={(
+                            <NodeLabel
+                              icon={<Folder className="size-4" />}
+                              text={schema.schema}
+                              count={schema.objects.length}
+                            />
+                          )}
+                        >
+                          {schema.objects.map((object) => {
+                            const kind = dominantChange(object.history);
+                            const Icon = changeMeta[kind].icon;
+                            return (
+                              <TreeNode
+                                key={object.key}
+                                id={`${database.database}/${object.key}`}
+                                label={(
+                                  <>
+                                    <span className={cn("inline-flex shrink-0", changeMeta[kind].tone)}>
+                                      <Icon className="size-4" />
+                                    </span>
+                                    <span className="min-w-0 flex-1 truncate font-mono text-[12px]">
+                                      {object.name}
+                                    </span>
+                                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                                      <RelativeTime value={object.history[0].occurredUtc} />
+                                    </span>
+                                  </>
+                                )}
                               />
-                            )}
-                          >
-                            {schema.objects.map((object) => {
-                              const kind = dominantChange(object.history);
-                              const Icon = changeMeta[kind].icon;
-                              return (
-                                <TreeNode
-                                  key={object.key}
-                                  id={`${database.database}/${object.key}`}
-                                  label={(
-                                    <>
-                                      <span className={cn("inline-flex shrink-0", changeMeta[kind].tone)}>
-                                        <Icon className="size-4" />
-                                      </span>
-                                      <span className="min-w-0 flex-1 truncate font-mono text-[12px]">
-                                        {object.name}
-                                      </span>
-                                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                                        <RelativeTime value={object.history[0].occurredUtc} />
-                                      </span>
-                                    </>
-                                  )}
-                                />
-                              );
-                            })}
-                          </TreeNode>
-                        ))}
-                      </TreeNode>
-                    ))}
-                  </TreeContext.Provider>
-                </div>
+                            );
+                          })}
+                        </TreeNode>
+                      ))}
+                    </TreeNode>
+                  ))}
+                </TreeRoot>
 
                 {selected === null
                   ? (

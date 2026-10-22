@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type FocusEvent } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { BookOpen, CircleAlert, Database, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { NodeLabel, TreeContext, TreeNode, type TreeState } from "@/components/Tree";
+import { NodeLabel, TreeNode, TreeRoot, type TreeState } from "@/components/Tree";
 import { useLocalStorageState } from "@/hooks/useLocalStorageState";
 import { semanticLayerApi } from "../../api/endpoints";
 import type { SemanticObjectCoverage, SemanticSchemaCoverage } from "../../api/types";
@@ -170,14 +170,6 @@ export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | 
     },
   };
 
-  const onTreeFocus = (event: FocusEvent<HTMLDivElement>) => {
-    if (event.target !== event.currentTarget) {
-      return;
-    }
-    const rows = [...event.currentTarget.querySelectorAll<HTMLElement>("[data-tree-row]")];
-    (rows.find((row) => row.dataset.id === treeState.selectedId) ?? rows[0])?.focus();
-  };
-
   return (
     <div className="flex flex-col gap-3" data-testid="semantic-tree">
       <Input
@@ -215,70 +207,68 @@ export function SemanticTree({ selectedKey, onSelect }: { selectedKey: string | 
       )}
 
       {schemas.data !== undefined && (
-        <div role="tree" aria-label="Tables an AI context can open" tabIndex={0} onFocus={onTreeFocus} className="outline-none">
-          <TreeContext.Provider value={treeState}>
-            {searching && (
-              <>
-                {matches.isPending && <TreeNode id="matches#loading" disabled label={<NodeLabel text="Searching…" />} />}
-                {matches.isError && (
-                  <TreeNode id="matches#error" disabled label={<NodeLabel text={errorText(matches.error)} />} />
-                )}
-                {matches.data?.items.length === 0 && (
-                  <TreeNode id="matches#empty" disabled label={<NodeLabel text={`No table matches "${term}".`} />} />
-                )}
-                {matches.data?.items.map((row) => <ObjectLeaf key={row.key} row={row} />)}
-              </>
-            )}
+        <TreeRoot label="Tables an AI context can open" state={treeState}>
+          {searching && (
+            <>
+              {matches.isPending && <TreeNode id="matches#loading" disabled label={<NodeLabel text="Searching…" />} />}
+              {matches.isError && (
+                <TreeNode id="matches#error" disabled label={<NodeLabel text={errorText(matches.error)} />} />
+              )}
+              {matches.data?.items.length === 0 && (
+                <TreeNode id="matches#empty" disabled label={<NodeLabel text={`No table matches "${term}".`} />} />
+              )}
+              {matches.data?.items.map((row) => <ObjectLeaf key={row.key} row={row} />)}
+            </>
+          )}
 
-            {!searching && databases.length === 0 && (
+          {!searching && databases.length === 0 && (
+            <TreeNode
+              id="dbs#empty"
+              disabled
+              label={<NodeLabel text={layerOnly ? "No approved AI context serves a table yet" : "No object has catalogued columns yet"} />}
+            />
+          )}
+          {!searching && databases.map((database) => {
+            const databaseId = databaseNodeId(database.database);
+            return (
               <TreeNode
-                id="dbs#empty"
-                disabled
-                label={<NodeLabel text={layerOnly ? "No approved AI context serves a table yet" : "No object has catalogued columns yet"} />}
-              />
-            )}
-            {!searching && databases.map((database) => {
-              const databaseId = databaseNodeId(database.database);
-              return (
-                <TreeNode
-                  key={databaseId}
-                  id={databaseId}
-                  label={(
-                    <NodeLabel
-                      icon={<Database className="size-4" />}
-                      text={database.database ?? UNRESOLVED_LABEL}
-                      badge={`${database.layerObjectCount}/${database.objectCount}`}
-                    />
-                  )}
-                >
-                  {database.schemas.map((schema) => {
-                    const schemaId = schemaNodeId(database.database, schema.schema);
-                    return (
-                      <TreeNode
-                        key={schemaId}
-                        id={schemaId}
-                        label={(
-                          <NodeLabel
-                            icon={<BookOpen className="size-4" />}
-                            text={schema.schema ?? UNRESOLVED_LABEL}
-                            badge={`${schema.layerObjectCount}/${schema.objectCount}`}
-                          />
-                        )}
-                      >
-                        <ObjectLeaves
-                          parentId={schemaId}
-                          database={database.database}
-                          schema={schema.schema}
-                          layerOnly={layerOnly}
+                key={databaseId}
+                id={databaseId}
+                label={(
+                  <NodeLabel
+                    icon={<Database className="size-4" />}
+                    text={database.database ?? UNRESOLVED_LABEL}
+                    badge={`${database.layerObjectCount}/${database.objectCount}`}
+                  />
+                )}
+              >
+                {database.schemas.map((schema) => {
+                  const schemaId = schemaNodeId(database.database, schema.schema);
+                  return (
+                    <TreeNode
+                      key={schemaId}
+                      id={schemaId}
+                      label={(
+                        <NodeLabel
+                          icon={<BookOpen className="size-4" />}
+                          text={schema.schema ?? UNRESOLVED_LABEL}
+                          badge={`${schema.layerObjectCount}/${schema.objectCount}`}
                         />
-                      </TreeNode>
-                    );
-                  })}
-                </TreeNode>
-              );
-            })}
-          </TreeContext.Provider>
-        </div>
+                      )}
+                    >
+                      <ObjectLeaves
+                        parentId={schemaId}
+                        database={database.database}
+                        schema={schema.schema}
+                        layerOnly={layerOnly}
+                      />
+                    </TreeNode>
+                  );
+                })}
+              </TreeNode>
+            );
+          })}
+        </TreeRoot>
       )}
     </div>
   );

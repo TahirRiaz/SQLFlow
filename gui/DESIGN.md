@@ -156,14 +156,15 @@ with the graph's chunk, after ours, and wins.
 ## 4. Typography
 
 - Sans: `Inter Variable` (UI text, labels, prose). Mono: `JetBrains Mono Variable` (data).
-- Base size **13px** (set on `body`). Scale: 11px (`text-[11px]`) chrome captions and uppercase group
-  headers, 12px (`text-xs`) secondary/table meta, 13px body and controls, 14px (`text-sm`) emphasized
-  body, 16px (`text-base`) section titles, 18px (`text-lg`) page titles, 24px (`text-2xl`) KPI values.
+- Base size **13px** (set on `body`). Scale: 11px (`text-[11px]`) chrome captions and uppercase panel
+  headers, 12px (`text-xs`) secondary/table meta, 13px body, controls and tree rows (a branch's name
+  included, never smaller than its leaves), 14px (`text-sm`) emphasized body, 16px (`text-base`) section
+  titles, 18px (`text-lg`) page titles, 24px (`text-2xl`) KPI values.
 - Page titles `font-semibold`; section titles `font-medium`; never `font-bold` in body content.
 - Mono applies to: ids, hashes, row counts, durations, timestamps, schema/object/flow names, file paths,
   SQL, YAML, connection strings. Aligned numeric columns also get `tabular-nums`.
 - Uppercase (`uppercase tracking-wider text-[11px] font-medium text-muted-foreground`) is reserved for
-  chrome group headers (side bar sections, panel titles), never for data or buttons.
+  chrome panel titles, never for data, buttons, or the side bar's menu, whose groups are tree branches.
 
 ## 5. Spacing, density, and shape
 
@@ -211,20 +212,21 @@ Fixed viewport frame, no page scroll; only the editor area and panel scroll inte
   the active group toggles the side bar. Tooltips on the right.
 - **Side bar** (resizable 12-35%, persisted): the global search first (`SearchInput`, testid
   `global-search`, Enter navigates to `/search?q=`), pinned above the scroll area on its own hairline so a
-  long nav never scrolls it away; then all nav groups as collapsible sections (uppercase 11px headers),
-  items 28px tall with 16px lucide icons, nav testids preserved (`nav-runs`, ...). A group whose entries
-  are of more than one sort (a module's group) declares sections: each is labelled under the group's
-  header in 11px sentence case, muted, aligned with the entries' icons, with a 12px chevron after the
-  label, and collapses on its own like a group. Which groups and sections are collapsed is kept in the
-  browser (`sqlflow.workbench.sections`, a section as `group/section`), so folding a group and opening it
-  again shows its sections as they were left; before the browser keeps any, the menu starts expanded, or
-  every group and section collapsed when a module asks (`GuiModule.sideBar.menuCollapsedOnFirstVisit`).
-  Entries of no section come first, unlabelled and never folded. SQLFlow's own groups declare none.
-  Selection follows the
-  longest-prefix rule over each entry's path and the paths it owns (a page reached from the entry rather
-  than from the menu, such as a builder opened from its list, lights that entry); selected item gets
-  `bg-sidebar-accent` plus a 2px accent inset. The mobile nav sheet renders the same search over the same
-  sections. Open or closed is the person's choice, kept in the browser (`sqlflow.workbench.sidebar`); before
+  long nav never scrolls it away; then the menu, one tree on the workbench's tree primitives (section
+  7.2a, tree label `Pages`): each nav group a top-level branch named in 13px `font-semibold`, its entries
+  leaves under it with their 16px lucide icons, nav testids preserved (`nav-runs`, ...) on the rows. A
+  group whose entries are of more than one sort (a module's group) declares sections: each is a branch
+  under the group, named in 13px `font-medium`, with the entries under it as leaves, and folds on its own
+  like a group. Which groups and sections are collapsed is kept in the browser
+  (`sqlflow.workbench.sections`, a section as `group/section`), so folding a group and opening it again
+  shows its sections as they were left; before the browser keeps any, the menu starts expanded, or every
+  group and section collapsed when a module asks (`GuiModule.sideBar.menuCollapsedOnFirstVisit`).
+  Entries of no section come first, straight under the group. SQLFlow's own groups declare none.
+  Selection follows the longest-prefix rule over each entry's path and the paths it owns (a page reached
+  from the entry rather than from the menu, such as a builder opened from its list, lights that entry);
+  the selected entry is the tree's selected row, announced as the current page (`aria-current="page"`).
+  The mobile nav sheet renders the same search over the same tree. Open or closed is the person's choice,
+  kept in the browser (`sqlflow.workbench.sidebar`); before
   they have made one, the side bar starts open, or closed when a module asks
   (`GuiModule.sideBar.closedOnFirstVisit`), with the activity bar beside it to open it.
 - **Tab strip** (`h-[35px]`, `bg-tab-bar`): one tab per visited route; active tab wears `bg-tab-active`,
@@ -286,6 +288,19 @@ rows; hairline row separators; hover `bg-accent/50` on clickable rows; multi-lev
 chevrons (a `levels` list, each an independently expandable node level above the leaf rows, e.g. the Runs
 board's schedule -> batch -> step); skeleton rows while loading; `EmptyState` inside when empty; numeric
 columns right-aligned mono tabular; status columns render `StatusBadge`.
+
+### 7.2a Trees
+
+Every tree (the side bar's menu, the catalog, schema changes, a repository's folders, the AI context
+tables, a module's own) is built on `components/Tree.tsx`, never on rows of its own. `TreeRoot` is the
+`role="tree"` root and the tree's one tab stop: focus arriving from outside goes to the selected row, or
+the first; focus coming back from a row (Shift+Tab) stays on the root, so the next Shift+Tab leaves.
+`TreeNode` is a 28px row of 13px text, indented 14px per level from an 8px inset, with a 16px chevron
+leading a branch (a leaf keeps the space, so siblings align) and a 1px `bg-border` guide under each
+ancestor's chevron, which joins from row to row down the branch. Hover is `bg-sidebar-accent/60`; the
+selected row is `bg-sidebar-accent font-medium` with a 2px primary inset. ArrowUp/ArrowDown move,
+ArrowRight opens a branch then steps into it, ArrowLeft folds it then steps to the parent, Enter
+selects. A navigation tree (`TreeState.navigation`) announces its selected row as the current page.
 
 ### 7.3 StatusBadge
 
