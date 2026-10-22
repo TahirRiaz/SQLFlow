@@ -1,8 +1,9 @@
 namespace SqlFlow.SourceControl;
 
-/// <summary>Resolved git credentials for an HTTPS remote: a username plus a secret (a BitBucket app password or
-/// a GitHub personal access token). Already expanded from their <c>${...}</c> references, so this type is only
-/// ever held in memory for the duration of a push.</summary>
+/// <summary>Resolved git credentials for an HTTPS remote: a username plus a secret (a BitBucket app password, a
+/// GitHub token, or a GitHub App installation token from a <c>${githubapp:...}</c> reference). Already expanded from
+/// their <c>${...}</c> references, so this type is only ever held in memory for the duration of a push, and
+/// <see cref="ToString"/> never shows the secret.</summary>
 public sealed record GitCredentials
 {
     /// <summary>The git username. BitBucket needs the account username; GitHub accepts any non-empty value
@@ -10,6 +11,8 @@ public sealed record GitCredentials
     public string? Username { get; init; }
 
     public required string Secret { get; init; }
+
+    public override string ToString() => $"GitCredentials {{ Username = {Username ?? "(default)"}, Secret = [redacted] }}";
 }
 
 /// <summary>The static configuration of a source-control git working tree: where it lives, its remote and

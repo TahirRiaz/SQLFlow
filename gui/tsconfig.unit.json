@@ -20,6 +20,7 @@
     "src/features/chat/answerSql.ts",
     "src/features/chat/queryResultPlan.ts",
     "src/features/nodes/scalingMode.ts",
+    "src/features/repos/gitCredential.ts",
     "src/api/types.ts",
     "src/layout/workbench/sideBarStart.ts"
   ]

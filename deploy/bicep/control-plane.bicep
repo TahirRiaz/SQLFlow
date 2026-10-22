@@ -56,6 +56,12 @@ param gitTokenSecretName string = ''
 @description('Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone.')
 param gitUsername string = ''
 
+@description('The client ID of the GitHub App managed sync reads private GitHub repositories with, before the git token (docs/reference/guides/github-app.md). Empty uses no App.')
+param githubAppId string = ''
+
+@description('Key Vault secret name holding the GitHub App\'s private key (its .pem). Set with githubAppId.')
+param githubAppKeySecretName string = ''
+
 @description('CIDRs of the ingress hops to trust for X-Forwarded-* headers. Leave empty to keep proxy trust off; per-client rate limiting then keys on the ingress hop address instead of the real client.')
 param proxyKnownNetworks array = []
 
@@ -175,6 +181,14 @@ var gitTokenSecrets = empty(gitTokenSecretName) ? [] : [
   }
 ]
 
+var githubAppKeySecrets = empty(githubAppKeySecretName) ? [] : [
+  {
+    name: 'github-app-private-key'
+    keyVaultUrl: '${vaultUri}secrets/${githubAppKeySecretName}'
+    identity: identity.id
+  }
+]
+
 var reportExtractionEnabled = !empty(reportExtractionEndpoint) && !empty(reportExtractionKeySecretName)
 
 var reportExtractionSecrets = !reportExtractionEnabled ? [] : [
@@ -266,6 +280,21 @@ var gitUsernameEnv = empty(gitUsername) ? [] : [
   }
 ]
 
+var githubAppEnv = concat(
+  empty(githubAppId) ? [] : [
+    {
+      name: 'SQLFLOW_GITHUB_APP_ID'
+      value: githubAppId
+    }
+  ],
+  empty(githubAppKeySecretName) ? [] : [
+    {
+      name: 'SQLFLOW_GITHUB_APP_PRIVATE_KEY'
+      secretRef: 'github-app-private-key'
+    }
+  ]
+)
+
 var corsEnv = [for (origin, i) in corsAllowedOrigins: {
   name: 'ControlPlane__Cors__AllowedOrigins__${i}'
   value: origin
@@ -356,7 +385,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           identity: identity.id
         }
       ]
-      secrets: concat(baseSecrets, bootstrapSecrets, gitTokenSecrets, reportExtractionSecrets)
+      secrets: concat(baseSecrets, bootstrapSecrets, gitTokenSecrets, githubAppKeySecrets, reportExtractionSecrets)
     }
     template: {
       containers: [
@@ -367,7 +396,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json('0.5')
             memory: '1.0Gi'
           }
-          env: concat(baseEnv, bootstrapEnv, gitTokenEnv, gitUsernameEnv, corsEnv, proxyEnv, entraEnv, assistantEnv, reportExtractionEnv)
+          env: concat(baseEnv, bootstrapEnv, gitTokenEnv, gitUsernameEnv, githubAppEnv, corsEnv, proxyEnv, entraEnv, assistantEnv, reportExtractionEnv)
           probes: [
             {
               type: 'Liveness'

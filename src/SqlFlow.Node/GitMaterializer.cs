@@ -2,12 +2,54 @@
 using LibGit2Sharp;
 using LibGit2Sharp.Handlers;
 using SqlFlow.Core.Secrets;
+using SqlFlow.SourceControl.GitHub;
 
 namespace SqlFlow.Node;
 
-/// <summary>Optional git credentials for cloning a private remote: a username plus a secret (a GitHub PAT or a
-/// BitBucket app password). A node resolves these from its own environment; they live in memory only for the clone.</summary>
-public sealed record GitMaterializerCredentials(string? Username, string Secret);
+/// <summary>Optional git credentials for cloning a private remote: a username plus a secret (a GitHub App installation
+/// token, a GitHub token, or a BitBucket app password). A node resolves these itself; they live in memory only for the
+/// operation, and <see cref="ToString"/> never shows the secret.</summary>
+public sealed record GitMaterializerCredentials(string? Username, string Secret)
+{
+    public override string ToString() => $"GitMaterializerCredentials {{ Username = {Username ?? "(default)"}, Secret = [redacted] }}";
+}
+
+/// <summary>What a git operation does with a remote. It decides the permissions a GitHub App token is narrowed to, so
+/// a token minted for a sync can never push.</summary>
+public enum GitAccess
+{
+    /// <summary>Clone, fetch, list branches, read history: the repository's contents, read.</summary>
+    Read,
+
+    /// <summary>Push a branch (and remove it again) and open a pull request from it: contents and pull requests, write.</summary>
+    Write,
+}
+
+/// <summary>Where a git operation's credential comes from.</summary>
+public enum GitCredentialKind
+{
+    /// <summary>No credential: a public remote, or a local folder.</summary>
+    None,
+
+    /// <summary>The source's own reference to a token or password (<c>${keyvault:...}</c>, <c>${env:...}</c>).</summary>
+    Reference,
+
+    /// <summary>A GitHub App installation token: the source's <c>${githubapp:...}</c> reference, or the host's App.</summary>
+    GitHubApp,
+
+    /// <summary>The host's <c>SQLFLOW_GIT_TOKEN</c>.</summary>
+    HostToken,
+}
+
+/// <summary>
+/// The credential a remote is read or written with, as configured, before anything is resolved: what kind it is,
+/// whether it is the host's (rather than the source's own), and in words what it is. <see cref="Problem"/> says why
+/// the configuration cannot be used, when it cannot. Holds no secret.
+/// </summary>
+public sealed record GitCredentialPlan(GitCredentialKind Kind, bool FromHost, string Summary, string? Problem);
+
+/// <summary>A resolved git credential (null for none), and in words where it came from. <see cref="ToString"/> never shows the secret.</summary>
+public sealed record GitCredentialResolution(GitMaterializerCredentials? Credentials, GitCredentialKind Kind, bool FromHost, string Summary);
 
 /// <summary>A branch materialized for a sync: the commit folder it is checked out in, the commit at the branch's tip,
 /// and whether that folder already held the commit (nothing was cloned).</summary>
@@ -75,16 +117,7 @@ public sealed class GitMaterializer
         ArgumentException.ThrowIfNullOrWhiteSpace(remoteUrl);
         ct.ThrowIfCancellationRequested();
 
-        string sha;
-        try
-        {
-            sha = ResolveBranchTip(remoteUrl, branch, credentials);
-        }
-        catch (Exception ex) when (ex is LibGit2SharpException or IOException or UnauthorizedAccessException)
-        {
-            throw new SqlFlowNodeException($"could not read the tip of '{remoteUrl}' (branch '{branch}'): {ex.Message}", ex);
-        }
-
+        var sha = ReadBranchTip(remoteUrl, branch, credentials);
         SweepAbandoned(Path.Combine(_cacheRoot, StableFolder(remoteUrl)), DateTime.UtcNow);
         var (workingDir, reused) = MaterializeCommit(remoteUrl, sha, credentials, ct);
         return new BranchCheckout(workingDir, sha, reused);
@@ -148,7 +181,7 @@ public sealed class GitMaterializer
             {
                 // Wrap the cause (a clone error, or a filesystem error) with context so the run records what could
                 // not be materialized instead of a bare "Directory not empty" / "objects/pack" message.
-                throw new SqlFlowNodeException($"could not materialize '{remoteUrl}' at '{commitSha}': {ex.Message}", ex);
+                throw new SqlFlowNodeException($"could not materialize '{remoteUrl}' at '{commitSha}': {Reason(ex, credentials)}", ex);
             }
             finally
             {
@@ -237,7 +270,7 @@ public sealed class GitMaterializer
             }
             catch (Exception ex) when (ex is LibGit2SharpException or IOException or UnauthorizedAccessException)
             {
-                throw new SqlFlowNodeException($"could not read the history of '{remoteUrl}': {ex.Message}", ex);
+                throw new SqlFlowNodeException($"could not read the history of '{remoteUrl}': {Reason(ex, credentials)}", ex);
             }
         }
     }
@@ -380,6 +413,25 @@ public sealed class GitMaterializer
 
     /// <summary>
     /// The commit at the tip of <paramref name="branch"/> on <paramref name="remoteUrl"/>, read with a
+    /// <c>git ls-remote</c>: nothing is cloned and nothing is written, so it is also how a remote and its credential are
+    /// checked before a source is registered. A blank branch follows the remote's HEAD.
+    /// </summary>
+    /// <exception cref="SqlFlowNodeException">The remote could not be read, or has no such branch.</exception>
+    public static string ReadBranchTip(string remoteUrl, string branch, GitMaterializerCredentials? credentials)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(remoteUrl);
+        try
+        {
+            return ResolveBranchTip(remoteUrl, branch, credentials);
+        }
+        catch (Exception ex) when (ex is LibGit2SharpException or IOException or UnauthorizedAccessException)
+        {
+            throw new SqlFlowNodeException($"could not read the tip of '{remoteUrl}' (branch '{branch}'): {Reason(ex, credentials)}", ex);
+        }
+    }
+
+    /// <summary>
+    /// The commit at the tip of <paramref name="branch"/> on <paramref name="remoteUrl"/>, read with a
     /// <c>git ls-remote</c>, so nothing is cloned to learn it. A blank branch follows the remote's HEAD.
     /// </summary>
     private static string ResolveBranchTip(string remoteUrl, string branch, GitMaterializerCredentials? credentials)
@@ -491,42 +543,193 @@ public sealed class GitMaterializer
         }
     }
 
-    /// <summary>Resolves git credentials from the host's own environment (edge resolution): a token in
-    /// <c>SQLFLOW_GIT_TOKEN</c> (with an optional <c>SQLFLOW_GIT_USERNAME</c>), or null when unset - which covers
-    /// public and local-path remotes. The token never travels through the control plane or the queue.</summary>
-    public static GitMaterializerCredentials? CredentialsFromEnvironment()
+    /// <summary>The host's git token, used for a source that names no credential and a remote the host's GitHub App does not serve.</summary>
+    public const string HostTokenVariable = "SQLFLOW_GIT_TOKEN";
+
+    /// <summary>The user name the host's git token signs in with (Bitbucket needs one; GitHub takes the token alone).</summary>
+    public const string HostTokenUsernameVariable = "SQLFLOW_GIT_USERNAME";
+
+    /// <summary>
+    /// Resolves the credential of one git operation on <paramref name="remoteUrl"/> and returns it alone; see
+    /// <see cref="ResolveCredentialAsync(ISecretResolver, string?, string?, string?, GitAccess, CancellationToken)"/>.
+    /// </summary>
+    public static async Task<GitMaterializerCredentials?> ResolveCredentialsAsync(
+        ISecretResolver resolver, string? credentialReference, string? username, string? remoteUrl, GitAccess access,
+        CancellationToken ct = default)
+        => (await ResolveCredentialAsync(resolver, credentialReference, username, remoteUrl, access, ct).ConfigureAwait(false)).Credentials;
+
+    /// <summary>
+    /// Resolves the credential of one git operation (<paramref name="access"/>) on <paramref name="remoteUrl"/>. This is
+    /// the one credential path of every git operation: the control plane's managed sync, discovery, tree and history
+    /// reads and proposals, and a node materializing a pinned commit. The secret lives in memory only for the operation.
+    /// <list type="number">
+    /// <item>A source naming a credential reference uses it: a <c>${keyvault:...}</c> or <c>${env:...}</c> reference to a
+    /// token, or a <c>${githubapp:...}</c> reference, which mints a GitHub App installation token narrowed to the source's
+    /// repository and to what the operation needs (unless the reference names those itself).</item>
+    /// <item>A source naming none uses the host's GitHub App (<c>SQLFLOW_GITHUB_APP_*</c>) for a remote on the App's
+    /// GitHub, with a token narrowed the same way; where the App is not installed on the repository, it goes on to</item>
+    /// <item>the host's <c>SQLFLOW_GIT_TOKEN</c> (with <c>SQLFLOW_GIT_USERNAME</c>), and otherwise to no credential, which
+    /// serves a public remote and a local folder.</item>
+    /// </list>
+    /// </summary>
+    /// <exception cref="GitHubAppException">The source's GitHub App reference or the host's App configuration cannot be
+    /// used, or GitHub refused the App; the message says what to change.</exception>
+    /// <exception cref="SqlFlowNodeException">The reference resolved to an empty value.</exception>
+    public static Task<GitCredentialResolution> ResolveCredentialAsync(
+        ISecretResolver resolver, string? credentialReference, string? username, string? remoteUrl, GitAccess access,
+        CancellationToken ct = default)
+        => ResolveCredentialAsync(resolver, credentialReference, username, remoteUrl, access, Environment.GetEnvironmentVariable, ct);
+
+    internal static async Task<GitCredentialResolution> ResolveCredentialAsync(
+        ISecretResolver resolver, string? credentialReference, string? username, string? remoteUrl, GitAccess access,
+        Func<string, string?> environment, CancellationToken ct)
     {
-        var token = Environment.GetEnvironmentVariable("SQLFLOW_GIT_TOKEN");
-        return string.IsNullOrWhiteSpace(token)
-            ? null
-            : new GitMaterializerCredentials(Environment.GetEnvironmentVariable("SQLFLOW_GIT_USERNAME"), token);
+        ArgumentNullException.ThrowIfNull(resolver);
+        ArgumentNullException.ThrowIfNull(environment);
+        var permissions = PermissionsFor(access);
+
+        if (!string.IsNullOrWhiteSpace(credentialReference))
+        {
+            var reference = credentialReference.Trim();
+            var isApp = GitHubAppReference.IsReference(reference);
+            var resolvable = isApp ? GitHubAppReference.ForRemote(reference, remoteUrl, permissions, GitHubAppEnvironment.Read(environment)) : reference;
+            var secret = await resolver.ResolveAsync(resolvable, ct).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                throw new SqlFlowNodeException(
+                    $"the git credential reference '{reference}' resolved to an empty value; create the secret in the vault it points to.");
+            }
+
+            // An installation token signs in as x-access-token whatever user name the source carries.
+            return isApp
+                ? new GitCredentialResolution(
+                    new GitMaterializerCredentials(null, secret), GitCredentialKind.GitHubApp, FromHost: false,
+                    $"the GitHub App the source's reference {reference} names, with a token for {GitHubAppReference.Narrowing(resolvable)}")
+                : new GitCredentialResolution(
+                    new GitMaterializerCredentials(string.IsNullOrWhiteSpace(username) ? null : username.Trim(), secret),
+                    GitCredentialKind.Reference, FromHost: false, $"the token the source's reference {reference} names");
+        }
+
+        var settings = GitHubAppEnvironment.Read(environment);
+        string? notInstalled = null;
+        if (settings.App is { } app && GitHubAppReference.RepositoryOn(settings.ApiRoot, remoteUrl) is { } repository)
+        {
+            try
+            {
+                var token = await resolver
+                    .ResolveAsync(GitHubAppReference.ForRepository(repository, permissions), ct)
+                    .ConfigureAwait(false);
+                return new GitCredentialResolution(
+                    new GitMaterializerCredentials(null, token), GitCredentialKind.GitHubApp, FromHost: true,
+                    $"this host's GitHub App {app.AppId}, with a token for {repository} ({GitHubAppPermissions.Format(permissions)})");
+            }
+            catch (GitHubAppNotInstalledException ex)
+            {
+                // A repository the App does not reach (a public one, or one served by the host token) is read the way it
+                // was before the App: the reason is kept, so a failure further on says why no App token was used.
+                notInstalled = ex.Message;
+            }
+        }
+
+        var hostToken = environment(HostTokenVariable);
+        if (!string.IsNullOrWhiteSpace(hostToken))
+        {
+            var hostUser = environment(HostTokenUsernameVariable);
+            return new GitCredentialResolution(
+                new GitMaterializerCredentials(string.IsNullOrWhiteSpace(hostUser) ? null : hostUser.Trim(), hostToken.Trim()),
+                GitCredentialKind.HostToken, FromHost: true,
+                notInstalled is null ? $"this host's {HostTokenVariable}" : $"this host's {HostTokenVariable}, because {notInstalled}");
+        }
+
+        return new GitCredentialResolution(
+            null, GitCredentialKind.None, FromHost: false,
+            notInstalled is null ? "no credential" : $"no credential, because {notInstalled}");
     }
 
     /// <summary>
-    /// Resolves the git credential for a clone from a stored <c>${scheme:locator}</c> reference (a Key Vault or
-    /// environment reference held on the repo source; the secret value itself is created and maintained in the vault,
-    /// never stored in the catalog). A blank reference falls back to <see cref="CredentialsFromEnvironment"/>, which
-    /// covers public remotes and the single-credential deployment. The resolved secret lives in memory only for the
-    /// clone. This is the one credential-resolution path shared by the control plane's managed sync and a compute
-    /// node materializing a pinned commit.
+    /// What a source's credential is, as configured, for a page that shows it: nothing is resolved and nothing is asked
+    /// of GitHub, and no secret is read. It follows the same order as <see cref="ResolveCredentialAsync(ISecretResolver, string?, string?, string?, GitAccess, CancellationToken)"/>.
     /// </summary>
-    public static async Task<GitMaterializerCredentials?> ResolveCredentialsAsync(
-        ISecretResolver resolver, string? credentialReference, string? username, CancellationToken ct = default)
+    public static GitCredentialPlan DescribeCredential(string? credentialReference, string? remoteUrl)
+        => DescribeCredential(credentialReference, remoteUrl, Environment.GetEnvironmentVariable);
+
+    internal static GitCredentialPlan DescribeCredential(string? credentialReference, string? remoteUrl, Func<string, string?> environment)
     {
-        ArgumentNullException.ThrowIfNull(resolver);
-        if (string.IsNullOrWhiteSpace(credentialReference))
+        ArgumentNullException.ThrowIfNull(environment);
+        if (string.IsNullOrWhiteSpace(remoteUrl))
         {
-            return CredentialsFromEnvironment();
+            return new GitCredentialPlan(GitCredentialKind.None, FromHost: false, "no credential (a local folder)", null);
         }
 
-        var secret = await resolver.ResolveAsync(credentialReference, ct).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(secret))
+        if (!string.IsNullOrWhiteSpace(credentialReference))
         {
-            throw new SqlFlowNodeException(
-                $"the git credential reference '{credentialReference}' resolved to an empty value; create the secret in the vault it points to.");
+            var reference = credentialReference.Trim();
+            if (!GitHubAppReference.IsReference(reference))
+            {
+                return new GitCredentialPlan(
+                    GitCredentialKind.Reference, FromHost: false, $"the token the source's reference {reference} names", null);
+            }
+
+            try
+            {
+                var completed = GitHubAppReference.ForRemote(reference, remoteUrl, GitHubAppPermissions.ReadContents, GitHubAppEnvironment.Read(environment));
+                return new GitCredentialPlan(
+                    GitCredentialKind.GitHubApp, FromHost: false,
+                    $"the GitHub App the source's reference names, with a token for {GitHubAppReference.Narrowing(completed)}", null);
+            }
+            catch (GitHubAppException ex)
+            {
+                return new GitCredentialPlan(GitCredentialKind.GitHubApp, FromHost: false, $"the GitHub App reference {reference}", ex.Message);
+            }
         }
 
-        return new GitMaterializerCredentials(string.IsNullOrWhiteSpace(username) ? null : username, secret);
+        GitHubAppSettings settings;
+        try
+        {
+            settings = GitHubAppEnvironment.Read(environment);
+        }
+        catch (GitHubAppException ex)
+        {
+            return new GitCredentialPlan(GitCredentialKind.GitHubApp, FromHost: true, "this host's GitHub App", ex.Message);
+        }
+
+        var hostToken = !string.IsNullOrWhiteSpace(environment(HostTokenVariable));
+        if (settings.App is { } app && GitHubAppReference.RepositoryOn(settings.ApiRoot, remoteUrl) is { } repository)
+        {
+            return new GitCredentialPlan(
+                GitCredentialKind.GitHubApp, FromHost: true,
+                hostToken
+                    ? $"this host's GitHub App {app.AppId}, with a token for {repository} (or {HostTokenVariable} where the App is not installed)"
+                    : $"this host's GitHub App {app.AppId}, with a token for {repository} (or none where the App is not installed)",
+                null);
+        }
+
+        return hostToken
+            ? new GitCredentialPlan(GitCredentialKind.HostToken, FromHost: true, $"this host's {HostTokenVariable}", null)
+            : new GitCredentialPlan(GitCredentialKind.None, FromHost: false, "no credential (a public remote)", null);
+    }
+
+    private static IReadOnlyDictionary<string, string> PermissionsFor(GitAccess access)
+        => access == GitAccess.Write ? GitHubAppPermissions.ProposeChanges : GitHubAppPermissions.ReadContents;
+
+    /// <summary>
+    /// A git failure's message, saying what to do when the remote asked for a credential and the operation had none: git
+    /// itself says only "authentication replays" or "no callback set", which names neither the cause nor the remedy.
+    /// </summary>
+    internal static string Reason(Exception ex, GitMaterializerCredentials? credentials)
+    {
+        var message = ex.Message;
+        if (credentials is null && ex is LibGit2SharpException
+            && (message.Contains("authentication", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("credential", StringComparison.OrdinalIgnoreCase)
+                || message.Contains(" 401", StringComparison.Ordinal)
+                || message.Contains(" 403", StringComparison.Ordinal)))
+        {
+            return message + $" (the remote asked for a credential and none was given: name one on the source, install this host's "
+                + $"GitHub App on the repository, or set {HostTokenVariable})";
+        }
+
+        return message;
     }
 
     private static CredentialsHandler? CredentialsProvider(GitMaterializerCredentials? credentials)

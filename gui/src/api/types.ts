@@ -1042,10 +1042,15 @@ export interface RepoSource {
   lastSyncUtc: string | null;
   lastSyncedSha: string | null;
   lastError: string | null;
-  /** A secret reference (${keyvault:...}/${env:...}) for the git token, never the token itself; null uses the host env. */
+  /**
+   * A secret reference for the git credential, never the credential itself: ${keyvault:...}/${env:...} for a token, or
+   * ${githubapp:...} for a GitHub App. Null reads with the host's credential (its GitHub App, then its token).
+   */
   credentialReference: string | null;
   /** The git username paired with the token (for Bitbucket); null uses the token-only placeholder. */
   credentialUsername: string | null;
+  /** The credential the source's git operations use, as the control plane is configured; absent from an older server. */
+  credential?: GitCredential | null;
   /** The repo-relative flow files this source does NOT import (the preview-first selection); empty imports all. */
   excludedFlowPaths: string[];
   createdUtc: string;
@@ -1099,6 +1104,78 @@ export interface DiscoveredFlow {
 
 export interface RepoSourceRegistered {
   id: string;
+}
+
+/** What a git credential is: the source's reference to a token, a GitHub App, the host's token, or none. */
+export type GitCredentialKind = "none" | "reference" | "github-app" | "host-token";
+
+/** The credential a source's git operations use, in words; never a secret. */
+export interface GitCredential {
+  kind: GitCredentialKind;
+  /** Whether the host's configuration supplies it, rather than the source's own reference. */
+  fromHost: boolean;
+  summary: string;
+  /** Why the configuration cannot be used, when it cannot. */
+  problem?: string | null;
+}
+
+/** This control plane's GitHub App, as its environment configures it (SQLFLOW_GITHUB_APP_*); never the key. */
+export interface GitHubAppHostStatus {
+  configured: boolean;
+  appId?: string | null;
+  /** Where the key is read from: a variable's name, a file's path, or a reference. */
+  keySource?: string | null;
+  apiUrl: string;
+  /** The host whose remotes the App serves (github.com). */
+  host: string;
+  problem?: string | null;
+}
+
+/** Whether this control plane has a SQLFLOW_GIT_TOKEN, and the user name it signs in with; never the token. */
+export interface HostGitTokenStatus {
+  configured: boolean;
+  username?: string | null;
+}
+
+/** The git credentials this control plane supplies to a source that names none. */
+export interface GitCredentialsStatus {
+  gitHubApp: GitHubAppHostStatus;
+  hostToken: HostGitTokenStatus;
+}
+
+export interface GitHubAppInstallation {
+  id: number;
+  account: string;
+  accountType?: string | null;
+  /** "all" or "selected". */
+  repositorySelection?: string | null;
+  suspendedUtc?: string | null;
+}
+
+/** What GitHub says about the host's App, asked as the App. */
+export interface GitHubAppCheck {
+  appId: string;
+  name: string;
+  slug: string;
+  owner?: string | null;
+  htmlUrl?: string | null;
+  installations: GitHubAppInstallation[];
+  moreInstallations: boolean;
+}
+
+/** The body to check a remote can be read, with the credential a source would name. */
+export interface CheckRepoAccessRequest {
+  remoteUrl: string;
+  branch?: string | null;
+  credentialReference?: string | null;
+  credentialUsername?: string | null;
+}
+
+/** A remote read successfully: the credential used, and the commit at the branch's tip. */
+export interface RepoAccess {
+  credential: GitCredential;
+  branch: string;
+  commitSha: string;
 }
 
 // ---- Source discovery (JSON/XML flatten formula) ----------------------------------------------------------------------

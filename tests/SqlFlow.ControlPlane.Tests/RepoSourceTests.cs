@@ -90,6 +90,13 @@ public sealed class RepoSourceTests
             Assert.False(string.IsNullOrEmpty(source.LastSyncedSha), $"the source never reported a successful sync. LastError: {source.LastError}");
             Assert.Null(source.LastError);
 
+            // The source names no credential and its remote is a local repository, which no GitHub App serves: it is
+            // read with the host's token where the host has one, and with no credential otherwise.
+            Assert.NotNull(source.Credential);
+            var hostToken = !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(SqlFlow.Node.GitMaterializer.HostTokenVariable));
+            Assert.Equal(hostToken ? "host-token" : "none", source.Credential.Kind);
+            Assert.Null(source.Credential.Problem);
+
             // The flow from git was projected into the catalog under the source's repo.
             await using var db = CatalogDatabase.Create(cs);
             Assert.True(await db.Pipelines.AsNoTracking().AnyAsync(p => p.RepoId == syncedRepoId && p.Name == flowName),
@@ -102,6 +109,9 @@ public sealed class RepoSourceTests
                 .OrderBy(e => e.Id).ToListAsync();
             Assert.NotEmpty(trace);
             Assert.Contains(trace, e => e.Step == "clone");
+
+            // The trace names the credential the sync read with, never the secret.
+            Assert.Contains(trace, e => e.Step == "credentials" && e.Message.StartsWith("Reading with ", StringComparison.Ordinal));
             Assert.True(trace[^1].Terminal);
             Assert.Equal("succeeded", trace[^1].Status);
         }

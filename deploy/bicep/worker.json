@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "14881685973492540790"
+      "templateHash": "16437012709651375233"
     }
   },
   "parameters": {
@@ -73,6 +73,20 @@
       "defaultValue": "",
       "metadata": {
         "description": "Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone."
+      }
+    },
+    "githubAppId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The client ID of the GitHub App SHA-pinned materialization reads private GitHub repositories with, before the git token (docs/reference/guides/github-app.md). Empty uses no App."
+      }
+    },
+    "githubAppKeySecretName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Key Vault secret name holding the GitHub App's private key (its .pem). Set with githubAppId."
       }
     },
     "flowEnv": {
@@ -144,9 +158,11 @@
     "vaultUri": "[format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
     "nodeTokenSecrets": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'node-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('nodeTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
     "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+    "githubAppKeySecrets": "[if(empty(parameters('githubAppKeySecretName')), createArray(), createArray(createObject('name', 'github-app-private-key', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('githubAppKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
     "nodeTokenEnv": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_TOKEN', 'secretRef', 'node-token')))]",
     "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
     "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
+    "githubAppEnv": "[concat(if(empty(parameters('githubAppId')), createArray(), createArray(createObject('name', 'SQLFLOW_GITHUB_APP_ID', 'value', parameters('githubAppId')))), if(empty(parameters('githubAppKeySecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GITHUB_APP_PRIVATE_KEY', 'secretRef', 'github-app-private-key'))))]",
     "scaleRules": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'replica-target', 'custom', createObject('type', 'metrics-api', 'metadata', createObject('url', format('{0}/api/v1/node/scale-target?pool={1}', parameters('controlPlaneUrl'), uriComponent(parameters('pool'))), 'valueLocation', 'replicas', 'targetValue', '1', 'authMode', 'bearer'), 'auth', createArray(createObject('secretRef', 'node-token', 'triggerParameter', 'token'))))))]"
   },
   "resources": [
@@ -201,7 +217,7 @@
         "configuration": {
           "activeRevisionsMode": "Single",
           "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
-          "secrets": "[concat(variables('nodeTokenSecrets'), variables('gitTokenSecrets'), variables('flowEnvSecrets'))]"
+          "secrets": "[concat(variables('nodeTokenSecrets'), variables('gitTokenSecrets'), variables('githubAppKeySecrets'), variables('flowEnvSecrets'))]"
         },
         "template": {
           "terminationGracePeriodSeconds": 600,
@@ -213,7 +229,7 @@
                 "cpu": "[json(parameters('cpu'))]",
                 "memory": "[parameters('memory')]"
               },
-              "env": "[concat(createArray(createObject('name', 'SQLFLOW_URL', 'value', parameters('controlPlaneUrl')), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('nodeTokenEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('flowEnvVars'))]"
+              "env": "[concat(createArray(createObject('name', 'SQLFLOW_URL', 'value', parameters('controlPlaneUrl')), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('nodeTokenEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('githubAppEnv'), variables('flowEnvVars'))]"
             }
           ],
           "scale": {

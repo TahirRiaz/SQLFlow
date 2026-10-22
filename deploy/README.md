@@ -107,7 +107,10 @@ the user); point ADF at `controlPlaneBaseUrl` (see `deploy/adf`). How the k8s la
   apps reach a VNet-only Managed Instance privately.
 - **Private git remotes**: `gitToken` lands in Key Vault and reaches managed sync (control plane) and
   materialization (workers) as `SQLFLOW_GIT_TOKEN`. Hosts that pair the token with a username (Bitbucket app
-  passwords or `x-token-auth` repository tokens) also set `gitUsername`; GitHub needs the token alone.
+  passwords or `x-token-auth` repository tokens) also set `gitUsername`; GitHub needs the token alone. A private
+  GitHub repository is better read with a GitHub App: `githubAppId` and `githubAppPrivateKey` (its `.pem`) land in
+  Key Vault and reach both apps as `SQLFLOW_GITHUB_APP_ID` and `SQLFLOW_GITHUB_APP_PRIVATE_KEY`, which they try
+  before the token (docs/reference/guides/github-app.md).
 
 ## The Slack assistant: `deploy/slack/` + `mcp.bicep` + `slack-bot.bicep`
 
@@ -224,7 +227,7 @@ The layout and the reasoning behind it:
   `SQLFLOW_WORKER_POOL` and the URL's `?pool=`). A cold-started worker needs only its environment: it is handed a
   run with its definition, fetches the snapshotted YAML (or materializes the pinned commit from git) and executes.
 - **Secrets stay on the tier that uses them**: the control plane gets the catalog connection and JWT material;
-  workers get a node token, the git token and every `${env:...}` connection their pool's flows reference, and
+  workers get a node token, the git token or GitHub App and every `${env:...}` connection their pool's flows reference, and
   never the catalog connection: a node speaks only the node protocol, and the scaler reads the control plane with
   that same node token. Nothing data-plane ever passes through the control plane.
 

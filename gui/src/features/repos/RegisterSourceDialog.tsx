@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Code, Loader2, Search } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Code, KeyRound, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,14 +16,14 @@ import { repoSourceApi } from "../../api/endpoints";
 import type { DiscoveredFlow, RepoSource } from "../../api/types";
 import { CodeView } from "../../components/CodeView";
 import { CorrelationError } from "../../components/CorrelationError";
-
-// Mirrors the server's guard: a whole ${scheme:locator} reference, never a raw token.
-const REFERENCE_RE = /^\$\{[a-zA-Z]+:[^}]+\}$/;
+import { GITHUB_APP_REFERENCE_EXAMPLE, hostCredentialSummary, isCredentialReferenceValid, isGitHubAppReference } from "./gitCredential";
+import { useRepoAccessCheck } from "./useRepoAccessCheck";
 
 /**
  * Registers a git repo as a tracked source, or edits an existing one (pass `source`), with an optional preview-first
  * scan: discover the repo's flows, preview each, and choose which to import. The credential is a ${...} reference
- * (created in the vault), never a raw token. Registering persists the source and its selection; the SYNC (managed on
+ * (a token created in the vault, or a GitHub App), never a raw token, and "Test access" reads the branch tip with it
+ * through the path a sync takes, saying which credential that was. Registering persists the source and its selection; the SYNC (managed on
  * the interval, or "Sync now") is what actually imports the selected flows into the catalog, which the scheduler then
  * executes. Because the server upserts by name, editing reuses the same register call with the source's name; the
  * name is therefore locked in edit mode (changing it would create a second source instead of updating this one).
@@ -58,7 +58,16 @@ export function RegisterSourceDialog({
   const [previewPath, setPreviewPath] = useState<string | null>(null);
 
   const intervalValid = /^\d+$/.test(intervalText.trim()) && Number.parseInt(intervalText.trim(), 10) > 0;
-  const referenceValid = credentialReference.trim() === "" || REFERENCE_RE.test(credentialReference.trim());
+  const referenceValid = isCredentialReferenceValid(credentialReference);
+  const namesApp = isGitHubAppReference(credentialReference);
+
+  // What a blank reference reads with on this deployment, so the help text says it rather than guessing.
+  const hostCredentials = useQuery({
+    queryKey: ["repo-credentials"],
+    queryFn: repoSourceApi.credentials,
+    enabled: mode === "git",
+  });
+  const accessCheck = useRepoAccessCheck();
 
   const credentialPayload = () => ({
     credentialUsername: credentialUsername.trim() === "" ? null : credentialUsername.trim(),
@@ -113,6 +122,7 @@ export function RegisterSourceDialog({
 
   const location = mode === "git" ? remoteUrl.trim() : localPath.trim();
   const canDiscover = mode === "git" && remoteUrl.trim() !== "" && referenceValid && !discover.isPending;
+  const canCheckAccess = mode === "git" && remoteUrl.trim() !== "" && referenceValid && !accessCheck.isPending;
   const canSubmit = name.trim() !== "" && location !== "" && intervalValid && referenceValid && !register.isPending;
   const includedCount = discovered === null ? 0 : discovered.filter((f) => included.has(f.relativePath)).length;
 
@@ -232,7 +242,10 @@ export function RegisterSourceDialog({
                   required
                   placeholder="https://git.example.com/org/repo.git"
                   value={remoteUrl}
-                  onChange={(e) => setRemoteUrl(e.target.value)}
+                  onChange={(e) => {
+                    setRemoteUrl(e.target.value);
+                    accessCheck.reset();
+                  }}
                   data-testid="source-remote-url"
                 />
               </div>
@@ -244,7 +257,10 @@ export function RegisterSourceDialog({
                 id="source-branch"
                 className="h-8 font-mono text-[12px]"
                 value={branch}
-                onChange={(e) => setBranch(e.target.value)}
+                onChange={(e) => {
+                  setBranch(e.target.value);
+                  accessCheck.reset();
+                }}
                 data-testid="source-branch"
               />
               <p className="text-xs text-muted-foreground">Empty falls back to the server default (main).</p>
@@ -267,42 +283,60 @@ export function RegisterSourceDialog({
               </p>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="source-credential-username">Git username (optional)</Label>
-              <Input
-                id="source-credential-username"
-                className="h-8"
-                value={credentialUsername}
-                onChange={(e) => setCredentialUsername(e.target.value)}
-                data-testid="source-credential-username"
-              />
-              <p className="text-xs text-muted-foreground">
-                Only needed for hosts that authenticate the username too (e.g. Bitbucket app passwords).
-              </p>
-            </div>
+            {mode === "git" && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="source-credential-reference">Credential reference (optional)</Label>
+                  <Input
+                    id="source-credential-reference"
+                    className="h-8 font-mono text-[12px]"
+                    placeholder="${keyvault:my-vault/git-token}"
+                    value={credentialReference}
+                    onChange={(e) => {
+                      setCredentialReference(e.target.value);
+                      accessCheck.reset();
+                    }}
+                    aria-invalid={!referenceValid}
+                    data-testid="source-credential-reference"
+                  />
+                  {referenceValid ? (
+                    <div className="flex flex-col gap-1 text-xs text-muted-foreground" data-testid="source-credential-help">
+                      <p>
+                        {"A ${keyvault:vault/secret} or ${env:NAME} reference to a token, or a GitHub App: "}
+                        <span className="break-all font-mono">{GITHUB_APP_REFERENCE_EXAMPLE}</span>
+                        {". SQLFlow only references the secret; create it in your vault."}
+                      </p>
+                      <p data-testid="source-credential-default">
+                        {"Left blank, the source reads with this deployment's credential. "}
+                        {hostCredentials.data !== undefined
+                          ? hostCredentialSummary(hostCredentials.data)
+                          : hostCredentials.isError ? "it could not be read." : "reading..."}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-destructive">
+                      {"Must be a reference like ${keyvault:my-vault/git-token} or a ${githubapp:...} reference, not a raw token."}
+                    </p>
+                  )}
+                </div>
 
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="source-credential-reference">Credential reference (optional)</Label>
-              <Input
-                id="source-credential-reference"
-                className="h-8 font-mono text-[12px]"
-                placeholder="${keyvault:my-vault/github-pat}"
-                value={credentialReference}
-                onChange={(e) => setCredentialReference(e.target.value)}
-                aria-invalid={!referenceValid}
-                data-testid="source-credential-reference"
-              />
-              {referenceValid ? (
-                <p className="text-xs text-muted-foreground">
-                  {"A ${keyvault:vault/secret} or ${env:NAME} reference to the token. Create the secret in "
-                    + "your vault; SQLFlow only references it. Leave blank for a public remote."}
-                </p>
-              ) : (
-                <p className="text-xs text-destructive">
-                  {"Must be a reference like ${keyvault:my-vault/github-pat}, not a raw token."}
-                </p>
-              )}
-            </div>
+                {!namesApp && (
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="source-credential-username">Git username (optional)</Label>
+                    <Input
+                      id="source-credential-username"
+                      className="h-8"
+                      value={credentialUsername}
+                      onChange={(e) => setCredentialUsername(e.target.value)}
+                      data-testid="source-credential-username"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Only needed for hosts that authenticate the username too (e.g. Bitbucket app passwords).
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
 
             <Label className="flex items-center gap-2 text-[13px] font-normal">
               <Switch checked={enabled} onCheckedChange={setEnabled} data-testid="source-enabled" />
@@ -310,6 +344,41 @@ export function RegisterSourceDialog({
             </Label>
 
             <Separator />
+
+            {mode === "git" && (
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!canCheckAccess}
+                    onClick={() =>
+                      accessCheck.mutate({
+                        remoteUrl: remoteUrl.trim(),
+                        branch: branch.trim() === "" ? null : branch.trim(),
+                        ...credentialPayload(),
+                      })}
+                    data-testid="source-check-access"
+                  >
+                    {accessCheck.isPending ? <Loader2 className="animate-spin" /> : <KeyRound />}
+                    Test access
+                  </Button>
+                  {accessCheck.data === undefined && (
+                    <p className="min-w-[200px] flex-1 text-[13px] text-muted-foreground">
+                      Reads the branch tip with the credential above, as a sync would; nothing is cloned.
+                    </p>
+                  )}
+                </div>
+                {accessCheck.data !== undefined && (
+                  <p className="text-[13px] text-success" data-testid="source-access-ok">
+                    {`Read ${accessCheck.data.commitSha.slice(0, 10)} on ${accessCheck.data.branch} with ${accessCheck.data.credential.summary}.`}
+                  </p>
+                )}
+                {accessCheck.isError && (isApiError(accessCheck.error)
+                  ? <CorrelationError error={accessCheck.error} />
+                  : <p className="text-[13px] text-destructive">{String(accessCheck.error)}</p>)}
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3">
               <Button

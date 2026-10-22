@@ -20,6 +20,7 @@ related:
   - concept-control-plane
   - cli-worker
   - concept-authentication-and-identity
+  - guide-github-app
 sourceRefs:
   - deploy/README.md
   - deploy/compose/docker-compose.yml
@@ -96,6 +97,7 @@ From `deploy/compose/.env.example`; the compose file fails fast (`:?` expansion)
 | `SQLFLOW_ADMIN_USERNAME` | no | Defaults to `admin`. |
 | `SQLFLOW_WORKER_POOL` | no | Pool(s) the worker service serves; empty means untargeted runs only. |
 | `SQLFLOW_GIT_TOKEN` | no | Token for private git remotes (SHA-pinned materialization). |
+| `SQLFLOW_GITHUB_APP_ID`, `SQLFLOW_GITHUB_APP_PRIVATE_KEY` | no | A GitHub App the control plane and the worker read private GitHub repositories with, before the token: its client ID and the base64 of its `.pem` file ([GitHub App guide](github-app.md)). |
 
 The 32-byte minimums for the signing key and bootstrap secret are enforced at startup by `ControlPlaneOptions.Validate()`; a shorter value stops the control plane from starting with a clear error.
 
@@ -120,6 +122,7 @@ The entrypoint, `deploy/docker/worker-entrypoint.sh`, composes the `sqlflow work
 | `SQLFLOW_WORKER_POLL_SECONDS` | no | `--poll-seconds` | How long each poll waits for work before returning empty; the CLI default is 30. |
 | `SQLFLOW_WORKER_DRAIN_SECONDS` | no | `--drain-seconds` | How long a stopping node finishes the runs it already holds; the CLI default is 540. Must stay below the platform's termination grace period (see below). |
 | `SQLFLOW_GIT_TOKEN` | no | (read by git materialization) | Token for private git remotes. |
+| `SQLFLOW_GITHUB_APP_ID`, `SQLFLOW_GITHUB_APP_PRIVATE_KEY` or `SQLFLOW_GITHUB_APP_PRIVATE_KEY_PATH` | no | (read by git materialization) | A GitHub App, tried before the token for a GitHub remote ([GitHub App guide](github-app.md)). |
 | every `${env:...}` reference the flows use | per estate | secret resolver | Source and target connection strings resolve on the node, never in the control plane. |
 
 The underlying CLI command is `sqlflow worker --url <control-plane> [--token <ref>] [--poll-seconds N] [--pool a,b] [--drain-seconds N]` (see `src/SqlFlow.Cli/Program.cs`). Placement is the control plane dispatcher's, so any number of concurrent workers is safe.

@@ -29,7 +29,7 @@ namespace SqlFlow.ControlPlane.Api;
 /// confidently wrong answer, so neither endpoint accepts the other's identifiers.
 ///
 /// Credentials never leave the control plane. A caller names a repo or a flow; the credential reference stored
-/// against it is resolved here through the same <see cref="GitMaterializer.ResolveCredentialsAsync"/> path the
+/// against it is resolved here through the same <see cref="GitMaterializer.ResolveCredentialAsync(ISecretResolver, string?, string?, string?, GitAccess, CancellationToken)"/> path the
 /// managed sync uses, so no client (the GUI, the MCP server, a script) ever holds a git token. Only repositories
 /// the estate already manages are reachable: a registered repo source, or the repository an scm flow declares.
 /// An arbitrary remote URL is not an addressable target.
@@ -325,7 +325,7 @@ public static class GitHistoryEndpoints
         try
         {
             var credentials = await GitMaterializer
-                .ResolveCredentialsAsync(secrets, credentialReference, username, ct).ConfigureAwait(false);
+                .ResolveCredentialsAsync(secrets, credentialReference, username, remoteUrl, GitAccess.Read, ct).ConfigureAwait(false);
 
             // git and file IO are blocking, and a cold clone is slow; keep both off the request thread.
             var commits = await Task.Run(
@@ -353,7 +353,7 @@ public static class GitHistoryEndpoints
         try
         {
             var credentials = await GitMaterializer
-                .ResolveCredentialsAsync(secrets, credentialReference, username, ct).ConfigureAwait(false);
+                .ResolveCredentialsAsync(secrets, credentialReference, username, remoteUrl, GitAccess.Read, ct).ConfigureAwait(false);
 
             var diff = await Task.Run(
                 () =>
@@ -382,7 +382,7 @@ public static class GitHistoryEndpoints
         try
         {
             var credentials = await GitMaterializer
-                .ResolveCredentialsAsync(secrets, repository.Secret, repository.Username, ct).ConfigureAwait(false);
+                .ResolveCredentialsAsync(secrets, repository.Secret, repository.Username, repository.Remote, GitAccess.Read, ct).ConfigureAwait(false);
 
             var comparison = await Task.Run(
                 () =>

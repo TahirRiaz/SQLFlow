@@ -542,7 +542,8 @@
         "concept-control-plane",
         "concept-architecture-and-execution",
         "guide-deployment",
-        "concept-cli-conventions"
+        "concept-cli-conventions",
+        "guide-github-app"
       ],
       "sourceRefs": [
         "src/SqlFlow.Cli/Program.cs",
@@ -684,6 +685,8 @@
         "@alias",
         "${env:}",
         "${keyvault:}",
+        "${githubapp:}",
+        "github app",
         "secret providers",
         "redaction",
         "hygiene warnings",
@@ -695,6 +698,7 @@
       "related": [
         "flow-connections",
         "concept-environment-variables",
+        "guide-github-app",
         "cli-auth",
         "flow-target"
       ],
@@ -722,6 +726,8 @@
         "src/SqlFlow.Azure/AzureAuth.cs",
         "src/SqlFlow.Azure/AzureCredentialFactory.cs",
         "src/SqlFlow.Azure/AzureKeyVaultSecretProvider.cs",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppSecretProvider.cs",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppReference.cs",
         "src/SqlFlow.Azure/AzureKeyVaultSecretVault.cs",
         "src/SqlFlow.SqlServer/WithoutDatabaseResolver.cs",
         "src/SqlFlow.SqlServer/FullMode/SqlDataSourceStore.cs",
@@ -753,7 +759,8 @@
         "cli-worker",
         "concept-authentication-and-identity",
         "concept-shadow-catalog",
-        "guide-deployment"
+        "guide-deployment",
+        "guide-github-app"
       ],
       "sourceRefs": [
         "src/SqlFlow.ControlPlane/Background/RunReferences.cs",
@@ -785,7 +792,8 @@
         "src/SqlFlow.Dispatch/DispatchOptions.cs",
         "src/SqlFlow.ControlPlane/Dispatch/DispatchService.cs",
         "src/SqlFlow.ControlPlane/Dispatch/NodeProtocolEndpoints.cs",
-        "src/SqlFlow.ControlPlane/Dispatch/DispatchEndpoints.cs"
+        "src/SqlFlow.ControlPlane/Dispatch/DispatchEndpoints.cs",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppEnvironment.cs"
       ]
     },
     {
@@ -899,7 +907,8 @@
       "related": [
         "concept-connections-and-secrets",
         "flow-connections",
-        "cli-db"
+        "cli-db",
+        "guide-github-app"
       ],
       "sourceRefs": [
         "src/SqlFlow.Core/Connections/ConnectionConvention.cs",
@@ -913,7 +922,8 @@
         "src/SqlFlow.ControlPlane/Configuration/ControlPlaneOptions.cs",
         "Dockerfile.worker",
         "deploy/docker/worker-entrypoint.sh",
-        "deploy/compose/docker-compose.yml"
+        "deploy/compose/docker-compose.yml",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppEnvironment.cs"
       ]
     },
     {
@@ -2460,7 +2470,8 @@
         "flow-overview",
         "flow-schedule",
         "concept-shadow-catalog",
-        "concept-lineage-graph-and-plan"
+        "concept-lineage-graph-and-plan",
+        "guide-github-app"
       ],
       "sourceRefs": [
         "src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs",
@@ -2927,7 +2938,8 @@
       "related": [
         "concept-control-plane",
         "cli-worker",
-        "concept-authentication-and-identity"
+        "concept-authentication-and-identity",
+        "guide-github-app"
       ],
       "sourceRefs": [
         "deploy/README.md",
@@ -3071,6 +3083,47 @@
         "samples/quickstart/orders.flow.yaml",
         "samples/csv/README.md",
         "docs/environment-variables.md"
+      ]
+    },
+    {
+      "id": "guide-github-app",
+      "corpus": "reference",
+      "path": "guides/github-app.md",
+      "title": "Reading a private GitHub repository with a GitHub App",
+      "type": "guide",
+      "summary": "Create a read-only GitHub App, install it on a flow repository, and have SQLFlow read with its short-lived tokens instead of a personal access token.",
+      "keywords": [
+        "github app",
+        "git credential",
+        "private repository",
+        "personal access token",
+        "installation token",
+        "read-only",
+        "SQLFLOW_GITHUB_APP_ID",
+        "SQLFLOW_GITHUB_APP_PRIVATE_KEY",
+        "githubapp",
+        "repository source",
+        "key vault",
+        "permissions"
+      ],
+      "related": [
+        "concept-connections-and-secrets",
+        "concept-control-plane",
+        "concept-environment-variables",
+        "guide-deployment",
+        "flow-scm",
+        "cli-worker"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppEnvironment.cs",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppReference.cs",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppTokenClient.cs",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppPrivateKey.cs",
+        "src/SqlFlow.SourceControl/GitHub/GitHubAppSecretProvider.cs",
+        "src/SqlFlow.Node/GitMaterializer.cs",
+        "src/SqlFlow.ControlPlane/Api/RepoSourceEndpoints.cs",
+        "src/SqlFlow.Execution/SqlFlowEngineServices.cs",
+        "gui/src/features/repos/GitCredentialsSheet.tsx"
       ]
     },
     {

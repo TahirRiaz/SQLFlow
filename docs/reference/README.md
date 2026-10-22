@@ -20,10 +20,10 @@ docs/reference/
   flow/<flowtype>.md             one page per non-file flow kind: ing, exp, sp, inv, hc, scm, sch, batch
   flow/source-types/<type>.md    one page per source format: csv, json, xml, parquet, xls, duckdb
   concepts/<slug>.md             cross-cutting concepts (24 pages)
-  guides/<slug>.md                task-oriented walkthroughs (12 pages)
+  guides/<slug>.md                task-oriented walkthroughs (13 pages)
 ```
 
-85 pages total: 16 `cli-command`, 27 `flow-reference`, 6 `source-type`, 24 `concept`, 12 `guide`.
+86 pages total: 16 `cli-command`, 27 `flow-reference`, 6 `source-type`, 24 `concept`, 13 `guide`.
 A product that keeps a corpus of its own in this format may also use `table`: one page per table its
 database holds, as `source-type` is one page per source format.
 

@@ -8,7 +8,8 @@ import type {
   ColumnHit, ComputeTask, ComputeTaskAccepted, ComputeTaskRequest,
   DataStream, DataStreams, DispatchSnapshot,
   ComputeTaskSummary, CreateAccessTokenRequest, CreateNotificationSubscriptionRequest, CreateScheduleRequest, CreatedAccessToken,
-  CreateUserRequest, Dashboard, Datasource, DefinitionHit, DiscoveredFlow,
+  CheckRepoAccessRequest, CreateUserRequest, Dashboard, Datasource, DefinitionHit, DiscoveredFlow,
+  GitCredentialsStatus, GitHubAppCheck,
   FlowInsights, Recommendations, StepInsights,
   DiscoverRepoRequest, FileHit, FlowDependency, FlowColumnHit, FlowHit, StatementHit,
   FilePipelineMatch, FlowKindDescriptor, ProposalCreated, ProposeFilesRequest,
@@ -24,7 +25,7 @@ import type {
   SemanticReportCapabilities, SemanticReportSpec, SemanticReportSpecDetail, SemanticReportSubscriber,
   PrepareQueryRequest, PreparedQuery,
   FlowParameters,
-  PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
+  PipelineColumn, PipelineDetail, PipelineFile, PipelineFileStats, PipelineSummary, RegisterRepoSourceRequest, Repo, RepoAccess, RepoDeletionResult, RepoSource, RepoSourceRegistered, RepoSyncResult, RepoTree, Role,
   RunAssertion, RunDetail, RunFile, RunGroup, RunHealthCheckMetric, RunScope, RunScopePreview, RunStatement, RunTraceEntry, RunTraceStorage, RunTraceRetention, RunTraceRetentionUpdate, RunStatementPurgeResult, RunEventPurgeResult,
   RunSummary, RunSurrogateKey, SchemaChange, SchemaChangeDatabase, SchemaObjectCompare,
   RunTriggerAccepted, RunTriggerRequest, Schedule, ScheduleCreated, ScheduleDefinition, SchedulePlan, ScheduleRunAccepted, SessionResponse, TokenResponse,
@@ -464,6 +465,12 @@ export const repoSourceApi = {
   // credential and opens the pull request against the tracked branch. Nothing reaches the catalog until it merges and syncs.
   propose: (id: string, request: ProposeFilesRequest) =>
     post<ProposalCreated>(`/api/v1/repos/sources/${id}/proposals`, request),
+  // The git credentials this control plane supplies to a source naming none (its GitHub App, its token); never a secret.
+  credentials: () => get<GitCredentialsStatus>("/api/v1/repos/credentials"),
+  // Asks GitHub, as the host's App, for its name, owner and installations: proof its ID and key belong together.
+  checkGitHubApp: () => post<GitHubAppCheck>("/api/v1/repos/credentials/github-app/check"),
+  // Reads a remote's branch tip with the credential a source naming this reference would use, through the sync's path.
+  checkAccess: (request: CheckRepoAccessRequest) => post<RepoAccess>("/api/v1/repos/check", request),
 };
 
 // ---- Flow kinds ---------------------------------------------------------------------------------------------------------------

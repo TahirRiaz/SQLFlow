@@ -7,6 +7,8 @@ keywords:
   - "@alias"
   - "${env:}"
   - "${keyvault:}"
+  - "${githubapp:}"
+  - github app
   - secret providers
   - redaction
   - hygiene warnings
@@ -17,6 +19,7 @@ keywords:
 related:
   - flow-connections
   - concept-environment-variables
+  - guide-github-app
   - cli-auth
   - flow-target
 sourceRefs:
@@ -43,6 +46,8 @@ sourceRefs:
   - src/SqlFlow.Azure/AzureAuth.cs
   - src/SqlFlow.Azure/AzureCredentialFactory.cs
   - src/SqlFlow.Azure/AzureKeyVaultSecretProvider.cs
+  - src/SqlFlow.SourceControl/GitHub/GitHubAppSecretProvider.cs
+  - src/SqlFlow.SourceControl/GitHub/GitHubAppReference.cs
   - src/SqlFlow.Azure/AzureKeyVaultSecretVault.cs
   - src/SqlFlow.SqlServer/WithoutDatabaseResolver.cs
   - src/SqlFlow.SqlServer/FullMode/SqlDataSourceStore.cs
@@ -107,12 +112,13 @@ Both a synchronous `Resolve` and an asynchronous `ResolveAsync` exist; the Key V
 
 ### Registered providers
 
-`AddSqlFlowEngine` (src/SqlFlow.Execution/SqlFlowEngineServices.cs) registers exactly two providers, plus the `AzureCredentialFactory` they share:
+`AddSqlFlowEngine` (src/SqlFlow.Execution/SqlFlowEngineServices.cs) registers three providers, plus the `AzureCredentialFactory` the first two share and the `GitHubAppTokenClient` the third uses:
 
 | Scheme | Provider | Behavior |
 |---|---|---|
 | `env` | `EnvSecretProvider` | Resolves `${env:NAME}` from environment variables. Missing variable throws `Environment variable 'NAME' is not set.` Always registered. |
 | `keyvault` | `AzureKeyVaultSecretProvider` | Resolves `${keyvault:vault/secret}` from Azure Key Vault under the ambient Azure credential. |
+| `githubapp` | `GitHubAppSecretProvider` | Resolves `${githubapp:...}` to an installation token of a GitHub App, minted when the reference resolves (and handed out again for at most ten minutes while it has a quarter of an hour left). The locator is `name=value` settings separated by `;`: `app` and `key` (the App's client ID and a reference to its private key, such as `key=keyvault:vault/secret`; both left out to use the host's `SQLFLOW_GITHUB_APP_*`), `installation` or `repository` (`owner/name`, whose installation is found), `permissions` (`contents:read`, ...) and `api` (GitHub Enterprise). A malformed reference, a half-configured host App, or GitHub's refusal throws a message naming what to change; the private key, the signed request and the token never appear in one. See [Reading a private GitHub repository with a GitHub App](../guides/github-app.md). |
 
 The Key Vault locator must be `vault/secret`; anything else throws `Key Vault reference must be 'vault/secret', got '<locator>'.` A missing secret throws `Key Vault secret '<name>' was not found in vault '<vault>'.` Reads route through one `AzureKeyVaultSecretVault` per vault (public-cloud endpoint `https://{vaultName}.vault.azure.net/`); that same vault type implements the read/write/delete `ISecretVault` surface, where `GetSecretAsync` returns null on a 404 and `SetSecretAsync` returns the new secret version.
 
@@ -205,13 +211,15 @@ WARN  <file>: connection '<name>' embeds a credential in the document. Files und
 
 CLI flags that take a connection reference warn too: `sqlflow db --db`, `sqlflow healthcheck --source`, `sqlflow detect-unique-key --source`, `sqlflow runs cancel --db` (the direct-catalog break-glass route), and `sqlflow user reset-password --db` each print a warning when the flag value embeds a credential, because a literal on the command line lands in shell history. The warnings recommend the canonical variable (`${env:SQLFLOW_CATALOG_DB}` or `${env:SQLFLOW_SOURCE}`), an explicit `${env:NAME}` or `${keyvault:vault/secret}` reference, and the git-ignored `.sqlflow/env` file for local values.
 
-`SecretHygiene.RedactedMessage` collapses each secret keyword's value (up to the next `;` or the end of the string) to `[redacted]` in any message that may quote external input, for example an exception wrapping a connection string. The CLI applies it to error paths in `sqlflow db`, the catalog run write-back, and other verbs, so third-party error text never leaks a credential into a report or log.
+`SecretHygiene.RedactedMessage` collapses each secret keyword's value (up to the next `;` or the end of the string) to `[redacted]` in any message that may quote external input, for example an exception wrapping a connection string, and every GitHub token as well (`ghp_`, `gho_`, `ghu_`, `ghs_`, `ghr_` and `github_pat_` tokens, the stateless installation token format included). The CLI applies it to error paths in `sqlflow db`, the catalog run write-back, and other verbs, so third-party error text never leaks a credential into a report or log.
 
 Source-control documents (`flowType: scm`) go further than a warning: `repository.secret` and `repository.username` must each be a whole `${...}` reference; a literal fails validation (src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs):
 
 ```text
 <file>: 'repository.secret' must be a ${env:NAME} or ${keyvault:vault/secret} reference, never a literal. Put the value in the git-ignored .sqlflow/env file or your secret store.
 ```
+
+Any whole reference passes, `${githubapp:...}` included: a `repository.secret` naming a GitHub App pushes with a token narrowed to the snapshot's own repository and to `contents:write`.
 
 ## Local development: the `.sqlflow/env` file
 
@@ -226,7 +234,7 @@ Source-control documents (`flowType: scm`) go further than a warning: `repositor
 - **YAML**: the `connections:` block of relational documents (bare alias, string, or `provider`/`connection` map), the `target.connection` of file flows (a `${...}` reference or a literal only; a file flow has no alias form), and `repository.username`/`repository.secret` of scm documents.
 - **CLI**: `sqlflow db --db <ref>`, `sqlflow runs cancel --db <ref>`, and `sqlflow user reset-password --db <ref>` (default `${env:SQLFLOW_CATALOG_DB}`), `sqlflow healthcheck --source <ref>` and `sqlflow detect-unique-key --source <ref>` (default `${env:SQLFLOW_SOURCE}`), and `--provider` for the inline kind of a non-SQL-Server source.
 - **Control plane**: an `IRunReferenceSource` a host module registers supplies the values every run and compute task carries (see above).
-- **Environment**: `SQLFLOW_CONN_<NAME>` per bare alias, `SQLFLOW_AZURE_AUTH` (with `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_CLIENT_SECRET` for service-principal mode) for Key Vault access, and the git-ignored `.sqlflow/env` file for local values.
+- **Environment**: `SQLFLOW_CONN_<NAME>` per bare alias, `SQLFLOW_AZURE_AUTH` (with `AZURE_CLIENT_ID`/`AZURE_TENANT_ID`/`AZURE_CLIENT_SECRET` for service-principal mode) for Key Vault access, `SQLFLOW_GITHUB_APP_ID` with `SQLFLOW_GITHUB_APP_PRIVATE_KEY` or `SQLFLOW_GITHUB_APP_PRIVATE_KEY_PATH` (and `SQLFLOW_GITHUB_APP_API_URL`) for the host's GitHub App, and the git-ignored `.sqlflow/env` file for local values.
 
 ## Example
 

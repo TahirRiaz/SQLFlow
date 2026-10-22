@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using SqlFlow.Core.Abstractions;
 using SqlFlow.Core.Catalog;
 using SqlFlow.Core.Connections;
@@ -8,6 +9,7 @@ using SqlFlow.Core.State;
 using SqlFlow.Azure;
 using SqlFlow.DuckDb;
 using SqlFlow.Providers;
+using SqlFlow.SourceControl.GitHub;
 using SqlFlow.Sources;
 using SqlFlow.SqlServer;
 using SqlFlow.SqlServer.Schema;
@@ -66,6 +68,15 @@ public static class SqlFlowEngineServices
         services.AddSingleton<IAzureCredentialFactory, AzureCredentialFactory>();
         services.AddSingleton<ISecretProvider, EnvSecretProvider>();
         services.AddSingleton<ISecretProvider, AzureKeyVaultSecretProvider>();
+
+        // ${githubapp:...}: a GitHub App's installation token, minted when the reference resolves, so a git credential
+        // can name an App instead of a personal access token. The client takes the resolver as a factory because the
+        // resolver's providers include the one that uses it (the App's key is itself a reference).
+        services.AddSingleton(sp => new GitHubAppTokenClient(
+            () => sp.GetRequiredService<ISecretResolver>(),
+            sp.GetService<TimeProvider>(),
+            sp.GetService<ILogger<GitHubAppTokenClient>>()));
+        services.AddSingleton<ISecretProvider, GitHubAppSecretProvider>();
         services.AddSingleton<ISecretResolver, SecretResolver>();
 
         // The same Azure auth intent that drives Key Vault and invoke also authenticates DuckDB cloud reads

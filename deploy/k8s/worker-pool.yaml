@@ -40,6 +40,13 @@ spec:
             # ?pool= parameter below.
             - name: SQLFLOW_WORKER_POOL
               value: ""
+            # The git credentials a pinned checkout reads with: the GitHub App, then the token (secrets.example.yaml).
+            - name: SQLFLOW_GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: github-app-id, optional: true }
+            - name: SQLFLOW_GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: github-app-private-key, optional: true }
             - name: SQLFLOW_GIT_TOKEN
               valueFrom:
                 secretKeyRef: { name: sqlflow-secrets, key: git-token }

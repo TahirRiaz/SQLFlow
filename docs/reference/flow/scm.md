@@ -19,6 +19,7 @@ related:
   - flow-schedule
   - concept-shadow-catalog
   - concept-lineage-graph-and-plan
+  - guide-github-app
 sourceRefs:
   - src/SqlFlow.Yaml/YamlSourceControlFlowLoader.cs
   - src/SqlFlow.Lineage/Collection/FlowDocumentHeaders.cs
@@ -81,7 +82,7 @@ This scripts the connection's default catalog into a local git repository at `./
 | `repository.remote` | string | no | null | HTTPS git remote URL to clone from and push to; null keeps history purely local. |
 | `repository.branch` | string | no | `main` | The branch snapshot commits land on. Created if missing or if the repository is empty. |
 | `repository.username` | string | no | null | A whole `${...}` reference to the git username. Never a literal. |
-| `repository.secret` | string | no | null | A whole `${...}` reference to the git secret (BitBucket app password or GitHub token). Required when `remote` is set. Never a literal. |
+| `repository.secret` | string | no | null | A whole `${...}` reference to the git secret (BitBucket app password or GitHub token), or a `${githubapp:...}` reference naming a GitHub App, which pushes with a token narrowed to the remote's repository and `contents:write` ([guide](../guides/github-app.md)). Required when `remote` is set. Never a literal. |
 | `repository.author.name` | string | no | `SQLFlow` | Commit author/committer display name. |
 | `repository.author.email` | string | no | `sqlflow@localhost` | Commit author/committer email. |
 | `scripting` | map | no | all types, schema-only, staging schema skipped | What the scripter captures. |

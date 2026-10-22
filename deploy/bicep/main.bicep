@@ -79,6 +79,13 @@ param nodeToken string = ''
 @description('Username paired with gitToken when the host requires one: a Bitbucket app password takes the account username, a Bitbucket repository access token takes x-token-auth; GitHub ignores it. Empty sends the token alone.')
 param gitUsername string = ''
 
+@description('The client ID of a GitHub App the control plane and the workers read private GitHub repositories with, before gitToken: each sync and checkout mints a short-lived token for the one repository it reads (docs/reference/guides/github-app.md). Set it with githubAppPrivateKey; empty uses no App.')
+param githubAppId string = ''
+
+@secure()
+@description('The private key of the githubAppId App, the .pem file GitHub generated (its text, or the base64 of it). It lands in Key Vault and reaches both apps as SQLFLOW_GITHUB_APP_PRIVATE_KEY.')
+param githubAppPrivateKey string = ''
+
 @description('Let this template create and own the Entra app registration users sign in with (App Roles + "Assignment required" baked in, so only assigned group members can sign in), through the Microsoft Graph Bicep extension. On (the default) enables "Sign in with Microsoft" and ignores azureAdAllowedTenantIds/azureAdClientId; the deploying principal then needs directory write (Application Administrator or Application.ReadWrite.All), and assigning a group needs Entra ID P1. Turn off for local-only sign-in, or to point at an externally managed registration via azureAdAllowedTenantIds + azureAdClientId.')
 param provisionEntraApp bool = true
 
@@ -241,6 +248,12 @@ var dwhConnectionSecretName = 'sqlflow-dwh-db'
 var jwtSigningKeySecretName = 'sqlflow-jwt-signing-key'
 var adminPasswordSecretName = 'sqlflow-admin-password'
 var gitTokenSecretName = 'sqlflow-git-token'
+var githubAppKeySecretName = 'sqlflow-github-app-private-key'
+
+// A GitHub App is its client ID and its key together: one without the other is refused here rather than at the first sync.
+var githubAppIdChecked = empty(githubAppId) != empty(githubAppPrivateKey)
+  ? fail('Set githubAppId and githubAppPrivateKey together (the App\'s client ID and its .pem), or neither.')
+  : githubAppId
 var nodeTokenSecretName = 'sqlflow-node-token'
 var slackAppTokenSecretName = 'sqlflow-slack-app-token'
 var slackBotTokenSecretName = 'sqlflow-slack-bot-token'
@@ -429,6 +442,14 @@ resource gitTokenSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!em
   }
 }
 
+resource githubAppKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (!empty(githubAppPrivateKey)) {
+  parent: keyVault
+  name: githubAppKeySecretName
+  properties: {
+    value: githubAppPrivateKey
+  }
+}
+
 resource pbixExtractorKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = if (pbixExtractorEnabled) {
   parent: keyVault
   name: pbixExtractorKeySecretName
@@ -528,6 +549,8 @@ module controlPlane 'control-plane.bicep' = {
     bootstrapAdminPasswordSecretName: adminPasswordSecretName
     gitTokenSecretName: empty(gitToken) ? '' : gitTokenSecretName
     gitUsername: gitUsername
+    githubAppId: githubAppIdChecked
+    githubAppKeySecretName: empty(githubAppPrivateKey) ? '' : githubAppKeySecretName
     azureAdAllowedTenantIds: effectiveAzureAdAllowedTenantIds
     azureAdClientId: effectiveAzureAdClientId
     azureAdDefaultRole: azureAdDefaultRole
@@ -550,6 +573,7 @@ module controlPlane 'control-plane.bicep' = {
     jwtSigningKeySecret
     adminPasswordSecret
     gitTokenSecret
+    githubAppKeySecret
     catalogDatabase
     sqlAllowAzureServices
   ]
@@ -582,6 +606,8 @@ module worker 'worker.bicep' = {
     nodeTokenSecretName: empty(nodeToken) ? '' : nodeTokenSecretName
     gitTokenSecretName: empty(gitToken) ? '' : gitTokenSecretName
     gitUsername: gitUsername
+    githubAppId: githubAppIdChecked
+    githubAppKeySecretName: empty(githubAppPrivateKey) ? '' : githubAppKeySecretName
     flowEnv: concat(builtInFlowEnv, workerFlowEnv)
     acrName: acrName
     acrLoginServer: acrLoginServer
@@ -592,6 +618,7 @@ module worker 'worker.bicep' = {
     preDbSecret
     dwhDbSecret
     gitTokenSecret
+    githubAppKeySecret
     nodeTokenSecret
     catalogDatabase
     preDatabase

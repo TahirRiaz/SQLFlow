@@ -7,7 +7,7 @@ namespace SqlFlow.Core.Secrets;
 /// Security, Active Directory Default); it is a finding when it embeds a secret-bearing keyword. The CLI
 /// warns on validate AND run, so the mistake surfaces on the first local check, before the commit.
 /// </summary>
-public static class SecretHygiene
+public static partial class SecretHygiene
 {
     /// <summary>The secret-bearing keywords of the supported providers' connection strings (SQL Server,
     /// MySQL, PostgreSQL), compared without case.</summary>
@@ -35,13 +35,14 @@ public static class SecretHygiene
     }
 
     /// <summary>Scrubs credential-bearing fragments from a message that may quote external input (an
-    /// exception wrapping a connection string): every secret keyword's value collapses to [redacted].
+    /// exception wrapping a connection string): every secret keyword's value collapses to [redacted], and so does
+    /// every GitHub token (a personal access token, an OAuth or App installation token), whose shape GitHub fixes.
     /// Applied wherever third-party error text reaches a report or log.</summary>
     public static string RedactedMessage(string message)
     {
         ArgumentNullException.ThrowIfNull(message);
 
-        var result = message;
+        var result = GitHubToken().Replace(message, "[redacted]");
         foreach (var keyword in SecretKeywords)
         {
             var searchFrom = 0;
@@ -105,6 +106,14 @@ public static class SecretHygiene
             AppendMessageChain(inner, messages);
         }
     }
+
+    /// <summary>A GitHub token: a prefix GitHub reserves (<c>ghp_</c>, <c>gho_</c>, <c>ghu_</c>, <c>ghs_</c>,
+    /// <c>ghr_</c>, <c>github_pat_</c>) and what follows it, including the dots and dashes of the stateless installation
+    /// token format.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(
+        @"\b(?:gh[pousr]_[A-Za-z0-9_.\-]{16,}|github_pat_[A-Za-z0-9_]{16,})",
+        System.Text.RegularExpressions.RegexOptions.CultureInvariant)]
+    private static partial System.Text.RegularExpressions.Regex GitHubToken();
 
     /// <summary>The warning line for one offending connection. The value itself is never echoed.</summary>
     public static string Warning(string connectionName, string source)

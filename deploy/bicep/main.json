@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.44.1.10279",
-      "templateHash": "10053599190670631458"
+      "templateHash": "17385525099934925208"
     }
   },
   "parameters": {
@@ -115,6 +115,20 @@
       "defaultValue": "",
       "metadata": {
         "description": "Username paired with gitToken when the host requires one: a Bitbucket app password takes the account username, a Bitbucket repository access token takes x-token-auth; GitHub ignores it. Empty sends the token alone."
+      }
+    },
+    "githubAppId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The client ID of a GitHub App the control plane and the workers read private GitHub repositories with, before gitToken: each sync and checkout mints a short-lived token for the one repository it reads (docs/reference/guides/github-app.md). Set it with githubAppPrivateKey; empty uses no App."
+      }
+    },
+    "githubAppPrivateKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "The private key of the githubAppId App, the .pem file GitHub generated (its text, or the base64 of it). It lands in Key Vault and reaches both apps as SQLFLOW_GITHUB_APP_PRIVATE_KEY."
       }
     },
     "provisionEntraApp": {
@@ -463,6 +477,8 @@
     "jwtSigningKeySecretName": "sqlflow-jwt-signing-key",
     "adminPasswordSecretName": "sqlflow-admin-password",
     "gitTokenSecretName": "sqlflow-git-token",
+    "githubAppKeySecretName": "sqlflow-github-app-private-key",
+    "githubAppIdChecked": "[if(not(equals(empty(parameters('githubAppId')), empty(parameters('githubAppPrivateKey')))), fail('Set githubAppId and githubAppPrivateKey together (the App''s client ID and its .pem), or neither.'), parameters('githubAppId'))]",
     "nodeTokenSecretName": "sqlflow-node-token",
     "slackAppTokenSecretName": "sqlflow-slack-app-token",
     "slackBotTokenSecretName": "sqlflow-slack-bot-token",
@@ -670,6 +686,18 @@
       "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('gitTokenSecretName'))]",
       "properties": {
         "value": "[parameters('gitToken')]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
+      ]
+    },
+    {
+      "condition": "[not(empty(parameters('githubAppPrivateKey')))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2023-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), variables('githubAppKeySecretName'))]",
+      "properties": {
+        "value": "[parameters('githubAppPrivateKey')]"
       },
       "dependsOn": [
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
@@ -977,6 +1005,10 @@
           "gitUsername": {
             "value": "[parameters('gitUsername')]"
           },
+          "githubAppId": {
+            "value": "[variables('githubAppIdChecked')]"
+          },
+          "githubAppKeySecretName": "[if(empty(parameters('githubAppPrivateKey')), createObject('value', ''), createObject('value', variables('githubAppKeySecretName')))]",
           "azureAdAllowedTenantIds": {
             "value": "[variables('effectiveAzureAdAllowedTenantIds')]"
           },
@@ -1013,7 +1045,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "3956614099840849187"
+              "templateHash": "11442661525708849726"
             }
           },
           "parameters": {
@@ -1117,6 +1149,20 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone."
+              }
+            },
+            "githubAppId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The client ID of the GitHub App managed sync reads private GitHub repositories with, before the git token (docs/reference/guides/github-app.md). Empty uses no App."
+              }
+            },
+            "githubAppKeySecretName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Key Vault secret name holding the GitHub App's private key (its .pem). Set with githubAppId."
               }
             },
             "proxyKnownNetworks": {
@@ -1271,12 +1317,14 @@
             ],
             "bootstrapSecrets": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'bootstrap-admin-password', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('bootstrapAdminPasswordSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
             "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "githubAppKeySecrets": "[if(empty(parameters('githubAppKeySecretName')), createArray(), createArray(createObject('name', 'github-app-private-key', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('githubAppKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
             "reportExtractionEnabled": "[and(not(empty(parameters('reportExtractionEndpoint'))), not(empty(parameters('reportExtractionKeySecretName'))))]",
             "reportExtractionSecrets": "[if(not(variables('reportExtractionEnabled')), createArray(), createArray(createObject('name', 'pbix-extractor-key', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('reportExtractionKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
             "reportExtractionEnv": "[if(not(variables('reportExtractionEnabled')), createArray(), createArray(createObject('name', 'ControlPlane__AiContext__ReportExtraction__Enabled', 'value', 'true'), createObject('name', 'ControlPlane__AiContext__ReportExtraction__Endpoint', 'value', parameters('reportExtractionEndpoint')), createObject('name', 'ControlPlane__AiContext__ReportExtraction__ApiKey', 'secretRef', 'pbix-extractor-key'), createObject('name', 'ControlPlane__AiContext__ReportExtraction__TimeoutSeconds', 'value', '230')))]",
             "bootstrapEnv": "[if(empty(parameters('bootstrapAdminPasswordSecretName')), createArray(), createArray(createObject('name', 'ControlPlane__Bootstrap__AdminUsername', 'value', parameters('bootstrapAdminUsername')), createObject('name', 'ControlPlane__Bootstrap__AdminPasswordReference', 'secretRef', 'bootstrap-admin-password')))]",
             "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
             "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
+            "githubAppEnv": "[concat(if(empty(parameters('githubAppId')), createArray(), createArray(createObject('name', 'SQLFLOW_GITHUB_APP_ID', 'value', parameters('githubAppId')))), if(empty(parameters('githubAppKeySecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GITHUB_APP_PRIVATE_KEY', 'secretRef', 'github-app-private-key'))))]",
             "proxyEnv": "[if(empty(parameters('proxyKnownNetworks')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Proxy__Enabled', 'value', 'true')), variables('proxyNetworkEnv')))]",
             "assistantEnv": "[if(not(parameters('assistantEnabled')), createArray(), concat(createArray(createObject('name', 'ControlPlane__Assistant__Enabled', 'value', 'true'), createObject('name', 'ControlPlane__Assistant__Foundry__ProjectEndpoint', 'value', parameters('assistantFoundryProjectEndpoint')), createObject('name', 'ControlPlane__Assistant__Foundry__ModelDeploymentName', 'value', parameters('assistantFoundryModelDeploymentName')), createObject('name', 'ControlPlane__Assistant__Mcp__ServerUrl', 'value', parameters('assistantMcpServerUrl'))), if(empty(parameters('assistantFoundryTranscriptionDeploymentName')), createArray(), createArray(createObject('name', 'ControlPlane__Assistant__Foundry__TranscriptionDeploymentName', 'value', parameters('assistantFoundryTranscriptionDeploymentName'))))))]",
             "entraEnv": "[if(or(empty(parameters('azureAdAllowedTenantIds')), empty(parameters('azureAdClientId'))), createArray(), concat(variables('azureAdTenantEnv'), createArray(createObject('name', 'ControlPlane__AzureAd__ClientId', 'value', parameters('azureAdClientId')), createObject('name', 'ControlPlane__AzureAd__DefaultRole', 'value', parameters('azureAdDefaultRole')))))]"
@@ -1338,7 +1386,7 @@
                     "transport": "auto"
                   },
                   "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
-                  "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'), variables('reportExtractionSecrets'))]"
+                  "secrets": "[concat(variables('baseSecrets'), variables('bootstrapSecrets'), variables('gitTokenSecrets'), variables('githubAppKeySecrets'), variables('reportExtractionSecrets'))]"
                 },
                 "template": {
                   "containers": [
@@ -1349,7 +1397,7 @@
                         "cpu": "[json('0.5')]",
                         "memory": "1.0Gi"
                       },
-                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'), variables('reportExtractionEnv'))]",
+                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_CATALOG_DB', 'secretRef', 'catalog-db'), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId), createObject('name', 'ControlPlane__Jwt__SigningKey', 'secretRef', 'jwt-signing-key'), createObject('name', 'ControlPlane__Jwt__Issuer', 'value', parameters('jwtIssuer')), createObject('name', 'ControlPlane__Jwt__Audience', 'value', parameters('jwtAudience')), createObject('name', 'ControlPlane__Worker__Enabled', 'value', if(parameters('workerEnabled'), 'true', 'false'))), variables('bootstrapEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('githubAppEnv'), variables('corsEnv'), variables('proxyEnv'), variables('entraEnv'), variables('assistantEnv'), variables('reportExtractionEnv'))]",
                       "probes": [
                         {
                           "type": "Liveness",
@@ -1413,6 +1461,7 @@
         "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('catalogDatabaseName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('catalogConnectionSecretName'))]",
         "[resourceId('Microsoft.Resources/deployments', 'sqlflow-entra-app')]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('githubAppKeySecretName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('gitTokenSecretName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('jwtSigningKeySecretName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
@@ -1458,6 +1507,10 @@
           "gitUsername": {
             "value": "[parameters('gitUsername')]"
           },
+          "githubAppId": {
+            "value": "[variables('githubAppIdChecked')]"
+          },
+          "githubAppKeySecretName": "[if(empty(parameters('githubAppPrivateKey')), createObject('value', ''), createObject('value', variables('githubAppKeySecretName')))]",
           "flowEnv": {
             "value": "[concat(variables('builtInFlowEnv'), parameters('workerFlowEnv'))]"
           },
@@ -1478,7 +1531,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "14881685973492540790"
+              "templateHash": "16437012709651375233"
             }
           },
           "parameters": {
@@ -1546,6 +1599,20 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone."
+              }
+            },
+            "githubAppId": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "The client ID of the GitHub App SHA-pinned materialization reads private GitHub repositories with, before the git token (docs/reference/guides/github-app.md). Empty uses no App."
+              }
+            },
+            "githubAppKeySecretName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Key Vault secret name holding the GitHub App's private key (its .pem). Set with githubAppId."
               }
             },
             "flowEnv": {
@@ -1617,9 +1684,11 @@
             "vaultUri": "[format('https://{0}{1}/', parameters('keyVaultName'), environment().suffixes.keyvaultDns)]",
             "nodeTokenSecrets": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'node-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('nodeTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
             "gitTokenSecrets": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'git-token', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('gitTokenSecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
+            "githubAppKeySecrets": "[if(empty(parameters('githubAppKeySecretName')), createArray(), createArray(createObject('name', 'github-app-private-key', 'keyVaultUrl', format('{0}secrets/{1}', variables('vaultUri'), parameters('githubAppKeySecretName')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
             "nodeTokenEnv": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_TOKEN', 'secretRef', 'node-token')))]",
             "gitTokenEnv": "[if(empty(parameters('gitTokenSecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_TOKEN', 'secretRef', 'git-token')))]",
             "gitUsernameEnv": "[if(empty(parameters('gitUsername')), createArray(), createArray(createObject('name', 'SQLFLOW_GIT_USERNAME', 'value', parameters('gitUsername'))))]",
+            "githubAppEnv": "[concat(if(empty(parameters('githubAppId')), createArray(), createArray(createObject('name', 'SQLFLOW_GITHUB_APP_ID', 'value', parameters('githubAppId')))), if(empty(parameters('githubAppKeySecretName')), createArray(), createArray(createObject('name', 'SQLFLOW_GITHUB_APP_PRIVATE_KEY', 'secretRef', 'github-app-private-key'))))]",
             "scaleRules": "[if(empty(parameters('nodeTokenSecretName')), createArray(), createArray(createObject('name', 'replica-target', 'custom', createObject('type', 'metrics-api', 'metadata', createObject('url', format('{0}/api/v1/node/scale-target?pool={1}', parameters('controlPlaneUrl'), uriComponent(parameters('pool'))), 'valueLocation', 'replicas', 'targetValue', '1', 'authMode', 'bearer'), 'auth', createArray(createObject('secretRef', 'node-token', 'triggerParameter', 'token'))))))]"
           },
           "resources": [
@@ -1674,7 +1743,7 @@
                 "configuration": {
                   "activeRevisionsMode": "Single",
                   "registries": "[if(empty(if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer'))), createArray(), createArray(createObject('server', if(not(empty(parameters('acrName'))), reference(resourceId('Microsoft.ContainerRegistry/registries', if(empty(parameters('acrName')), 'unused', parameters('acrName'))), '2023-07-01').loginServer, parameters('acrLoginServer')), 'identity', resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))))))]",
-                  "secrets": "[concat(variables('nodeTokenSecrets'), variables('gitTokenSecrets'), variables('flowEnvSecrets'))]"
+                  "secrets": "[concat(variables('nodeTokenSecrets'), variables('gitTokenSecrets'), variables('githubAppKeySecrets'), variables('flowEnvSecrets'))]"
                 },
                 "template": {
                   "terminationGracePeriodSeconds": 600,
@@ -1686,7 +1755,7 @@
                         "cpu": "[json(parameters('cpu'))]",
                         "memory": "[parameters('memory')]"
                       },
-                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_URL', 'value', parameters('controlPlaneUrl')), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('nodeTokenEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('flowEnvVars'))]"
+                      "env": "[concat(createArray(createObject('name', 'SQLFLOW_URL', 'value', parameters('controlPlaneUrl')), createObject('name', 'SQLFLOW_WORKER_POOL', 'value', parameters('pool')), createObject('name', 'SQLFLOW_AZURE_AUTH', 'value', 'mi'), createObject('name', 'AZURE_CLIENT_ID', 'value', reference(resourceId('Microsoft.ManagedIdentity/userAssignedIdentities', format('{0}-id', parameters('name'))), '2023-01-31').clientId)), variables('nodeTokenEnv'), variables('gitTokenEnv'), variables('gitUsernameEnv'), variables('githubAppEnv'), variables('flowEnvVars'))]"
                     }
                   ],
                   "scale": {
@@ -1726,6 +1795,7 @@
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('catalogConnectionSecretName'))]",
         "[resourceId('Microsoft.Sql/servers/databases', parameters('sqlServerName'), parameters('dwhDatabaseName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('dwhConnectionSecretName'))]",
+        "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('githubAppKeySecretName'))]",
         "[resourceId('Microsoft.KeyVault/vaults/secrets', parameters('keyVaultName'), variables('gitTokenSecretName'))]",
         "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
         "[resourceId('Microsoft.App/managedEnvironments', parameters('environmentName'))]",
@@ -2336,7 +2406,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.44.1.10279",
-              "templateHash": "18130260471843531184"
+              "templateHash": "8072267432209951993"
             }
           },
           "parameters": {

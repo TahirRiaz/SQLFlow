@@ -42,6 +42,16 @@ spec:
             - name: ControlPlane__Bootstrap__AdminPasswordReference
               valueFrom:
                 secretKeyRef: { name: sqlflow-secrets, key: admin-password }
+            # The git credentials a repository source naming none is synced with: the GitHub App, then the token.
+            - name: SQLFLOW_GITHUB_APP_ID
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: github-app-id, optional: true }
+            - name: SQLFLOW_GITHUB_APP_PRIVATE_KEY
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: github-app-private-key, optional: true }
+            - name: SQLFLOW_GIT_TOKEN
+              valueFrom:
+                secretKeyRef: { name: sqlflow-secrets, key: git-token, optional: true }
             # API-only replicas: compute is the worker deployments' job.
             - name: ControlPlane__Worker__Enabled
               value: "false"

@@ -43,53 +43,59 @@ public static class RemoteUrlParser
     /// not an <c>https</c> clone URL of a supported host with a <c>{owner}/{repo}</c> path.</summary>
     public static PullRequestCoordinates? Parse(string? remoteUrl)
     {
-        if (string.IsNullOrWhiteSpace(remoteUrl))
+        if (!TryParseHttpsRepository(remoteUrl, out var host, out var owner, out var repo))
         {
             return null;
         }
 
-        if (!Uri.TryCreate(remoteUrl.Trim(), UriKind.Absolute, out var uri))
-        {
-            return null;
-        }
-
-        // HTTPS only: the whole source-control path is HTTPS (LibGit2Sharp clone/push, and the provider REST APIs),
-        // so an ssh:// or git@ remote has no supported push-and-open-PR flow here.
-        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
-        {
-            return null;
-        }
-
-        var host = uri.Host.ToLowerInvariant();
         var provider = host switch
         {
             "github.com" or "www.github.com" => PullRequestProvider.GitHub,
             "bitbucket.org" or "www.bitbucket.org" => PullRequestProvider.Bitbucket,
             _ => (PullRequestProvider?)null,
         };
-        if (provider is null)
+        return provider is null ? null : new PullRequestCoordinates(provider.Value, host, owner, repo);
+    }
+
+    /// <summary>
+    /// Parses an <c>https</c> clone URL of any host into its lower-cased host and the <c>{owner}/{repo}</c> its path
+    /// starts with (a trailing <c>.git</c> dropped); false for anything else. The one parse both the pull-request
+    /// coordinates and a GitHub App's repository are read with.
+    /// </summary>
+    public static bool TryParseHttpsRepository(
+        string? remoteUrl,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? host,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? owner,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out string? repo)
+    {
+        host = owner = repo = null;
+        if (string.IsNullOrWhiteSpace(remoteUrl) || !Uri.TryCreate(remoteUrl.Trim(), UriKind.Absolute, out var uri))
         {
-            return null;
+            return false;
+        }
+
+        // HTTPS only: the whole source-control path is HTTPS (LibGit2Sharp clone/push, and the provider REST APIs),
+        // so an ssh:// or git@ remote has no supported push-and-open-PR flow here.
+        if (!string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
         }
 
         var segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
         if (segments.Length < 2)
         {
-            return null;
+            return false;
         }
 
-        var owner = segments[0];
-        var repo = segments[1];
-        if (repo.EndsWith(".git", StringComparison.OrdinalIgnoreCase))
+        var name = segments[1].EndsWith(".git", StringComparison.OrdinalIgnoreCase) ? segments[1][..^4] : segments[1];
+        if (string.IsNullOrWhiteSpace(segments[0]) || string.IsNullOrWhiteSpace(name))
         {
-            repo = repo[..^4];
+            return false;
         }
 
-        if (string.IsNullOrWhiteSpace(owner) || string.IsNullOrWhiteSpace(repo))
-        {
-            return null;
-        }
-
-        return new PullRequestCoordinates(provider.Value, host, owner, repo);
+        host = uri.Host.ToLowerInvariant();
+        owner = segments[0];
+        repo = name;
+        return true;
     }
 }

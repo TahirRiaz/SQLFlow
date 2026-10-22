@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Loader2, Pencil, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronRight, KeyRound, Loader2, Pencil, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ import { Page } from "../../components/Page";
 import { PageHeader } from "../../components/PageHeader";
 import { RelativeTime } from "../../components/RelativeTime";
 import { CopyButton } from "../../components/CopyButton";
+import { GitCredentialGlyph } from "./GitCredentialChip";
+import { GitCredentialsSheet } from "./GitCredentialsSheet";
 import { RegisterSourceDialog } from "./RegisterSourceDialog";
 import { RepoDeleteDialog } from "./RepoDeleteDialog";
 import { useSyncTracePanel } from "./useSyncTracePanel";
@@ -80,6 +82,7 @@ export default function ReposPage() {
   const [editSource, setEditSource] = useState<RepoSource | null>(null);
   const [attachRepo, setAttachRepo] = useState<Repo | null>(null);
   const [deleteRow, setDeleteRow] = useState<MergedRow | null>(null);
+  const [credentialsOpen, setCredentialsOpen] = useState(false);
 
   const reposQuery = useQuery({
     queryKey: ["repos", "list", FETCH_CAP],
@@ -214,6 +217,8 @@ export default function ReposPage() {
               </TooltipContent>
             </Tooltip>
             <CopyButton iconOnly label="Copy URL" text={url} testId="copy-remote-url" />
+            {/* How the remote is read: its own reference, the host's GitHub App or token, or none. */}
+            <GitCredentialGlyph credential={row.source?.credential} testId="source-credential" />
           </span>
         );
       },
@@ -299,9 +304,15 @@ export default function ReposPage() {
       <PageHeader
         title="Repos"
         actions={(
-          <Button size="sm" onClick={() => setRegisterOpen(true)} data-testid="open-register-source">
-            Register source
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={() => setCredentialsOpen(true)} data-testid="open-git-credentials">
+              <KeyRound />
+              Git credentials
+            </Button>
+            <Button size="sm" onClick={() => setRegisterOpen(true)} data-testid="open-register-source">
+              Register source
+            </Button>
+          </>
         )}
       />
 
@@ -332,6 +343,7 @@ export default function ReposPage() {
         </p>
       )}
 
+      {credentialsOpen && <GitCredentialsSheet onClose={() => setCredentialsOpen(false)} />}
       {registerOpen && <RegisterSourceDialog onClose={() => setRegisterOpen(false)} />}
       {editSource !== null && (
         <RegisterSourceDialog source={editSource} onClose={() => setEditSource(null)} />

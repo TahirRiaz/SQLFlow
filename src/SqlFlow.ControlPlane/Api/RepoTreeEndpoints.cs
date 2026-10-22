@@ -19,7 +19,7 @@ namespace SqlFlow.ControlPlane.Api;
 /// The read is bounded and content-free: paths, folder-or-file, and blob sizes. No file body is served here (a flow's
 /// YAML is read through the pipeline detail, an scm snapshot through the schema-change diff), and no client ever
 /// holds a git credential: the repo's registered source supplies the remote and its credential REFERENCE, resolved
-/// through the same <see cref="GitMaterializer.ResolveCredentialsAsync"/> path the managed sync uses.
+/// through the same <see cref="GitMaterializer.ResolveCredentialAsync(ISecretResolver, string?, string?, string?, GitAccess, CancellationToken)"/> path the managed sync uses.
 /// </summary>
 public static class RepoTreeEndpoints
 {
@@ -102,7 +102,7 @@ public static class RepoTreeEndpoints
         try
         {
             var credentials = await GitMaterializer
-                .ResolveCredentialsAsync(secrets, source.CredentialReference, source.CredentialUsername, ct)
+                .ResolveCredentialsAsync(secrets, source.CredentialReference, source.CredentialUsername, source.RemoteUrl, GitAccess.Read, ct)
                 .ConfigureAwait(false);
 
             // git and file IO are blocking, and a cold clone is slow; keep both off the request thread.

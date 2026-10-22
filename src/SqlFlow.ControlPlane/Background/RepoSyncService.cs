@@ -253,20 +253,22 @@ public sealed partial class RepoSyncService : BackgroundService
 
     /// <summary>Materializes a git source's branch tip into its commit folder in the node cache (reused when the tip
     /// has not moved; see <see cref="GitMaterializer.MaterializeBranch"/>), which the catalog sync then records as
-    /// the repo's root. The credential is resolved from the source's stored ${...} reference, or the host environment
-    /// when it has none; the secret is never stored.</summary>
+    /// the repo's root. The credential is resolved from the source's stored ${...} reference, or when it has none from
+    /// the host (its GitHub App, then its SQLFLOW_GIT_TOKEN); the secret is never stored.</summary>
     private async Task<(string WorkingDir, string Sha)> CloneAsync(
         ActivityTrace trace, ISecretResolver resolver, CatalogRepoSource source, CancellationToken ct)
     {
         var remoteUrl = source.RemoteUrl
             ?? throw new InvalidOperationException($"Repo source '{source.Name}' has neither a remote URL nor a local path.");
         await trace.InfoAsync("credentials", "Resolving git credentials.", ct).ConfigureAwait(false);
-        var credentials = await GitMaterializer
-            .ResolveCredentialsAsync(resolver, source.CredentialReference, source.CredentialUsername, ct)
+        var credential = await GitMaterializer
+            .ResolveCredentialAsync(resolver, source.CredentialReference, source.CredentialUsername, remoteUrl, GitAccess.Read, ct)
             .ConfigureAwait(false);
 
+        // The trace says which credential the sync read with (never the secret), so a refused clone is diagnosed from it.
+        await trace.InfoAsync("credentials", $"Reading with {credential.Summary}.", ct).ConfigureAwait(false);
         await trace.InfoAsync("clone", $"Reading the tip of {remoteUrl} (branch {source.Branch}).", ct).ConfigureAwait(false);
-        var checkout = _materializer.MaterializeBranch(remoteUrl, source.Branch, credentials, ct);
+        var checkout = _materializer.MaterializeBranch(remoteUrl, source.Branch, credential.Credentials, ct);
         await trace.InfoAsync("clone", checkout.Reused
             ? $"{checkout.CommitSha} is already checked out at {checkout.WorkingDirectory}; nothing to clone."
             : $"Checked out {checkout.CommitSha} at {checkout.WorkingDirectory}.", ct).ConfigureAwait(false);

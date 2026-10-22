@@ -44,6 +44,12 @@ param gitTokenSecretName string = ''
 @description('Username paired with the git token when the host requires one (Bitbucket app passwords take the account username, repository access tokens take x-token-auth; GitHub ignores it). Empty sends the token alone.')
 param gitUsername string = ''
 
+@description('The client ID of the GitHub App SHA-pinned materialization reads private GitHub repositories with, before the git token (docs/reference/guides/github-app.md). Empty uses no App.')
+param githubAppId string = ''
+
+@description('Key Vault secret name holding the GitHub App\'s private key (its .pem). Set with githubAppId.')
+param githubAppKeySecretName string = ''
+
 @description('Flow environment references, one object per \${env:...} reference the pool\'s flows use: { name: the environment variable, secretName: the Key Vault secret holding its value }. Credentials live on the node, never in the control plane.')
 param flowEnv array = []
 
@@ -126,6 +132,14 @@ var gitTokenSecrets = empty(gitTokenSecretName) ? [] : [
   }
 ]
 
+var githubAppKeySecrets = empty(githubAppKeySecretName) ? [] : [
+  {
+    name: 'github-app-private-key'
+    keyVaultUrl: '${vaultUri}secrets/${githubAppKeySecretName}'
+    identity: identity.id
+  }
+]
+
 var flowEnvSecrets = [for (entry, i) in flowEnv: {
   name: 'flow-env-${i}'
   keyVaultUrl: '${vaultUri}secrets/${entry.secretName}'
@@ -175,6 +189,21 @@ var gitUsernameEnv = empty(gitUsername) ? [] : [
     value: gitUsername
   }
 ]
+
+var githubAppEnv = concat(
+  empty(githubAppId) ? [] : [
+    {
+      name: 'SQLFLOW_GITHUB_APP_ID'
+      value: githubAppId
+    }
+  ],
+  empty(githubAppKeySecretName) ? [] : [
+    {
+      name: 'SQLFLOW_GITHUB_APP_PRIVATE_KEY'
+      secretRef: 'github-app-private-key'
+    }
+  ]
+)
 
 // Every ${env:...} reference the pool's flows use resolves HERE, on the node.
 var flowEnvVars = [for (entry, i) in flowEnv: {
@@ -236,7 +265,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           identity: identity.id
         }
       ]
-      secrets: concat(nodeTokenSecrets, gitTokenSecrets, flowEnvSecrets)
+      secrets: concat(nodeTokenSecrets, gitTokenSecrets, githubAppKeySecrets, flowEnvSecrets)
     }
     template: {
       // Let an in-flight run finish on scale-in or revision swap; an interrupted one is requeued anyway.
@@ -249,7 +278,7 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
             cpu: json(cpu)
             memory: memory
           }
-          env: concat(baseEnv, nodeTokenEnv, gitTokenEnv, gitUsernameEnv, flowEnvVars)
+          env: concat(baseEnv, nodeTokenEnv, gitTokenEnv, gitUsernameEnv, githubAppEnv, flowEnvVars)
         }
       ]
       scale: {

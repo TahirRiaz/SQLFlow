@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Network, Play, RefreshCw } from "lucide-react";
+import { KeyRound, Loader2, Network, Play, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,8 @@ import { groupByProject, pipelineMatches, ProjectGroup } from "../pipelines/Proj
 import { projectOf } from "./project";
 import { TriggerRunDialog } from "../runs/TriggerRunDialog";
 import { useSyncTracePanel } from "./useSyncTracePanel";
+import { GitCredentialChip } from "./GitCredentialChip";
+import { useRepoAccessCheck } from "./useRepoAccessCheck";
 import { announceSyncOutcome, repoSourcesRefetchInterval } from "./syncOutcome";
 
 /** The most repos/sources a single control plane realistically holds; one page covers the by-name lookup. */
@@ -316,6 +318,9 @@ export default function RepoDetailPage() {
       toast.error(isApiError(error) ? error.detail ?? error.title : String(error)),
   });
 
+  // Reads the source's branch tip with its credential through the sync's own path, and says which credential that was.
+  const accessCheck = useRepoAccessCheck();
+
   // A CLI/local-path repo has no git source for the background sync to poll, so it is re-synced inline from its
   // recorded root path (connected: the derived lineage tier reads the live database). On success the pipeline and
   // lineage views are refreshed so the new waves/edges show without a manual reload.
@@ -418,6 +423,38 @@ export default function RepoDetailPage() {
                   </TooltipContent>
                 </Tooltip>
               ) : null}
+              {source?.remoteUrl != null && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={accessCheck.isPending}
+                  onClick={() => {
+                    const remoteUrl = source.remoteUrl;
+                    if (remoteUrl == null) {
+                      return;
+                    }
+
+                    accessCheck.mutate(
+                      {
+                        remoteUrl,
+                        branch: source.branch,
+                        credentialReference: source.credentialReference,
+                        credentialUsername: source.credentialUsername,
+                      },
+                      {
+                        onSuccess: (access) =>
+                          toast.success(`Read ${access.commitSha.slice(0, 10)} on ${access.branch} with ${access.credential.summary}.`),
+                        onError: (error) =>
+                          toast.error(isApiError(error) ? error.detail ?? error.title : String(error)),
+                      },
+                    );
+                  }}
+                  data-testid="repo-check-access"
+                >
+                  {accessCheck.isPending ? <Loader2 className="animate-spin" /> : <KeyRound />}
+                  Test access
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -452,9 +489,18 @@ export default function RepoDetailPage() {
             <Mono>{source?.lastSyncedSha?.slice(0, 10) ?? "-"}</Mono>
           </DetailPair>
           <DetailPair label="Credential">
-            {source?.credentialReference == null
-              ? "-"
-              : `${source.credentialReference}${source.credentialUsername ? ` (${source.credentialUsername})` : ""}`}
+            {source === undefined ? "-" : (
+              <span className="inline-flex max-w-full items-center gap-1.5">
+                <GitCredentialChip credential={source.credential} testId="repo-credential" />
+                {source.credentialReference != null && (
+                  <TruncatedText
+                    text={`${source.credentialReference}${source.credentialUsername ? ` (${source.credentialUsername})` : ""}`}
+                    mono
+                    maxWidth={260}
+                  />
+                )}
+              </span>
+            )}
           </DetailPair>
           <DetailPair label="First seen"><RelativeTime value={repo.firstSeenUtc} absolute /></DetailPair>
           <DetailPair label="Last sync"><RelativeTime value={repo.lastSyncUtc} absolute /></DetailPair>

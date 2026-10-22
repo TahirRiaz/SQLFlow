@@ -823,7 +823,7 @@ public sealed partial class RunWorker : IDisposable
                 // the protocol.
                 var resolver = scope.GetRequiredService<ISecretResolver>();
                 var credentials = await GitMaterializer
-                    .ResolveCredentialsAsync(resolver, run.CredentialReference, run.CredentialUsername, ct)
+                    .ResolveCredentialsAsync(resolver, run.CredentialReference, run.CredentialUsername, run.RepoRemoteUrl, GitAccess.Read, ct)
                     .ConfigureAwait(false);
                 flowRoot = _materializer.Materialize(run.RepoRemoteUrl, run.CommitSha, credentials, ct);
                 LogMaterialized(runId, repoName, run.CommitSha);

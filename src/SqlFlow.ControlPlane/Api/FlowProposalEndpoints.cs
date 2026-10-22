@@ -159,11 +159,12 @@ public static class FlowProposalEndpoints
         GitMaterializerCredentials? credentials;
         try
         {
+            // Write: a GitHub App token for a proposal may push the branch and open the pull request, nothing more.
             credentials = await GitMaterializer
-                .ResolveCredentialsAsync(resolver, source.CredentialReference, source.CredentialUsername, ct)
+                .ResolveCredentialsAsync(resolver, source.CredentialReference, source.CredentialUsername, remoteUrl, GitAccess.Write, ct)
                 .ConfigureAwait(false);
         }
-        catch (SqlFlowNodeException ex)
+        catch (Exception ex) when (ex is SqlFlowNodeException or SqlFlowException)
         {
             return Problem(SecretHygiene.RedactedMessage(ex), StatusCodes.Status400BadRequest);
         }

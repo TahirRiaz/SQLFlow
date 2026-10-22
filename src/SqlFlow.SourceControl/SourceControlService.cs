@@ -4,6 +4,7 @@ using SqlFlow.Core;
 using SqlFlow.Core.Connections;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Core.SourceControl;
+using SqlFlow.SourceControl.GitHub;
 
 namespace SqlFlow.SourceControl;
 
@@ -186,6 +187,15 @@ public sealed class SourceControlService
         if (repository.Remote is null || repository.Secret is null)
         {
             return null;
+        }
+
+        // A GitHub App reference mints a token narrowed to the snapshot's own repository and to pushing (unless the
+        // reference names those itself); the token signs in as x-access-token whatever username the flow carries.
+        if (GitHubAppReference.IsReference(repository.Secret))
+        {
+            var reference = GitHubAppReference.ForRemote(
+                repository.Secret, repository.Remote, GitHubAppPermissions.PushContents, GitHubAppEnvironment.Read());
+            return new GitCredentials { Secret = await _secrets.ResolveAsync(reference, ct).ConfigureAwait(false) };
         }
 
         var secret = await _secrets.ResolveAsync(repository.Secret, ct).ConfigureAwait(false);

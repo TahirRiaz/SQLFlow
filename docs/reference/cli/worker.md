@@ -30,6 +30,7 @@ related:
   - concept-architecture-and-execution
   - guide-deployment
   - concept-cli-conventions
+  - guide-github-app
 sourceRefs:
   - src/SqlFlow.Cli/Program.cs
   - src/SqlFlow.Cli/Hosting/NodeHostedServices.cs
@@ -205,6 +206,7 @@ Why this matters: a severed run reports no outcome at all, so it is recovered on
 | `SQLFLOW_NODE_NAME` | the default `--node-name` | The name the node polls under; the machine name when unset. |
 | `SQLFLOW_GIT_TOKEN` | `GitMaterializer` | Token for private git remotes when materializing pinned commits whose repo source names no credential reference (optional). |
 | `SQLFLOW_GIT_USERNAME` | `GitMaterializer` | Username paired with the token (optional; defaults to `x-access-token`). |
+| `SQLFLOW_GITHUB_APP_ID` | `GitMaterializer` | The host's GitHub App, tried before the token for a GitHub remote whose repo source names no credential reference; with `SQLFLOW_GITHUB_APP_PRIVATE_KEY` or `SQLFLOW_GITHUB_APP_PRIVATE_KEY_PATH` (optional; [guide](../guides/github-app.md)). |
 | `SQLFLOW_WORKER_POOL` | deploy/docker/worker-entrypoint.sh (container image only) | Translated to `--pool`; keeps pool config in the environment. |
 | `SQLFLOW_WORKER_POLL_SECONDS` | deploy/docker/worker-entrypoint.sh (container image only) | Translated to `--poll-seconds`. |
 | `SQLFLOW_WORKER_DRAIN_SECONDS` | deploy/docker/worker-entrypoint.sh (container image only) | Translated to `--drain-seconds`. |

@@ -8,6 +8,7 @@ using SqlFlow.ControlPlane.Background;
 using SqlFlow.Core;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Node;
+using SqlFlow.SourceControl.GitHub;
 
 namespace SqlFlow.ControlPlane.Api;
 
@@ -25,12 +26,47 @@ public sealed record RepoSourceDto(
     DateTime? NextSyncUtc, DateTime? LastSyncUtc, string? LastSyncedSha, string? LastError,
     string? CredentialReference, string? CredentialUsername, IReadOnlyList<string> ExcludedFlowPaths,
     DateTime CreatedUtc, DateTime UpdatedUtc,
-    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false, string? ConfiguredBy = null);
+    DateTime? SyncRequestedUtc = null, DateTime? SyncStartedUtc = null, bool SyncPending = false, string? ConfiguredBy = null,
+    GitCredentialDto? Credential = null);
+
+/// <summary>
+/// The credential a repo source's git operations use, as this control plane is configured (nothing is resolved to
+/// say it): <see cref="Kind"/> is <c>none</c>, <c>reference</c> (the source's reference to a token),
+/// <c>github-app</c> (an App installation token, from the source's <c>${githubapp:...}</c> reference or the host's App)
+/// or <c>host-token</c> (the host's <c>SQLFLOW_GIT_TOKEN</c>); <see cref="FromHost"/> says the host's configuration
+/// supplies it rather than the source; <see cref="Summary"/> says what it is in words; <see cref="Problem"/> says why
+/// it cannot be used, when it cannot. Never a secret.
+/// </summary>
+public sealed record GitCredentialDto(string Kind, bool FromHost, string Summary, string? Problem = null);
+
+/// <summary>This control plane's GitHub App, as its environment configures it (<c>SQLFLOW_GITHUB_APP_*</c>): never the key.</summary>
+public sealed record GitHubAppHostStatusDto(bool Configured, string? AppId, string? KeySource, string ApiUrl, string Host, string? Problem);
+
+/// <summary>Whether this control plane has a <c>SQLFLOW_GIT_TOKEN</c>, and the user name it signs in with: never the token.</summary>
+public sealed record HostGitTokenStatusDto(bool Configured, string? Username);
+
+/// <summary>The git credentials this control plane supplies to a source that names none: its GitHub App, then its token.</summary>
+public sealed record GitCredentialsStatusDto(GitHubAppHostStatusDto GitHubApp, HostGitTokenStatusDto HostToken);
+
+/// <summary>One installation of the host's GitHub App: where it is installed, and on which repositories.</summary>
+public sealed record GitHubAppInstallationDto(long Id, string Account, string? AccountType, string? RepositorySelection, DateTimeOffset? SuspendedUtc);
+
+/// <summary>What GitHub says about the host's App, asked as the App: proof its ID and key belong together.</summary>
+public sealed record GitHubAppCheckDto(
+    string AppId, string Name, string Slug, string? Owner, string? HtmlUrl,
+    IReadOnlyList<GitHubAppInstallationDto> Installations, bool MoreInstallations);
+
+/// <summary>The body to check that a remote can be read: the remote, its branch, and the credential a source would name.</summary>
+public sealed record CheckRepoAccessRequest(string RemoteUrl, string? Branch, string? CredentialReference, string? CredentialUsername);
+
+/// <summary>A remote read successfully: the credential it was read with, and the commit at its branch's tip.</summary>
+public sealed record RepoAccessDto(GitCredentialDto Credential, string Branch, string CommitSha);
 
 /// <summary>The body to register (or update) a tracked repo source: exactly one of <see cref="RemoteUrl"/> (a git
 /// remote the managed sync clones and pulls) and <see cref="LocalPath"/> (a directory the control-plane host reads
 /// live, with no git step) must be given. <see cref="CredentialReference"/> is a secret reference
-/// (<c>${keyvault:vault/secret}</c> / <c>${env:NAME}</c>) for a private remote's token, never a raw token: the
+/// (<c>${keyvault:vault/secret}</c> / <c>${env:NAME}</c>) for a private remote's token, or a <c>${githubapp:...}</c>
+/// reference to a GitHub App, never a raw token: the
 /// secret is created and maintained in the vault, SQLFlow only references it; it is ignored for a local-path
 /// source. <see cref="ExcludedFlowPaths"/> are the repo-relative flow files to leave out of the import (from a
 /// discover preview); null or empty imports every <c>*.flow.yaml</c>.</summary>
@@ -61,7 +97,7 @@ public sealed record RepoSourceRegistered(Guid Id);
 public static class RepoSourceEndpoints
 {
     // A single ${scheme:locator} reference (the whole value), so a raw pasted token is rejected: SQLFlow references
-    // secrets, it never stores them. Matches ${env:NAME} and ${keyvault:vault/secret}.
+    // secrets, it never stores them. Matches ${env:NAME}, ${keyvault:vault/secret} and ${githubapp:...}.
     private static readonly Regex SecretReferencePattern =
         new(@"^\$\{[a-zA-Z]+:[^}]+\}$", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
@@ -69,6 +105,7 @@ public static class RepoSourceEndpoints
     {
         ArgumentNullException.ThrowIfNull(group);
         group.MapGet("/repos/sources", ListSourcesAsync).WithTags("RepoSources").WithName("ListRepoSources");
+        group.MapGet("/repos/credentials", CredentialsStatus).WithTags("RepoSources").WithName("GitCredentialsStatus");
         return group;
     }
 
@@ -81,6 +118,9 @@ public static class RepoSourceEndpoints
         // Preview-first scan: clone a remote and list its flows without importing (nothing reaches the catalog until
         // a sync). Under "operate" because it clones a remote using the deployment's git credential.
         group.MapPost("/repos/discover", DiscoverRepoAsync).WithTags("RepoSources").WithName("DiscoverRepoFlows");
+        // Access checks read a remote's branch tip, and the host App's details, with the deployment's credentials.
+        group.MapPost("/repos/check", CheckRepoAccessAsync).WithTags("RepoSources").WithName("CheckRepoAccess");
+        group.MapPost("/repos/credentials/github-app/check", CheckGitHubAppAsync).WithTags("RepoSources").WithName("CheckGitHubApp");
         return group;
     }
 
@@ -132,7 +172,7 @@ public static class RepoSourceEndpoints
         if (credentialReference is not null && !SecretReferencePattern.IsMatch(credentialReference))
         {
             return TypedResults.Problem(
-                detail: "credentialReference must be a secret reference like ${keyvault:my-vault/github-pat} or ${env:GIT_TOKEN}, not a raw token. Create and maintain the secret in your vault; SQLFlow only references it.",
+                detail: "credentialReference must be a secret reference like ${keyvault:my-vault/git-token}, ${env:GIT_TOKEN} or ${githubapp:app=<client ID>;key=keyvault:<vault>/<secret>}, not a raw token. Create and maintain the secret in your vault; SQLFlow only references it.",
                 statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
         }
 
@@ -275,16 +315,16 @@ public static class RepoSourceEndpoints
         if (credentialReference is not null && !SecretReferencePattern.IsMatch(credentialReference))
         {
             return TypedResults.Problem(
-                detail: "credentialReference must be a secret reference like ${keyvault:my-vault/github-pat} or ${env:GIT_TOKEN}, not a raw token.",
+                detail: "credentialReference must be a secret reference like ${keyvault:my-vault/git-token}, ${env:GIT_TOKEN} or ${githubapp:app=<client ID>;key=keyvault:<vault>/<secret>}, not a raw token.",
                 statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
         }
 
         try
         {
-            var credentials = await GitMaterializer
-                .ResolveCredentialsAsync(resolver, credentialReference, request.CredentialUsername, ct).ConfigureAwait(false);
             var branch = string.IsNullOrWhiteSpace(request.Branch) ? "main" : request.Branch.Trim();
             var remoteUrl = request.RemoteUrl.Trim();
+            var credentials = await GitMaterializer
+                .ResolveCredentialsAsync(resolver, credentialReference, request.CredentialUsername, remoteUrl, GitAccess.Read, ct).ConfigureAwait(false);
 
             // Clone + parse off the request thread (git + file IO are blocking); read-only, nothing touches the
             // catalog. The clone lands in the node cache and is reused by a later sync of the same remote.
@@ -309,6 +349,125 @@ public static class RepoSourceEndpoints
         }
     }
 
+    /// <summary>The git credentials this control plane supplies to a source naming none, as its environment configures
+    /// them. Read from this host alone: each worker reads its own environment the same way.</summary>
+    private static Ok<GitCredentialsStatusDto> CredentialsStatus()
+    {
+        var app = GitHubAppEnvironment.Describe();
+        var token = Environment.GetEnvironmentVariable(GitMaterializer.HostTokenVariable);
+        var username = Environment.GetEnvironmentVariable(GitMaterializer.HostTokenUsernameVariable);
+        return TypedResults.Ok(new GitCredentialsStatusDto(
+            new GitHubAppHostStatusDto(app.Configured, app.AppId, app.KeySource, app.ApiUrl, app.Host, app.Problem),
+            new HostGitTokenStatusDto(!string.IsNullOrWhiteSpace(token), string.IsNullOrWhiteSpace(username) ? null : username.Trim())));
+    }
+
+    /// <summary>Asks GitHub, as this host's App, for the App's name, owner and installations: the check that the App's
+    /// ID and private key belong together and that GitHub can be reached. Nothing is cached or stored.</summary>
+    private static async Task<Results<Ok<GitHubAppCheckDto>, ProblemHttpResult>> CheckGitHubAppAsync(
+        GitHubAppTokenClient client, CancellationToken ct)
+    {
+        GitHubAppSettings settings;
+        try
+        {
+            settings = GitHubAppEnvironment.Read();
+        }
+        catch (GitHubAppException ex)
+        {
+            return TypedResults.Problem(
+                detail: ex.Message, statusCode: StatusCodes.Status409Conflict, title: "GitHub App misconfigured");
+        }
+
+        if (settings.App is not { } app)
+        {
+            return TypedResults.Problem(
+                detail: $"This control plane has no GitHub App: set {GitHubAppEnvironment.AppIdVariable} and "
+                    + $"{GitHubAppEnvironment.PrivateKeyVariable} (or {GitHubAppEnvironment.PrivateKeyPathVariable}) in its environment.",
+                statusCode: StatusCodes.Status409Conflict, title: "No GitHub App");
+        }
+
+        try
+        {
+            var details = await client.GetAppAsync(app, settings.ApiRoot, ct).ConfigureAwait(false);
+            return TypedResults.Ok(new GitHubAppCheckDto(
+                app.AppId, details.Name, details.Slug, details.Owner, details.HtmlUrl,
+                details.Installations
+                    .Select(i => new GitHubAppInstallationDto(i.Id, i.Account, i.AccountType, i.RepositorySelection, i.SuspendedUtc))
+                    .ToList(),
+                details.MoreInstallations));
+        }
+        catch (GitHubAppException ex)
+        {
+            return TypedResults.Problem(
+                detail: SecretHygiene.RedactedMessage(ex), statusCode: StatusCodes.Status400BadRequest, title: "GitHub App check failed");
+        }
+    }
+
+    /// <summary>
+    /// Reads a remote's branch tip with the credential a source naming <see cref="CheckRepoAccessRequest.CredentialReference"/>
+    /// would use, resolved through the same path as a sync, so a source is checked before it is registered (or after a
+    /// credential changed). Nothing is cloned and nothing reaches the catalog; the answer names the credential used.
+    /// </summary>
+    private static async Task<Results<Ok<RepoAccessDto>, ProblemHttpResult>> CheckRepoAccessAsync(
+        CheckRepoAccessRequest request, ISecretResolver resolver, CancellationToken ct)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.RemoteUrl))
+        {
+            return TypedResults.Problem(
+                detail: "An access check requires a non-blank remoteUrl.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+        }
+
+        var credentialReference = string.IsNullOrWhiteSpace(request.CredentialReference)
+            ? null
+            : request.CredentialReference.Trim();
+        if (credentialReference is not null && !SecretReferencePattern.IsMatch(credentialReference))
+        {
+            return TypedResults.Problem(
+                detail: "credentialReference must be a secret reference like ${keyvault:my-vault/git-token}, ${env:GIT_TOKEN} or ${githubapp:app=<client ID>;key=keyvault:<vault>/<secret>}, not a raw token.",
+                statusCode: StatusCodes.Status400BadRequest, title: "Invalid request");
+        }
+
+        var remoteUrl = request.RemoteUrl.Trim();
+        var branch = string.IsNullOrWhiteSpace(request.Branch) ? "main" : request.Branch.Trim();
+        GitCredentialResolution credential;
+        try
+        {
+            credential = await GitMaterializer
+                .ResolveCredentialAsync(resolver, credentialReference, request.CredentialUsername, remoteUrl, GitAccess.Read, ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is SqlFlowNodeException or SqlFlowException)
+        {
+            return TypedResults.Problem(
+                detail: SecretHygiene.RedactedMessage(ex), statusCode: StatusCodes.Status400BadRequest, title: "Credential unavailable");
+        }
+
+        try
+        {
+            // git ls-remote is blocking network IO; keep it off the request thread.
+            var sha = await Task.Run(() => GitMaterializer.ReadBranchTip(remoteUrl, branch, credential.Credentials), ct).ConfigureAwait(false);
+            return TypedResults.Ok(new RepoAccessDto(ToDto(credential), branch, sha));
+        }
+        catch (Exception ex) when (ex is SqlFlowNodeException or SqlFlowException)
+        {
+            return TypedResults.Problem(
+                detail: $"{SecretHygiene.RedactedMessage(ex)} (read with {credential.Summary})",
+                statusCode: StatusCodes.Status400BadRequest, title: "Repository unreachable");
+        }
+    }
+
+    internal static GitCredentialDto ToDto(GitCredentialPlan plan) => new(KindName(plan.Kind), plan.FromHost, plan.Summary, plan.Problem);
+
+    internal static GitCredentialDto ToDto(GitCredentialResolution resolution) => new(KindName(resolution.Kind), resolution.FromHost, resolution.Summary);
+
+    private static string KindName(GitCredentialKind kind) => kind switch
+    {
+        GitCredentialKind.Reference => "reference",
+        GitCredentialKind.GitHubApp => "github-app",
+        GitCredentialKind.HostToken => "host-token",
+        _ => "none",
+    };
+
     // A method (not an EF expression) so the stored ExcludedFlowPaths JSON can be deserialized; the repo-source
     // table is tiny, so materializing the row before mapping is free.
     private static RepoSourceDto ToDto(CatalogRepoSource s, RepoSyncWaiter syncWaiter) => new(
@@ -317,5 +476,6 @@ public static class RepoSourceEndpoints
         s.CredentialReference, s.CredentialUsername,
         RepoSourceStore.ParseExcludedPaths(s.ExcludedFlowPaths).OrderBy(p => p, StringComparer.Ordinal).ToArray(),
         s.CreatedUtc, s.UpdatedUtc,
-        s.SyncRequestedUtc, s.SyncStartedUtc, syncWaiter.IsPending(s), s.ConfiguredBy);
+        s.SyncRequestedUtc, s.SyncStartedUtc, syncWaiter.IsPending(s), s.ConfiguredBy,
+        ToDto(GitMaterializer.DescribeCredential(s.CredentialReference, s.RemoteUrl)));
 }

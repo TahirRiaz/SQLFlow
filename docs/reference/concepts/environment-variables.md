@@ -16,6 +16,7 @@ related:
   - concept-connections-and-secrets
   - flow-connections
   - cli-db
+  - guide-github-app
 sourceRefs:
   - src/SqlFlow.Core/Connections/ConnectionConvention.cs
   - src/SqlFlow.Core/Secrets/LocalEnvFile.cs
@@ -29,6 +30,7 @@ sourceRefs:
   - Dockerfile.worker
   - deploy/docker/worker-entrypoint.sh
   - deploy/compose/docker-compose.yml
+  - src/SqlFlow.SourceControl/GitHub/GitHubAppEnvironment.cs
 ---
 
 # SQLFLOW_* environment variables and the .sqlflow/env file
@@ -46,8 +48,12 @@ All conventional names are strictly UPPERCASE because environment variables are 
 | `SQLFLOW_DW` | `catalog scaffold` | The conventional explicit target reference; the scaffold embeds `${env:SQLFLOW_DW}` as the target placeholder. |
 | `SQLFLOW_CATALOG_DB` | `db`, run write-back, control plane, EF tooling | The shadow-catalog database connection. A `worker` never reads it: a node needs only the control plane. |
 | `SQLFLOW_REPO` | post-run catalog write-back | Repo attribution for recorded runs when `--repo` is not passed. |
-| `SQLFLOW_GIT_TOKEN` | workers, control plane | Token for cloning private git remotes during SHA-pinned materialization. Unset means anonymous access (public or local-path remotes). |
+| `SQLFLOW_GIT_TOKEN` | workers, control plane | Token for a repository source that names no credential reference, on a remote the host's GitHub App does not reach: the control plane's sync and a worker's SHA-pinned checkout. Unset means anonymous access (public or local-path remotes). |
 | `SQLFLOW_GIT_USERNAME` | workers, control plane | Optional username paired with `SQLFLOW_GIT_TOKEN`; when blank, GitHub's conventional placeholder `x-access-token` is used. |
+| `SQLFLOW_GITHUB_APP_ID` | workers, control plane | The client ID (or App ID) of the host's GitHub App. A repository source naming no credential reference, on the App's GitHub, is read with a token the App mints for that repository alone, before `SQLFLOW_GIT_TOKEN` is tried. Set it with exactly one of the two key variables below; a half-configured App is refused with the variable to fix ([guide](../guides/github-app.md)). |
+| `SQLFLOW_GITHUB_APP_PRIVATE_KEY` | workers, control plane | The App's private key: the `.pem` file's text (line breaks or `\n` escapes), the base64 of the file, or a `${...}` reference to either. |
+| `SQLFLOW_GITHUB_APP_PRIVATE_KEY_PATH` | workers, control plane | Instead of the above: the absolute path of the App's `.pem` file. |
+| `SQLFLOW_GITHUB_APP_API_URL` | workers, control plane | The API root of GitHub Enterprise Server (`https://<host>/api/v3`) or GHE.com; `https://api.github.com` when unset. |
 | `SQLFLOW_AZURE_AUTH` | every Azure access path | Selects the Azure credential mode (see below). |
 | `SQLFLOW_TEST_DB` | this repository's integration tests | The integration-test sink database; the legacy name `SQLFlowSinkConStr` is honored as a fallback in the tests. |
 | `SQLFLOW_WORKER_POOL` | `Dockerfile.worker` entrypoint only | Comma-separated pools the container serves; translated to `--pool`. |
@@ -112,6 +118,7 @@ The worker container (`Dockerfile.worker`) is configured through environment onl
 - `SQLFLOW_WORKER_POOL` (optional): comma-separated pools, passed as `--pool`. Empty means the node takes untargeted runs only.
 - `SQLFLOW_WORKER_POLL_SECONDS` (optional): passed as `--poll-seconds`; the CLI default is 30.
 - `SQLFLOW_GIT_TOKEN` (optional): private-remote materialization.
+- `SQLFLOW_GITHUB_APP_ID` with `SQLFLOW_GITHUB_APP_PRIVATE_KEY` or `SQLFLOW_GITHUB_APP_PRIVATE_KEY_PATH` (optional): materialization with the host's GitHub App, tried before the token for a GitHub remote.
 - Plus every `${env:...}` reference the flows themselves use (source and target connection strings).
 
 The control plane container takes ASP.NET configuration environment names, as `deploy/compose/docker-compose.yml` shows: `ControlPlane__Catalog__ConnectionReference`, `ControlPlane__Jwt__SigningKey`, `ControlPlane__Jwt__BootstrapSecret`, `ControlPlane__Bootstrap__AdminUsername`, `ControlPlane__Bootstrap__AdminPasswordReference`, `ControlPlane__Cors__AllowedOrigins__0`, `ControlPlane__Worker__Enabled`.
