@@ -463,7 +463,29 @@ Focus visible everywhere (`outline-ring/50` base is set globally); all icon-only
 text >= 4.5:1, chrome text >= 3:1 (the token tables above were chosen for this); status never encoded
 by color alone (7.3); tables get real `<table>` semantics (the ui/table primitives).
 
-## 11. Port checklist (apply to every feature page)
+## 11. The sign-in page
+
+The one surface outside the workbench (`src/auth/LoginPage.tsx`), and the first thing a person sees of the product.
+It is a first impression rather than a tool, so where this book's workbench rules would make it look unfinished, these
+rules take their place, and only on this page:
+
+- **One navy field, in both modes.** The whole page is set on the brand navy, lightest where the lockup sits and
+  deepening toward the form, and renders with the dark tokens whichever mode the workbench is in. No seam between the
+  brand panel and the form: they are one surface.
+- **Picture, pitch, form.** On wide screens the brand panel carries the lockup (with the "powered by" attribution when the
+  product has one), a picture of the data the product takes (`LoginStreams`, from the branding's `streams`), and the
+  pitch: two lines (`headline`, then `headlineAccent` in the accent) and one sentence (`tagline`). No feature lists. On
+  narrow screens only the lockup stays above the form.
+- **Colors.** The identity's navy, cream (the rings, as in the logo mark) and the one blue, which carries the motion (the
+  records' points and the light they travel into) and, lightened to read on the navy, the pitch's accent line. Nothing
+  else.
+- **Sizes.** Every size is in rem. The pitch is set large (2.5rem, 3.25rem from `xl`); the form's controls are 40px
+  (`h-10`, button `size="lg"`) at 14px type, because the form is the page's one task.
+- **Motion.** The picture moves slowly and without end (records travel a lane in 17 to 24 seconds, a pulse runs down the
+  rings) and holds still, one record resting on each lane, when the system asks for reduced motion. The pitch and the
+  form fade in once (`motion-safe:` only). Light fades out on its own; nothing is clipped where it would leave an edge.
+
+## 12. Port checklist (apply to every feature page)
 
 - [ ] No `@mui/*`, `@emotion/*`, or `notistack` imports remain in the file.
 - [ ] Colors only via semantic utilities; no hex, no `--sf-*` legacy tokens.

@@ -1,8 +1,7 @@
 // The product's branding: the name and attribution the title bar and login page carry, the logos, the login page's
-// headline and capabilities, and the document title. The defaults are SQLFlow's own. A module build may brand the
-// product (at most one module may), and a deployment may override the text and logo paths in config.json.
-
-import { ShieldCheck, Sparkles, Waypoints, Workflow, type LucideIcon } from "lucide-react";
+// pitch and the data its brand panel draws flowing in, and the document title. The defaults are SQLFlow's own. A module
+// build may brand the product (at most one module may), and a deployment may override the text and logo paths in
+// config.json. Kept free of imports, so the unit suite reads it.
 
 export interface BrandLogos {
   /** The full lockup: the login page's brand panel and its narrow-screen plaque. */
@@ -13,18 +12,18 @@ export interface BrandLogos {
   icon: string;
 }
 
-export interface LoginCapability {
-  icon: LucideIcon;
-  title: string;
-  body: string;
-}
-
 export interface LoginCopy {
-  /** The brand panel's headline. */
+  /** The pitch's first line, the brand panel's headline. */
   headline: string;
-  /** The line under the headline. */
+  /** The pitch's second line, set under the headline in the accent. */
+  headlineAccent: string;
+  /** The one sentence under the pitch. */
   tagline: string;
-  capabilities: readonly LoginCapability[];
+  /**
+   * What the brand panel draws flowing into the product, a word or two each: the kinds of data it takes. Drawn in this
+   * order, and repeated when there are fewer than the picture has records for.
+   */
+  streams: readonly string[];
 }
 
 export interface Branding {
@@ -46,13 +45,13 @@ export interface BrandingContribution {
   login?: Partial<LoginCopy>;
 }
 
-/** What a deployment may override in config.json: text and asset paths, not the capability icons. */
+/** What a deployment may override in config.json: the text and asset paths, not the data the brand panel draws. */
 export interface RuntimeBrandingOverrides {
   productName?: string;
   attribution?: string | null;
   documentTitle?: string;
   logos?: Partial<BrandLogos>;
-  login?: { headline?: string; tagline?: string };
+  login?: { headline?: string; headlineAccent?: string; tagline?: string };
 }
 
 const SQLFLOW_BRANDING: Branding = {
@@ -66,29 +65,10 @@ const SQLFLOW_BRANDING: Branding = {
   },
   login: {
     headline: "Move data with confidence.",
-    tagline: "Orchestrate ingestion, transformation, and lineage across your estate from a single control plane.",
-    capabilities: [
-      {
-        icon: Workflow,
-        title: "Pipelines as code",
-        body: "Flows live as YAML in your repository, versioned and reviewed like the rest of your codebase.",
-      },
-      {
-        icon: Waypoints,
-        title: "Lineage end to end",
-        body: "Follow every table and column from the source system through to the warehouse it lands in.",
-      },
-      {
-        icon: ShieldCheck,
-        title: "Governed execution",
-        body: "Managed identity, secrets from the vault, and an audited history of every run.",
-      },
-      {
-        icon: Sparkles,
-        title: "AI built in",
-        body: "Ask the assistant about your flows, lineage, and runs; it answers from your own catalog.",
-      },
-    ],
+    headlineAccent: "Follow it end to end.",
+    tagline: "Land files, load tables and trace lineage across your estate, from one control plane.",
+    // The file formats SQLFlow reads (docs/reference/concepts/file-source-pipeline.md).
+    streams: ["CSV", "Parquet", "JSON", "Excel", "XML"],
   },
 };
 
@@ -107,8 +87,9 @@ function merge(base: Branding, change: BrandingContribution): Branding {
     },
     login: {
       headline: change.login?.headline ?? base.login.headline,
+      headlineAccent: change.login?.headlineAccent ?? base.login.headlineAccent,
       tagline: change.login?.tagline ?? base.login.tagline,
-      capabilities: change.login?.capabilities ?? base.login.capabilities,
+      streams: change.login?.streams ?? base.login.streams,
     },
   };
 }
@@ -177,7 +158,7 @@ export function parseRuntimeBranding(value: unknown): RuntimeBrandingOverrides |
 
   const login = section(root.login);
   if (login !== undefined) {
-    overrides.login = { headline: text(login.headline), tagline: text(login.tagline) };
+    overrides.login = { headline: text(login.headline), headlineAccent: text(login.headlineAccent), tagline: text(login.tagline) };
   }
 
   return overrides;

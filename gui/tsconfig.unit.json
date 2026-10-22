@@ -17,6 +17,8 @@
   "include": [
     "unit/**/*.ts",
     "src/auth/entraSignIn.ts",
+    "src/auth/loginStreamLanes.ts",
+    "src/modules/branding.ts",
     "src/features/chat/answerSql.ts",
     "src/features/chat/queryResultPlan.ts",
     "src/features/nodes/scalingMode.ts",

@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, CircleAlert, Info, Loader2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
@@ -15,14 +14,23 @@ import { CorrelationError } from "../components/CorrelationError";
 import { useAuth } from "./AuthContext";
 import { branding } from "../modules/branding";
 import { readLoginPrefs } from "./loginPrefs";
+import { LoginStreams } from "./LoginStreams";
+import { LOGIN_ACCENT } from "./loginStreamLanes";
 
 /** Which sign-in path is in flight, so only the button that started the work shows the spinner. */
 type BusyAction = "local" | "entra" | "bootstrap" | null;
 
+/**
+ * The navy field the whole page is set on, in both modes: lightest where the lockup sits, deepening toward the form, so
+ * the brand panel and the form read as one surface with no seam between them.
+ */
+const BRAND_FIELD =
+  "linear-gradient(160deg, var(--brand-navy) 0%, var(--brand-navy-deep) 50%, color-mix(in srgb, var(--brand-navy-deep) 72%, black) 100%)";
+
 /** The Microsoft four-square mark, per their sign-in branding guidelines. */
 function MicrosoftMark() {
   return (
-    <svg width="16" height="16" viewBox="0 0 21 21" aria-hidden="true">
+    <svg className="size-4" viewBox="0 0 21 21" aria-hidden="true">
       <rect x="1" y="1" width="9" height="9" fill="#f25022" />
       <rect x="11" y="1" width="9" height="9" fill="#7fba00" />
       <rect x="1" y="11" width="9" height="9" fill="#00a4ef" />
@@ -31,82 +39,74 @@ function MicrosoftMark() {
   );
 }
 
-/**
- * The branded left column, shown only on wide screens: the product's lockup, what the product does, and the
- * capabilities worth naming, over a navy field carrying concentric arcs that echo the logo mark. It
- * carries the page on large displays, where a lone card would otherwise float in an empty background.
- * Purely decorative, so it is hidden from assistive tech and never rendered on the narrow, form-only layout.
- */
-function BrandPanel() {
+/** The product's lockup: the full logo and, when the product carries one, its "powered by" attribution beside it. */
+function Lockup({ logoClassName }: { logoClassName: string }) {
   const brand = branding();
   return (
-    <div
-      className="relative hidden overflow-hidden lg:flex lg:w-[52%] lg:flex-col xl:w-[55%]"
-      style={{ background: "linear-gradient(155deg, var(--brand-navy) 0%, var(--brand-navy-deep) 100%)" }}
-      aria-hidden="true"
-    >
-      {/* Concentric arcs echoing the logo mark, oversized and bleeding off the bottom-right corner so the
-          field still reads as branded on a 4K display rather than as flat navy. */}
-      <svg
-        className="pointer-events-none absolute -bottom-[22rem] -right-[16rem] h-[58rem] w-[58rem]"
-        viewBox="0 0 200 200"
-        fill="none"
-      >
-        {[30, 55, 80, 105, 130].map((r, i) => (
-          <circle
-            key={r}
-            cx="100"
-            cy="100"
-            r={r}
-            stroke="var(--brand-cream)"
-            strokeWidth="0.75"
-            strokeOpacity={0.18 - i * 0.03}
-          />
-        ))}
-      </svg>
-      {/* A soft light source behind the headline, so the gradient is not the only depth cue. */}
-      <div
-        className="pointer-events-none absolute -left-40 -top-40 size-[42rem] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(146,182,224,0.18) 0%, rgba(146,182,224,0) 65%)" }}
-      />
-
-      {/* Content stays a readable column and centres itself once the panel grows past it. */}
-      <div className="relative mx-auto flex h-full w-full max-w-xl flex-col justify-center px-12 py-14 xl:px-16 xl:py-16">
-        <img src={brand.logos.full} alt="" className="h-20 w-auto max-w-full self-start object-contain xl:h-24" />
-
-        <div className="mt-14">
-          <h2 className="text-3xl font-semibold leading-[1.15] tracking-tight text-white xl:text-[2.5rem]">
-            {brand.login.headline}
-          </h2>
-          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-white/60">
-            {brand.login.tagline}
-          </p>
-
-          <ul className="mt-12 flex flex-col gap-7">
-            {brand.login.capabilities.map(({ icon: Icon, title, body }) => (
-              <li key={title} className="flex gap-4">
-                <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5">
-                  <Icon className="size-[18px] text-white/70" strokeWidth={1.75} />
-                </span>
-                <div>
-                  <p className="text-sm font-medium text-white/90">{title}</p>
-                  <p className="mt-1 max-w-sm text-[13px] leading-relaxed text-white/50">{body}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+    <div className="flex items-center gap-4">
+      <img src={brand.logos.full} alt={brand.productName} className={`w-auto max-w-full object-contain ${logoClassName}`} />
+      {brand.attribution !== null && (
+        <>
+          <span className="h-5 w-px shrink-0 bg-white/20" aria-hidden="true" />
+          <span className="text-[0.8125rem] whitespace-nowrap text-white/55" data-testid="login-attribution">{brand.attribution}</span>
+        </>
+      )}
     </div>
   );
 }
 
 /**
- * The sign-in page, the one surface that renders outside the workbench shell: a centered card on the
- * editor background with the product's lockup above it. Username/password for the product's regular users,
- * "Sign in with Microsoft" when the control plane has Entra enabled, and the break-glass bootstrap
- * secret tucked behind an expander when one is configured. Which options render is driven by
- * GET /auth/providers, so this page never guesses the server's configuration.
+ * The brand panel, shown only on wide screens: the lockup, a picture of the kinds of data the product takes flowing into
+ * rings that echo the logo mark, and the product's pitch in two lines and one sentence. It is the first thing a person
+ * sees of the product, so it says what the product is for and nothing more; the workbench explains the rest.
+ */
+function BrandPanel() {
+  const brand = branding();
+  return (
+    <section className="relative hidden flex-col text-white lg:flex lg:w-[54%] xl:w-[56%]" data-testid="login-brand-panel">
+      {/* A fine dot grid, brightest around the rings and fading out toward the edges, so the field has a surface. */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: "radial-gradient(color-mix(in srgb, white 11%, transparent) 1px, transparent 1.5px)",
+          backgroundSize: "24px 24px",
+          maskImage: "radial-gradient(ellipse 75% 60% at 62% 42%, black 0%, transparent 72%)",
+        }}
+        aria-hidden="true"
+      />
+      {/* A soft light behind the pitch, so the gradient is not the only depth cue. */}
+      <div
+        className="pointer-events-none absolute -bottom-48 -left-40 size-[38rem] rounded-full"
+        style={{ background: "radial-gradient(circle, color-mix(in srgb, var(--brand-blue) 22%, transparent) 0%, transparent 65%)" }}
+        aria-hidden="true"
+      />
+
+      <header className="relative px-12 pt-11 xl:px-16 xl:pt-14">
+        <Lockup logoClassName="h-9 xl:h-10" />
+      </header>
+
+      {/* The picture keeps between the lockup and the pitch; its light spills past them, fading out on its own. */}
+      <div className="relative min-h-0 flex-1">
+        <LoginStreams streams={brand.login.streams} />
+      </div>
+
+      <div className="relative px-12 pb-14 xl:px-16 xl:pb-16 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-700">
+        <h2 className="max-w-2xl text-[2.5rem] leading-[1.08] font-semibold tracking-[-0.025em] xl:text-[3.25rem]">
+          <span className="block">{brand.login.headline}</span>
+          <span className="block" style={{ color: LOGIN_ACCENT }}>{brand.login.headlineAccent}</span>
+        </h2>
+        <p className="mt-5 max-w-lg text-[0.9375rem] leading-relaxed text-white/60 xl:text-base">{brand.login.tagline}</p>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The sign-in page, the one surface that renders outside the workbench shell: the brand panel on wide screens, and the
+ * sign-in form on the editor background beside it (under a navy band carrying the lockup on narrow screens).
+ * Username/password for the product's regular users, "Sign in with Microsoft" when the control plane has Entra enabled,
+ * and the break-glass bootstrap secret tucked behind an expander when one is configured. Which options render is driven
+ * by GET /auth/providers, so this page never guesses the server's configuration.
  */
 export default function LoginPage() {
   const brand = branding();
@@ -157,176 +157,182 @@ export default function LoginPage() {
     void run("bootstrap", () => loginBootstrap(secret));
   };
 
+  // The page is the product's first impression, so it is set on the brand's navy in both modes: the dark tokens apply
+  // to everything on it, the form's controls included, whichever mode the workbench is in. It clips what the brand
+  // panel's lights spill past the page's edges, and lets them spill toward the form.
   return (
-    <div className="flex min-h-screen bg-background">
+    <div
+      className="dark relative flex min-h-screen flex-col overflow-hidden text-[0.8125rem] text-foreground lg:flex-row"
+      style={{ background: BRAND_FIELD }}
+    >
       <BrandPanel />
 
-      <div className="relative flex flex-1 flex-col items-center justify-center gap-6 p-6 sm:p-10">
-        {/* A barely-there wash behind the card, so the form column reads as lit rather than as dead space
-            on a large display. */}
+      {/* The lockup on narrow screens, where the brand panel is hidden. */}
+      <header className="px-6 pt-8 sm:px-10 lg:hidden">
+        <Lockup logoClassName="h-8" />
+      </header>
+
+      <main className="relative flex min-w-0 flex-1 flex-col">
+        {/* A faint light behind the form, so the column reads as lit rather than as dead space on a large display. */}
         <div
           className="pointer-events-none absolute inset-0"
-          style={{ background: "radial-gradient(60rem 40rem at 50% 40%, color-mix(in oklab, var(--primary) 7%, transparent) 0%, transparent 70%)" }}
+          style={{ background: "radial-gradient(40rem 32rem at 50% 45%, color-mix(in srgb, var(--brand-blue) 9%, transparent) 0%, transparent 70%)" }}
           aria-hidden="true"
         />
 
-        {/* The lockup sits with the form on narrow screens, where the brand panel is hidden. The navy plaque
-            keeps the light-blue mark legible on the light theme's near-white background. */}
-        <div className="relative rounded-xl px-6 py-3.5 lg:hidden" style={{ backgroundColor: "var(--brand-navy)" }}>
-          <img src={brand.logos.full} alt={brand.productName} className="h-11 w-auto max-w-full object-contain" />
-        </div>
-
-        <Card
-          className="relative w-full max-w-[25rem] gap-0 rounded-xl border-border/70 p-7 shadow-xl shadow-black/5 sm:p-8"
-          data-testid="login-card"
-        >
-          <div className="flex flex-col gap-5">
+        <div className="relative flex flex-1 items-center justify-center px-6 py-12 sm:px-10">
+          <div
+            className="flex w-full max-w-[23rem] flex-col gap-8 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-2 motion-safe:duration-500"
+            data-testid="login-card"
+          >
             <div>
-              <h1 className="text-[22px] font-semibold tracking-tight">Welcome back</h1>
-              <p className="mt-1.5 text-[13px] text-muted-foreground">{`Sign in to your ${brand.productName} account to continue.`}</p>
+              <h1 className="text-[1.75rem] leading-tight font-semibold tracking-[-0.02em]">Welcome back</h1>
+              <p className="mt-2 text-sm text-muted-foreground">{`Sign in to continue to ${brand.productName}.`}</p>
             </div>
 
-          {sessionEndedReason && (
-            <Alert data-testid="session-ended-notice">
-              <Info />
-              <AlertDescription>{sessionEndedReason}</AlertDescription>
-            </Alert>
-          )}
-
-          {error !== null && (
-            isApiError(error)
-              ? <CorrelationError error={error} data-testid="login-error" />
-              : (
-                <Alert variant="destructive" data-testid="login-error">
-                  <CircleAlert />
-                  <AlertTitle>Sign-in failed</AlertTitle>
-                  <AlertDescription>{String((error as Error).message ?? error)}</AlertDescription>
+            <div className="flex flex-col gap-5">
+              {sessionEndedReason && (
+                <Alert data-testid="session-ended-notice">
+                  <Info />
+                  <AlertDescription>{sessionEndedReason}</AlertDescription>
                 </Alert>
-              )
-          )}
+              )}
 
-          <form onSubmit={submitLocal} className="flex flex-col gap-3">
-            {/* A password manager keys off name + autocomplete together: with autocomplete alone the field is
-                recognised inconsistently, so both are set here and the pair is what makes save/autofill offer. */}
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="login-username">Username</Label>
-              <Input
-                id="login-username"
-                name="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                // A returning user's username is already filled in, so the caret belongs on the password instead.
-                autoFocus={prefs.username === ""}
-                className="h-8"
-                data-testid="login-username"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="login-password">Password</Label>
-              <Input
-                id="login-password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                autoFocus={prefs.username !== ""}
-                className="h-8"
-                data-testid="login-password"
-              />
-            </div>
-            <Label className="flex items-center gap-2 text-[13px] font-normal">
-              <Checkbox
-                checked={remember}
-                onCheckedChange={(checked) => setRemember(checked === true)}
-                data-testid="login-remember"
-              />
-              Keep me signed in on this device
-            </Label>
-            <Button
-              type="submit"
-              size="sm"
-              className="w-full"
-              disabled={anyBusy || username.trim() === "" || password === ""}
-              data-testid="login-submit"
-            >
-              {busy === "local" && <Loader2 className="animate-spin" />}
-              Sign in
-            </Button>
-          </form>
+              {error !== null && (
+                isApiError(error)
+                  ? <CorrelationError error={error} data-testid="login-error" />
+                  : (
+                    <Alert variant="destructive" data-testid="login-error">
+                      <CircleAlert />
+                      <AlertTitle>Sign-in failed</AlertTitle>
+                      <AlertDescription>{String((error as Error).message ?? error)}</AlertDescription>
+                    </Alert>
+                  )
+              )}
 
-          {providers.data?.entra.enabled && (
-            <>
-              <div className="flex items-center gap-3">
-                <div className="h-px flex-1 bg-border" />
-                <span className="text-xs text-muted-foreground">or</span>
-                <div className="h-px flex-1 bg-border" />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="w-full"
-                disabled={anyBusy}
-                onClick={() => void run("entra", () => loginEntra(providers.data.entra, remember))}
-                data-testid="login-entra"
-              >
-                {busy === "entra" ? <Loader2 className="animate-spin" /> : <MicrosoftMark />}
-                Sign in with Microsoft
-              </Button>
-            </>
-          )}
+              <form onSubmit={submitLocal} className="flex flex-col gap-4">
+                {/* A password manager keys off name + autocomplete together: with autocomplete alone the field is
+                    recognised inconsistently, so both are set here and the pair is what makes save/autofill offer. */}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="login-username">Username</Label>
+                  <Input
+                    id="login-username"
+                    name="username"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    autoComplete="username"
+                    // A returning user's username is already filled in, so the caret belongs on the password instead.
+                    autoFocus={prefs.username === ""}
+                    className="h-10 md:text-sm"
+                    data-testid="login-username"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="login-password">Password</Label>
+                  <Input
+                    id="login-password"
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
+                    autoFocus={prefs.username !== ""}
+                    className="h-10 md:text-sm"
+                    data-testid="login-password"
+                  />
+                </div>
+                <Label className="flex items-center gap-2 text-[0.8125rem] font-normal text-muted-foreground">
+                  <Checkbox
+                    checked={remember}
+                    onCheckedChange={(checked) => setRemember(checked === true)}
+                    data-testid="login-remember"
+                  />
+                  Keep me signed in on this device
+                </Label>
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="mt-1 w-full text-sm"
+                  disabled={anyBusy || username.trim() === "" || password === ""}
+                  data-testid="login-submit"
+                >
+                  {busy === "local" && <Loader2 className="animate-spin" />}
+                  Sign in
+                </Button>
+              </form>
 
-          {providers.data?.bootstrap && (
-            <Collapsible>
-              <CollapsibleTrigger
-                className="group flex w-full items-center gap-1 text-[13px] text-muted-foreground hover:text-foreground"
-                data-testid="login-bootstrap-expander"
-              >
-                <ChevronDown className="size-4 shrink-0 transition-transform duration-120 group-data-[state=open]:rotate-180" />
-                Advanced: bootstrap secret
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <form onSubmit={submitBootstrap} className="flex flex-col gap-3 pt-3">
-                  <p className="text-xs text-muted-foreground">
-                    The break-glass credential from the control plane configuration. Grants full access; use it
-                    only to provision real users.
-                  </p>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="login-bootstrap-secret">Bootstrap secret</Label>
-                    <Input
-                      id="login-bootstrap-secret"
-                      type="password"
-                      value={secret}
-                      onChange={(e) => setSecret(e.target.value)}
-                      autoComplete="off"
-                      className="h-8"
-                      data-testid="login-bootstrap-secret"
-                    />
+              {providers.data?.entra.enabled && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <div className="h-px flex-1 bg-border" />
+                    <span className="text-xs text-muted-foreground">or</span>
+                    <div className="h-px flex-1 bg-border" />
                   </div>
                   <Button
-                    type="submit"
+                    type="button"
                     variant="outline"
-                    size="sm"
-                    className="w-full"
-                    disabled={anyBusy || secret === ""}
-                    data-testid="login-bootstrap-submit"
+                    size="lg"
+                    className="w-full text-sm"
+                    disabled={anyBusy}
+                    onClick={() => void run("entra", () => loginEntra(providers.data.entra, remember))}
+                    data-testid="login-entra"
                   >
-                    {busy === "bootstrap" && <Loader2 className="animate-spin" />}
-                    Sign in with bootstrap secret
+                    {busy === "entra" ? <Loader2 className="animate-spin" /> : <MicrosoftMark />}
+                    Sign in with Microsoft
                   </Button>
-                </form>
-              </CollapsibleContent>
-            </Collapsible>
-          )}
-          </div>
-        </Card>
+                </>
+              )}
 
-        <p className="relative max-w-[25rem] text-center text-xs text-muted-foreground">
-          {`Trouble signing in? Your ${brand.productName} administrator can reset the account or issue a new one.`}
+              {providers.data?.bootstrap && (
+                <Collapsible>
+                  <CollapsibleTrigger
+                    className="group flex w-full items-center gap-1 text-[0.8125rem] text-muted-foreground hover:text-foreground"
+                    data-testid="login-bootstrap-expander"
+                  >
+                    <ChevronDown className="size-4 shrink-0 transition-transform duration-120 group-data-[state=open]:rotate-180" />
+                    Advanced: bootstrap secret
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <form onSubmit={submitBootstrap} className="flex flex-col gap-3 pt-3">
+                      <p className="text-xs text-muted-foreground">
+                        The break-glass credential from the control plane configuration. Grants full access; use it
+                        only to provision real users.
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        <Label htmlFor="login-bootstrap-secret">Bootstrap secret</Label>
+                        <Input
+                          id="login-bootstrap-secret"
+                          type="password"
+                          value={secret}
+                          onChange={(e) => setSecret(e.target.value)}
+                          autoComplete="off"
+                          className="h-10 md:text-sm"
+                          data-testid="login-bootstrap-secret"
+                        />
+                      </div>
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="lg"
+                        className="w-full text-sm"
+                        disabled={anyBusy || secret === ""}
+                        data-testid="login-bootstrap-submit"
+                      >
+                        {busy === "bootstrap" && <Loader2 className="animate-spin" />}
+                        Sign in with bootstrap secret
+                      </Button>
+                    </form>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <p className="relative px-6 pb-8 text-center text-xs text-muted-foreground sm:px-10">
+          {`Trouble signing in? Ask your ${brand.productName} administrator.`}
         </p>
-      </div>
+      </main>
     </div>
   );
 }
