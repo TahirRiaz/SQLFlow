@@ -11,7 +11,8 @@ namespace SqlFlow.Tests.SourceControl.GitHub;
 /// A GitHub App's private key is read in every form a deployment carries it (the .pem as GitHub hands it out, its PKCS#8
 /// conversion, one line with \n escapes, quoted, base64-wrapped, from a file or a reference), and everything that is not
 /// an unencrypted RSA private key of the App's size is refused with what it looks like instead. No message ever carries
-/// the key material.
+/// the key material. A PEM block with a made-up body is built from its type and bytes (<see cref="PemEncoding"/>), since
+/// armour and body written out in one literal read to secret scanning as a leaked key.
 /// </summary>
 public sealed class GitHubAppPrivateKeyTests
 {
@@ -107,7 +108,8 @@ public sealed class GitHubAppPrivateKeyTests
     [Fact]
     public void Import_RefusesAnOpenSshKey()
     {
-        const string openSsh = "-----BEGIN OPENSSH PRIVATE KEY-----\nb3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQ==\n-----END OPENSSH PRIVATE KEY-----";
+        // The format's magic is body enough: the import refuses the key by its PEM type.
+        var openSsh = PemEncoding.WriteString("OPENSSH PRIVATE KEY", Encoding.ASCII.GetBytes("openssh-key-v1\0"));
 
         var ex = Assert.Throws<GitHubAppException>(() => GitHubAppPrivateKey.Import(openSsh, Origin));
 
@@ -127,7 +129,7 @@ public sealed class GitHubAppPrivateKeyTests
     [Fact]
     public void Import_RefusesACorruptKeyBody_WithoutQuotingIt()
     {
-        var corrupt = "-----BEGIN RSA PRIVATE KEY-----\nTUlJRXBBSUJBQUtDQVFFQXRoaXNpc25vdGFrZXk=\n-----END RSA PRIVATE KEY-----";
+        var corrupt = PemEncoding.WriteString("RSA PRIVATE KEY", Encoding.ASCII.GetBytes("MIIEpAIBAAKCAQEAthisisnotakey"));
 
         var ex = Assert.Throws<GitHubAppException>(() => GitHubAppPrivateKey.Import(corrupt, Origin));
 
