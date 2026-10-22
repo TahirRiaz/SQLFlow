@@ -170,8 +170,9 @@ No message, log line or trace carries the private key, the signed request or a t
 
 ## The full test tier's App
 
-The full test tier proves this against real GitHub with a test App made by the steps above: read-only, installed on a
-small private repository holding at least one file. It reads `SQLFLOW_TEST_GITHUB_APP_ID`, the key in
+The full test tier can prove this against real GitHub with a test App made by the steps above: read-only, installed on
+a small private repository holding at least one file. It reads `SQLFLOW_TEST_GITHUB_APP_ID`, the key in
 `SQLFLOW_TEST_GITHUB_APP_PRIVATE_KEY_PATH` or `SQLFLOW_TEST_GITHUB_APP_PRIVATE_KEY`, and
 `SQLFLOW_TEST_GITHUB_REPOSITORY` (`owner/name`), from the environment or `.sqlflow/env`, and writes nothing to the
-repository.
+repository. The test App is optional, as a GitHub App is for a deployment that reads with a token: with none of these
+set, the live suite is skipped, saying which to set; with only some of them, it fails, naming the rest.
