@@ -7,6 +7,7 @@ using SqlFlow.Core.Engine;
 using SqlFlow.Core.Secrets;
 using SqlFlow.Core.State;
 using SqlFlow.Azure;
+using SqlFlow.Azure.Storage;
 using SqlFlow.DuckDb;
 using SqlFlow.Providers;
 using SqlFlow.SourceControl.GitHub;
@@ -66,6 +67,9 @@ public static class SqlFlowEngineServices
 
         // Secret resolution + Azure auth (Service Principal / Managed Identity / Azure CLI / Default).
         services.AddSingleton<IAzureCredentialFactory, AzureCredentialFactory>();
+        // Azure Storage over whichever of an account's endpoints (Blob or Data Lake) this host reaches, decided once per
+        // account and shared by every store that reads or writes the lake.
+        services.AddSingleton<AzureStorageAccess>();
         services.AddSingleton<ISecretProvider, EnvSecretProvider>();
         services.AddSingleton<ISecretProvider, AzureKeyVaultSecretProvider>();
 

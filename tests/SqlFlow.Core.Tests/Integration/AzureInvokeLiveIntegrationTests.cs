@@ -141,6 +141,26 @@ internal static class AzureTestEnv
         return vault!;
     }
 
+    /// <summary>The hierarchical-namespace storage account the live storage tests create (and remove) containers in.</summary>
+    public static string RequireStorageAccount()
+    {
+        var account = Env("SQLFLOW_AZTEST_STORAGE_ACCOUNT");
+        Skip.If(
+            string.IsNullOrWhiteSpace(account),
+            "Set SQLFLOW_AZTEST_STORAGE_ACCOUNT to an ADLS Gen2 account the ambient Azure auth (SQLFLOW_AZURE_AUTH / az login / managed identity) "
+            + "holds Storage Blob Data Contributor on, to run the live storage tests over both of its endpoints.");
+        return account!;
+    }
+
+    /// <summary>That account's access key, for the live tests of key and signature auth; they skip without it.</summary>
+    public static string RequireStorageKey()
+    {
+        RequireStorageAccount();
+        var key = Env("SQLFLOW_AZTEST_STORAGE_KEY");
+        Skip.If(string.IsNullOrWhiteSpace(key), "Set SQLFLOW_AZTEST_STORAGE_KEY to the account's access key to run the live key and signature auth tests.");
+        return key!;
+    }
+
     public static AutomationConfig RequireAutomation()
     {
         var (tenant, clientId, subscription, resourceGroup, secretSet) = Core();

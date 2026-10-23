@@ -10,9 +10,10 @@ namespace SqlFlow.Core;
 /// <item>The REST URL form: <c>https://account.blob.core.windows.net/container/path</c> (and the
 /// <c>.dfs</c> host).</item>
 /// </list>
-/// The SDK always talks to the blob endpoint (<see cref="BlobServiceEndpoint"/>), which serves both flat and
-/// hierarchical-namespace accounts, while <see cref="UriFor"/> reconstructs a listed blob's URI in the exact
-/// scheme and host the caller used, so provenance columns and path masks see the location they were given.
+/// The account is reached over whichever of its two endpoints this host can reach (<see cref="BlobServiceEndpoint"/>
+/// or <see cref="DfsServiceEndpoint"/>; the storage layer in SqlFlow.Azure decides, whatever host the location
+/// names), while <see cref="UriFor"/> reconstructs a listed blob's URI in the exact scheme and host the caller
+/// used, so provenance columns and path masks see the location they were given.
 /// <para>The type lives in SqlFlow.Core (no Azure SDK dependency) so every layer that only needs the parsed
 /// coordinates - the storage engines, lineage identity, the catalog - shares one parser.</para>
 /// </summary>
@@ -39,8 +40,11 @@ public sealed record AzureBlobLocation
     /// <summary>The host endpoint kind the caller used: <c>blob</c> or <c>dfs</c>. Preserved for round-tripping only.</summary>
     public required string EndpointKind { get; init; }
 
-    /// <summary>The blob-service endpoint the SDK uses for this account (always the blob host).</summary>
+    /// <summary>The account's Blob service endpoint (<c>https://&lt;account&gt;.blob.core.windows.net</c>).</summary>
     public Uri BlobServiceEndpoint => new($"https://{Account}{BlobSuffix}");
+
+    /// <summary>The account's Data Lake Storage endpoint (<c>https://&lt;account&gt;.dfs.core.windows.net</c>).</summary>
+    public Uri DfsServiceEndpoint => new($"https://{Account}{DfsSuffix}");
 
     /// <summary>Rebuilds a URI for <paramref name="inContainerPath"/> in the caller's original scheme and host shape.</summary>
     public string UriFor(string inContainerPath)

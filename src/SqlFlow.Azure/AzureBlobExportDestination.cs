@@ -1,8 +1,7 @@
-using System.Collections.Concurrent;
 using System.IO.Compression;
 using Azure;
 using Azure.Identity;
-using Azure.Storage.Blobs;
+using SqlFlow.Azure.Storage;
 using SqlFlow.Core;
 using SqlFlow.Core.Export;
 
@@ -12,23 +11,19 @@ namespace SqlFlow.Azure;
 /// Azure Blob / ADLS Gen2 export destination: writes export files to <c>abfss://</c>, <c>wasbs://</c>, and the
 /// <c>https://&lt;account&gt;.blob|dfs.core.windows.net</c> URL forms, so an <c>exp</c> flow lands CSV/Parquet in
 /// a data lake exactly as it does on local disk. It is the write-side peer of <see cref="AzureBlobFileStore"/>
-/// and shares its plumbing: the same <see cref="IAzureCredentialFactory"/> (honoring <c>SQLFLOW_AZURE_AUTH</c>:
-/// managed identity, service principal, or <c>az login</c>, with no per-flow secret), the same
-/// <see cref="AzureBlobLocation"/> URI parser, and one cached <see cref="BlobServiceClient"/> per endpoint.
-/// The identity needs write access to the container (the built-in <c>Storage Blob Data Contributor</c> role).
+/// and shares its plumbing: the same <see cref="AzureStorageAccess"/> (the account reached over its Blob or its Data
+/// Lake endpoint, whichever this host can reach, authenticated by <c>SQLFLOW_AZURE_AUTH</c>: managed identity,
+/// service principal, or <c>az login</c>, with no per-flow secret) and the same <see cref="AzureBlobLocation"/> URI
+/// parser. The identity needs write access to the container (the built-in <c>Storage Blob Data Contributor</c> role).
 /// </summary>
 public sealed class AzureBlobExportDestination : IExportDestination
 {
-    private readonly IAzureCredentialFactory _credentials;
+    private readonly AzureStorageAccess _storage;
 
-    // One service client per storage endpoint, created lazily and reused so the credential's token cache is
-    // shared across every write in a run (and across runs) instead of re-authenticating per file.
-    private readonly ConcurrentDictionary<Uri, Lazy<BlobServiceClient>> _services = new();
-
-    public AzureBlobExportDestination(IAzureCredentialFactory credentials)
+    public AzureBlobExportDestination(AzureStorageAccess storage)
     {
-        ArgumentNullException.ThrowIfNull(credentials);
-        _credentials = credentials;
+        ArgumentNullException.ThrowIfNull(storage);
+        _storage = storage;
     }
 
     public bool CanHandle(string location) => AzureBlobLocation.IsAzureStorageUri(location);
@@ -38,15 +33,14 @@ public sealed class AzureBlobExportDestination : IExportDestination
         var loc = AzureBlobLocation.Parse(location);
         try
         {
-            var container = ContainerClient(loc);
+            var container = _storage.Container(loc);
             // The container is the blob analogue of the parent folder the interface asks a destination to create.
-            // Blob virtual directories need no creation (they are implied by the blob name); the container does.
-            // Idempotent: a no-op when it already exists.
-            await container.CreateIfNotExistsAsync(cancellationToken: ct).ConfigureAwait(false);
-            var blob = container.GetBlobClient(loc.BlobPath);
-            // overwrite:true creates or truncates, matching LocalExportDestination's FileMode.Create. The returned
-            // stream buffers and commits its blocks on flush/dispose, and the caller owns that lifetime.
-            return await blob.OpenWriteAsync(overwrite: true, cancellationToken: ct).ConfigureAwait(false);
+            // Folders need no creation (a blob's name implies them; a Data Lake write creates them); the container
+            // does. Idempotent: a no-op when it already exists.
+            await container.CreateIfNotExistsAsync(ct).ConfigureAwait(false);
+            // Creates or truncates, matching LocalExportDestination's FileMode.Create. The returned stream buffers and
+            // commits its bytes on flush/dispose, and the caller owns that lifetime.
+            return await container.OpenWriteAsync(loc.BlobPath, bufferSize: null, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SqlFlowException and not OperationCanceledException)
         {
@@ -59,7 +53,7 @@ public sealed class AzureBlobExportDestination : IExportDestination
         var loc = AzureBlobLocation.Parse(location);
         try
         {
-            await ContainerClient(loc).GetBlobClient(loc.BlobPath).DeleteIfExistsAsync(cancellationToken: ct).ConfigureAwait(false);
+            await _storage.Container(loc).DeleteIfExistsAsync(loc.BlobPath, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SqlFlowException and not OperationCanceledException)
         {
@@ -72,12 +66,8 @@ public sealed class AzureBlobExportDestination : IExportDestination
         var loc = AzureBlobLocation.Parse(location);
         try
         {
-            var props = await ContainerClient(loc).GetBlobClient(loc.BlobPath).GetPropertiesAsync(cancellationToken: ct).ConfigureAwait(false);
-            return props.Value.ContentLength;
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404)
-        {
-            return 0;
+            var props = await _storage.Container(loc).GetPropertiesAsync(loc.BlobPath, ct).ConfigureAwait(false);
+            return props?.Length ?? 0;
         }
         catch (Exception ex) when (ex is not SqlFlowException and not OperationCanceledException)
         {
@@ -90,7 +80,7 @@ public sealed class AzureBlobExportDestination : IExportDestination
         var loc = AzureBlobLocation.Parse(location);
         try
         {
-            return await ContainerClient(loc).GetBlobClient(loc.BlobPath).OpenReadAsync(cancellationToken: ct).ConfigureAwait(false);
+            return await _storage.Container(loc).OpenSeekableReadAsync(loc.BlobPath, bufferSize: null, ct).ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not SqlFlowException and not OperationCanceledException)
         {
@@ -106,8 +96,7 @@ public sealed class AzureBlobExportDestination : IExportDestination
     public async Task<string> ZipAsync(string location, CancellationToken ct = default)
     {
         var loc = AzureBlobLocation.Parse(location);
-        var container = ContainerClient(loc);
-        var source = container.GetBlobClient(loc.BlobPath);
+        var container = _storage.Container(loc);
         var zipBlobPath = Path.ChangeExtension(loc.BlobPath, ".zip");
         var entryName = LastSegment(loc.BlobPath);
 
@@ -117,7 +106,15 @@ public sealed class AzureBlobExportDestination : IExportDestination
         {
             try
             {
-                await source.DownloadToAsync(tempSource, ct).ConfigureAwait(false);
+                var source = await container.OpenReadAsync(loc.BlobPath, ct).ConfigureAwait(false);
+                await using (source.ConfigureAwait(false))
+                {
+                    var target = new FileStream(tempSource, FileMode.Create, FileAccess.Write, FileShare.None, 1 << 16, FileOptions.Asynchronous);
+                    await using (target.ConfigureAwait(false))
+                    {
+                        await source.CopyToAsync(target, ct).ConfigureAwait(false);
+                    }
+                }
             }
             catch (RequestFailedException ex) when (ex.Status == 404)
             {
@@ -132,9 +129,13 @@ public sealed class AzureBlobExportDestination : IExportDestination
                 archive.CreateEntryFromFile(tempSource, entryName, CompressionLevel.Optimal);
             }
 
-            var zipBlob = container.GetBlobClient(zipBlobPath);
-            await zipBlob.UploadAsync(tempZip, overwrite: true, cancellationToken: ct).ConfigureAwait(false);
-            await source.DeleteIfExistsAsync(cancellationToken: ct).ConfigureAwait(false);
+            var zipContent = new FileStream(tempZip, FileMode.Open, FileAccess.Read, FileShare.Read, 1 << 16, FileOptions.Asynchronous);
+            await using (zipContent.ConfigureAwait(false))
+            {
+                await container.UploadAsync(zipBlobPath, zipContent, overwrite: true, contentHash: null, ct).ConfigureAwait(false);
+            }
+
+            await container.DeleteIfExistsAsync(loc.BlobPath, ct).ConfigureAwait(false);
             return loc.UriFor(zipBlobPath);
         }
         catch (Exception ex) when (ex is not SqlFlowException and not OperationCanceledException)
@@ -148,34 +149,28 @@ public sealed class AzureBlobExportDestination : IExportDestination
         }
     }
 
-    private BlobContainerClient ContainerClient(AzureBlobLocation loc)
-    {
-        var service = _services.GetOrAdd(
-            loc.BlobServiceEndpoint,
-            endpoint => new Lazy<BlobServiceClient>(() => new BlobServiceClient(endpoint, _credentials.Create()))).Value;
-        return service.GetBlobContainerClient(loc.Container);
-    }
-
     /// <summary>
     /// Turns an Azure SDK failure into an actionable <see cref="SqlFlowException"/>: an auth failure points at the
-    /// credential setup, a request failure names the account, container, and HTTP status, and anything else
-    /// carries the account, container, and cause. Mirrors <see cref="AzureBlobFileStore"/> so read and write
-    /// surface the same diagnostics.
+    /// credential setup, a request failure names the account, container, the endpoint it went to, and HTTP status,
+    /// and anything else carries the account, container, and cause. Mirrors <see cref="AzureBlobFileStore"/> so read
+    /// and write surface the same diagnostics.
     /// </summary>
     private static SqlFlowException Translate(AzureBlobLocation loc, Exception ex)
     {
         var cause = Unwrap(ex);
+        var over = AzureStorageFailures.EndpointOf(ex) is { } endpoint ? $" over the {endpoint.HostLabel()} endpoint" : string.Empty;
         return cause switch
         {
             AuthenticationFailedException or CredentialUnavailableException => new SqlFlowException(
                 $"Azure authentication failed for storage account '{loc.Account}'. Sign in with 'az login', or set "
                 + "SQLFLOW_AZURE_AUTH and the AZURE_* variables for a service principal or managed identity "
                 + $"({cause.Message}).", ex),
-            RequestFailedException { Status: 403 } rfe => new SqlFlowException(
-                $"Azure Storage denied the export write to '{loc.Account}/{loc.Container}' (status 403): {rfe.Message}. "
+            // A network rejection is a 403 too, but no role grants a network path; it reads as the request failure below.
+            RequestFailedException { Status: 403 } rfe when !AzureStorageFailures.IsNetworkRejection(rfe) => new SqlFlowException(
+                $"Azure Storage denied the export write to '{loc.Account}/{loc.Container}'{over} (status 403): {rfe.Message}. "
                 + "Grant the identity the 'Storage Blob Data Contributor' role on the account or container.", ex),
             RequestFailedException rfe => new SqlFlowException(
-                $"Azure Storage request failed for '{loc.Account}/{loc.Container}' (status {rfe.Status}): {rfe.Message}", ex),
+                $"Azure Storage request failed for '{loc.Account}/{loc.Container}'{over} (status {rfe.Status}): {rfe.Message}", ex),
             _ => new SqlFlowException(
                 $"Could not write to Azure Storage location '{loc.Account}/{loc.Container}': {cause.Message}", ex),
         };

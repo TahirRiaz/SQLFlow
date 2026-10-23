@@ -43,6 +43,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   baseline comparison; queries no longer need it. The chat capability `dataOpsRunQuery` is `runQuery`.
 
 ### Added
+- Azure Storage is reached over the account's Blob or Data Lake (`dfs`) endpoint, whichever the host can reach. File
+  sources, landing, exports, copies and SFTP transfers decide once per account which endpoint answers (a private
+  endpoint first) and move to the other when the network refuses a request before the service processed it, so a
+  network that wires only the `dfs` endpoint no longer fails with `403 AuthorizationFailure`.
+  `SQLFLOW_AZURE_STORAGE_ENDPOINT` (`auto`, `blob`, `dfs`) fixes the choice; `duckdb` and `delta` sources still read
+  through DuckDB's Azure extension ([Azure Storage endpoints](docs/reference/concepts/azure-storage-endpoints.md)).
 - Document-envelope `mode:` on every flow kind, with a new `disabled` value. `mode: manual` was
   documented as excluding a flow from schedule fires and batch/node group runs, but only health
   checks actually parsed the key; now the envelope reads `auto | manual | disabled` for all kinds

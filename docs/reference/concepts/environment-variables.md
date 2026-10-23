@@ -55,6 +55,7 @@ All conventional names are strictly UPPERCASE because environment variables are 
 | `SQLFLOW_GITHUB_APP_PRIVATE_KEY_PATH` | workers, control plane | Instead of the above: the absolute path of the App's `.pem` file. |
 | `SQLFLOW_GITHUB_APP_API_URL` | workers, control plane | The API root of GitHub Enterprise Server (`https://<host>/api/v3`) or GHE.com; `https://api.github.com` when unset. |
 | `SQLFLOW_AZURE_AUTH` | every Azure access path | Selects the Azure credential mode (see below). |
+| `SQLFLOW_AZURE_STORAGE_ENDPOINT` | every Azure Storage read and write | `auto` (the default), `blob` or `dfs`: which of an account's endpoints its requests go to ([Azure Storage endpoints](azure-storage-endpoints.md)). |
 | `SQLFLOW_TEST_DB` | this repository's integration tests | The integration-test sink database; the legacy name `SQLFlowSinkConStr` is honored as a fallback in the tests. |
 | `SQLFLOW_WORKER_POOL` | `Dockerfile.worker` entrypoint only | Comma-separated pools the container serves; translated to `--pool`. |
 | `SQLFLOW_WORKER_POLL_SECONDS` | `Dockerfile.worker` entrypoint only | How long each poll waits for work; translated to `--poll-seconds`. |
@@ -106,6 +107,11 @@ Repo attribution for the post-run catalog write-back. Precedence: `--repo`, then
 | anything else (including unset) | The default credential chain. |
 
 Caveat: DuckDB cloud reads support only a system-assigned managed identity. Combining `SQLFLOW_AZURE_AUTH=mi` with a non-empty `AZURE_CLIENT_ID` on a DuckDB source fails loudly; the error suggests `SQLFLOW_AZURE_AUTH=sp` instead. The .NET paths (Key Vault, invoke) do honor `AZURE_CLIENT_ID`.
+
+`SQLFLOW_AZURE_STORAGE_ENDPOINT` chooses the endpoint Azure Storage requests go to. Unset or `auto`, each account is
+reached over whichever of its Blob and Data Lake endpoints this host can reach, decided once per account and process
+([Azure Storage endpoints](azure-storage-endpoints.md)); `blob` or `dfs` uses that endpoint only. Any other value fails
+every Azure Storage request, naming the variable and the values it takes.
 
 `IS_RUNNING_IN_AZURE=true|false` force-overrides in-Azure detection in both directions. Without the override, the process counts as in-Azure when any of these is non-empty: `WEBSITE_INSTANCE_ID`, `FUNCTIONS_WORKER_RUNTIME`, `AZURE_CONTAINER_INSTANCE_ROOT_PATH`, `KUBERNETES_SERVICE_HOST`, `AZURE_VM_RESOURCE_GROUP`, `MSI_ENDPOINT`, `MSI_SECRET`, `IDENTITY_HEADER`, `APPSETTING_WEBSITE_SITE_NAME`. Off-cloud, the default chain excludes the managed-identity credential (no stall on the IMDS probe) and enables developer credentials (Visual Studio, VS Code, interactive browser, Azure CLI).
 

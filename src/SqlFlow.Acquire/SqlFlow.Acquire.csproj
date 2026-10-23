@@ -8,7 +8,6 @@
   <ItemGroup>
     <PackageReference Include="SSH.NET" />
     <PackageReference Include="Azure.Data.Tables" />
-    <PackageReference Include="Azure.Storage.Blobs" />
     <PackageReference Include="Azure.Identity" />
   </ItemGroup>
 

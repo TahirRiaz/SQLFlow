@@ -11,6 +11,7 @@ using SqlFlow.Core.Secrets;
 using SqlFlow.Orchestration;
 using SqlFlow.Azure;
 using SqlFlow.Azure.Invoke;
+using SqlFlow.Azure.Storage;
 using SqlFlow.HealthCheck;
 using SqlFlow.Providers;
 using SqlFlow.SourceControl;
@@ -384,9 +385,10 @@ public sealed class DocumentExecutor : IDocumentRunner
             doc.Document.Invokes,
             InvokeExecutorFactory.Create(_provider, doc.Document.Invokes, doc.Document.ServicePrincipals),
             // Local plus the Azure blob/ADLS destination. The runner selects by CanHandle, so a local path stays
-            // local and an abfss/https storage path writes to the lake, authenticated by the shared Azure
-            // credential (SQLFLOW_AZURE_AUTH) with no per-flow secret.
-            destinations: [new LocalExportDestination(), new AzureBlobExportDestination(_provider.GetRequiredService<IAzureCredentialFactory>())]);
+            // local and an abfss/https storage path writes to the lake (over whichever of the account's endpoints
+            // this host reaches), authenticated by the shared Azure credential (SQLFLOW_AZURE_AUTH) with no
+            // per-flow secret.
+            destinations: [new LocalExportDestination(), new AzureBlobExportDestination(_provider.GetRequiredService<AzureStorageAccess>())]);
 
         // Per-run substitution: a backfill window re-windows the export's chunk plan (its native FromDate/ToDate
         // bounds) for THIS run only. FullLoad has no export meaning (the planner's window IS the selection), and
@@ -441,7 +443,7 @@ public sealed class DocumentExecutor : IDocumentRunner
             _provider.GetRequiredService<ISecretResolver>(),
             // Local plus the Azure blob/ADLS destination, exactly as the export flow composes them: the runner
             // selects by CanHandle, and the delivery step reads the saved files back through the same seam.
-            destinations: [new LocalExportDestination(), new AzureBlobExportDestination(_provider.GetRequiredService<IAzureCredentialFactory>())]);
+            destinations: [new LocalExportDestination(), new AzureBlobExportDestination(_provider.GetRequiredService<AzureStorageAccess>())]);
         var result = await runner.RunAsync(
             doc.Document.Flow,
             new IngestionRunOptions { ExecMode = "cli", Events = eventSink, RunId = options.RunId, StatementSink = options.StatementSink },

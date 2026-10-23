@@ -30,7 +30,7 @@ public sealed class S3EndpointTests
     private static ICopyEndpoint[] Endpoints() =>
     [
         new LocalCopyEndpoint(),
-        new AzureBlobCopyEndpoint(new StubCredentials(), new NoSecrets()),
+        new AzureBlobCopyEndpoint(new SqlFlow.Azure.Storage.AzureStorageAccess(new StubCredentials()), new NoSecrets()),
         new S3CopyEndpoint(new NoSecrets()),
     ];
 
@@ -105,7 +105,7 @@ public sealed class S3EndpointTests
     public async Task Azure_blob_target_refuses_a_path_leaving_it_before_building_a_client()
     {
         // StubCredentials throws if a client were built, so the refusal must come from the name alone.
-        var endpoint = new AzureBlobCopyEndpoint(new StubCredentials(), new NoSecrets());
+        var endpoint = new AzureBlobCopyEndpoint(new SqlFlow.Azure.Storage.AzureStorageAccess(new StubCredentials()), new NoSecrets());
         var target = new SqlFlow.Core.Copy.CopyEndpoint { Location = "abfss://fs@acct.dfs.core.windows.net/target" };
 
         await Assert.ThrowsAsync<SqlFlowException>(() =>

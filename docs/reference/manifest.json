@@ -649,6 +649,50 @@
       ]
     },
     {
+      "id": "concept-azure-storage-endpoints",
+      "corpus": "reference",
+      "path": "concepts/azure-storage-endpoints.md",
+      "title": "Azure Storage over its Blob or Data Lake endpoint",
+      "type": "concept",
+      "summary": "Azure Storage is reached over its Blob or its Data Lake (dfs) endpoint, whichever this host can reach, with the same results either way.",
+      "keywords": [
+        "azure storage",
+        "adls gen2",
+        "abfss",
+        "blob endpoint",
+        "dfs endpoint",
+        "data lake endpoint",
+        "private endpoint",
+        "privatelink",
+        "authorizationfailure",
+        "firewall",
+        "fallback",
+        "SQLFLOW_AZURE_STORAGE_ENDPOINT"
+      ],
+      "related": [
+        "concept-environment-variables",
+        "concept-connections-and-secrets",
+        "concept-file-discovery-and-lifecycle",
+        "flow-source",
+        "flow-cpy",
+        "flow-exp",
+        "flow-sftp"
+      ],
+      "sourceRefs": [
+        "src/SqlFlow.Azure/Storage/AzureStorageAccess.cs",
+        "src/SqlFlow.Azure/Storage/AzureStorageContainer.cs",
+        "src/SqlFlow.Azure/Storage/AzureStorageEndpointSelector.cs",
+        "src/SqlFlow.Azure/Storage/AzureStorageFailures.cs",
+        "src/SqlFlow.Azure/Storage/AzureStorageAuth.cs",
+        "src/SqlFlow.Azure/Storage/BlobStorageBackend.cs",
+        "src/SqlFlow.Azure/Storage/DfsStorageBackend.cs",
+        "src/SqlFlow.Azure/Storage/DfsRestClient.cs",
+        "src/SqlFlow.Azure/Storage/DfsStreams.cs",
+        "src/SqlFlow.Azure/Storage/DfsSignature.cs",
+        "src/SqlFlow.Core/Storage/AzureBlobLocation.cs"
+      ]
+    },
+    {
       "id": "concept-cli-conventions",
       "corpus": "reference",
       "path": "concepts/cli-conventions.md",

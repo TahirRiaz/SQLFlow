@@ -1,29 +1,26 @@
-using System.Collections.Concurrent;
 using Azure;
 using Azure.Identity;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using SqlFlow.Azure;
+using SqlFlow.Azure.Storage;
 using SqlFlow.Core;
 
 namespace SqlFlow.Acquire.Landing;
 
 /// <summary>
-/// Lands raw payloads to Azure Blob / ADLS Gen2 through the shared <see cref="IAzureCredentialFactory"/> (managed
-/// identity / az login / service principal) - the same credential the read-side store, Key Vault, and invoke use,
-/// so a landed file needs no per-flow storage secret. Accepts the <c>abfss</c>/<c>wasbs</c> authority form and the
-/// <c>https://&lt;account&gt;.blob|dfs.core.windows.net</c> URL form via <see cref="AzureBlobLocation"/>. One blob
-/// service client per account is cached for the store's lifetime so the token cache is reused across a run.
+/// Lands raw payloads to Azure Blob / ADLS Gen2 through the shared <see cref="AzureStorageAccess"/>: the account is
+/// reached over its Blob or its Data Lake endpoint, whichever this host can reach, with the shared credential (managed
+/// identity / az login / service principal) the read-side store, Key Vault, and invoke use, so a landed file needs no
+/// per-flow storage secret. Accepts the <c>abfss</c>/<c>wasbs</c> authority form and the
+/// <c>https://&lt;account&gt;.blob|dfs.core.windows.net</c> URL form via <see cref="AzureBlobLocation"/>.
 /// </summary>
 public sealed class AzureRawLandingStore : IRawLandingStore
 {
-    private readonly IAzureCredentialFactory _credentials;
-    private readonly ConcurrentDictionary<Uri, Lazy<BlobServiceClient>> _services = new();
+    private readonly AzureStorageAccess _storage;
 
-    public AzureRawLandingStore(IAzureCredentialFactory credentials)
+    public AzureRawLandingStore(AzureStorageAccess storage)
     {
-        ArgumentNullException.ThrowIfNull(credentials);
-        _credentials = credentials;
+        ArgumentNullException.ThrowIfNull(storage);
+        _storage = storage;
     }
 
     public bool CanHandle(string location) => AzureBlobLocation.IsAzureStorageUri(location);
@@ -33,10 +30,10 @@ public sealed class AzureRawLandingStore : IRawLandingStore
 
     public async Task<bool> ExistsAsync(string location, CancellationToken ct = default)
     {
-        var blob = BlobClient(location);
+        var loc = AzureBlobLocation.Parse(location);
         try
         {
-            return await blob.ExistsAsync(ct).ConfigureAwait(false);
+            return await _storage.Container(loc).GetPropertiesAsync(loc.BlobPath, ct).ConfigureAwait(false) is not null;
         }
         catch (Exception ex) when (ex is not SqlFlowException and not OperationCanceledException)
         {
@@ -46,31 +43,31 @@ public sealed class AzureRawLandingStore : IRawLandingStore
 
     public async Task<bool> PutAsync(string location, ReadOnlyMemory<byte> content, bool overwrite, bool skipUnchanged = true, CancellationToken ct = default)
     {
-        var blob = BlobClient(location);
+        var loc = AzureBlobLocation.Parse(location);
+        var container = _storage.Container(loc);
         try
         {
             if (!overwrite)
             {
                 // Fail (rather than clobber) if the blob already exists.
-                var options = new BlobUploadOptions { Conditions = new BlobRequestConditions { IfNoneMatch = ETag.All } };
                 using var stream = new ReadOnlyMemoryStream(content);
-                await blob.UploadAsync(stream, options, ct).ConfigureAwait(false);
+                await container.UploadAsync(loc.BlobPath, stream, overwrite: false, contentHash: null, ct).ConfigureAwait(false);
                 return true;
             }
 
             if (!skipUnchanged)
             {
                 // Write unconditionally, still stamping the MD5 so a later run can compare if the flow re-enables it.
-                await UploadStampedAsync(blob, content, ContentHash.Md5(content.Span), ct).ConfigureAwait(false);
+                await UploadStampedAsync(container, loc.BlobPath, content, ContentHash.Md5(content.Span), ct).ConfigureAwait(false);
                 return true;
             }
 
-            // Overwriting: skip when the blob already holds byte-identical content (its ContentHash is the MD5 we stamp
-            // below), so an unchanged re-land does not bump LastModified and re-trigger the downstream file flow.
+            // Overwriting: skip when the blob already holds byte-identical content (its stored content hash is the MD5
+            // we stamp below), so an unchanged re-land does not bump LastModified and re-trigger the downstream file flow.
             return await ConditionalWrite.WriteIfChangedAsync(
                 content,
-                token => BlobContentHashAsync(blob, token),
-                (md5, token) => UploadStampedAsync(blob, content, md5, token),
+                async token => (await container.GetPropertiesAsync(loc.BlobPath, token).ConfigureAwait(false))?.ContentHash,
+                (md5, token) => UploadStampedAsync(container, loc.BlobPath, content, md5, token),
                 ct).ConfigureAwait(false);
         }
         catch (RequestFailedException ex) when (!overwrite && ex.Status == 409)
@@ -87,10 +84,7 @@ public sealed class AzureRawLandingStore : IRawLandingStore
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(baseLocation);
         var loc = AzureBlobLocation.Parse(baseLocation);
-        var service = _services.GetOrAdd(
-            loc.BlobServiceEndpoint,
-            endpoint => new Lazy<BlobServiceClient>(() => new BlobServiceClient(endpoint, _credentials.Create()))).Value;
-        var container = service.GetBlobContainerClient(loc.Container);
+        var container = _storage.Container(loc);
 
         // The base addresses a folder, so the prefix is its path plus a separator: without the trailing '/' a sibling
         // folder sharing the name's prefix (".../omsetning_old") would be enumerated as if it were inside this one.
@@ -100,22 +94,16 @@ public sealed class AzureRawLandingStore : IRawLandingStore
         var names = new List<string>();
         try
         {
-            // Metadata is requested explicitly: the ADLS directory marker lives there, and without the trait the
-            // dictionary comes back empty so every folder placeholder would be mistaken for a landed file.
-            await foreach (var blob in container
-                .GetBlobsAsync(new GetBlobsOptions { Traits = BlobTraits.Metadata, Prefix = prefix }, ct)
-                .ConfigureAwait(false))
+            await foreach (var item in container.ListAsync(prefix, recursive: true, ct).ConfigureAwait(false))
             {
-                // ADLS Gen2 folders surface as zero-length blobs carrying the directory metadata marker; they are
+                // ADLS Gen2 folders (directories, and the zero-length marker blobs the Blob endpoint shows for them) are
                 // placeholders, not landed payloads, so they never contribute a watermark candidate.
-                if (blob.Properties.ContentLength is 0 or null
-                    && blob.Metadata is { } metadata
-                    && metadata.ContainsKey("hdi_isfolder"))
+                if (item.IsDirectory)
                 {
                     continue;
                 }
 
-                names.Add(blob.Name[prefix.Length..]);
+                names.Add(item.Name[prefix.Length..]);
             }
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
@@ -131,45 +119,24 @@ public sealed class AzureRawLandingStore : IRawLandingStore
         return names;
     }
 
-    private static async Task UploadStampedAsync(BlobClient blob, ReadOnlyMemory<byte> content, byte[] md5, CancellationToken ct)
+    private static async Task UploadStampedAsync(
+        AzureStorageContainer container, string path, ReadOnlyMemory<byte> content, byte[] md5, CancellationToken ct)
     {
-        var options = new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentHash = md5 } };
         using var stream = new ReadOnlyMemoryStream(content);
-        await blob.UploadAsync(stream, options, ct).ConfigureAwait(false);
-    }
-
-    private static async Task<byte[]?> BlobContentHashAsync(BlobClient blob, CancellationToken ct)
-    {
-        try
-        {
-            var props = await blob.GetPropertiesAsync(cancellationToken: ct).ConfigureAwait(false);
-            return props.Value.ContentHash;
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404)
-        {
-            return null;
-        }
-    }
-
-    private BlobClient BlobClient(string location)
-    {
-        var loc = AzureBlobLocation.Parse(location);
-        var service = _services.GetOrAdd(
-            loc.BlobServiceEndpoint,
-            endpoint => new Lazy<BlobServiceClient>(() => new BlobServiceClient(endpoint, _credentials.Create()))).Value;
-        return service.GetBlobContainerClient(loc.Container).GetBlobClient(loc.BlobPath);
+        await container.UploadAsync(path, stream, overwrite: true, contentHash: md5, ct).ConfigureAwait(false);
     }
 
     private static SqlFlowException Translate(string location, Exception ex)
     {
         var cause = ex is AggregateException { InnerException: { } inner } ? inner : ex;
+        var over = AzureStorageFailures.EndpointOf(ex) is { } endpoint ? $" over the {endpoint.HostLabel()} endpoint" : string.Empty;
         return cause switch
         {
             AuthenticationFailedException or CredentialUnavailableException => new SqlFlowException(
                 $"Azure authentication failed while landing to '{location}'. Sign in with 'az login', or set "
                 + $"SQLFLOW_AZURE_AUTH and the AZURE_* variables for a service principal or managed identity ({cause.Message}).", ex),
             RequestFailedException rfe => new SqlFlowException(
-                $"Azure Storage request failed while landing to '{location}' (status {rfe.Status}): {rfe.Message}", ex),
+                $"Azure Storage request failed while landing to '{location}'{over} (status {rfe.Status}): {rfe.Message}", ex),
             _ => new SqlFlowException($"Could not land to Azure Storage location '{location}': {cause.Message}", ex),
         };
     }

@@ -1,12 +1,9 @@
-using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Enumeration;
 using System.Text;
 using Azure;
-using Azure.Storage.Blobs;
-using Azure.Storage.Blobs.Models;
 using Renci.SshNet;
-using SqlFlow.Azure;
+using SqlFlow.Azure.Storage;
 using SqlFlow.Core;
 using SqlFlow.Core.Runs;
 using SqlFlow.Core.Secrets;
@@ -17,24 +14,24 @@ namespace SqlFlow.Sftp;
 /// <summary>
 /// Runs an SFTP transfer flow: connects to the server (password or private key, resolved from secret references),
 /// and either downloads the matched remote files into the lake/local target or uploads the matched lake/local files
-/// to the server. The lake side handles a data-lake URI (managed-identity authenticated) or a local path. Fully
-/// self-contained - it owns its SSH and storage I/O - so the SFTP flow type stands alone. It never throws for a
-/// transfer failure; a failed/partial <see cref="SftpRunResult"/> is returned.
+/// to the server. The lake side handles a data-lake URI (managed-identity authenticated, over the account's Blob or Data
+/// Lake endpoint, whichever this host can reach) or a local path. Fully self-contained - it owns its SSH and storage
+/// I/O - so the SFTP flow type stands alone. It never throws for a transfer failure; a failed/partial
+/// <see cref="SftpRunResult"/> is returned.
 /// </summary>
 public sealed class SftpEngine
 {
     private readonly ISecretResolver _secrets;
-    private readonly IAzureCredentialFactory _azure;
+    private readonly AzureStorageAccess _storage;
     private readonly TimeProvider _time;
-    private readonly ConcurrentDictionary<string, Lazy<BlobContainerClient>> _containers = new(StringComparer.Ordinal);
 
-    public SftpEngine(ISecretResolver secrets, IAzureCredentialFactory azure, TimeProvider time)
+    public SftpEngine(ISecretResolver secrets, AzureStorageAccess storage, TimeProvider time)
     {
         ArgumentNullException.ThrowIfNull(secrets);
-        ArgumentNullException.ThrowIfNull(azure);
+        ArgumentNullException.ThrowIfNull(storage);
         ArgumentNullException.ThrowIfNull(time);
         _secrets = secrets;
-        _azure = azure;
+        _storage = storage;
         _time = time;
     }
 
@@ -279,26 +276,26 @@ public sealed class SftpEngine
         if (AzureBlobLocation.IsAzureStorageUri(root))
         {
             var loc = AzureBlobLocation.Parse(root);
-            var container = Container(loc);
+            var container = _storage.Container(loc);
             var blobName = (loc.BlobPath.TrimEnd('/').Length == 0 ? relative : $"{loc.BlobPath.TrimEnd('/')}/{relative}").TrimStart('/');
-            var blob = container.GetBlobClient(blobName);
 
             if (!overwrite)
             {
-                await UploadStampedAsync(blob, content, md5, new BlobRequestConditions { IfNoneMatch = ETag.All }, ct).ConfigureAwait(false);
+                // Fails (status 409) rather than clobbering a file already there.
+                await UploadStampedAsync(container, blobName, content, md5, overwrite: false, ct).ConfigureAwait(false);
                 return (loc.UriFor(blobName), true, hex);
             }
 
             if (!skipUnchanged)
             {
-                await UploadStampedAsync(blob, content, md5, null, ct).ConfigureAwait(false);
+                await UploadStampedAsync(container, blobName, content, md5, overwrite: true, ct).ConfigureAwait(false);
                 return (loc.UriFor(blobName), true, hex);
             }
 
             var uploaded = await ConditionalWrite.WriteIfChangedAsync(
                 content,
-                token => BlobContentHashAsync(blob, token),
-                (hash, token) => UploadStampedAsync(blob, content, hash, null, token),
+                async token => (await container.GetPropertiesAsync(blobName, token).ConfigureAwait(false))?.ContentHash,
+                (hash, token) => UploadStampedAsync(container, blobName, content, hash, overwrite: true, token),
                 ct).ConfigureAwait(false);
             return (loc.UriFor(blobName), uploaded, hex);
         }
@@ -325,29 +322,10 @@ public sealed class SftpEngine
     }
 
     private static async Task UploadStampedAsync(
-        BlobClient blob, ReadOnlyMemory<byte> content, byte[] md5, BlobRequestConditions? conditions, CancellationToken ct)
+        AzureStorageContainer container, string path, ReadOnlyMemory<byte> content, byte[] md5, bool overwrite, CancellationToken ct)
     {
-        var options = new BlobUploadOptions { HttpHeaders = new BlobHttpHeaders { ContentHash = md5 } };
-        if (conditions is not null)
-        {
-            options.Conditions = conditions;
-        }
-
         using var stream = new MemoryStream(content.ToArray(), writable: false);
-        await blob.UploadAsync(stream, options, ct).ConfigureAwait(false);
-    }
-
-    private static async Task<byte[]?> BlobContentHashAsync(BlobClient blob, CancellationToken ct)
-    {
-        try
-        {
-            var props = await blob.GetPropertiesAsync(cancellationToken: ct).ConfigureAwait(false);
-            return props.Value.ContentHash;
-        }
-        catch (RequestFailedException ex) when (ex.Status == 404)
-        {
-            return null;
-        }
+        await container.UploadAsync(path, stream, overwrite, md5, ct).ConfigureAwait(false);
     }
 
     private async Task<List<(string Absolute, string Relative, long Size)>> ListLakeAsync(
@@ -357,26 +335,24 @@ public sealed class SftpEngine
         if (AzureBlobLocation.IsAzureStorageUri(root))
         {
             var loc = AzureBlobLocation.Parse(root);
-            var container = Container(loc);
-            var prefix = loc.BlobPath.Length == 0 ? null : loc.BlobPath.TrimEnd('/') + "/";
-            await foreach (var blob in container
-                .GetBlobsAsync(new GetBlobsOptions { Prefix = prefix }, ct)
-                .ConfigureAwait(false))
+            var container = _storage.Container(loc);
+            var prefix = loc.BlobPath.Length == 0 ? string.Empty : loc.BlobPath.TrimEnd('/') + "/";
+            await foreach (var item in container.ListAsync(prefix, recursive: true, ct).ConfigureAwait(false))
             {
-                var name = blob.Name;
+                var name = item.Name;
                 var leaf = name[(name.LastIndexOf('/') + 1)..];
-                var tail = prefix is null ? name : name[prefix.Length..];
-                if (leaf.Length == 0 || (!recursive && tail.Contains('/', StringComparison.Ordinal)) || !FileSystemName.MatchesSimpleExpression(pattern, leaf))
+                var tail = name[prefix.Length..];
+                if (item.IsDirectory || leaf.Length == 0 || (!recursive && tail.Contains('/', StringComparison.Ordinal)) || !FileSystemName.MatchesSimpleExpression(pattern, leaf))
                 {
                     continue;
                 }
 
-                if (blob.Properties.LastModified is { } m && !WithinWindow(m, from, to))
+                if (item.LastModified is { } m && !WithinWindow(m, from, to))
                 {
                     continue;
                 }
 
-                found.Add((name, tail, blob.Properties.ContentLength ?? -1));
+                found.Add((name, tail, item.Length));
             }
 
             return found;
@@ -408,15 +384,9 @@ public sealed class SftpEngine
         if (AzureBlobLocation.IsAzureStorageUri(root))
         {
             var loc = AzureBlobLocation.Parse(root);
-            var response = await Container(loc).GetBlobClient(absolute).DownloadContentAsync(ct).ConfigureAwait(false);
-            return response.Value.Content.ToArray();
+            return await _storage.Container(loc).ReadAllBytesAsync(absolute, ct).ConfigureAwait(false);
         }
 
         return await File.ReadAllBytesAsync(absolute, ct).ConfigureAwait(false);
     }
-
-    private BlobContainerClient Container(AzureBlobLocation loc)
-        => _containers.GetOrAdd(
-            $"{loc.BlobServiceEndpoint}|{loc.Container}",
-            _ => new Lazy<BlobContainerClient>(() => new BlobServiceClient(loc.BlobServiceEndpoint, _azure.Create()).GetBlobContainerClient(loc.Container))).Value;
 }

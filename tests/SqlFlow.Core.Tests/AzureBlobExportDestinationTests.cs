@@ -1,5 +1,6 @@
 using Azure.Core;
 using SqlFlow.Azure;
+using SqlFlow.Azure.Storage;
 using SqlFlow.Core;
 using Xunit;
 
@@ -25,14 +26,15 @@ public sealed class AzureBlobExportDestinationTests
     [InlineData("", false)]
     public void CanHandle_ClaimsAzureStorageUrisOnly(string location, bool expected)
     {
-        var destination = new AzureBlobExportDestination(new ThrowingCredentialFactory());
+        var destination = new AzureBlobExportDestination(new AzureStorageAccess(new ThrowingCredentialFactory()));
         Assert.Equal(expected, destination.CanHandle(location));
     }
 
     [Fact]
-    public void Constructor_NullCredentials_Throws()
+    public void Constructor_NullStorage_Throws()
     {
         Assert.Throws<ArgumentNullException>(() => new AzureBlobExportDestination(null!));
+        Assert.Throws<ArgumentNullException>(() => new AzureStorageAccess(null!));
     }
 
     [Fact]
@@ -40,7 +42,7 @@ public sealed class AzureBlobExportDestinationTests
     {
         // The credential factory throws if touched, so this proves the parse guard runs first: an authority with
         // no 'container@' is not addressable and must surface a clear error, not an auth attempt.
-        var destination = new AzureBlobExportDestination(new ThrowingCredentialFactory());
+        var destination = new AzureBlobExportDestination(new AzureStorageAccess(new ThrowingCredentialFactory()));
         await Assert.ThrowsAsync<SqlFlowException>(
             () => destination.OpenWriteAsync("abfss://acct.dfs.core.windows.net/orders/data.parquet"));
     }
