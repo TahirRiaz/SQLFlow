@@ -167,7 +167,9 @@ public sealed record ScheduleSpec
     public string? Operation { get; init; }
 
     /// <summary>The parameter values every fire passes to the members of a registered flow kind
-    /// (<see cref="Runs.RunParameters.Values"/>).</summary>
+    /// (<see cref="Runs.RunParameters.Values"/>), a parameter given several values holding the text of their list
+    /// (<see cref="Runs.RunValueList"/>).</summary>
+    [System.Text.Json.Serialization.JsonConverter(typeof(Runs.RunValuesJsonConverter))]
     public IReadOnlyDictionary<string, string> Values { get; init; } =
         System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
 

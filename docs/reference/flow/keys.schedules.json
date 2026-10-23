@@ -97,15 +97,15 @@
       "path": "schedules.<name>.values",
       "type": "map",
       "required": false,
-      "description": "Parameter values each fire passes to the members of a registered flow kind, by parameter name. At most 32 entries; each name an identifier of at most 64 characters, each value at most 1000 characters without control characters.",
+      "description": "Parameter values each fire passes to the members of a registered flow kind, by parameter name. At most 32 entries; each name an identifier of at most 64 characters, each value at most 1000 characters without control characters. A sequence gives a parameter several values (1 to 100, at most 16,000 characters as a list); the registered kind decides which parameters take several.",
       "definedIn": "src/SqlFlow.Yaml/YamlScheduleLibraryLoader.cs (shape checked by RunParameters.ValidateKindArguments)",
       "validation": "An unusable value drops the entry: \"<file>: schedule '<name>': <message> The schedule is ignored.\""
     },
     {
       "path": "schedules.<name>.values.<parameter>",
-      "type": "string",
+      "type": "string|list<string>",
       "required": false,
-      "description": "The value a fire gives the parameter of this name."
+      "description": "The value a fire gives the parameter of this name, or a sequence of values for a parameter the registered kind lets take several."
     }
   ]
 }

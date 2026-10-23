@@ -2396,7 +2396,8 @@ internal static class Program
                                [--file-pattern <glob>]  Backfill: narrow a file flow to one glob this run
                                [--operation <name>] [--set name=value]... [--payload <json>|@<file>]
                                                  Kind arguments for a flow of a registered kind: the operation it
-                                                 performs, its parameter values, and its kind-owned JSON payload
+                                                 performs, its parameter values (a name set more than once is
+                                                 given the list of its values), and its kind-owned JSON payload
                                [--assertions-only]      Evaluate the flow's data-quality assertions (manual-mode
                                                  ones included) against the current target; loads nothing (ing flows)
                                [--health-check]  Run the flow's embedded healthCheck: block (the derived hc
@@ -2535,7 +2536,8 @@ internal static class Program
                                                  widens to manual and disabled ones). A whole source runs through its
                                                  schedule ('schedules run'), whose membership is what a fire runs.
                                                  --preview shows the members and waves without enqueuing; backfill
-                                                 flags are the same as a local run; --follow attaches to the live
+                                                 flags are the same as a local run, and a name --set more than once
+                                                 is given the list of its values; --follow attaches to the live
                                                  trace (or the group's member stream) and exits by the terminal
                                                  outcome.
               sqlflow runs list [--status s] [--flow name] [--batch b] [--kind k] [--repo r] [--group g] [--latest]

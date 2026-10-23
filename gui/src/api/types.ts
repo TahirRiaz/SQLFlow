@@ -193,6 +193,12 @@ export interface PipelineColumn {
 
 export type RunStatus = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "skipped";
 
+/**
+ * The value a run gives one parameter of a flow of a kind a host module registers: one value, or the list of them when
+ * the run gives the parameter several. The kind decides which of its parameters take several (lib/runValues reads both).
+ */
+export type RunValue = string | string[];
+
 /** How a run was scoped: one flow, a flow and its descendants (Node), or a whole batch / data source. */
 export type RunScope = "flow" | "node" | "batch";
 
@@ -276,8 +282,8 @@ export interface RunDetail extends RunSummary {
   failedStatementSql: string | null;
   /** The schedule whose fire enqueued this run, when triggerSource is "schedule"; null otherwise. */
   triggerScheduleId: string | null;
-  /** The name=value parameters a module kind's run was given; empty for SQLFlow's own kinds. */
-  values: Record<string, string>;
+  /** The parameters a module kind's run was given, each one value or a list; empty for SQLFlow's own kinds. */
+  values: Record<string, RunValue>;
   /** The kind-owned request a module kind's run was given, as JSON; null when it carried none. */
   payload: Record<string, unknown> | null;
   /** The kind's bounded result as JSON text, once the run finished; null before, and for kinds that report none. */
@@ -536,8 +542,8 @@ export interface RunTriggerRequest {
   batch?: string | null;
   /** For a kind a host module registers: the operation to perform, one of those GET /api/v1/kinds lists for it. */
   operation?: string;
-  /** For a kind a host module registers: values for the parameters the flow declares, name to value. */
-  values?: Record<string, string>;
+  /** For a kind a host module registers: values for the parameters the flow declares, name to one value or a list. */
+  values?: Record<string, RunValue>;
   /** For a kind a host module registers: the kind-owned request, which the kind validates and interprets. */
   payload?: Record<string, unknown>;
 }
@@ -671,8 +677,8 @@ export interface Schedule {
   lastCounts: RunGroupCounts | null;
   /** The operation a fire runs its members with, for members of a kind a host module registers; null for the kinds' default. */
   operation: string | null;
-  /** The name=value parameters a fire runs its members with; empty when it passes none. */
-  values: Record<string, string>;
+  /** The parameters a fire runs its members with, each one value or a list; empty when it passes none. */
+  values: Record<string, RunValue>;
   /** The schedule this one CHAINS BEHIND, or null when it is driven by the clock. A chained schedule has no cadence
    * of its own and a null `nextFireUtc`: it becomes due once, when the named parent's fire completes. */
   afterSchedule?: string | null;
@@ -725,8 +731,8 @@ export interface CreateScheduleRequest {
   maxConcurrency?: number | null;
   /** The operation a fire runs its members with, for members of a kind a host module registers; omit for the default. */
   operation?: string | null;
-  /** The name=value parameters a fire runs its members with. */
-  values?: Record<string, string>;
+  /** The parameters a fire runs its members with, each one value or a list. */
+  values?: Record<string, RunValue>;
 }
 
 export interface ScheduleCreated {

@@ -7,7 +7,7 @@
 import type { ComponentType, ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 import { setModuleRequestHeaders } from "../api/client";
-import type { PipelineDetail, RunDetail, RunSummary, SearchCategory } from "../api/types";
+import type { PipelineDetail, RunDetail, RunSummary, RunValue, SearchCategory } from "../api/types";
 import type { Column } from "../components/DataTable";
 import { extendNavigation } from "../layout/nav";
 import { registerCensus, type CensusSource } from "../lib/lsp/sqlflowLsp";
@@ -125,7 +125,7 @@ export interface RunDetailContribution {
 
 /** The kind's part of a trigger request, as its fields report it. */
 export interface TriggerBodyContribution {
-  values?: Record<string, string>;
+  values?: Record<string, RunValue>;
   payload?: Record<string, unknown>;
   /** The first problem with what the fields hold, which keeps the dialog from submitting; null when they are valid. */
   error: string | null;
@@ -143,7 +143,7 @@ export interface TriggerFieldsProps {
   /** The operation picked in the dialog, from the kinds the control plane registers; null when it offers none. */
   operation: string | null;
   /** The values of the run being repeated, or of the launching context; empty for a fresh launch. */
-  initialValues: Readonly<Record<string, string>>;
+  initialValues: Readonly<Record<string, RunValue>>;
   /** The payload of the run being repeated, or of the launching context; null for a fresh launch. */
   initialPayload: Readonly<Record<string, unknown>> | null;
   /** Reports the kind's part of the request body whenever what the fields hold changes, and once when they mount. */

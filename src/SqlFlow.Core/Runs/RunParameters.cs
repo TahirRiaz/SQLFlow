@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using SqlFlow.Core.Secrets;
 
@@ -30,7 +31,8 @@ namespace SqlFlow.Core.Runs;
 /// a surrogate key (<c>AND pk &gt; 92992</c>). Relational ingestion only.</item>
 /// <item><see cref="Operation"/>, <see cref="Values"/>, <see cref="Payload"/>: the kind arguments of a flow of a
 /// registered kind (one a host module adds): which of the kind's operations the run performs, the flow's named
-/// parameter values, and a JSON object whose shape the kind owns. Their shape is validated here; whether the kind
+/// parameter values (one value each, or several as a <see cref="RunValueList"/>), and a JSON object whose shape the kind
+/// owns. Their shape is validated here; whether the kind
 /// accepts them is decided by the kind itself at every trust boundary. Built-in kinds take none.</item>
 /// <item><see cref="References"/>: the values the control plane supplies for the run's <c>${env:NAME}</c> references
 /// (see <see cref="SuppliedReferences"/>), attached when the run is queued and resolved ahead of the executing node's
@@ -63,14 +65,14 @@ public sealed partial record RunParameters
     /// <summary>The longest accepted parameter value name.</summary>
     public const int MaxValueNameLength = 64;
 
-    /// <summary>The longest accepted parameter value.</summary>
+    /// <summary>The longest accepted parameter value, and the longest value a list of them holds.</summary>
     public const int MaxValueLength = 1000;
 
     /// <summary>The longest accepted <see cref="Payload"/>, in characters: bounded so the run row stays indexable and
     /// the protocol message stays small; a kind that needs more stores it elsewhere and passes a reference.</summary>
     public const int MaxPayloadLength = 64_000;
 
-    private static readonly JsonSerializerOptions ValuesJsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions ValuesJsonOptions = new(JsonSerializerDefaults.Web) { Converters = { new RunValuesJsonConverter() } };
 
     /// <summary>Ignore the watermark and read everything the definition selects (a forced full reload).</summary>
     public bool FullLoad { get; init; }
@@ -111,7 +113,9 @@ public sealed partial record RunParameters
     public string? Operation { get; init; }
 
     /// <summary>The flow's named parameter values for this run (name to value), which the kind substitutes into its
-    /// definition (a <c>{region}</c> token in a source location, say). Built-in kinds take none.</summary>
+    /// definition (a <c>{region}</c> token in a source location, say). A parameter given several values holds the text of
+    /// their list (<see cref="RunValueList"/>), which the kind applies or refuses. Built-in kinds take none.</summary>
+    [JsonConverter(typeof(RunValuesJsonConverter))]
     public IReadOnlyDictionary<string, string> Values { get; init; } = ReadOnlyDictionary<string, string>.Empty;
 
     /// <summary>Kind-owned run arguments as the compact text of one JSON object, or null. Its shape belongs to the
@@ -231,7 +235,8 @@ public sealed partial record RunParameters
     /// <summary>
     /// Validates the shape of a run's kind arguments, throwing <see cref="SqlFlowException"/> naming the field: the
     /// operation is a short lowercase name, every value name is an identifier and every value is bounded and free of
-    /// control characters, and the payload is one bounded JSON object. Shared by runs and schedules, so a value a
+    /// control characters (a list holds 1 to <see cref="RunValueList.MaxItems"/> such values), and the payload is one
+    /// bounded JSON object. Shared by runs and schedules, so a value a
     /// schedule accepts is exactly one its runs accept. Whether a kind accepts them is the kind's own decision.
     /// </summary>
     public static void ValidateKindArguments(string? operation, IReadOnlyDictionary<string, string>? values, string? payload)
@@ -258,7 +263,16 @@ public sealed partial record RunParameters
                         $"Parameter name '{name}' must be an identifier (letters, digits, underscore) of at most {MaxValueNameLength} characters.");
                 }
 
-                if (value is null || value.Length > MaxValueLength || value.Any(char.IsControl))
+                if (value is null)
+                {
+                    throw new SqlFlowException($"Parameter '{name}' has no value: give it a string, or a list of strings.");
+                }
+
+                if (RunValueList.IsList(value))
+                {
+                    ValidateList(name, value);
+                }
+                else if (value.Length > MaxValueLength || value.Any(char.IsControl))
                 {
                     throw new SqlFlowException(
                         $"Parameter '{name}' must be 0 to {MaxValueLength} characters without control characters.");
@@ -288,19 +302,44 @@ public sealed partial record RunParameters
         }
     }
 
-    /// <summary>The stored form of <see cref="Values"/>: a JSON object ordered by name, or null for none.</summary>
+    private static void ValidateList(string name, string value)
+    {
+        var items = RunValueList.Items(value);
+        if (items.Count == 0 || items.Count > RunValueList.MaxItems)
+        {
+            throw new SqlFlowException($"Parameter '{name}' is given {items.Count} values; a list holds 1 to {RunValueList.MaxItems}.");
+        }
+
+        if (value.Length > RunValueList.MaxListLength)
+        {
+            throw new SqlFlowException(
+                $"Parameter '{name}' is given {value.Length} characters of values as a list; a list holds at most {RunValueList.MaxListLength}.");
+        }
+
+        foreach (var item in items)
+        {
+            if (item.Length > MaxValueLength || item.Any(char.IsControl))
+            {
+                throw new SqlFlowException(
+                    $"Each value of parameter '{name}' must be 0 to {MaxValueLength} characters without control characters.");
+            }
+        }
+    }
+
+    /// <summary>The stored form of <see cref="Values"/>: a JSON object ordered by name, each parameter a string or an array
+    /// of strings (<see cref="RunValuesJsonConverter"/>), or null for none.</summary>
     public static string? ValuesToJson(IReadOnlyDictionary<string, string> values)
     {
         ArgumentNullException.ThrowIfNull(values);
         return values.Count == 0
             ? null
-            : JsonSerializer.Serialize(
+            : JsonSerializer.Serialize<IReadOnlyDictionary<string, string>>(
                 new SortedDictionary<string, string>(values.ToDictionary(v => v.Key, v => v.Value, StringComparer.Ordinal), StringComparer.Ordinal),
                 ValuesJsonOptions);
     }
 
     /// <summary>Parses the stored form of <see cref="Values"/>; null or blank is no values. A stored value that is not a
-    /// JSON object of strings is a corrupt row, reported as <see cref="SqlFlowException"/>.</summary>
+    /// JSON object of strings and arrays of strings is a corrupt row, reported as <see cref="SqlFlowException"/>.</summary>
     public static IReadOnlyDictionary<string, string> ValuesFromJson(string? json)
     {
         if (string.IsNullOrWhiteSpace(json))
@@ -310,23 +349,24 @@ public sealed partial record RunParameters
 
         try
         {
-            var parsed = JsonSerializer.Deserialize<Dictionary<string, string>>(json, ValuesJsonOptions);
+            var parsed = JsonSerializer.Deserialize<IReadOnlyDictionary<string, string>>(json, ValuesJsonOptions);
             return parsed is null
                 ? ReadOnlyDictionary<string, string>.Empty
                 : new Dictionary<string, string>(parsed, StringComparer.Ordinal);
         }
         catch (JsonException ex)
         {
-            throw new SqlFlowException($"The stored parameter values are not a JSON object of strings: {ex.Message}", ex);
+            throw new SqlFlowException($"The stored parameter values are not a JSON object of strings and lists of strings: {ex.Message}", ex);
         }
     }
 
-    /// <summary>Parses <c>name=value</c> assignments (the CLI's repeatable <c>--set</c>) into parameter values; a later
-    /// assignment to the same name wins. The value may be empty and may itself contain <c>=</c>.</summary>
+    /// <summary>Parses <c>name=value</c> assignments (the CLI's repeatable <c>--set</c>) into parameter values. Each
+    /// assignment to a name adds a value, so a name assigned more than once is given the list of its values in the order
+    /// written (<see cref="RunValueList"/>). A value may be empty and may itself contain <c>=</c>.</summary>
     public static IReadOnlyDictionary<string, string> ParseValues(IEnumerable<string> assignments)
     {
         ArgumentNullException.ThrowIfNull(assignments);
-        var values = new Dictionary<string, string>(StringComparer.Ordinal);
+        var assigned = new Dictionary<string, List<string>>(StringComparer.Ordinal);
         foreach (var assignment in assignments)
         {
             var eq = assignment.IndexOf('=', StringComparison.Ordinal);
@@ -335,10 +375,16 @@ public sealed partial record RunParameters
                 throw new SqlFlowException($"Parameter '{assignment}' must be written as name=value.");
             }
 
-            values[assignment[..eq].Trim()] = assignment[(eq + 1)..];
+            var name = assignment[..eq].Trim();
+            if (!assigned.TryGetValue(name, out var items))
+            {
+                assigned[name] = items = [];
+            }
+
+            items.Add(assignment[(eq + 1)..]);
         }
 
-        return values;
+        return assigned.ToDictionary(a => a.Key, a => RunValueList.Of(a.Value), StringComparer.Ordinal);
     }
 
     [GeneratedRegex("^[a-z][a-z0-9-]{0,31}$", RegexOptions.CultureInvariant)]

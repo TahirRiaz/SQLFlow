@@ -141,10 +141,10 @@ public sealed class RunKindArgumentsTests
     }
 
     [Fact]
-    public void ParseValues_ReadsNameValueAssignments_LastWins()
+    public void ParseValues_ReadsNameValueAssignments_ARepeatedNameGivingAList()
     {
         var values = RunParameters.ParseValues(["region=north", "filter=a=b", "region=south", "empty="]);
-        Assert.Equal("south", values["region"]);
+        Assert.Equal(["north", "south"], RunValueList.Items(values["region"]));
         Assert.Equal("a=b", values["filter"]);
         Assert.Equal(string.Empty, values["empty"]);
         Assert.Throws<SqlFlowException>(() => RunParameters.ParseValues(["novalue"]));

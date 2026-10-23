@@ -96,7 +96,7 @@ When `schedule:` is a name or a list of names, the flow joins those schedules an
 | `maxConcurrency` | int | no | `4` | How many of the schedule's members execute at the same time, when a fire has more than one. Because waves are gated, this is the width of the running wave. `1` runs the fire strictly serially; `0` opts out and runs the wave unbounded. See [Fire width](#fire-width-maxconcurrency). |
 | `name` | string | no | the declaring flow's name | The schedule's name. Other flows join this schedule by writing `schedule: <name>`, and every fire then runs the declaring flow and every flow that joined as one wave-ordered group. See [Shared schedules and membership](#shared-schedules-and-membership). |
 | `operation` | string | no | none | The operation each fire runs on the members whose registered flow kind declares it; left out, each member runs its kind's default operation. 1 to 32 characters of lowercase letters, digits and `-`, starting with a letter. See [operation and values](#operation-and-values). |
-| `values` | map of string to string | no | none | Parameter values each fire passes to the members of a registered flow kind. At most 32 entries; each name is an identifier of at most 64 characters, each value at most 1000 characters without control characters. |
+| `values` | map of string to string or list of strings | no | none | Parameter values each fire passes to the members of a registered flow kind. At most 32 entries; each name is an identifier of at most 64 characters, each value at most 1000 characters without control characters. A sequence gives the parameter several values: 1 to 100 of them, at most 16,000 characters as a list. See [operation and values](#operation-and-values). |
 
 Exactly one of `cron` or `intervalSeconds` must be set for an inline block to declare a schedule. A block that sets neither is treated as absent: the loader parses it to no schedule at all (src/SqlFlow.Yaml/YamlDocumentLoader.cs, `MapSchedule`), so an empty block is never stored as a broken schedule. An inline block cannot chain: it has no `after` key, so chaining is declared in a schedule library (see [Chained schedules](#chained-schedules-after)).
 
@@ -304,6 +304,13 @@ schedules:
 - On an inline block they are validated against the declaring document's own kind when the document is parsed. A built-in kind refuses any, and the document then fails to parse with `<file>: schedule: operation, values and payload apply to flows of a registered kind; '<kind>' flows take none.`
 - A library entry is shape-checked only (the operation pattern and the value limits above).
 - An API schedule requires at least one member whose registered kind takes them, and every such kind validates them.
+
+A value is one string, or a sequence of strings for a parameter a fire gives several values
+(`values: { region: [north, south] }`; on the API, an array). A run carries such a value as a list, and the registered kind
+decides which of its parameters take several: a kind that takes none refuses the list as it refuses any value it cannot
+apply. The CLI gives a parameter several values by repeating `--set` (`--set region=north --set region=south`), and a run's
+detail answers each value as a string or an array of strings, as it was given. A sequence holding anything but strings, or a
+mapping, is refused: `<file>: schedule: values.region must be a value, or a list of values.`
 
 At fire time they are merged into the parameters of each member whose registered kind declares the operation (or of every registered-kind member when no operation is named); built-in members, and members of a kind without that operation, run as defined. Each member's kind validates the merged parameters, and a refusal fails the whole fire: an automatic fire is logged as `Schedule {ScheduleId} ('{ScheduleName}') failed to fire: {Error}` and its occurrence is not retried, and a run-now request answers 400 with nothing enqueued.
 

@@ -65,7 +65,7 @@ public sealed record RunDetailDto(
     string? DataSetConvention,
     int? FailedStatementOrdinal, string? FailedStatementStep, string? FailedStatementSql, Guid? GroupId,
     string? TriggerSource, Guid? TriggerScheduleId,
-    string? Operation = null, string? RequestedBy = null, IReadOnlyDictionary<string, string>? Values = null,
+    string? Operation = null, string? RequestedBy = null, [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null,
     JsonElement? Payload = null, Guid? FanOutRoot = null, int? FanOutSlot = null, int? FanOutCount = null,
     string? ResultJson = null);
 

@@ -35,7 +35,7 @@ public sealed record ScheduleDto(
     RunGroupCountsDto? LastCounts, IReadOnlyList<string>? AfterSchedules = null,
     IReadOnlyList<ScheduleChainLinkDto>? TriggersSchedules = null,
     int ParentFreshnessHours = 24, string? LastStaleParents = null,
-    string? Operation = null, IReadOnlyDictionary<string, string>? Values = null);
+    string? Operation = null, [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null);
 
 /// <summary>One link a schedule sets off, in chain order: the schedule that will fire, how many flows it runs, and
 /// whether it is currently able to (a disabled or paused link stops the chain there, and an operator about to start
@@ -64,7 +64,7 @@ public sealed record ScheduleDefinitionDto(
 public sealed record CreateScheduleRequest(
     Guid RepoId, IReadOnlyList<string> Members, string? Cron, int? IntervalSeconds, string? Timezone, bool? Enabled,
     bool? Catchup = null, string? Name = null, int? MaxConcurrency = null, string? Operation = null,
-    IReadOnlyDictionary<string, string>? Values = null);
+    [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null);
 
 /// <summary>The created-schedule acknowledgement.</summary>
 public sealed record ScheduleCreated(Guid Id, DateTime? NextFireUtc);

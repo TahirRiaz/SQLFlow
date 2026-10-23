@@ -29,7 +29,7 @@ public sealed record RunTriggerRequest(
     Guid RepoId, string FlowName, string? Pool = null, string? CommitSha = null,
     bool FullLoad = false, DateTime? BackfillFrom = null, DateTime? BackfillTo = null, string? FilePattern = null,
     string? Scope = null, string? Batch = null, bool AssertionsOnly = false, string? SourceFilter = null,
-    bool IncludeAll = false, string? Operation = null, IReadOnlyDictionary<string, string>? Values = null,
+    bool IncludeAll = false, string? Operation = null, [property: System.Text.Json.Serialization.JsonConverter(typeof(SqlFlow.Core.Runs.RunValuesJsonConverter))] IReadOnlyDictionary<string, string>? Values = null,
     System.Text.Json.JsonElement? Payload = null);
 
 /// <summary>The accepted-run acknowledgement: the minted run id and its queued status. The run executes

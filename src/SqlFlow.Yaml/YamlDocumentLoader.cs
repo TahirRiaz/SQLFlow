@@ -172,7 +172,7 @@ public sealed class YamlDocumentLoader
 
         public string? Operation { get; set; }
 
-        public Dictionary<string, string>? Values { get; set; }
+        public Dictionary<string, object?>? Values { get; set; }
     }
 
     /// <summary>The mapping shape the converter delegates an inline <c>schedule:</c> block to: the same inline fields
@@ -197,7 +197,7 @@ public sealed class YamlDocumentLoader
 
         public string? Operation { get; set; }
 
-        public Dictionary<string, string>? Values { get; set; }
+        public Dictionary<string, object?>? Values { get; set; }
     }
 
     /// <summary>
@@ -482,7 +482,7 @@ public sealed class YamlDocumentLoader
     {
         var probe = Probe(yaml, source);
         var flowType = probe?.FlowType?.Trim();
-        var schedule = MapSchedule(probe?.Schedule);
+        var schedule = MapSchedule(probe?.Schedule, source);
         var mode = YamlDocumentParts.ParseExecutionMode(probe?.Mode, "mode", source);
 
         // A schedule's operation and values are run arguments like a trigger's, so the document's kind must accept them:
@@ -666,7 +666,7 @@ public sealed class YamlDocumentLoader
         return document with { Schedule = schedule, Mode = mode, Lifecycle = lifecycle };
     }
 
-    private static ScheduleSpec? MapSchedule(ScheduleYaml? schedule)
+    private static ScheduleSpec? MapSchedule(ScheduleYaml? schedule, string source)
     {
         if (schedule is null)
         {
@@ -703,9 +703,25 @@ public sealed class YamlDocumentLoader
             // loader, which does have a warning channel, reports it).
             MaxConcurrency = ScheduleDefaults.Resolve(schedule.MaxConcurrency, out _),
             Operation = string.IsNullOrWhiteSpace(schedule.Operation) ? null : schedule.Operation.Trim(),
-            Values = schedule.Values is { Count: > 0 } values
-                ? new Dictionary<string, string>(values, StringComparer.Ordinal)
-                : System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty,
+            Values = ScheduleValues(schedule.Values, source),
         };
+    }
+
+    /// <summary>The values an inline schedule declares, a sequence giving a parameter several (<see cref="YamlRunValues"/>).</summary>
+    private static IReadOnlyDictionary<string, string> ScheduleValues(Dictionary<string, object?>? declared, string source)
+    {
+        if (declared is not { Count: > 0 })
+        {
+            return System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
+        }
+
+        try
+        {
+            return YamlRunValues.From(declared);
+        }
+        catch (SqlFlowException ex)
+        {
+            throw new FlowValidationException($"{source}: schedule: {ex.Message}", ex);
+        }
     }
 }

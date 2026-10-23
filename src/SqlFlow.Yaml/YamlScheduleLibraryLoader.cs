@@ -64,7 +64,7 @@ public sealed class YamlScheduleLibraryLoader
 
         public string? Operation { get; set; }
 
-        public Dictionary<string, string>? Values { get; set; }
+        public Dictionary<string, object?>? Values { get; set; }
     }
 
     /// <summary>Parses a library file's YAML. <paramref name="source"/> only labels warnings.</summary>
@@ -132,11 +132,10 @@ public sealed class YamlScheduleLibraryLoader
             // The operation and values a fire passes to its members are run arguments: an entry whose shape no run
             // could accept is ignored like any other unusable entry, rather than firing its members with defaults.
             var operation = string.IsNullOrWhiteSpace(entry.Operation) ? null : entry.Operation.Trim();
-            var values = entry.Values is { Count: > 0 } declared
-                ? new Dictionary<string, string>(declared, StringComparer.Ordinal)
-                : new Dictionary<string, string>(StringComparer.Ordinal);
+            Dictionary<string, string> values;
             try
             {
+                values = YamlRunValues.From(entry.Values);
                 RunParameters.ValidateKindArguments(operation, values, payload: null);
             }
             catch (SqlFlowException ex)

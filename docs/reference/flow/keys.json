@@ -302,9 +302,9 @@
     },
     {
       "path": "schedule.values.<name>",
-      "type": "string",
+      "type": "string|list<string>",
       "required": false,
-      "description": "The value a fire gives the parameter of this name."
+      "description": "The value a fire gives the parameter of this name, or a sequence of values for a parameter the registered kind lets take several (1 to 100, at most 16,000 characters as a list)."
     },
     {
       "path": "schema",

@@ -16,7 +16,7 @@ import { Switch } from "@/components/ui/switch";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { isApiError } from "../../api/client";
 import { kindApi, pipelineApi, repoApi, runApi, scheduleApi } from "../../api/endpoints";
-import type { RunParameterDescriptor, RunScope } from "../../api/types";
+import type { RunParameterDescriptor, RunScope, RunValue } from "../../api/types";
 import { ComboBoxField } from "../../components/ComboBoxField";
 import { CorrelationError } from "../../components/CorrelationError";
 import { DateRangeCalendar } from "../../components/DateRangeCalendar";
@@ -57,7 +57,7 @@ export interface TriggerRunDialogProps {
   /** The operation of the run being repeated (Re-run), for a kind that registers operations. */
   initialOperation?: string | null;
   /** The values of the run being repeated (Re-run), handed to the kind's fields. */
-  initialValues?: Readonly<Record<string, string>> | null;
+  initialValues?: Readonly<Record<string, RunValue>> | null;
   /** The payload of the run being repeated (Re-run), or of the launching context, handed to the kind's fields. */
   initialPayload?: Readonly<Record<string, unknown>> | null;
 }
@@ -73,7 +73,7 @@ const SCOPE_LABELS: Record<RunScope, string> = {
 const OFFERED_SCOPES: RunScope[] = ["flow", "node"];
 
 /** The values a fresh launch hands a kind's fields: one shared empty object, so the fields see a stable reference. */
-const NO_VALUES: Readonly<Record<string, string>> = {};
+const NO_VALUES: Readonly<Record<string, RunValue>> = {};
 
 /** A one-line cadence for a related schedule ("cron 0 2 * * *", "every 3600s", or "manual"). */
 function describeCadence(cron: string | null, intervalSeconds: number | null): string {
